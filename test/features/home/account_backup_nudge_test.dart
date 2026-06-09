@@ -1,0 +1,107 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
+import 'package:safar/features/home/widgets/account_backup_nudge.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
+
+Future<void> _pump(
+  WidgetTester tester, {
+  required SharedPreferences prefs,
+  String? linkedEmail,
+}) async {
+  final router = GoRouter(
+    initialLocation: '/home',
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (ctx, state) =>
+            const Scaffold(body: SingleChildScrollView(child: AccountBackupNudge())),
+      ),
+      GoRoute(
+        path: '/profile/link-email',
+        builder: (ctx, state) =>
+            const Scaffold(body: Text('LinkEmailScreen-marker')),
+      ),
+    ],
+  );
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        linkedEmailProvider.overrideWithValue(linkedEmail),
+      ],
+      child: MaterialApp.router(
+        theme: AppTheme.lightTheme,
+        routerConfig: router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
+  testWidgets('shows for an anonymous user who has not dismissed it', (
+    tester,
+  ) async {
+    await _pump(tester, prefs: prefs, linkedEmail: null);
+
+    expect(find.byKey(HomeKeys.accountBackupNudge), findsOneWidget);
+    expect(find.byKey(HomeKeys.accountBackupNudgeCta), findsOneWidget);
+  });
+
+  testWidgets('hidden when an email is already linked', (tester) async {
+    await _pump(tester, prefs: prefs, linkedEmail: 'traveller@example.com');
+
+    expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
+  });
+
+  testWidgets('hidden once the dismiss flag is set', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'settings_email_link_nudge_seen': true,
+    });
+    prefs = await SharedPreferences.getInstance();
+
+    await _pump(tester, prefs: prefs, linkedEmail: null);
+
+    expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
+  });
+
+  testWidgets('Add email routes to the link-email screen', (tester) async {
+    await _pump(tester, prefs: prefs, linkedEmail: null);
+
+    await tester.tap(find.byKey(HomeKeys.accountBackupNudgeCta));
+    await tester.pumpAndSettle();
+
+    expect(find.text('LinkEmailScreen-marker'), findsOneWidget);
+  });
+
+  testWidgets('Not now dismisses the card and persists the flag', (
+    tester,
+  ) async {
+    await _pump(tester, prefs: prefs, linkedEmail: null);
+    expect(find.byKey(HomeKeys.accountBackupNudge), findsOneWidget);
+
+    await tester.tap(find.byKey(HomeKeys.accountBackupNudgeDismiss));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
+    expect(prefs.getBool('settings_email_link_nudge_seen'), isTrue);
+  });
+}

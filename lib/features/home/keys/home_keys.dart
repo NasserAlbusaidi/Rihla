@@ -24,6 +24,14 @@ abstract final class HomeKeys {
   static const balanceIncompleteNotice = Key('home_balance_incomplete_notice');
   static const activitySection = Key('home_activity_section');
 
+  // #285: one-time, non-blocking nudge to back up an anonymous account by
+  // linking an email — shown under the hero only while the user is anonymous.
+  static const accountBackupNudge = Key('home_account_backup_nudge');
+  static const accountBackupNudgeCta = Key('home_account_backup_nudge_cta');
+  static const accountBackupNudgeDismiss = Key(
+    'home_account_backup_nudge_dismiss',
+  );
+
   // Bottom navigation
   static const bottomNavGroups = Key('home_bottom_nav_groups');
   static const bottomNavActivity = Key('home_bottom_nav_activity');

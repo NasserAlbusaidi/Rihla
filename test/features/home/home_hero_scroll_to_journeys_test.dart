@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -57,6 +58,11 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          // #285: model an email-secured user so the one-time account-backup
+          // nudge is absent (it would add height between the hero and the
+          // journeys section); its appearance is covered by
+          // account_backup_nudge_test.dart.
+          linkedEmailProvider.overrideWithValue('secured@example.com'),
           currentUserIdProvider.overrideWithValue('test-user-id'),
           userGroupsProvider.overrideWith((ref) => Stream.value([group])),
           crossGroupBalanceOnceProvider.overrideWith(

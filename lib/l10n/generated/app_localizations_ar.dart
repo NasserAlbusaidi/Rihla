@@ -1256,6 +1256,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeRecover => 'استخدمت رحلة سابقًا — استعادة';
 
   @override
+  String get homeBackupNudgeTitle => 'احفظ نسخة من حسابك';
+
+  @override
+  String get homeBackupNudgeBody =>
+      'مجموعاتك ومصاريفك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا حتى لا تفقدها عند تغيير الهاتف أو إعادة التثبيت أو فقدان الجهاز.';
+
+  @override
+  String get homeBackupNudgeCta => 'أضف بريدًا إلكترونيًا';
+
+  @override
+  String get homeBackupNudgeDismiss => 'ليس الآن';
+
+  @override
   String get homeErrorTitle => 'حدث خطأ ما';
 
   @override

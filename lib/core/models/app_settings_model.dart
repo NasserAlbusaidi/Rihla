@@ -15,6 +15,11 @@ class AppSettings {
   /// exactly once so a default-off [pushNotificationsEnabled] no longer hides
   /// the system dialog forever (#288).
   final bool notificationPromptSeen;
+
+  /// True once the user has dismissed (or acted on) the one-time home nudge to
+  /// back up their anonymous account by linking an email. Gates that nudge to
+  /// appear at most once so it stays a non-blocking prompt, never a nag (#285).
+  final bool emailLinkNudgeSeen;
   final bool weeklyDigestEnabled;
   final String deviceName;
   final bool onboardingComplete;
@@ -26,6 +31,7 @@ class AppSettings {
     this.currencyCode = 'OMR',
     this.pushNotificationsEnabled = false,
     this.notificationPromptSeen = false,
+    this.emailLinkNudgeSeen = false,
     this.weeklyDigestEnabled = false,
     this.deviceName = '',
     this.onboardingComplete = false,
@@ -40,6 +46,7 @@ class AppSettings {
     String? currencyCode,
     bool? pushNotificationsEnabled,
     bool? notificationPromptSeen,
+    bool? emailLinkNudgeSeen,
     bool? weeklyDigestEnabled,
     String? deviceName,
     bool? onboardingComplete,
@@ -53,6 +60,7 @@ class AppSettings {
           pushNotificationsEnabled ?? this.pushNotificationsEnabled,
       notificationPromptSeen:
           notificationPromptSeen ?? this.notificationPromptSeen,
+      emailLinkNudgeSeen: emailLinkNudgeSeen ?? this.emailLinkNudgeSeen,
       weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
       deviceName: deviceName ?? this.deviceName,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
