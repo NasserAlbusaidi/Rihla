@@ -12,6 +12,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../activity/utils/activity_display.dart';
 import '../keys/group_keys.dart';
 import '../models/group_activity_log_model.dart';
@@ -139,9 +140,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
 
   Widget _buildBody(BuildContext context, String currency) {
     if (_isLoadingMore && _activities.isEmpty) {
-      return Center(
-        child: CircularProgressIndicator(color: context.colors.primary),
-      );
+      return SkeletonLoader.expenseList();
     }
     if (_activities.isEmpty) {
       return EmptyStateView(
