@@ -13,6 +13,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'You\'re offline — changes will sync later';
 
   @override
+  String get bannerSavedWillSync => 'Saved — will sync';
+
+  @override
   String get commonCancel => 'Cancel';
 
   @override

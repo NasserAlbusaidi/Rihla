@@ -3,6 +3,8 @@
 
   "offlineBannerMessage": "أنت غير متصل — ستتم مزامنة التغييرات لاحقًا",
 
+  "bannerSavedWillSync": "تم الحفظ — ستتم المزامنة",
+
   "commonCancel": "إلغاء",
   "commonSave": "حفظ",
   "commonDelete": "حذف",
