@@ -9,8 +9,11 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/share_helper.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
+import '../keys/group_keys.dart';
 import '../services/member_name_resolver.dart';
 import '../widgets/group_settlement_summary.dart';
 import 'all_settled_state.dart';
@@ -115,6 +118,7 @@ class SettleUpPageBody extends StatelessWidget {
               settlements: history,
               currency: currency,
               displayNames: displayNames,
+              subjectName: subjectName,
             ),
           ],
         ],
@@ -388,11 +392,15 @@ class _PaymentHistorySection extends StatelessWidget {
     required this.settlements,
     required this.currency,
     required this.displayNames,
+    required this.subjectName,
   });
 
   final List<Settlement> settlements;
   final String currency;
   final Map<String, String> displayNames;
+
+  /// Group/event name folded into the shareable receipt (#359).
+  final String subjectName;
 
   @override
   Widget build(BuildContext context) {
@@ -406,6 +414,7 @@ class _PaymentHistorySection extends StatelessWidget {
             settlement: settlements[i],
             currency: currency,
             displayNames: displayNames,
+            subjectName: subjectName,
             index: i,
           ),
       ],
@@ -418,13 +427,42 @@ class _HistoryTile extends StatelessWidget {
     required this.settlement,
     required this.currency,
     required this.displayNames,
+    required this.subjectName,
     required this.index,
   });
 
   final Settlement settlement;
   final String currency;
   final Map<String, String> displayNames;
+  final String subjectName;
   final int index;
+
+  /// Composes the plain-text receipt shared via [shareText] (#359). Built only
+  /// from persisted fields — payer/recipient, amount, date, group/event name,
+  /// and the note when present (payment method is never persisted, so it is
+  /// not claimed here). The amount is formatted code-first (#144) and stays LTR.
+  String _composeReceipt(
+    BuildContext context,
+    String payerName,
+    String recipientName,
+    String dateStr,
+  ) {
+    final l10n = context.l10n;
+    final lines = <String>[
+      l10n.settleUpReceiptLine(
+        payerName,
+        recipientName,
+        AppFormatters.formatCurrency(settlement.amount, currency),
+      ),
+      l10n.settleUpReceiptContext(dateStr, subjectName),
+    ];
+    final note = settlement.note?.trim();
+    if (note != null && note.isNotEmpty) {
+      lines.add(note);
+    }
+    lines.add(l10n.settleUpReceiptFooter);
+    return lines.join('\n');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -515,6 +553,39 @@ class _HistoryTile extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: context.colors.textPrimary,
+                ),
+              ),
+              SizedBox(width: spacing.space4),
+              // #359: share a plain-text receipt of this recorded payment. The
+              // Builder gives shareText() the button's own render box as the
+              // popover origin (non-zero on iPad); never call Share.share raw.
+              Builder(
+                builder: (buttonContext) => IconButton(
+                  // Key only the newest tile so a single, predictable target
+                  // anchors widget tests; every tile is still shareable.
+                  key: index == 0 ? GroupKeys.settleUpShareReceiptButton : null,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                  tooltip: context.l10n.settleUpShareReceipt,
+                  icon: DirectionalIcon(
+                    Iconsax.send_2,
+                    size: 16,
+                    color: context.colors.primary,
+                  ),
+                  onPressed: () => shareText(
+                    buttonContext,
+                    _composeReceipt(
+                      buttonContext,
+                      payerName,
+                      recipientName,
+                      dateStr,
+                    ),
+                    subject: context.l10n.settleUpReceiptShareSubject,
+                  ),
                 ),
               ),
             ],

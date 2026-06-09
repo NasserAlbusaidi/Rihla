@@ -1139,6 +1139,29 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpPaidConnector => 'دفع';
 
   @override
+  String get settleUpShareReceipt => 'مشاركة الإيصال';
+
+  @override
+  String settleUpReceiptLine(
+    Object payerName,
+    Object recipientName,
+    Object amount,
+  ) {
+    return 'دفع $payerName إلى $recipientName $amount';
+  }
+
+  @override
+  String settleUpReceiptContext(Object date, Object subjectName) {
+    return '$date · $subjectName';
+  }
+
+  @override
+  String get settleUpReceiptFooter => '— مُسجَّل في رِحلة';
+
+  @override
+  String get settleUpReceiptShareSubject => 'إيصال تسوية';
+
+  @override
   String get settleUpMarkThisPaidTitle => 'تحديده كمدفوع؟';
 
   @override

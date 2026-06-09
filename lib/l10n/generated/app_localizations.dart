@@ -1958,6 +1958,40 @@ abstract class AppLocalizations {
   /// **'paid'**
   String get settleUpPaidConnector;
 
+  /// Affordance on a recorded-payment history tile (#359) that shares a plain-text receipt of the settlement via the iOS-safe shareText() helper.
+  ///
+  /// In en, this message translates to:
+  /// **'Share receipt'**
+  String get settleUpShareReceipt;
+
+  /// First line of the shareable settlement receipt (#359): who paid whom, how much. The amount is pre-formatted code-first (e.g. 'OMR 5.000').
+  ///
+  /// In en, this message translates to:
+  /// **'{payerName} paid {recipientName} {amount}'**
+  String settleUpReceiptLine(
+    Object payerName,
+    Object recipientName,
+    Object amount,
+  );
+
+  /// Second line of the shareable settlement receipt (#359): the date and the group/event name.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · {subjectName}'**
+  String settleUpReceiptContext(Object date, Object subjectName);
+
+  /// Trailing line of the shareable settlement receipt (#359). Reinforces that Rihla records the payment but does not move money (#351).
+  ///
+  /// In en, this message translates to:
+  /// **'— recorded in Rihla'**
+  String get settleUpReceiptFooter;
+
+  /// Share-sheet subject line for the settlement receipt (#359), used where the platform surfaces a subject (e.g. email).
+  ///
+  /// In en, this message translates to:
+  /// **'Settlement receipt'**
+  String get settleUpReceiptShareSubject;
+
   /// No description provided for @settleUpMarkThisPaidTitle.
   ///
   /// In en, this message translates to:

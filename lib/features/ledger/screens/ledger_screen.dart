@@ -238,6 +238,7 @@ class _Body extends ConsumerWidget {
       children: [
         Expanded(
           child: CustomScrollView(
+            restorationId: 'ledger_scroll',
             slivers: [
               SliverToBoxAdapter(
                 child: _CoverHeader(
