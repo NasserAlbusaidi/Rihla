@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -339,7 +340,7 @@ void main() {
     );
   });
 
-  testWidgets('settlement write failure shows failure snackbar', (
+  testWidgets('unknown write failure shows the generic message, not network (#360)', (
     tester,
   ) async {
     final fakeDb = FakeFirebaseFirestore();
@@ -358,10 +359,46 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
+      find.text("Couldn't record settlement. Please try again."),
+      findsOneWidget,
+    );
+    expect(
       find.text(
         "Couldn't record settlement. Check your connection and try again.",
       ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('permission-denied shows the not-allowed message, not network (#360)', (
+    tester,
+  ) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(
+      buildScreen(fakeDb, settlementService: _DeniedSettlementService()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(GroupKeys.settleUpRecordPaymentButton),
+    );
+    await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        "This settlement wasn't allowed. Please check the details and try again.",
+      ),
       findsOneWidget,
+    );
+    expect(
+      find.text(
+        "Couldn't record settlement. Check your connection and try again.",
+      ),
+      findsNothing,
     );
   });
 
@@ -401,5 +438,29 @@ class _FailingSettlementService extends SettlementService {
     String? note,
   }) {
     throw StateError('write failed');
+  }
+}
+
+class _DeniedSettlementService extends SettlementService {
+  _DeniedSettlementService() : super.withFirestore(FakeFirebaseFirestore());
+
+  @override
+  Future<Settlement> addSettlement({
+    required String groupId,
+    required String eventId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required Decimal amount,
+    required String createdBy,
+    String currency = 'OMR',
+    String? payerName,
+    String? recipientName,
+    String? note,
+  }) {
+    throw FirebaseException(
+      plugin: 'cloud_firestore',
+      code: 'permission-denied',
+      message: 'Missing or insufficient permissions.',
+    );
   }
 }

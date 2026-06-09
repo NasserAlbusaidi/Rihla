@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -171,10 +172,15 @@ Widget _wrap(
 }
 
 class _RecordingGroupSettlementService extends GroupSettlementService {
-  _RecordingGroupSettlementService({this.throwOnAdd = false})
+  _RecordingGroupSettlementService({this.throwOnAdd = false, this.errorToThrow})
     : super.withFirestore(FakeFirebaseFirestore());
 
   final bool throwOnAdd;
+
+  /// When set, [addGroupSettlement] throws this exact error (e.g. a
+  /// [FirebaseException] with a specific code) so #360's error mapping can be
+  /// exercised per cause.
+  final Object? errorToThrow;
   final addCalls =
       <
         ({
@@ -202,6 +208,9 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
     String? payerName,
     String? recipientName,
   }) async {
+    if (errorToThrow != null) {
+      throw errorToThrow!;
+    }
     if (throwOnAdd) {
       throw StateError('write failed');
     }
@@ -760,7 +769,7 @@ void main() {
       expect(activityService.logCalls, isEmpty);
     });
 
-    testWidgets('settlement service failure shows failure snackbar', (
+    testWidgets('unknown service failure shows the generic message, not network (#360)', (
       tester,
     ) async {
       final settlementService = _RecordingGroupSettlementService(
@@ -787,10 +796,59 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
+        find.text("Couldn't record settlement. Please try again."),
+        findsOneWidget,
+      );
+      expect(
         find.text(
           "Couldn't record settlement. Check your connection and try again.",
         ),
+        findsNothing,
+      );
+      expect(activityService.logCalls, isEmpty);
+    });
+
+    testWidgets('permission-denied shows the not-allowed message, not network (#360)', (
+      tester,
+    ) async {
+      final settlementService = _RecordingGroupSettlementService(
+        errorToThrow: FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
+          message: 'Missing or insufficient permissions.',
+        ),
+      );
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          currentUid: 'uid-bob',
+          extraOverrides: [
+            groupSettlementServiceProvider.overrideWithValue(settlementService),
+            groupActivityServiceProvider.overrideWithValue(activityService),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          "This settlement wasn't allowed. Please check the details and try again.",
+        ),
         findsOneWidget,
+      );
+      expect(
+        find.text(
+          "Couldn't record settlement. Check your connection and try again.",
+        ),
+        findsNothing,
       );
       expect(activityService.logCalls, isEmpty);
     });

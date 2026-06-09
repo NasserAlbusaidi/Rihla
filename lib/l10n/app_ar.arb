@@ -331,6 +331,8 @@
   "settleUpAmountExceedsOutstanding": "لا يمكن أن يتجاوز المبلغ الرصيد المستحق {amount}",
   "settleUpRecorded": "تم تسجيل التسوية.",
   "settleUpRecordFailed": "تعذّر تسجيل التسوية. تحقق من اتصالك وحاول مرة أخرى.",
+  "settleUpRecordFailedDenied": "لم تُقبل هذه التسوية. يرجى مراجعة التفاصيل والمحاولة مرة أخرى.",
+  "settleUpRecordFailedGeneric": "تعذّر تسجيل التسوية. يرجى المحاولة مرة أخرى.",
   "settleUpEveryoneEvenHeadline": "الجميع متوازن.",
   "settleUpTransfersHeadline": "{count, plural, =0{لا تحويلات،\nالجميع متوازن.} =1{تحويل واحد،\nالجميع متوازن.} =2{تحويلان،\nالجميع متوازن.} few{{count} تحويلات،\nالجميع متوازن.} many{{count} تحويلًا،\nالجميع متوازن.} other{{count} تحويل،\nالجميع متوازن.}}",
   "settleUpNoOptimizedPayments": "لا توجد دفعات محسّنة مطلوبة ضمن {subjectName}.",

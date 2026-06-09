@@ -1037,6 +1037,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t record settlement. Check your connection and try again.';
 
   @override
+  String get settleUpRecordFailedDenied =>
+      'This settlement wasn\'t allowed. Please check the details and try again.';
+
+  @override
+  String get settleUpRecordFailedGeneric =>
+      'Couldn\'t record settlement. Please try again.';
+
+  @override
   String get settleUpEveryoneEvenHeadline => 'Everyone\'s even.';
 
   @override
