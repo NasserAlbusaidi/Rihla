@@ -875,6 +875,35 @@
   "settleUpPaymentHistory": "Payment history",
   "settleUpUnknown": "Unknown",
   "settleUpPaidConnector": "paid",
+  "settleUpShareReceipt": "Share receipt",
+  "@settleUpShareReceipt": {
+    "description": "Affordance on a recorded-payment history tile (#359) that shares a plain-text receipt of the settlement via the iOS-safe shareText() helper."
+  },
+  "settleUpReceiptLine": "{payerName} paid {recipientName} {amount}",
+  "@settleUpReceiptLine": {
+    "description": "First line of the shareable settlement receipt (#359): who paid whom, how much. The amount is pre-formatted code-first (e.g. 'OMR 5.000').",
+    "placeholders": {
+      "payerName": {},
+      "recipientName": {},
+      "amount": {}
+    }
+  },
+  "settleUpReceiptContext": "{date} · {subjectName}",
+  "@settleUpReceiptContext": {
+    "description": "Second line of the shareable settlement receipt (#359): the date and the group/event name.",
+    "placeholders": {
+      "date": {},
+      "subjectName": {}
+    }
+  },
+  "settleUpReceiptFooter": "— recorded in Rihla",
+  "@settleUpReceiptFooter": {
+    "description": "Trailing line of the shareable settlement receipt (#359). Reinforces that Rihla records the payment but does not move money (#351)."
+  },
+  "settleUpReceiptShareSubject": "Settlement receipt",
+  "@settleUpReceiptShareSubject": {
+    "description": "Share-sheet subject line for the settlement receipt (#359), used where the platform surfaces a subject (e.g. email)."
+  },
   "settleUpMarkThisPaidTitle": "Mark this paid?",
   "settleUpMarkThisReceivedTitle": "Mark this received?",
   "settleUpMarkThisPaidBody": "We'll close out the balance between {fromName} and {toName}.",

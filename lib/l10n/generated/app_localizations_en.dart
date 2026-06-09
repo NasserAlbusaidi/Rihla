@@ -1100,6 +1100,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpPaidConnector => 'paid';
 
   @override
+  String get settleUpShareReceipt => 'Share receipt';
+
+  @override
+  String settleUpReceiptLine(
+    Object payerName,
+    Object recipientName,
+    Object amount,
+  ) {
+    return '$payerName paid $recipientName $amount';
+  }
+
+  @override
+  String settleUpReceiptContext(Object date, Object subjectName) {
+    return '$date · $subjectName';
+  }
+
+  @override
+  String get settleUpReceiptFooter => '— recorded in Rihla';
+
+  @override
+  String get settleUpReceiptShareSubject => 'Settlement receipt';
+
+  @override
   String get settleUpMarkThisPaidTitle => 'Mark this paid?';
 
   @override
