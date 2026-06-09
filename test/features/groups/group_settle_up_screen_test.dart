@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -319,7 +320,8 @@ void main() {
       await tester.pumpWidget(_wrapWithGroupStream(controller.stream));
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('missing group empty state routes home', (tester) async {
@@ -431,18 +433,61 @@ void main() {
       expect(find.text('Mark paid'), findsOneWidget);
     });
 
-    testWidgets('Mark paid button hidden for the creditor', (tester) async {
+    testWidgets('#282: creditor sees a "Mark received" record button', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const GroupSettleUpScreen(groupId: _groupId),
           balancesAsync: AsyncValue.data(_balancesOwed),
-          currentUid: 'uid-alice',
+          currentUid: 'uid-alice', // Alice is owed by Bob → creditor
         ),
       );
       await tester.pumpAndSettle();
 
+      expect(find.byKey(GroupKeys.settleUpRecordPaymentButton), findsOneWidget);
+      // The creditor's affordance is framed as "received", not "paid".
+      expect(find.text('Mark received'), findsOneWidget);
       expect(find.text('Mark paid'), findsNothing);
     });
+
+    testWidgets(
+      '#282: creditor recording keeps payer=debtor, recipient=creditor',
+      (tester) async {
+        final settlementService = _RecordingGroupSettlementService();
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            currentUid: 'uid-alice', // creditor records the received payment
+            extraOverrides: [
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        // Direction follows the optimal transfer, not who tapped: Bob (debtor)
+        // pays Alice (creditor), even though Alice recorded it.
+        expect(settlementService.addCalls, hasLength(1));
+        expect(settlementService.addCalls.single.payerParticipantId, 'uid-bob');
+        expect(
+          settlementService.addCalls.single.recipientParticipantId,
+          'uid-alice',
+        );
+        expect(settlementService.addCalls.single.amount, Decimal.parse('7.750'));
+      },
+    );
 
     testWidgets('GROUP TOTAL PENDING shows 7.750 OMR', (tester) async {
       await tester.pumpWidget(
@@ -528,7 +573,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('shows error state with Retry button on balance fetch error', (

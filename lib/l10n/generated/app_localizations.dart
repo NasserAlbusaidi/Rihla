@@ -1940,6 +1940,12 @@ abstract class AppLocalizations {
   /// **'Mark this paid?'**
   String get settleUpMarkThisPaidTitle;
 
+  /// No description provided for @settleUpMarkThisReceivedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark this received?'**
+  String get settleUpMarkThisReceivedTitle;
+
   /// No description provided for @settleUpMarkThisPaidBody.
   ///
   /// In en, this message translates to:
@@ -1958,6 +1964,12 @@ abstract class AppLocalizations {
   /// **'This records your payment to {name} immediately.'**
   String settleUpRecordsImmediately(Object name);
 
+  /// Creditor variant of settleUpRecordsImmediately (#282): the current user is recording a payment they RECEIVED, so {name} is the payer (debtor). Same immediacy caveat as the debtor copy (#281).
+  ///
+  /// In en, this message translates to:
+  /// **'This records {name}\'s payment to you immediately.'**
+  String settleUpRecordsReceivedImmediately(Object name);
+
   /// No description provided for @settleUpNotYet.
   ///
   /// In en, this message translates to:
@@ -1969,6 +1981,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mark paid'**
   String get settleUpMarkPaid;
+
+  /// No description provided for @settleUpMarkReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark received'**
+  String get settleUpMarkReceived;
 
   /// No description provided for @settleUpPays.
   ///

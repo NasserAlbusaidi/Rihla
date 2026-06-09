@@ -62,6 +62,15 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
     return context.l10n.settleUpOwes(widget.fromName, widget.toName);
   }
 
+  /// #282: the creditor records a payment *received*; the debtor records a
+  /// payment *made*. The write direction is identical — only the label differs.
+  String get _recordLabel {
+    if (widget.isCreditor && !widget.isYourAction) {
+      return context.l10n.settleUpMarkReceived;
+    }
+    return context.l10n.settleUpMarkPaid;
+  }
+
   @override
   Widget build(BuildContext context) {
     const spacing = AppSpacingTokens.standard;
@@ -219,7 +228,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           shape: const StadiumBorder(),
                         ),
                         child: Text(
-                          context.l10n.settleUpMarkPaid,
+                          _recordLabel,
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,

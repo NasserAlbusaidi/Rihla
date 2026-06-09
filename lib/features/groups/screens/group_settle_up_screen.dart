@@ -9,8 +9,10 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../../events/models/event_model.dart';
 import '../../events/models/event_type_config.dart';
@@ -55,7 +57,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     if (groupAsync.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(body: SafeArea(child: SkeletonLoader.groupList()));
     }
 
     final group = groupAsync.valueOrNull;
@@ -203,7 +205,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     ],
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: SkeletonLoader.groupList,
                 error: (e, _) => Center(
                   child: Padding(
                     padding: EdgeInsets.all(context.spacing.space24),
@@ -311,12 +313,15 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
     final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
+    // #282: the recipient (creditor) is recording a payment received.
+    final isReceiving = ref.read(currentUserIdProvider) == toUserId;
     final result = await showRecordPaymentSheet(
       context,
       currency: group.currency,
       fromName: fromDisplayName,
       toName: toDisplayName,
       suggestedAmount: suggestedAmount,
+      isReceiving: isReceiving,
     );
 
     if (!context.mounted || result == null) return;
@@ -409,6 +414,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             createdBy: currentUid,
           );
 
+      // #282: name the OTHER party relative to the actor. When the creditor
+      // (recipient) records the payment, the counterparty is the payer — not
+      // `toName`, which would otherwise read "Alice settled … with Alice".
+      final counterpartyName = currentUid == toUserId ? fromName : toName;
       ref
           .read(groupActivityServiceProvider)
           .logGroupEvent(
@@ -417,7 +426,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             actorId: currentUid,
             actorName: actorName,
             description:
-                'settled ${AppFormatters.formatCurrency(amount, group.currency)} with $toName',
+                'settled ${AppFormatters.formatCurrency(amount, group.currency)} with $counterpartyName',
             metadata: {'amount': amount.toString(), 'recipientId': toUserId},
           );
 
@@ -469,7 +478,7 @@ class _SettlementTopBar extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: IconButton(
                 tooltip: l10n.commonBack,
-                icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                icon: const DirectionalIcon(Iconsax.arrow_left_2, size: 20),
                 color: context.colors.textPrimary,
                 onPressed: () {
                   if (context.canPop()) {

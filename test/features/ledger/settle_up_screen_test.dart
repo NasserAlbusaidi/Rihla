@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -146,7 +147,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('missing event state routes home', (tester) async {
@@ -179,7 +181,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('expense error state retry stays on error UI', (tester) async {
@@ -248,6 +251,42 @@ void main() {
     expect(snap.docs.first.data()['payerName'], equals('Bob'));
     expect(snap.docs.first.data()['recipientName'], equals('Alice'));
   });
+
+  testWidgets(
+    '#282: creditor records a received payment — payer=debtor, '
+    'recipient=creditor, createdBy=creditor',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // Alice paid the 20.000 dinner; Bob owes her 10.000 → Alice is the
+      // creditor. She records that Bob repaid her in cash.
+      await tester.pumpWidget(buildScreen(fakeDb, currentUid: 'alice'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      final snap = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .collection('settlements')
+          .get();
+
+      expect(snap.docs, hasLength(1));
+      // Direction is fixed by the debt, not by who tapped record.
+      expect(snap.docs.first.data()['payerParticipantId'], equals('bob'));
+      expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
+      // The actor (creditor) is the audited author.
+      expect(snap.docs.first.data()['createdBy'], equals('alice'));
+    },
+  );
 
   testWidgets('zero settlement amount shows validation snackbar', (
     tester,

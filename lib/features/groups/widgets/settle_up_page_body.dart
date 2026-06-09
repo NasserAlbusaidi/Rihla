@@ -155,7 +155,11 @@ class SettleUpPageBody extends StatelessWidget {
           isCreditor: isCreditor,
           isHighlighted: isHighlighted,
           tileKey: tileKey,
-          onRecord: isYourAction
+          // #282: the debtor records a payment made; the creditor records a
+          // payment received. Both write the same direction (payer=debtor,
+          // recipient=creditor) — only the framing differs. A pure third party
+          // (neither side) still gets no record affordance.
+          onRecord: (isYourAction || isCreditor)
               ? () {
                   assert(
                     rawNames.containsKey(fromUserId),
