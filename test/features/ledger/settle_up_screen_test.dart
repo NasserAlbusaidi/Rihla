@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -62,6 +63,7 @@ void main() {
     Stream<List<Settlement>>? settlementsStream,
     SettlementService? settlementService,
     bool router = false,
+    List<Override> extraOverrides = const [],
   }) {
     final overrides = [
       currentUserIdProvider.overrideWithValue(currentUid),
@@ -95,6 +97,7 @@ void main() {
       settlementServiceProvider.overrideWithValue(
         settlementService ?? SettlementService.withFirestore(fakeDb),
       ),
+      ...extraOverrides,
     ];
 
     final child = router
@@ -252,6 +255,39 @@ void main() {
     expect(snap.docs.first.data()['payerName'], equals('Bob'));
     expect(snap.docs.first.data()['recipientName'], equals('Alice'));
   });
+
+  testWidgets(
+    '#357: an offline settlement flips connectivity to syncing '
+    '("Saved — will sync")',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      // Timer-free notifier seeded offline; the write should set it to syncing.
+      // Riverpod owns the overridden instance and disposes it on teardown, so
+      // no addTearDown here (that would double-dispose).
+      final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
+        ..setOffline();
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          extraOverrides: [
+            connectivityProvider.overrideWith((ref) => connectivity),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(connectivity.state, ConnectivityStatus.syncing);
+    },
+  );
 
   testWidgets(
     '#282: creditor records a received payment — payer=debtor, '

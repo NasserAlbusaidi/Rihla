@@ -32,16 +32,26 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   Timer? _checkTimer;
   final ConnectivityProbe _connectivityProbe;
 
-  ConnectivityNotifier({ConnectivityProbe? connectivityProbe})
-    : _connectivityProbe = connectivityProbe ?? _defaultConnectivityProbe,
-      super(ConnectivityStatus.online) {
+  /// [startPeriodicChecks] gates the 60s connectivity timer. Production leaves
+  /// it on; widget tests that mount a connectivity-watching screen pass `false`
+  /// to get a timer-free notifier, otherwise the periodic timer never settles
+  /// and `pumpAndSettle` hangs (the documented ConnectivityNotifier trap).
+  ConnectivityNotifier({
+    ConnectivityProbe? connectivityProbe,
+    bool startPeriodicChecks = true,
+  }) : _connectivityProbe = connectivityProbe ?? _defaultConnectivityProbe,
+       super(ConnectivityStatus.online) {
     try {
       WidgetsBinding.instance.addObserver(this);
     } catch (_) {
       // No binding in unit tests — lifecycle observation skipped.
     }
-    _startPeriodicCheck();
+    if (startPeriodicChecks) _startPeriodicCheck();
   }
+
+  /// Whether the periodic connectivity timer is currently scheduled.
+  @visibleForTesting
+  bool get isPeriodicCheckActive => _checkTimer != null;
 
   static Future<bool?> _defaultConnectivityProbe() async {
     try {
@@ -111,6 +121,19 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   /// Set syncing state
   void setSyncing() {
     state = ConnectivityStatus.syncing;
+  }
+
+  /// Note that a write was just accepted locally by the Firestore SDK.
+  ///
+  /// Surfaces the transient `syncing` ("Saved — will sync") state **only when
+  /// currently offline** — the SDK has queued the write and will replay it on
+  /// reconnect (#357). When already online the write commits immediately, so
+  /// this is a no-op (the existing success affordance covers it). The periodic
+  /// probe resolves `syncing` back to `online`/`offline`, so no timer is added.
+  void noteLocalWrite() {
+    if (state == ConnectivityStatus.offline) {
+      state = ConnectivityStatus.syncing;
+    }
   }
 
   /// Set online state

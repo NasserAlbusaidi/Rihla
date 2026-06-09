@@ -6,6 +6,11 @@
     "description": "Banner shown when device is offline; reassures user that pending writes will be sent on reconnect."
   },
 
+  "bannerSavedWillSync": "Saved — will sync",
+  "@bannerSavedWillSync": {
+    "description": "Transient banner shown after a write is saved locally while offline; reassures the user it will sync to the server on reconnect (#357)."
+  },
+
   "commonCancel": "Cancel",
   "@commonCancel": {
     "description": "Generic Cancel action label for dialogs and sheets."

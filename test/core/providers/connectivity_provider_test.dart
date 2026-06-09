@@ -100,4 +100,66 @@ void main() {
       expect(n.state, ConnectivityStatus.online);
     });
   });
+
+  group('noteLocalWrite (#357)', () {
+    test('offline → noteLocalWrite → syncing', () {
+      final n = makeNotifier();
+      addTearDown(n.dispose);
+      n.setOffline();
+      n.noteLocalWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+    });
+
+    test('online → noteLocalWrite → stays online (gated on offline)', () {
+      final n = makeNotifier();
+      addTearDown(n.dispose);
+      n.noteLocalWrite();
+      expect(n.state, ConnectivityStatus.online);
+    });
+
+    test('syncing → noteLocalWrite → stays syncing (idempotent)', () {
+      final n = makeNotifier();
+      addTearDown(n.dispose);
+      n.setOffline();
+      n.noteLocalWrite();
+      n.noteLocalWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+    });
+
+    test('syncing clears to online when the probe reconnects (AC3)', () async {
+      final n = makeNotifier(probe: () async => true);
+      addTearDown(n.dispose);
+      n.setOffline();
+      n.noteLocalWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+      await n.checkConnectivity();
+      expect(n.state, ConnectivityStatus.online);
+    });
+
+    test('syncing falls back to offline while still disconnected', () async {
+      final n = makeNotifier(probe: () async => false);
+      addTearDown(n.dispose);
+      n.setOffline();
+      n.noteLocalWrite();
+      await n.checkConnectivity();
+      expect(n.state, ConnectivityStatus.offline);
+    });
+  });
+
+  group('startPeriodicChecks seam (#357)', () {
+    test('defaults to running the periodic check', () {
+      final n = ConnectivityNotifier(connectivityProbe: () async => null);
+      addTearDown(n.dispose);
+      expect(n.isPeriodicCheckActive, isTrue);
+    });
+
+    test('can be disabled so widget tests get a timer-free notifier', () {
+      final n = ConnectivityNotifier(
+        connectivityProbe: () async => null,
+        startPeriodicChecks: false,
+      );
+      addTearDown(n.dispose);
+      expect(n.isPeriodicCheckActive, isFalse);
+    });
+  });
 }
