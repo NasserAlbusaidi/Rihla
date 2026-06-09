@@ -54,25 +54,6 @@ void main() {
         expect(settlement.groupId, isNull);
       },
     );
-
-    test(
-      'toFirestore for scope=group includes scope=group and groupId',
-      () {
-        final settlement = Settlement(
-          id: 'settle1',
-          tripId: 'groupId1',
-          amount: Decimal.parse('10.500'),
-          settledAt: DateTime.now().toUtc(),
-          scope: 'group',
-          groupId: 'groupId1',
-        );
-
-        final map = settlement.toFirestore();
-
-        expect(map['scope'], equals('group'));
-        expect(map['groupId'], equals('groupId1'));
-      },
-    );
   });
 
   group('GroupSettlementService (Firestore)', () {

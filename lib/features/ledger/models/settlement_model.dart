@@ -129,26 +129,4 @@ class Settlement {
       createdBy: data['createdBy'] as String? ?? '',
     );
   }
-
-  /// Serialize this [Settlement] to a Firestore document map.
-  ///
-  /// Field names are camelCase. Money is stored as integer fils.
-  Map<String, dynamic> toFirestore() {
-    const currency = 'OMR';
-    return {
-      'id': id,
-      'eventId': tripId,
-      'payerParticipantId': payerParticipantId,
-      'recipientParticipantId': recipientParticipantId,
-      'amountFils': MoneySerializer.toSubunits(amount, currency),
-      'currency': currency,
-      'note': note,
-      'settledAt': settledAt.toIso8601String(),
-      'isDeleted': isDeleted,
-      'deletedAt': deletedAt?.toIso8601String(),
-      'scope': scope,
-      'groupId': groupId,
-      'createdBy': createdBy,
-    };
-  }
 }

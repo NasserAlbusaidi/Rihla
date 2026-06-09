@@ -303,36 +303,5 @@ void main() {
       expect(settlement.recipientName, 'Recipient');
       expect(settlement.isDeleted, isFalse);
     });
-
-    test('toFirestore writes OMR subunits and scope fields', () {
-      final settlement = Settlement(
-        id: 'settle-4',
-        tripId: 'event-1',
-        payerParticipantId: 'payer-1',
-        recipientParticipantId: 'recipient-1',
-        amount: Decimal.parse('8.125'),
-        note: 'Done',
-        settledAt: DateTime.utc(2026, 5, 1, 12),
-        isDeleted: true,
-        deletedAt: DateTime.utc(2026, 5, 2, 12),
-        scope: 'event',
-      );
-
-      expect(settlement.toFirestore(), {
-        'id': 'settle-4',
-        'eventId': 'event-1',
-        'payerParticipantId': 'payer-1',
-        'recipientParticipantId': 'recipient-1',
-        'amountFils': 8125,
-        'currency': 'OMR',
-        'note': 'Done',
-        'settledAt': '2026-05-01T12:00:00.000Z',
-        'isDeleted': true,
-        'deletedAt': '2026-05-02T12:00:00.000Z',
-        'scope': 'event',
-        'groupId': null,
-        'createdBy': '',
-      });
-    });
   });
 }
