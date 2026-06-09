@@ -13,21 +13,20 @@ import 'package:flutter_test/flutter_test.dart';
 /// `DirectionalIcon(Iconsax.arrow_left_2)` and ternary selectors
 /// (`Icon(rtl ? Iconsax.arrow_left : …)`) pass — only the bare wrap matches.
 ///
-/// Scope is `arrow_left*` per the issue; a stray bare `Icon(Iconsax.arrow_right…)`
-/// (forward chevron) is tracked separately.
+/// Scope of the back-arrow rule is `arrow_left*` per #348; the forward
+/// disclosure chevron (`arrow_right_3`) is guarded by the second test below.
 void main() {
-  final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_left');
+  Iterable<File> libFeatureDartFiles() => Directory('lib/features')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart'));
 
   test('lib/features wraps back arrows in DirectionalIcon, not bare Icon (#348)',
       () {
+    final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_left');
     final offenders = <String>[];
 
-    final dartFiles = Directory('lib/features')
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'));
-
-    for (final file in dartFiles) {
+    for (final file in libFeatureDartFiles()) {
       final lines = file.readAsLinesSync();
       for (var i = 0; i < lines.length; i++) {
         if (banned.hasMatch(lines[i])) {
@@ -43,6 +42,40 @@ void main() {
           'Wrap navigational back arrows in DirectionalIcon(Iconsax.arrow_left_2) '
           'so Arabic RTL mirrors them to the start edge. Offenders:\n'
           '${offenders.join('\n')}',
+    );
+  });
+
+  /// #348 follow-up — the forward disclosure chevron must mirror in RTL too.
+  ///
+  /// `arrow_right_3` is the codebase's "go / next / disclosure" glyph (profile
+  /// rows, the paid-by row, the success dialog, the create-event button). A bare
+  /// `Icon(Iconsax.arrow_right_3)` points **→** in every locale, so under Arabic
+  /// RTL it points away from the start edge. Route it through [DirectionalIcon].
+  ///
+  /// The match is whole-file (not per-line) so a multi-line
+  /// `Icon(\n  Iconsax.arrow_right_3,\n  …)` is caught, not just the one-liner.
+  /// `\bIcon\(` skips `DirectionalIcon(` (the 'l' before 'Icon' kills the word
+  /// boundary) and the `Iconsax` immediately after `(` skips RTL-aware ternaries
+  /// like `Icon(rtl ? Iconsax.arrow_left : Iconsax.arrow_right_3)`. The thinner
+  /// `arrow_right_1`/`arrow_right_2` direction glyphs are intentionally out of
+  /// scope (e.g. the settlement transfer arrow).
+  test('lib/features routes the forward chevron through DirectionalIcon (#348)',
+      () {
+    final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_right_3');
+    final offenders = <String>[];
+
+    for (final file in libFeatureDartFiles()) {
+      if (banned.hasMatch(file.readAsStringSync())) {
+        offenders.add(file.path);
+      }
+    }
+
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'Wrap the forward chevron in DirectionalIcon(Iconsax.arrow_right_3) so '
+          'Arabic RTL mirrors it. Offending files:\n${offenders.join('\n')}',
     );
   });
 }
