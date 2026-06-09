@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -319,7 +320,8 @@ void main() {
       await tester.pumpWidget(_wrapWithGroupStream(controller.stream));
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('missing group empty state routes home', (tester) async {
@@ -571,7 +573,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('shows error state with Retry button on balance fetch error', (

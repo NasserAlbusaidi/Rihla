@@ -14,6 +14,7 @@ import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -1425,9 +1426,7 @@ class _LoadingState extends StatelessWidget {
           height: 148 + statusBar,
           child: Container(color: colors.cardSoft),
         ),
-        const Spacer(),
-        CircularProgressIndicator(color: colors.primary),
-        const Spacer(flex: 3),
+        Expanded(child: SkeletonLoader.generic(count: 3)),
       ],
     );
   }
