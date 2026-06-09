@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -221,7 +223,7 @@ void main() {
     ) async {
       final router = await pumpGroupDetail(tester, initialLocation: '/home');
 
-      router.push('/group/$groupId');
+      unawaited(router.push('/group/$groupId'));
       await tester.pumpAndSettle();
 
       expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
@@ -241,7 +243,7 @@ void main() {
     ) async {
       final router = await pumpGroupDetail(tester, initialLocation: '/home');
 
-      router.push('/group/$groupId');
+      unawaited(router.push('/group/$groupId'));
       await tester.pumpAndSettle();
 
       expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);

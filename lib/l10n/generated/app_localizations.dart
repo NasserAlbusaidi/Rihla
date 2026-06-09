@@ -1970,6 +1970,12 @@ abstract class AppLocalizations {
   /// **'This records {name}\'s payment to you immediately.'**
   String settleUpRecordsReceivedImmediately(Object name);
 
+  /// Microcopy on the Mark-Paid/Mark-Received sheet (#351). Rihla is a ledger, not a payment processor; this sets the expectation that recording a settlement does not transfer any funds.
+  ///
+  /// In en, this message translates to:
+  /// **'Rihla records the payment — it doesn\'t move money.'**
+  String get settleUpDoesntMoveMoney;
+
   /// No description provided for @settleUpNotYet.
   ///
   /// In en, this message translates to:
@@ -4153,6 +4159,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong ({code}). Please try again.'**
   String authErrorGeneric(Object code);
+
+  /// Friendly cause phrase (#356) for offline / unavailable / timed-out errors. Slots into action-context templates like groupFailedLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check your connection and try again.'**
+  String get errorNetwork;
+
+  /// Friendly cause phrase (#356) for permission-denied / unauthenticated errors.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to do that.'**
+  String get errorPermissionDenied;
+
+  /// Friendly cause phrase (#356) for rate-limit / quota errors (too-many-requests, resource-exhausted).
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please wait a moment and try again.'**
+  String get errorTooManyRequests;
+
+  /// Friendly cause phrase (#356) for any unclassified error; the raw detail is sent to Sentry, not shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get errorUnexpected;
 
   /// Shown on the Link-email screen when the email is already linked to another Rihla account.
   ///

@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
@@ -69,12 +73,15 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
           _isSaving = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() => _isSaving = false);
+        unawaited(Sentry.captureException(e, stackTrace: st));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.groupUpdateNameFailed(e.toString())),
+            content: Text(
+              context.l10n.groupUpdateNameFailed(friendlyMessageFor(context, e)),
+            ),
             duration: const Duration(seconds: 3),
           ),
         );

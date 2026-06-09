@@ -1113,6 +1113,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settleUpDoesntMoveMoney =>
+      'Rihla records the payment — it doesn\'t move money.';
+
+  @override
   String get settleUpNotYet => 'Not yet';
 
   @override
@@ -2383,6 +2387,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String authErrorGeneric(Object code) {
     return 'Something went wrong ($code). Please try again.';
   }
+
+  @override
+  String get errorNetwork => 'Please check your connection and try again.';
+
+  @override
+  String get errorPermissionDenied => 'You don\'t have permission to do that.';
+
+  @override
+  String get errorTooManyRequests =>
+      'Too many attempts. Please wait a moment and try again.';
+
+  @override
+  String get errorUnexpected => 'Something went wrong. Please try again.';
 
   @override
   String get authErrorEmailAlreadyLinked =>

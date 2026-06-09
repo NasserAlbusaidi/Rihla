@@ -1149,6 +1149,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get settleUpDoesntMoveMoney =>
+      'رِحلة تُسجِّل الدفعة فقط — لا تُحوِّل الأموال.';
+
+  @override
   String get settleUpNotYet => 'ليس الآن';
 
   @override
@@ -2435,6 +2439,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String authErrorGeneric(Object code) {
     return 'حدث خطأ ما ($code). يرجى المحاولة مرة أخرى.';
   }
+
+  @override
+  String get errorNetwork => 'يرجى التحقق من اتصالك والمحاولة مرة أخرى.';
+
+  @override
+  String get errorPermissionDenied => 'ليس لديك إذن للقيام بذلك.';
+
+  @override
+  String get errorTooManyRequests =>
+      'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.';
+
+  @override
+  String get errorUnexpected => 'حدث خطأ ما. يرجى المحاولة مرة أخرى.';
 
   @override
   String get authErrorEmailAlreadyLinked =>

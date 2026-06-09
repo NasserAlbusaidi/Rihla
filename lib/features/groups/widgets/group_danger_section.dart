@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../keys/group_keys.dart';
@@ -246,15 +250,23 @@ class GroupDangerSection extends ConsumerWidget {
         );
         return;
       }
+      unawaited(Sentry.captureException(e));
       messenger.showSnackBar(
         SnackBar(
-          content: Text(context.l10n.groupFailedLeave(e.message ?? e.code)),
+          content: Text(
+            context.l10n.groupFailedLeave(friendlyMessageFor(context, e)),
+          ),
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
       if (!context.mounted) return;
+      unawaited(Sentry.captureException(e, stackTrace: st));
       messenger.showSnackBar(
-        SnackBar(content: Text(context.l10n.groupFailedLeave(e.toString()))),
+        SnackBar(
+          content: Text(
+            context.l10n.groupFailedLeave(friendlyMessageFor(context, e)),
+          ),
+        ),
       );
     }
   }
@@ -293,15 +305,30 @@ class GroupDangerSection extends ConsumerWidget {
         return;
       }
       if (context.mounted) {
-        final message = e.code == 'failed-precondition'
-            ? context.l10n.groupSettleBeforeDeleting
-            : context.l10n.groupFailedDelete(e.message ?? e.code);
-        messenger.showSnackBar(SnackBar(content: Text(message)));
+        if (e.code == 'failed-precondition') {
+          messenger.showSnackBar(
+            SnackBar(content: Text(context.l10n.groupSettleBeforeDeleting)),
+          );
+        } else {
+          unawaited(Sentry.captureException(e));
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                context.l10n.groupFailedDelete(friendlyMessageFor(context, e)),
+              ),
+            ),
+          );
+        }
       }
-    } catch (e) {
+    } catch (e, st) {
       if (context.mounted) {
+        unawaited(Sentry.captureException(e, stackTrace: st));
         messenger.showSnackBar(
-          SnackBar(content: Text(context.l10n.groupFailedDelete(e.toString()))),
+          SnackBar(
+            content: Text(
+              context.l10n.groupFailedDelete(friendlyMessageFor(context, e)),
+            ),
+          ),
         );
       }
     }

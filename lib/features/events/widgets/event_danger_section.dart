@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
@@ -251,10 +255,15 @@ class EventDangerSection extends ConsumerWidget {
       if (context.mounted) {
         context.go('/group/$groupId');
       }
-    } catch (e) {
+    } catch (e, st) {
       if (context.mounted) {
+        unawaited(Sentry.captureException(e, stackTrace: st));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.eventDeleteFailed(e.toString()))),
+          SnackBar(
+            content: Text(
+              context.l10n.eventDeleteFailed(friendlyMessageFor(context, e)),
+            ),
+          ),
         );
       }
     }

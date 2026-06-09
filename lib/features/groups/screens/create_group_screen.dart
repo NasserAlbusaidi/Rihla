@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
@@ -103,13 +105,14 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       // has a group to be notified about. Fires after the sheet so it doesn't
       // fight the modal.
       unawaited(notificationPrompt.maybePrompt());
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
       ref.read(groupErrorProvider.notifier).state = e.toString();
+      unawaited(Sentry.captureException(e, stackTrace: st));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n.groupCreateError(e.toString())),
+          content: Text(context.l10n.groupCreateError(friendlyMessageFor(context, e))),
           duration: const Duration(seconds: 5),
         ),
       );
