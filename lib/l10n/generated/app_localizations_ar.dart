@@ -471,6 +471,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ledgerNothingInCategoryMessage => 'جرّب فئة أخرى أو عد إلى الكل.';
 
   @override
+  String get ledgerClearFilters => 'مسح عوامل التصفية';
+
+  @override
   String get ledgerEndOfLedger => 'نهاية الدفتر';
 
   @override
@@ -2098,6 +2101,13 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupLoadFailedTitle => 'تعذّر تحميل المجموعة';
+
+  @override
+  String get groupNoAccessTitle => 'لم يعد لديك صلاحية الوصول';
+
+  @override
+  String get groupNoAccessMessage =>
+      'لم تعد عضوًا في هذه المجموعة، أو لم تعد مشتركة معك.';
 
   @override
   String get groupNotFoundTitle => 'المجموعة غير موجودة';

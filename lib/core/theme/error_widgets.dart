@@ -40,13 +40,18 @@ class NetworkErrorWidget extends StatelessWidget {
   })  : iconColor = null,
         _iconTint = tint;
 
-  /// Factory for generic loading error
+  /// Factory for generic loading error.
+  ///
+  /// [customTitle]/[customMessage] let callers supply already-localized copy so
+  /// the widget can be adopted on real (user-facing) error sites without
+  /// leaking the English defaults into other locales.
   factory NetworkErrorWidget.loadingError({
+    String? customTitle,
     String? customMessage,
     VoidCallback? onRetry,
   }) {
     return NetworkErrorWidget._withTint(
-      title: 'Something Went Wrong',
+      title: customTitle ?? 'Something Went Wrong',
       message: customMessage ?? 'We couldn\'t load the data. Please try again.',
       onRetry: onRetry,
       icon: Iconsax.warning_2,

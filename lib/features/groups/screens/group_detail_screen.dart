@@ -1,14 +1,19 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/error_widgets.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
@@ -72,9 +77,19 @@ class GroupDetailScreen extends ConsumerWidget {
             return _Content(group: group);
           },
           loading: () => const _LoadingState(),
-          error: (_, _) => _ErrorState(
-            onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
-          ),
+          error: (error, stackTrace) {
+            // #358: Firestore denies the group read once a user is removed
+            // from / loses access to the group. Show a terminal "no access"
+            // state (retrying just re-denies) and keep the raw error out of
+            // the UI — log it to Sentry for diagnostics instead.
+            if (_isPermissionDenied(error)) {
+              unawaited(Sentry.captureException(error, stackTrace: stackTrace));
+              return const _NoAccessState();
+            }
+            return _ErrorState(
+              onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
+            );
+          },
         ),
       ),
     );
@@ -820,6 +835,11 @@ class _EventRow extends StatelessWidget {
 String _eventTypeLabel(BuildContext context, EventType t) =>
     t.localizedShortLabel(context.l10n);
 
+/// True when a stream error is a Firestore `permission-denied` — i.e. the
+/// user no longer has read access to the group (removed / un-shared).
+bool _isPermissionDenied(Object error) =>
+    error is FirebaseException && error.code == 'permission-denied';
+
 // ──────────────────────────── Members card
 
 class _MembersCard extends StatelessWidget {
@@ -1018,16 +1038,34 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // #358: adopt the shared NetworkErrorWidget for the generic
+    // (non-permission) group-load error instead of a hand-rolled
+    // EmptyStateView error variant.
+    return SafeArea(
+      child: NetworkErrorWidget.loadingError(
+        customTitle: context.l10n.groupLoadFailedTitle,
+        customMessage: context.l10n.activityLoadFailedMessage,
+        onRetry: onRetry,
+      ),
+    );
+  }
+}
+
+class _NoAccessState extends StatelessWidget {
+  const _NoAccessState();
+
+  @override
+  Widget build(BuildContext context) {
     return SafeArea(
       child: Center(
         child: Padding(
           padding: EdgeInsets.all(context.spacing.space24),
           child: EmptyStateView(
-            icon: Iconsax.warning_2,
-            title: context.l10n.groupLoadFailedTitle,
-            message: context.l10n.activityLoadFailedMessage,
-            actionLabel: context.l10n.commonRetry,
-            onAction: onRetry,
+            icon: Iconsax.lock,
+            title: context.l10n.groupNoAccessTitle,
+            message: context.l10n.groupNoAccessMessage,
+            actionLabel: context.l10n.groupBackHome,
+            onAction: () => GoRouter.of(context).go('/home'),
           ),
         ),
       ),
