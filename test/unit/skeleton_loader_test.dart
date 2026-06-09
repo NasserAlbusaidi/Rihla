@@ -425,6 +425,84 @@ void main() {
     );
   });
 
+  group('SkeletonLoader reduce-motion (#349)', () {
+    testWidgets(
+      'reduce-motion swaps the animated shimmer for a static SolidColorEffect',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                  child: SizedBox(
+                    width: 400,
+                    height: 600,
+                    child: SkeletonLoader.generic(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        final skeletonizer = tester.widget<Skeletonizer>(_skeletonizer);
+        expect(skeletonizer.effect, isA<SolidColorEffect>());
+        expect(skeletonizer.effect, isNot(isA<ShimmerEffect>()));
+        expect(
+          (skeletonizer.effect! as SolidColorEffect).color,
+          AppColorTokens.light.inputFill,
+        );
+      },
+    );
+
+    testWidgets('normal motion keeps the animated ShimmerEffect', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(disableAnimations: false),
+                child: SizedBox(
+                  width: 400,
+                  height: 600,
+                  child: SkeletonLoader.generic(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final skeletonizer = tester.widget<Skeletonizer>(_skeletonizer);
+      expect(skeletonizer.effect, isA<ShimmerEffect>());
+    });
+
+    testWidgets('static card() honors reduce-motion', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                child: SkeletonLoader.card(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final skeletonizer = tester.widget<Skeletonizer>(_skeletonizer);
+      expect(skeletonizer.effect, isA<SolidColorEffect>());
+    });
+  });
+
   group('SkeletonLoader backward compatibility', () {
     testWidgets('cardList still renders', (tester) async {
       await tester.pumpWidget(
