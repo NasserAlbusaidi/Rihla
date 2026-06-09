@@ -1903,6 +1903,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'That name\'s already used in this group. Please pick a different name.';
 
   @override
+  String displayNameTakenInGroup(Object groupName) {
+    return 'That name\'s already used in $groupName. Please pick a different name.';
+  }
+
+  @override
   String get groupJoinTooManyAttempts => 'Too many attempts. Try again later.';
 
   @override

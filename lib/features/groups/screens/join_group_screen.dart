@@ -13,6 +13,7 @@ import '../../../core/services/notification_prompt.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
+import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
@@ -78,7 +79,19 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     ref.read(groupLoadingProvider.notifier).state = true;
     ref.read(groupErrorProvider.notifier).state = null;
 
-    await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
+    try {
+      await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
+    } on DisplayNameTakenException catch (e) {
+      // #390: the chosen name collides with another live member in one of the
+      // user's EXISTING groups; reject before attempting the join.
+      ref.read(groupLoadingProvider.notifier).state = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.displayNameTakenInGroup(e.groupName))),
+        );
+      }
+      return;
+    }
 
     try {
       final group = await ref

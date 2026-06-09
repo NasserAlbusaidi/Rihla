@@ -113,3 +113,48 @@ String? validateFreeText(String? input) {
     null => null,
   };
 }
+
+/// Whether [candidate] collides — by the shared #196/#279 collision key
+/// `trim().toLowerCase()` — with any LIVE member in [memberDocs] whose
+/// `userId` field differs from [selfUid].
+///
+/// The collision key MUST stay identical to `MemberNameResolver.disambiguate`
+/// (`member_name_resolver.dart:96`) and the #279 server guard
+/// (`functions/src/callables/joinGroupByInviteCode.ts:318-324`) so prevention
+/// and the display disambiguator agree.
+///
+/// [memberDocs] are RAW Firestore member maps (not `GroupMember`) so a
+/// malformed doc is skipped, never thrown on. Own-doc is matched by the
+/// `userId` FIELD (the creator doc is uuid-keyed — #294), and tombstoned
+/// (former) members are skipped to match the live-only counting in
+/// `disambiguate`. Used by the self-rename pre-check (#390).
+bool nameCollidesInDocs({
+  required String candidate,
+  required String selfUid,
+  required Iterable<Map<String, dynamic>> memberDocs,
+}) {
+  final key = candidate.trim().toLowerCase();
+  if (key.isEmpty) return false;
+  for (final data in memberDocs) {
+    if (data['userId'] == selfUid) continue;
+    if (data['isTombstone'] == true) continue;
+    final existing = data['displayName'];
+    if (existing is String && existing.trim().toLowerCase() == key) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// Thrown by `setDeviceName` (#390) when the requested display name already
+/// belongs to another live member of [groupName] — the rename is rejected
+/// whole (all-or-nothing) so the user picks a different, unambiguous name.
+class DisplayNameTakenException implements Exception {
+  const DisplayNameTakenException(this.groupName);
+
+  /// Name of the group in which the collision was found (for the UI message).
+  final String groupName;
+
+  @override
+  String toString() => 'DisplayNameTakenException(groupName: $groupName)';
+}

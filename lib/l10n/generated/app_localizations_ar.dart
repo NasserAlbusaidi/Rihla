@@ -1954,6 +1954,11 @@ class AppLocalizationsAr extends AppLocalizations {
       'هذا الاسم مستخدم بالفعل في هذه المجموعة. الرجاء اختيار اسم مختلف.';
 
   @override
+  String displayNameTakenInGroup(Object groupName) {
+    return 'هذا الاسم مستخدم بالفعل في $groupName. الرجاء اختيار اسم مختلف.';
+  }
+
+  @override
   String get groupJoinTooManyAttempts => 'محاولات كثيرة جدًا. حاول لاحقًا.';
 
   @override
