@@ -8,9 +8,11 @@ linter:
     cancel_subscriptions: true
     close_sinks: true
     always_declare_return_types: true
+    unawaited_futures: true
 
     # Const optimization (improves widget rebuild performance)
     prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
     prefer_const_declarations: true
     prefer_const_literals_to_create_immutables: true
 

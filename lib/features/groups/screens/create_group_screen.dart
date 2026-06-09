@@ -109,7 +109,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
       ref.read(groupErrorProvider.notifier).state = e.toString();
-      Sentry.captureException(e, stackTrace: st);
+      unawaited(Sentry.captureException(e, stackTrace: st));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.groupCreateError(friendlyMessageFor(context, e))),

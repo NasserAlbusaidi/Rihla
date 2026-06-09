@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
@@ -248,7 +250,7 @@ class GroupDangerSection extends ConsumerWidget {
         );
         return;
       }
-      Sentry.captureException(e);
+      unawaited(Sentry.captureException(e));
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -258,7 +260,7 @@ class GroupDangerSection extends ConsumerWidget {
       );
     } catch (e, st) {
       if (!context.mounted) return;
-      Sentry.captureException(e, stackTrace: st);
+      unawaited(Sentry.captureException(e, stackTrace: st));
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -308,7 +310,7 @@ class GroupDangerSection extends ConsumerWidget {
             SnackBar(content: Text(context.l10n.groupSettleBeforeDeleting)),
           );
         } else {
-          Sentry.captureException(e);
+          unawaited(Sentry.captureException(e));
           messenger.showSnackBar(
             SnackBar(
               content: Text(
@@ -320,7 +322,7 @@ class GroupDangerSection extends ConsumerWidget {
       }
     } catch (e, st) {
       if (context.mounted) {
-        Sentry.captureException(e, stackTrace: st);
+        unawaited(Sentry.captureException(e, stackTrace: st));
         messenger.showSnackBar(
           SnackBar(
             content: Text(
