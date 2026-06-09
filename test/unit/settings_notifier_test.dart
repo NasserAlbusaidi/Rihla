@@ -48,6 +48,20 @@ void main() {
     });
 
     test(
+      'setDeviceName collision pre-check is fail-open when Firebase is '
+      'uninitialized (#390) — currentUser throws [core/no-app], is caught, and '
+      'the name still persists without a DisplayNameTakenException escaping',
+      () async {
+        final container = await makeContainer();
+        final notifier = container.read(settingsProvider.notifier);
+        // No Firebase app in unit tests → the roster read throws and must be
+        // swallowed (fail-open). The rename must complete, not throw.
+        await notifier.setDeviceName('Ahmed');
+        expect(container.read(settingsProvider).deviceName, equals('Ahmed'));
+      },
+    );
+
+    test(
       'setDeviceName normalizes valid display names before persisting',
       () async {
         final container = await makeContainer();

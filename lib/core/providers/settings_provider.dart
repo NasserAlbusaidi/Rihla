@@ -93,6 +93,10 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       if (error != null) {
         throw ArgumentError.value(name, 'name', error);
       }
+      // #390: reject a rename that would collide with another live member in
+      // ANY group the user belongs to (all-or-nothing). Throws
+      // DisplayNameTakenException BEFORE persisting/propagating.
+      await _ensureDisplayNameAvailable(normalized);
     }
 
     await _service.saveDeviceName(normalized); // SharedPreferences first (D-16)
@@ -100,6 +104,53 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     if (normalized.isNotEmpty) {
       // Fire-and-forget Firestore (D-15)
       unawaited(propagateDisplayName(normalized));
+    }
+  }
+
+  /// Throws [DisplayNameTakenException] if [normalized] collides with another
+  /// live member in any group the current user belongs to (#390).
+  ///
+  /// Reads `FirebaseConfig.currentUser` / `FirebaseConfig.firestore` (same as
+  /// [propagateDisplayName]); the renamer is a member of these groups so the
+  /// roster read is permitted. The `currentUser` read is INSIDE the `try` on
+  /// purpose: with no Firebase app initialized (unit tests) it throws
+  /// `[core/no-app]`, which `catch (_)` swallows → fail-open. Fail-OPEN on ANY
+  /// read error (offline cold cache / transient / no-Firebase-app): a rename is
+  /// never blocked by a failed read — the #279 join guard is the authoritative
+  /// collision boundary and the #196/#289 disambiguator is the display backstop.
+  /// A real collision ([DisplayNameTakenException]) is always rethrown.
+  Future<void> _ensureDisplayNameAvailable(String normalized) async {
+    try {
+      final uid = FirebaseConfig.currentUser?.uid;
+      if (uid == null) return; // genuinely unauthenticated — nothing to check
+
+      final db = FirebaseConfig.firestore;
+      final groupsSnap = await db
+          .collection('groups')
+          .where('memberIds', arrayContains: uid)
+          .get();
+
+      for (final groupDoc in groupsSnap.docs) {
+        final membersSnap = await db
+            .collection('groups')
+            .doc(groupDoc.id)
+            .collection('members')
+            .get();
+
+        final collides = nameCollidesInDocs(
+          candidate: normalized,
+          selfUid: uid,
+          memberDocs: membersSnap.docs.map((d) => d.data()),
+        );
+        if (collides) {
+          final groupName = (groupDoc.data()['name'] as String?) ?? '';
+          throw DisplayNameTakenException(groupName);
+        }
+      }
+    } on DisplayNameTakenException {
+      rethrow; // a real collision is a real rejection
+    } catch (_) {
+      return; // fail-open: read failure / offline cold cache / no Firebase app
     }
   }
 

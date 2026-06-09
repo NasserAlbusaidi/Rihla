@@ -3308,6 +3308,12 @@ abstract class AppLocalizations {
   /// **'That name\'s already used in this group. Please pick a different name.'**
   String get groupJoinNameTaken;
 
+  /// No description provided for @displayNameTakenInGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'That name\'s already used in {groupName}. Please pick a different name.'**
+  String displayNameTakenInGroup(Object groupName);
+
   /// No description provided for @groupJoinTooManyAttempts.
   ///
   /// In en, this message translates to:
