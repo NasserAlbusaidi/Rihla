@@ -64,6 +64,10 @@ abstract final class GroupKeys {
   static const settleUpRecordPaymentButton =
       Key('group_settle_up_record_payment_button');
 
+  // #359: share a plain-text receipt of a recorded payment.
+  static const settleUpShareReceiptButton =
+      Key('group_settle_up_share_receipt_button');
+
   // Phase 30 — Activity screen filter chip keys (added Wave 0; used by Plan 03 implementation)
   static const activityFilterAll = Key('group_activity_filter_all');
   static const activityFilterSettlements =
