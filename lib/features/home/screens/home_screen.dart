@@ -114,6 +114,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       onRefresh: () async {
         ref.invalidate(userGroupsProvider);
         // #104: refresh the one-shot home balance aggregate on pull-to-refresh.
+        // #410: the per-group family must be invalidated too — its instances
+        // are pinned alive by _GroupRow / activeJourneysProvider, so without
+        // this the cross-group aggregate recomputes from cached per-event
+        // reads and a peer device's expense edits never show up.
+        ref.invalidate(groupBalancesOnceProvider);
         ref.invalidate(crossGroupBalanceOnceProvider);
         await ref.read(userGroupsProvider.future);
       },
