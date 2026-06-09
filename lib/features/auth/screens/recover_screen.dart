@@ -11,6 +11,7 @@ import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/email_validators.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/sign_out_first_dialog.dart';
@@ -142,7 +143,7 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
         backgroundColor: colors.scaffoldBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left_2),
+          icon: const DirectionalIcon(Iconsax.arrow_left_2),
           onPressed: _back,
         ),
         title: Text(
