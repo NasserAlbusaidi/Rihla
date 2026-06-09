@@ -709,6 +709,10 @@ void main() {
       await tester.tap(find.text('Tap to edit amount'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), '0');
+      // #351 microcopy made the sheet taller; scroll the confirm button into
+      // view (it can sit below the 800x600 test fold once the editor expands).
+      await tester.ensureVisible(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
       await tester.pumpAndSettle();
 
@@ -741,6 +745,10 @@ void main() {
       await tester.tap(find.text('Tap to edit amount'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), '8.000');
+      // #351 microcopy made the sheet taller; scroll the confirm button into
+      // view (it can sit below the 800x600 test fold once the editor expands).
+      await tester.ensureVisible(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
       await tester.pumpAndSettle();
 

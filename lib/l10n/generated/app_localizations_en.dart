@@ -1113,6 +1113,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settleUpDoesntMoveMoney =>
+      'Rihla records the payment — it doesn\'t move money.';
+
+  @override
   String get settleUpNotYet => 'Not yet';
 
   @override

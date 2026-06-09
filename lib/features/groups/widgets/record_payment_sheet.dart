@@ -265,18 +265,34 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          widget.isReceiving
-                              ? context.l10n.settleUpRecordsReceivedImmediately(
-                                  widget.fromName,
-                                )
-                              : context.l10n.settleUpRecordsImmediately(
-                                  widget.toName,
-                                ),
-                          style: AppTypography.sans(
-                            fontSize: 12,
-                            color: colors.primaryDark,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.isReceiving
+                                  ? context.l10n
+                                        .settleUpRecordsReceivedImmediately(
+                                          widget.fromName,
+                                        )
+                                  : context.l10n.settleUpRecordsImmediately(
+                                      widget.toName,
+                                    ),
+                              style: AppTypography.sans(
+                                fontSize: 12,
+                                color: colors.primaryDark,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // #351: Rihla records, it does not move money — set
+                            // the expectation so no one waits for a transfer.
+                            Text(
+                              context.l10n.settleUpDoesntMoveMoney,
+                              style: AppTypography.sans(
+                                fontSize: 11,
+                                color: colors.primaryDark.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

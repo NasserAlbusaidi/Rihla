@@ -69,8 +69,14 @@ void main() {
     return result;
   }
 
-  Future<void> tapMarkPaid(WidgetTester tester) =>
-      tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+  Future<void> tapMarkPaid(WidgetTester tester) async {
+    // The sheet is a SingleChildScrollView; with the amount editor expanded the
+    // confirm button can sit below the 800x600 test fold, so scroll it into
+    // view before tapping (a tap on an off-screen widget is a no-op miss).
+    await tester.ensureVisible(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+  }
 
   testWidgets(
     'banner states recording is immediate, not a notify/confirm promise (#281)',
@@ -111,6 +117,43 @@ void main() {
       expect(find.textContaining('to confirm'), findsNothing);
       // Honest copy: states plainly that the write is immediate.
       expect(find.textContaining('immediately'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#351: banner says Rihla records but does not move money',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    key: const Key('open'),
+                    onPressed: () => showRecordPaymentSheet(
+                      context,
+                      currency: 'OMR',
+                      fromName: 'Bob',
+                      toName: 'Alice',
+                      suggestedAmount: Decimal.parse('5.000'),
+                    ),
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('open')));
+      await tester.pumpAndSettle();
+
+      // Rihla is a ledger, not a payment processor — no funds are transferred.
+      expect(find.textContaining("doesn't move money"), findsOneWidget);
     },
   );
 
