@@ -12,41 +12,53 @@ class OfflineBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(connectivityProvider);
-    final isOffline = status == ConnectivityStatus.offline;
+
+    // `online` collapses to nothing; `offline` and the transient `syncing`
+    // ("Saved — will sync", #357) each render a tinted strip.
+    final ({IconData icon, String message, Color color})? banner =
+        switch (status) {
+      ConnectivityStatus.offline => (
+          icon: Icons.cloud_off_rounded,
+          message: context.l10n.offlineBannerMessage,
+          color: context.colors.warning,
+        ),
+      ConnectivityStatus.syncing => (
+          icon: Icons.cloud_done_rounded,
+          message: context.l10n.bannerSavedWillSync,
+          color: context.colors.successText,
+        ),
+      ConnectivityStatus.online => null,
+    };
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      child: isOffline
-          ? Container(
+      child: banner == null
+          ? const SizedBox.shrink()
+          : Container(
               key: SharedKeys.offlineBanner,
               width: double.infinity,
               padding: EdgeInsets.symmetric(
                 horizontal: context.spacing.space16,
                 vertical: context.spacing.space8,
               ),
-              color: context.colors.warning.withValues(alpha: 0.12),
+              color: banner.color.withValues(alpha: 0.12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.cloud_off_rounded,
-                    size: 16,
-                    color: context.colors.warning,
-                  ),
+                  Icon(banner.icon, size: 16, color: banner.color),
                   SizedBox(width: context.spacing.space8),
                   Text(
-                    context.l10n.offlineBannerMessage,
+                    banner.message,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: context.colors.warning,
+                      color: banner.color,
                     ),
                   ),
                 ],
               ),
-            )
-          : const SizedBox.shrink(),
+            ),
     );
   }
 }

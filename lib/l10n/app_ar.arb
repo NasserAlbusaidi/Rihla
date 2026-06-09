@@ -3,6 +3,8 @@
 
   "offlineBannerMessage": "أنت غير متصل — ستتم مزامنة التغييرات لاحقًا",
 
+  "bannerSavedWillSync": "تم الحفظ — ستتم المزامنة",
+
   "commonCancel": "إلغاء",
   "commonSave": "حفظ",
   "commonDelete": "حذف",
@@ -385,6 +387,10 @@
   "homeCreateGroup": "إنشاء مجموعة",
   "homeJoinGroup": "الانضمام لمجموعة",
   "homeRecover": "استخدمت رحلة سابقًا — استعادة",
+  "homeBackupNudgeTitle": "احفظ نسخة من حسابك",
+  "homeBackupNudgeBody": "مجموعاتك ومصاريفك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا حتى لا تفقدها عند تغيير الهاتف أو إعادة التثبيت أو فقدان الجهاز.",
+  "homeBackupNudgeCta": "أضف بريدًا إلكترونيًا",
+  "homeBackupNudgeDismiss": "ليس الآن",
   "homeErrorTitle": "حدث خطأ ما",
   "homeErrorMessage": "تحقق من اتصالك وحاول مرة أخرى. مجموعاتك متزامنة بأمان — نحتاج الإنترنت فقط لجلب الأحدث.",
   "homeCreateAGroup": "إنشاء مجموعة",

@@ -13,6 +13,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'You\'re offline — changes will sync later';
 
   @override
+  String get bannerSavedWillSync => 'Saved — will sync';
+
+  @override
   String get commonCancel => 'Cancel';
 
   @override
@@ -1234,6 +1237,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeRecover => 'I had Rihla before — restore';
+
+  @override
+  String get homeBackupNudgeTitle => 'Back up your account';
+
+  @override
+  String get homeBackupNudgeBody =>
+      'Your groups and expenses live only on this phone. Add an email so a new phone, reinstall, or lost device can\'t erase them.';
+
+  @override
+  String get homeBackupNudgeCta => 'Add email';
+
+  @override
+  String get homeBackupNudgeDismiss => 'Not now';
 
   @override
   String get homeErrorTitle => 'Something went wrong';

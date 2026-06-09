@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
@@ -362,6 +363,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           );
 
       ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
+      ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

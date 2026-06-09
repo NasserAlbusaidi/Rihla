@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
@@ -138,6 +139,9 @@ Widget _buildTestApp(
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      // #285: model an email-secured user so the one-time account-backup nudge
+      // is absent; its appearance is covered by account_backup_nudge_test.dart.
+      linkedEmailProvider.overrideWithValue('secured@example.com'),
       ...overrides,
       // #104: the home dashboard now reads the one-shot balance variants.
       // Bridge them to whatever the live providers were overridden to, so the

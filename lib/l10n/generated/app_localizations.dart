@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'You\'re offline — changes will sync later'**
   String get offlineBannerMessage;
 
+  /// Transient banner shown after a write is saved locally while offline; reassures the user it will sync to the server on reconnect (#357).
+  ///
+  /// In en, this message translates to:
+  /// **'Saved — will sync'**
+  String get bannerSavedWillSync;
+
   /// Generic Cancel action label for dialogs and sheets.
   ///
   /// In en, this message translates to:
@@ -2179,6 +2185,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I had Rihla before — restore'**
   String get homeRecover;
+
+  /// No description provided for @homeBackupNudgeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up your account'**
+  String get homeBackupNudgeTitle;
+
+  /// No description provided for @homeBackupNudgeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your groups and expenses live only on this phone. Add an email so a new phone, reinstall, or lost device can\'t erase them.'**
+  String get homeBackupNudgeBody;
+
+  /// No description provided for @homeBackupNudgeCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add email'**
+  String get homeBackupNudgeCta;
+
+  /// No description provided for @homeBackupNudgeDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get homeBackupNudgeDismiss;
 
   /// No description provided for @homeErrorTitle.
   ///

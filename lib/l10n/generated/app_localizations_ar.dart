@@ -13,6 +13,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'أنت غير متصل — ستتم مزامنة التغييرات لاحقًا';
 
   @override
+  String get bannerSavedWillSync => 'تم الحفظ — ستتم المزامنة';
+
+  @override
   String get commonCancel => 'إلغاء';
 
   @override
@@ -1269,6 +1272,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeRecover => 'استخدمت رحلة سابقًا — استعادة';
+
+  @override
+  String get homeBackupNudgeTitle => 'احفظ نسخة من حسابك';
+
+  @override
+  String get homeBackupNudgeBody =>
+      'مجموعاتك ومصاريفك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا حتى لا تفقدها عند تغيير الهاتف أو إعادة التثبيت أو فقدان الجهاز.';
+
+  @override
+  String get homeBackupNudgeCta => 'أضف بريدًا إلكترونيًا';
+
+  @override
+  String get homeBackupNudgeDismiss => 'ليس الآن';
 
   @override
   String get homeErrorTitle => 'حدث خطأ ما';
