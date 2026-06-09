@@ -834,6 +834,8 @@
   },
   "settleUpRecorded": "Settlement recorded.",
   "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",
+  "settleUpRecordFailedDenied": "This settlement wasn't allowed. Please check the details and try again.",
+  "settleUpRecordFailedGeneric": "Couldn't record settlement. Please try again.",
   "settleUpEveryoneEvenHeadline": "Everyone's even.",
   "settleUpTransfersHeadline": "{count, plural, =1{One transfer,\neveryone's even.} other{{count} transfers,\neveryone's even.}}",
   "@settleUpTransfersHeadline": {
