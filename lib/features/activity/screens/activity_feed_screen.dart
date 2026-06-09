@@ -160,6 +160,7 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
     final days = _groupByDay(context, _activities, DateTime.now());
     return ListView.builder(
       key: ActivityKeys.feedList,
+      restorationId: 'activity_feed_scroll',
       controller: _scrollController,
       padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
       itemCount: days.length + (_hasMore ? 1 : 0),
