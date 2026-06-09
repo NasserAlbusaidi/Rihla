@@ -154,6 +154,7 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 
 ## Common Gotchas
 
+- **Never set `FlutterDeepLinkingEnabled=YES` in `ios/Runner/Info.plist` (#369).** Inbound deep links are owned solely by `app_links` (`deep_link_service.dart`); enabling go_router/Flutter native deep-linking double-handles Universal Links on iOS — the same link opens the app AND Safari (the documented double-handler bug) because app_links is still live. The key must stay **absent** (off by default). Android disables the equivalent via `flutter_deeplinking_enabled=false` in `AndroidManifest.xml:20`. Pinned by `test/unit/ios_deep_linking_guard_test.dart` (fails if the key appears in Info.plist).
 - `prefer_const_constructors` fails CI — mark const-eligible literals `const`.
 - Removing a UI element: grep tests for the removed label/key and delete obsolete assertions, don't patch them.
 - `AuthEmailLinkBootstrap` double-fire on cold start — regression-test `test/features/auth/` if you touch auth deep-link/bootstrap.
