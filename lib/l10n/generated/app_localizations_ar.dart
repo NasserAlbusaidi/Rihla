@@ -2424,6 +2424,19 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get errorNetwork => 'يرجى التحقق من اتصالك والمحاولة مرة أخرى.';
+
+  @override
+  String get errorPermissionDenied => 'ليس لديك إذن للقيام بذلك.';
+
+  @override
+  String get errorTooManyRequests =>
+      'محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.';
+
+  @override
+  String get errorUnexpected => 'حدث خطأ ما. يرجى المحاولة مرة أخرى.';
+
+  @override
   String get authErrorEmailAlreadyLinked =>
       'هذا البريد مرتبط بالفعل بحساب Rihla. استعد ذلك الحساب بدلًا من ذلك.';
 

@@ -7,6 +7,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../groups/models/group_member_model.dart';
@@ -225,7 +226,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             child: membersAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(
-                child: Text(context.l10n.groupCreateError(err.toString())),
+                child: Text(
+                  context.l10n.groupCreateError(friendlyMessageFor(context, err)),
+                ),
               ),
               data: (members) {
                 // Pre-populate participant selection once on first data load (D-04)
