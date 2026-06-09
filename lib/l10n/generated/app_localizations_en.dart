@@ -469,6 +469,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Try a different category, or switch back to All.';
 
   @override
+  String get ledgerClearFilters => 'Clear filters';
+
+  @override
   String get ledgerEndOfLedger => 'END OF LEDGER';
 
   @override
@@ -2067,6 +2070,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupLoadFailedTitle => 'Could not load group';
+
+  @override
+  String get groupNoAccessTitle => 'You no longer have access';
+
+  @override
+  String get groupNoAccessMessage =>
+      'You\'re no longer a member of this group, or it\'s no longer shared with you.';
 
   @override
   String get groupNotFoundTitle => 'Group not found';

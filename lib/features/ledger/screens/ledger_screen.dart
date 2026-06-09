@@ -318,6 +318,8 @@ class _Body extends ConsumerWidget {
                             title: context.l10n.ledgerNothingInCategoryTitle,
                             message:
                                 context.l10n.ledgerNothingInCategoryMessage,
+                            actionLabel: context.l10n.ledgerClearFilters,
+                            onAction: () => onCategoryFilter(null),
                           )
                         : _EmptyStateBody(currency: currency),
                   ),

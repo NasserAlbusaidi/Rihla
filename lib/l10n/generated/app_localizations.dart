@@ -974,6 +974,12 @@ abstract class AppLocalizations {
   /// **'Try a different category, or switch back to All.'**
   String get ledgerNothingInCategoryMessage;
 
+  /// No description provided for @ledgerClearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get ledgerClearFilters;
+
   /// No description provided for @ledgerEndOfLedger.
   ///
   /// In en, this message translates to:
@@ -3587,6 +3593,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not load group'**
   String get groupLoadFailedTitle;
+
+  /// No description provided for @groupNoAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access'**
+  String get groupNoAccessTitle;
+
+  /// No description provided for @groupNoAccessMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re no longer a member of this group, or it\'s no longer shared with you.'**
+  String get groupNoAccessMessage;
 
   /// No description provided for @groupNotFoundTitle.
   ///
