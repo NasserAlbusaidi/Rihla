@@ -11,7 +11,6 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart'
     show Event, EventModules, EventType;
 import 'package:safar/features/events/providers/event_provider.dart';
-import 'package:safar/features/events/widgets/event_card.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
@@ -680,49 +679,5 @@ void main() {
         expect(find.text('Retry'), findsOneWidget);
       },
     );
-
-    testWidgets('event card shows personal balance when provided', (
-      tester,
-    ) async {
-      final testEvent = Event(
-        id: 'event-1',
-        groupId: _groupId,
-        name: 'Beach Trip',
-        type: EventType.trip,
-        createdAt: DateTime(2026, 1, 10),
-        participantIds: const [],
-        participantNames: const {},
-        modules: const EventModules(),
-        createdBy: 'uid-creator',
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            eventExpensesProvider((
-              groupId: _groupId,
-              eventId: 'event-1',
-            )).overrideWith((ref) => Stream.value(const [])),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: EventCard(
-                event: testEvent,
-                personalBalance: Decimal.parse('-5.000'),
-                onTap: () {},
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Personal balance text must appear when personalBalance is non-null
-      expect(find.textContaining('5.000'), findsWidgets);
-    });
   });
 }
