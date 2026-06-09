@@ -1970,6 +1970,12 @@ abstract class AppLocalizations {
   /// **'This records {name}\'s payment to you immediately.'**
   String settleUpRecordsReceivedImmediately(Object name);
 
+  /// Microcopy on the Mark-Paid/Mark-Received sheet (#351). Rihla is a ledger, not a payment processor; this sets the expectation that recording a settlement does not transfer any funds.
+  ///
+  /// In en, this message translates to:
+  /// **'Rihla records the payment — it doesn\'t move money.'**
+  String get settleUpDoesntMoveMoney;
+
   /// No description provided for @settleUpNotYet.
   ///
   /// In en, this message translates to:

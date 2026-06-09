@@ -1149,6 +1149,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get settleUpDoesntMoveMoney =>
+      'رِحلة تُسجِّل الدفعة فقط — لا تُحوِّل الأموال.';
+
+  @override
   String get settleUpNotYet => 'ليس الآن';
 
   @override
