@@ -11,6 +11,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -60,7 +61,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           child: Column(
             children: [
               _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
-              const Expanded(child: Center(child: CircularProgressIndicator())),
+              Expanded(child: SkeletonLoader.groupList()),
             ],
           ),
         ),
@@ -225,7 +226,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                         ),
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: SkeletonLoader.groupList,
                 error: (e, _) => Center(
                   child: Padding(
                     padding: EdgeInsets.all(context.spacing.space24),

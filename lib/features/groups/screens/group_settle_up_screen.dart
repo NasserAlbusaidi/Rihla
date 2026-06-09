@@ -12,6 +12,7 @@ import '../../../core/utils/localized_decimal_input.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../../events/models/event_model.dart';
 import '../../events/models/event_type_config.dart';
@@ -56,7 +57,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     if (groupAsync.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(body: SafeArea(child: SkeletonLoader.groupList()));
     }
 
     final group = groupAsync.valueOrNull;
@@ -204,7 +205,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     ],
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: SkeletonLoader.groupList,
                 error: (e, _) => Center(
                   child: Padding(
                     padding: EdgeInsets.all(context.spacing.space24),

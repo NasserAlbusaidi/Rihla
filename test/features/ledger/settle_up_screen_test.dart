@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -146,7 +147,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('missing event state routes home', (tester) async {
@@ -179,7 +181,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonLoader), findsOneWidget); // #355
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('expense error state retry stays on error UI', (tester) async {
