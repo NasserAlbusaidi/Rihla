@@ -88,10 +88,10 @@ String _humanize(FirebaseAuthException error) {
 ///   1. `recover` op (Settings hadn't linked yet → user typed email on
 ///      Recover screen) → swap UID via `signInWithEmailLink`.
 ///   2. `link` op (default; Settings → "Link my email") → attach email to
-///      the current anon UID via `linkWithCredential`. Auto-falls-back to
-///      `recover` when the email is already owned by a different UID
-///      (`email-already-in-use` and friends) — that means the user is on a
-///      new install/device, so recovery is what they actually want.
+///      the current anon UID via `linkWithCredential`. If the email is
+///      already owned by another account (`email-already-in-use` and
+///      friends) the conflict is surfaced as an error and the anon session
+///      is left untouched (#414) — never auto-recover here.
 ///   3. No pending email at all → stash the link URL in
 ///      [pendingEmailLinkProvider] so the UI can finish with a manual
 ///      prompt.
@@ -160,44 +160,10 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         _showSnack('Linked ${result.user?.email ?? pendingEmail}');
       }
     } on FirebaseAuthException catch (error, stack) {
-      final shouldFallback =
-          op == AuthRecoveryService.opLink &&
-          (error.code == 'email-already-in-use' ||
-              error.code == 'credential-already-in-use' ||
-              error.code == 'provider-already-linked');
-
-      if (shouldFallback) {
-        FirebaseConfig.log(
-          'Recovery: link failed with ${error.code}; '
-          'falling back to recover (existing UID owns this email)',
-        );
-        try {
-          // completeEmailLink throws before clearing prefs, so pendingEmail
-          // and inFlightOp are still primed. completeRecovery reads them.
-          final result = await service.completeRecovery(link);
-          FirebaseConfig.log('Recovery: fallback recover succeeded');
-          ref.read(pendingEmailLinkProvider.notifier).state = null;
-          _showSnack('Restored ${result.user?.email ?? pendingEmail}');
-          return;
-        } on FirebaseAuthException catch (e2, s2) {
-          FirebaseConfig.log(
-            'Recovery: fallback recover also failed (${e2.code})',
-            error: e2,
-            stackTrace: s2,
-          );
-          _showSnack(_humanize(e2), isError: true);
-          return;
-        } catch (e2, s2) {
-          FirebaseConfig.log(
-            'Recovery: fallback recover failed',
-            error: e2,
-            stackTrace: s2,
-          );
-          _showSnack("Couldn't restore your account. Try again.", isError: true);
-          return;
-        }
-      }
-
+      // #414: a LINK that fails with email-already-in-use (and friends) must
+      // NEVER auto-fall-back to completeRecovery — that signs the anon
+      // account out and orphans its data. Recovery into the other account is
+      // an explicit, consented action via RecoverScreen only.
       FirebaseConfig.log(
         'Recovery: $op completion failed (${error.code})',
         error: error,
