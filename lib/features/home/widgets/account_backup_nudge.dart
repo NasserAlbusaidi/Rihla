@@ -101,30 +101,40 @@ class AccountBackupNudge extends ConsumerWidget {
                 ),
               ],
             ),
-            SizedBox(height: spacing.space12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  key: HomeKeys.accountBackupNudgeDismiss,
-                  onPressed: () {
-                    HapticService.lightClick();
-                    ref
-                        .read(settingsProvider.notifier)
-                        .setEmailLinkNudgeSeen(true);
-                  },
-                  child: Text(context.l10n.homeBackupNudgeDismiss),
+            SizedBox(height: spacing.space16),
+            // Full-width stacked buttons (the home empty-state convention) so a
+            // long localized label wraps inside the bounded width instead of
+            // overflowing a horizontal row — the Arabic CTA is wide (#285).
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                key: HomeKeys.accountBackupNudgeCta,
+                onPressed: () {
+                  HapticService.lightClick();
+                  context.push(AppRoutes.linkEmail);
+                },
+                child: Text(
+                  context.l10n.homeBackupNudgeCta,
+                  textAlign: TextAlign.center,
                 ),
-                SizedBox(width: spacing.space8),
-                ElevatedButton(
-                  key: HomeKeys.accountBackupNudgeCta,
-                  onPressed: () {
-                    HapticService.lightClick();
-                    context.push(AppRoutes.linkEmail);
-                  },
-                  child: Text(context.l10n.homeBackupNudgeCta),
+              ),
+            ),
+            SizedBox(height: spacing.space8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                key: HomeKeys.accountBackupNudgeDismiss,
+                onPressed: () {
+                  HapticService.lightClick();
+                  ref
+                      .read(settingsProvider.notifier)
+                      .setEmailLinkNudgeSeen(true);
+                },
+                child: Text(
+                  context.l10n.homeBackupNudgeDismiss,
+                  textAlign: TextAlign.center,
                 ),
-              ],
+              ),
             ),
           ],
         ),

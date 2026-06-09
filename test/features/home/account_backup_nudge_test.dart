@@ -15,6 +15,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required SharedPreferences prefs,
   String? linkedEmail,
+  Locale? locale,
 }) async {
   final router = GoRouter(
     initialLocation: '/home',
@@ -40,6 +41,7 @@ Future<void> _pump(
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
+        locale: locale,
         routerConfig: router,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -104,4 +106,28 @@ void main() {
     expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
     expect(prefs.getBool('settings_email_link_nudge_seen'), isTrue);
   });
+
+  // Regression: the card renders for the common anonymous case on every device.
+  // Its actions must never RenderFlex-overflow at narrow widths, and the long
+  // Arabic CTA ("أضف بريدًا إلكترونيًا") is the worst case in RTL.
+  for (final (name, locale) in const [
+    ('English', Locale('en')),
+    ('Arabic', Locale('ar')),
+  ]) {
+    for (final width in const [360.0, 320.0]) {
+      testWidgets('does not overflow at ${width.toInt()}px in $name', (
+        tester,
+      ) async {
+        tester.view.physicalSize = Size(width, 720);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await _pump(tester, prefs: prefs, linkedEmail: null, locale: locale);
+
+        expect(find.byKey(HomeKeys.accountBackupNudge), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 }
