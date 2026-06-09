@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
@@ -413,6 +414,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             recipientName: toName,
             createdBy: currentUid,
           );
+
+      ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
 
       // #282: name the OTHER party relative to the actor. When the creditor
       // (recipient) records the payment, the counterparty is the payer — not

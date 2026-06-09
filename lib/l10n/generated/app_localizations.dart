@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'You\'re offline — changes will sync later'**
   String get offlineBannerMessage;
 
+  /// Transient banner shown after a write is saved locally while offline; reassures the user it will sync to the server on reconnect (#357).
+  ///
+  /// In en, this message translates to:
+  /// **'Saved — will sync'**
+  String get bannerSavedWillSync;
+
   /// Generic Cancel action label for dialogs and sheets.
   ///
   /// In en, this message translates to:
