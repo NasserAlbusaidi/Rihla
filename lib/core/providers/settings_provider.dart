@@ -57,6 +57,13 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(notificationPromptSeen: seen);
   }
 
+  /// Records that the one-time home email-link nudge has been dismissed or
+  /// acted on, so it shows at most once across the app's lifetime (#285).
+  Future<void> setEmailLinkNudgeSeen(bool seen) async {
+    await _service.saveEmailLinkNudgeSeen(seen);
+    state = state.copyWith(emailLinkNudgeSeen: seen);
+  }
+
   Future<void> setWeeklyDigestEnabled(bool enabled) async {
     await _service.saveWeeklyDigestEnabled(enabled);
     state = state.copyWith(weeklyDigestEnabled: enabled);
