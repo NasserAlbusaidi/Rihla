@@ -242,16 +242,17 @@ class AuthRecoveryService {
     return result;
   }
 
-  /// Sign in fresh as the previously-linked user, then restart (#45).
+  /// Sign in as the previously-linked user, then restart (#45).
   ///
   /// Used by the Home "Restore from email" path (spec §4.2). The current
   /// anonymous UID is replaced, so this is a cross-UID swap: engage the
   /// cache-isolation overlay FIRST (covers all cached UI + tears down the
   /// leaf subscription holders), flush pending writes, mark the on-device
-  /// Firestore cache dirty BEFORE the auth change, swap, then await the
-  /// server cleanup to its natural terminal state and trigger a true restart.
-  /// The cold boot's cache barrier clears the outgoing UID's cache before the
-  /// first read.
+  /// Firestore cache dirty BEFORE the auth change, then swap via the sign-in
+  /// itself, await the server cleanup to its natural terminal state and
+  /// trigger a true restart. The cold boot's cache barrier clears the
+  /// outgoing UID's cache before the first read. A FAILED sign-in leaves the
+  /// current session signed in — the guaranteed restart returns to it (#414).
   Future<UserCredential> completeRecovery(
     String emailLink, {
     String? overrideEmail,
@@ -307,7 +308,10 @@ class AuthRecoveryService {
       // the process dies before restart(). Awaited so it is flushed (§6.4).
       await markFirestorePersistenceDirty(_prefs);
 
-      await _auth.signOut();
+      // No explicit signOut: signInWithEmailLink replaces the current session
+      // on success, and on failure (e.g. a consumed single-use link) the
+      // current user MUST survive — signing out first is how a no-email anon
+      // account gets orphaned (#414, the #213 failure class).
       final result = await _auth.signInWithEmailLink(
         email: email,
         emailLink: emailLink,
