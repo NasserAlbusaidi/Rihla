@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -48,6 +49,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     // #104: captured before the await so the home-balance refresh fires even if
     // this screen is disposed during the write.
     final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
+    final connectivity = ref.read(connectivityProvider.notifier);
     ref.read(expenseLoadingProvider.notifier).state = true;
     try {
       final expense = await ref
@@ -71,6 +73,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           );
 
       ledgerRevision.state++; // #104: refresh the one-shot home balance
+      connectivity.noteLocalWrite(); // #357: "Saved — will sync" when offline
       if (!mounted) return;
       await _showSuccessDialog(expense);
     } finally {

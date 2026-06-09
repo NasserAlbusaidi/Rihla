@@ -13,6 +13,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'أنت غير متصل — ستتم مزامنة التغييرات لاحقًا';
 
   @override
+  String get bannerSavedWillSync => 'تم الحفظ — ستتم المزامنة';
+
+  @override
   String get commonCancel => 'إلغاء';
 
   @override

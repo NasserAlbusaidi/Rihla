@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -139,6 +140,7 @@ class EditExpenseScreen extends ConsumerWidget {
 
     ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
     ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
+    ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
     HapticService.success();
 
     final ctx = ref.context;
@@ -171,6 +173,7 @@ class EditExpenseScreen extends ConsumerWidget {
         );
     ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
     ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
+    ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
     HapticService.success();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
