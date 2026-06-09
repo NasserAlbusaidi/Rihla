@@ -139,6 +139,10 @@ Widget _sharedAxisTransition(
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    // Restores the matched route's page subtree after Android process death so
+    // the scrollables' `restorationId`s actually take effect. This is a
+    // config flag only — it does not alter the route tree or back-guards (#362).
+    restorationScopeId: 'router',
     debugLogDiagnostics: kDebugMode,
     redirect: (context, state) => appRouteRedirect(state.matchedLocation),
     routes: [

@@ -218,6 +218,10 @@ class _SafarAppState extends ConsumerState<SafarApp> {
       child: MaterialApp.router(
         title: 'Rihla',
         debugShowCheckedModeBanner: false,
+        // Activates a RootRestorationScope so list scroll offsets (and other
+        // RestorableState) survive Android process death. Without this, every
+        // `restorationId` on a scrollable below is a no-op (#362).
+        restorationScopeId: 'rihla',
         scaffoldMessengerKey: appMessengerKey,
         locale: ref.watch(localeProvider),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
