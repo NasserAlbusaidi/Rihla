@@ -10,6 +10,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../core/utils/settlement_write_error.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -376,11 +377,16 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.settleUpRecordFailed),
+            content: Text(
+              settlementWriteErrorMessage(
+                context.l10n,
+                classifySettlementWriteError(e),
+              ),
+            ),
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

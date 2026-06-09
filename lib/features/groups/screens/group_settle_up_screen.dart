@@ -10,6 +10,7 @@ import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../core/utils/settlement_write_error.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -449,7 +450,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.settleUpRecordFailed),
+            content: Text(
+              settlementWriteErrorMessage(
+                context.l10n,
+                classifySettlementWriteError(e),
+              ),
+            ),
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
