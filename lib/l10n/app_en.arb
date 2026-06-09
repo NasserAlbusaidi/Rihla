@@ -1569,6 +1569,22 @@
       "code": {}
     }
   },
+  "errorNetwork": "Please check your connection and try again.",
+  "@errorNetwork": {
+    "description": "Friendly cause phrase (#356) for offline / unavailable / timed-out errors. Slots into action-context templates like groupFailedLeave."
+  },
+  "errorPermissionDenied": "You don't have permission to do that.",
+  "@errorPermissionDenied": {
+    "description": "Friendly cause phrase (#356) for permission-denied / unauthenticated errors."
+  },
+  "errorTooManyRequests": "Too many attempts. Please wait a moment and try again.",
+  "@errorTooManyRequests": {
+    "description": "Friendly cause phrase (#356) for rate-limit / quota errors (too-many-requests, resource-exhausted)."
+  },
+  "errorUnexpected": "Something went wrong. Please try again.",
+  "@errorUnexpected": {
+    "description": "Friendly cause phrase (#356) for any unclassified error; the raw detail is sent to Sentry, not shown."
+  },
   "authErrorEmailAlreadyLinked": "This email is already linked to a Rihla account. Restore from that account instead.",
   "@authErrorEmailAlreadyLinked": {
     "description": "Shown on the Link-email screen when the email is already linked to another Rihla account."

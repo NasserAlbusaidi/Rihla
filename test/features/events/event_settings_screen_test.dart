@@ -587,10 +587,12 @@ void main() {
       verify(
         () => service.deleteEvent(groupId: event.groupId, eventId: event.id),
       ).called(1);
+      // #356: a raw error is translated to a friendly cause, never shown verbatim.
       expect(
-        find.text('Failed to delete event: Bad state: boom'),
+        find.text('Failed to delete event: Something went wrong. Please try again.'),
         findsOneWidget,
       );
+      expect(find.textContaining('Bad state: boom'), findsNothing);
       expect(find.byKey(EventKeys.dangerSection), findsOneWidget);
     });
 

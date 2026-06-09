@@ -4130,6 +4130,30 @@ abstract class AppLocalizations {
   /// **'Something went wrong ({code}). Please try again.'**
   String authErrorGeneric(Object code);
 
+  /// Friendly cause phrase (#356) for offline / unavailable / timed-out errors. Slots into action-context templates like groupFailedLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check your connection and try again.'**
+  String get errorNetwork;
+
+  /// Friendly cause phrase (#356) for permission-denied / unauthenticated errors.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to do that.'**
+  String get errorPermissionDenied;
+
+  /// Friendly cause phrase (#356) for rate-limit / quota errors (too-many-requests, resource-exhausted).
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please wait a moment and try again.'**
+  String get errorTooManyRequests;
+
+  /// Friendly cause phrase (#356) for any unclassified error; the raw detail is sent to Sentry, not shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get errorUnexpected;
+
   /// Shown on the Link-email screen when the email is already linked to another Rihla account.
   ///
   /// In en, this message translates to:
