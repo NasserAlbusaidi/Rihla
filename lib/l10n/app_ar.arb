@@ -347,6 +347,7 @@
   "settleUpNoteHint": "إضافة ملاحظة (اختياري)",
   "settleUpRecordsImmediately": "يُسجَّل دفعك إلى {name} فوراً.",
   "settleUpRecordsReceivedImmediately": "يُسجَّل استلامك دفعةً من {name} فوراً.",
+  "settleUpDoesntMoveMoney": "رِحلة تُسجِّل الدفعة فقط — لا تُحوِّل الأموال.",
   "settleUpNotYet": "ليس الآن",
   "settleUpMarkPaid": "تحديد كمدفوع",
   "settleUpMarkReceived": "تحديد كمُستلَم",
