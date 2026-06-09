@@ -1092,6 +1092,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpMarkThisPaidTitle => 'Mark this paid?';
 
   @override
+  String get settleUpMarkThisReceivedTitle => 'Mark this received?';
+
+  @override
   String settleUpMarkThisPaidBody(Object fromName, Object toName) {
     return 'We\'ll close out the balance between $fromName and $toName.';
   }
@@ -1105,10 +1108,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpRecordsReceivedImmediately(Object name) {
+    return 'This records $name\'s payment to you immediately.';
+  }
+
+  @override
   String get settleUpNotYet => 'Not yet';
 
   @override
   String get settleUpMarkPaid => 'Mark paid';
+
+  @override
+  String get settleUpMarkReceived => 'Mark received';
 
   @override
   String settleUpPays(Object fromName, Object toName) {

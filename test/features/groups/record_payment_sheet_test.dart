@@ -229,4 +229,46 @@ void main() {
     expect(result, isNotNull);
     expect(result!.amount, '0.000');
   });
+
+  testWidgets('#282: receiving framing reads as "received" and names the payer '
+      'in the banner', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open'),
+                  onPressed: () => showRecordPaymentSheet(
+                    context,
+                    currency: 'OMR',
+                    fromName: 'Bob', // payer (debtor)
+                    toName: 'Alice', // recipient (creditor) = current user
+                    suggestedAmount: Decimal.parse('5.000'),
+                    isReceiving: true,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('open')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mark this received?'), findsOneWidget);
+    expect(find.text('Mark received'), findsOneWidget);
+    expect(find.text('Mark paid'), findsNothing);
+    // Banner names the payer (Bob), not "your payment", and stays immediate.
+    expect(
+      find.text("This records Bob's payment to you immediately."),
+      findsOneWidget,
+    );
+  });
 }

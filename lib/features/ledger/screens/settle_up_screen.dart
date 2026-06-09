@@ -277,6 +277,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
     final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
+    // #282: the recipient (creditor) is recording a payment received.
+    final isReceiving = ref.read(currentUserIdProvider) == toUserId;
 
     final result = await showRecordPaymentSheet(
       context,
@@ -284,6 +286,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       fromName: fromDisplayName,
       toName: toDisplayName,
       suggestedAmount: suggestedAmount,
+      isReceiving: isReceiving,
     );
 
     if (!context.mounted || result == null) return;

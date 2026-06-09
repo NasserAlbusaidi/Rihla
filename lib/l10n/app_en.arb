@@ -869,6 +869,7 @@
   "settleUpUnknown": "Unknown",
   "settleUpPaidConnector": "paid",
   "settleUpMarkThisPaidTitle": "Mark this paid?",
+  "settleUpMarkThisReceivedTitle": "Mark this received?",
   "settleUpMarkThisPaidBody": "We'll close out the balance between {fromName} and {toName}.",
   "@settleUpMarkThisPaidBody": {
     "placeholders": {
@@ -884,8 +885,16 @@
       "name": {}
     }
   },
+  "settleUpRecordsReceivedImmediately": "This records {name}'s payment to you immediately.",
+  "@settleUpRecordsReceivedImmediately": {
+    "description": "Creditor variant of settleUpRecordsImmediately (#282): the current user is recording a payment they RECEIVED, so {name} is the payer (debtor). Same immediacy caveat as the debtor copy (#281).",
+    "placeholders": {
+      "name": {}
+    }
+  },
   "settleUpNotYet": "Not yet",
   "settleUpMarkPaid": "Mark paid",
+  "settleUpMarkReceived": "Mark received",
   "settleUpPays": "{fromName} pays {toName}",
   "@settleUpPays": {
     "placeholders": {

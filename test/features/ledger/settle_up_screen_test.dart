@@ -249,6 +249,42 @@ void main() {
     expect(snap.docs.first.data()['recipientName'], equals('Alice'));
   });
 
+  testWidgets(
+    '#282: creditor records a received payment — payer=debtor, '
+    'recipient=creditor, createdBy=creditor',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // Alice paid the 20.000 dinner; Bob owes her 10.000 → Alice is the
+      // creditor. She records that Bob repaid her in cash.
+      await tester.pumpWidget(buildScreen(fakeDb, currentUid: 'alice'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      final snap = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .collection('settlements')
+          .get();
+
+      expect(snap.docs, hasLength(1));
+      // Direction is fixed by the debt, not by who tapped record.
+      expect(snap.docs.first.data()['payerParticipantId'], equals('bob'));
+      expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
+      // The actor (creditor) is the audited author.
+      expect(snap.docs.first.data()['createdBy'], equals('alice'));
+    },
+  );
+
   testWidgets('zero settlement amount shows validation snackbar', (
     tester,
   ) async {
