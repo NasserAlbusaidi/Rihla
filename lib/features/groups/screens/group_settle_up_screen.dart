@@ -9,6 +9,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../keys/group_keys.dart';
@@ -476,7 +477,7 @@ class _SettlementTopBar extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: IconButton(
                 tooltip: l10n.commonBack,
-                icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                icon: const DirectionalIcon(Iconsax.arrow_left_2, size: 20),
                 color: context.colors.textPrimary,
                 onPressed: () {
                   if (context.canPop()) {

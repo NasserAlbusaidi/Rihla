@@ -9,6 +9,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/email_validators.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../providers/auth_provider.dart';
 
 /// Settings → "Linked email" → Set up.
@@ -121,7 +122,7 @@ class _LinkEmailScreenState extends ConsumerState<LinkEmailScreen> {
         backgroundColor: colors.scaffoldBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left_2),
+          icon: const DirectionalIcon(Iconsax.arrow_left_2),
           onPressed: _back,
         ),
         title: Text(
