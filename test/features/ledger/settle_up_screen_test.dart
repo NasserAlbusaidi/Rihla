@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
@@ -23,6 +24,8 @@ import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+
+class _MockSettlementService extends Mock implements SettlementService {}
 
 void main() {
   const groupId = 'group-1';
@@ -285,6 +288,69 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
       await tester.pumpAndSettle();
 
+      expect(connectivity.state, ConnectivityStatus.syncing);
+    },
+  );
+
+  testWidgets(
+    '#412: an offline settlement whose write never acks still confirms '
+    'within bounded time',
+    (tester) async {
+      registerFallbackValue(Decimal.zero);
+      final fakeDb = FakeFirebaseFirestore();
+      // Real offline behavior: addSettlement's Firestore set() future stays
+      // pending until reconnect — FakeFirebaseFirestore can't model this.
+      final service = _MockSettlementService();
+      when(
+        () => service.addSettlement(
+          groupId: any(named: 'groupId'),
+          eventId: any(named: 'eventId'),
+          payerParticipantId: any(named: 'payerParticipantId'),
+          recipientParticipantId: any(named: 'recipientParticipantId'),
+          payerName: any(named: 'payerName'),
+          recipientName: any(named: 'recipientName'),
+          amount: any(named: 'amount'),
+          currency: any(named: 'currency'),
+          createdBy: any(named: 'createdBy'),
+          note: any(named: 'note'),
+        ),
+      ).thenAnswer((_) => Completer<Settlement>().future);
+
+      final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
+        ..setOffline();
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          settlementService: service,
+          extraOverrides: [
+            connectivityProvider.overrideWith((ref) => connectivity),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SettleUpScreen)),
+      );
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pump();
+      // Past kWriteAckTimeout — fixed pumps only (never pumpAndSettle while
+      // racing; the snackbar entrance also needs a frame).
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(
+        find.text('Settlement recorded — will sync when online.'),
+        findsOneWidget,
+      );
+      expect(container.read(ledgerRevisionProvider), 1); // #104 bump fired
       expect(connectivity.state, ConnectivityStatus.syncing);
     },
   );
