@@ -1910,14 +1910,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupNameHint => 'مثال: رحلة العائلة';
 
   @override
-  String get groupYourNameInGroupLabel => 'اسمك في هذه المجموعة';
+  String get groupYourNameInGroupLabel => 'اسمك';
 
   @override
   String get groupYourNameHint => 'كما سيراك أصدقاؤك';
 
   @override
   String get groupDifferentNameHelper =>
-      'يمكنك استخدام اسم مختلف في كل مجموعة.';
+      'يظهر هذا الاسم في جميع مجموعاتك — تغييره في أي مكان يغيّره في كل مكان.';
 
   @override
   String groupCreateError(Object error) {
