@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
+import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,7 +63,8 @@ void main() {
     cacheIsolationController: _NoopController(),
     firestore: firestore,
     cleanupAnonUidArtifacts:
-        ({required oldUid, required cleanupSecret}) async {},
+        ({required oldUid, required cleanupSecret}) async =>
+            const CleanupOutcome(cascadeFailed: []),
     cleanupIntentFactory: (_) async => 'test-cleanup-secret',
   );
 

@@ -4392,23 +4392,23 @@ abstract class AppLocalizations {
   /// **'Resend in {seconds}s'**
   String authRecoverPendingResendCountdown(int seconds);
 
-  /// Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one.
+  /// Title of the MergeOnRecoverDialog — shown when the user restores an account on a device that already has local groups.
   ///
   /// In en, this message translates to:
-  /// **'This device is already in use'**
-  String get authSignOutFirstTitle;
+  /// **'Restore your account'**
+  String get authMergeOnRecoverTitle;
 
-  /// Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account.
+  /// Body copy of the MergeOnRecoverDialog explaining that this device's data is merged into the restored account, not discarded.
   ///
   /// In en, this message translates to:
-  /// **'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.'**
-  String get authSignOutFirstBody;
+  /// **'We\'ll sign you in to that account and move this phone\'s trips and expenses into it. Nothing on this device is lost.'**
+  String get authMergeOnRecoverBody;
 
-  /// Destructive confirmation CTA on the SignOutFirstDialog.
+  /// Confirmation CTA on the MergeOnRecoverDialog.
   ///
   /// In en, this message translates to:
-  /// **'Sign out and continue'**
-  String get authSignOutFirstConfirm;
+  /// **'Restore and merge'**
+  String get authMergeOnRecoverConfirm;
 
   /// Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed).
   ///

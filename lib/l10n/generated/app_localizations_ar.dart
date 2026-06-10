@@ -2581,14 +2581,14 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get authSignOutFirstTitle => 'هذا الجهاز قيد الاستخدام بالفعل';
+  String get authMergeOnRecoverTitle => 'استعادة حسابك';
 
   @override
-  String get authSignOutFirstBody =>
-      'لاستعادة حساب آخر، ستفقد الرحلات والمصاريف الموجودة على هذا الجهاز. ستبقى في السحابة فقط إذا كانت مرتبطة ببريد إلكتروني آخر — وإلا فستصبح بلا مالك.';
+  String get authMergeOnRecoverBody =>
+      'سنسجّل دخولك إلى ذلك الحساب وننقل رحلات ومصاريف هذا الهاتف إليه. لن تفقد أي شيء على هذا الجهاز.';
 
   @override
-  String get authSignOutFirstConfirm => 'تسجيل الخروج والمتابعة';
+  String get authMergeOnRecoverConfirm => 'استعادة ودمج';
 
   @override
   String get groupSettleUpMissingTitle => 'هذه المجموعة لم تعد متاحة';

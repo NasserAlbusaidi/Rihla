@@ -259,12 +259,18 @@ The trade-off: a Cloud Function is one more deploy surface and one
 more error mode. The runbook (T2 in `docs/RUNBOOK.md`) calls out the
 error-rate tripwire that catches cleanup failures.
 
-The callable is **fire-and-forget** from the client. The recovery
-flow completes immediately on `signInWithEmailLink` returning; the
-cleanup runs in the background. If it fails, the user is still signed
-in and functional — they just appear as two members in their groups
-(the old anon UID is still in `memberIds` alongside the new one)
-until a follow-up cleanup pass runs.
+The callable is **awaited** by the client (`completeRecovery` holds
+the isolation overlay up until it reaches a terminal state, then
+restarts — see `auth_recovery_service.dart`). Since #427 the wrapper
+also surfaces the callable's structured result (`CleanupOutcome` with
+the server's `cascadeFailed` list) and retries a partial migration
+once inline, while the 15-minute cleanup intent is still valid — the
+server consumes the intent only when every group migrated, so a
+structured partial failure provably leaves it in place for the retry.
+If the retry still fails, the failure is recorded to Sentry with the
+stranded group ids; the user is signed in and functional, but those
+groups remain keyed to the old anon UID (the old Auth user is kept,
+so the data is recoverable).
 
 The reference implementation is documented in
 [CLOUD-FUNCTIONS.md § 2](./CLOUD-FUNCTIONS.md#2-cleanupanonuidartifacts).
@@ -323,10 +329,15 @@ support; we have not built an in-app conflict-resolution UI.
 
 ### Cleanup is best-effort
 
-If `cleanupAnonUidArtifacts` fails after recovery, the user functions
-but has duplicate-membership artifacts. A future maintenance pass
-(see "Known Limitations" in `docs/PRODUCT.md`) would reconcile these
-server-side without user action.
+If `cleanupAnonUidArtifacts` fails after recovery — terminally, i.e.
+after the one inline retry `completeRecovery` performs while the
+cleanup intent is still valid (#427) — the user functions but any
+group in the server's `cascadeFailed` list stays keyed to the old
+anon UID: it vanishes from the restored account's group list and
+balances. The failure is loud (Sentry, with the group ids), the old
+Auth user is kept so the data is recoverable, but reconciliation
+after the 15-minute intent expires needs a future maintenance pass
+(see "Known Limitations" in `docs/PRODUCT.md`).
 
 ### Anon UID quota is unprotected
 
@@ -381,10 +392,14 @@ Day N (recover path, on new device):
         → create recoveryCleanupIntents/{tempUid} with one-time secret
         → waitForPendingWrites(timeout: 5s)
         → markFirestorePersistenceDirty(prefs)  -- durable cross-restart cache-clear marker
-        → FirebaseAuth.signOut()  -- discards tempUid session
-        → FirebaseAuth.signInWithEmailLink(...)  -- signs in as originalUid
+        → FirebaseAuth.signInWithEmailLink(...)  -- signs in as originalUid;
+          NO signOut first (#414): the swap IS the sign-in, and on failure
+          the current session must survive
+        → await cleanupAnonUidArtifacts(oldUid: tempUid, cleanupSecret)
+          -- awaited inside the overlay; a partial/thrown result is retried
+             ONCE inline while the intent is still valid (#427), terminal
+             failures go to Sentry with the stranded group ids
         → returns UserCredential (uid = originalUid)
-        → unawaited(cleanupAnonUidArtifacts(oldUid: tempUid, cleanupSecret))
         → finally: cacheIsolationController.restart()  -- GUARANTEES a true native restart
   Auth stream emits tempUid -> originalUid:
     → Riverpod providers re-evaluate under originalUid → groups appear.
@@ -392,15 +407,43 @@ Day N (recover path, on new device):
        cache is marked dirty; after sign-in the flow triggers a true native
        restart, and the cold-boot CacheUidBarrier clears the outgoing UID's
        on-device Firestore cache — cross-UID isolation is enforced, #68.)
-  Background:
-    cleanupAnonUidArtifacts callable runs server-side:
-      → For each group containing tempUid (likely none, since tempUid
-        is the fresh install — but the callable is defensive):
-        rewrite memberIds, members docs, event participant refs.
+  Server-side, before the restart returns the user to the app:
+    cleanupAnonUidArtifacts callable:
+      → For each group containing tempUid (none on a fresh install — but
+        on a POPULATED device this is the merge itself):
+        rewrite memberIds, members docs, event participant refs,
+        expense payer/split keys (money values sum-merged on collision),
+        settlement parties, activity actor ids.
       → Delete tempUid from Firebase Auth.
       → Delete fcm_tokens/{tempUid}.
       → Delete joinAttempts/{tempUid} and the consumed cleanup intent.
+        (Auth-delete + intent-delete happen ONLY when every group
+        migrated — a partial failure keeps both for the inline retry.)
 ```
+
+### Populated-device recovery is a consented MERGE (#427)
+
+The walkthrough above assumes a fresh device, but `/recover` is also
+reachable on a device that already has groups under its anon UID. The
+original design (FR-REC-2/3/4, spec §5.2 of the deleted
+`docs/design/account-recovery.md`) handled that with a sign-out-first
+dialog:
+
+> FR-REC-2: "recovery is refused unless the user confirms the
+> sign-out-first dialog" — FR-REC-3: "the prior anon UID is signed
+> out and its data discarded" — FR-REC-4: "no migration step is
+> required".
+
+All three are **superseded**. Signing out before sending the link was
+itself the data-loss bug: anon mint happens only at boot, so by
+link-tap time the old UID was either gone (warm app → `oldUid` null →
+cleanup skipped) or replaced by a fresh empty anon (cold boot) —
+either way the populated UID's data was orphaned. Since #427 the
+populated path shows `MergeOnRecoverDialog` ("Restore and merge"),
+keeps the anon UID signed in, and lets `completeRecovery` +
+`cleanupAnonUidArtifacts` migrate everything under `oldUid → newUid`:
+FR-REC-2 → consented merge; FR-REC-3 → migrated, never discarded;
+FR-REC-4 → the migration IS the mechanism.
 
 The hand-offs across `SharedPreferences` (`pendingEmail`, `inFlightOp`)
 let the flow survive an app restart between sending the link and

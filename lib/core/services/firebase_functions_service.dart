@@ -9,20 +9,40 @@ final firebaseFunctionsServiceProvider = Provider<FirebaseFunctionsService>(
   (ref) => FirebaseFunctionsService(),
 );
 
+/// Structured result of the `cleanupAnonUidArtifacts` callable (#427).
+///
+/// The server consumes the cleanup intent (and deletes the old Auth user)
+/// only when EVERY group migrated — a non-empty [cascadeFailed] means those
+/// groups still carry the old UID and the intent was kept for a retry.
+class CleanupOutcome {
+  const CleanupOutcome({required this.cascadeFailed});
+
+  final List<String> cascadeFailed;
+
+  bool get complete => cascadeFailed.isEmpty;
+}
+
 class FirebaseFunctionsService {
   FirebaseFunctionsService({FirebaseFunctions? functions})
     : _functions = functions ?? FirebaseConfig.functions;
 
   final FirebaseFunctions _functions;
 
-  Future<void> cleanupAnonUidArtifacts({
+  Future<CleanupOutcome> cleanupAnonUidArtifacts({
     required String oldUid,
     required String cleanupSecret,
   }) async {
-    await _functions.httpsCallable('cleanupAnonUidArtifacts').call({
-      'oldUid': oldUid,
-      'cleanupSecret': cleanupSecret,
-    });
+    final result = await _functions
+        .httpsCallable('cleanupAnonUidArtifacts')
+        .call({'oldUid': oldUid, 'cleanupSecret': cleanupSecret});
+    final raw = (result.data is Map)
+        ? (result.data as Map)['cascadeFailed']
+        : null;
+    return CleanupOutcome(
+      cascadeFailed: (raw is List)
+          ? raw.whereType<String>().toList(growable: false)
+          : const [],
+    );
   }
 
   Future<void> deleteAccount() async {

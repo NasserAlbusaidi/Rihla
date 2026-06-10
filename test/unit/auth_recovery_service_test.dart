@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
+import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -67,7 +69,7 @@ void main() {
   AuthRecoveryService buildService({
     FirebaseFirestore? firestore,
     CacheIsolationController? cacheIsolationController,
-    Future<void> Function({
+    Future<CleanupOutcome> Function({
       required String oldUid,
       required String cleanupSecret,
     })?
@@ -86,7 +88,8 @@ void main() {
       firestore: firestore ?? defaultFirestore,
       cleanupAnonUidArtifacts:
           cleanupAnonUidArtifacts ??
-          ({required oldUid, required cleanupSecret}) async {},
+          ({required oldUid, required cleanupSecret}) async =>
+              const CleanupOutcome(cascadeFailed: []),
       cleanupIntentFactory:
           cleanupIntentFactory ?? (_) async => 'test-cleanup-secret',
       recoveryCleanupFailureRecorder: recoveryCleanupFailureRecorder,
@@ -328,6 +331,7 @@ void main() {
           cleanupAnonUidArtifacts:
               ({required oldUid, required cleanupSecret}) async {
                 calls.add('cleanup:$oldUid:$cleanupSecret');
+                return const CleanupOutcome(cascadeFailed: []);
               },
         );
         await service.setPendingEmail('foo@example.com');
@@ -416,9 +420,11 @@ void main() {
         ),
       ).thenAnswer((_) async => credential);
       final breadcrumbs = <Map<String, Object?>>[];
+      var cleanupInvocations = 0;
       final service = buildService(
         cleanupAnonUidArtifacts:
             ({required oldUid, required cleanupSecret}) async {
+              cleanupInvocations += 1;
               throw StateError('cleanup failed for foo@example.com');
             },
         recoveryCleanupFailureRecorder: ({required message, required data}) {
@@ -431,8 +437,199 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(result, same(credential));
+      // Inline retry (#427): a thrown first attempt is retried once before the
+      // terminal failure is recorded.
+      expect(cleanupInvocations, 2);
       expect(breadcrumbs, hasLength(1));
+      expect(breadcrumbs.single['message'], 'Recovery cleanup incomplete');
     });
+
+    test(
+      'partial cleanup outcome is retried inline and converges silently',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        final breadcrumbs = <Map<String, Object?>>[];
+        var cleanupInvocations = 0;
+        final service = buildService(
+          cleanupAnonUidArtifacts:
+              ({required oldUid, required cleanupSecret}) async {
+                cleanupInvocations += 1;
+                return cleanupInvocations == 1
+                    ? const CleanupOutcome(cascadeFailed: ['g1'])
+                    : const CleanupOutcome(cascadeFailed: []);
+              },
+          recoveryCleanupFailureRecorder: ({required message, required data}) {
+            breadcrumbs.add({'message': message, ...data});
+          },
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        expect(cleanupInvocations, 2);
+        expect(breadcrumbs, isEmpty);
+      },
+    );
+
+    test(
+      'persistently-partial cleanup records the failed groups and still '
+      'returns the credential',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        final events = <String>[];
+        final breadcrumbs = <Map<String, Object?>>[];
+        var cleanupInvocations = 0;
+        final service = buildService(
+          cacheIsolationController: _RecordingController(events),
+          cleanupAnonUidArtifacts:
+              ({required oldUid, required cleanupSecret}) async {
+                cleanupInvocations += 1;
+                return const CleanupOutcome(cascadeFailed: ['g1']);
+              },
+          recoveryCleanupFailureRecorder: ({required message, required data}) {
+            breadcrumbs.add({'message': message, ...data});
+          },
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        expect(cleanupInvocations, 2);
+        expect(breadcrumbs.single['message'], 'Recovery cleanup incomplete');
+        expect(breadcrumbs.single['groupsFailed'], ['g1']);
+        expect(events.last, 'restart');
+      },
+    );
+
+    test('thrown first attempt followed by a clean retry stays silent', () async {
+      final credential = _MockUserCredential();
+      when(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      ).thenAnswer((_) async => credential);
+      final breadcrumbs = <Map<String, Object?>>[];
+      var cleanupInvocations = 0;
+      final service = buildService(
+        cleanupAnonUidArtifacts:
+            ({required oldUid, required cleanupSecret}) async {
+              cleanupInvocations += 1;
+              if (cleanupInvocations == 1) {
+                throw StateError('transient cleanup failure');
+              }
+              return const CleanupOutcome(cascadeFailed: []);
+            },
+        recoveryCleanupFailureRecorder: ({required message, required data}) {
+          breadcrumbs.add({'message': message, ...data});
+        },
+      );
+      await service.setPendingEmail('foo@example.com');
+
+      final result = await service.completeRecovery(link);
+
+      expect(result, same(credential));
+      expect(cleanupInvocations, 2);
+      expect(breadcrumbs, isEmpty);
+    });
+
+    test(
+      'permission-denied on retry after a thrown first attempt is '
+      'success-equivalent (intent consumed by a completed first invocation)',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        final events = <String>[];
+        final breadcrumbs = <Map<String, Object?>>[];
+        var cleanupInvocations = 0;
+        final service = buildService(
+          cacheIsolationController: _RecordingController(events),
+          cleanupAnonUidArtifacts:
+              ({required oldUid, required cleanupSecret}) async {
+                cleanupInvocations += 1;
+                if (cleanupInvocations == 1) {
+                  throw FirebaseFunctionsException(
+                    message: 'deadline exceeded',
+                    code: 'deadline-exceeded',
+                  );
+                }
+                throw FirebaseFunctionsException(
+                  message: 'No valid cleanup intent',
+                  code: 'permission-denied',
+                );
+              },
+          recoveryCleanupFailureRecorder: ({required message, required data}) {
+            breadcrumbs.add({'message': message, ...data});
+          },
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        expect(cleanupInvocations, 2);
+        expect(breadcrumbs, isEmpty);
+        expect(events.last, 'restart');
+      },
+    );
+
+    test(
+      'permission-denied on retry after a STRUCTURED partial failure is a '
+      'genuine anomaly and records',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => auth.signInWithEmailLink(
+            email: any(named: 'email'),
+            emailLink: any(named: 'emailLink'),
+          ),
+        ).thenAnswer((_) async => credential);
+        final breadcrumbs = <Map<String, Object?>>[];
+        var cleanupInvocations = 0;
+        final service = buildService(
+          cleanupAnonUidArtifacts:
+              ({required oldUid, required cleanupSecret}) async {
+                cleanupInvocations += 1;
+                if (cleanupInvocations == 1) {
+                  return const CleanupOutcome(cascadeFailed: ['g1']);
+                }
+                throw FirebaseFunctionsException(
+                  message: 'No valid cleanup intent',
+                  code: 'permission-denied',
+                );
+              },
+          recoveryCleanupFailureRecorder: ({required message, required data}) {
+            breadcrumbs.add({'message': message, ...data});
+          },
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeRecovery(link);
+
+        expect(result, same(credential));
+        expect(cleanupInvocations, 2);
+        expect(breadcrumbs.single['message'], 'Recovery cleanup incomplete');
+      },
+    );
 
     test(
       'records a breadcrumb and continues when cleanup-intent creation fails',
@@ -452,6 +649,7 @@ void main() {
           cleanupAnonUidArtifacts:
               ({required oldUid, required cleanupSecret}) async {
                 cleanupInvoked = true;
+                return const CleanupOutcome(cascadeFailed: []);
               },
           recoveryCleanupFailureRecorder: ({required message, required data}) {
             breadcrumbs.add({'message': message, ...data});
@@ -481,9 +679,11 @@ void main() {
         ),
       ).thenAnswer((_) async => credential);
       final breadcrumbs = <Map<String, Object?>>[];
+      var cleanupInvocations = 0;
       final service = buildService(
         cleanupAnonUidArtifacts:
             ({required oldUid, required cleanupSecret}) async {
+              cleanupInvocations += 1;
               throw StateError('cleanup failed for foo@example.com');
             },
         recoveryCleanupFailureRecorder: ({required message, required data}) {
@@ -495,6 +695,8 @@ void main() {
       await service.completeRecovery(link);
       await Future<void>.delayed(Duration.zero);
 
+      // Inline retry (#427): both attempts throw, one terminal record.
+      expect(cleanupInvocations, 2);
       final serialized = breadcrumbs.single.toString();
       expect(serialized, isNot(contains('foo@example.com')));
       expect(serialized, contains('StateError'));
