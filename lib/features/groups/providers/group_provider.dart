@@ -11,6 +11,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/firestore_repository.dart';
+import '../models/group_balance_aggregate_model.dart';
 import '../models/group_member_model.dart';
 import '../models/group_model.dart';
 
@@ -389,6 +390,22 @@ class GroupService extends FirestoreRepository {
               .map((doc) => GroupMember.fromDoc(doc, groupId))
               .toList(),
         );
+  }
+
+  /// Reactive stream of the server-maintained balance aggregate (#366).
+  ///
+  /// One single-doc listener per group (O(G) total from home — NOT the #104
+  /// O(G×E) leak). Emits null while the doc is missing (group predates the
+  /// first balanceReconciler backfill run), degraded, or malformed — the home
+  /// facade falls back to the client once-path compute for those groups.
+  Stream<GroupBalanceAggregate?> watchBalanceAggregate(String groupId) {
+    return db
+        .collection('groups')
+        .doc(groupId)
+        .collection('aggregates')
+        .doc('balance')
+        .snapshots()
+        .map((doc) => GroupBalanceAggregate.fromDoc(doc.data()));
   }
 
   /// Reactive stream for one group document.

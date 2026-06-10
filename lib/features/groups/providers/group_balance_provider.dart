@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/supported_currencies.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
@@ -10,6 +11,7 @@ import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/group_activity_log_model.dart';
+import '../models/group_balance_aggregate_model.dart';
 import '../models/group_member_model.dart';
 import '../services/group_activity_service.dart';
 import '../services/group_settlement_service.dart';
@@ -804,4 +806,161 @@ final crossGroupBalanceOnceProvider =
     ),
     partial: partial,
   );
+});
+
+// ---------------------------------------------------------------------------
+// #366 — server-maintained balance aggregate + the home facade
+// ---------------------------------------------------------------------------
+
+/// Live stream of the server-maintained balance aggregate (#366).
+///
+/// ONE single-doc listener per group — O(G) total from the always-mounted
+/// home, the same order as the live list providers; NOT a reopen of the #104
+/// O(G×E) leak. Emits null while the doc is missing (group predates the first
+/// `balanceReconciler` backfill), degraded, or malformed.
+final groupBalanceAggregateProvider =
+    StreamProvider.family<GroupBalanceAggregate?, String>((ref, groupId) {
+  return ref.watch(groupServiceProvider).watchBalanceAggregate(groupId);
+});
+
+/// What the home surfaces need from one group's balances, source-agnostic.
+///
+/// [partial] is only ever true on the fallback path (#244 — a per-event read
+/// failed); the aggregate path saw every event server-side. [fromAggregate]
+/// exists for tests/diagnostics, never for display branching.
+typedef HomeGroupBalance = ({
+  Decimal userNet,
+  Map<String, Decimal> userPerEventNet,
+  int eventCount,
+  bool partial,
+  bool fromAggregate,
+});
+
+/// The SINGLE chooser between the server aggregate and the client once-path
+/// for home display (#366 spec §0.7). Decision table:
+///
+/// - no signed-in uid                          → zeros
+/// - connectivity != online (incl. `syncing`)  → once-path: the SDK cache +
+///   queued local writes are FRESHER than any server doc while offline (the
+///   post-#412 ledgerRevision bump fires on queued outcomes too)
+/// - aggregate loading                          → loading
+/// - aggregate present, single currency         → aggregate (zero per-event
+///   reads — the O(G×E) → O(G) win)
+/// - aggregate missing / degraded / legacy-mixed currencies / stream error
+///                                              → once-path (today's behavior,
+///   incl. the #244 partial affordance)
+///
+/// The aggregate is a DISPLAY CACHE — nothing may write money based on it;
+/// settle-up and all in-group surfaces keep computing live.
+final homeGroupBalanceProvider =
+    Provider.family<AsyncValue<HomeGroupBalance>, String>((ref, groupId) {
+  final uid = ref.watch(currentUserIdProvider);
+  if (uid == null) {
+    return AsyncValue.data((
+      userNet: Decimal.zero,
+      userPerEventNet: const <String, Decimal>{},
+      eventCount: 0,
+      partial: false,
+      fromAggregate: false,
+    ));
+  }
+
+  final online =
+      ref.watch(connectivityProvider) == ConnectivityStatus.online;
+  if (online) {
+    final aggAsync = ref.watch(groupBalanceAggregateProvider(groupId));
+    if (aggAsync.isLoading && !aggAsync.hasValue) {
+      return const AsyncValue.loading();
+    }
+    final aggregate = aggAsync.valueOrNull;
+    // currencies.length > 1 ⇒ legacy mixed-currency group: the flat net is
+    // not honest in a single currency — fall back to the client compute,
+    // which buckets by group currency exactly as before #366.
+    if (aggregate != null && aggregate.currencies.length <= 1) {
+      return AsyncValue.data((
+        userNet: aggregate.netFor(uid),
+        userPerEventNet: aggregate.perEventNetFor(uid),
+        eventCount: aggregate.eventCount,
+        partial: false,
+        fromAggregate: true,
+      ));
+    }
+  }
+
+  final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
+  return onceAsync.whenData((once) {
+    final balances = once.balances;
+    return (
+      userNet: balances.balances
+              .where((b) => b.participantId == uid)
+              .firstOrNull
+              ?.netBalance ??
+          Decimal.zero,
+      userPerEventNet:
+          balances.perEventBreakdown[uid] ?? const <String, Decimal>{},
+      eventCount: balances.eventCount,
+      partial: once.failedEventIds.isNotEmpty,
+      fromAggregate: false,
+    );
+  });
+});
+
+/// Cross-group fold over [homeGroupBalanceProvider] for [BalanceHeroCard].
+///
+/// Mirrors the awaited-all semantics the hero has always had: LOADING until
+/// EVERY group resolves (a still-loading group must show the skeleton, never
+/// a false all-settled zero), ERROR if any group's source hard-errors
+/// (loud-safe → error card), and per-currency buckets via the same
+/// [_accumulateBucket]/[_sortedCurrencyBuckets] fold (#261 — no cross-currency
+/// summing, ever).
+final crossGroupHomeBalanceProvider =
+    Provider<AsyncValue<CrossGroupBalanceOnce>>((ref) {
+  final uid = ref.watch(currentUserIdProvider);
+  if (uid == null) {
+    return const AsyncValue.data((
+      balance: (
+        byCurrency: <CurrencyBalance>[],
+        groupCount: 0,
+        isLoading: false,
+      ),
+      partial: false,
+    ));
+  }
+
+  final groupsAsync = ref.watch(userGroupsProvider);
+  if (groupsAsync.isLoading && !groupsAsync.hasValue) {
+    return const AsyncValue.loading();
+  }
+  if (groupsAsync.hasError) {
+    return AsyncValue.error(groupsAsync.error!, groupsAsync.stackTrace!);
+  }
+  final groups = groupsAsync.valueOrNull ?? [];
+
+  final byCurrencyMap =
+      <String, ({Decimal net, Decimal owedToUser, Decimal userOwes})>{};
+  var partial = false;
+  for (final group in groups) {
+    final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
+    if (balanceAsync.hasError && !balanceAsync.hasValue) {
+      return AsyncValue.error(
+        balanceAsync.error!,
+        balanceAsync.stackTrace!,
+      );
+    }
+    if (balanceAsync.isLoading && !balanceAsync.hasValue) {
+      return const AsyncValue.loading();
+    }
+    final balance = balanceAsync.requireValue;
+    partial = partial || balance.partial;
+    _accumulateBucket(byCurrencyMap, group.currency, balance.userNet);
+  }
+
+  return AsyncValue.data((
+    balance: (
+      byCurrency: _sortedCurrencyBuckets(byCurrencyMap),
+      groupCount: groups.length,
+      isLoading: false,
+    ),
+    partial: partial,
+  ));
 });
