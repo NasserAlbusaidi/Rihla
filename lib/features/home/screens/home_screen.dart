@@ -113,13 +113,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(userGroupsProvider);
-        // #104: refresh the one-shot home balance aggregate on pull-to-refresh.
-        // #410: the per-group family must be invalidated too — its instances
-        // are pinned alive by _GroupRow / activeJourneysProvider, so without
-        // this the cross-group aggregate recomputes from cached per-event
-        // reads and a peer device's expense edits never show up.
+        // #104/#410: refresh the one-shot FALLBACK path (offline / missing
+        // aggregate doc). The #366 aggregate path needs no invalidation — its
+        // single-doc stream is live, so peer-device updates arrive without a
+        // pull (the trigger writes the doc, the listener emits).
         ref.invalidate(groupBalancesOnceProvider);
-        ref.invalidate(crossGroupBalanceOnceProvider);
         await ref.read(userGroupsProvider.future);
       },
       color: context.colors.primary,
@@ -624,17 +622,12 @@ class _GroupRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final uid = ref.watch(currentUserIdProvider);
-    final balancesAsync = ref.watch(groupBalancesOnceProvider(group.id));
-    final balances = balancesAsync.valueOrNull?.balances;
-    final userNet = (balances == null || uid == null)
-        ? Decimal.zero
-        : (balances.balances
-                  .where((b) => b.participantId == uid)
-                  .firstOrNull
-                  ?.netBalance ??
-              Decimal.zero);
-    final eventCount = balances?.eventCount ?? 0;
+    // #366: source-agnostic facade — the server aggregate when online, the
+    // #104 once-path otherwise. The facade slices by the current uid itself.
+    final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
+    final homeBalance = balanceAsync.valueOrNull;
+    final userNet = homeBalance?.userNet ?? Decimal.zero;
+    final eventCount = homeBalance?.eventCount ?? 0;
     final memberCount = group.memberIds.length;
     final subtitle = context.l10n.homeGroupSubtitle(memberCount, eventCount);
     final balanceCaption = userNet > Decimal.zero

@@ -9,7 +9,7 @@ import 'package:safar/features/home/widgets/balance_hero_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
 
-// #244: when crossGroupBalanceOnceProvider reports partial == true (a per-event
+// #244: when crossGroupHomeBalanceProvider reports partial == true (a per-event
 // money read failed for some group), the hero must STILL render the number AND
 // show the "may be incomplete" notice — not the blanket error card.
 void main() {
@@ -31,8 +31,8 @@ void main() {
 
   Widget harness({required bool partial}) => ProviderScope(
         overrides: [
-          crossGroupBalanceOnceProvider
-              .overrideWith((ref) => result(partial: partial)),
+          crossGroupHomeBalanceProvider
+              .overrideWith((ref) => AsyncValue.data(result(partial: partial))),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,

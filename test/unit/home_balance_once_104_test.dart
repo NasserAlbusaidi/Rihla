@@ -148,6 +148,23 @@ Settlement _makeGroupSettlement(String payer, String recipient, Decimal amount) 
       scope: 'group',
     );
 
+
+/// #366: the cross-group fold is now a sync Provider over the facade (no
+/// `.future`). Settle the async source chain, then read the resolved value.
+Future<CrossGroupBalanceOnce> readCrossSettled(
+  ProviderContainer container,
+) async {
+  // Pin the provider chain — without a listener the autoDispose once-path
+  // sources dispose between microtasks and the fold never leaves loading.
+  final sub = container.listen(crossGroupHomeBalanceProvider, (_, _) {});
+  for (var i = 0; i < 12; i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  final value = container.read(crossGroupHomeBalanceProvider).requireValue;
+  sub.close();
+  return value;
+}
+
 void main() {
   const gid = 'g1';
   const eid = 'e1';
@@ -176,7 +193,7 @@ void main() {
 
   group('#104 one-shot home balance', () {
     test(
-      'crossGroupBalanceOnceProvider uses one-shot reads and holds ZERO live '
+      'the cross-group home fold uses one-shot reads and holds ZERO live '
       'leaf listeners (the leak fix)',
       () async {
         // uid-b pays 20, equal 2-way split → uid-a owes 10, uid-b owed 10.
@@ -189,8 +206,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        final result =
-            await container.read(crossGroupBalanceOnceProvider.future);
+        final result = await readCrossSettled(container);
 
         // One-shot reads were used (one event → one get of each).
         expect(expFake.getCount, 1, reason: 'getExpenses must be one-shot');
@@ -259,8 +275,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        final result =
-            await container.read(crossGroupBalanceOnceProvider.future);
+        final result = await readCrossSettled(container);
 
         expect(result.balance.net, Decimal.fromInt(15));
         expect(result.balance.owedToUser, Decimal.fromInt(15));
@@ -295,10 +310,10 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-      container.listen(crossGroupBalanceOnceProvider, (_, _) {},
+      container.listen(crossGroupHomeBalanceProvider, (_, _) {},
           fireImmediately: true);
 
-      final before = await container.read(crossGroupBalanceOnceProvider.future);
+      final before = await readCrossSettled(container);
       expect(before.balance.net, Decimal.fromInt(-10));
 
       // Simulate a new expense write + the liveness bump.
@@ -308,7 +323,7 @@ void main() {
       ];
       container.read(ledgerRevisionProvider.notifier).state++;
 
-      final after = await container.read(crossGroupBalanceOnceProvider.future);
+      final after = await readCrossSettled(container);
       expect(after.balance.net, Decimal.fromInt(-30),
           reason: 'bump must force a fresh one-shot read');
     });
