@@ -2009,6 +2009,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupCreateEvent => 'Create Event';
 
   @override
+  String get groupInvitePeople => 'Invite people';
+
+  @override
   String get groupLoadEventsFailed => 'Couldn\'t load events';
 
   @override

@@ -3486,6 +3486,12 @@ abstract class AppLocalizations {
   /// **'Create Event'**
   String get groupCreateEvent;
 
+  /// No description provided for @groupInvitePeople.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite people'**
+  String get groupInvitePeople;
+
   /// No description provided for @groupLoadEventsFailed.
   ///
   /// In en, this message translates to:

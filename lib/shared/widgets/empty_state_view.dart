@@ -9,6 +9,9 @@ class EmptyStateView extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final String? secondaryActionLabel;
+  final VoidCallback? onSecondaryAction;
+  final IconData? secondaryActionIcon;
   final Color? iconColor;
   final LinearGradient? accentGradient;
 
@@ -19,6 +22,9 @@ class EmptyStateView extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onAction,
+    this.secondaryActionLabel,
+    this.onSecondaryAction,
+    this.secondaryActionIcon,
     this.iconColor,
     this.accentGradient,
   });
@@ -82,6 +88,28 @@ class EmptyStateView extends StatelessWidget {
                   onPressed: onAction,
                   child: Text(actionLabel!),
                 ),
+              ),
+            ],
+            if (secondaryActionLabel != null && onSecondaryAction != null) ...[
+              SizedBox(
+                height: actionLabel != null
+                    ? context.spacing.space12
+                    : context.spacing.space24,
+              ),
+              SizedBox(
+                height: 52,
+                child: secondaryActionIcon != null
+                    ? OutlinedButton.icon(
+                        key: SharedKeys.emptyStateSecondaryCta,
+                        onPressed: onSecondaryAction,
+                        icon: Icon(secondaryActionIcon),
+                        label: Text(secondaryActionLabel!),
+                      )
+                    : OutlinedButton(
+                        key: SharedKeys.emptyStateSecondaryCta,
+                        onPressed: onSecondaryAction,
+                        child: Text(secondaryActionLabel!),
+                      ),
               ),
             ],
           ],

@@ -10,6 +10,7 @@ abstract final class SharedKeys {
   // EmptyStateView
   static const emptyStateView = Key('shared_empty_state_view');
   static const emptyStateCtaButton = Key('shared_empty_state_cta_button');
+  static const emptyStateSecondaryCta = Key('shared_empty_state_secondary_cta');
 
   // InviteCodeDisplay
   static const inviteCodeDisplay = Key('shared_invite_code_display');
