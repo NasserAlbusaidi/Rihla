@@ -1898,4 +1898,59 @@ describe('Publish readiness Firestore rules', () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertSucceeds(member.doc('groups/g1/events/e1/activity_logs/aRead').get());
   });
+
+  // #366 — balance aggregate: server-only write, member read.
+  function validAggregate(): Record<string, unknown> {
+    return {
+      schemaVersion: 1,
+      currency: 'OMR',
+      currencies: ['OMR'],
+      netMilli: { owner: 1000, member: -1000 },
+      perEventNetMilli: { e1: { owner: 1000, member: -1000 } },
+      eventCount: 1,
+      degraded: false,
+      sourceTimeMs: 1,
+    };
+  }
+
+  async function seedAggregate(): Promise<void> {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1/aggregates/balance').set(validAggregate());
+    });
+  }
+
+  test('#366 a group member can READ the balance aggregate', async () => {
+    await seedAggregate();
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/aggregates/balance').get());
+  });
+
+  test('#366 a non-member cannot read the balance aggregate', async () => {
+    await seedAggregate();
+    const stranger = testEnv.authenticatedContext('stranger').firestore();
+    await assertFails(stranger.doc('groups/g1/aggregates/balance').get());
+  });
+
+  test('#366 a member cannot CREATE the balance aggregate (server-only write)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/aggregates/balance').set(validAggregate()));
+  });
+
+  test('#366 a member cannot UPDATE the balance aggregate — forging home display is blocked', async () => {
+    await seedAggregate();
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/aggregates/balance').update({ netMilli: { owner: 999999 } }));
+  });
+
+  test('#366 a member cannot DELETE the balance aggregate', async () => {
+    await seedAggregate();
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/aggregates/balance').delete());
+  });
+
+  test('#366 server (Admin SDK / rules-disabled) CAN write the balance aggregate', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await assertSucceeds(ctx.firestore().doc('groups/g1/aggregates/balance').set(validAggregate()));
+    });
+  });
 });

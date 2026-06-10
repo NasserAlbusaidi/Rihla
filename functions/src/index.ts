@@ -19,4 +19,11 @@ export {
   groupSettlementNotifier,
 } from './triggers/settlementNotifier';
 export { expenseAuditLogger } from './triggers/expenseAuditLogger';
+export {
+  eventModuleBalanceAggregator,
+  groupSettlementBalanceAggregator,
+  eventBalanceAggregator,
+  memberBalanceAggregator,
+} from './triggers/balanceAggregator';
 export { deletionReaper } from './scheduled/deletionReaper';
+export { balanceReconciler } from './scheduled/balanceReconciler';

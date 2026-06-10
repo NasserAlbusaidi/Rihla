@@ -270,6 +270,29 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect(await docExists('inviteCodes/ABC123')).toBe(true);
   });
 
+  test('5b. #366: the balance-aggregate doc is removed by the cascade', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await getFirestore().doc('groups/g/aggregates/balance').set({
+      schemaVersion: 1,
+      currency: 'OMR',
+      currencies: ['OMR'],
+      netMilli: {},
+      perEventNetMilli: {},
+      eventCount: 0,
+      degraded: false,
+      sourceTimeMs: 1,
+    });
+
+    await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(await docExists('groups/g/aggregates/balance')).toBe(false);
+  });
+
   test('6. outstanding balance (exact split) is rejected with failed-precondition (no partial write)', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);
