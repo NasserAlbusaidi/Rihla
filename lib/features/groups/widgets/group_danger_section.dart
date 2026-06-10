@@ -218,6 +218,10 @@ class GroupDangerSection extends ConsumerWidget {
         messenger.showSnackBar(
           SnackBar(
             content: Text(context.l10n.groupSettleBeforeLeaving),
+            // Flutter >=3.41 defaults action-bearing snackbars to persist:
+            // true (never auto-dismiss) — #411.
+            persist: false,
+            duration: const Duration(seconds: 8),
             action: SnackBarAction(
               label: context.l10n.groupSettleUp,
               onPressed: () => context.push('/group/$groupId/settle-up'),
@@ -242,6 +246,10 @@ class GroupDangerSection extends ConsumerWidget {
         messenger.showSnackBar(
           SnackBar(
             content: Text(context.l10n.groupSettleBeforeLeaving),
+            // Flutter >=3.41 defaults action-bearing snackbars to persist:
+            // true (never auto-dismiss) — #411.
+            persist: false,
+            duration: const Duration(seconds: 8),
             action: SnackBarAction(
               label: context.l10n.groupSettleUp,
               onPressed: () => context.push('/group/$groupId/settle-up'),
