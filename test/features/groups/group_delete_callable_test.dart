@@ -466,6 +466,42 @@ void main() {
     },
   );
 
+  testWidgets(
+    '#411: blocked-leave settle-up snackbar auto-dismisses',
+    (tester) async {
+      // On Flutter >=3.41 a SnackBar with an action defaults to persist: true
+      // and never times out (snack_bar.dart: persist = persist ?? action != null).
+      final groupService = _MockGroupService();
+      when(() => groupService.leaveGroup(groupId: any(named: 'groupId'))).thenThrow(
+        FirebaseFunctionsException(
+          message: 'unsettled',
+          code: 'failed-precondition',
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildApp(
+          buildOverrides(
+            groupService: groupService,
+            eventExpenses: Stream.value(const <Expense>[]),
+            eventSettlements: Stream.value(const <Settlement>[]),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await confirmLeave(tester);
+
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.groupSettleBeforeLeaving), findsOneWidget);
+
+      // Past the explicit 8s duration the timeout must dismiss it.
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.groupSettleBeforeLeaving), findsNothing);
+    },
+  );
+
   testWidgets('not-found from leave callable is treated as success (goes home)', (
     tester,
   ) async {
