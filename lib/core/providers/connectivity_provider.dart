@@ -136,6 +136,17 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     }
   }
 
+  /// Note that a write TIMED OUT waiting for the server ack (#412).
+  ///
+  /// Unlike [noteLocalWrite], this is unconditional: a timed-out write is
+  /// stronger evidence of being offline than the probe state, which can lag
+  /// reality by up to 60s. The SDK has the write queued; surface
+  /// "Saved — will sync" regardless. The periodic/resume probe resolves
+  /// `syncing` back to `online`/`offline`, so no timer is added.
+  void noteQueuedWrite() {
+    state = ConnectivityStatus.syncing;
+  }
+
   /// Set online state
   void setOnline() {
     state = ConnectivityStatus.online;

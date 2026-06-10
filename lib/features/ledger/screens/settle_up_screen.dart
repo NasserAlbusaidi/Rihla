@@ -11,6 +11,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/settlement_write_error.dart';
+import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -347,28 +348,46 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         'Cannot record settlement without an authenticated user.',
       );
     }
+    // #104/#412: capture before the await so post-write effects survive a
+    // disposal during the (now bounded) wait.
+    final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
+    final connectivity = ref.read(connectivityProvider.notifier);
+    final connectivityStatus = ref.read(connectivityProvider);
     try {
-      await ref
-          .read(settlementServiceProvider)
-          .addSettlement(
-            groupId: widget.groupId,
-            eventId: widget.eventId,
-            payerParticipantId: fromUserId,
-            recipientParticipantId: toUserId,
-            payerName: fromName,
-            recipientName: toName,
-            amount: amount,
-            currency: currency,
-            createdBy: currentUid,
-            note: note,
-          );
+      // #412: never gate the UI on the raw server-ack future — offline it
+      // stays pending until reconnect. Race it; queued means the SDK replays.
+      final outcome = await awaitServerAck(
+        ref
+            .read(settlementServiceProvider)
+            .addSettlement(
+              groupId: widget.groupId,
+              eventId: widget.eventId,
+              payerParticipantId: fromUserId,
+              recipientParticipantId: toUserId,
+              payerName: fromName,
+              recipientName: toName,
+              amount: amount,
+              currency: currency,
+              createdBy: currentUid,
+              note: note,
+            ),
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
 
-      ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
-      ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
+      ledgerRevision.state++; // #104: refresh home balance
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite(); // #357
+      } else {
+        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.settleUpRecorded),
+            content: Text(
+              outcome == WriteAck.acked
+                  ? context.l10n.settleUpRecorded
+                  : context.l10n.settleUpRecordedWillSync,
+            ),
             backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

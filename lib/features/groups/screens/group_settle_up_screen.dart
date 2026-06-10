@@ -11,6 +11,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/settlement_write_error.dart';
+import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -402,21 +403,36 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         );
       }
 
-      await ref
-          .read(groupSettlementServiceProvider)
-          .addGroupSettlement(
-            groupId: widget.groupId,
-            payerParticipantId: fromUserId,
-            recipientParticipantId: toUserId,
-            amount: amount,
-            currency: group.currency,
-            note: note,
-            payerName: fromName,
-            recipientName: toName,
-            createdBy: currentUid,
-          );
+      // #412: capture before the await so post-write effects survive a
+      // disposal during the (now bounded) wait. NO ledgerRevision bump here —
+      // group settlements are live-watched (groupSettlementsProvider).
+      final connectivity = ref.read(connectivityProvider.notifier);
+      final connectivityStatus = ref.read(connectivityProvider);
 
-      ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
+      // #412: never gate the UI on the raw server-ack future — offline it
+      // stays pending until reconnect. Race it; queued means the SDK replays.
+      final outcome = await awaitServerAck(
+        ref
+            .read(groupSettlementServiceProvider)
+            .addGroupSettlement(
+              groupId: widget.groupId,
+              payerParticipantId: fromUserId,
+              recipientParticipantId: toUserId,
+              amount: amount,
+              currency: group.currency,
+              note: note,
+              payerName: fromName,
+              recipientName: toName,
+              createdBy: currentUid,
+            ),
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
+
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite(); // #357
+      } else {
+        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+      }
 
       // #282: name the OTHER party relative to the actor. When the creditor
       // (recipient) records the payment, the counterparty is the payer — not
@@ -437,7 +453,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.settleUpRecorded),
+            content: Text(
+              outcome == WriteAck.acked
+                  ? context.l10n.settleUpRecorded
+                  : context.l10n.settleUpRecordedWillSync,
+            ),
             backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

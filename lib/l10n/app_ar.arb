@@ -333,6 +333,7 @@
   "settleUpAmountGreaterThanZero": "يجب أن يكون المبلغ أكبر من صفر",
   "settleUpAmountExceedsOutstanding": "لا يمكن أن يتجاوز المبلغ الرصيد المستحق {amount}",
   "settleUpRecorded": "تم تسجيل التسوية.",
+  "settleUpRecordedWillSync": "تم تسجيل التسوية — ستتم المزامنة عند الاتصال.",
   "settleUpRecordFailed": "تعذّر تسجيل التسوية. تحقق من اتصالك وحاول مرة أخرى.",
   "settleUpRecordFailedDenied": "لم تُقبل هذه التسوية. يرجى مراجعة التفاصيل والمحاولة مرة أخرى.",
   "settleUpRecordFailedGeneric": "تعذّر تسجيل التسوية. يرجى المحاولة مرة أخرى.",
@@ -716,6 +717,7 @@
 
   "expenseSuccessTitle": "تم حفظ المصروف",
   "expenseSuccessSyncedToCloud": "تمت المزامنة مع السحابة",
+  "expenseSuccessWillSync": "تم الحفظ — ستتم المزامنة",
   "expenseSuccessDone": "تم",
   "expenseSuccessAddAnother": "إضافة آخر",
   "expenseSuccessTotalAmount": "إجمالي المبلغ",

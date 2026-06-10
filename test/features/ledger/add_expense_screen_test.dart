@@ -172,7 +172,7 @@ void main() {
   ) async {
     final service = _MockExpenseService();
     when(
-      () => service.addExpense(
+      () => service.stageExpense(
         groupId: 'group-1',
         eventId: 'event-1',
         payerParticipantId: 'uid-yasmin',
@@ -185,7 +185,7 @@ void main() {
         categoryId: null,
         createdBy: 'uid-yasmin',
       ),
-    ).thenAnswer((_) async => _expense);
+    ).thenReturn((expense: _expense, ack: Future<void>.value()));
 
     await _pumpAddExpenseScreen(tester, expenseService: service);
 
@@ -195,8 +195,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Expense Saved'), findsOneWidget);
+    // The server acked within the race window → the badge claims cloud sync.
+    expect(find.text('SAVED — WILL SYNC'), findsNothing);
     verify(
-      () => service.addExpense(
+      () => service.stageExpense(
         groupId: 'group-1',
         eventId: 'event-1',
         payerParticipantId: 'uid-yasmin',
@@ -239,7 +241,7 @@ void main() {
   testWidgets('shows a snackbar when add expense fails', (tester) async {
     final service = _MockExpenseService();
     when(
-      () => service.addExpense(
+      () => service.stageExpense(
         groupId: 'group-1',
         eventId: 'event-1',
         payerParticipantId: 'uid-yasmin',

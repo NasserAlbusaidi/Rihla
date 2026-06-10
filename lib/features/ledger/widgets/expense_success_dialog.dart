@@ -16,12 +16,17 @@ class ExpenseSuccessDialog extends StatelessWidget {
   final VoidCallback onDone;
   final VoidCallback onAddAnother;
 
+  /// False when the write is queued offline (#412) — the badge then reads
+  /// "Saved — will sync" instead of claiming a cloud sync that hasn't happened.
+  final bool synced;
+
   const ExpenseSuccessDialog({
     super.key,
     required this.expense,
     required this.currency,
     required this.onDone,
     required this.onAddAnother,
+    this.synced = true,
   });
 
   @override
@@ -94,7 +99,9 @@ class ExpenseSuccessDialog extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      context.l10n.expenseSuccessSyncedToCloud,
+                      synced
+                          ? context.l10n.expenseSuccessSyncedToCloud
+                          : context.l10n.expenseSuccessWillSync,
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
