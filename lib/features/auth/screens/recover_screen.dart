@@ -5,16 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/providers/settings_provider.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/email_validators.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/sign_out_first_dialog.dart';
+import '../widgets/merge_on_recover_dialog.dart';
 
 /// Home empty state → "I had Rihla before — restore" entry.
 ///
@@ -22,9 +20,13 @@ import '../widgets/sign_out_first_dialog.dart';
 /// the app sends a sign-in link via [AuthRecoveryService.sendRecoveryLink],
 /// and the deep-link bootstrap completes recovery on tap.
 ///
-/// FR-REC-2: if the device has any owned groups (proxy for owned
-/// participant docs), recovery is refused unless the user confirms the
-/// sign-out-first dialog.
+/// Populated-device recovery MERGES (#427, superseding FR-REC-2's
+/// sign-out-first): if the device has any groups, the user consents via
+/// [MergeOnRecoverDialog] and the anon UID stays signed in — no sign-out,
+/// no orphan. When the link is tapped, `completeRecovery` swaps to the
+/// restored account and `cleanupAnonUidArtifacts` migrates this device's
+/// data (`oldUid → newUid`) into it. See
+/// docs/plans/2026-06-10-recovery-merge-reachable-restore.md.
 class RecoverScreen extends ConsumerStatefulWidget {
   const RecoverScreen({super.key});
 
@@ -47,23 +49,12 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
   Future<bool> _confirmIfDevicePopulated() async {
     final groups = ref.read(userGroupsProvider).valueOrNull ?? const [];
     if (groups.isEmpty) return true;
-    final confirmed = await SignOutFirstDialog.show(context);
-    if (confirmed != true) return false;
-    // Mark the on-device Firestore cache dirty BEFORE signing out the populated
-    // anon UID, so the eventual cold boot (after the deep-link recovery restarts
-    // the app) clears this UID's cached financials (#45). This off-table path
-    // does not restart here — recovery completes when the user taps the link.
-    await markFirestorePersistenceDirty(ref.read(sharedPreferencesProvider));
-    try {
-      // No linked email yet on this device — sign out the anon UID and
-      // mint a fresh one before sending the recovery link. This mirrors
-      // signOutCurrentDevice() but skips the linked-email guard.
-      await ref.read(firebaseAuthProvider).signOut();
-    } catch (_) {
-      // signOut should not realistically fail; continue regardless and
-      // let the recovery flow surface any auth failure.
-    }
-    return true;
+    // No sign-out and no dirty-mark here: the populated anon UID must stay
+    // signed in so completeRecovery can capture it as oldUid and merge its
+    // data into the restored account (#427). Signing out first is how the
+    // device's data got orphaned — by link-tap time the UID was gone.
+    final confirmed = await MergeOnRecoverDialog.show(context);
+    return confirmed == true;
   }
 
   Future<void> _send() async {

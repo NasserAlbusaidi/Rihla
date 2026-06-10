@@ -4,20 +4,22 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
-/// Spec §4.3 / FR-REC-2.
+/// Merge consent for restoring an account on a populated device (#427).
 ///
-/// Shown when the user attempts recovery on a device that already has a
-/// populated session. Two outcomes: confirm sign-out (orphans the local
-/// anon UID's data, just like clearing app data does today) or cancel.
-class SignOutFirstDialog extends StatelessWidget {
-  const SignOutFirstDialog({super.key});
+/// Shown when the user starts recovery while this device already has groups.
+/// Confirming proceeds with recovery: the server's `cleanupAnonUidArtifacts`
+/// migration MERGES this device's anon-UID data into the restored account —
+/// nothing is signed out or orphaned. Supersedes the FR-REC-2 sign-out-first
+/// flow (see docs/plans/2026-06-10-recovery-merge-reachable-restore.md).
+class MergeOnRecoverDialog extends StatelessWidget {
+  const MergeOnRecoverDialog({super.key});
 
-  /// Returns `true` if the user confirmed sign-out, `false` or `null`
+  /// Returns `true` if the user consented to the merge, `false` or `null`
   /// otherwise.
   static Future<bool?> show(BuildContext context) {
     return showDialog<bool>(
       context: context,
-      builder: (_) => const SignOutFirstDialog(),
+      builder: (_) => const MergeOnRecoverDialog(),
     );
   }
 
@@ -27,9 +29,11 @@ class SignOutFirstDialog extends StatelessWidget {
     final l10n = context.l10n;
     return AlertDialog(
       backgroundColor: colors.cardSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.spacing.radiusCard)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+      ),
       title: Text(
-        l10n.authSignOutFirstTitle,
+        l10n.authMergeOnRecoverTitle,
         style: AppTypography.sans(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -37,7 +41,7 @@ class SignOutFirstDialog extends StatelessWidget {
         ),
       ),
       content: Text(
-        l10n.authSignOutFirstBody,
+        l10n.authMergeOnRecoverBody,
         style: AppTypography.sans(
           fontSize: 14,
           color: colors.textSecondary,
@@ -46,15 +50,14 @@ class SignOutFirstDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          key: const Key('signOutFirst.cancel'),
+          key: const Key('mergeOnRecover.cancel'),
           onPressed: () => Navigator.of(context).pop(false),
           child: Text(l10n.commonCancel),
         ),
         FilledButton(
-          key: const Key('signOutFirst.confirm'),
-          style: FilledButton.styleFrom(backgroundColor: colors.error),
+          key: const Key('mergeOnRecover.confirm'),
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.authSignOutFirstConfirm),
+          child: Text(l10n.authMergeOnRecoverConfirm),
         ),
       ],
     );
