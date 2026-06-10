@@ -148,10 +148,11 @@ Widget _buildTestApp(
       // existing per-test data/loading overrides keep driving the UI. A
       // never-completing future preserves the loading-state assertions.
       // #244: once-providers now yield wrapper records; bridge as non-partial.
-      crossGroupBalanceOnceProvider.overrideWith(
+      crossGroupHomeBalanceProvider.overrideWith(
         (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
-              data: (d) => (balance: d, partial: false),
-              orElse: () => Completer<CrossGroupBalanceOnce>().future,
+              data: (d) => AsyncValue.data((balance: d, partial: false)),
+              orElse: () =>
+                  const AsyncValue<CrossGroupBalanceOnce>.loading(),
             ),
       ),
       groupBalancesOnceProvider.overrideWith(

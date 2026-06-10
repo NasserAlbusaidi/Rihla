@@ -757,57 +757,6 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
 /// Atomic: number + flag come from one computation, so they can never disagree.
 typedef CrossGroupBalanceOnce = ({CrossGroupBalance balance, bool partial});
 
-/// One-shot variant of [crossGroupBalanceProvider] for [BalanceHeroCard] (#104).
-///
-/// Reduces identically to the live provider: sums each group's per-user net
-/// scalar ([UserBalance.netBalance], which already folds settlements), then
-/// sign-splits that scalar into owed/owes. It does NOT sum `totalPaid` slices —
-/// that would drop settlement effects.
-///
-/// [partial] (#244) is the OR over groups of "did a per-event read fail." A
-/// whole-group reject (a coarse list-read failure inside
-/// [groupBalancesOnceProvider]) still propagates → this future rejects → the
-/// hero shows the error card (loud-safe preserved for the coarse case).
-final crossGroupBalanceOnceProvider =
-    FutureProvider.autoDispose<CrossGroupBalanceOnce>((ref) async {
-  final uid = ref.watch(currentUserIdProvider);
-  if (uid == null) {
-    return (
-      balance: (
-        byCurrency: const <CurrencyBalance>[],
-        groupCount: 0,
-        isLoading: false,
-      ),
-      partial: false,
-    );
-  }
-
-  final groups = await ref.watch(userGroupsProvider.future);
-  final byCurrencyMap =
-      <String, ({Decimal net, Decimal owedToUser, Decimal userOwes})>{};
-  var partial = false;
-  for (final group in groups) {
-    final result = await ref.watch(groupBalancesOnceProvider(group.id).future);
-    partial = partial || result.failedEventIds.isNotEmpty;
-    final groupNet =
-        result.balances.balances
-            .where((b) => b.participantId == uid)
-            .firstOrNull
-            ?.netBalance ??
-        Decimal.zero;
-    _accumulateBucket(byCurrencyMap, group.currency, groupNet);
-  }
-
-  return (
-    balance: (
-      byCurrency: _sortedCurrencyBuckets(byCurrencyMap),
-      groupCount: groups.length,
-      isLoading: false,
-    ),
-    partial: partial,
-  );
-});
-
 // ---------------------------------------------------------------------------
 // #366 — server-maintained balance aggregate + the home facade
 // ---------------------------------------------------------------------------

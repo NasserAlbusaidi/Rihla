@@ -15,7 +15,8 @@ import '../keys/home_keys.dart';
 ///
 /// White card on paper, italic header, big sage/rust amount, mini split bar
 /// showing the relative weight of "owed to you" vs "you owe", and a legend
-/// row beneath. The figures come from [crossGroupBalanceOnceProvider] (one-shot
+/// row beneath. The figures come from [crossGroupHomeBalanceProvider] (#366 —
+/// the server aggregate when online, the #104 one-shot fallback otherwise
 /// reads, #104 — the home tree holds no per-event listeners); the split-bar
 /// derivation walks each group's per-user balance to split the net into positive
 /// and negative components.
@@ -29,7 +30,7 @@ class BalanceHeroCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balanceAsync = ref.watch(crossGroupBalanceOnceProvider);
+    final balanceAsync = ref.watch(crossGroupHomeBalanceProvider);
     // #70: the currency for the all-settled state (when byCurrency is empty there
     // is no active bucket to read a currency from). Null ⇒ no/mixed currency ⇒
     // currency-agnostic zero.
