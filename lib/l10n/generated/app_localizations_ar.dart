@@ -2618,4 +2618,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splashRetry => 'حاول مرة أخرى';
+
+  @override
+  String get notificationRationaleTitle => 'ابقَ على اطّلاع';
+
+  @override
+  String get notificationRationaleBody =>
+      'نُنبّهك عندما يضيف أحدهم مصروفًا أو يسوّي حسابًا.';
+
+  @override
+  String get notificationRationaleNotNow => 'ليس الآن';
+
+  @override
+  String get notificationRationaleTurnOn => 'تفعيل';
 }

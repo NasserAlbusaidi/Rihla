@@ -2566,4 +2566,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splashRetry => 'Try again';
+
+  @override
+  String get notificationRationaleTitle => 'Stay in the loop';
+
+  @override
+  String get notificationRationaleBody =>
+      'Get notified when someone adds an expense or settles up.';
+
+  @override
+  String get notificationRationaleNotNow => 'Not now';
+
+  @override
+  String get notificationRationaleTurnOn => 'Turn on';
 }

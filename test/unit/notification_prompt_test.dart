@@ -8,10 +8,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
+import 'package:safar/core/services/notification_rationale_sheet.dart';
 import 'package:safar/core/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockNotificationService extends Mock implements NotificationService {}
+
+Future<bool?> _alwaysOptIn() async => true;
 
 void main() {
   late MockNotificationService notifications;
@@ -24,6 +27,11 @@ void main() {
 
   Future<ProviderContainer> makeContainer({
     Map<String, Object> prefs = const {},
+    // The rationale gate is the soft in-app sheet shown before the OS dialog
+    // (#352). Default = opted-in, so the existing prompt-flow assertions keep
+    // their meaning (granted/denied still reach initialize()). The sheet UI is
+    // covered in notification_rationale_sheet_test.dart.
+    NotificationRationaleGate rationaleGate = _alwaysOptIn,
   }) async {
     SharedPreferences.setMockInitialValues(prefs);
     final instance = await SharedPreferences.getInstance();
@@ -32,6 +40,7 @@ void main() {
         sharedPreferencesProvider.overrideWithValue(instance),
         deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
         notificationServiceProvider.overrideWithValue(notifications),
+        notificationRationaleGateProvider.overrideWithValue(rationaleGate),
       ],
     );
     addTearDown(container.dispose);
@@ -119,6 +128,49 @@ void main() {
       await Future.wait([prompt.maybePrompt(), prompt.maybePrompt()]);
 
       verify(() => notifications.initialize()).called(1);
+    });
+
+    // #352: the soft rationale is declined — we never reach the OS dialog, but
+    // the user made a decision, so we mark seen and never nag again.
+    test('unseen + disabled + rationale declined → marks seen, never prompts OS',
+        () async {
+      final container = await makeContainer(rationaleGate: () async => false);
+
+      await container.read(notificationPromptProvider).maybePrompt();
+
+      verifyNever(() => notifications.initialize());
+      final settings = container.read(settingsProvider);
+      expect(settings.pushNotificationsEnabled, isFalse);
+      expect(settings.notificationPromptSeen, isTrue);
+    });
+
+    // #352 P1 regression (Gate review): a null gate result means we COULDN'T
+    // present the sheet (no root navigator yet) — not a user decision. We must
+    // NOT mark seen, or a transient mid-navigation null permanently burns the
+    // one lifetime ask. The next natural moment must retry.
+    test('gate could-not-show (null) → never prompts, stays unseen, retries',
+        () async {
+      var gateCalls = 0;
+      Future<bool?> countingNullGate() async {
+        gateCalls++;
+        return null;
+      }
+
+      final container = await makeContainer(rationaleGate: countingNullGate);
+      final prompt = container.read(notificationPromptProvider);
+
+      await prompt.maybePrompt();
+      verifyNever(() => notifications.initialize());
+      expect(
+        container.read(settingsProvider).notificationPromptSeen,
+        isFalse,
+        reason: 'a no-context result must not consume the one-shot prompt',
+      );
+      expect(gateCalls, 1);
+
+      // Still unseen → the next join/create retries the rationale.
+      await prompt.maybePrompt();
+      expect(gateCalls, 2);
     });
   });
 }
