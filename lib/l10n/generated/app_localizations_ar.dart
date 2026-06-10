@@ -2059,6 +2059,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupCreateEvent => 'إنشاء فعالية';
 
   @override
+  String get groupInvitePeople => 'دعوة أشخاص';
+
+  @override
   String get groupLoadEventsFailed => 'تعذّر تحميل الفعاليات';
 
   @override

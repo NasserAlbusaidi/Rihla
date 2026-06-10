@@ -215,6 +215,22 @@ class _Content extends ConsumerWidget {
                 actionLabel: context.l10n.groupCreateEvent,
                 onAction: () =>
                     GoRouter.of(context).push('/group/$groupId/create-event'),
+                // #353 — let the creator pull members in immediately, reusing
+                // the existing link-bearing invite share (#291/#277).
+                secondaryActionLabel: context.l10n.groupInvitePeople,
+                secondaryActionIcon: Iconsax.user_add,
+                onSecondaryAction: () {
+                  HapticService.selection();
+                  shareText(
+                    context,
+                    context.l10n.groupShareInviteMessage(
+                      group.name,
+                      AppLinks.inviteUrl(group.inviteCode).toString(),
+                      group.inviteCode,
+                    ),
+                    subject: context.l10n.groupShareSubject(group.name),
+                  );
+                },
               ),
             ),
           );

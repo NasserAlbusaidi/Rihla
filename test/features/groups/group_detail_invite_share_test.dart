@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -174,6 +175,55 @@ void main() {
     expect(shareArgs, isNotNull);
     expect(shareArgs!['originWidth'], isA<double>());
     expect(shareArgs!['originHeight'], isA<double>());
+    expect((shareArgs!['originWidth'] as double) > 0, isTrue);
+    expect((shareArgs!['originHeight'] as double) > 0, isTrue);
+  });
+
+  // #353 — a freshly-created group's no-events empty state must offer an
+  // "Invite people" secondary action beside "Create event", so the creator can
+  // pull members in immediately. Reuses the existing invite-share path (#291/#277).
+  testWidgets('no-events empty state shows the Invite people secondary CTA',
+      (tester) async {
+    await pumpGroupDetail(tester);
+
+    // Empty state (groupEventsProvider → []) is rendered.
+    expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
+    expect(find.byKey(SharedKeys.emptyStateSecondaryCta), findsOneWidget);
+  });
+
+  testWidgets(
+      'empty-state Invite people CTA shares the join link with a non-zero origin',
+      (tester) async {
+    Map<Object?, Object?>? shareArgs;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      shareChannel,
+      (call) async {
+        if (call.method == 'share') {
+          shareArgs = call.arguments as Map<Object?, Object?>;
+        }
+        return '';
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        shareChannel,
+        null,
+      ),
+    );
+
+    await pumpGroupDetail(tester);
+
+    final cta = find.byKey(SharedKeys.emptyStateSecondaryCta);
+    await tester.ensureVisible(cta);
+    await tester.pumpAndSettle();
+    await tester.tap(cta);
+    await tester.pumpAndSettle();
+
+    expect(shareArgs, isNotNull);
+    expect(
+      shareArgs!['text'],
+      contains('https://rihla-safar.web.app/join/ABC123'),
+    );
     expect((shareArgs!['originWidth'] as double) > 0, isTrue);
     expect((shareArgs!['originHeight'] as double) > 0, isTrue);
   });

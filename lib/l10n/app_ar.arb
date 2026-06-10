@@ -606,6 +606,7 @@
   "groupNoEventsTitle": "لا توجد فعاليات بعد",
   "groupNoEventsMessage": "أنشئ أول فعالية لتبدؤوا التخطيط معًا.",
   "groupCreateEvent": "إنشاء فعالية",
+  "groupInvitePeople": "دعوة أشخاص",
   "groupLoadEventsFailed": "تعذّر تحميل الفعاليات",
   "groupMemberCountCaps": "مجموعة · {count, plural, =0{لا أعضاء} =1{عضو واحد} =2{عضوان} few{{count} أعضاء} many{{count} عضوًا} other{{count} عضو}}",
   "groupMoreTooltip": "المزيد",
