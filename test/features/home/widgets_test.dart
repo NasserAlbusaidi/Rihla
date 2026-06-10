@@ -15,6 +15,7 @@ import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
+import 'package:safar/features/settings/screens/profile_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_avatar.dart';
@@ -221,7 +222,8 @@ void main() {
 
         // Tap Activity tab (index 1)
         await tester.tap(find.text('Activity').last);
-        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
 
         expect(find.byType(CrossGroupActivityScreen), findsOneWidget);
         expect(find.text('Coming soon'), findsNothing);
@@ -247,5 +249,33 @@ void main() {
       await tester.pump();
       expect(find.text('Dashboard Content'), findsOneWidget);
     });
+
+    testWidgets(
+      'lazy-build: unvisited tabs are not mounted until first visit, then stay mounted',
+      (tester) async {
+        await tester.pumpWidget(buildShellApp(shellOverrides()));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+
+        // Groups (index 0) is mounted on first render.
+        expect(find.text('Dashboard Content'), findsOneWidget);
+        // Activity + Profile tabs are NOT built before they are visited.
+        expect(find.byType(CrossGroupActivityScreen), findsNothing);
+        expect(find.byType(ProfileScreen), findsNothing);
+
+        // Visit Activity -> it mounts.
+        await tester.tap(find.byKey(HomeKeys.bottomNavActivity));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+        expect(find.byType(CrossGroupActivityScreen), findsOneWidget);
+
+        // Switch back to Groups -> Activity stays mounted (state retained).
+        await tester.tap(find.byKey(HomeKeys.bottomNavGroups));
+        await tester.pump();
+        await tester.pumpAndSettle();
+        expect(find.byType(CrossGroupActivityScreen), findsOneWidget);
+        expect(find.text('Dashboard Content'), findsOneWidget);
+      },
+    );
   });
 }

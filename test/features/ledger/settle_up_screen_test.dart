@@ -11,6 +11,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -257,6 +258,7 @@ void main() {
     expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
     expect(snap.docs.first.data()['payerName'], equals('Bob'));
     expect(snap.docs.first.data()['recipientName'], equals('Alice'));
+    expect(find.byType(OfflineBanner), findsOneWidget);
   });
 
   testWidgets(

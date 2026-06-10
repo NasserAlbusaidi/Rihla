@@ -450,7 +450,7 @@ void main() {
     // are computed from expenses spanning 3+ events (different tripIds) and
     // passed to calculateOptimalSettlements.
 
-    test('Multi-event: balances from 3 events — optimizer produces minimum transactions', () {
+    test('Multi-event: balances from 3 events — optimizer produces few transactions (greedy, not provably minimal)', () {
       // After aggregating 3 events, the final net balances are:
       //   uid-1: +50 (paid most across events)
       //   uid-2: +10 (paid a bit extra)

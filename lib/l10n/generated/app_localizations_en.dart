@@ -926,7 +926,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorExpenseDeleted => 'Expense deleted';
 
   @override
-  String get editorScopeGlobal => 'Equally';
+  String get editorScopeGlobal => 'Everyone';
 
   @override
   String get editorScopeSubGroup => 'Group split';
@@ -1075,7 +1075,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settleUpOptimizedPayments(Object subjectName) {
-    return 'Optimized to minimise the number of payments across $subjectName.';
+    return 'Optimized to reduce the number of payments across $subjectName.';
   }
 
   @override
