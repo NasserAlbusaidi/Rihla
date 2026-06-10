@@ -26,3 +26,4 @@ export {
   memberBalanceAggregator,
 } from './triggers/balanceAggregator';
 export { deletionReaper } from './scheduled/deletionReaper';
+export { balanceReconciler } from './scheduled/balanceReconciler';
