@@ -1925,7 +1925,7 @@ abstract class AppLocalizations {
   /// No description provided for @settleUpOptimizedPayments.
   ///
   /// In en, this message translates to:
-  /// **'Optimized to minimise the number of payments across {subjectName}.'**
+  /// **'Optimized to reduce the number of payments across {subjectName}.'**
   String settleUpOptimizedPayments(Object subjectName);
 
   /// No description provided for @settleUpSummaryTransfers.
