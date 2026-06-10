@@ -198,6 +198,7 @@ class AuthRecoveryService {
       email: email.trim(),
       actionCodeSettings: AuthEmailLinkConfig.actionCodeSettings(),
     );
+    _diagnostics.breadcrumb('send.link.queued');
     FirebaseConfig.log('Recovery: link email send queued (email redacted)');
   }
 
@@ -213,6 +214,7 @@ class AuthRecoveryService {
       email: email.trim(),
       actionCodeSettings: AuthEmailLinkConfig.actionCodeSettings(),
     );
+    _diagnostics.breadcrumb('send.recover.queued');
     FirebaseConfig.log('Recovery: recovery link send queued (email redacted)');
   }
 
@@ -241,9 +243,18 @@ class AuthRecoveryService {
       email: email,
       emailLink: emailLink,
     );
-    final result = await user.linkWithCredential(credential);
+    _diagnostics.breadcrumb('link.complete.attempt');
+    final UserCredential result;
+    try {
+      result = await user.linkWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      // Non-restarting path: immediate capture is reliable here.
+      _diagnostics.captureFailure('link.complete.fail', code: e.code);
+      rethrow;
+    }
     await clearPendingEmail();
     await clearInFlightOp();
+    _diagnostics.breadcrumb('link.complete.ok');
     FirebaseConfig.log('Recovery: linked email to uid ${result.user?.uid}');
     return result;
   }

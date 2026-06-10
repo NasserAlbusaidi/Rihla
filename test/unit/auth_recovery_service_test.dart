@@ -848,6 +848,65 @@ void main() {
     });
   });
 
+  group('non-restart path diagnostics (Task 5)', () {
+    const link =
+        'https://rihla-safar.firebaseapp.com/__/auth/links/continue?mode=signIn&oobCode=abc';
+
+    test('completeEmailLink captures a PII-free failure on link conflict', () async {
+      when(
+        () => anonUser.linkWithCredential(any()),
+      ).thenThrow(FirebaseAuthException(code: 'credential-already-in-use'));
+      final recording = RecordingRecoveryDiagnostics();
+      final service = buildService(diagnostics: recording);
+      await service.setPendingEmail('foo@example.com');
+
+      await expectLater(
+        () => service.completeEmailLink(link),
+        throwsA(isA<FirebaseAuthException>()),
+      );
+
+      final fail =
+          recording.calls.firstWhere((c) => c.phase == 'link.complete.fail');
+      expect(fail.code, 'credential-already-in-use');
+      expect(recording.allValues, isNot(contains('foo@example.com')));
+      for (final v in recording.allValues) {
+        expect(v, isNot(contains('oobCode')));
+      }
+    });
+
+    test('completeEmailLink records an ok breadcrumb on success', () async {
+      final credential = _MockUserCredential();
+      when(
+        () => anonUser.linkWithCredential(any()),
+      ).thenAnswer((_) async => credential);
+      final recording = RecordingRecoveryDiagnostics();
+      final service = buildService(diagnostics: recording);
+      await service.setPendingEmail('foo@example.com');
+
+      await service.completeEmailLink(link);
+
+      expect(recording.phases, contains('link.complete.ok'));
+    });
+
+    test('send paths record a queued breadcrumb with their op', () async {
+      when(
+        () => auth.sendSignInLinkToEmail(
+          email: any(named: 'email'),
+          actionCodeSettings: any(named: 'actionCodeSettings'),
+        ),
+      ).thenAnswer((_) async {});
+      final recording = RecordingRecoveryDiagnostics();
+      final service = buildService(diagnostics: recording);
+
+      await service.linkEmailToCurrentUser('foo@example.com');
+      await service.sendRecoveryLink('foo@example.com');
+
+      expect(recording.phases, contains('send.link.queued'));
+      expect(recording.phases, contains('send.recover.queued'));
+      expect(recording.allValues, isNot(contains('foo@example.com')));
+    });
+  });
+
   group('signOutCurrentDevice', () {
     test('throws StateError when the user has no linked email', () async {
       when(() => anonUser.email).thenReturn(null);
