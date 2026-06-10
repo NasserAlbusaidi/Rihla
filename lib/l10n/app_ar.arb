@@ -777,5 +777,9 @@
   "splashTagline": "رحلتك المشتركة",
   "splashErrorTitle": "حدث خطأ ما",
   "splashErrorBody": "تعذّر تشغيل التطبيق.",
-  "splashRetry": "حاول مرة أخرى"
+  "splashRetry": "حاول مرة أخرى",
+  "notificationRationaleTitle": "ابقَ على اطّلاع",
+  "notificationRationaleBody": "نُنبّهك عندما يضيف أحدهم مصروفًا أو يسوّي حسابًا.",
+  "notificationRationaleNotNow": "ليس الآن",
+  "notificationRationaleTurnOn": "تفعيل"
 }

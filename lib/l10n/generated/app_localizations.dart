@@ -4457,6 +4457,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get splashRetry;
+
+  /// Title of the soft in-app rationale sheet shown before the OS push-permission dialog (#352), at the first natural moment (a successful group join or create).
+  ///
+  /// In en, this message translates to:
+  /// **'Stay in the loop'**
+  String get notificationRationaleTitle;
+
+  /// Body copy of the notification rationale sheet (#352) — explains the value of push notifications before the OS prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified when someone adds an expense or settles up.'**
+  String get notificationRationaleBody;
+
+  /// Dismiss action on the notification rationale sheet (#352). Declining never re-asks; it does NOT open the OS permission dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notificationRationaleNotNow;
+
+  /// Opt-in action on the notification rationale sheet (#352). Proceeds to the OS permission dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get notificationRationaleTurnOn;
 }
 
 class _AppLocalizationsDelegate

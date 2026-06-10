@@ -1778,5 +1778,21 @@
   "splashRetry": "Try again",
   "@splashRetry": {
     "description": "Retry button on the splash error state."
+  },
+  "notificationRationaleTitle": "Stay in the loop",
+  "@notificationRationaleTitle": {
+    "description": "Title of the soft in-app rationale sheet shown before the OS push-permission dialog (#352), at the first natural moment (a successful group join or create)."
+  },
+  "notificationRationaleBody": "Get notified when someone adds an expense or settles up.",
+  "@notificationRationaleBody": {
+    "description": "Body copy of the notification rationale sheet (#352) — explains the value of push notifications before the OS prompt."
+  },
+  "notificationRationaleNotNow": "Not now",
+  "@notificationRationaleNotNow": {
+    "description": "Dismiss action on the notification rationale sheet (#352). Declining never re-asks; it does NOT open the OS permission dialog."
+  },
+  "notificationRationaleTurnOn": "Turn on",
+  "@notificationRationaleTurnOn": {
+    "description": "Opt-in action on the notification rationale sheet (#352). Proceeds to the OS permission dialog."
   }
 }
