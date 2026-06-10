@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -21,7 +22,7 @@ typedef RecoveryCleanupFailureRecorder =
     });
 
 typedef CleanupAnonUidArtifacts =
-    Future<void> Function({
+    Future<CleanupOutcome> Function({
       required String oldUid,
       required String cleanupSecret,
     });
@@ -323,26 +324,15 @@ class AuthRecoveryService {
           cleanupSecret != null &&
           result.user?.uid != oldUid) {
         // Await the scrub to its natural terminal state (no custom cap — the
-        // callable's ~70s client timeout bounds it). The server completes the
-        // scrub regardless of the imminent restart (gen2 onCall is not aborted
-        // by client disconnect), so this is byte-for-byte main's scrub outcome
-        // and restart cannot truncate a scrub main would have finished (§3.6).
-        try {
-          await _cleanupAnonUidArtifacts(
-            oldUid: oldUid,
-            cleanupSecret: cleanupSecret,
-          );
-          FirebaseConfig.log('Recovery: anon uid cleanup completed');
-        } catch (error, stackTrace) {
-          _recoveryCleanupFailureRecorder(
-            message: 'Recovery anon uid cleanup failed',
-            data: {'errorType': error.runtimeType.toString()},
-          );
-          FirebaseConfig.log(
-            'Recovery: anon uid cleanup failed (${error.runtimeType})',
-            stackTrace: stackTrace,
-          );
-        }
+        // callable's 60s default client timeout bounds it). The server
+        // completes the scrub regardless of the imminent restart (gen2 onCall
+        // is not aborted by client disconnect), so this is byte-for-byte
+        // main's scrub outcome and restart cannot truncate a scrub main would
+        // have finished (§3.6).
+        await _cleanupWithInlineRetry(
+          oldUid: oldUid,
+          cleanupSecret: cleanupSecret,
+        );
       }
 
       return result;
@@ -355,6 +345,84 @@ class AuthRecoveryService {
       // failure), so it always runs last.
       await _safeClearRecoveryOpState();
       await _cacheIsolationController.restart();
+    }
+  }
+
+  /// Drives the idempotent cleanup callable to a terminal state with ONE
+  /// inline retry (#427) — still inside the isolation overlay, seconds after
+  /// intent creation, so the 15-min intent is valid and (on a structured
+  /// partial failure) provably unconsumed: the server deletes the intent only
+  /// when every group migrated. A group left behind keeps `memberIds:[oldUid]`
+  /// and silently vanishes from the restored account's balances, so a partial
+  /// merge is money-wrong, not cosmetic.
+  ///
+  /// Never throws: the credential must reach the bootstrap and the `finally`
+  /// restart must run regardless of the cleanup's fate.
+  Future<void> _cleanupWithInlineRetry({
+    required String oldUid,
+    required String cleanupSecret,
+  }) async {
+    var firstAttemptThrew = false;
+    try {
+      final outcome = await _cleanupAnonUidArtifacts(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
+      );
+      if (outcome.complete) {
+        FirebaseConfig.log('Recovery: anon uid cleanup completed');
+        return;
+      }
+      FirebaseConfig.log(
+        'Recovery: anon uid cleanup partial '
+        '(${outcome.cascadeFailed.length} group(s) failed) — retrying once',
+      );
+    } catch (error, stackTrace) {
+      firstAttemptThrew = true;
+      FirebaseConfig.log(
+        'Recovery: anon uid cleanup failed (${error.runtimeType}) — '
+        'retrying once',
+        stackTrace: stackTrace,
+      );
+    }
+    try {
+      final retry = await _cleanupAnonUidArtifacts(
+        oldUid: oldUid,
+        cleanupSecret: cleanupSecret,
+      );
+      if (retry.complete) {
+        FirebaseConfig.log('Recovery: anon uid cleanup completed on retry');
+        return;
+      }
+      _recoveryCleanupFailureRecorder(
+        message: 'Recovery cleanup incomplete',
+        data: {'groupsFailed': retry.cascadeFailed},
+      );
+      FirebaseConfig.log(
+        'Recovery: anon uid cleanup still partial after retry '
+        '(${retry.cascadeFailed.length} group(s) stranded under old uid)',
+      );
+    } catch (error, stackTrace) {
+      if (firstAttemptThrew &&
+          error is FirebaseFunctionsException &&
+          error.code == 'permission-denied') {
+        // The first attempt threw client-side (e.g. a 60s timeout) but the
+        // server ran to completion and CONSUMED the intent — permission-denied
+        // on the retry means there is no intent left because the migration
+        // already fully succeeded. Recording it would file a false alarm.
+        FirebaseConfig.log(
+          'Recovery: cleanup retry permission-denied after a thrown first '
+          'attempt — intent consumed by a completed first invocation',
+        );
+        return;
+      }
+      _recoveryCleanupFailureRecorder(
+        message: 'Recovery cleanup incomplete',
+        data: {'errorType': error.runtimeType.toString()},
+      );
+      FirebaseConfig.log(
+        'Recovery: anon uid cleanup retry failed (${error.runtimeType})',
+        stackTrace: stackTrace,
+      );
     }
   }
 
