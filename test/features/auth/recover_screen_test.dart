@@ -159,9 +159,8 @@ void main() {
     verifyNever(() => firebaseAuth.signOut());
   });
 
-  testWidgets('on a populated device, cancelling the dialog blocks the send', (
-    tester,
-  ) async {
+  testWidgets('on a populated device, cancelling the merge dialog blocks '
+      'the send', (tester) async {
     await tester.pumpWidget(
       _wrap(
         service: service,
@@ -179,22 +178,17 @@ void main() {
     await tester.tap(find.byKey(const Key('recover.submit')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('signOutFirst.cancel')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('signOutFirst.cancel')));
+    expect(find.byKey(const Key('mergeOnRecover.cancel')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('mergeOnRecover.cancel')));
     await tester.pumpAndSettle();
 
     verifyNever(() => service.sendRecoveryLink(any()));
     verifyNever(() => firebaseAuth.signOut());
   });
 
-  testWidgets('on a populated device, confirming marks dirty before signOut '
-      'then proceeds', (tester) async {
+  testWidgets('on a populated device, recovery proceeds WITHOUT signing out '
+      '(#427 merge, not orphan)', (tester) async {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
-    // Capture the dirty flag at the moment signOut runs to prove ordering.
-    bool? dirtyAtSignOut;
-    when(() => firebaseAuth.signOut()).thenAnswer((_) async {
-      dirtyAtSignOut = prefs.getBool(kFirestorePersistenceDirtyKey);
-    });
 
     await tester.pumpWidget(
       _wrap(
@@ -213,14 +207,44 @@ void main() {
     await tester.tap(find.byKey(const Key('recover.submit')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('signOutFirst.confirm')));
+    await tester.tap(find.byKey(const Key('mergeOnRecover.confirm')));
     await tester.pumpAndSettle();
 
-    expect(dirtyAtSignOut, isTrue);
-    expect(prefs.getBool(kFirestorePersistenceDirtyKey), isTrue);
-    verify(() => firebaseAuth.signOut()).called(1);
+    // The populated anon UID stays signed in; completeRecovery migrates its
+    // data into the restored account when the link is tapped.
+    verifyNever(() => firebaseAuth.signOut());
     verify(() => service.sendRecoveryLink('foo@example.com')).called(1);
     expect(find.text('PENDING:foo@example.com'), findsOneWidget);
+  });
+
+  testWidgets('populated device does NOT mark persistence dirty on the '
+      'recover screen', (tester) async {
+    when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
+
+    await tester.pumpWidget(
+      _wrap(
+        service: service,
+        firebaseAuth: firebaseAuth,
+        prefs: prefs,
+        groups: [_stubGroup('g1')],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('recover.email')),
+      'foo@example.com',
+    );
+    await tester.tap(find.byKey(const Key('recover.submit')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mergeOnRecover.confirm')));
+    await tester.pumpAndSettle();
+
+    // The merge keeps this UID's data; completeRecovery marks dirty itself
+    // right before its own restart. Marking here would wipe a cache that is
+    // still this user's.
+    expect(prefs.getBool(kFirestorePersistenceDirtyKey), isNull);
   });
 
   testWidgets('user-not-found surfaces the FR-REC-5 message', (tester) async {
