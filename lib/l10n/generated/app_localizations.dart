@@ -1880,6 +1880,12 @@ abstract class AppLocalizations {
   /// **'Settlement recorded.'**
   String get settleUpRecorded;
 
+  /// No description provided for @settleUpRecordedWillSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlement recorded — will sync when online.'**
+  String get settleUpRecordedWillSync;
+
   /// No description provided for @settleUpRecordFailed.
   ///
   /// In en, this message translates to:
@@ -4133,6 +4139,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'SYNCED TO CLOUD'**
   String get expenseSuccessSyncedToCloud;
+
+  /// No description provided for @expenseSuccessWillSync.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVED — WILL SYNC'**
+  String get expenseSuccessWillSync;
 
   /// No description provided for @expenseSuccessDone.
   ///

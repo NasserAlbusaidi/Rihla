@@ -1039,6 +1039,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpRecorded => 'Settlement recorded.';
 
   @override
+  String get settleUpRecordedWillSync =>
+      'Settlement recorded — will sync when online.';
+
+  @override
   String get settleUpRecordFailed =>
       'Couldn\'t record settlement. Check your connection and try again.';
 
@@ -2376,6 +2380,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expenseSuccessSyncedToCloud => 'SYNCED TO CLOUD';
+
+  @override
+  String get expenseSuccessWillSync => 'SAVED — WILL SYNC';
 
   @override
   String get expenseSuccessDone => 'Done';

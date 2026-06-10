@@ -1067,6 +1067,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpRecorded => 'تم تسجيل التسوية.';
 
   @override
+  String get settleUpRecordedWillSync =>
+      'تم تسجيل التسوية — ستتم المزامنة عند الاتصال.';
+
+  @override
   String get settleUpRecordFailed =>
       'تعذّر تسجيل التسوية. تحقق من اتصالك وحاول مرة أخرى.';
 
@@ -2428,6 +2432,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get expenseSuccessSyncedToCloud => 'تمت المزامنة مع السحابة';
+
+  @override
+  String get expenseSuccessWillSync => 'تم الحفظ — ستتم المزامنة';
 
   @override
   String get expenseSuccessDone => 'تم';

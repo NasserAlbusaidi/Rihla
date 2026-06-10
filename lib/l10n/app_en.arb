@@ -834,6 +834,7 @@
     }
   },
   "settleUpRecorded": "Settlement recorded.",
+  "settleUpRecordedWillSync": "Settlement recorded — will sync when online.",
   "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",
   "settleUpRecordFailedDenied": "This settlement wasn't allowed. Please check the details and try again.",
   "settleUpRecordFailedGeneric": "Couldn't record settlement. Please try again.",
@@ -1559,6 +1560,7 @@
 
   "expenseSuccessTitle": "Expense Saved",
   "expenseSuccessSyncedToCloud": "SYNCED TO CLOUD",
+  "expenseSuccessWillSync": "SAVED — WILL SYNC",
   "expenseSuccessDone": "Done",
   "expenseSuccessAddAnother": "Add Another",
   "expenseSuccessTotalAmount": "TOTAL AMOUNT",
