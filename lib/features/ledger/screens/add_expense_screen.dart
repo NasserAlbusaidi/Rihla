@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -50,11 +51,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     // this screen is disposed during the write.
     final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
     final connectivity = ref.read(connectivityProvider.notifier);
+    final connectivityStatus = ref.read(connectivityProvider);
     ref.read(expenseLoadingProvider.notifier).state = true;
     try {
-      final expense = await ref
+      // #412: the write future acks only when the SERVER confirms — offline it
+      // stays pending until reconnect. Stage the write (local cache + queued
+      // replay) and race the ack instead of blocking the UI on it.
+      final staged = ref
           .read(expenseServiceProvider)
-          .addExpense(
+          .stageExpense(
             groupId: widget.groupId,
             eventId: widget.eventId,
             payerParticipantId: payload.payerParticipantId,
@@ -71,11 +76,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             categoryId: payload.categoryId,
             createdBy: currentUid,
           );
+      final outcome = await awaitServerAck(
+        staged.ack,
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
 
       ledgerRevision.state++; // #104: refresh the one-shot home balance
-      connectivity.noteLocalWrite(); // #357: "Saved — will sync" when offline
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite(); // #357: stale-offline correction
+      } else {
+        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+      }
       if (!mounted) return;
-      await _showSuccessDialog(expense);
+      await _showSuccessDialog(staged.expense, synced: outcome == WriteAck.acked);
     } finally {
       if (mounted) {
         ref.read(expenseLoadingProvider.notifier).state = false;
@@ -83,7 +96,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
   }
 
-  Future<void> _showSuccessDialog(Expense expense) {
+  Future<void> _showSuccessDialog(Expense expense, {required bool synced}) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -91,6 +104,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         expense: expense,
         // The created expense already carries its currency (#261).
         currency: expense.currency,
+        synced: synced,
         onDone: () {
           Navigator.of(dialogContext).pop();
           context.pop(true);

@@ -93,11 +93,10 @@ class ExpenseService extends FirestoreRepository {
   }
 
   /// Creates a new expense document in Firestore and returns the resulting
-  /// [Expense] object.
+  /// [Expense] object once the SERVER has acknowledged the write.
   ///
-  /// The [amount] is converted to integer fils via [MoneySerializer.toSubunits]
-  /// before being stored. The returned [Expense] is deserialized from the data
-  /// that was written, so amount round-trips through [MoneySerializer].
+  /// Offline, that ack only arrives on reconnect — UI flows that must not
+  /// block on it use [stageExpense] instead (#412).
   Future<Expense> addExpense({
     required String groupId,
     required String eventId,
@@ -115,6 +114,62 @@ class ExpenseService extends FirestoreRepository {
     String? categoryId,
     String? note,
   }) async {
+    final staged = stageExpense(
+      groupId: groupId,
+      eventId: eventId,
+      payerParticipantId: payerParticipantId,
+      amount: amount,
+      createdBy: createdBy,
+      currency: currency,
+      description: description,
+      scope: scope,
+      subGroupId: subGroupId,
+      customSplitParticipants: customSplitParticipants,
+      splitMode: splitMode,
+      splitDistribution: splitDistribution,
+      receiptUrl: receiptUrl,
+      categoryId: categoryId,
+      note: note,
+    );
+    try {
+      await staged.ack;
+    } on FirebaseException catch (e) {
+      if (kDebugMode) {
+        debugPrint('ExpenseService.addExpense failed: ${e.code} ${e.message}');
+      }
+      rethrow;
+    }
+    return staged.expense;
+  }
+
+  /// Stages a new expense: applies the write to the local Firestore cache and
+  /// returns the locally-built [Expense] IMMEDIATELY, plus the server-ack
+  /// future (#412). The ack resolves only when the server confirms — offline
+  /// it stays pending until reconnect while the SDK queues the replay, so
+  /// callers race it (`awaitServerAck`) instead of awaiting it raw.
+  ///
+  /// The [amount] is converted to integer fils via [MoneySerializer.toSubunits]
+  /// before being stored. The returned [Expense] is deserialized from the data
+  /// that was written, so amount round-trips through [MoneySerializer].
+  ///
+  /// Throws [ArgumentError] synchronously when [createdBy] is empty.
+  ({Expense expense, Future<void> ack}) stageExpense({
+    required String groupId,
+    required String eventId,
+    required String payerParticipantId,
+    required Decimal amount,
+    required String createdBy,
+    String currency = 'OMR',
+    String? description,
+    ExpenseScope scope = ExpenseScope.global,
+    String? subGroupId,
+    List<String>? customSplitParticipants,
+    SplitMode? splitMode,
+    Map<String, Decimal>? splitDistribution,
+    String? receiptUrl,
+    String? categoryId,
+    String? note,
+  }) {
     if (createdBy.isEmpty) {
       throw ArgumentError.value(
         createdBy,
@@ -154,19 +209,14 @@ class ExpenseService extends FirestoreRepository {
       // lastEditedBy == auth.uid; createdBy is already pinned to it.
       'lastEditedBy': createdBy,
     };
-    try {
-      await eventSubcollection(groupId, eventId, 'expenses').doc(id).set(data);
-    } on FirebaseException catch (e) {
-      if (kDebugMode) {
-        debugPrint('ExpenseService.addExpense failed: ${e.code} ${e.message}');
-      }
-      rethrow;
-    }
+    final ack = eventSubcollection(groupId, eventId, 'expenses')
+        .doc(id)
+        .set(data);
 
     // #248 PR 2: the expenseAuditLogger Cloud Functions trigger writes the
     // activity_logs entry server-side (tamper-proof, attributed via lastEditedBy);
     // the client no longer writes it.
-    return Expense.fromFirestore(data);
+    return (expense: Expense.fromFirestore(data), ack: ack);
   }
 
   /// Updates specific fields of an existing expense document.
