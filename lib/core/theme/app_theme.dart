@@ -218,6 +218,16 @@ class AppTheme {
         onError: AppColorTokens.dark.textOnPrimary,
       ),
       textTheme: _buildTextTheme(Brightness.dark),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColorTokens.dark.textPrimary,
+        contentTextStyle: AppTypography.sans(
+          color: AppColorTokens.dark.scaffoldBackground,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: AppColorTokens.dark.textPrimary,
