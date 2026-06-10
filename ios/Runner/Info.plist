@@ -35,6 +35,13 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<!-- #354: lets canLaunchUrl detect the WhatsApp app for the direct
+		     invite CTA. Without this, the probe returns false on iOS even when
+		     WhatsApp is installed and the CTA always falls back to the share sheet. -->
+		<string>whatsapp</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

@@ -1976,6 +1976,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupShare => 'مشاركة';
 
   @override
+  String get groupShareViaWhatsApp => 'واتساب';
+
+  @override
   String get groupJoinTitle => 'الانضمام إلى مجموعة';
 
   @override

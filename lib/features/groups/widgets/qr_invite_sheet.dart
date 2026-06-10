@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/utils/share_helper.dart';
+import '../../../core/utils/whatsapp_share.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
@@ -38,6 +39,21 @@ class _QrInviteSheet extends StatelessWidget {
   final Group group;
 
   Uri get _inviteUri => AppLinks.inviteUrl(group.inviteCode);
+
+  String _inviteMessage(BuildContext context) =>
+      context.l10n.groupShareInviteMessage(
+        group.name,
+        _inviteUri.toString(),
+        group.inviteCode,
+      );
+
+  Future<void> _shareInvite(BuildContext context) {
+    return shareText(
+      context,
+      _inviteMessage(context),
+      subject: context.l10n.groupShareInviteSubject(group.name),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +129,25 @@ class _QrInviteSheet extends StatelessWidget {
                     },
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                Expanded(
+                  // #354 — WhatsApp-direct invite (dominant GCC channel). Opens
+                  // WhatsApp prefilled with the same link-bearing message; falls
+                  // back to the OS share sheet when WhatsApp isn't installed.
+                  child: _SheetButton(
+                    key: GroupKeys.inviteWhatsAppButton,
+                    icon: Iconsax.message,
+                    label: context.l10n.groupShareViaWhatsApp,
+                    onTap: () {
+                      HapticService.lightClick();
+                      shareInviteViaWhatsApp(
+                        _inviteMessage(context),
+                        fallback: () => _shareInvite(context),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _SheetButton(
                     icon: Iconsax.send_2,
@@ -121,17 +155,7 @@ class _QrInviteSheet extends StatelessWidget {
                     primary: true,
                     onTap: () {
                       HapticService.lightClick();
-                      shareText(
-                        context,
-                        context.l10n.groupShareInviteMessage(
-                          group.name,
-                          _inviteUri.toString(),
-                          group.inviteCode,
-                        ),
-                        subject: context.l10n.groupShareInviteSubject(
-                          group.name,
-                        ),
-                      );
+                      _shareInvite(context);
                     },
                   ),
                 ),
@@ -210,6 +234,7 @@ class _CodePill extends StatelessWidget {
 
 class _SheetButton extends StatelessWidget {
   const _SheetButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.onTap,
@@ -233,6 +258,8 @@ class _SheetButton extends StatelessWidget {
         icon: Icon(icon, size: 16, color: fg),
         label: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppTypography.sans(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -243,6 +270,7 @@ class _SheetButton extends StatelessWidget {
           backgroundColor: bg,
           foregroundColor: fg,
           elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: primary
