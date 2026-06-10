@@ -215,6 +215,10 @@ void main() {
 
       await tester.tap(find.byKey(HomeKeys.bottomNavActivity));
       await tester.pump(const Duration(milliseconds: 250));
+      // #113 lazy-build: tapping Activity mounts CrossGroupActivityScreen for
+      // the first time, starting its EmptyStateView entrance ticker. Drain it
+      // before teardown or the pending Timer trips '!timersPending'.
+      await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 1);
