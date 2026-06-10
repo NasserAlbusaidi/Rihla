@@ -90,10 +90,11 @@ void main() {
         // #244: the once-provider now yields CrossGroupBalanceOnce — wrap the
         // bridged value as a non-partial result (these tests exercise the
         // number, not the partial affordance).
-        crossGroupBalanceOnceProvider.overrideWith(
+        crossGroupHomeBalanceProvider.overrideWith(
           (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
-                data: (d) => (balance: d, partial: false),
-                orElse: () => Completer<CrossGroupBalanceOnce>().future,
+                data: (d) =>
+                    AsyncValue.data((balance: d, partial: false)),
+                orElse: () => const AsyncValue<CrossGroupBalanceOnce>.loading(),
               ),
         ),
       ],

@@ -35,7 +35,7 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 // instances.
 //
 // This test uses the REAL provider chain (groupBalancesOnceProvider →
-// crossGroupBalanceOnceProvider) over seed-mutable fake services, and drives
+// homeGroupBalance facade fallback, #366) over seed-mutable fake services, and drives
 // the real RefreshIndicator in HomeScreen — mutating the seed mid-test plays
 // the part of the other device.
 // ---------------------------------------------------------------------------

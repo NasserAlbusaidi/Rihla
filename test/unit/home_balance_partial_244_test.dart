@@ -31,7 +31,7 @@ extension _SingleCurrencyAccess on CrossGroupBalance {
 // groupBalancesOnceProvider must DROP an event whose one-shot money read throws
 // (permission-denied / uncached-while-offline), record it in failedEventIds,
 // and compute the balance from the survivors — mirroring the live error-skip in
-// groupBalancesProvider but surfacing the drop. crossGroupBalanceOnceProvider
+// groupBalancesProvider but surfacing the drop. crossGroupHomeBalanceProvider
 // ORs that into a `partial` flag. A COARSE list read (events/members/group
 // settlements) still rejects the whole group (loud-safe → error card).
 //
@@ -117,6 +117,23 @@ Expense _expense(String id, Decimal amount, String eventId) => Expense(
 Decimal _netOf(GroupBalances b, String uid) => b.balances
     .firstWhere((x) => x.participantId == uid)
     .netBalance;
+
+
+/// #366: the cross-group fold is now a sync Provider over the facade (no
+/// `.future`). Settle the async source chain, then read the resolved value.
+Future<CrossGroupBalanceOnce> readCrossSettled(
+  ProviderContainer container,
+) async {
+  // Pin the provider chain — without a listener the autoDispose once-path
+  // sources dispose between microtasks and the fold never leaves loading.
+  final sub = container.listen(crossGroupHomeBalanceProvider, (_, _) {});
+  for (var i = 0; i < 12; i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  final value = container.read(crossGroupHomeBalanceProvider).requireValue;
+  sub.close();
+  return value;
+}
 
 void main() {
   const gid = 'g1';
@@ -236,7 +253,7 @@ void main() {
     });
   });
 
-  group('crossGroupBalanceOnceProvider partial flag (#244)', () {
+  group('crossGroupHomeBalanceProvider partial flag (#244)', () {
     test('group with a failed event → partial true, net = surviving sum',
         () async {
       final expFake = _PartialExpenseService(
@@ -264,11 +281,10 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-      container.listen(crossGroupBalanceOnceProvider, (_, _) {},
+      container.listen(crossGroupHomeBalanceProvider, (_, _) {},
           fireImmediately: true);
 
-      final result =
-          await container.read(crossGroupBalanceOnceProvider.future);
+      final result = await readCrossSettled(container);
 
       expect(result.partial, isTrue);
       expect(result.balance.net, d(-10), reason: 'only e1 (owes 10) survives');
@@ -301,11 +317,10 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-      container.listen(crossGroupBalanceOnceProvider, (_, _) {},
+      container.listen(crossGroupHomeBalanceProvider, (_, _) {},
           fireImmediately: true);
 
-      final result =
-          await container.read(crossGroupBalanceOnceProvider.future);
+      final result = await readCrossSettled(container);
 
       expect(result.partial, isFalse);
       expect(result.balance.net, d(-40));
@@ -348,11 +363,10 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-      container.listen(crossGroupBalanceOnceProvider, (_, _) {},
+      container.listen(crossGroupHomeBalanceProvider, (_, _) {},
           fireImmediately: true);
 
-      final result =
-          await container.read(crossGroupBalanceOnceProvider.future);
+      final result = await readCrossSettled(container);
 
       expect(result.partial, isTrue, reason: 'g2 dropped e3');
       // g1: -10, g2: -30 (e2 only, e3 dropped). Total -40.

@@ -65,8 +65,8 @@ void main() {
           linkedEmailProvider.overrideWithValue('secured@example.com'),
           currentUserIdProvider.overrideWithValue('test-user-id'),
           userGroupsProvider.overrideWith((ref) => Stream.value([group])),
-          crossGroupBalanceOnceProvider.overrideWith(
-            (ref) => Future.value((
+          crossGroupHomeBalanceProvider.overrideWith(
+            (ref) => AsyncValue.data((
               balance: (
                 byCurrency: [
                   (

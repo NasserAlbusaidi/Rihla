@@ -151,14 +151,14 @@ final activeJourneysProvider =
         .toList(growable: false);
     if (activeEvents.isEmpty) continue;
 
-    // One-shot home aggregation (#104): the per-event breakdown comes from the
-    // FutureProvider variant so the Active-journeys strip holds no live
-    // per-event listeners. The active-window filter above still watches the
-    // LIVE groupEventsProvider, so event add/remove refreshes the strip.
-    final balancesAsync = ref.watch(groupBalancesOnceProvider(group.id));
-    final breakdown =
-        balancesAsync.valueOrNull?.balances.perEventBreakdown ?? const {};
-    final userEventBalances = breakdown[uid] ?? const <String, Decimal>{};
+    // #366: per-event nets come from the source-agnostic facade (the server
+    // aggregate's perEventNetMilli slice when online, the #104 once-path
+    // breakdown otherwise) — the strip holds no live per-event listeners
+    // either way. The active-window filter above still watches the LIVE
+    // groupEventsProvider, so event add/remove refreshes the strip.
+    final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
+    final userEventBalances =
+        balanceAsync.valueOrNull?.userPerEventNet ?? const <String, Decimal>{};
 
     for (final event in activeEvents) {
       entries.add(ActiveJourneyEntry(
