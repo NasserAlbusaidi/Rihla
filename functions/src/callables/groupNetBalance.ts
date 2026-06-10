@@ -319,6 +319,19 @@ function stringArray(value: unknown): string[] {
 export interface RecomputeResult {
   net: Map<string, Decimal>;
   liveEventRefs: DocumentReference[];
+  // #366: per-event drill-down slice for the balance-aggregate doc. Universe =
+  // event.participantIds ONLY (no former financial actors, no member-gated
+  // split-recipient fold) and group-scope settlements are NOT folded — this
+  // mirrors the client _buildPerEventBreakdown
+  // (lib/features/groups/providers/group_balance_provider.dart:432-471), which
+  // is pinned participantIds-only by group_balance_provider_test.dart. Events
+  // with empty participantIds are omitted. NON-DECOMPOSITION: net is NOT the
+  // sum of these slices (different universes + group settlements + drops) —
+  // never reconcile one from the other.
+  perEventNet: Map<string, Map<string, Decimal>>;
+  // #366: count of events in balance scope (strict isDeleted === false outside
+  // a deleteGroup lock window), mirroring GroupBalances.eventCount.
+  eventCount: number;
   // #261: the distinct set of EXPENSE currencies that actually contributed to
   // `net`. The flat scalar `net` is only a true settled-check when a group holds
   // ONE expense currency (Model A); two different EXPENSE currencies can net to a
@@ -340,6 +353,101 @@ export interface RecomputeResult {
   // app data under Model A (every write is OMR) and pre-exists this guard. Do
   // NOT "fix" it here by adding settlement currencies.
   currencies: Set<string>;
+}
+
+// One event's money fold: each universe member's event-scoped net
+// (paid + settlementAdj − owed). Extracted (#366, behavior-preserving — the
+// existing deleteGroup/leaveGroup/removeMember suites are the proof) so it runs
+// twice per event: once with the FULL balance universe (participantIds ∪ former
+// financial actors ∪ member-gated split recipients — feeds `net`) and once with
+// the participantIds-only drill-down universe (feeds `perEventNet`). The fold
+// itself is identical either way: payers/recipients outside the universe are
+// dropped (`.has()` gates — the load-bearing drop), equal-split recipients
+// default to the universe, and expense currencies are recorded into the
+// function-scoped `currencies` set (Set.add is idempotent, so the double call
+// per event cannot double-count).
+function foldEventNet(
+  expenses: DocumentData[],
+  settlements: DocumentData[],
+  universe: Set<string>,
+  currencies: Set<string>,
+): Map<string, Decimal> {
+  const paid = new Map<string, Decimal>();
+  const owed = new Map<string, Decimal>();
+  const settlementAdj = new Map<string, Decimal>();
+  for (const uid of universe) {
+    paid.set(uid, new Money(0));
+    owed.set(uid, new Money(0));
+    settlementAdj.set(uid, new Money(0));
+  }
+
+  for (const e of expenses) {
+    const currency = currencyOf(e.currency);
+    // #261: normalize case — currencyOf returns the raw code, but the net math
+    // (currencyScale) uppercases internally, so a legacy/Admin group mixing
+    // 'omr' and 'OMR' decodes to a TRUE zero. Without toUpperCase the set would
+    // be {'omr','OMR'} (size 2) and falsely brick a genuinely-settled group —
+    // exactly the legacy/Admin population this guard exists to defend.
+    currencies.add(currency.toUpperCase());
+    const amount = fromSubunits(amountFilsOf(e), currency);
+    const payerId = e.payerParticipantId;
+    if (typeof payerId === 'string' && paid.has(payerId)) {
+      paid.set(payerId, paid.get(payerId)!.plus(amount));
+    }
+
+    const mode = decodeSplitMode(e.splitMode);
+    const distribution = decodeDistribution(e.splitDistribution, mode, currency);
+
+    let allocations: Map<string, Decimal>;
+    if (mode != null && mode !== 'equally' && distribution != null && distribution.size > 0) {
+      allocations =
+        mode === 'shares'
+          ? allocateShares(amount, distribution, currency)
+          : mode === 'exact'
+            ? allocateExact(amount, distribution, currency)
+            : allocatePercent(amount, distribution, currency);
+    } else {
+      // Equal-split branch by scope (expense_provider.dart:186-216). The
+      // global / sub_group / custom-empty universe is the FULL universe,
+      // NOT participantIds alone (Gate R1 finding #2).
+      const scope = typeof e.scope === 'string' ? e.scope : 'global';
+      let recipients: string[];
+      if (scope === 'personal') {
+        recipients = typeof payerId === 'string' ? [payerId] : [];
+      } else if (scope === 'custom') {
+        const custom = stringArray(e.customSplitParticipants);
+        recipients = custom.length > 0 ? custom : [...universe];
+      } else {
+        recipients = [...universe];
+      }
+      allocations = allocateEqual(amount, recipients, currency);
+    }
+
+    // Fold owed, dropping any recipient outside the universe (the load-bearing
+    // drop: an out-of-universe splitDistribution key never offsets the payer).
+    for (const [uid, value] of allocations) {
+      if (owed.has(uid)) owed.set(uid, owed.get(uid)!.plus(value));
+    }
+  }
+
+  for (const s of settlements) {
+    const currency = currencyOf(s.currency);
+    const amount = fromSubunits(amountFilsOf(s), currency);
+    const payerId = s.payerParticipantId;
+    const recipientId = s.recipientParticipantId;
+    if (typeof payerId === 'string' && settlementAdj.has(payerId)) {
+      settlementAdj.set(payerId, settlementAdj.get(payerId)!.plus(amount));
+    }
+    if (typeof recipientId === 'string' && settlementAdj.has(recipientId)) {
+      settlementAdj.set(recipientId, settlementAdj.get(recipientId)!.minus(amount));
+    }
+  }
+
+  const net = new Map<string, Decimal>();
+  for (const uid of universe) {
+    net.set(uid, paid.get(uid)!.plus(settlementAdj.get(uid)!).minus(owed.get(uid)!));
+  }
+  return net;
 }
 
 export async function recomputeNet(
@@ -369,6 +477,7 @@ export async function recomputeNet(
   const addNet = (uid: string, delta: Decimal): void => {
     net.set(uid, (net.get(uid) ?? new Money(0)).plus(delta));
   };
+  const perEventNet = new Map<string, Map<string, Decimal>>();
 
   // #261: function scope (NOT per-event) so cross-event currency mixing — an OMR
   // expense in e1 and a USD expense in e2 — is also detected. Expense fold only.
@@ -444,80 +553,19 @@ export async function recomputeNet(
     }
     if (universe.size === 0) continue;
 
-    const paid = new Map<string, Decimal>();
-    const owed = new Map<string, Decimal>();
-    const settlementAdj = new Map<string, Decimal>();
-    for (const uid of universe) {
-      paid.set(uid, new Money(0));
-      owed.set(uid, new Money(0));
-      settlementAdj.set(uid, new Money(0));
-    }
-
-    for (const e of expenses) {
-      const currency = currencyOf(e.currency);
-      // #261: normalize case — currencyOf returns the raw code, but the net math
-      // (currencyScale) uppercases internally, so a legacy/Admin group mixing
-      // 'omr' and 'OMR' decodes to a TRUE zero. Without toUpperCase the set would
-      // be {'omr','OMR'} (size 2) and falsely brick a genuinely-settled group —
-      // exactly the legacy/Admin population this guard exists to defend.
-      currencies.add(currency.toUpperCase());
-      const amount = fromSubunits(amountFilsOf(e), currency);
-      const payerId = e.payerParticipantId;
-      if (typeof payerId === 'string' && paid.has(payerId)) {
-        paid.set(payerId, paid.get(payerId)!.plus(amount));
-      }
-
-      const mode = decodeSplitMode(e.splitMode);
-      const distribution = decodeDistribution(e.splitDistribution, mode, currency);
-
-      let allocations: Map<string, Decimal>;
-      if (mode != null && mode !== 'equally' && distribution != null && distribution.size > 0) {
-        allocations =
-          mode === 'shares'
-            ? allocateShares(amount, distribution, currency)
-            : mode === 'exact'
-              ? allocateExact(amount, distribution, currency)
-              : allocatePercent(amount, distribution, currency);
-      } else {
-        // Equal-split branch by scope (expense_provider.dart:186-216). The
-        // global / sub_group / custom-empty universe is the FULL universe,
-        // NOT participantIds alone (Gate R1 finding #2).
-        const scope = typeof e.scope === 'string' ? e.scope : 'global';
-        let recipients: string[];
-        if (scope === 'personal') {
-          recipients = typeof payerId === 'string' ? [payerId] : [];
-        } else if (scope === 'custom') {
-          const custom = stringArray(e.customSplitParticipants);
-          recipients = custom.length > 0 ? custom : [...universe];
-        } else {
-          recipients = [...universe];
-        }
-        allocations = allocateEqual(amount, recipients, currency);
-      }
-
-      // Fold owed, dropping any recipient outside the universe (the load-bearing
-      // drop: an out-of-universe splitDistribution key never offsets the payer).
-      for (const [uid, value] of allocations) {
-        if (owed.has(uid)) owed.set(uid, owed.get(uid)!.plus(value));
-      }
-    }
-
-    for (const s of settlements) {
-      const currency = currencyOf(s.currency);
-      const amount = fromSubunits(amountFilsOf(s), currency);
-      const payerId = s.payerParticipantId;
-      const recipientId = s.recipientParticipantId;
-      if (typeof payerId === 'string' && settlementAdj.has(payerId)) {
-        settlementAdj.set(payerId, settlementAdj.get(payerId)!.plus(amount));
-      }
-      if (typeof recipientId === 'string' && settlementAdj.has(recipientId)) {
-        settlementAdj.set(recipientId, settlementAdj.get(recipientId)!.minus(amount));
-      }
-    }
-
-    for (const uid of universe) {
-      const delta = paid.get(uid)!.plus(settlementAdj.get(uid)!).minus(owed.get(uid)!);
+    const eventNet = foldEventNet(expenses, settlements, universe, currencies);
+    for (const [uid, delta] of eventNet) {
       addNet(uid, delta);
+    }
+
+    // #366: drill-down slice — same fold, participantIds-only universe. Skip
+    // empty-participant events (the client skips participants.isEmpty).
+    const drillUniverse = new Set<string>(participantIds);
+    if (drillUniverse.size > 0) {
+      perEventNet.set(
+        eventDoc.id,
+        foldEventNet(expenses, settlements, drillUniverse, currencies),
+      );
     }
   }
 
@@ -535,5 +583,11 @@ export async function recomputeNet(
     if (typeof recipientId === 'string') addNet(recipientId, amount.negated());
   }
 
-  return { net, liveEventRefs: liveEventDocs.map((doc) => doc.ref), currencies };
+  return {
+    net,
+    liveEventRefs: liveEventDocs.map((doc) => doc.ref),
+    currencies,
+    perEventNet,
+    eventCount: liveEventDocs.length,
+  };
 }
