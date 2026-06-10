@@ -1667,7 +1667,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorScopeGlobal.
   ///
   /// In en, this message translates to:
-  /// **'Equally'**
+  /// **'Everyone'**
   String get editorScopeGlobal;
 
   /// No description provided for @editorScopeSubGroup.
