@@ -768,6 +768,10 @@
   "authSignOutFirstBody": "لاستعادة حساب آخر، ستفقد الرحلات والمصاريف الموجودة على هذا الجهاز. ستبقى في السحابة فقط إذا كانت مرتبطة ببريد إلكتروني آخر — وإلا فستصبح بلا مالك.",
   "authSignOutFirstConfirm": "تسجيل الخروج والمتابعة",
 
+  "authMergeOnRecoverTitle": "استعادة حسابك",
+  "authMergeOnRecoverBody": "سنسجّل دخولك إلى ذلك الحساب وننقل رحلات ومصاريف هذا الهاتف إليه. لن تفقد أي شيء على هذا الجهاز.",
+  "authMergeOnRecoverConfirm": "استعادة ودمج",
+
   "groupSettleUpMissingTitle": "هذه المجموعة لم تعد متاحة",
   "groupSettleUpMissingMessage": "قد تكون قد أُزلت منها. اضغط أدناه للعودة إلى الرئيسية.",
   "groupSettleUpEventLabelFallback": "فعالية ...{suffix}",

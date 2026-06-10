@@ -1739,6 +1739,19 @@
     "description": "Destructive confirmation CTA on the SignOutFirstDialog."
   },
 
+  "authMergeOnRecoverTitle": "Restore your account",
+  "@authMergeOnRecoverTitle": {
+    "description": "Title of the MergeOnRecoverDialog — shown when the user restores an account on a device that already has local groups."
+  },
+  "authMergeOnRecoverBody": "We'll sign you in to that account and move this phone's trips and expenses into it. Nothing on this device is lost.",
+  "@authMergeOnRecoverBody": {
+    "description": "Body copy of the MergeOnRecoverDialog explaining that this device's data is merged into the restored account, not discarded."
+  },
+  "authMergeOnRecoverConfirm": "Restore and merge",
+  "@authMergeOnRecoverConfirm": {
+    "description": "Confirmation CTA on the MergeOnRecoverDialog."
+  },
+
   "groupSettleUpMissingTitle": "This group is no longer available",
   "@groupSettleUpMissingTitle": {
     "description": "Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed)."

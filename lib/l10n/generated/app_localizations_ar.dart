@@ -2591,6 +2591,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authSignOutFirstConfirm => 'تسجيل الخروج والمتابعة';
 
   @override
+  String get authMergeOnRecoverTitle => 'استعادة حسابك';
+
+  @override
+  String get authMergeOnRecoverBody =>
+      'سنسجّل دخولك إلى ذلك الحساب وننقل رحلات ومصاريف هذا الهاتف إليه. لن تفقد أي شيء على هذا الجهاز.';
+
+  @override
+  String get authMergeOnRecoverConfirm => 'استعادة ودمج';
+
+  @override
   String get groupSettleUpMissingTitle => 'هذه المجموعة لم تعد متاحة';
 
   @override

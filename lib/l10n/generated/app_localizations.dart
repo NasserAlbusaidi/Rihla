@@ -4410,6 +4410,24 @@ abstract class AppLocalizations {
   /// **'Sign out and continue'**
   String get authSignOutFirstConfirm;
 
+  /// Title of the MergeOnRecoverDialog — shown when the user restores an account on a device that already has local groups.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore your account'**
+  String get authMergeOnRecoverTitle;
+
+  /// Body copy of the MergeOnRecoverDialog explaining that this device's data is merged into the restored account, not discarded.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll sign you in to that account and move this phone\'s trips and expenses into it. Nothing on this device is lost.'**
+  String get authMergeOnRecoverBody;
+
+  /// Confirmation CTA on the MergeOnRecoverDialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore and merge'**
+  String get authMergeOnRecoverConfirm;
+
   /// Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed).
   ///
   /// In en, this message translates to:

@@ -2539,6 +2539,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authSignOutFirstConfirm => 'Sign out and continue';
 
   @override
+  String get authMergeOnRecoverTitle => 'Restore your account';
+
+  @override
+  String get authMergeOnRecoverBody =>
+      'We\'ll sign you in to that account and move this phone\'s trips and expenses into it. Nothing on this device is lost.';
+
+  @override
+  String get authMergeOnRecoverConfirm => 'Restore and merge';
+
+  @override
   String get groupSettleUpMissingTitle => 'This group is no longer available';
 
   @override
