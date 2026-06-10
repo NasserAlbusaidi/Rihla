@@ -140,9 +140,15 @@ class _QrInviteSheet extends StatelessWidget {
                     label: context.l10n.groupShareViaWhatsApp,
                     onTap: () {
                       HapticService.lightClick();
+                      // The fallback runs after an async canLaunchUrl probe, so
+                      // the sheet may be gone by then — guard the context before
+                      // touching it (mirrors the Copy button above).
                       shareInviteViaWhatsApp(
                         _inviteMessage(context),
-                        fallback: () => _shareInvite(context),
+                        fallback: () async {
+                          if (!context.mounted) return;
+                          await _shareInvite(context);
+                        },
                       );
                     },
                   ),

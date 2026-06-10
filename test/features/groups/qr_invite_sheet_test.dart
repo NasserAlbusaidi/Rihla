@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -116,6 +118,52 @@ void main() {
       expect(text, contains('rihla-safar.web.app/join/ABC123'));
       expect(text, contains('ABC123'));
       expect(text, isNot(contains('rihla.app/')));
+    },
+  );
+
+  testWidgets(
+    'dismissing the sheet during the install probe does not crash on a '
+    'deactivated context (#354)',
+    (tester) async {
+      // Gate the probe so the sheet can be torn down mid-await, then resolve
+      // it to drive the fallback against a now-unmounted BuildContext.
+      final probe = Completer<bool>();
+      final launcher = _MockUrlLauncher();
+      when(() => launcher.canLaunch(any())).thenAnswer((_) => probe.future);
+      UrlLauncherPlatform.instance = launcher;
+
+      const shareChannel = MethodChannel('dev.fluttercommunity.plus/share');
+      var shareCalls = 0;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        shareChannel,
+        (call) async {
+          if (call.method == 'share') shareCalls++;
+          return '';
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(shareChannel, null),
+      );
+
+      await openSheet(tester);
+      await tester.tap(find.byKey(GroupKeys.inviteWhatsAppButton));
+      await tester.pump(); // suspend inside the pending canLaunch probe
+
+      // Dismiss the bottom sheet (barrier tap) while the probe is in flight.
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      probe.complete(false); // not installed → fallback runs post-await
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'fallback must guard the deactivated context',
+      );
+      // And it must not try to share through a dead context either.
+      expect(shareCalls, 0);
     },
   );
 
