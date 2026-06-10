@@ -8,6 +8,7 @@ import '../../../core/models/split_mode.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
@@ -106,7 +107,15 @@ class EditExpenseScreen extends ConsumerWidget {
         );
     final goingEqual = splitChanged && payload.splitMode == SplitMode.equally;
 
-    await ref
+    // #104/#412: capture before the await so post-write effects survive a
+    // disposal during the (now bounded) wait.
+    final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
+    final connectivity = ref.read(connectivityProvider.notifier);
+    final connectivityStatus = ref.read(connectivityProvider);
+
+    // #412: never gate the UI on the raw server-ack future — offline it stays
+    // pending until reconnect. Race it; queued means the SDK will replay.
+    final writeFuture = ref
         .read(expenseServiceProvider)
         .updateExpense(
           groupId: groupId,
@@ -137,14 +146,27 @@ class EditExpenseScreen extends ConsumerWidget {
               : null,
           lastEditedBy: ref.read(currentUserIdProvider), // #248
         );
+    final outcome = await awaitServerAck(
+      writeFuture,
+      skipWait: connectivityStatus != ConnectivityStatus.online,
+    );
 
-    ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
-    ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
-    ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
+    ledgerRevision.state++; // #104: refresh home balance
+    if (outcome == WriteAck.acked) {
+      connectivity.noteLocalWrite(); // #357
+    } else {
+      connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+    }
     HapticService.success();
 
     final ctx = ref.context;
-    if (ctx.mounted) ctx.pop();
+    if (ctx.mounted) {
+      // Belt-and-braces only — the ledger stream updates from local snapshots.
+      ref.invalidate(
+        eventExpensesProvider((groupId: groupId, eventId: eventId)),
+      );
+      ctx.pop();
+    }
   }
 
   bool _distributionEquals(Map<String, dynamic>? a, Map<String, dynamic>? b) {
@@ -163,19 +185,34 @@ class EditExpenseScreen extends ConsumerWidget {
     WidgetRef ref,
     Expense expense,
   ) async {
-    await ref
-        .read(expenseServiceProvider)
-        .deleteExpense(
-          groupId: groupId,
-          eventId: eventId,
-          expenseId: expense.id,
-          lastEditedBy: ref.read(currentUserIdProvider), // #248
-        );
-    ref.invalidate(eventExpensesProvider((groupId: groupId, eventId: eventId)));
-    ref.read(ledgerRevisionProvider.notifier).state++; // #104: refresh home balance
-    ref.read(connectivityProvider.notifier).noteLocalWrite(); // #357
+    // #104/#412: capture before the await so post-write effects survive a
+    // disposal during the (now bounded) wait.
+    final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
+    final connectivity = ref.read(connectivityProvider.notifier);
+    final connectivityStatus = ref.read(connectivityProvider);
+
+    final outcome = await awaitServerAck(
+      ref
+          .read(expenseServiceProvider)
+          .deleteExpense(
+            groupId: groupId,
+            eventId: eventId,
+            expenseId: expense.id,
+            lastEditedBy: ref.read(currentUserIdProvider), // #248
+          ),
+      skipWait: connectivityStatus != ConnectivityStatus.online,
+    );
+    ledgerRevision.state++; // #104: refresh home balance
+    if (outcome == WriteAck.acked) {
+      connectivity.noteLocalWrite(); // #357
+    } else {
+      connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+    }
     HapticService.success();
     if (context.mounted) {
+      ref.invalidate(
+        eventExpensesProvider((groupId: groupId, eventId: eventId)),
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.editorExpenseDeleted),
