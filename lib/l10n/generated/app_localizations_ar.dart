@@ -1107,7 +1107,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String settleUpOptimizedPayments(Object subjectName) {
-    return 'تم تحسين عدد الدفعات ضمن $subjectName ليكون أقل ما يمكن.';
+    return 'تم تقليل عدد الدفعات ضمن $subjectName.';
   }
 
   @override

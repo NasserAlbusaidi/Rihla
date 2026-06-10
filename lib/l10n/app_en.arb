@@ -853,7 +853,7 @@
       "subjectName": {}
     }
   },
-  "settleUpOptimizedPayments": "Optimized to minimise the number of payments across {subjectName}.",
+  "settleUpOptimizedPayments": "Optimized to reduce the number of payments across {subjectName}.",
   "@settleUpOptimizedPayments": {
     "placeholders": {
       "subjectName": {}
