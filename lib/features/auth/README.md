@@ -21,4 +21,4 @@
 - **delete_account_dialog.dart**: Confirmation dialog before triggering the server-side account-deletion cascade.
 - **delete_account_retry_dialog.dart**: Retry prompt shown when a deletion attempt fails partway.
 - **sign_out_confirm_dialog.dart**: Confirmation dialog for signing out the current device.
-- **sign_out_first_dialog.dart**: Prompt advising the user to link/recover an email before signing out (anon-auth data-loss guard).
+- **merge_on_recover_dialog.dart**: Merge consent shown when recovery starts on a device that already has groups (#427) — the anon UID stays signed in and `completeRecovery`'s server migration merges its data into the restored account (replaced the sign-out-first dialog, whose pre-send sign-out orphaned the device's data).
