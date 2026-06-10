@@ -3231,7 +3231,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupYourNameInGroupLabel.
   ///
   /// In en, this message translates to:
-  /// **'Your name in this group'**
+  /// **'Your name'**
   String get groupYourNameInGroupLabel;
 
   /// No description provided for @groupYourNameHint.
@@ -3243,7 +3243,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupDifferentNameHelper.
   ///
   /// In en, this message translates to:
-  /// **'You can use a different name in each group.'**
+  /// **'Shown in all your groups. Changing it anywhere updates it everywhere.'**
   String get groupDifferentNameHelper;
 
   /// No description provided for @groupCreateError.
