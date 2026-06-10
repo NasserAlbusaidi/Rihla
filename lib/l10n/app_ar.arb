@@ -294,7 +294,7 @@
   "editorViewOnlyTitle": "عرض فقط",
   "editorViewOnlyMessage": "يمكن فقط للمشاركين في هذه الفعالية تعديل المصاريف.",
   "editorExpenseDeleted": "تم حذف المصروف",
-  "editorScopeGlobal": "بالتساوي",
+  "editorScopeGlobal": "الجميع",
   "editorScopeSubGroup": "تقسيم المجموعة",
   "editorScopeCustom": "مخصص",
   "editorScopePersonal": "شخصي",

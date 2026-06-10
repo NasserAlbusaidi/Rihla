@@ -955,7 +955,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorExpenseDeleted => 'تم حذف المصروف';
 
   @override
-  String get editorScopeGlobal => 'بالتساوي';
+  String get editorScopeGlobal => 'الجميع';
 
   @override
   String get editorScopeSubGroup => 'تقسيم المجموعة';

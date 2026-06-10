@@ -926,7 +926,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorExpenseDeleted => 'Expense deleted';
 
   @override
-  String get editorScopeGlobal => 'Equally';
+  String get editorScopeGlobal => 'Everyone';
 
   @override
   String get editorScopeSubGroup => 'Group split';
