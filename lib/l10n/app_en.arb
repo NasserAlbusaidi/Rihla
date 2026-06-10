@@ -1726,17 +1726,17 @@
     }
   },
 
-  "authSignOutFirstTitle": "This device is already in use",
-  "@authSignOutFirstTitle": {
-    "description": "Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one."
+  "authMergeOnRecoverTitle": "Restore your account",
+  "@authMergeOnRecoverTitle": {
+    "description": "Title of the MergeOnRecoverDialog — shown when the user restores an account on a device that already has local groups."
   },
-  "authSignOutFirstBody": "To restore a different account, you'll lose the trips and expenses on this device. They'll stay in the cloud only if they're tied to a different linked email — otherwise they'll be orphaned.",
-  "@authSignOutFirstBody": {
-    "description": "Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account."
+  "authMergeOnRecoverBody": "We'll sign you in to that account and move this phone's trips and expenses into it. Nothing on this device is lost.",
+  "@authMergeOnRecoverBody": {
+    "description": "Body copy of the MergeOnRecoverDialog explaining that this device's data is merged into the restored account, not discarded."
   },
-  "authSignOutFirstConfirm": "Sign out and continue",
-  "@authSignOutFirstConfirm": {
-    "description": "Destructive confirmation CTA on the SignOutFirstDialog."
+  "authMergeOnRecoverConfirm": "Restore and merge",
+  "@authMergeOnRecoverConfirm": {
+    "description": "Confirmation CTA on the MergeOnRecoverDialog."
   },
 
   "groupSettleUpMissingTitle": "This group is no longer available",
