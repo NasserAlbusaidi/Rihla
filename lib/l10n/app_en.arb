@@ -790,7 +790,7 @@
   "editorViewOnlyTitle": "View only",
   "editorViewOnlyMessage": "Only people in this event can edit expenses.",
   "editorExpenseDeleted": "Expense deleted",
-  "editorScopeGlobal": "Equally",
+  "editorScopeGlobal": "Everyone",
   "editorScopeSubGroup": "Group split",
   "editorScopeCustom": "Custom",
   "editorScopePersonal": "Personal",
@@ -853,7 +853,7 @@
       "subjectName": {}
     }
   },
-  "settleUpOptimizedPayments": "Optimized to minimise the number of payments across {subjectName}.",
+  "settleUpOptimizedPayments": "Optimized to reduce the number of payments across {subjectName}.",
   "@settleUpOptimizedPayments": {
     "placeholders": {
       "subjectName": {}

@@ -40,6 +40,7 @@ class BottomNavShell extends StatefulWidget {
 
 class _BottomNavShellState extends State<BottomNavShell> {
   int _currentIndex = 0;
+  final Set<int> _visited = {0};
 
   @override
   Widget build(BuildContext context) {
@@ -51,23 +52,37 @@ class _BottomNavShellState extends State<BottomNavShell> {
     );
   }
 
+  Widget _buildTab(int index) {
+    switch (index) {
+      case 0:
+        return widget.child;
+      case 1:
+        return const CrossGroupActivityScreen();
+      case 2:
+        return const ProfileScreen();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   Widget _buildBody(BuildContext context) {
-    final tabs = [
-      widget.child,
-      const CrossGroupActivityScreen(),
-      const ProfileScreen(),
-    ];
     return GrainOverlay(
       opacity: 0.035,
       child: Stack(
-        children: List.generate(tabs.length, (index) {
+        children: List.generate(3, (index) {
+          // Lazy-build (#113): don't construct a tab's subtree until it has
+          // been visited at least once. Once visited it stays mounted so
+          // AnimatedOpacity preserves its state across tab switches.
+          if (!_visited.contains(index)) {
+            return const SizedBox.shrink();
+          }
           return AnimatedOpacity(
             duration: context.motion.standard,
             curve: context.motion.curveStandard,
             opacity: index == _currentIndex ? 1.0 : 0.0,
             child: IgnorePointer(
               ignoring: index != _currentIndex,
-              child: tabs[index],
+              child: _buildTab(index),
             ),
           );
         }),
@@ -101,7 +116,10 @@ class _BottomNavShellState extends State<BottomNavShell> {
           try {
             Haptics.vibrate(HapticsType.selection);
           } catch (_) {}
-          setState(() => _currentIndex = i);
+          setState(() {
+            _currentIndex = i;
+            _visited.add(i);
+          });
         },
         height: 72,
         elevation: 8,
