@@ -15,6 +15,7 @@ import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/directional_icon.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
@@ -521,6 +522,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
               },
               onAction: _submit,
             ),
+            const OfflineBanner(),
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.only(bottom: context.spacing.space24),
