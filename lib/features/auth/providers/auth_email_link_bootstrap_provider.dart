@@ -59,8 +59,14 @@ void _showSnack(String message, {bool isError = false}) {
   );
 }
 
-String _humanize(FirebaseAuthException error) {
-  switch (error.code) {
+/// Maps a [FirebaseAuthException.code] to a user-facing message.
+///
+/// Top-level + code-keyed (not exception-keyed) so the same copy can be reused
+/// from the post-restart failure surface, which only has the persisted code —
+/// not the original exception (recovery `System.exit(0)`s before the live catch
+/// can show its SnackBar).
+String humanizeAuthErrorCode(String code) {
+  switch (code) {
     case 'invalid-action-code':
     case 'expired-action-code':
       return 'This link has expired or was already used. Send a new one.';
@@ -78,9 +84,12 @@ String _humanize(FirebaseAuthException error) {
       return 'This email is already linked to a Rihla account. '
           'Restore from that account instead.';
     default:
-      return 'Something went wrong (${error.code}). Please try again.';
+      return 'Something went wrong ($code). Please try again.';
   }
 }
+
+String _humanize(FirebaseAuthException error) =>
+    humanizeAuthErrorCode(error.code);
 
 /// Starts the email-link listener early enough to catch cold-start links.
 ///
