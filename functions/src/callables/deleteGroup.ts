@@ -276,6 +276,16 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
       // append-only audit trail; a stale invite code is rejected at join time
       // (joinGroupByInviteCode.ts:255). memberIds is left intact so group
       // settlement reads stay authorized and re-runs are idempotent.
+      // #366: drop the balance-aggregate display cache BEFORE the group doc
+      // flips isDeleted — a re-run after that flip short-circuits at the
+      // alreadyDeleted check and would never retry this delete. Deleting a
+      // missing doc is a no-op, and if a crash lands between this delete and
+      // the finalize batch, the next money write (or the deleteGroup retry)
+      // simply recreates/redeletes it. The event soft-deletes below cannot
+      // resurrect it: their triggers read the group doc post-commit, see
+      // isDeleted:true, and skip.
+      await groupRef.collection('aggregates').doc('balance').delete();
+
       const now = Timestamp.now();
       const writer = new BatchWriter(db);
       finalizeStarted = true;

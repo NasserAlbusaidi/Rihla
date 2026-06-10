@@ -870,6 +870,17 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // #366 — server-maintained balance aggregate (display cache for the home
+      // dashboard). Written ONLY by the balanceAggregator triggers and the
+      // balanceReconciler via the Admin SDK (which bypasses rules). Clients
+      // read, never write — the aggregate must never become an OUTBOUND money
+      // surface, and a forged client write would corrupt the home display for
+      // every member.
+      match /aggregates/{aggregateId} {
+        allow read: if isGroupMember(groupId);
+        allow create, update, delete: if false;
+      }
+
       match /settlements/{settlementId} {
         function validGroupSettlementBase(data) {
           return data.keys().hasOnly([
@@ -905,10 +916,9 @@ service cloud.firestore {
           // construction (group_settle_up_screen.dart), so a divergent code is a
           // crafted write. #261 (Model A): event-settlement equality is now ALSO
           // enforced (validEventSettlementBase, via currencyMatchesGroup) — both
-          // settlement scopes pin to group.currency. A tautology today (event
-          // settle-up still hardcodes 'OMR' and every group is OMR); Phase 2 MUST
-          // move settle-up/add-expense off the 'OMR' hardcode to group.currency or
-          // non-OMR groups' settle-up/expense writes get PERMISSION_DENIED.
+          // settlement scopes pin to group.currency. Since #376/#377 BOTH client
+          // settle-up paths thread group.currency into the write (the old 'OMR'
+          // hardcode is gone), so this equality is live, not a tautology.
           && data.currency == groupData(groupId).currency
           && validSettlementCore(data);
         }

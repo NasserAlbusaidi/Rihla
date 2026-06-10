@@ -340,18 +340,19 @@ export interface RecomputeResult {
   // meaningless scalar.
   //
   // SCOPE — built from EXPENSES ONLY, NOT settlements. This is deliberate and
-  // load-bearing, NOT an oversight: settlements are written OMR-scale even in a
-  // non-OMR group by convention (settle_up_screen hardcodes 'OMR'), so a
-  // legitimate single-expense-currency group routinely carries an OMR settlement
+  // load-bearing, NOT an oversight: LEGACY (pre-#376/#377) settlements were
+  // written OMR-scale even in a non-OMR group (the client used to hardcode
+  // 'OMR'; since #376/#377 both settle-up paths write group.currency), so a
+  // legitimate single-expense-currency group can carry an OMR settlement
   // against a non-OMR debt — folding settlement currency would (a) falsely flag
   // that group as mixed (false-nonzero → a STUCK, undeletable group), (b) break
   // deleteGroup test 9, and (c) diverge from the client BalanceCalculator (which
   // has the SAME currency-blindness and shows that group as settled) — a parity
   // break. The residual gap this leaves — a non-OMR expense "settled" by an
   // incomparable OMR settlement — is the DEEPER expense-vs-settlement currency-
-  // blindness that Model B (per-currency buckets) owns; it is unreachable for
-  // app data under Model A (every write is OMR) and pre-exists this guard. Do
-  // NOT "fix" it here by adding settlement currencies.
+  // blindness that Model B (per-currency buckets) owns; it defends legacy/Admin
+  // docs and pre-exists this guard. Do NOT "fix" it here by adding settlement
+  // currencies.
   currencies: Set<string>;
 }
 
