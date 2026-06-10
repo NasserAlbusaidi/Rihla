@@ -23,7 +23,7 @@ void main() {
         onScopeChanged: (scope) => selectedScope = scope,
       );
 
-      expect(find.text('Equally'), findsOneWidget);
+      expect(find.text('Everyone'), findsOneWidget);
       expect(find.text('Custom'), findsOneWidget);
       expect(find.text('Personal'), findsOneWidget);
       // #247: payer attribution is no longer leader-gated. A non-leader can

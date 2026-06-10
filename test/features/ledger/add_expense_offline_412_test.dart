@@ -9,6 +9,7 @@ import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -121,6 +122,7 @@ void main() {
       expect(container.read(ledgerRevisionProvider), 1);
       // …and the banner state reads "Saved — will sync" (#357/#412).
       expect(connectivity.state, ConnectivityStatus.syncing);
+      expect(find.byType(OfflineBanner), findsOneWidget);
     },
   );
 }

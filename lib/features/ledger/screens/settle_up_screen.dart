@@ -14,6 +14,7 @@ import '../../../core/utils/settlement_write_error.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -143,6 +144,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         child: Column(
           children: [
             _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
+            const OfflineBanner(),
             Expanded(
               child: expensesAsync.when(
                 data: (expenses) {

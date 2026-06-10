@@ -380,7 +380,7 @@ Settlement adjustments are applied after the split phase. The result is a `List<
 
 ### Settlement Optimisation
 
-**`calculateOptimalSettlements()`** uses a greedy minimum-transactions algorithm:
+**`calculateOptimalSettlements()`** uses a greedy heuristic (largest debtor ↔ largest creditor) — conservation-correct and near-optimal for typical small groups, but not provably the minimum (true minimization is NP-hard; no test asserts minimality):
 
 1. Separate participants into debtors (`netBalance < 0`) and creditors (`netBalance > 0`)
 2. Sort debtors ascending by balance; creditors descending

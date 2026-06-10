@@ -283,8 +283,22 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Groups'), findsOneWidget);
+      // The GROUPS section ('Desert Crew' / 'Mountain Pals' rows) renders below
+      // the fold — scroll each row into view. Before #113's lazy tab-build these
+      // names also appeared in the eagerly-built (off-screen) Activity feed, so
+      // the missing scroll was masked and the test passed for the wrong reason.
+      final scrollable = find.byType(Scrollable).first;
+      Future<void> scrollTo(Finder target) async {
+        for (var i = 0; i < 12 && target.evaluate().isEmpty; i++) {
+          await tester.drag(scrollable, const Offset(0, -250));
+          await tester.pump();
+        }
+        await tester.pumpAndSettle();
+      }
+
+      await scrollTo(find.text('Desert Crew'));
       expect(find.text('Desert Crew'), findsOneWidget);
+      await scrollTo(find.text('Mountain Pals'));
       expect(find.text('Mountain Pals'), findsOneWidget);
     });
 

@@ -11,7 +11,7 @@ void main() {
     test('returns English labels for each ExpenseScope', () async {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
-      expect(expenseScopeDisplayName(ExpenseScope.global, l10n), 'Equally');
+      expect(expenseScopeDisplayName(ExpenseScope.global, l10n), 'Everyone');
       expect(
         expenseScopeDisplayName(ExpenseScope.subGroup, l10n),
         'Group split',

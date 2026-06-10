@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -101,6 +102,7 @@ void main() {
 
       await tester.tap(find.text('Open edit'));
       await tester.pumpAndSettle();
+      expect(find.byType(OfflineBanner), findsOneWidget);
       await tester.ensureVisible(find.text('Delete this expense'));
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
