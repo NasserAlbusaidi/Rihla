@@ -168,6 +168,10 @@ class GroupMembersSection extends ConsumerWidget {
             content: Text(
               context.l10n.groupSettleWithBeforeRemoving(member.displayName),
             ),
+            // Flutter >=3.41 defaults action-bearing snackbars to persist:
+            // true (never auto-dismiss) — #411.
+            persist: false,
+            duration: const Duration(seconds: 8),
             action: SnackBarAction(
               label: context.l10n.groupSettleUp,
               onPressed: () => context.push('/group/$groupId/settle-up'),
@@ -197,6 +201,10 @@ class GroupMembersSection extends ConsumerWidget {
             content: Text(
               context.l10n.groupSettleWithBeforeRemoving(member.displayName),
             ),
+            // Flutter >=3.41 defaults action-bearing snackbars to persist:
+            // true (never auto-dismiss) — #411.
+            persist: false,
+            duration: const Duration(seconds: 8),
             action: SnackBarAction(
               label: context.l10n.groupSettleUp,
               onPressed: () => context.push('/group/$groupId/settle-up'),

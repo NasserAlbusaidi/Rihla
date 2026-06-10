@@ -838,6 +838,36 @@ void main() {
     );
 
     testWidgets(
+      '#411: blocked-remove settle-up snackbar auto-dismisses',
+      (tester) async {
+        // On Flutter >=3.41 a SnackBar with an action defaults to persist: true
+        // and never times out (snack_bar.dart: persist = persist ?? action != null).
+        await tester.pumpWidget(
+          _wrapCreatorWithBalances(
+            const GroupSettingsScreen(groupId: 'group-1'),
+            prefs,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Settle up with Bob before removing them.'),
+          findsOneWidget,
+        );
+
+        // Past the explicit 8s duration the timeout must dismiss it.
+        await tester.pump(const Duration(seconds: 9));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Settle up with Bob before removing them.'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
       'delete navigates home even when group stream invalidates settings route',
       (tester) async {
         final groupController = StreamController<Group?>();
