@@ -16,6 +16,21 @@ class _RecordingCacheGate implements FirestoreCacheGate {
   Future<void> clearPersistence() async => clearCount++;
 }
 
+/// Counts anonymous sign-ins so a test can prove one never happened —
+/// MockFirebaseAuth would re-sign-in the same mockUser, leaving the uid
+/// unchanged, so uid equality alone cannot detect a spurious mint.
+class _CountingMockFirebaseAuth extends MockFirebaseAuth {
+  _CountingMockFirebaseAuth({required super.signedIn, super.mockUser});
+
+  int anonSignIns = 0;
+
+  @override
+  Future<UserCredential> signInAnonymously() {
+    anonSignIns++;
+    return super.signInAnonymously();
+  }
+}
+
 /// Behavioral tests for Firebase anonymous auth (DATA-05).
 ///
 /// Tests validate the anonymous auth contract that
@@ -176,6 +191,39 @@ void main() {
         expect(auth.currentUser!.uid, 'restored-uid');
         expect(gate.clearCount, 0);
         expect(prefs.getString(kLastActiveUidKey), 'restored-uid');
+      },
+    );
+
+    test(
+      'a restored EMAIL-LINKED session is KEPT on cold boot — no anonymous '
+      'mint (#427 merge precondition)',
+      () async {
+        // After a populated-device merge, completeRecovery restarts the app
+        // signed in as the recovered email-linked user. The cold boot MUST
+        // land on that uid: the restored branch checks only
+        // `restoredUser != null` (uid-type-agnostic), never re-mints. If this
+        // ever regresses, the merge delivers the user to a fresh empty anon
+        // instead of their restored account. Mirrors the #213 anon-kept test
+        // for a non-anonymous session.
+        final auth = _CountingMockFirebaseAuth(
+          signedIn: true,
+          mockUser: MockUser(
+            uid: 'linked-uid',
+            isAnonymous: false,
+            email: 'foo@example.com',
+          ),
+        );
+
+        await FirebaseConfig.ensureAnonymousSession(
+          runCacheBarrier: false,
+          authOverride: auth,
+          verifyTokenOverride: (_) async {},
+        );
+
+        expect(auth.anonSignIns, 0);
+        expect(auth.currentUser!.uid, 'linked-uid');
+        expect(auth.currentUser!.isAnonymous, isFalse);
+        expect(auth.currentUser!.email, 'foo@example.com');
       },
     );
 
