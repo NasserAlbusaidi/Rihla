@@ -1858,14 +1858,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupNameHint => 'e.g. Family trip';
 
   @override
-  String get groupYourNameInGroupLabel => 'Your name in this group';
+  String get groupYourNameInGroupLabel => 'Your name';
 
   @override
   String get groupYourNameHint => 'how friends will see you';
 
   @override
   String get groupDifferentNameHelper =>
-      'You can use a different name in each group.';
+      'Shown in all your groups. Changing it anywhere updates it everywhere.';
 
   @override
   String groupCreateError(Object error) {

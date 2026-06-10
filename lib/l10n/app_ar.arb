@@ -562,9 +562,9 @@
 
   "groupNameLabel": "اسم المجموعة",
   "groupNameHint": "مثال: رحلة العائلة",
-  "groupYourNameInGroupLabel": "اسمك في هذه المجموعة",
+  "groupYourNameInGroupLabel": "اسمك",
   "groupYourNameHint": "كما سيراك أصدقاؤك",
-  "groupDifferentNameHelper": "يمكنك استخدام اسم مختلف في كل مجموعة.",
+  "groupDifferentNameHelper": "يظهر هذا الاسم في جميع مجموعاتك — تغييره في أي مكان يغيّره في كل مكان.",
   "groupCreateError": "خطأ: {error}",
   "groupNew": "مجموعة جديدة",
   "groupCreate": "إنشاء",

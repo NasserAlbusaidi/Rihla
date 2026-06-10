@@ -1302,9 +1302,9 @@
 
   "groupNameLabel": "Group Name",
   "groupNameHint": "e.g. Family trip",
-  "groupYourNameInGroupLabel": "Your name in this group",
+  "groupYourNameInGroupLabel": "Your name",
   "groupYourNameHint": "how friends will see you",
-  "groupDifferentNameHelper": "You can use a different name in each group.",
+  "groupDifferentNameHelper": "Shown in all your groups. Changing it anywhere updates it everywhere.",
   "groupCreateError": "Error: {error}",
   "@groupCreateError": {
     "placeholders": {

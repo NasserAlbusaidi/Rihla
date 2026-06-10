@@ -210,10 +210,18 @@ void main() {
       expect(find.text('e.g. Family trip'), findsOneWidget);
     });
 
-    testWidgets('renders Your name in this group label', (tester) async {
+    testWidgets('renders Your name label with global-name helper (#413)', (
+      tester,
+    ) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
-      expect(find.text('Your name in this group'), findsOneWidget);
+      expect(find.text('Your name'), findsOneWidget);
+      expect(
+        find.text(
+          'Shown in all your groups. Changing it anywhere updates it everywhere.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('renders Arabic labels and required-name error', (
@@ -225,7 +233,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('اسم المجموعة'), findsOneWidget);
-      expect(find.text('اسمك في هذه المجموعة'), findsOneWidget);
+      expect(find.text('اسمك'), findsOneWidget);
 
       await tester.tap(find.text('إنشاء'));
       await tester.pumpAndSettle();
