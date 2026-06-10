@@ -11,6 +11,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -24,6 +25,7 @@ import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
+import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// Widget tests for GroupSettleUpScreen — single-page wireframe layout.
@@ -172,10 +174,18 @@ Widget _wrap(
 }
 
 class _RecordingGroupSettlementService extends GroupSettlementService {
-  _RecordingGroupSettlementService({this.throwOnAdd = false, this.errorToThrow})
-    : super.withFirestore(FakeFirebaseFirestore());
+  _RecordingGroupSettlementService({
+    this.throwOnAdd = false,
+    this.errorToThrow,
+    this.neverAck = false,
+  }) : super.withFirestore(FakeFirebaseFirestore());
 
   final bool throwOnAdd;
+
+  /// #412: when true, [addGroupSettlement] records the call but its future
+  /// never completes — the real SDK's offline behavior (server ack only
+  /// arrives on reconnect), which FakeFirebaseFirestore cannot model.
+  final bool neverAck;
 
   /// When set, [addGroupSettlement] throws this exact error (e.g. a
   /// [FirebaseException] with a specific code) so #360's error mapping can be
@@ -225,6 +235,9 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
       payerName: payerName,
       recipientName: recipientName,
     ));
+    if (neverAck) {
+      return Completer<Settlement>().future;
+    }
     return Settlement(
       id: 'recorded-${addCalls.length}',
       tripId: groupId,
@@ -693,6 +706,62 @@ void main() {
         'recipientId': 'uid-alice',
       });
     });
+
+    testWidgets(
+      '#412: an offline group settlement whose write never acks still '
+      'confirms, logs activity, and does NOT bump the ledger revision',
+      (tester) async {
+        final settlementService = _RecordingGroupSettlementService(
+          neverAck: true,
+        );
+        final activityService = _RecordingGroupActivityService();
+        final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
+          ..setOffline();
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            currentUid: 'uid-bob',
+            extraOverrides: [
+              connectivityProvider.overrideWith((ref) => connectivity),
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(GroupSettleUpScreen)),
+        );
+
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pump();
+        // Past kWriteAckTimeout — fixed pumps only (never pumpAndSettle while
+        // a write future is deliberately left pending).
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pump(const Duration(milliseconds: 500));
+
+        expect(
+          find.text('Settlement recorded — will sync when online.'),
+          findsOneWidget,
+        );
+        expect(connectivity.state, ConnectivityStatus.syncing);
+        // The settlement write was handed to the SDK queue…
+        expect(settlementService.addCalls, hasLength(1));
+        // …and the activity entry was ALSO queued — before #412 it sat after
+        // the hung await and was lost if the app died mid-hang.
+        expect(activityService.logCalls, hasLength(1));
+        // Group settlements are live-watched (groupSettlementsProvider) — the
+        // one-shot home revision must NOT be bumped (CLAUDE.md invariant).
+        expect(container.read(ledgerRevisionProvider), 0);
+      },
+    );
 
     testWidgets('recording zero amount shows validation snackbar', (
       tester,
