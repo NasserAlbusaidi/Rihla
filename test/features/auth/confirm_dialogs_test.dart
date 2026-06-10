@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/widgets/delete_account_dialog.dart';
 import 'package:safar/features/auth/widgets/delete_account_retry_dialog.dart';
+import 'package:safar/features/auth/widgets/merge_on_recover_dialog.dart';
 import 'package:safar/features/auth/widgets/sign_out_confirm_dialog.dart';
-import 'package:safar/features/auth/widgets/sign_out_first_dialog.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 // #227 — direct contract coverage for the four destructive/confirmation
@@ -68,10 +68,10 @@ void main() {
       cancel: const Key('signOutConfirm.cancel'),
     ),
     (
-      name: 'SignOutFirstDialog',
-      show: SignOutFirstDialog.show,
-      confirm: const Key('signOutFirst.confirm'),
-      cancel: const Key('signOutFirst.cancel'),
+      name: 'MergeOnRecoverDialog',
+      show: MergeOnRecoverDialog.show,
+      confirm: const Key('mergeOnRecover.confirm'),
+      cancel: const Key('mergeOnRecover.cancel'),
     ),
     (
       name: 'DeleteAccountRetryDialog',
@@ -117,6 +117,18 @@ void main() {
     );
     expect(
       find.textContaining('foo@example.com', findRichText: true),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('MergeOnRecoverDialog renders the merge-consent copy', (
+    tester,
+  ) async {
+    await openDialog(tester, MergeOnRecoverDialog.show);
+    expect(find.text('Restore your account'), findsOneWidget);
+    expect(find.text('Restore and merge'), findsOneWidget);
+    expect(
+      find.textContaining('Nothing on this device is lost', findRichText: true),
       findsOneWidget,
     );
   });

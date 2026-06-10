@@ -2529,14 +2529,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get authSignOutFirstTitle => 'This device is already in use';
+  String get authMergeOnRecoverTitle => 'Restore your account';
 
   @override
-  String get authSignOutFirstBody =>
-      'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.';
+  String get authMergeOnRecoverBody =>
+      'We\'ll sign you in to that account and move this phone\'s trips and expenses into it. Nothing on this device is lost.';
 
   @override
-  String get authSignOutFirstConfirm => 'Sign out and continue';
+  String get authMergeOnRecoverConfirm => 'Restore and merge';
 
   @override
   String get groupSettleUpMissingTitle => 'This group is no longer available';

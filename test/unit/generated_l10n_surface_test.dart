@@ -67,8 +67,8 @@ void main() {
       final en = AppLocalizationsEn();
       expect(l10n.authRecoverTitle, isNot(equals(en.authRecoverTitle)));
       expect(
-        l10n.authSignOutFirstConfirm,
-        isNot(equals(en.authSignOutFirstConfirm)),
+        l10n.authMergeOnRecoverConfirm,
+        isNot(equals(en.authMergeOnRecoverConfirm)),
       );
       expect(
         l10n.groupSettleUpMissingTitle,
@@ -367,9 +367,9 @@ final _pr3Calls = <_L10nString>[
   (l10n) => l10n.authRecoverPendingResendStatus,
   (l10n) => l10n.authRecoverPendingResendErrorGeneric,
   (l10n) => l10n.authRecoverPendingResendLink,
-  (l10n) => l10n.authSignOutFirstTitle,
-  (l10n) => l10n.authSignOutFirstBody,
-  (l10n) => l10n.authSignOutFirstConfirm,
+  (l10n) => l10n.authMergeOnRecoverTitle,
+  (l10n) => l10n.authMergeOnRecoverBody,
+  (l10n) => l10n.authMergeOnRecoverConfirm,
   (l10n) => l10n.groupSettleUpMissingTitle,
   (l10n) => l10n.groupSettleUpMissingMessage,
 ];
