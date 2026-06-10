@@ -1336,6 +1336,10 @@
   "groupShareCodeWithGroup": "Share this code with your group",
   "groupCopyCode": "Copy Code",
   "groupShare": "Share",
+  "groupShareViaWhatsApp": "WhatsApp",
+  "@groupShareViaWhatsApp": {
+    "description": "Label on the invite-sheet button that opens WhatsApp prefilled with the join link (#354). Falls back to the OS share sheet when WhatsApp isn't installed."
+  },
   "groupJoinTitle": "Join a Group",
   "groupJoinCta": "Join Group",
   "groupJoining": "Joining…",

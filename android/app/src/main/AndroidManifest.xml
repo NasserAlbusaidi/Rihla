@@ -91,5 +91,10 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- #354: lets canLaunchUrl/launchUrl resolve the WhatsApp deep link
+             (whatsapp://send) on Android 11+ package-visibility. Without this
+             the invite probe returns false even when WhatsApp is installed. -->
+        <package android:name="com.whatsapp"/>
+        <package android:name="com.whatsapp.w4b"/>
     </queries>
 </manifest>
