@@ -446,3 +446,165 @@ describe('trigger wrappers (#366)', () => {
     expect(data.sourceTimeMs).toBe(Date.parse(t2)); // t1's recompute was skipped
   });
 });
+
+// ---------------------------------------------------------------------------
+// Parity fixtures P2-P5 (Dart mirror: test/unit/balance_aggregate_parity_test.dart
+// pins the SAME literal nets client-side — hand-ported constants cross-referenced
+// by case id, the delete_group_balance_parity_test.dart convention). P1 (former
+// actor + both settlement scopes) is pinned above in the trigger-create test.
+// ---------------------------------------------------------------------------
+
+describe('aggregate parity fixtures (#366)', () => {
+  async function seedMinimalGroup(
+    groupId: string,
+    memberUids: string[],
+  ): Promise<void> {
+    const db = getFirestore();
+    await db.doc(`groups/${groupId}`).set({
+      id: groupId,
+      name: groupId,
+      inviteCode: 'ABC123',
+      createdBy: memberUids[0],
+      memberIds: memberUids,
+      currency: 'OMR',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isDeleted: false,
+      deletedAt: null,
+    });
+    for (const uid of memberUids) {
+      await db.doc(`groups/${groupId}/members/${uid}`).set({
+        id: uid,
+        userId: uid,
+        displayName: uid,
+        role: uid === memberUids[0] ? 'CREATOR' : 'MEMBER',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+        isShadow: false,
+        isTombstone: false,
+      });
+    }
+    await db.doc(`groups/${groupId}/events/e1`).set({
+      id: 'e1',
+      groupId,
+      name: 'e1',
+      type: 'trip',
+      createdBy: memberUids[0],
+      participantIds: memberUids,
+      participantNames: Object.fromEntries(memberUids.map((u) => [u, u])),
+      modules: { ledger: true },
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+  }
+
+  function expenseDoc(
+    eventId: string,
+    payer: string,
+    amountFils: number,
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return {
+      id: 'x1',
+      eventId,
+      description: 'fixture',
+      amountFils,
+      currency: 'OMR',
+      payerParticipantId: payer,
+      scope: 'global',
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-03T00:00:00.000Z',
+      createdBy: payer,
+      lastEditedBy: payer,
+      ...extra,
+    };
+  }
+
+  beforeEach(async () => {
+    delete process.env.BALANCE_AGGREGATE_MAX_BYTES;
+    await clearFirestore();
+  });
+
+  it('P2 (settlement axis): a group-scope settlement moves netMilli but NO perEvent slice', async () => {
+    const db = getFirestore();
+    await seedMinimalGroup('g-p2', [ALICE, BOB]);
+    await db.doc('groups/g-p2/settlements/gs1').set({
+      id: 'gs1',
+      groupId: 'g-p2',
+      eventId: 'g-p2',
+      scope: 'group',
+      payerParticipantId: ALICE,
+      recipientParticipantId: BOB,
+      payerName: 'Alice',
+      recipientName: 'Bob',
+      amountFils: 2500,
+      currency: 'OMR',
+      note: null,
+      isDeleted: false,
+      deletedAt: null,
+      settledAt: '2026-01-05T00:00:00.000Z',
+      createdBy: ALICE,
+    });
+
+    await refreshGroupBalanceAggregate(db, 'g-p2', 100);
+
+    const data = (await db.doc('groups/g-p2/aggregates/balance').get()).data()!;
+    expect(data.netMilli).toEqual({ [ALICE]: 2500, [BOB]: -2500 });
+    // The live event has no money — its drill-down slice is all-zero, and the
+    // group settlement NEVER appears in it (non-decomposition contract §0.3).
+    expect(data.perEventNetMilli).toEqual({ e1: { [ALICE]: 0, [BOB]: 0 } });
+  });
+
+  it('P3 (rounding): 3-way equal split of 0.100 OMR — alphabetically-last absorbs the remainder', async () => {
+    const db = getFirestore();
+    await seedMinimalGroup('g-p3', [ALICE, BOB, CAROL]);
+    await db
+      .doc('groups/g-p3/events/e1/expenses/x1')
+      .set(expenseDoc('e1', ALICE, 100));
+
+    await refreshGroupBalanceAggregate(db, 'g-p3', 100);
+
+    const data = (await db.doc('groups/g-p3/aggregates/balance').get()).data()!;
+    // 0.100 / 3 → 0.033 / 0.033 / 0.034 (carol, alphabetically last, absorbs).
+    expect(data.netMilli).toEqual({ [ALICE]: 67, [BOB]: -33, [CAROL]: -34 });
+    expect(data.perEventNetMilli).toEqual({
+      e1: { [ALICE]: 67, [BOB]: -33, [CAROL]: -34 },
+    });
+  });
+
+  it('P4 (exact residual, mirrors Dart 1b/TS 7b): in-tolerance drift closes onto the last absorber', async () => {
+    const db = getFirestore();
+    await seedMinimalGroup('g-p4', [ALICE, BOB]);
+    // Exact split {alice: 4.000, bob: 5.999} on 10.000 — residual +0.001 is
+    // in-tolerance and closes onto the alphabetically-LAST absorber (bob).
+    await db.doc('groups/g-p4/events/e1/expenses/x1').set(
+      expenseDoc('e1', ALICE, 10000, {
+        splitMode: 'exact',
+        splitDistribution: { [ALICE]: 4000, [BOB]: 5999 },
+      }),
+    );
+
+    await refreshGroupBalanceAggregate(db, 'g-p4', 100);
+
+    const data = (await db.doc('groups/g-p4/aggregates/balance').get()).data()!;
+    expect(data.netMilli).toEqual({ [ALICE]: 6000, [BOB]: -6000 });
+  });
+
+  it('P5 (negative legacy, mirrors Dart 1c/TS 7c): negative exact value falls back to equal split', async () => {
+    const db = getFirestore();
+    await seedMinimalGroup('g-p5', [ALICE, BOB]);
+    await db.doc('groups/g-p5/events/e1/expenses/x1').set(
+      expenseDoc('e1', ALICE, 10000, {
+        splitMode: 'exact',
+        splitDistribution: { [ALICE]: -1000, [BOB]: 11000 },
+      }),
+    );
+
+    await refreshGroupBalanceAggregate(db, 'g-p5', 100);
+
+    const data = (await db.doc('groups/g-p5/aggregates/balance').get()).data()!;
+    // Negative entry → equal-split fallback: 5.000 each.
+    expect(data.netMilli).toEqual({ [ALICE]: 5000, [BOB]: -5000 });
+  });
+});
