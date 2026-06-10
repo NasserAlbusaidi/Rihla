@@ -146,6 +146,33 @@ void main() {
     });
   });
 
+  group('noteQueuedWrite (#412)', () {
+    test('sets syncing even when state is online (stale-probe window)', () {
+      final n = makeNotifier();
+      addTearDown(n.dispose);
+      n.setOnline();
+      n.noteQueuedWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+    });
+
+    test('sets syncing from offline', () {
+      final n = makeNotifier();
+      addTearDown(n.dispose);
+      n.setOffline();
+      n.noteQueuedWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+    });
+
+    test('syncing resolves back to online via the probe (same as #357)', () async {
+      final n = makeNotifier(probe: () async => true);
+      addTearDown(n.dispose);
+      n.noteQueuedWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+      await n.checkConnectivity();
+      expect(n.state, ConnectivityStatus.online);
+    });
+  });
+
   group('startPeriodicChecks seam (#357)', () {
     test('defaults to running the periodic check', () {
       final n = ConnectivityNotifier(connectivityProbe: () async => null);
