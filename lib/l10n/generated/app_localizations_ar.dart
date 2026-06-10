@@ -2581,16 +2581,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get authSignOutFirstTitle => 'هذا الجهاز قيد الاستخدام بالفعل';
-
-  @override
-  String get authSignOutFirstBody =>
-      'لاستعادة حساب آخر، ستفقد الرحلات والمصاريف الموجودة على هذا الجهاز. ستبقى في السحابة فقط إذا كانت مرتبطة ببريد إلكتروني آخر — وإلا فستصبح بلا مالك.';
-
-  @override
-  String get authSignOutFirstConfirm => 'تسجيل الخروج والمتابعة';
-
-  @override
   String get authMergeOnRecoverTitle => 'استعادة حسابك';
 
   @override

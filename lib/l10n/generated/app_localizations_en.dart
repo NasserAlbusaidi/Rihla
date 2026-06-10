@@ -2529,16 +2529,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get authSignOutFirstTitle => 'This device is already in use';
-
-  @override
-  String get authSignOutFirstBody =>
-      'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.';
-
-  @override
-  String get authSignOutFirstConfirm => 'Sign out and continue';
-
-  @override
   String get authMergeOnRecoverTitle => 'Restore your account';
 
   @override

@@ -1726,19 +1726,6 @@
     }
   },
 
-  "authSignOutFirstTitle": "This device is already in use",
-  "@authSignOutFirstTitle": {
-    "description": "Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one."
-  },
-  "authSignOutFirstBody": "To restore a different account, you'll lose the trips and expenses on this device. They'll stay in the cloud only if they're tied to a different linked email — otherwise they'll be orphaned.",
-  "@authSignOutFirstBody": {
-    "description": "Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account."
-  },
-  "authSignOutFirstConfirm": "Sign out and continue",
-  "@authSignOutFirstConfirm": {
-    "description": "Destructive confirmation CTA on the SignOutFirstDialog."
-  },
-
   "authMergeOnRecoverTitle": "Restore your account",
   "@authMergeOnRecoverTitle": {
     "description": "Title of the MergeOnRecoverDialog — shown when the user restores an account on a device that already has local groups."

@@ -4392,24 +4392,6 @@ abstract class AppLocalizations {
   /// **'Resend in {seconds}s'**
   String authRecoverPendingResendCountdown(int seconds);
 
-  /// Title of the SignOutFirstDialog — warns the user before they trade their current session for a recovered one.
-  ///
-  /// In en, this message translates to:
-  /// **'This device is already in use'**
-  String get authSignOutFirstTitle;
-
-  /// Body copy of the SignOutFirstDialog explaining what happens to local data when the user signs out to recover a different account.
-  ///
-  /// In en, this message translates to:
-  /// **'To restore a different account, you\'ll lose the trips and expenses on this device. They\'ll stay in the cloud only if they\'re tied to a different linked email — otherwise they\'ll be orphaned.'**
-  String get authSignOutFirstBody;
-
-  /// Destructive confirmation CTA on the SignOutFirstDialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign out and continue'**
-  String get authSignOutFirstConfirm;
-
   /// Title of the MergeOnRecoverDialog — shown when the user restores an account on a device that already has local groups.
   ///
   /// In en, this message translates to:
