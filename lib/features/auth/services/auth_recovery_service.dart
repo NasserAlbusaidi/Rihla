@@ -14,6 +14,8 @@ import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import 'auth_email_link_config.dart';
+import 'recovery_diagnostics.dart';
+import 'recovery_failure_notice.dart';
 
 typedef RecoveryCleanupFailureRecorder =
     void Function({
@@ -50,10 +52,12 @@ class AuthRecoveryService {
     CleanupAnonUidArtifacts? cleanupAnonUidArtifacts,
     CleanupIntentFactory? cleanupIntentFactory,
     RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
+    RecoveryDiagnostics diagnostics = const SentryRecoveryDiagnostics(),
   }) : _auth = auth,
        _prefs = prefs,
        _cacheIsolationController = cacheIsolationController,
        _firestore = firestore,
+       _diagnostics = diagnostics,
        _cleanupAnonUidArtifacts =
            cleanupAnonUidArtifacts ??
            (({required oldUid, required cleanupSecret}) =>
@@ -82,6 +86,7 @@ class AuthRecoveryService {
   final CleanupAnonUidArtifacts _cleanupAnonUidArtifacts;
   final CleanupIntentFactory _cleanupIntentFactory;
   final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
+  final RecoveryDiagnostics _diagnostics;
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = 'auth.inFlightOp';
@@ -279,6 +284,9 @@ class AuthRecoveryService {
     // BOTH success and failure, so a failed swap (e.g. an expired link) can
     // never strand the user on the overlay or loop the bootstrap on a dead
     // link next boot (divergence from plan §3.5; see #45 plan "Failure paths").
+    final uidFp =
+        oldUid == null ? null : RecoveryDiagnostics.fingerprint(oldUid);
+    _diagnostics.breadcrumb('recover.start', data: {'uid': uidFp});
     try {
       String? cleanupSecret;
       if (oldUid != null && oldUid.isNotEmpty) {
@@ -313,10 +321,32 @@ class AuthRecoveryService {
       // on success, and on failure (e.g. a consumed single-use link) the
       // current user MUST survive — signing out first is how a no-email anon
       // account gets orphaned (#414, the #213 failure class).
-      final result = await _auth.signInWithEmailLink(
-        email: email,
-        emailLink: emailLink,
+      _diagnostics.breadcrumb('recover.signIn.attempt', data: {'uid': uidFp});
+      final UserCredential result;
+      try {
+        result = await _auth.signInWithEmailLink(
+          email: email,
+          emailLink: emailLink,
+        );
+      } on FirebaseAuthException catch (e) {
+        // The finally below restarts via a native System.exit(0) that discards
+        // in-flight async Sentry sends AND pre-empts the bootstrap's error
+        // SnackBar — so persist the reason durably (awaited → flushed) BEFORE
+        // restart; the next cold boot surfaces it and emits the Sentry event.
+        await writeRecoveryFailureNotice(_prefs, code: e.code, op: opRecover);
+        _diagnostics.breadcrumb('recover.signIn.fail', data: {'code': e.code});
+        FirebaseConfig.log('Recovery: signInWithEmailLink failed (${e.code})');
+        rethrow;
+      }
+      _diagnostics.breadcrumb(
+        'recover.signIn.ok',
+        data: {'uidChanged': result.user?.uid != oldUid},
       );
+      // Belt-and-suspenders: clear any stale marker from a prior failed attempt
+      // so a later SUCCESS can't surface a false "expired" message on next boot
+      // (the narrow case where the post-boot surface didn't run after the prior
+      // restart).
+      await clearRecoveryFailureNotice(_prefs);
       FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
 
       if (oldUid != null &&
@@ -343,6 +373,7 @@ class AuthRecoveryService {
       // NEVER skip restart() and strand the overlay (codex re-gate [P2]); the
       // restart() itself is fail-safe (surfaces a manual affordance on channel
       // failure), so it always runs last.
+      _diagnostics.breadcrumb('recover.restart');
       await _safeClearRecoveryOpState();
       await _cacheIsolationController.restart();
     }

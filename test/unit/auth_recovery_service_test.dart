@@ -9,7 +9,11 @@ import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
 import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/features/auth/services/recovery_diagnostics.dart';
+import 'package:safar/features/auth/services/recovery_failure_notice.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../helpers/recording_recovery_diagnostics.dart';
 
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
@@ -80,6 +84,7 @@ void main() {
       required Map<String, Object?> data,
     })?
     recoveryCleanupFailureRecorder,
+    RecoveryDiagnostics? diagnostics,
   }) {
     return AuthRecoveryService(
       auth: auth,
@@ -93,6 +98,7 @@ void main() {
       cleanupIntentFactory:
           cleanupIntentFactory ?? (_) async => 'test-cleanup-secret',
       recoveryCleanupFailureRecorder: recoveryCleanupFailureRecorder,
+      diagnostics: diagnostics ?? const SentryRecoveryDiagnostics(),
     );
   }
 
@@ -734,6 +740,111 @@ void main() {
       final service = buildService();
 
       await expectLater(() => service.completeRecovery(link), throwsStateError);
+    });
+  });
+
+  group('completeRecovery failure marker + diagnostics (Task 4)', () {
+    const link =
+        'https://rihla-safar.firebaseapp.com/__/auth/links/continue?mode=signIn&oobCode=abc';
+
+    void stubSignInThrows(String code) {
+      when(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      ).thenThrow(FirebaseAuthException(code: code));
+    }
+
+    test(
+      'persists a {code, op:recover} marker when signInWithEmailLink fails, '
+      'still rethrows, never signs out, still restarts',
+      () async {
+        final events = <String>[];
+        stubSignInThrows('invalid-action-code');
+        final service = buildService(
+          cacheIsolationController: _RecordingController(events),
+        );
+        await service.setPendingEmail('foo@example.com');
+
+        await expectLater(
+          () => service.completeRecovery(link),
+          throwsA(isA<FirebaseAuthException>()),
+        );
+
+        final notice = readRecoveryFailureNotice(prefs);
+        expect(notice, isNotNull);
+        expect(notice!.code, 'invalid-action-code');
+        expect(notice.op, AuthRecoveryService.opRecover);
+        verifyNever(() => auth.signOut());
+        expect(events.last, 'restart');
+      },
+    );
+
+    test('writes no failure marker on a successful recovery', () async {
+      final credential = _MockUserCredential();
+      when(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      ).thenAnswer((_) async => credential);
+      final service = buildService();
+      await service.setPendingEmail('foo@example.com');
+
+      await service.completeRecovery(link);
+
+      expect(readRecoveryFailureNotice(prefs), isNull);
+    });
+
+    test('clears a stale failure marker on a successful recovery', () async {
+      await writeRecoveryFailureNotice(
+        prefs,
+        code: 'expired-action-code',
+        op: AuthRecoveryService.opRecover,
+      );
+      final credential = _MockUserCredential();
+      when(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      ).thenAnswer((_) async => credential);
+      final service = buildService();
+      await service.setPendingEmail('foo@example.com');
+
+      await service.completeRecovery(link);
+
+      expect(readRecoveryFailureNotice(prefs), isNull);
+    });
+
+    test('failure diagnostics carry the code and fingerprint, never PII', () async {
+      stubSignInThrows('invalid-action-code');
+      final recording = RecordingRecoveryDiagnostics();
+      final service = buildService(diagnostics: recording);
+      await service.setPendingEmail('foo@example.com');
+
+      await expectLater(
+        () => service.completeRecovery(link),
+        throwsA(isA<FirebaseAuthException>()),
+      );
+
+      final values = recording.allValues.toList();
+      // No PII anywhere in the breadcrumb data.
+      expect(values, isNot(contains('foo@example.com')));
+      expect(values, isNot(contains('anon-uid-123')));
+      for (final v in values) {
+        expect(v, isNot(contains('oobCode')));
+        expect(v, isNot(contains('abc'))); // the raw oobCode value
+        expect(v, isNot(contains('firebaseapp.com'))); // the raw link
+      }
+      // The UID is correlated only via its fingerprint.
+      expect(values, contains(RecoveryDiagnostics.fingerprint('anon-uid-123')));
+      // The failing phase recorded the error code.
+      expect(recording.phases, contains('recover.signIn.fail'));
+      final failCall =
+          recording.calls.firstWhere((c) => c.phase == 'recover.signIn.fail');
+      expect(failCall.data['code'], 'invalid-action-code');
     });
   });
 

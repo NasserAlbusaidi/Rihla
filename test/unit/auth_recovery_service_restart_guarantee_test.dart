@@ -58,6 +58,10 @@ void main() {
     when(
       () => prefs.remove('auth.inFlightOp'),
     ).thenThrow(Exception('prefs remove failed'));
+    // Success path clears any stale recovery-failure marker.
+    when(
+      () => prefs.remove('auth.recoveryFailure'),
+    ).thenAnswer((_) async => true);
   });
 
   AuthRecoveryService buildService() => AuthRecoveryService(
