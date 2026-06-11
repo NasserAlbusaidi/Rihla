@@ -11,8 +11,10 @@
 // or a routing/widget-key drift. Each checkpoint is logged so log scrubbers
 // can reconstruct where the run stalled.
 
+import 'dart:convert' show jsonEncode;
 import 'dart:io' show Platform;
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -100,6 +102,25 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1500));
     _log('CHECKPOINT: entrance animations settled');
     await _shot('05a-home-loaded');
+
+    // #441: the durable-credential gate blocks an anonymous create. Link a
+    // fake Google credential first — the Auth emulator accepts an unsigned
+    // JSON idToken, so this exercises the same linkWithCredential path the
+    // gate sheet uses without driving the Credential Manager UI.
+    final user = FirebaseAuth.instance.currentUser;
+    expect(user, isNotNull, reason: 'anon session missing before gate link');
+    if (user!.isAnonymous) {
+      await user.linkWithCredential(
+        GoogleAuthProvider.credential(
+          idToken: jsonEncode({
+            'sub': 'golden-path-google-sub',
+            'email': 'golden@example.com',
+            'email_verified': true,
+          }),
+        ),
+      );
+      _log('CHECKPOINT: linked fake Google credential (#441 gate)');
+    }
 
     final fab = find.byKey(const Key('home_create_group_fab'));
     expect(fab, findsOneWidget,

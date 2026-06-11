@@ -12,6 +12,9 @@
 //     -d <ios-sim-id> \
 //     --dart-define-from-file=config.test.json
 
+import 'dart:convert' show jsonEncode;
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -167,6 +170,23 @@ void main() {
     );
     await tester.tap(groupsTab);
     await _settle(tester);
+
+    // #441: the durable-credential gate blocks an anonymous create. Link a
+    // fake Google credential first (Auth emulator accepts a JSON idToken) —
+    // mirrors golden_path_test.dart.
+    final gateUser = FirebaseAuth.instance.currentUser;
+    expect(gateUser, isNotNull, reason: 'anon session missing before gate link');
+    if (gateUser!.isAnonymous) {
+      await gateUser.linkWithCredential(
+        GoogleAuthProvider.credential(
+          idToken: jsonEncode({
+            'sub': 'golden-path-ar-google-sub',
+            'email': 'golden-ar@example.com',
+            'email_verified': true,
+          }),
+        ),
+      );
+    }
 
     final fab = find.byKey(const Key('home_create_group_fab'));
     expect(
