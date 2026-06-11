@@ -14,6 +14,7 @@ import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import 'auth_email_link_config.dart';
+import 'google_sign_in_gateway.dart';
 
 typedef RecoveryCleanupFailureRecorder =
     void Function({
@@ -28,6 +29,11 @@ typedef CleanupAnonUidArtifacts =
     });
 
 typedef CleanupIntentFactory = Future<String> Function(String oldUid);
+
+/// Produces a Firebase [AuthCredential] from an interactive Google sign-in
+/// (#441 PR1). Defaults to [GoogleSignInGateway.obtainCredential]; injected
+/// in tests because the plugin singleton needs live platform channels.
+typedef GoogleCredentialFactory = Future<AuthCredential> Function();
 
 /// Orchestrates the email-link account recovery flows from spec §4.
 ///
@@ -50,6 +56,7 @@ class AuthRecoveryService {
     CleanupAnonUidArtifacts? cleanupAnonUidArtifacts,
     CleanupIntentFactory? cleanupIntentFactory,
     RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
+    GoogleCredentialFactory? googleCredentialFactory,
   }) : _auth = auth,
        _prefs = prefs,
        _cacheIsolationController = cacheIsolationController,
@@ -73,7 +80,9 @@ class AuthRecoveryService {
              return secret;
            }),
        _recoveryCleanupFailureRecorder =
-           recoveryCleanupFailureRecorder ?? _recordCleanupFailureBreadcrumb;
+           recoveryCleanupFailureRecorder ?? _recordCleanupFailureBreadcrumb,
+       _googleCredentialFactory =
+           googleCredentialFactory ?? _defaultGoogleCredentialFactory;
 
   final FirebaseAuth _auth;
   final SharedPreferences _prefs;
@@ -82,6 +91,15 @@ class AuthRecoveryService {
   final CleanupAnonUidArtifacts _cleanupAnonUidArtifacts;
   final CleanupIntentFactory _cleanupIntentFactory;
   final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
+  final GoogleCredentialFactory _googleCredentialFactory;
+
+  /// Shared gateway so [GoogleSignIn.initialize] runs once per process, not
+  /// once per service instance.
+  static final GoogleSignInGateway _defaultGoogleGateway =
+      GoogleSignInGateway();
+
+  static Future<AuthCredential> _defaultGoogleCredentialFactory() =>
+      _defaultGoogleGateway.obtainCredential();
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = 'auth.inFlightOp';
@@ -240,6 +258,25 @@ class AuthRecoveryService {
     await clearPendingEmail();
     await clearInFlightOp();
     FirebaseConfig.log('Recovery: linked email to uid ${result.user?.uid}');
+    return result;
+  }
+
+  /// Attach a Google credential to the current Firebase user (#441 PR1).
+  ///
+  /// Same-UID by construction ([User.linkWithCredential]) — no cache
+  /// isolation, no restart, no inFlightOp handshake; the whole flow is one
+  /// in-session round trip through the Credential Manager sheet. Conflict
+  /// errors (`credential-already-in-use` / `email-already-in-use`) propagate
+  /// unchanged: the gate UI (#441 PR2/PR3) owns the discard-shell decision
+  /// and must never resolve it by signing the anon user out.
+  Future<UserCredential> linkGoogleToCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('No current user; ensureAnonymousSession first');
+    }
+    final credential = await _googleCredentialFactory();
+    final result = await user.linkWithCredential(credential);
+    FirebaseConfig.log('Recovery: linked Google to uid ${result.user?.uid}');
     return result;
   }
 
