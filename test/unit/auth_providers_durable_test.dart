@@ -56,11 +56,12 @@ void main() {
 
     test('google.com provider entry → its email surfaces', () async {
       final user = _MockUser();
-      when(() => user.isAnonymous).thenReturn(false);
-      when(() => user.providerData).thenReturn([
+      final infos = [
         providerInfo('password'),
         providerInfo('google.com', email: 'nasser@gmail.com'),
-      ]);
+      ];
+      when(() => user.isAnonymous).thenReturn(false);
+      when(() => user.providerData).thenReturn(infos);
       final c = containerWith(user);
       await settle(c);
       expect(c.read(googleAccountProvider)?.email, 'nasser@gmail.com');
@@ -68,10 +69,9 @@ void main() {
 
     test('google.com entry with null email still reports linked', () async {
       final user = _MockUser();
+      final infos = [providerInfo('google.com')];
       when(() => user.isAnonymous).thenReturn(false);
-      when(() => user.providerData).thenReturn([
-        providerInfo('google.com'),
-      ]);
+      when(() => user.providerData).thenReturn(infos);
       final c = containerWith(user);
       await settle(c);
       final account = c.read(googleAccountProvider);
@@ -81,10 +81,9 @@ void main() {
 
     test('email-only linked user → null (no google entry)', () async {
       final user = _MockUser();
+      final infos = [providerInfo('password', email: 'n@x.com')];
       when(() => user.isAnonymous).thenReturn(false);
-      when(() => user.providerData).thenReturn([
-        providerInfo('password', email: 'n@x.com'),
-      ]);
+      when(() => user.providerData).thenReturn(infos);
       final c = containerWith(user);
       await settle(c);
       expect(c.read(googleAccountProvider), isNull);
