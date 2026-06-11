@@ -4,6 +4,54 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-06-11
+
+Account-recovery release. Replaces the cross-UID merge engine with durable
+Google credentials, lays the multi-currency foundation (one currency per group),
+and moves home balances onto a server-maintained aggregate. Backend deployed to
+the production Firebase project. **Device QA of the durable-credential flows
+(RD-10–RD-13) gates the Production promotion.**
+
+### Added
+- **Durable account recovery (#441).** Link a Google account to your anonymous
+  session and restore it on a new device — same account, same UID, no merge.
+  Includes a credential gate before your first create/join, a conflict-switch
+  flow when an account is already in use, and recovery intent that survives the
+  app restart. A slim email-link fallback remains for accounts without Google.
+- **Multi-currency foundation — Model A (#261).** Each group has its own
+  currency, chosen at creation and immutable thereafter; amounts display in the
+  group's currency throughout. (Mixed-currency-per-group remains a post-1.0
+  feature.)
+- **Server-maintained balance aggregate (#366).** Home reads a per-group balance
+  doc kept up to date by Cloud Functions, cutting home from O(group×event) reads
+  to O(group).
+- **Record a payment you received (#282).** Creditors — not just debtors — can
+  log a settlement.
+- **Open expense editing with an audit trail (#248).** Any event participant can
+  edit or remove an expense; every change is server-audit-logged and shown as
+  "added by … · edited by …".
+- **Friendlier notifications and invites.** A soft in-app rationale before the OS
+  push prompt (#352); a WhatsApp-direct invite CTA on the group QR sheet (#354);
+  a one-time email-backup nudge for anonymous accounts (#285).
+
+### Changed
+- **Offline writes are clearer (#357, #412).** A "Saved — will sync" state and an
+  offline banner on the expense editor and settle-up screens; UI no longer waits
+  on a server ack that can't arrive offline.
+- **Server-authoritative group membership (#290, #318).** Leaving a group and
+  removing a member are gated server-side on a zero balance, closing
+  offline-orphaned-debt paths.
+- **Design unification.** Spacing, radius, and component styling consolidated
+  onto the design-system tokens across every screen.
+
+### Fixed
+- Action snackbars no longer hang open without dismissing (#411).
+- iOS share sheet and inbound deep links fixed (#308, #369).
+- Numerous balance-conservation and allocator-parity fixes keeping the client and
+  server money math byte-for-byte aligned (#270 and others).
+- Security: patched a high-severity `@grpc/grpc-js` advisory in the Cloud
+  Functions runtime (#461).
+
 ## [1.4.0] — 2026-06-05
 
 Feature + hardening release. Adds push notifications and ships a cluster of
