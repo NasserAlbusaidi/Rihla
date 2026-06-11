@@ -63,6 +63,8 @@ void main() {
           // journeys section); its appearance is covered by
           // account_backup_nudge_test.dart.
           linkedEmailProvider.overrideWithValue('secured@example.com'),
+      // #428: the backup nudge now gates on durability, not linked email.
+      isDurableUserProvider.overrideWithValue(true),
           currentUserIdProvider.overrideWithValue('test-user-id'),
           userGroupsProvider.overrideWith((ref) => Stream.value([group])),
           crossGroupHomeBalanceProvider.overrideWith(
