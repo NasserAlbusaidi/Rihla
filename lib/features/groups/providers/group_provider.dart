@@ -266,6 +266,9 @@ class GroupService extends FirestoreRepository {
       // group' substring (groupJoinNameTaken).
       'already-exists' => 'That name is already taken in this group.',
       'resource-exhausted' => 'Too many attempts. Try again later.',
+      // #441: server-side anonymous-provider reject. The screen re-localizes
+      // via the 'linked account is required' substring.
+      'permission-denied' => 'A linked account is required to join.',
       _ => 'Could not join group. Try again.',
     };
   }

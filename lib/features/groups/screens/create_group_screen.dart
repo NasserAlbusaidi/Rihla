@@ -17,6 +17,8 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
+import '../../auth/providers/durable_credential_gate_provider.dart';
+import '../../auth/services/durable_credential_exception.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
@@ -68,6 +70,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   Future<void> _createGroup() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // #441: first valuable write — an anonymous user must link Google first.
+    final gateOk = await ref
+        .read(durableCredentialGateProvider)
+        .ensure(context);
+    if (!gateOk || !mounted) return;
+
     ref.read(groupLoadingProvider.notifier).state = true;
     ref.read(groupErrorProvider.notifier).state = null;
 
@@ -105,6 +113,14 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       // has a group to be notified about. Fires after the sheet so it doesn't
       // fight the modal.
       unawaited(notificationPrompt.maybePrompt());
+    } on DurableCredentialRequiredException {
+      // Defense path (#441): the service refused an anonymous write the UI
+      // gate didn't catch (e.g. auth state changed mid-flow).
+      if (!mounted) return;
+      ref.read(groupLoadingProvider.notifier).state = false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.durableCredentialRequired)),
+      );
     } catch (e, st) {
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;

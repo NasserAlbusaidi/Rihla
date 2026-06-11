@@ -15,6 +15,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../auth/providers/durable_credential_gate_provider.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
@@ -75,6 +76,14 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       ).showSnackBar(SnackBar(content: Text(nameError)));
       return;
     }
+
+    // #441: first valuable write — an anonymous user must link Google first.
+    // Single chokepoint for all three entries (button, 6th-char auto-submit,
+    // deep-link prefill → manual submit).
+    final gateOk = await ref
+        .read(durableCredentialGateProvider)
+        .ensure(context);
+    if (!gateOk || !mounted) return;
 
     ref.read(groupLoadingProvider.notifier).state = true;
     ref.read(groupErrorProvider.notifier).state = null;
@@ -159,6 +168,11 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     }
     if (error.contains('Please sign in')) {
       return context.l10n.groupJoinPleaseSignIn;
+    }
+    // #441: covers BOTH the service-level DurableCredentialRequiredException
+    // toString and the callable's permission-denied sentinel.
+    if (error.contains('linked account is required')) {
+      return context.l10n.durableCredentialRequired;
     }
     return context.l10n.groupJoinFailed;
   }
