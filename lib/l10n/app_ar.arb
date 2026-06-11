@@ -782,5 +782,12 @@
   "notificationRationaleTitle": "ابقَ على اطّلاع",
   "notificationRationaleBody": "نُنبّهك عندما يضيف أحدهم مصروفًا أو يسوّي حسابًا.",
   "notificationRationaleNotNow": "ليس الآن",
-  "notificationRationaleTurnOn": "تفعيل"
+  "notificationRationaleTurnOn": "تفعيل",
+  "durableGateTitle": "احمِ أموالك",
+  "durableGateBody": "مجموعاتك ومصاريفك مرتبطة بهذا الحساب. اربط حساب Google حتى لا تفقدها مع هذا الجهاز.",
+  "durableGateContinueGoogle": "المتابعة عبر Google",
+  "durableGateNotNow": "ليس الآن",
+  "durableGateConflict": "حساب Google هذا مستخدم بالفعل في حساب رحلة آخر. استخدم حساب Google مختلفًا في الوقت الحالي.",
+  "durableGateError": "تعذّر ربط حسابك. حاول مرة أخرى.",
+  "durableCredentialRequired": "اربط حساب Google للمتابعة."
 }
