@@ -89,9 +89,15 @@ wrapper (`CleanupOutcome`).
   nothing. D3 keeps both credentials possible; neither is mandatory after
   the gate fires once.
 - **Conflict on link** (`credential-already-in-use` / `email-already-in-use`
-  — one-account-per-email can surface either): the gate UI surfaces the
-  conflict and offers switching via the restore path. Never auto-resolved by
-  signing the anon user out (#414's lesson, now structural).
+  — one-account-per-email can surface either; the service wraps both in
+  `GoogleLinkConflictException` carrying the failed credential): the gate
+  sheet offers "Switch account" → `restoreWithGoogle(credential: reused)` +
+  forced restart, but ONLY when the live group count proves the current
+  shell empty — a populated shell (legacy pre-gate anon) gets the dead-end
+  "use a different account" copy instead (#428). The caller's in-flight
+  create/join form is persisted (`PendingGateIntent`) before the restore and
+  replayed on the post-restart boot. Never auto-resolved by signing the anon
+  user out (#414's lesson, now structural).
 
 ## 6. Files at a glance
 

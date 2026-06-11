@@ -104,9 +104,18 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     // #441: first valuable write — an anonymous user must link Google first.
+    // The intent carries the typed form across the gate-conflict
+    // discard-shell restart (#428).
     final gateOk = await ref
         .read(durableCredentialGateProvider)
-        .ensure(context);
+        .ensure(
+          context,
+          intent: PendingGateIntent.create(
+            groupName: _nameController.text.trim(),
+            displayName: _displayNameController.text.trim(),
+            currencyCode: _selectedCurrency,
+          ),
+        );
     if (!gateOk || !mounted) return;
 
     ref.read(groupLoadingProvider.notifier).state = true;

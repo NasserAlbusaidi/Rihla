@@ -151,6 +151,26 @@ void main() {
       expect(container.read(groupLoadingProvider), isFalse);
     });
 
+    testWidgets('gate receives the typed form as a create intent (#428)',
+        (tester) async {
+      final sp = await prefs();
+      await tester.pumpWidget(
+        wrap(sp, const CreateGroupScreen(), '/create-group',
+            gateResult: false),
+      );
+      await tester.pumpAndSettle();
+      materializeGate(tester);
+
+      await fillAndSubmit(tester);
+
+      final intent = gate.lastIntent;
+      expect(intent, isNotNull);
+      expect(intent!.type, PendingGateIntent.typeCreate);
+      expect(intent.groupName, 'Family Trip');
+      expect(intent.displayName, 'Tester');
+      expect(intent.currencyCode, 'OMR');
+    });
+
     testWidgets('passed gate proceeds to createGroup', (tester) async {
       when(
         () => groupService.createGroup(
@@ -237,6 +257,24 @@ void main() {
         () => groupService.joinGroup(inviteCode: any(named: 'inviteCode')),
       );
       expect(find.text('group-landing'), findsNothing);
+    });
+
+    testWidgets('gate receives the typed code + name as a join intent (#428)',
+        (tester) async {
+      final sp = await prefs();
+      await tester.pumpWidget(
+        wrap(sp, const JoinGroupScreen(), '/join', gateResult: false),
+      );
+      await tester.pumpAndSettle();
+      materializeGate(tester);
+
+      await typeJoin(tester);
+
+      final intent = gate.lastIntent;
+      expect(intent, isNotNull);
+      expect(intent!.type, PendingGateIntent.typeJoin);
+      expect(intent.joinCode, 'ABCDEF');
+      expect(intent.displayName, 'Tester');
     });
 
     testWidgets('passed gate proceeds to joinGroup and lands on the group',
