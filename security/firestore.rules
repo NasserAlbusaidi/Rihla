@@ -12,8 +12,7 @@ service cloud.firestore {
     }
 
     // #441: money data must never be born under a discardable anonymous UID.
-    // Gates group + inviteCode creation; recoveryCleanupIntents is
-    // intentionally anonymous-written and must NOT use this.
+    // Gates group + inviteCode creation.
     function isDurableSignIn() {
       return request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
@@ -233,33 +232,6 @@ service cloud.firestore {
     // never read or write. A Firestore TTL on `expiresAt` is the safety net.
     match /deletionAudit/{userId} {
       allow read, write: if false;
-    }
-
-    // Recovery cleanup intents are one-time bearer secrets. The retiring
-    // anonymous UID writes its own intent before sign-out; the callable verifies
-    // and consumes it after email-link recovery. Clients never read or delete
-    // these documents directly.
-    match /recoveryCleanupIntents/{oldUid} {
-      function validCleanupIntent() {
-        // #170: `expiresAt` is mandatory so a Firestore TTL can reap abandoned
-        // bearer-secret docs (client-deny on get/list/delete, so a TTL is the
-        // only reaper). `expiresAt is timestamp` enforces both presence and
-        // type; `expiresAt > createdAt` rejects a past value that would make the
-        // TTL reap a still-valid intent. Server validity stays keyed on
-        // `createdAt` (cleanupAnonUidArtifacts.ts), NOT `expiresAt`.
-        return signedIn()
-          && request.auth.uid == oldUid
-          && request.resource.data.keys().hasOnly(['secret', 'createdAt', 'expiresAt'])
-          && request.resource.data.secret is string
-          && request.resource.data.secret.size() >= 32
-          && request.resource.data.secret.size() <= 128
-          && request.resource.data.createdAt is timestamp
-          && request.resource.data.expiresAt is timestamp
-          && request.resource.data.expiresAt > request.resource.data.createdAt;
-      }
-
-      allow create, update: if validCleanupIntent();
-      allow get, list, delete: if false;
     }
 
     match /groups/{groupId} {
