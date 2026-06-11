@@ -9,6 +9,7 @@ import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
+import '../../../core/constants/supported_currencies.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
@@ -19,6 +20,7 @@ import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../auth/providers/durable_credential_gate_provider.dart';
 import '../../auth/services/durable_credential_exception.dart';
+import '../../auth/services/pending_gate_intent.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
@@ -49,6 +51,37 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   /// #261: the group's currency, chosen at create time and immutable after
   /// (Model A). Local state only — NOT persisted to AppSettings.
   String _selectedCurrency = 'OMR';
+
+  @override
+  void initState() {
+    super.initState();
+    _consumePendingGateIntent();
+  }
+
+  /// One-shot prefill from a gate-conflict restart marker (#428). The
+  /// marker's displayName wins over the settings seed in build(); an off-list
+  /// currency code keeps the OMR default. A join-type marker is left
+  /// untouched for its screen.
+  void _consumePendingGateIntent() {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final intent = PendingGateIntent.read(prefs);
+    if (intent == null || intent.type != PendingGateIntent.typeCreate) return;
+
+    final groupName = intent.groupName?.trim() ?? '';
+    if (groupName.isNotEmpty) {
+      _nameController.text = groupName;
+    }
+    final name = intent.displayName?.trim() ?? '';
+    if (name.isNotEmpty) {
+      _displayNameController.text = name;
+      _didInitName = true;
+    }
+    final currency = intent.currencyCode;
+    if (currency != null && kSupportedCurrencies.contains(currency)) {
+      _selectedCurrency = currency;
+    }
+    unawaited(PendingGateIntent.clear(prefs));
+  }
 
   @override
   void dispose() {
