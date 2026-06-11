@@ -5,9 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:sentry_flutter/sentry_flutter.dart';
+
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/app_messenger.dart';
 import '../services/auth_email_link_config.dart';
+import '../services/auth_error_humanizer.dart';
 import '../services/auth_recovery_service.dart';
 import 'auth_provider.dart';
 
@@ -59,28 +62,8 @@ void _showSnack(String message, {bool isError = false}) {
   );
 }
 
-String _humanize(FirebaseAuthException error) {
-  switch (error.code) {
-    case 'invalid-action-code':
-    case 'expired-action-code':
-      return 'This link has expired or was already used. Send a new one.';
-    case 'invalid-email':
-      return "That email doesn't look valid.";
-    case 'user-disabled':
-      return 'This account has been disabled.';
-    case 'network-request-failed':
-      return 'No connection. Try again when you\'re online.';
-    case 'too-many-requests':
-      return 'Too many attempts. Wait a few minutes and try again.';
-    case 'email-already-in-use':
-    case 'credential-already-in-use':
-    case 'provider-already-linked':
-      return 'This email is already linked to a Rihla account. '
-          'Restore from that account instead.';
-    default:
-      return 'Something went wrong (${error.code}). Please try again.';
-  }
-}
+String _humanize(FirebaseAuthException error) =>
+    humanizeAuthErrorCode(error.code);
 
 /// Starts the email-link listener early enough to catch cold-start links.
 ///
@@ -146,6 +129,11 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
     }
 
     final op = service.readInFlightOp() ?? AuthRecoveryService.opLink;
+    // PII-safe trail for release builds (#439): op kind only, never the
+    // email/link/oobCode.
+    unawaited(Sentry.addBreadcrumb(
+      Breadcrumb(category: 'auth.recovery', message: 'dispatch op=$op'),
+    ));
 
     try {
       if (op == AuthRecoveryService.opRecover) {
@@ -169,6 +157,13 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         error: error,
         stackTrace: stack,
       );
+      // Reaches here only on the non-restarting paths (link op, or a
+      // pre-isolation throw) — the restarting recover path is captured by
+      // the #439 outcome marker on the next boot instead.
+      unawaited(Sentry.captureMessage(
+        'recovery_dispatch_failed op=$op code=${error.code}',
+        level: SentryLevel.error,
+      ));
       _showSnack(_humanize(error), isError: true);
     } catch (error, stack) {
       FirebaseConfig.log(
@@ -176,6 +171,7 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         error: error,
         stackTrace: stack,
       );
+      unawaited(Sentry.captureException(error, stackTrace: stack));
       _showSnack("Couldn't complete the email link. Try again.", isError: true);
     }
   }
