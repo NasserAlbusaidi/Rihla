@@ -2238,17 +2238,17 @@ abstract class AppLocalizations {
   /// **'Join Group'**
   String get homeJoinGroup;
 
-  /// No description provided for @homeRecover.
-  ///
-  /// In en, this message translates to:
-  /// **'I had Rihla before — restore'**
-  String get homeRecover;
-
   /// No description provided for @homeRestoreWithGoogle.
   ///
   /// In en, this message translates to:
   /// **'Sign in with Google to restore'**
   String get homeRestoreWithGoogle;
+
+  /// No description provided for @homeRestoreWithEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore with email instead'**
+  String get homeRestoreWithEmail;
 
   /// No description provided for @restoreGoogleFailed.
   ///

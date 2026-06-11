@@ -1309,10 +1309,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeJoinGroup => 'الانضمام لمجموعة';
 
   @override
-  String get homeRecover => 'استخدمت رحلة سابقًا — استعادة';
+  String get homeRestoreWithGoogle => 'سجّل الدخول عبر Google للاستعادة';
 
   @override
-  String get homeRestoreWithGoogle => 'سجّل الدخول عبر Google للاستعادة';
+  String get homeRestoreWithEmail => 'أو الاستعادة عبر البريد الإلكتروني';
 
   @override
   String get restoreGoogleFailed =>

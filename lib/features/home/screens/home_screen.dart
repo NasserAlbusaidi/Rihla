@@ -325,6 +325,21 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   ),
                 ),
               ),
+              TextButton(
+                key: const Key('home_empty_recover_email_cta'),
+                // #441 PR4: slim email fallback (D3). Same safety argument as
+                // the Google CTA above — empty state ⇒ zero groups ⇒ the
+                // discarded anon shell holds no money data.
+                onPressed: () => context.push('/recover'),
+                child: Text(
+                  context.l10n.homeRestoreWithEmail,
+                  style: AppTypography.sans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

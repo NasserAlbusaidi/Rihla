@@ -1274,10 +1274,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeJoinGroup => 'Join Group';
 
   @override
-  String get homeRecover => 'I had Rihla before — restore';
+  String get homeRestoreWithGoogle => 'Sign in with Google to restore';
 
   @override
-  String get homeRestoreWithGoogle => 'Sign in with Google to restore';
+  String get homeRestoreWithEmail => 'Restore with email instead';
 
   @override
   String get restoreGoogleFailed =>

@@ -67,7 +67,8 @@ Widget _buildApp({
         path: '/join-group',
         builder: (ctx, state) => const Scaffold(body: Text('JoinGroupScreen')),
       ),
-      // A stub for the old destination — PR3 must NOT navigate here anymore.
+      // The Google CTA must NOT navigate here (PR3); the email-fallback CTA
+      // MUST (#441 PR4).
       GoRoute(
         path: '/recover',
         builder: (ctx, state) => const Scaffold(body: Text('RecoverScreenStub')),
@@ -141,6 +142,27 @@ void main() {
     );
 
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('empty-state email-fallback CTA pushes /recover and does NOT '
+      'trigger the Google swap (#441 PR4)', (tester) async {
+    // Tall surface: the email CTA sits below the Google CTA and lands under
+    // the fold at the default 800x600 test viewport.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_buildApp(prefs: prefs, recovery: recovery));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(const Key('home_empty_recover_email_cta')),
+    );
+    await tester.tap(find.byKey(const Key('home_empty_recover_email_cta')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('RecoverScreenStub'), findsOneWidget);
+    verifyNever(() => recovery.restoreWithGoogle());
   });
 
   testWidgets('a real restore error surfaces a snackbar', (tester) async {
