@@ -39,6 +39,31 @@ final uidProvider = Provider<String?>((ref) {
   return ref.watch(authUserChangesProvider).valueOrNull?.uid;
 });
 
+/// The Google identity linked to the active Firebase user, or null when no
+/// `google.com` provider entry exists (#428 PR-B). The email can be null
+/// even when linked — render "linked" state from the record itself, never
+/// from the email alone.
+final googleAccountProvider = Provider<({String? email})?>((ref) {
+  final user = ref.watch(authUserChangesProvider).valueOrNull;
+  if (user == null) return null;
+  for (final info in user.providerData) {
+    if (info.providerId == 'google.com') {
+      final email = info.email;
+      return (email: (email == null || email.isEmpty) ? null : email);
+    }
+  }
+  return null;
+});
+
+/// True when the current user holds ANY durable credential (Google or email
+/// link) — i.e. is not anonymous. The Account card gates sign-out on this
+/// (#428 PR-B): signing out an anonymous user orphans their data, while a
+/// durable user can always sign back in.
+final isDurableUserProvider = Provider<bool>((ref) {
+  final user = ref.watch(authUserChangesProvider).valueOrNull;
+  return user != null && !user.isAnonymous;
+});
+
 /// Email currently linked to the active Firebase user, or null when the
 /// user is purely anonymous. Set by [AuthRecoveryService.completeEmailLink].
 final linkedEmailProvider = Provider<String?>((ref) {
