@@ -8,12 +8,14 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 ///
 /// Confirms the user actually wants to sign out before we drop the local
 /// session. Copy emphasizes that data is preserved in the cloud and
-/// recoverable via the same email — the operation is reversible.
+/// recoverable — via the linked email when one exists, otherwise via the
+/// same Google account (#428: a Google-credentialed user may have no
+/// linked email; the email-link instruction would be wrong advice).
 class SignOutConfirmDialog extends StatelessWidget {
-  const SignOutConfirmDialog({super.key, required this.email});
-  final String email;
+  const SignOutConfirmDialog({super.key, this.email});
+  final String? email;
 
-  static Future<bool?> show(BuildContext context, {required String email}) {
+  static Future<bool?> show(BuildContext context, {String? email}) {
     return showDialog<bool>(
       context: context,
       builder: (_) => SignOutConfirmDialog(email: email),
@@ -42,18 +44,21 @@ class SignOutConfirmDialog extends StatelessWidget {
             color: colors.textSecondary,
             height: 1.4,
           ),
-          children: [
-            TextSpan(text: l10n.signOutContentPrefix),
-            TextSpan(
-              text: email,
-              style: AppTypography.sans(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
+          children: switch (email) {
+            null || '' => [TextSpan(text: l10n.signOutContentGoogle)],
+            final linked => [
+              TextSpan(text: l10n.signOutContentPrefix),
+              TextSpan(
+                text: linked,
+                style: AppTypography.sans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
               ),
-            ),
-            TextSpan(text: l10n.signOutContentSuffix),
-          ],
+              TextSpan(text: l10n.signOutContentSuffix),
+            ],
+          },
         ),
       ),
       actions: [

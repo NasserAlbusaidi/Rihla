@@ -422,6 +422,22 @@
   "@signOutTitle": {
     "description": "Title of the SignOutConfirmDialog confirming local sign-out."
   },
+  "signOutContentGoogle": "Your data stays in the cloud. To restore, sign back in with the same Google account.",
+  "@signOutContentGoogle": {
+    "description": "Sign-out dialog body for a Google-credentialed user with no linked email (#428): recovery is via Google sign-in, not an email link."
+  },
+  "profileAccountGoogle": "Google account",
+  "@profileAccountGoogle": {
+    "description": "Label of the Account-card row showing the linked Google identity (#428)."
+  },
+  "profileAccountGoogleLinked": "Linked",
+  "@profileAccountGoogleLinked": {
+    "description": "Trailing text on the Google-account row when the provider entry carries no email (#428)."
+  },
+  "profileAccountLinkGoogle": "Link Google account",
+  "@profileAccountLinkGoogle": {
+    "description": "Account-card row for an anonymous user: opens the durable-credential sheet to link Google voluntarily (#428)."
+  },
   "signOutContentPrefix": "Your data stays in the cloud. To restore, enter ",
   "@signOutContentPrefix": {
     "description": "First text run of the SignOutConfirmDialog content, ending just before the bold email address."

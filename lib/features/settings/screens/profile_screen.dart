@@ -26,7 +26,10 @@ import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/data_deletion_service.dart';
 import '../../auth/widgets/delete_account_dialog.dart';
 import '../../auth/widgets/delete_account_retry_dialog.dart';
+import '../../auth/widgets/durable_credential_sheet.dart';
+import '../../auth/widgets/google_restore_action.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
+import '../../groups/providers/group_provider.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/default_split_picker_sheet.dart';
@@ -854,7 +857,7 @@ class _AccountCard extends ConsumerWidget {
   Future<void> _signOut(
     BuildContext context,
     WidgetRef ref,
-    String email,
+    String? email,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final signedOut = context.l10n.profileSnackSignedOut;
@@ -876,11 +879,49 @@ class _AccountCard extends ConsumerWidget {
     final colors = context.colors;
     final linkedEmail = ref.watch(linkedEmailProvider);
     final isLinked = linkedEmail != null;
+    final googleAccount = ref.watch(googleAccountProvider);
+    final isDurable = ref.watch(isDurableUserProvider);
+    final user = ref.watch(authUserChangesProvider).valueOrNull;
+    final isAnonymous = user?.isAnonymous ?? false;
+    // Restore entries discard the current shell with no merge engine — only
+    // safe when the shell is provably empty. Mirrors the home empty-state
+    // guard (#428); userGroupsProvider loading/error → hidden (fail-safe).
+    final showRestore = isAnonymous &&
+        (ref.watch(userGroupsProvider).valueOrNull?.isEmpty ?? false);
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: _RowsCard(
         rows: [
+          if (googleAccount != null)
+            _PrefRow(
+              tileKey: ProfileKeys.googleAccountTile,
+              leading: _PrefIcon(icon: Iconsax.shield_tick, bg: colors.cardSoft),
+              label: context.l10n.profileAccountGoogle,
+              trailing: Text(
+                googleAccount.email ?? context.l10n.profileAccountGoogleLinked,
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              onTap: null,
+              divider: true,
+            ),
+          if (isAnonymous)
+            _PrefRow(
+              tileKey: ProfileKeys.googleLinkTile,
+              leading: _PrefIcon(icon: Iconsax.shield_tick, bg: colors.cardSoft),
+              label: context.l10n.profileAccountLinkGoogle,
+              trailing: DirectionalIcon(
+                Iconsax.arrow_right_3,
+                size: 16,
+                color: colors.textSecondary,
+              ),
+              onTap: () => showDurableCredentialSheet(context),
+              divider: true,
+            ),
           _PrefRow(
             tileKey: ProfileKeys.linkedEmailTile,
             leading: _PrefIcon(icon: Iconsax.sms, bg: colors.cardSoft),
@@ -913,9 +954,9 @@ class _AccountCard extends ConsumerWidget {
                     ],
                   ),
             onTap: isLinked ? null : () => context.push(AppRoutes.linkEmail),
-            divider: isLinked,
+            divider: true,
           ),
-          if (isLinked)
+          if (isDurable)
             _PrefRow(
               tileKey: ProfileKeys.signOutDeviceTile,
               leading: _PrefIcon(icon: Iconsax.logout, bg: colors.cardSoft),
@@ -928,6 +969,32 @@ class _AccountCard extends ConsumerWidget {
               onTap: () => _signOut(context, ref, linkedEmail),
               divider: true,
             ),
+          if (showRestore) ...[
+            _PrefRow(
+              tileKey: ProfileKeys.profileRestoreGoogleTile,
+              leading: _PrefIcon(icon: Iconsax.refresh, bg: colors.cardSoft),
+              label: context.l10n.homeRestoreWithGoogle,
+              trailing: DirectionalIcon(
+                Iconsax.arrow_right_3,
+                size: 16,
+                color: colors.textSecondary,
+              ),
+              onTap: () => triggerGoogleRestore(context, ref),
+              divider: true,
+            ),
+            _PrefRow(
+              tileKey: ProfileKeys.profileRestoreEmailTile,
+              leading: _PrefIcon(icon: Iconsax.sms_tracking, bg: colors.cardSoft),
+              label: context.l10n.homeRestoreWithEmail,
+              trailing: DirectionalIcon(
+                Iconsax.arrow_right_3,
+                size: 16,
+                color: colors.textSecondary,
+              ),
+              onTap: () => context.push('/recover'),
+              divider: true,
+            ),
+          ],
           _PrefRow(
             tileKey: ProfileKeys.deleteAccountTile,
             leading: _PrefIcon(icon: Iconsax.trash, bg: colors.cardSoft),

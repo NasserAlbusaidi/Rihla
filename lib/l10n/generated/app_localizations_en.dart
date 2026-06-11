@@ -315,6 +315,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOutTitle => 'Sign out of this device?';
 
   @override
+  String get signOutContentGoogle =>
+      'Your data stays in the cloud. To restore, sign back in with the same Google account.';
+
+  @override
+  String get profileAccountGoogle => 'Google account';
+
+  @override
+  String get profileAccountGoogleLinked => 'Linked';
+
+  @override
+  String get profileAccountLinkGoogle => 'Link Google account';
+
+  @override
   String get signOutContentPrefix =>
       'Your data stays in the cloud. To restore, enter ';
 

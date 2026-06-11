@@ -23,6 +23,9 @@ firebase_auth.User _userWithEmail(String? email) {
   final u = _MockUser();
   when(() => u.uid).thenReturn('uid-x');
   when(() => u.email).thenReturn(email);
+  // #428 PR-B: the Account card now reads these too.
+  when(() => u.isAnonymous).thenReturn(false);
+  when(() => u.providerData).thenReturn(const []);
   return u;
 }
 

@@ -315,6 +315,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get signOutTitle => 'تسجيل الخروج من هذا الجهاز؟';
 
   @override
+  String get signOutContentGoogle =>
+      'تبقى بياناتك في السحابة. للاستعادة، سجّل الدخول مجددًا بنفس حساب Google.';
+
+  @override
+  String get profileAccountGoogle => 'حساب Google';
+
+  @override
+  String get profileAccountGoogleLinked => 'مرتبط';
+
+  @override
+  String get profileAccountLinkGoogle => 'ربط حساب Google';
+
+  @override
   String get signOutContentPrefix =>
       'بياناتك محفوظة في السحابة. للاستعادة، أدخل ';
 
