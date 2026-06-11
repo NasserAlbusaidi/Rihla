@@ -10,6 +10,7 @@ import '../../../core/services/cache_uid_barrier.dart';
 import 'auth_email_link_config.dart';
 import 'durable_credential_exception.dart';
 import 'google_sign_in_gateway.dart';
+import 'recovery_outcome.dart';
 
 /// Produces a Firebase [AuthCredential] from an interactive Google sign-in
 /// (#441 PR1). Defaults to [GoogleSignInGateway.obtainCredential]; injected
@@ -281,7 +282,19 @@ class AuthRecoveryService {
       await markFirestorePersistenceDirty(_prefs);
       final result = await _auth.signInWithCredential(googleCredential);
       FirebaseConfig.log('Restore: restored uid ${result.user?.uid}');
+      // #439: the finally's restart kills the process before any caller can
+      // surface success or failure — persist the outcome first (guarded
+      // write; awaited like markFirestorePersistenceDirty above).
+      await writeRecoveryOutcome(_prefs, op: RecoveryOutcome.opGoogle, ok: true);
       return result;
+    } catch (e) {
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opGoogle,
+        ok: false,
+        code: recoveryOutcomeCodeOf(e),
+      );
+      rethrow;
     } finally {
       await _cacheIsolationController.restart();
     }
@@ -337,7 +350,22 @@ class AuthRecoveryService {
         emailLink: emailLink,
       );
       FirebaseConfig.log('Restore: restored uid ${result.user?.uid}');
+      // #439: persisted BEFORE the restart in the finally; the boot notice
+      // is the ONLY surface a recover-op outcome ever reaches.
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opRecover,
+        ok: true,
+      );
       return result;
+    } catch (e) {
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opRecover,
+        ok: false,
+        code: recoveryOutcomeCodeOf(e),
+      );
+      rethrow;
     } finally {
       // Clear the op-state (a stale inFlightOp would make the next boot's
       // bootstrap re-enter recovery and loop on a dead link — R3 P2-4), then
@@ -409,6 +437,19 @@ class AuthRecoveryService {
       }
       await markFirestorePersistenceDirty(_prefs);
       await _auth.signOut();
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opSignOut,
+        ok: true,
+      );
+    } catch (e) {
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opSignOut,
+        ok: false,
+        code: recoveryOutcomeCodeOf(e),
+      );
+      rethrow;
     } finally {
       await _cacheIsolationController.restart();
     }

@@ -40,7 +40,7 @@ class RecoveryOutcome {
         'v': _version,
         'op': op,
         'ok': ok,
-        if (code != null) 'code': code!,
+        ?'code': code,
         'atMillis': atMillis,
       };
 }
