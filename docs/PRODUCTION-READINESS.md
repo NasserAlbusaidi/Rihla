@@ -154,11 +154,11 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-09, `b9163a1d`) — DEPLOYED to prod, prod-state PASS.**
-    The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-09
-    deploy ceremony the `backend-deployed` tag is `b9163a1d` and
+  - **Backend deploy (2026-06-11, `20689860`) — DEPLOYED to prod, prod-state PASS.**
+    The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-11
+    deploy ceremony the `backend-deployed` tag is `20689860` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped
-    across the 2026-06-07/08/09 deploys (see `docs/DEPLOY-LEDGER.md`):
+    across the 2026-06-07…11 deploys (see `docs/DEPLOY-LEDGER.md`):
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
       `allocateShares`/`allocateExact`/`allocatePercent`) gain the
       negative-value→equal-split guard, mirroring the client byte-for-byte.
@@ -203,6 +203,18 @@ starts a new run.
       `already-exists` (→ client l10n `groupJoinNameTaken`). Gated on `didJoin` so
       the #53 heal-path / idempotent re-join are exempt; the collision does not
       burn the 5/hr join throttle. Functions-only; 13 functions unchanged.
+    - **#366 PR1** (`7370b307`, #421) — server-maintained per-group balance
+      aggregate (`groups/{gid}/aggregates/balance`): 4 new diff-gated
+      `onDocumentWritten` triggers + daily `balanceReconciler`, all over the
+      shared `recomputeNet` oracle; rules add a client-write-denied
+      `aggregates` block. Display-cache only. 18 functions now.
+    - **#441 PR2** (`20689860`, #444) — the durable-credential gate, server
+      side: `isDurableSignIn()` (`sign_in_provider != 'anonymous'`) on
+      `validGroupCreate` + `inviteCodes` create, and an anonymous-provider
+      `permission-denied` reject in `joinGroupByInviteCode` (pre-throttle, no
+      `joinAttempts` burn; closes the #197 anon-rotation bypass for join).
+      `recoveryCleanupIntents` deliberately stays anon-writable until PR5.
+      Rules + one function updated; 18 functions unchanged.
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
