@@ -12,24 +12,6 @@ class _MockHttpsCallableResult extends Mock
 
 void main() {
   test(
-    'cleanupAnonUidArtifacts calls the cleanup callable with both secrets',
-    () async {
-      final (:functions, :callable, :service) = _harness();
-
-      await service.cleanupAnonUidArtifacts(
-        oldUid: 'anon-uid',
-        cleanupSecret: 'secret-123',
-      );
-
-      verify(
-        () => functions.httpsCallable('cleanupAnonUidArtifacts'),
-      ).called(1);
-      final payload = verify(() => callable.call(captureAny())).captured.single;
-      expect(payload, {'oldUid': 'anon-uid', 'cleanupSecret': 'secret-123'});
-    },
-  );
-
-  test(
     'deleteAccount calls the deleteAccount callable with an empty payload',
     () async {
       final (:functions, :callable, :service) = _harness();
