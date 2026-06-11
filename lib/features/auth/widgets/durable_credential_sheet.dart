@@ -79,6 +79,13 @@ class _DurableCredentialSheetState
       // Canceled/interrupted Credential Manager sheet — silent reset.
       if (mounted) setState(() => _linking = false);
     } on GoogleLinkConflictException catch (e) {
+      // PII-safe trail (#439): conflict code only.
+      unawaited(Sentry.addBreadcrumb(
+        Breadcrumb(
+          category: 'auth.gate',
+          message: 'link conflict code=${e.cause.code}',
+        ),
+      ));
       // The switch decision renders from build against the live group count
       // (#428) — and is NEVER resolved by signing the anon user out (#213).
       if (!mounted) return;
