@@ -28,6 +28,11 @@ class Settlement {
   /// from any other UID. Empty string means "unknown" (legacy / test-only).
   final String createdBy;
 
+  /// The fence-validated currency [amount] was deserialized with (#382 PR-0,
+  /// mirroring [Expense]). Always a supported code: unknown/missing falls back
+  /// to OMR in [fromFirestore], so the label can never disagree with the scale.
+  final String currency;
+
   const Settlement({
     required this.id,
     required this.tripId,
@@ -43,6 +48,7 @@ class Settlement {
     this.scope = 'event',
     this.groupId,
     this.createdBy = '',
+    this.currency = 'OMR',
   });
 
   factory Settlement.fromJson(Map<String, dynamic> json) {
@@ -127,6 +133,7 @@ class Settlement {
       scope: scope,
       groupId: groupId,
       createdBy: data['createdBy'] as String? ?? '',
+      currency: currency,
     );
   }
 }

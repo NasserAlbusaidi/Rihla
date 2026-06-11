@@ -58,4 +58,44 @@ void main() {
       expect(s.amount, Decimal.parse('10.500'));
     });
   });
+
+  // #382 PR-0: the model retains the fence-validated currency the amount was
+  // deserialized with, mirroring Expense (#47). The label can never disagree
+  // with the scale: a fenced-to-OMR doc retains 'OMR', not its raw value.
+  group('Settlement.currency retained from Firestore (#382 PR-0)', () {
+    test('USD doc surfaces its currency', () {
+      final s = Settlement.fromFirestore(doc(currency: 'USD', amountFils: 999));
+      expect(s.currency, 'USD');
+      expect(s.amount, Decimal.parse('9.99'));
+    });
+
+    test('missing currency retains the OMR default', () {
+      final s = Settlement.fromFirestore(doc(amountFils: 5000));
+      expect(s.currency, 'OMR');
+    });
+
+    test('unsupported currency retains the fence value, not the raw doc', () {
+      final s = Settlement.fromFirestore(doc(currency: 'XYZ', amountFils: 5000));
+      expect(s.currency, 'OMR');
+      expect(s.amount, Decimal.parse('5.000'));
+    });
+
+    test('lowercase supported code is retained as-is (rules block it on write)',
+        () {
+      final s = Settlement.fromFirestore(
+        doc(currency: 'omr', amountFils: 10500),
+      );
+      expect(s.currency, 'omr');
+    });
+
+    test('constructor defaults to OMR', () {
+      final s = Settlement(
+        id: 's1',
+        tripId: 'event-1',
+        amount: Decimal.zero,
+        settledAt: DateTime(2026),
+      );
+      expect(s.currency, 'OMR');
+    });
+  });
 }

@@ -116,7 +116,6 @@ class SettleUpPageBody extends StatelessWidget {
             SizedBox(height: context.spacing.space24),
             _PaymentHistorySection(
               settlements: history,
-              currency: currency,
               displayNames: displayNames,
               subjectName: subjectName,
             ),
@@ -390,13 +389,11 @@ class _SectionLabel extends StatelessWidget {
 class _PaymentHistorySection extends StatelessWidget {
   const _PaymentHistorySection({
     required this.settlements,
-    required this.currency,
     required this.displayNames,
     required this.subjectName,
   });
 
   final List<Settlement> settlements;
-  final String currency;
   final Map<String, String> displayNames;
 
   /// Group/event name folded into the shareable receipt (#359).
@@ -412,7 +409,6 @@ class _PaymentHistorySection extends StatelessWidget {
         for (var i = 0; i < settlements.length; i++)
           _HistoryTile(
             settlement: settlements[i],
-            currency: currency,
             displayNames: displayNames,
             subjectName: subjectName,
             index: i,
@@ -425,14 +421,12 @@ class _PaymentHistorySection extends StatelessWidget {
 class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
     required this.settlement,
-    required this.currency,
     required this.displayNames,
     required this.subjectName,
     required this.index,
   });
 
   final Settlement settlement;
-  final String currency;
   final Map<String, String> displayNames;
   final String subjectName;
   final int index;
@@ -452,7 +446,7 @@ class _HistoryTile extends StatelessWidget {
       l10n.settleUpReceiptLine(
         payerName,
         recipientName,
-        AppFormatters.formatCurrency(settlement.amount, currency),
+        AppFormatters.formatCurrency(settlement.amount, settlement.currency),
       ),
       l10n.settleUpReceiptContext(dateStr, subjectName),
     ];
@@ -548,7 +542,7 @@ class _HistoryTile extends StatelessWidget {
                 ),
               ),
               Text(
-                AppFormatters.formatCurrency(settlement.amount, currency),
+                AppFormatters.formatCurrency(settlement.amount, settlement.currency),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
