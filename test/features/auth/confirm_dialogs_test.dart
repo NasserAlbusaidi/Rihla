@@ -6,10 +6,11 @@ import 'package:safar/features/auth/widgets/delete_account_retry_dialog.dart';
 import 'package:safar/features/auth/widgets/sign_out_confirm_dialog.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-// #227 — direct contract coverage for the destructive/confirmation
-// dialogs (MergeOnRecoverDialog deleted in #441 PR4 — no merge to consent to). Their confirm/cancel SEMANTICS (does/doesn't call the service) are
-// already exercised transitively (delete_account_tile_test, sign_out_tile_test,
-// recover_screen_test). What no test covered: the show() Future contract in
+// #227 — direct contract coverage for the destructive/confirmation dialogs
+// (MergeOnRecoverDialog deleted in #441 PR4 — no merge to consent to). Their
+// confirm/cancel SEMANTICS (does/doesn't call the service) are already
+// exercised transitively (delete_account_tile_test, sign_out_tile_test).
+// What no test covered: the show() Future contract in
 // isolation, and specifically the barrier-dismiss -> null leg — an accidental
 // tap outside an account-deletion dialog must NOT resolve truthy.
 typedef ShowDialogFn = Future<bool?> Function(BuildContext);

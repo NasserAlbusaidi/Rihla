@@ -161,9 +161,9 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
       }
     } on FirebaseAuthException catch (error, stack) {
       // #414: a LINK that fails with email-already-in-use (and friends) must
-      // NEVER auto-fall-back to completeRecovery — that signs the anon
-      // account out and orphans its data. Recovery into the other account is
-      // an explicit, consented action via RecoverScreen only.
+      // NEVER auto-fall-back to restoreWithEmailLink — that swaps the anon
+      // account away and orphans its data. Restoring into the other account
+      // is an explicit action via the restore entries only.
       FirebaseConfig.log(
         'Recovery: $op completion failed (${error.code})',
         error: error,

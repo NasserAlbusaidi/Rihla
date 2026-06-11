@@ -217,10 +217,10 @@ class AuthRecoveryService {
   /// Restore the durable Google-backed account on this device, then restart
   /// (#441 PR3). This is a cross-UID swap (the throwaway anon shell is replaced
   /// by the Google-owned UID), so it runs the full cache-isolation protocol —
-  /// mirroring [completeRecovery]/[signOutCurrentDevice] but via
+  /// mirroring [restoreWithEmailLink]/[signOutCurrentDevice] but via
   /// [FirebaseAuth.signInWithCredential] and WITHOUT the merge engine: the
-  /// post-gate shell is provably empty (PR2 gates `fcm_tokens` writes and drops
-  /// `recoveryCleanupIntents`), so there is nothing to migrate.
+  /// post-gate shell is provably empty (PR2 gates `fcm_tokens` writes; PR4
+  /// deleted the cleanup-intent writer), so there is nothing to migrate.
   ///
   /// Ordering is load-bearing:
   /// 1. Obtain the credential FIRST — interactive, so a user-cancel / missing
@@ -337,7 +337,7 @@ class AuthRecoveryService {
 
   /// Best-effort clear of the recovery op-state. Each removal is guarded on its
   /// own so one failing prefs write neither skips the other nor blocks the
-  /// guaranteed restart in [completeRecovery]'s `finally`.
+  /// guaranteed restart in [restoreWithEmailLink]'s `finally`.
   Future<void> _safeClearRecoveryOpState() async {
     try {
       await clearPendingEmail();
