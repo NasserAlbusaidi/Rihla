@@ -1925,6 +1925,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupShare => 'Share';
 
   @override
+  String get groupShareViaWhatsApp => 'WhatsApp';
+
+  @override
   String get groupJoinTitle => 'Join a Group';
 
   @override

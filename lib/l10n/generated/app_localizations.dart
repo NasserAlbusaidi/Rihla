@@ -3336,6 +3336,12 @@ abstract class AppLocalizations {
   /// **'Share'**
   String get groupShare;
 
+  /// Label on the invite-sheet button that opens WhatsApp prefilled with the join link (#354). Falls back to the OS share sheet when WhatsApp isn't installed.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp'**
+  String get groupShareViaWhatsApp;
+
   /// No description provided for @groupJoinTitle.
   ///
   /// In en, this message translates to:
