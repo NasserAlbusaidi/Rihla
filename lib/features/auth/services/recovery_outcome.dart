@@ -15,7 +15,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// boot, which surfaces the message and emits the authoritative Sentry event.
 ///
 /// PII rules: `code` is ONLY a [FirebaseAuthException.code] or an error
-/// runtimeType — never a message, email, UID, oobCode, or link.
+/// runtimeType — never a message, email, UID, oobCode, or link. The LOCAL
+/// marker may carry `expectedUid` (#458) — prefs already hold the full
+/// FirebaseAuth user blob, so this adds no exposure — but no UID may ever
+/// reach a Sentry capture string.
 @immutable
 class RecoveryOutcome {
   const RecoveryOutcome({
@@ -23,18 +26,24 @@ class RecoveryOutcome {
     required this.ok,
     required this.atMillis,
     this.code,
+    this.expectedUid,
   });
 
   static const String prefsKey = 'auth.recoveryOutcome';
   static const String opGoogle = 'google';
   static const String opRecover = 'recover';
   static const String opSignOut = 'signout';
-  static const int _version = 1;
+  static const int _version = 2;
 
   final String op;
   final bool ok;
   final String? code;
   final int atMillis;
+
+  /// Post-swap UID the restore claims to have signed in (#458). Written only
+  /// by the restore-success paths; `null` on failures, sign-out, and legacy
+  /// v1 markers — the boot notice then trusts the claim as before.
+  final String? expectedUid;
 
   Map<String, Object> toJson() => {
         'v': _version,
@@ -42,6 +51,7 @@ class RecoveryOutcome {
         'ok': ok,
         'code': ?code,
         'atMillis': atMillis,
+        'expectedUid': ?expectedUid,
       };
 }
 
@@ -51,12 +61,14 @@ Future<void> writeRecoveryOutcome(
   required String op,
   required bool ok,
   String? code,
+  String? expectedUid,
 }) async {
   try {
     final outcome = RecoveryOutcome(
       op: op,
       ok: ok,
       code: code,
+      expectedUid: expectedUid,
       atMillis: DateTime.now().millisecondsSinceEpoch,
     );
     await prefs.setString(RecoveryOutcome.prefsKey, jsonEncode(outcome.toJson()));
@@ -83,6 +95,7 @@ RecoveryOutcome? readAndClearRecoveryOutcome(SharedPreferences prefs) {
       op: op,
       ok: ok,
       code: decoded['code'] as String?,
+      expectedUid: decoded['expectedUid'] as String?,
       atMillis: atMillis,
     );
   } catch (_) {
