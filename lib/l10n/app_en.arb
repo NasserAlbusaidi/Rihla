@@ -1806,7 +1806,23 @@
   },
   "durableGateConflict": "That Google account is already in use by another Rihla account. Use a different Google account for now.",
   "@durableGateConflict": {
-    "description": "Shown when linking fails with credential-already-in-use / email-already-in-use. Restoring the other account ships in a later release (#441 PR3); the sheet must never resolve this by signing out."
+    "description": "Dead-end conflict copy, shown only when the switch offer is unsafe (this device's current account already has groups, or the group check failed). The sheet must never resolve a conflict by signing out."
+  },
+  "durableGateConflictTitle": "That account already has Rihla data",
+  "@durableGateConflictTitle": {
+    "description": "Title of the gate sheet's conflict state (#428): the chosen Google account already backs another Rihla account."
+  },
+  "durableGateConflictSwitchBody": "This Google account already has Rihla data. Switch to it? This device will continue with that account.",
+  "@durableGateConflictSwitchBody": {
+    "description": "Body of the conflict switch offer. Only shown when the current anonymous shell is provably empty (zero groups), so switching discards nothing."
+  },
+  "durableGateSwitch": "Switch account",
+  "@durableGateSwitch": {
+    "description": "Primary action in the conflict state: discard the empty anonymous shell and sign into the existing Google-backed account (restarts the app)."
+  },
+  "durableGateUseDifferent": "Use a different account",
+  "@durableGateUseDifferent": {
+    "description": "Secondary action in the conflict state: back to the initial gate sheet to retry with another Google account."
   },
   "durableGateError": "Could not link your account. Try again.",
   "@durableGateError": {

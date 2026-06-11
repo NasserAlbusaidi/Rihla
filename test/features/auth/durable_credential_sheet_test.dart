@@ -16,7 +16,10 @@ import 'package:safar/core/extensions/build_context_l10n.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/features/auth/services/durable_credential_exception.dart';
 import 'package:safar/features/auth/widgets/durable_credential_sheet.dart';
+import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockAuthRecoveryService extends Mock implements AuthRecoveryService {}
@@ -24,6 +27,8 @@ class _MockAuthRecoveryService extends Mock implements AuthRecoveryService {}
 class _MockUserCredential extends Mock implements UserCredential {}
 
 class _MockUser extends Mock implements User {}
+
+class _FakeAuthCredential extends Fake implements AuthCredential {}
 
 void main() {
   late _MockAuthRecoveryService recovery;
@@ -40,9 +45,12 @@ void main() {
     when(() => linkedUser.getIdToken(true)).thenAnswer((_) async => 'fresh');
   });
 
-  Widget harness() {
+  Widget harness({Stream<List<Group>>? groups}) {
     return ProviderScope(
-      overrides: [authRecoveryServiceProvider.overrideWithValue(recovery)],
+      overrides: [
+        authRecoveryServiceProvider.overrideWithValue(recovery),
+        if (groups != null) userGroupsProvider.overrideWith((ref) => groups),
+      ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -61,8 +69,11 @@ void main() {
     );
   }
 
-  Future<AppLocalizations> open(WidgetTester tester) async {
-    await tester.pumpWidget(harness());
+  Future<AppLocalizations> open(
+    WidgetTester tester, {
+    Stream<List<Group>>? groups,
+  }) async {
+    await tester.pumpWidget(harness(groups: groups));
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     return tester.element(find.text('open')).l10n;
@@ -124,18 +135,39 @@ void main() {
   });
 
   testWidgets(
-    'conflict shows durableGateConflict inline, stays open, never pops true',
+    'conflict on a POPULATED shell shows the dead-end durableGateConflict, '
+    'stays open, never pops true (#428: switch flow pinned in '
+    'durable_credential_sheet_conflict_test.dart)',
     (tester) async {
+      // The harness overrides userGroupsProvider NON-empty on purpose: this
+      // pins the populated-shell dead-end branch explicitly rather than
+      // riding the error→dead-end fail-safe of the un-overridden provider.
       when(() => recovery.linkGoogleToCurrentUser()).thenThrow(
-        FirebaseAuthException(code: 'credential-already-in-use'),
+        GoogleLinkConflictException(
+          credential: _FakeAuthCredential(),
+          cause: FirebaseAuthException(code: 'credential-already-in-use'),
+        ),
       );
 
-      final l10n = await open(tester);
+      final l10n = await open(
+        tester,
+        groups: Stream.value([
+          Group(
+            id: 'g1',
+            name: 'Trip',
+            inviteCode: 'ABCDEF',
+            createdBy: 'u1',
+            memberIds: const ['u1'],
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        ]),
+      );
       await tester.tap(find.text(l10n.durableGateContinueGoogle));
       await tester.pumpAndSettle();
 
       expect(result, isNull);
       expect(find.text(l10n.durableGateConflict), findsOneWidget);
+      expect(find.byKey(const Key('durableGate.switch')), findsNothing);
       // The same-UID contract: a conflict is the caller's decision point —
       // nothing in the sheet may sign the anon user out (#213).
       verifyNever(() => recovery.signOutCurrentDevice());

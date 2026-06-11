@@ -16,6 +16,7 @@ import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/durable_credential_gate_provider.dart';
 import 'package:safar/features/auth/services/durable_credential_exception.dart';
+import 'package:safar/features/auth/services/pending_gate_intent.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -34,14 +35,19 @@ class RecordingPrompt implements NotificationPrompt {
 
 class RecordingGate extends DurableCredentialGate {
   RecordingGate(super.ref, {required bool result})
-    : super(isAnonymous: () => true, presentSheet: (_) async => result);
+    : super(
+        isAnonymous: () => true,
+        presentSheet: (_, {intent}) async => result,
+      );
 
   int ensured = 0;
+  PendingGateIntent? lastIntent;
 
   @override
-  Future<bool> ensure(BuildContext context) {
+  Future<bool> ensure(BuildContext context, {PendingGateIntent? intent}) {
     ensured++;
-    return super.ensure(context);
+    lastIntent = intent;
+    return super.ensure(context, intent: intent);
   }
 }
 

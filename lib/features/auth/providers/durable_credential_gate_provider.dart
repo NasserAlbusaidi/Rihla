@@ -6,10 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/notification_service.dart';
+import '../services/pending_gate_intent.dart';
 import '../widgets/durable_credential_sheet.dart';
 
 typedef DurableCredentialSheetPresenter =
-    Future<bool> Function(BuildContext context);
+    Future<bool> Function(BuildContext context, {PendingGateIntent? intent});
 
 /// Screen-side chokepoint for the durable-credential requirement (#441 PR2).
 ///
@@ -47,9 +48,13 @@ class DurableCredentialGate {
   /// anonymous users; re-saves the FCM token post-link because a user who
   /// enabled push while still anonymous has no token doc yet, and pushes
   /// matter exactly right after the first join.
-  Future<bool> ensure(BuildContext context) async {
+  ///
+  /// [intent] is the caller's in-flight form state (#428) — handed to the
+  /// sheet so its conflict-switch path can persist it across the forced
+  /// restart. Callers with nothing in flight omit it.
+  Future<bool> ensure(BuildContext context, {PendingGateIntent? intent}) async {
     if (!_needsGate) return true;
-    final linked = await _presentSheet(context);
+    final linked = await _presentSheet(context, intent: intent);
     if (linked && _ref.read(settingsProvider).pushNotificationsEnabled) {
       unawaited(_ref.read(notificationServiceProvider).initialize());
     }
