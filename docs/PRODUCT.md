@@ -347,7 +347,7 @@ The Firestore schema still tolerates legacy keys for these features (silent `fro
 - **No general multi-device account workflow.** Anonymous UIDs are device-bound unless the user has linked and restored through email-link recovery.
 - **Soft-delete only** for expenses, events, groups, and settlements where supported — they remain in Firestore until retention tooling exists.
 - **OMR-pinned writes.** A currency-default picker (OMR/AED/SAR/USD/EUR/GBP) ships in Profile and `MoneySerializer` handles 10 currencies, but group/expense creation still hardcodes `'OMR'` (`create_group_screen.dart`), so all live data is OMR pending #61.
-- **Orphan anon-UID cleanup is partial.** After email-link recovery, `cleanupAnonUidArtifacts` (added in v1.2.0+16) removes most artifacts from the abandoned anon UID, but UIDs with downstream references in `memberIds` / `participantIds` remain in Firestore and require a future server-side reconciliation pass.
+- **Anon-UID orphan risk closed by the durable-credential gate (#441).** Money data can no longer be born under an anonymous UID (server-enforced at group create/join), so restore is same-UID and the old cross-UID cleanup engine was deleted (PR5).
 
 ---
 

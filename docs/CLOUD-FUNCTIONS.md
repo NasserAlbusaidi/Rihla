@@ -4,13 +4,12 @@ Reference for the Firebase Cloud Functions Rihla ships: HTTPS callables
 (`firebase-functions/v2/https`), Firestore document triggers
 (`firebase-functions/v2/firestore`), and a scheduled backstop
 (`firebase-functions/v2/scheduler`), all deployed to `us-central1`.
-`joinGroupByInviteCode` and `cleanupAnonUidArtifacts` enforce App Check;
+`joinGroupByInviteCode` enforces App Check;
 `deleteAccount` runs with App Check in verify-if-present (soft) mode.
 
 | Callable | File | Purpose |
 |----------|------|---------|
 | `joinGroupByInviteCode` | `functions/src/callables/joinGroupByInviteCode.ts` | Validate a 6-char invite code and atomically add the caller to the group + active events. |
-| `cleanupAnonUidArtifacts` | `functions/src/callables/cleanupAnonUidArtifacts.ts` | After email-link recovery, migrate Firestore + Auth references from the old anonymous UID to the recovered UID. |
 | `deleteAccount` | `functions/src/callables/deleteAccount.ts` | Server-side account-deletion cascade: revoke refresh tokens, scrub PII, replace UID with a per-group tombstone, delete FCM/joinAttempts/Auth user. On an incomplete cascade it writes a `deletionAudit/{uid}` marker (#76) for the reaper backstop. |
 
 Functions live in `functions/` (Node 22 / TypeScript). They use the
@@ -27,7 +26,6 @@ import './admin';
 setGlobalOptions({ region: 'us-central1' });
 
 export { joinGroupByInviteCode } from './callables/joinGroupByInviteCode';
-export { cleanupAnonUidArtifacts } from './callables/cleanupAnonUidArtifacts';
 export { deleteAccount } from './callables/deleteAccount';
 export { deleteGroup } from './callables/deleteGroup';
 export {
@@ -242,152 +240,6 @@ expected behaviour, not a bug.
 
 ---
 
-## 2. `cleanupAnonUidArtifacts`
-
-After a user links and recovers their account via email link, the
-Firebase Auth UID changes from the anonymous `oldUid` to the recovered
-`newUid`. Firestore documents that referenced `oldUid` (as a member,
-participant, or creator) need to be rewritten — without this, the user
-appears as two separate people in their own groups.
-
-This callable does the rewrite server-side because the necessary cross-
-document writes exceed what a client batch can do safely under the
-security rules.
-
-### Signature
-
-```ts
-interface CleanupAnonUidArtifactsInput {
-  oldUid: string;
-  cleanupSecret: string;
-}
-
-interface CleanupAnonUidArtifactsOutput {
-  groupsProcessed: number;
-  // step identifiers that failed during the cascade: a group id, or the
-  // literal sentinels 'fcm_tokens' / 'joinAttempts'. While non-empty,
-  // the callable refuses to delete the old anon Auth user or consume the
-  // cleanup intent.
-  cascadeFailed: string[];
-  authUserDeleted: boolean;
-  fcmTokenDeleted: boolean;
-  joinAttemptsDeleted: boolean;
-}
-```
-
-### Behaviour
-
-1. **Auth gate.** Throws `unauthenticated` if `request.auth` is null.
-2. **Input validation.** `oldUid` must be a non-empty string and must
-   differ from the caller's current UID. `cleanupSecret` must be a
-   32-128 character one-time secret.
-3. **Recovery precondition.** Calls `getAuth().getUser(newUid)` and
-   verifies the user is linked to either `'password'` or `'emailLink'`
-   provider. A pure-anon UID may not call this — there is nothing to
-   recover into. `failed-precondition` if missing.
-4. **Cleanup intent precondition.** Before sign-out, the retiring
-   anonymous UID writes `recoveryCleanupIntents/{oldUid}` with the
-   secret. The callable verifies that document exists, matches the
-   supplied secret, and is no older than 15 minutes. Without this, any
-   recovered user who can see another anon UID could try to migrate that
-   user's artifacts.
-5. **Per-group cleanup cascade.** For every group where
-   `memberIds` contains `oldUid`. **#275: this is no longer a single
-   `runTransaction` — it is a chunked `BatchWriter` (≤450-op auto-flush) for the
-   child scrubs (events/expenses/settlements/activity) followed by a small
-   bounded transaction for the member/`memberIds`/`createdBy` identity write, so
-   a dense account's cascade can no longer hit Firestore's 500-write-per-
-   transaction cliff. The identity write lands LAST (after the batch flush) so a
-   torn cascade keeps the group query-visible and converges on retry; the cascade
-   is idempotent (e.g. `splitDistribution`'s collision-sum is gated on the
-   `oldUid` key still being present, so a retry never double-sums).** The
-   migration set is:
-   - Rewrite `memberIds`: `[..., oldUid, ...]` → `[..., newUid, ...]`
-     (dedupes if `newUid` already present).
-   - If `createdBy == oldUid`, set `createdBy = newUid`.
-   - If a member doc exists at `members/{oldUid}` and not at
-     `members/{newUid}`, copy it over with `userId`/`id` rewritten.
-   - Delete the old `members/{oldUid}` doc.
-   - For each event in the group: rewrite `participantIds`,
-     `participantNames` keys, and `createdBy` analogously.
-   - For each **active** event's non-deleted expenses + the event/group
-     settlements: migrate the financial attribution — `createdBy`,
-     `payerParticipantId`/`recipientParticipantId`, `customSplitParticipants`,
-     and `splitDistribution` keys (collisions SUM subunits to conserve money)
-     (#216).
-   - For each **active** event's `activity_logs` + the group `activity`
-     collection: migrate the activity attribution — `actorId`,
-     `targetParticipantId`, and UID-bearing `metadata` values
-     (`payerParticipantId`/`recipientId`/`customSplitParticipants`) `oldUid →
-     newUid`. Denormalized display strings (`actorName`/`logText`/`description`)
-     are left intact (migrate-not-scrub — same person). Activity is
-     non-financial, so this is hygiene, not a balance fix (#217).
-6. **Keyed-artifact + gated Auth cleanup.** Deletes
-   `fcm_tokens/{oldUid}` and `joinAttempts/{oldUid}` (failures are
-   appended to `cascadeFailed`). Then, only if `cascadeFailed` is empty,
-   deletes the old anon Auth user (ignoring `auth/user-not-found`) and
-   deletes the consumed cleanup intent. On any failure the Auth user and
-   intent are preserved so the client can retry within the 15-minute
-   window.
-7. **Returns** counts and a list of step identifiers that failed (other
-   groups continue). Per-step failures land in `cascadeFailed` —
-   group ids, or the sentinels `'fcm_tokens'` / `'joinAttempts'` — so
-   the client can show a partial-success banner.
-
-### Errors
-
-| Code | Message | When |
-|------|---------|------|
-| `unauthenticated` | Sign-in required. | No `request.auth`. |
-| `invalid-argument` | oldUid must be a non-empty string. | Type/length check. |
-| `invalid-argument` | oldUid must differ from caller uid. | Caller passed their own UID. |
-| `invalid-argument` | cleanupSecret is invalid. | Missing or malformed cleanup secret. |
-| `permission-denied` | Invalid cleanup intent. | Missing, expired, or mismatched `recoveryCleanupIntents/{oldUid}`. |
-| `failed-precondition` | Recovered user must be linked to an email provider. | Caller is still anonymous. |
-| `failed-precondition` | Recovered user must exist before cleanup. | Auth lookup failed for any other reason. |
-| `failed-precondition` | groups/{gid}.memberIds is malformed. | Schema violation in a group doc. |
-| `failed-precondition` | groups/{gid}/events/{eid}.{field} is malformed. | Schema violation in an event doc. |
-
-Per-group cascade failures (a batch-flush throw or the identity transaction)
-are logged and added to
-`cascadeFailed` — they do **not** abort the rest of the cleanup. The
-callable returns a partial success. A non-empty `cascadeFailed` (whether
-a group id or a `'fcm_tokens'` / `'joinAttempts'` sentinel) blocks the
-old anon Auth-user delete and the cleanup-intent consumption.
-
-### Client wrapper
-
-```dart
-// lib/core/services/firebase_functions_service.dart
-Future<void> cleanupAnonUidArtifacts({
-  required String oldUid,
-  required String cleanupSecret,
-}) async {
-  await _functions.httpsCallable('cleanupAnonUidArtifacts').call({
-    'oldUid': oldUid,
-    'cleanupSecret': cleanupSecret,
-  });
-}
-```
-
-In production this is called fire-and-forget from
-`AuthRecoveryService` after it creates the cleanup intent, drains
-pending writes, and completes email-link sign-in. Failures are captured
-in Sentry breadcrumbs rather than blocking the user.
-
-### Operational notes
-
-- `cleanupAnonUidArtifacts` was introduced as part of the
-  account-recovery work (#46). Earlier recovered users have residual
-  anon-UID artifacts in their groups. See `docs/PRODUCT.md § Known
-  Limitations` for the partial-cleanup caveat (which pins the
-  introducing build).
-- The callable runs **after** the new UID is established; it cannot be
-  rolled back. If per-group cleanup fails, the one-time intent remains
-  until it expires so a support retry can use the same secret.
-
----
-
 ## 3. `deleteAccount`
 
 In-app account deletion. Cascades through Firestore, FCM tokens,
@@ -512,7 +364,7 @@ routes to the post-deletion empty state.
 
 ## App Check
 
-`joinGroupByInviteCode` and `cleanupAnonUidArtifacts` ship with
+`joinGroupByInviteCode` ships with
 `{ enforceAppCheck: true }`. The client must hold a valid App Check
 token (Play Integrity on Android, App Attest / DeviceCheck on iOS) or
 the callable returns `unauthenticated` before any logic runs.
@@ -578,7 +430,6 @@ matches the current commit, and the App Check repo variables agree.
 | `functions/src/index.ts` | 8 | Region + exports |
 | `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
-| `functions/src/callables/cleanupAnonUidArtifacts.ts` | 691 | Anon→recovered UID migration (ledger #216 + activity #217; chunked BatchWriter #275) |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
 | `functions/src/triggers/settlementNotifier.ts` | — | #53 settlement-recorded push triggers |
 | `functions/src/notifications/fcmSender.ts` | — | #53 multicast sender + token pruning |
@@ -595,7 +446,7 @@ matches the current commit, and the App Check repo variables agree.
 ## Related docs
 
 - [SECURITY-RULES.md](./SECURITY-RULES.md) — what's enforced at the rules layer
-- [ACCOUNT-RECOVERY.md](./ACCOUNT-RECOVERY.md) — how `cleanupAnonUidArtifacts` fits the recovery flow
+- [ACCOUNT-RECOVERY.md](./ACCOUNT-RECOVERY.md) — the durable-credential recovery architecture
 - [RUNBOOK.md](./RUNBOOK.md) — tripwires T2 and T3 cover Cloud Functions error rates
 - [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) — pre-deploy checklist
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — overall system picture

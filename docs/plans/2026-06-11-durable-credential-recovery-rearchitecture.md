@@ -65,6 +65,8 @@ Partial edits: `auth_recovery_service.dart` ~380/490 (keep link path + `signOutC
 **NOT deletable (shared):** the entire cache-isolation stack (7 pieces), `deletionReaper.ts`, the email LINK path, `firebase_auth_test.dart` (#213 contract).
 Total ≈ **4,500 LOC**.
 
+> **Correction (PR4 #449, 2026-06-11):** `recover_screen.dart` / `recover_pending_screen.dart` / their tests / the `/recover` routes are **KEPT** — they ARE the slim email-fallback send-side UI (D3 needs a form to request a sign-in link on a new device). PR4 deleted `merge_on_recover_dialog.dart`, replaced `completeRecovery` with the no-merge `restoreWithEmailLink`, and retargeted `auth_recovery_service_restart_guarantee_test.dart` instead of deleting it. The rest shipped as written (client merge half in PR4, server half + rules + TTL in PR5).
+
 ## New UI
 
 - **Gate sheet** at create/join: "Keep your account safe" — one-tap Google (Credential Manager), reuses #352 rationale-sheet + #288 natural-moment patterns. Blocking (write proceeds only after link), with a clear "why" line.
