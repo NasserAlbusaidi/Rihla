@@ -18,6 +18,7 @@ import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/wordmark_logo.dart';
+import '../../auth/widgets/google_restore_action.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -310,9 +311,13 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               SizedBox(height: context.spacing.space20),
               TextButton(
                 key: const Key('home_empty_recover_cta'),
-                onPressed: () => context.push('/recover'),
+                // #441 PR3: cross-UID Google restore (discard-shell swap), not a
+                // route push. Safe here — the empty state only renders when the
+                // user has zero groups, so the discarded anon shell holds no
+                // money data.
+                onPressed: () => triggerGoogleRestore(context, ref),
                 child: Text(
-                  context.l10n.homeRecover,
+                  context.l10n.homeRestoreWithGoogle,
                   style: AppTypography.sans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

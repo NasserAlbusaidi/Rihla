@@ -2244,6 +2244,18 @@ abstract class AppLocalizations {
   /// **'I had Rihla before — restore'**
   String get homeRecover;
 
+  /// No description provided for @homeRestoreWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Google to restore'**
+  String get homeRestoreWithGoogle;
+
+  /// No description provided for @restoreGoogleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sign in with Google. Please try again.'**
+  String get restoreGoogleFailed;
+
   /// No description provided for @homeBackupNudgeTitle.
   ///
   /// In en, this message translates to:

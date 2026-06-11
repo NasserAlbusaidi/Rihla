@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/notification_service.dart';
 import '../services/auth_recovery_service.dart';
 import 'cache_isolation_controller_provider.dart';
 
@@ -64,5 +65,9 @@ final authRecoveryServiceProvider = Provider<AuthRecoveryService>((ref) {
     auth: auth,
     prefs: prefs,
     cacheIsolationController: ref.read(cacheIsolationControllerProvider),
+    // #441 PR3: delete fcm_tokens/{oldUid} BEFORE the discard-shell restore
+    // swap (owner-only rules block it afterward). Read lazily at call time so
+    // it hits the live notification service before engageIsolation invalidates it.
+    removeFcmToken: () => ref.read(notificationServiceProvider).removeToken(),
   );
 });
