@@ -154,11 +154,12 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-11, `20689860`) — DEPLOYED to prod, prod-state PASS.**
-    The "Latest gate result (2026-06-01…)" above is stale. As of the 2026-06-11
-    deploy ceremony the `backend-deployed` tag is `20689860` and
-    `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Shipped
-    across the 2026-06-07…11 deploys (see `docs/DEPLOY-LEDGER.md`):
+  - **Backend deploy (2026-06-11, `fdf8460b`) — DEPLOYED to prod, prod-state PASS.**
+    The "Latest gate result (2026-06-01…)" above is stale. As of the latest
+    2026-06-11 deploy ceremony the `backend-deployed` tag is `fdf8460b` and
+    `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`).
+    `docs/DEPLOY-LEDGER.md` is the authoritative per-deploy history; shipped
+    across the 2026-06-07…11 deploys:
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
       `allocateShares`/`allocateExact`/`allocatePercent`) gain the
       negative-value→equal-split guard, mirroring the client byte-for-byte.
@@ -215,6 +216,14 @@ starts a new run.
       `joinAttempts` burn; closes the #197 anon-rotation bypass for join).
       `recoveryCleanupIntents` deliberately stays anon-writable until PR5.
       Rules + one function updated; 18 functions unchanged.
+    - **#441 PR5** (`c009b700`, #450) — the cross-UID merge engine DELETED from
+      prod: `cleanupAnonUidArtifacts` callable removed (`deploy --force`, 18 → **17
+      functions**), `recoveryCleanupIntents` rules block + `validCleanupIntent` +
+      TTL dropped (fails closed). Epic #441 CLOSED.
+    - **#461** (`fdf8460b`) — security: scoped npm `overrides` pin of
+      `@grpc/grpc-js` to `^1.14.4` under `google-gax` (GHSA-5375-pq7m-f5r2),
+      re-bundled into prod Functions. Deps-only; functions logic / rules / indexes
+      unchanged; 17 functions. Phase 1 of the v1.5.0 release.
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
