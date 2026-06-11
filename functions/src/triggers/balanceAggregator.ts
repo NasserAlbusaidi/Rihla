@@ -248,7 +248,7 @@ export const eventBalanceAggregator = onDocumentWritten(
 );
 
 // T4 — member docs (tombstones from deleteAccount, removals from
-// leaveGroup/removeMember, uid migrations from cleanupAnonUidArtifacts).
+// leaveGroup/removeMember).
 export const memberBalanceAggregator = onDocumentWritten(
   'groups/{gid}/members/{memberId}',
   (event) => handleWrite(event, MEMBER_BALANCE_KEYS),

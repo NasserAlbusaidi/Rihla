@@ -43,7 +43,7 @@ export async function clearFirestore(): Promise<void> {
   for (const code of inviteCodes) {
     await code.delete();
   }
-  for (const collection of ['joinAttempts', 'recoveryCleanupIntents']) {
+  for (const collection of ['joinAttempts']) {
     const docs = await db.collection(collection).listDocuments();
     for (const doc of docs) {
       await doc.delete();

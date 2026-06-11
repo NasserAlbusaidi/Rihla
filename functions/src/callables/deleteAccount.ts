@@ -745,7 +745,7 @@ export async function runAccountDeletionCascade(
   }
 
   // #46: scrub identity residue before the Auth-delete gate, and fold these
-  // failures into cascadeFailed too (mirrors cleanupAnonUidArtifacts).
+  // failures into cascadeFailed too.
   try {
     output.fcmTokenDeleted = await deleteDocIfExists(db.doc(`fcm_tokens/${uid}`));
   } catch (error) {
