@@ -63,6 +63,26 @@ void main() {
       expect(prefs.containsKey(RecoveryOutcome.prefsKey), isFalse);
     });
 
+    test('round-trips expectedUid (#458)', () async {
+      await writeRecoveryOutcome(
+        prefs,
+        op: RecoveryOutcome.opGoogle,
+        ok: true,
+        expectedUid: 'durable-uid-1',
+      );
+
+      final outcome = readAndClearRecoveryOutcome(prefs);
+      expect(outcome!.expectedUid, 'durable-uid-1');
+    });
+
+    test('legacy marker without expectedUid reads as null (#458)', () async {
+      await writeRecoveryOutcome(prefs, op: RecoveryOutcome.opGoogle, ok: true);
+
+      final outcome = readAndClearRecoveryOutcome(prefs);
+      expect(outcome!.ok, isTrue);
+      expect(outcome.expectedUid, isNull);
+    });
+
     test('overwrite keeps only the latest outcome', () async {
       await writeRecoveryOutcome(
         prefs,
