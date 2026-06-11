@@ -11,6 +11,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // #441: money data must never be born under a discardable anonymous UID.
+    // Gates group + inviteCode creation; recoveryCleanupIntents is
+    // intentionally anonymous-written and must NOT use this.
+    function isDurableSignIn() {
+      return request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     function nullableString(value) {
       return value == null || value is string;
     }
@@ -180,6 +187,7 @@ service cloud.firestore {
       allow get, list: if false;
 
       allow create: if signedIn()
+        && isDurableSignIn()
         && request.resource.data.keys().hasOnly(['groupId', 'createdAt'])
         && request.resource.data.groupId is string
         && request.resource.data.createdAt is timestamp
@@ -265,6 +273,7 @@ service cloud.firestore {
 
       function validGroupCreate() {
         return signedIn()
+          && isDurableSignIn()
           && request.resource.data.keys().hasOnly([
             'id',
             'name',

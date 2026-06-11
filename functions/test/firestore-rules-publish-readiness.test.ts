@@ -272,6 +272,79 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
+  // #441: money data must never be born under a discardable anonymous UID.
+  // Anonymous-provider tokens are rejected on group + inviteCode creation;
+  // every other provider (incl. the option-less default 'custom' used by the
+  // tests above) passes.
+  describe('#441 durable-credential gate on group creation', () => {
+    function groupCreatePayload(uid: string, groupId: string, code: string) {
+      return {
+        id: groupId,
+        name: 'Gate Group',
+        inviteCode: code,
+        createdBy: uid,
+        memberIds: [uid],
+        currency: 'OMR',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isDeleted: false,
+        deletedAt: null,
+      };
+    }
+
+    test('anonymous provider cannot create a group (even valid-shaped)', async () => {
+      await testEnv.clearFirestore();
+      const anon = testEnv.authenticatedContext('anon-uid', {
+        firebase: { sign_in_provider: 'anonymous' },
+      });
+
+      await assertFails(
+        anon
+          .firestore()
+          .doc('groups/anon-group')
+          .set(groupCreatePayload('anon-uid', 'anon-group', 'ANON12')),
+      );
+    });
+
+    test('anonymous provider cannot create the group + inviteCode batch', async () => {
+      await testEnv.clearFirestore();
+      const anon = testEnv.authenticatedContext('anon-uid', {
+        firebase: { sign_in_provider: 'anonymous' },
+      });
+      const db = anon.firestore();
+      const batch = db.batch();
+      batch.set(
+        db.doc('groups/anon-group'),
+        groupCreatePayload('anon-uid', 'anon-group', 'ANON12'),
+      );
+      batch.set(db.doc('inviteCodes/ANON12'), {
+        groupId: 'anon-group',
+        createdAt: new Date(),
+      });
+
+      await assertFails(batch.commit());
+    });
+
+    test('google.com provider can create the group + inviteCode batch', async () => {
+      await testEnv.clearFirestore();
+      const linked = testEnv.authenticatedContext('google-uid', {
+        firebase: { sign_in_provider: 'google.com' },
+      });
+      const db = linked.firestore();
+      const batch = db.batch();
+      batch.set(
+        db.doc('groups/linked-group'),
+        groupCreatePayload('google-uid', 'linked-group', 'LINK12'),
+      );
+      batch.set(db.doc('inviteCodes/LINK12'), {
+        groupId: 'linked-group',
+        createdAt: new Date(),
+      });
+
+      await assertSucceeds(batch.commit());
+    });
+  });
+
   test('group create accepts valid display name boundaries', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
 
