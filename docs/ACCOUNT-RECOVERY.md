@@ -60,7 +60,10 @@ wrapper (`CleanupOutcome`).
 - **A populated device is necessarily credentialed**, and swapping away from
   a credentialed account loses nothing — its data stays server-side under
   its own UID, recoverable by signing back into it.
-- Both restore entries render only on the zero-group home empty state.
+- Restore entries render on the zero-group home empty state and in the
+  Profile Account card — the Profile rows additionally require the user
+  to be anonymous, and hide on a loading/errored group check (fail-safe;
+  #428 PR-B). Both surfaces share the provably-empty-shell guard.
 
 ## 4. What stayed (and why)
 

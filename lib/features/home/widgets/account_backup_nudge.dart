@@ -1,35 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/router/app_router.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/durable_credential_sheet.dart';
 import '../keys/home_keys.dart';
 
-/// One-time, non-blocking home nudge to back up an anonymous account by linking
-/// an email (#285).
+/// One-time, non-blocking home nudge to back up an anonymous account by
+/// linking Google (#285, repointed Google-first in #428).
 ///
 /// Identity is a device-bound anonymous Firebase UID, so reinstall / new phone
-/// / clear-data silently orphans every group and expense unless an email was
-/// linked beforehand. This card surfaces that risk in plain terms the first
-/// time a user has data to lose (it only mounts inside the loaded dashboard,
-/// which renders once the user has ≥1 group).
+/// / clear-data silently orphans every group and expense unless a durable
+/// credential was linked beforehand. Post-gate (#441 PR2) a dashboard user is
+/// normally already durable, so this only fires for legacy pre-gate anon
+/// shells — and no longer mis-nudges a Google-linked user without an email
+/// (the old `linkedEmail == null` condition did).
 ///
-/// It renders only while the user is purely anonymous and has not dismissed it;
-/// linking an email flips [linkedEmailProvider] non-null and hides it for good,
+/// It renders only while the user is anonymous and has not dismissed it;
+/// a successful link flips [isDurableUserProvider] and hides it for good,
 /// independent of the dismiss flag.
 class AccountBackupNudge extends ConsumerWidget {
   const AccountBackupNudge({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isAnonymous = ref.watch(linkedEmailProvider) == null;
+    final isAnonymous = !ref.watch(isDurableUserProvider);
     final dismissed = ref.watch(
       settingsProvider.select((s) => s.emailLinkNudgeSeen),
     );
@@ -111,7 +111,8 @@ class AccountBackupNudge extends ConsumerWidget {
                 key: HomeKeys.accountBackupNudgeCta,
                 onPressed: () {
                   HapticService.lightClick();
-                  context.push(AppRoutes.linkEmail);
+                  // Voluntary Google link — same sheet as the create/join gate.
+                  showDurableCredentialSheet(context);
                 },
                 child: Text(
                   context.l10n.homeBackupNudgeCta,

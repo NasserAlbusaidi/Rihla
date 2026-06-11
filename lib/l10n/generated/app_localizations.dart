@@ -692,6 +692,30 @@ abstract class AppLocalizations {
   /// **'Sign out of this device?'**
   String get signOutTitle;
 
+  /// Sign-out dialog body for a Google-credentialed user with no linked email (#428): recovery is via Google sign-in, not an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data stays in the cloud. To restore, sign back in with the same Google account.'**
+  String get signOutContentGoogle;
+
+  /// Label of the Account-card row showing the linked Google identity (#428).
+  ///
+  /// In en, this message translates to:
+  /// **'Google account'**
+  String get profileAccountGoogle;
+
+  /// Trailing text on the Google-account row when the provider entry carries no email (#428).
+  ///
+  /// In en, this message translates to:
+  /// **'Linked'**
+  String get profileAccountGoogleLinked;
+
+  /// Account-card row for an anonymous user: opens the durable-credential sheet to link Google voluntarily (#428).
+  ///
+  /// In en, this message translates to:
+  /// **'Link Google account'**
+  String get profileAccountLinkGoogle;
+
   /// First text run of the SignOutConfirmDialog content, ending just before the bold email address.
   ///
   /// In en, this message translates to:
@@ -2265,13 +2289,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeBackupNudgeBody.
   ///
   /// In en, this message translates to:
-  /// **'Your groups and expenses live only on this phone. Add an email so a new phone, reinstall, or lost device can\'t erase them.'**
+  /// **'Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can\'t erase them.'**
   String get homeBackupNudgeBody;
 
   /// No description provided for @homeBackupNudgeCta.
   ///
   /// In en, this message translates to:
-  /// **'Add email'**
+  /// **'Link Google account'**
   String get homeBackupNudgeCta;
 
   /// No description provided for @homeBackupNudgeDismiss.

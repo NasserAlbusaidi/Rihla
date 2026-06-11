@@ -36,4 +36,10 @@ abstract final class ProfileKeys {
   // Settings cleanup pass — display section + pending recovery banner
   static const displaySection = Key('profile_display_section');
   static const pendingRecoveryBanner = Key('profile_pending_recovery_banner');
+
+  // #428 PR-B — account-section rework
+  static const googleAccountTile = Key('profile_google_account_tile');
+  static const googleLinkTile = Key('profile_google_link_tile');
+  static const profileRestoreGoogleTile = Key('profile_restore_google_tile');
+  static const profileRestoreEmailTile = Key('profile_restore_email_tile');
 }

@@ -142,6 +142,8 @@ Widget _buildTestApp(
       // #285: model an email-secured user so the one-time account-backup nudge
       // is absent; its appearance is covered by account_backup_nudge_test.dart.
       linkedEmailProvider.overrideWithValue('secured@example.com'),
+      // #428: the backup nudge now gates on durability, not linked email.
+      isDurableUserProvider.overrideWithValue(true),
       ...overrides,
       // #104: the home dashboard now reads the one-shot balance variants.
       // Bridge them to whatever the live providers were overridden to, so the

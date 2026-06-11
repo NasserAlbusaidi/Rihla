@@ -10,11 +10,12 @@ import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/widgets/account_backup_nudge.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/l10n/generated/app_localizations_en.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
   required SharedPreferences prefs,
-  String? linkedEmail,
+  bool isDurable = false,
   Locale? locale,
 }) async {
   final router = GoRouter(
@@ -25,11 +26,6 @@ Future<void> _pump(
         builder: (ctx, state) =>
             const Scaffold(body: SingleChildScrollView(child: AccountBackupNudge())),
       ),
-      GoRoute(
-        path: '/profile/link-email',
-        builder: (ctx, state) =>
-            const Scaffold(body: Text('LinkEmailScreen-marker')),
-      ),
     ],
   );
 
@@ -37,7 +33,7 @@ Future<void> _pump(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        linkedEmailProvider.overrideWithValue(linkedEmail),
+        isDurableUserProvider.overrideWithValue(isDurable),
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
@@ -62,14 +58,17 @@ void main() {
   testWidgets('shows for an anonymous user who has not dismissed it', (
     tester,
   ) async {
-    await _pump(tester, prefs: prefs, linkedEmail: null);
+    await _pump(tester, prefs: prefs);
 
     expect(find.byKey(HomeKeys.accountBackupNudge), findsOneWidget);
     expect(find.byKey(HomeKeys.accountBackupNudgeCta), findsOneWidget);
   });
 
-  testWidgets('hidden when an email is already linked', (tester) async {
-    await _pump(tester, prefs: prefs, linkedEmail: 'traveller@example.com');
+  testWidgets(
+      'hidden for ANY durable user — Google-linked without email included '
+      '(#428: the old linkedEmail==null condition mis-nudged them)',
+      (tester) async {
+    await _pump(tester, prefs: prefs, isDurable: true);
 
     expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
   });
@@ -80,24 +79,26 @@ void main() {
     });
     prefs = await SharedPreferences.getInstance();
 
-    await _pump(tester, prefs: prefs, linkedEmail: null);
+    await _pump(tester, prefs: prefs);
 
     expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
   });
 
-  testWidgets('Add email routes to the link-email screen', (tester) async {
-    await _pump(tester, prefs: prefs, linkedEmail: null);
+  testWidgets('CTA opens the durable-credential (Google) sheet (#428)',
+      (tester) async {
+    await _pump(tester, prefs: prefs);
 
     await tester.tap(find.byKey(HomeKeys.accountBackupNudgeCta));
     await tester.pumpAndSettle();
 
-    expect(find.text('LinkEmailScreen-marker'), findsOneWidget);
+    final l10n = AppLocalizationsEn();
+    expect(find.text(l10n.durableGateTitle), findsOneWidget);
   });
 
   testWidgets('Not now dismisses the card and persists the flag', (
     tester,
   ) async {
-    await _pump(tester, prefs: prefs, linkedEmail: null);
+    await _pump(tester, prefs: prefs);
     expect(find.byKey(HomeKeys.accountBackupNudge), findsOneWidget);
 
     await tester.tap(find.byKey(HomeKeys.accountBackupNudgeDismiss));
@@ -123,7 +124,7 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        await _pump(tester, prefs: prefs, linkedEmail: null, locale: locale);
+        await _pump(tester, prefs: prefs, locale: locale);
 
         expect(find.byKey(HomeKeys.accountBackupNudge), findsOneWidget);
         expect(tester.takeException(), isNull);

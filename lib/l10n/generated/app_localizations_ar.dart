@@ -315,6 +315,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get signOutTitle => 'تسجيل الخروج من هذا الجهاز؟';
 
   @override
+  String get signOutContentGoogle =>
+      'تبقى بياناتك في السحابة. للاستعادة، سجّل الدخول مجددًا بنفس حساب Google.';
+
+  @override
+  String get profileAccountGoogle => 'حساب Google';
+
+  @override
+  String get profileAccountGoogleLinked => 'مرتبط';
+
+  @override
+  String get profileAccountLinkGoogle => 'ربط حساب Google';
+
+  @override
   String get signOutContentPrefix =>
       'بياناتك محفوظة في السحابة. للاستعادة، أدخل ';
 
@@ -1323,10 +1336,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeBackupNudgeBody =>
-      'مجموعاتك ومصاريفك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا حتى لا تفقدها عند تغيير الهاتف أو إعادة التثبيت أو فقدان الجهاز.';
+      'مجموعاتك ومصاريفك موجودة على هذا الهاتف فقط. اربط حساب Google حتى لا يمحوها هاتف جديد أو إعادة تثبيت أو جهاز مفقود.';
 
   @override
-  String get homeBackupNudgeCta => 'أضف بريدًا إلكترونيًا';
+  String get homeBackupNudgeCta => 'ربط حساب Google';
 
   @override
   String get homeBackupNudgeDismiss => 'ليس الآن';
