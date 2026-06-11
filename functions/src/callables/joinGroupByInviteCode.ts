@@ -22,11 +22,13 @@ export interface JoinGroupByInviteCodeOutput {
 }
 
 // #197: rate-limit threat model + residual — READ before adding "more" limits.
-// The per-UID counter below (`joinAttempts/{uid}`) is the only per-actor throttle
-// and is BYPASSABLE by design of anonymous auth: anon sign-in is free, so a
-// scripted `signOut → signInAnonymously` loop mints a fresh empty counter on every
-// rotation. Two "obvious" hardenings were evaluated for #197 and INTENTIONALLY NOT
-// added:
+// The per-UID counter below (`joinAttempts/{uid}`) is the only per-actor throttle.
+// It WAS bypassable by anon-UID rotation (anon sign-in is free, so a scripted
+// `signOut → signInAnonymously` loop minted a fresh counter per rotation) — the
+// #441 anonymous-provider reject closes that exact loop for THIS callable:
+// rotated anon UIDs are refused before the lookup. Rotating durable Google
+// accounts is the residual (expensive, attested). Two "obvious" hardenings were
+// evaluated for #197 and INTENTIONALLY NOT added:
 //   • per-IP — the only signal that would survive UID rotation, BUT these callables
 //     run on direct Cloud Run ingress (no external ALB; see index.ts), where the
 //     client IP is unavailable in any trustworthy form: `X-Forwarded-For` is fully
@@ -225,6 +227,17 @@ export const joinGroupByInviteCode = onCall<
   async (request: CallableRequest<JoinGroupByInviteCodeInput>) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
+    }
+
+    // #441: membership must never attach to a discardable anonymous UID.
+    // Thrown BEFORE assertJoinNotLocked / the tx so it never burns the
+    // throttle. Tokenless requests are test fixtures; verified callable
+    // tokens always carry firebase.sign_in_provider in production.
+    if (request.auth.token?.firebase?.sign_in_provider === 'anonymous') {
+      throw new HttpsError(
+        'permission-denied',
+        'A linked (non-anonymous) account is required to join a group.',
+      );
     }
 
     const uid = request.auth.uid;

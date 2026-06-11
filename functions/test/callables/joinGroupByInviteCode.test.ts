@@ -97,6 +97,36 @@ describe('joinGroupByInviteCode', () => {
     } as any)).rejects.toMatchObject({ code: 'resource-exhausted' });
   });
 
+  // #441: an anonymous-provider join is rejected before the throttle —
+  // money-relevant membership must never attach to a discardable anon UID.
+  test('anonymous provider rejected with permission-denied', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Anon' },
+      auth: { uid: 'anon-1', token: { firebase: { sign_in_provider: 'anonymous' } } },
+    } as any)).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  test('anonymous reject does NOT burn the join throttle', async () => {
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Anon' },
+      auth: { uid: 'anon-1', token: { firebase: { sign_in_provider: 'anonymous' } } },
+    } as any)).rejects.toMatchObject({ code: 'permission-denied' });
+
+    expect((await getFirestore().doc('joinAttempts/anon-1').get()).exists)
+      .toBe(false);
+  });
+
+  test('google.com provider joins successfully', async () => {
+    const res = await wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Googled' },
+      auth: { uid: 'googled', token: { firebase: { sign_in_provider: 'google.com' } } },
+    } as any);
+
+    expect(res).toEqual({ groupId: 'g1' });
+    expect((await getFirestore().doc('groups/g1/members/googled').get()).exists)
+      .toBe(true);
+  });
+
   test('join adds uid to group and creates member document', async () => {
     const res = await wrapped({
       data: { inviteCode: 'abc123', displayName: 'Alice' },
