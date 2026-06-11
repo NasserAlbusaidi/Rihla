@@ -4487,6 +4487,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Turn on'**
   String get notificationRationaleTurnOn;
+
+  /// Title of the durable-credential gate sheet (#441). Shown before the first group create/join while the user is still anonymous.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your money safe'**
+  String get durableGateTitle;
+
+  /// Body of the durable-credential gate sheet (#441).
+  ///
+  /// In en, this message translates to:
+  /// **'Your groups and expenses are tied to this account. Link Google so they can\'t be lost with this device.'**
+  String get durableGateBody;
+
+  /// Primary action on the gate sheet — opens the Google Credential Manager sheet and links the credential to the current (anonymous) user.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get durableGateContinueGoogle;
+
+  /// Dismiss action on the gate sheet. Aborts the pending create/join; the gate re-asks on the next attempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get durableGateNotNow;
+
+  /// Shown when linking fails with credential-already-in-use / email-already-in-use. Restoring the other account ships in a later release (#441 PR3); the sheet must never resolve this by signing out.
+  ///
+  /// In en, this message translates to:
+  /// **'That Google account is already in use by another Rihla account. Use a different Google account for now.'**
+  String get durableGateConflict;
+
+  /// Generic failure line on the gate sheet (config missing, unexpected errors).
+  ///
+  /// In en, this message translates to:
+  /// **'Could not link your account. Try again.'**
+  String get durableGateError;
+
+  /// Snackbar shown when a create/join is refused because the user is still anonymous (#441) — the defense path when the gate sheet was bypassed, and the mapping for the server-side permission-denied reject.
+  ///
+  /// In en, this message translates to:
+  /// **'Link a Google account to continue.'**
+  String get durableCredentialRequired;
 }
 
 class _AppLocalizationsDelegate

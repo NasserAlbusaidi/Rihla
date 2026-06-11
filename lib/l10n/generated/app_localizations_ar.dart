@@ -2634,4 +2634,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get notificationRationaleTurnOn => 'تفعيل';
+
+  @override
+  String get durableGateTitle => 'احمِ أموالك';
+
+  @override
+  String get durableGateBody =>
+      'مجموعاتك ومصاريفك مرتبطة بهذا الحساب. اربط حساب Google حتى لا تفقدها مع هذا الجهاز.';
+
+  @override
+  String get durableGateContinueGoogle => 'المتابعة عبر Google';
+
+  @override
+  String get durableGateNotNow => 'ليس الآن';
+
+  @override
+  String get durableGateConflict =>
+      'حساب Google هذا مستخدم بالفعل في حساب رحلة آخر. استخدم حساب Google مختلفًا في الوقت الحالي.';
+
+  @override
+  String get durableGateError => 'تعذّر ربط حسابك. حاول مرة أخرى.';
+
+  @override
+  String get durableCredentialRequired => 'اربط حساب Google للمتابعة.';
 }

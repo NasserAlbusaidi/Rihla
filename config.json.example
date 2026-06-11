@@ -1,4 +1,5 @@
 {
   "SENTRY_DSN": "",
-  "USE_FIREBASE_EMULATOR": false
+  "USE_FIREBASE_EMULATOR": false,
+  "GOOGLE_SERVER_CLIENT_ID": ""
 }

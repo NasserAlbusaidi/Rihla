@@ -34,6 +34,7 @@ class NotificationService {
     FirebaseMessaging? messaging,
     FirebaseFirestore? firestore,
     String? Function()? currentUserId,
+    bool Function()? isAnonymous,
     String Function()? localeResolver,
     Stream<String>? tokenRefresh,
     Stream<RemoteMessage>? foregroundMessages,
@@ -44,6 +45,7 @@ class NotificationService {
   }) : _messaging = messaging,
        _firestoreOverride = firestore,
        _currentUserIdOverride = currentUserId,
+       _isAnonymousOverride = isAnonymous,
        _localeResolverOverride = localeResolver,
        _tokenRefreshOverride = tokenRefresh,
        _foregroundMessagesOverride = foregroundMessages,
@@ -57,6 +59,7 @@ class NotificationService {
   FirebaseMessaging? _messaging;
   final FirebaseFirestore? _firestoreOverride;
   final String? Function()? _currentUserIdOverride;
+  final bool Function()? _isAnonymousOverride;
   final String Function()? _localeResolverOverride;
   final Stream<String>? _tokenRefreshOverride;
   final Stream<RemoteMessage>? _foregroundMessagesOverride;
@@ -75,6 +78,19 @@ class NotificationService {
 
   String? get _currentUserId =>
       _currentUserIdOverride?.call() ?? FirebaseConfig.currentUser?.uid;
+
+  bool get _isCurrentUserAnonymous {
+    final override = _isAnonymousOverride;
+    if (override != null) return override();
+    // An injected test uid implies a durable user; FirebaseConfig.currentUser
+    // throws [core/no-app] in unit tests without Firebase (#390).
+    if (_currentUserIdOverride != null) return false;
+    try {
+      return FirebaseConfig.currentUser?.isAnonymous ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Recipient locale persisted alongside the token so the server can localize
   /// push copy for terminated/backgrounded apps (#53). Falls back to 'en' (the
@@ -163,6 +179,9 @@ class NotificationService {
 
       final userId = _currentUserId;
       if (userId == null) return;
+      // #441: anonymous shells must stay empty so a discarded shell never
+      // strands data. Silent skip — by design, not an error state.
+      if (_isCurrentUserAnonymous) return;
 
       await _firestore.collection('fcm_tokens').doc(userId).set({
         'user_id': userId,
@@ -181,6 +200,7 @@ class NotificationService {
   Future<void> _onTokenRefresh(String token) async {
     final userId = _currentUserId;
     if (userId == null) return;
+    if (_isCurrentUserAnonymous) return;
 
     try {
       await _firestore.collection('fcm_tokens').doc(userId).set({

@@ -2582,4 +2582,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationRationaleTurnOn => 'Turn on';
+
+  @override
+  String get durableGateTitle => 'Keep your money safe';
+
+  @override
+  String get durableGateBody =>
+      'Your groups and expenses are tied to this account. Link Google so they can\'t be lost with this device.';
+
+  @override
+  String get durableGateContinueGoogle => 'Continue with Google';
+
+  @override
+  String get durableGateNotNow => 'Not now';
+
+  @override
+  String get durableGateConflict =>
+      'That Google account is already in use by another Rihla account. Use a different Google account for now.';
+
+  @override
+  String get durableGateError => 'Could not link your account. Try again.';
+
+  @override
+  String get durableCredentialRequired => 'Link a Google account to continue.';
 }
