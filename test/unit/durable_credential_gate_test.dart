@@ -24,7 +24,7 @@ void main() {
     WidgetTester tester, {
     required bool isAnonymous,
     required bool pushEnabled,
-    required Future<bool> Function(BuildContext) presentSheet,
+    required DurableCredentialSheetPresenter presentSheet,
     bool sheetCalls = true,
   }) async {
     SharedPreferences.setMockInitialValues({
@@ -68,7 +68,7 @@ void main() {
       tester,
       isAnonymous: false,
       pushEnabled: false,
-      presentSheet: (_) async {
+      presentSheet: (_, {intent}) async {
         presented = true;
         return true;
       },
@@ -85,7 +85,7 @@ void main() {
       tester,
       isAnonymous: true,
       pushEnabled: true,
-      presentSheet: (_) async => false,
+      presentSheet: (_, {intent}) async => false,
     );
 
     expect(await h.gate.ensure(h.context), isFalse);
@@ -100,7 +100,7 @@ void main() {
         tester,
         isAnonymous: true,
         pushEnabled: true,
-        presentSheet: (_) async => true,
+        presentSheet: (_, {intent}) async => true,
       );
 
       expect(await h.gate.ensure(h.context), isTrue);
@@ -116,7 +116,7 @@ void main() {
       tester,
       isAnonymous: true,
       pushEnabled: false,
-      presentSheet: (_) async => true,
+      presentSheet: (_, {intent}) async => true,
     );
 
     expect(await h.gate.ensure(h.context), isTrue);

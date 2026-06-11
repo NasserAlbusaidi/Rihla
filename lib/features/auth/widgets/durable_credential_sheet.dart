@@ -7,10 +7,15 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/durable_credential_exception.dart';
+import '../services/pending_gate_intent.dart';
 
 /// Blocking gate sheet shown before the first valuable write (#441 PR2).
 ///
@@ -19,18 +24,30 @@ import '../providers/auth_provider.dart';
 /// still carry `sign_in_provider=anonymous` right after `linkWithCredential`,
 /// and the very next write is rules-gated on it. `false` for "Not now" or a
 /// barrier dismiss (the caller aborts the pending create/join).
-Future<bool> showDurableCredentialSheet(BuildContext context) async {
+///
+/// On a link conflict ([GoogleLinkConflictException]) the sheet offers
+/// "switch to that account" (#428) — a discard-shell `restoreWithGoogle`
+/// reusing the failed credential — but ONLY when the live [userGroupsProvider]
+/// proves the current shell empty. [intent] is the caller's in-flight form
+/// state, persisted before the restore so its forced restart can replay the
+/// interrupted create/join.
+Future<bool> showDurableCredentialSheet(
+  BuildContext context, {
+  PendingGateIntent? intent,
+}) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => const _DurableCredentialSheet(),
+    builder: (_) => _DurableCredentialSheet(intent: intent),
   );
   return result ?? false;
 }
 
 class _DurableCredentialSheet extends ConsumerStatefulWidget {
-  const _DurableCredentialSheet();
+  const _DurableCredentialSheet({this.intent});
+
+  final PendingGateIntent? intent;
 
   @override
   ConsumerState<_DurableCredentialSheet> createState() =>
@@ -40,12 +57,15 @@ class _DurableCredentialSheet extends ConsumerStatefulWidget {
 class _DurableCredentialSheetState
     extends ConsumerState<_DurableCredentialSheet> {
   bool _linking = false;
+  bool _restoring = false;
   String? _errorText;
+  GoogleLinkConflictException? _conflict;
 
   Future<void> _continueWithGoogle() async {
     setState(() {
       _linking = true;
       _errorText = null;
+      _conflict = null;
     });
     try {
       final result = await ref
@@ -58,16 +78,30 @@ class _DurableCredentialSheetState
     } on GoogleSignInException {
       // Canceled/interrupted Credential Manager sheet — silent reset.
       if (mounted) setState(() => _linking = false);
-    } on FirebaseAuthException catch (e) {
+    } on GoogleLinkConflictException catch (e) {
+      // The switch decision renders from build against the live group count
+      // (#428) — and is NEVER resolved by signing the anon user out (#213).
       if (!mounted) return;
       setState(() {
         _linking = false;
-        // Conflicts are the caller's decision point (#441 PR3) — never
-        // resolved here, and NEVER by signing the anon user out (#213).
+        _conflict = e;
+      });
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'provider-already-linked') {
+        // The gate fired on a stale isAnonymous read — this user already has
+        // Google linked. Refresh the token and treat as success.
+        try {
+          await FirebaseConfig.currentUser?.getIdToken(true);
+        } catch (_) {
+          // No-Firebase tests / offline: the rules backstop still governs.
+        }
+        if (mounted) Navigator.of(context).pop(true);
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _linking = false;
         _errorText = switch (e.code) {
-          'credential-already-in-use' ||
-          'email-already-in-use' ||
-          'provider-already-linked' => context.l10n.durableGateConflict,
           'network-request-failed' => context.l10n.authErrorOffline,
           _ => context.l10n.durableGateError,
         };
@@ -82,12 +116,66 @@ class _DurableCredentialSheetState
     }
   }
 
+  /// Discard-shell switch (#428): persist the caller's in-flight intent,
+  /// then restore the existing Google-backed account with the credential
+  /// that just failed to link. On success this never returns — the
+  /// isolation protocol restarts the app and the boot replay resumes the
+  /// interrupted flow. Only reachable when the shell is provably empty.
+  Future<void> _switchAccount() async {
+    final conflict = _conflict;
+    if (conflict == null || _restoring) return;
+    setState(() => _restoring = true);
+    try {
+      final intent = widget.intent;
+      if (intent != null) {
+        await PendingGateIntent.save(
+          ref.read(sharedPreferencesProvider),
+          intent,
+        );
+      }
+      await ref
+          .read(authRecoveryServiceProvider)
+          .restoreWithGoogle(credential: conflict.credential);
+    } catch (e, st) {
+      // Only pre-isolation failures reach here (a post-isolation failure
+      // dies in the guaranteed restart). The anon shell is intact.
+      unawaited(Sentry.captureException(e, stackTrace: st));
+      if (!mounted) return;
+      setState(() {
+        _restoring = false;
+        _conflict = null;
+        _errorText = context.l10n.durableGateError;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final conflict = _conflict;
+
+    if (conflict == null) {
+      return _sheetShell(children: _initialContent(errorText: _errorText));
+    }
+
+    // Conflict state: the switch offer is safe only against a provably-empty
+    // shell. Loading → progress (don't show dead-end advice prematurely);
+    // error → dead-end (fail-safe: treat as possibly-populated).
+    final groupsAsync = ref.watch(userGroupsProvider);
+    return _sheetShell(
+      children: groupsAsync.when(
+        loading: _conflictLoadingContent,
+        data: (groups) => groups.isEmpty
+            ? _switchOfferContent()
+            : _initialContent(errorText: l10n.durableGateConflict),
+        error: (_, _) => _initialContent(errorText: l10n.durableGateConflict),
+      ),
+    );
+  }
+
+  Widget _sheetShell({required List<Widget> children}) {
     final colors = context.colors;
     final spacing = context.spacing;
-    final l10n = context.l10n;
-
     return SafeArea(
       child: Container(
         margin: EdgeInsets.fromLTRB(
@@ -126,101 +214,226 @@ class _DurableCredentialSheetState
               child: Icon(Iconsax.shield_tick, color: colors.primary),
             ),
             SizedBox(height: spacing.space16),
-            Text(
-              l10n.durableGateTitle,
-              style: AppTypography.sans(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
-              ),
-            ),
-            SizedBox(height: spacing.space8),
-            Text(
-              l10n.durableGateBody,
-              style: AppTypography.sans(
-                fontSize: 14,
-                height: 1.4,
-                color: colors.textSecondary,
-              ),
-            ),
-            if (_errorText != null) ...[
-              SizedBox(height: spacing.space12),
-              Text(
-                _errorText!,
-                key: const Key('durableGate.error'),
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  height: 1.35,
-                  color: colors.error,
-                ),
-              ),
-            ],
-            SizedBox(height: spacing.space24),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: _linking
-                        ? null
-                        : () => Navigator.of(context).pop(false),
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          spacing.radiusMedium,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      l10n.durableGateNotNow,
-                      style: AppTypography.sans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: spacing.space12),
-                Expanded(
-                  child: ElevatedButton(
-                    key: const Key('durableGate.continue'),
-                    onPressed: _linking ? null : _continueWithGoogle,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: colors.textOnPrimary,
-                      elevation: 0,
-                      minimumSize: const Size.fromHeight(52),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          spacing.radiusMedium,
-                        ),
-                      ),
-                    ),
-                    child: _linking
-                        ? SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: colors.textOnPrimary,
-                            ),
-                          )
-                        : Text(
-                            l10n.durableGateContinueGoogle,
-                            style: AppTypography.sans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textOnPrimary,
-                            ),
-                          ),
-                  ),
-                ),
-              ],
-            ),
+            ...children,
           ],
         ),
       ),
+    );
+  }
+
+  List<Widget> _initialContent({String? errorText}) {
+    final colors = context.colors;
+    final spacing = context.spacing;
+    final l10n = context.l10n;
+    return [
+      Text(
+        l10n.durableGateTitle,
+        style: AppTypography.sans(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: colors.textPrimary,
+        ),
+      ),
+      SizedBox(height: spacing.space8),
+      Text(
+        l10n.durableGateBody,
+        style: AppTypography.sans(
+          fontSize: 14,
+          height: 1.4,
+          color: colors.textSecondary,
+        ),
+      ),
+      if (errorText != null) ...[
+        SizedBox(height: spacing.space12),
+        Text(
+          errorText,
+          key: const Key('durableGate.error'),
+          style: AppTypography.sans(
+            fontSize: 13,
+            height: 1.35,
+            color: colors.error,
+          ),
+        ),
+      ],
+      SizedBox(height: spacing.space24),
+      Row(
+        children: [
+          Expanded(
+            child: _secondaryButton(
+              label: l10n.durableGateNotNow,
+              onPressed: _linking
+                  ? null
+                  : () => Navigator.of(context).pop(false),
+            ),
+          ),
+          SizedBox(width: spacing.space12),
+          Expanded(
+            child: _primaryButton(
+              key: const Key('durableGate.continue'),
+              label: l10n.durableGateContinueGoogle,
+              busy: _linking,
+              onPressed: _linking ? null : _continueWithGoogle,
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  List<Widget> _conflictLoadingContent() {
+    final spacing = context.spacing;
+    return [
+      Text(
+        context.l10n.durableGateConflictTitle,
+        style: AppTypography.sans(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: context.colors.textPrimary,
+        ),
+      ),
+      SizedBox(height: spacing.space24),
+      const Center(
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              key: Key('durableGate.conflictLoading'),
+              strokeWidth: 2.5,
+            ),
+          ),
+        ),
+      ),
+      SizedBox(height: spacing.space12),
+    ];
+  }
+
+  List<Widget> _switchOfferContent() {
+    final colors = context.colors;
+    final spacing = context.spacing;
+    final l10n = context.l10n;
+    return [
+      Text(
+        l10n.durableGateConflictTitle,
+        style: AppTypography.sans(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: colors.textPrimary,
+        ),
+      ),
+      SizedBox(height: spacing.space8),
+      Text(
+        l10n.durableGateConflictSwitchBody,
+        style: AppTypography.sans(
+          fontSize: 14,
+          height: 1.4,
+          color: colors.textSecondary,
+        ),
+      ),
+      SizedBox(height: spacing.space24),
+      Row(
+        children: [
+          Expanded(
+            child: _secondaryButton(
+              label: l10n.durableGateUseDifferent,
+              onPressed: _restoring
+                  ? null
+                  : () => setState(() => _conflict = null),
+            ),
+          ),
+          SizedBox(width: spacing.space12),
+          Expanded(
+            child: _primaryButton(
+              key: const Key('durableGate.switch'),
+              label: l10n.durableGateSwitch,
+              busy: _restoring,
+              onPressed: _restoring ? null : _switchAccount,
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: spacing.space8),
+      Center(
+        child: TextButton(
+          onPressed: _restoring ? null : () => Navigator.of(context).pop(false),
+          child: Text(
+            l10n.durableGateNotNow,
+            style: AppTypography.sans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _secondaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    final colors = context.colors;
+    final spacing = context.spacing;
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(spacing.radiusMedium),
+        ),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: AppTypography.sans(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: colors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _primaryButton({
+    required Key key,
+    required String label,
+    required bool busy,
+    required VoidCallback? onPressed,
+  }) {
+    final colors = context.colors;
+    final spacing = context.spacing;
+    return ElevatedButton(
+      key: key,
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colors.primary,
+        foregroundColor: colors.textOnPrimary,
+        elevation: 0,
+        minimumSize: const Size.fromHeight(52),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(spacing.radiusMedium),
+        ),
+      ),
+      child: busy
+          ? SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: colors.textOnPrimary,
+              ),
+            )
+          : Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.sans(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: colors.textOnPrimary,
+              ),
+            ),
     );
   }
 }

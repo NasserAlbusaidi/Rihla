@@ -4506,11 +4506,35 @@ abstract class AppLocalizations {
   /// **'Not now'**
   String get durableGateNotNow;
 
-  /// Shown when linking fails with credential-already-in-use / email-already-in-use. Restoring the other account ships in a later release (#441 PR3); the sheet must never resolve this by signing out.
+  /// Dead-end conflict copy, shown only when the switch offer is unsafe (this device's current account already has groups, or the group check failed). The sheet must never resolve a conflict by signing out.
   ///
   /// In en, this message translates to:
   /// **'That Google account is already in use by another Rihla account. Use a different Google account for now.'**
   String get durableGateConflict;
+
+  /// Title of the gate sheet's conflict state (#428): the chosen Google account already backs another Rihla account.
+  ///
+  /// In en, this message translates to:
+  /// **'That account already has Rihla data'**
+  String get durableGateConflictTitle;
+
+  /// Body of the conflict switch offer. Only shown when the current anonymous shell is provably empty (zero groups), so switching discards nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'This Google account already has Rihla data. Switch to it? This device will continue with that account.'**
+  String get durableGateConflictSwitchBody;
+
+  /// Primary action in the conflict state: discard the empty anonymous shell and sign into the existing Google-backed account (restarts the app).
+  ///
+  /// In en, this message translates to:
+  /// **'Switch account'**
+  String get durableGateSwitch;
+
+  /// Secondary action in the conflict state: back to the initial gate sheet to retry with another Google account.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a different account'**
+  String get durableGateUseDifferent;
 
   /// Generic failure line on the gate sheet (config missing, unexpected errors).
   ///

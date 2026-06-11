@@ -8,6 +8,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/cache_uid_barrier.dart';
 import 'auth_email_link_config.dart';
+import 'durable_credential_exception.dart';
 import 'google_sign_in_gateway.dart';
 
 /// Produces a Firebase [AuthCredential] from an interactive Google sign-in
@@ -204,18 +205,28 @@ class AuthRecoveryService {
   /// Same-UID by construction ([User.linkWithCredential]) — no cache
   /// isolation, no restart, no inFlightOp handshake; the whole flow is one
   /// in-session round trip through the Credential Manager sheet. Conflict
-  /// errors (`credential-already-in-use` / `email-already-in-use`) propagate
-  /// unchanged: the gate UI (#441 PR2/PR3) owns the discard-shell decision
-  /// and must never resolve it by signing the anon user out.
+  /// errors (`credential-already-in-use` / `email-already-in-use`) are
+  /// rethrown as [GoogleLinkConflictException] carrying the exact failed
+  /// credential, so the gate UI (#428) can offer the discard-shell switch via
+  /// [restoreWithGoogle] without a second Credential Manager sheet. The gate
+  /// owns that decision and must never resolve it by signing the anon user
+  /// out. All other errors propagate unchanged.
   Future<UserCredential> linkGoogleToCurrentUser() async {
     final user = _auth.currentUser;
     if (user == null) {
       throw StateError('No current user; ensureAnonymousSession first');
     }
     final credential = await _googleCredentialFactory();
-    final result = await user.linkWithCredential(credential);
-    FirebaseConfig.log('Recovery: linked Google to uid ${result.user?.uid}');
-    return result;
+    try {
+      final result = await user.linkWithCredential(credential);
+      FirebaseConfig.log('Recovery: linked Google to uid ${result.user?.uid}');
+      return result;
+    } on FirebaseAuthException catch (e) {
+      if (isGoogleAccountAlreadyInUse(e)) {
+        throw GoogleLinkConflictException(credential: credential, cause: e);
+      }
+      rethrow;
+    }
   }
 
   /// Restore the durable Google-backed account on this device, then restart

@@ -2650,6 +2650,20 @@ class AppLocalizationsAr extends AppLocalizations {
       'حساب Google هذا مستخدم بالفعل في حساب رحلة آخر. استخدم حساب Google مختلفًا في الوقت الحالي.';
 
   @override
+  String get durableGateConflictTitle =>
+      'هذا الحساب يحتوي على بيانات رحلة بالفعل';
+
+  @override
+  String get durableGateConflictSwitchBody =>
+      'حساب Google هذا يحتوي على بيانات رحلة بالفعل. التبديل إليه؟ سيتابع هذا الجهاز بذلك الحساب.';
+
+  @override
+  String get durableGateSwitch => 'تبديل الحساب';
+
+  @override
+  String get durableGateUseDifferent => 'استخدام حساب مختلف';
+
+  @override
   String get durableGateError => 'تعذّر ربط حسابك. حاول مرة أخرى.';
 
   @override

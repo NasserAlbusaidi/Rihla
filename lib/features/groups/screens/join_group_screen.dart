@@ -104,10 +104,17 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
     // #441: first valuable write — an anonymous user must link Google first.
     // Single chokepoint for all three entries (button, 6th-char auto-submit,
-    // deep-link prefill → manual submit).
+    // deep-link prefill → manual submit). The intent carries the typed form
+    // across the gate-conflict discard-shell restart (#428).
     final gateOk = await ref
         .read(durableCredentialGateProvider)
-        .ensure(context);
+        .ensure(
+          context,
+          intent: PendingGateIntent.join(
+            joinCode: _codeController.text.trim().toUpperCase(),
+            displayName: trimmedName,
+          ),
+        );
     if (!gateOk || !mounted) return;
 
     ref.read(groupLoadingProvider.notifier).state = true;

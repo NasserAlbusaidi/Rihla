@@ -786,6 +786,10 @@
   "durableGateContinueGoogle": "المتابعة عبر Google",
   "durableGateNotNow": "ليس الآن",
   "durableGateConflict": "حساب Google هذا مستخدم بالفعل في حساب رحلة آخر. استخدم حساب Google مختلفًا في الوقت الحالي.",
+  "durableGateConflictTitle": "هذا الحساب يحتوي على بيانات رحلة بالفعل",
+  "durableGateConflictSwitchBody": "حساب Google هذا يحتوي على بيانات رحلة بالفعل. التبديل إليه؟ سيتابع هذا الجهاز بذلك الحساب.",
+  "durableGateSwitch": "تبديل الحساب",
+  "durableGateUseDifferent": "استخدام حساب مختلف",
   "durableGateError": "تعذّر ربط حسابك. حاول مرة أخرى.",
   "durableCredentialRequired": "اربط حساب Google للمتابعة."
 }
