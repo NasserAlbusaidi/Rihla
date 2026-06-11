@@ -55,9 +55,10 @@ void main() {
     when(firestore.waitForPendingWrites).thenAnswer((_) async {});
   });
 
-  // The merge engine (cleanupAnonUidArtifacts / cleanupIntentFactory) must
-  // NEVER be touched by the restore swap — the post-gate shell is provably
-  // empty, so there is nothing to migrate. Both stubs throw to enforce it.
+  // The merge engine must NEVER be touched by the restore swap — the
+  // post-gate shell is provably empty, so there is nothing to migrate. Since
+  // #441 PR4 the pin is structural: the client merge machinery no longer
+  // exists on AuthRecoveryService.
   AuthRecoveryService buildService({
     required List<String> events,
     GoogleCredentialFactory? googleCredentialFactory,
@@ -70,10 +71,6 @@ void main() {
       firestore: firestore,
       cacheIsolationController:
           cacheIsolationController ?? _RecordingController(events),
-      cleanupAnonUidArtifacts: ({required oldUid, required cleanupSecret}) =>
-          throw StateError('merge engine must not be touched'),
-      cleanupIntentFactory: (_) =>
-          throw StateError('merge engine must not be touched'),
       googleCredentialFactory: googleCredentialFactory,
       removeFcmToken: removeFcmToken,
     );

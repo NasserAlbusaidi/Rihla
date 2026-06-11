@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
-import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -65,14 +64,11 @@ void main() {
     prefs: prefs,
     cacheIsolationController: controller,
     firestore: firestore,
-    cleanupAnonUidArtifacts: ({required oldUid, required cleanupSecret}) async =>
-        const CleanupOutcome(cascadeFailed: []),
-    cleanupIntentFactory: (_) async => 'secret',
   );
 
   test(
-    'completeRecovery still restarts when clearing op-state throws — a prefs '
-    'failure must never strand the overlay (#45 plan [P2])',
+    'restoreWithEmailLink still restarts when clearing op-state throws — a '
+    'prefs failure must never strand the overlay (#45 plan [P2])',
     () async {
       final cred = _MockUserCredential();
       when(
@@ -84,7 +80,7 @@ void main() {
       when(() => cred.user).thenReturn(recoveredUser);
 
       try {
-        await buildService().completeRecovery(
+        await buildService().restoreWithEmailLink(
           'https://example/link',
           overrideEmail: 'foo@example.com',
         );

@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
-import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,10 +61,6 @@ void main() {
     prefs: prefs,
     cacheIsolationController: _NoopController(),
     firestore: firestore,
-    cleanupAnonUidArtifacts:
-        ({required oldUid, required cleanupSecret}) async =>
-            const CleanupOutcome(cascadeFailed: []),
-    cleanupIntentFactory: (_) async => 'test-cleanup-secret',
   );
 
   group('inFlightOp tracking', () {
@@ -121,7 +116,7 @@ void main() {
       },
     );
 
-    test('completeRecovery clears both pending email and inFlightOp', () async {
+    test('restoreWithEmailLink clears both pending email and inFlightOp', () async {
       final service = buildService();
       await service.sendRecoveryLink('foo@example.com');
 
@@ -134,7 +129,7 @@ void main() {
       ).thenAnswer((_) async => cred);
       when(() => cred.user).thenReturn(anonUser);
 
-      await service.completeRecovery('https://example/link');
+      await service.restoreWithEmailLink('https://example/link');
 
       expect(service.readPendingEmail(), isNull);
       expect(service.readInFlightOp(), isNull);

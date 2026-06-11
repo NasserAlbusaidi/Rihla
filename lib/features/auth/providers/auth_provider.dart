@@ -40,8 +40,7 @@ final uidProvider = Provider<String?>((ref) {
 });
 
 /// Email currently linked to the active Firebase user, or null when the
-/// user is purely anonymous. Set by [AuthRecoveryService.completeEmailLink]
-/// or [completeRecovery].
+/// user is purely anonymous. Set by [AuthRecoveryService.completeEmailLink].
 final linkedEmailProvider = Provider<String?>((ref) {
   final user = ref.watch(authUserChangesProvider).valueOrNull;
   final email = user?.email;
