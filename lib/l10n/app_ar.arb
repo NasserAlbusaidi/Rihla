@@ -767,10 +767,6 @@
   "authRecoverPendingResendLink": "إعادة إرسال الرابط",
   "authRecoverPendingResendCountdown": "إعادة الإرسال خلال {seconds} ث",
 
-  "authMergeOnRecoverTitle": "استعادة حسابك",
-  "authMergeOnRecoverBody": "سنسجّل دخولك إلى ذلك الحساب وننقل رحلات ومصاريف هذا الهاتف إليه. لن تفقد أي شيء على هذا الجهاز.",
-  "authMergeOnRecoverConfirm": "استعادة ودمج",
-
   "groupSettleUpMissingTitle": "هذه المجموعة لم تعد متاحة",
   "groupSettleUpMissingMessage": "قد تكون قد أُزلت منها. اضغط أدناه للعودة إلى الرئيسية.",
   "groupSettleUpEventLabelFallback": "فعالية ...{suffix}",

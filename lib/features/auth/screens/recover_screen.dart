@@ -10,23 +10,18 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/email_validators.dart';
 import '../../../shared/widgets/directional_icon.dart';
-import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/merge_on_recover_dialog.dart';
 
-/// Home empty state → "I had Rihla before — restore" entry.
+/// The slim email-fallback restore entry (#441 PR4, D3).
 ///
-/// Spec §4.2 + plan §P4. The user enters their previously-linked email,
-/// the app sends a sign-in link via [AuthRecoveryService.sendRecoveryLink],
-/// and the deep-link bootstrap completes recovery on tap.
-///
-/// Populated-device recovery MERGES (#427, superseding FR-REC-2's
-/// sign-out-first): if the device has any groups, the user consents via
-/// [MergeOnRecoverDialog] and the anon UID stays signed in — no sign-out,
-/// no orphan. When the link is tapped, `completeRecovery` swaps to the
-/// restored account and `cleanupAnonUidArtifacts` migrates this device's
-/// data (`oldUid → newUid`) into it. See
-/// docs/plans/2026-06-10-recovery-merge-reachable-restore.md.
+/// The user enters their previously-linked email, the app sends a sign-in
+/// link via [AuthRecoveryService.sendRecoveryLink], and the deep-link
+/// bootstrap completes the restore on tap via
+/// [AuthRecoveryService.restoreWithEmailLink] — a no-merge cross-UID
+/// discard-shell swap. There is no merge consent step anymore: post-gate
+/// (#441 PR2) an anonymous shell can hold no money data, and a credentialed
+/// account's data survives server-side under its own UID. See
+/// docs/plans/2026-06-11-durable-credential-recovery-rearchitecture.md.
 class RecoverScreen extends ConsumerStatefulWidget {
   const RecoverScreen({super.key});
 
@@ -46,23 +41,9 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
     super.dispose();
   }
 
-  Future<bool> _confirmIfDevicePopulated() async {
-    final groups = ref.read(userGroupsProvider).valueOrNull ?? const [];
-    if (groups.isEmpty) return true;
-    // No sign-out and no dirty-mark here: the populated anon UID must stay
-    // signed in so completeRecovery can capture it as oldUid and merge its
-    // data into the restored account (#427). Signing out first is how the
-    // device's data got orphaned — by link-tap time the UID was gone.
-    final confirmed = await MergeOnRecoverDialog.show(context);
-    return confirmed == true;
-  }
-
   Future<void> _send() async {
     setState(() => _serverError = null);
     if (!_formKey.currentState!.validate()) return;
-
-    final ok = await _confirmIfDevicePopulated();
-    if (!ok) return;
 
     final email = normalizeEmail(_emailController.text);
     setState(() => _sending = true);
@@ -122,10 +103,6 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watching the provider ensures it's subscribed so _confirmIfDevicePopulated
-    // can read a populated value via ref.read; otherwise valueOrNull would
-    // be null on first read and the dialog would never show.
-    ref.watch(userGroupsProvider);
     final colors = context.colors;
     final l10n = context.l10n;
     return Scaffold(

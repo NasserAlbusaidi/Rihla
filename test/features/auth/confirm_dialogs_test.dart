@@ -3,12 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/widgets/delete_account_dialog.dart';
 import 'package:safar/features/auth/widgets/delete_account_retry_dialog.dart';
-import 'package:safar/features/auth/widgets/merge_on_recover_dialog.dart';
 import 'package:safar/features/auth/widgets/sign_out_confirm_dialog.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-// #227 — direct contract coverage for the four destructive/confirmation
-// dialogs. Their confirm/cancel SEMANTICS (does/doesn't call the service) are
+// #227 — direct contract coverage for the destructive/confirmation
+// dialogs (MergeOnRecoverDialog deleted in #441 PR4 — no merge to consent to). Their confirm/cancel SEMANTICS (does/doesn't call the service) are
 // already exercised transitively (delete_account_tile_test, sign_out_tile_test,
 // recover_screen_test). What no test covered: the show() Future contract in
 // isolation, and specifically the barrier-dismiss -> null leg — an accidental
@@ -68,12 +67,6 @@ void main() {
       cancel: const Key('signOutConfirm.cancel'),
     ),
     (
-      name: 'MergeOnRecoverDialog',
-      show: MergeOnRecoverDialog.show,
-      confirm: const Key('mergeOnRecover.confirm'),
-      cancel: const Key('mergeOnRecover.cancel'),
-    ),
-    (
       name: 'DeleteAccountRetryDialog',
       show: DeleteAccountRetryDialog.show,
       confirm: const Key('deleteAccount.partialRetry'),
@@ -117,18 +110,6 @@ void main() {
     );
     expect(
       find.textContaining('foo@example.com', findRichText: true),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('MergeOnRecoverDialog renders the merge-consent copy', (
-    tester,
-  ) async {
-    await openDialog(tester, MergeOnRecoverDialog.show);
-    expect(find.text('Restore your account'), findsOneWidget);
-    expect(find.text('Restore and merge'), findsOneWidget);
-    expect(
-      find.textContaining('Nothing on this device is lost', findRichText: true),
       findsOneWidget,
     );
   });
