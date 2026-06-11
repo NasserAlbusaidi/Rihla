@@ -116,8 +116,10 @@ void main() {
     );
 
     test('success marker on a completed restore', () async {
+      final restoredUser = _MockUser();
+      when(() => restoredUser.uid).thenReturn('durable-uid-456');
       final userCredential = _MockUserCredential();
-      when(() => userCredential.user).thenReturn(anonUser);
+      when(() => userCredential.user).thenReturn(restoredUser);
       when(
         () => auth.signInWithEmailLink(
           email: any(named: 'email'),
@@ -134,6 +136,9 @@ void main() {
       expect(outcome!.op, RecoveryOutcome.opRecover);
       expect(outcome.ok, isTrue);
       expect(outcome.code, isNull);
+      // #458: the boot notice verifies the swap actually survived the
+      // restart against this UID.
+      expect(outcome.expectedUid, 'durable-uid-456');
     });
   });
 
@@ -158,8 +163,10 @@ void main() {
     });
 
     test('success marker on a completed restore', () async {
+      final restoredUser = _MockUser();
+      when(() => restoredUser.uid).thenReturn('durable-uid-456');
       final userCredential = _MockUserCredential();
-      when(() => userCredential.user).thenReturn(anonUser);
+      when(() => userCredential.user).thenReturn(restoredUser);
       when(() => auth.signInWithCredential(any()))
           .thenAnswer((_) async => userCredential);
       final service = buildService();
@@ -169,6 +176,7 @@ void main() {
       final outcome = readAndClearRecoveryOutcome(prefs);
       expect(outcome!.op, RecoveryOutcome.opGoogle);
       expect(outcome.ok, isTrue);
+      expect(outcome.expectedUid, 'durable-uid-456');
     });
 
     test('pre-isolation failure (credential obtain) writes NO marker — '
@@ -221,6 +229,9 @@ void main() {
       final outcome = readAndClearRecoveryOutcome(prefs);
       expect(outcome!.op, RecoveryOutcome.opSignOut);
       expect(outcome.ok, isTrue);
+      // #458: sign-out's post-restart UID is unknowable pre-restart (a fresh
+      // anon is minted on boot) — no expectedUid, and no success notice.
+      expect(outcome.expectedUid, isNull);
     });
   });
 }

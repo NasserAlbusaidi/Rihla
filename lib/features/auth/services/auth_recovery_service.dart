@@ -284,8 +284,14 @@ class AuthRecoveryService {
       FirebaseConfig.log('Restore: restored uid ${result.user?.uid}');
       // #439: the finally's restart kills the process before any caller can
       // surface success or failure — persist the outcome first (guarded
-      // write; awaited like markFirestorePersistenceDirty above).
-      await writeRecoveryOutcome(_prefs, op: RecoveryOutcome.opGoogle, ok: true);
+      // write; awaited like markFirestorePersistenceDirty above). #458: the
+      // boot notice verifies the swap survived the restart via expectedUid.
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opGoogle,
+        ok: true,
+        expectedUid: result.user?.uid,
+      );
       return result;
     } catch (e) {
       await writeRecoveryOutcome(
@@ -351,11 +357,13 @@ class AuthRecoveryService {
       );
       FirebaseConfig.log('Restore: restored uid ${result.user?.uid}');
       // #439: persisted BEFORE the restart in the finally; the boot notice
-      // is the ONLY surface a recover-op outcome ever reaches.
+      // is the ONLY surface a recover-op outcome ever reaches. #458: the
+      // notice verifies the swap survived the restart via expectedUid.
       await writeRecoveryOutcome(
         _prefs,
         op: RecoveryOutcome.opRecover,
         ok: true,
+        expectedUid: result.user?.uid,
       );
       return result;
     } catch (e) {
