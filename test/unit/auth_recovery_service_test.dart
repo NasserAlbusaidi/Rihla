@@ -221,12 +221,32 @@ void main() {
   });
 
   group('signOutCurrentDevice', () {
-    test('throws StateError when the user has no linked email', () async {
+    test('throws StateError for an ANONYMOUS user — the data-loss guard '
+        '(#428: gate is durability, not email)', () async {
       when(() => anonUser.email).thenReturn(null);
+      when(() => anonUser.isAnonymous).thenReturn(true);
       final service = buildService();
 
       await expectLater(service.signOutCurrentDevice, throwsStateError);
       verifyNever(() => auth.signOut());
+    });
+
+    test('proceeds for a Google-linked user with NO top-level email '
+        '(#428 PR-B: durable gates sign-out, not email)', () async {
+      when(() => anonUser.email).thenReturn(null);
+      when(() => anonUser.isAnonymous).thenReturn(false);
+      final firestore = _MockFirestore();
+      when(firestore.waitForPendingWrites).thenAnswer((_) async {});
+      final events = <String>[];
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = buildService(
+        firestore: firestore,
+        cacheIsolationController: _RecordingController(events),
+      );
+
+      await service.signOutCurrentDevice();
+
+      expect(events, ['engage', 'signOut', 'restart']);
     });
 
     test(
@@ -234,6 +254,7 @@ void main() {
       '(no in-session anon mint)',
       () async {
         when(() => anonUser.email).thenReturn('foo@example.com');
+        when(() => anonUser.isAnonymous).thenReturn(false);
         final firestore = _MockFirestore();
         when(firestore.waitForPendingWrites).thenAnswer((_) async {});
         final events = <String>[];
@@ -257,6 +278,7 @@ void main() {
 
     test('still restarts when waitForPendingWrites exceeds the timeout', () async {
       when(() => anonUser.email).thenReturn('foo@example.com');
+      when(() => anonUser.isAnonymous).thenReturn(false);
       final firestore = _MockFirestore();
       // Future that never completes so we exercise the timeout branch.
       when(
@@ -278,6 +300,7 @@ void main() {
 
     test('restarts even if signOut throws (overlay never strands)', () async {
       when(() => anonUser.email).thenReturn('foo@example.com');
+      when(() => anonUser.isAnonymous).thenReturn(false);
       final firestore = _MockFirestore();
       when(firestore.waitForPendingWrites).thenAnswer((_) async {});
       final events = <String>[];

@@ -372,8 +372,11 @@ class AuthRecoveryService {
     }
   }
 
-  /// Sign out the current device, then restart (#45). Linked-email users only
-  /// (OD-2).
+  /// Sign out the current device, then restart (#45). Durable users only —
+  /// anonymous sign-out orphans the UID's data forever, while a Google- or
+  /// email-credentialed user can always sign back in (#428 PR-B widened the
+  /// OD-2 email-only guard: a Google-linked user may have no top-level
+  /// email yet still be fully recoverable).
   ///
   /// Sign-out swaps the linked UID for a fresh anonymous one, so it is a
   /// cross-UID swap: engage the cache-isolation overlay first, flush pending
@@ -386,10 +389,9 @@ class AuthRecoveryService {
     Duration pendingWritesTimeout = const Duration(seconds: 5),
   }) async {
     final user = _auth.currentUser;
-    final email = user?.email;
-    if (user == null || email == null || email.isEmpty) {
+    if (user == null || user.isAnonymous) {
       throw StateError(
-        'signOutCurrentDevice requires a user with a linked email',
+        'signOutCurrentDevice requires a durable (non-anonymous) user',
       );
     }
     _cacheIsolationController.engageIsolation();
