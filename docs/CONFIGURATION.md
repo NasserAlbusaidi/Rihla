@@ -26,6 +26,7 @@ Neither mechanism uses `.env` files or runtime environment variables. There is n
 |-----|---------|---------|
 | `SENTRY_DSN` | `lib/main.dart` | Sentry error reporting DSN. If empty, Sentry initializes without a destination and errors are silently dropped. |
 | `USE_FIREBASE_EMULATOR` | `lib/main.dart` | Optional local-development toggle. Set to `true` only when running the local Firebase emulator suite. Production builds should omit it or set it to `false`. |
+| `GOOGLE_SERVER_CLIENT_ID` | `lib/features/auth/services/google_sign_in_gateway.dart` | The Firebase project's **web** OAuth client ID (created when the Google provider is enabled in the Firebase console). Required for Google credential linking (#441) on Android because Firebase init is Dart-only — there is no `default_web_client_id` resource. Validated lazily: if absent, `linkGoogleToCurrentUser` throws at call time; app boot is unaffected. |
 
 Do not include removed backend or payment-gateway keys in `config.json`; the app is Firebase-only and does not have payment flows in the shippable v1 surface.
 
