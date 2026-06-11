@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/features/auth/services/durable_credential_exception.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
@@ -94,25 +95,72 @@ void main() {
       expect(factoryInvoked, isFalse);
     });
 
-    test('propagates credential-already-in-use unchanged and never '
-        'signs out (the caller owns the conflict decision)', () async {
+    test('wraps credential-already-in-use in GoogleLinkConflictException '
+        'carrying the exact failed credential, and never signs out '
+        '(the caller owns the conflict decision)', () async {
+      final credential = _FakeAuthCredential();
       when(() => anonUser.linkWithCredential(any())).thenThrow(
         FirebaseAuthException(code: 'credential-already-in-use'),
       );
       final service = buildService(
-        googleCredentialFactory: () async => _FakeAuthCredential(),
+        googleCredentialFactory: () async => credential,
       );
 
       await expectLater(
         service.linkGoogleToCurrentUser(),
         throwsA(
-          isA<FirebaseAuthException>().having(
-            (e) => e.code,
-            'code',
-            'credential-already-in-use',
-          ),
+          isA<GoogleLinkConflictException>()
+              .having((e) => e.credential, 'credential', same(credential))
+              .having(
+                (e) => e.cause.code,
+                'cause.code',
+                'credential-already-in-use',
+              ),
         ),
       );
+      verifyNever(() => auth.signOut());
+      expect(isolation.events, isEmpty);
+    });
+
+    test('wraps email-already-in-use identically (one-account-per-email '
+        'surfaces either code)', () async {
+      final credential = _FakeAuthCredential();
+      when(() => anonUser.linkWithCredential(any())).thenThrow(
+        FirebaseAuthException(code: 'email-already-in-use'),
+      );
+      final service = buildService(
+        googleCredentialFactory: () async => credential,
+      );
+
+      await expectLater(
+        service.linkGoogleToCurrentUser(),
+        throwsA(
+          isA<GoogleLinkConflictException>()
+              .having((e) => e.credential, 'credential', same(credential))
+              .having((e) => e.cause.code, 'cause.code', 'email-already-in-use'),
+        ),
+      );
+    });
+
+    test('non-conflict FirebaseAuthException still propagates unchanged '
+        '(provider-already-linked is NOT a conflict)', () async {
+      for (final code in ['network-request-failed', 'provider-already-linked']) {
+        when(() => anonUser.linkWithCredential(any())).thenThrow(
+          FirebaseAuthException(code: code),
+        );
+        final service = buildService(
+          googleCredentialFactory: () async => _FakeAuthCredential(),
+        );
+
+        await expectLater(
+          service.linkGoogleToCurrentUser(),
+          throwsA(isA<FirebaseAuthException>().having(
+            (e) => e.code,
+            'code',
+            code,
+          )),
+        );
+      }
       verifyNever(() => auth.signOut());
       expect(isolation.events, isEmpty);
     });
