@@ -88,7 +88,12 @@ class AuthRecoveryService {
       _defaultGoogleGateway.obtainCredential();
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
-  static const _inFlightOpKey = 'auth.inFlightOp';
+  static const _inFlightOpKey = inFlightOpPrefsKey;
+
+  /// Public so [GateIntentReplay] can defer to a pending `recover` op (the
+  /// email-restore bootstrap restarts the app; replaying a gate intent into
+  /// that boot would lose the form a second time).
+  static const String inFlightOpPrefsKey = 'auth.inFlightOp';
 
   /// In-flight email-link operation kind. `'link'` attaches to the current
   /// anon UID via [User.linkWithCredential]; `'recover'` swaps to the

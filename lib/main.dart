@@ -24,6 +24,7 @@ import 'core/theme/tokens/color_tokens.dart';
 import 'core/services/app_messenger.dart';
 import 'core/services/cache_isolation_controller.dart';
 import 'core/services/deep_link_service.dart';
+import 'features/auth/services/gate_intent_replay.dart';
 import 'features/auth/providers/cache_isolation_controller_provider.dart';
 import 'l10n/generated/app_localizations.dart';
 
@@ -196,6 +197,12 @@ class _SafarAppState extends ConsumerState<SafarApp> {
       // or start deep-link handling; the cold boot will do it fresh (#45).
       if (ref.read(cacheIsolationProvider)) return;
       unawaited(DeepLinkService.instance.init(ref.read(routerProvider)));
+      // #428: resume a create/join flow a gate-conflict restart interrupted.
+      // After DeepLinkService.init so a cold-start invite link wins (last go).
+      GateIntentReplay.maybeReplay(
+        ref.read(sharedPreferencesProvider),
+        ref.read(routerProvider).go,
+      );
     });
   }
 
