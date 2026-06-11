@@ -24,8 +24,9 @@ void main() {
     captures = [];
   });
 
-  void run() => surfaceRecoveryOutcome(
+  void run({String? Function()? currentUid}) => surfaceRecoveryOutcome(
         prefs: prefs,
+        currentUid: currentUid ?? () => null,
         showSnack: (message, {bool isError = false}) =>
             snacks.add((message, isError)),
         capture: captures.add,
@@ -102,6 +103,80 @@ void main() {
     expect(snacks, hasLength(1));
     expect(snacks.single.$2, isTrue);
     expect(captures, hasLength(1));
+  });
+
+  test('#458: success marker whose swap did NOT survive → failure notice',
+      () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    run(currentUid: () => 'stale-anon-uid');
+
+    expect(snacks, [
+      ("Account restore didn't complete. Please try again.", true),
+    ]);
+    expect(captures, ['recovery_swap_not_durable op=google']);
+  });
+
+  test('#458: success marker whose swap survived → success notice', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opRecover,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    run(currentUid: () => 'durable-uid');
+
+    expect(snacks, [('Account restored.', false)]);
+    expect(captures, isEmpty);
+  });
+
+  test('#458: no signed-in user at boot counts as a mismatch', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    run(currentUid: () => null);
+
+    expect(snacks.single.$2, isTrue);
+    expect(captures, ['recovery_swap_not_durable op=google']);
+  });
+
+  test('#458: unreadable auth (throws) → trust the claim, never false-alarm',
+      () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    run(currentUid: () => throw StateError('[core/no-app]'));
+
+    expect(snacks, [('Account restored.', false)]);
+    expect(captures, isEmpty);
+  });
+
+  test('#458: mismatch capture carries no UID', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    run(currentUid: () => 'stale-anon-uid');
+
+    expect(captures.single, isNot(contains('durable-uid')));
+    expect(captures.single, isNot(contains('stale-anon-uid')));
   });
 
   test('one-shot: a second boot surfaces nothing', () async {
