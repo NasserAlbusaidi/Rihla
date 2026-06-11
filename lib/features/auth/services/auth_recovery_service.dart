@@ -1,34 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/cache_uid_barrier.dart';
-import '../../../core/services/firebase_functions_service.dart';
 import 'auth_email_link_config.dart';
 import 'google_sign_in_gateway.dart';
-
-typedef RecoveryCleanupFailureRecorder =
-    void Function({
-      required String message,
-      required Map<String, Object?> data,
-    });
-
-typedef CleanupAnonUidArtifacts =
-    Future<CleanupOutcome> Function({
-      required String oldUid,
-      required String cleanupSecret,
-    });
-
-typedef CleanupIntentFactory = Future<String> Function(String oldUid);
 
 /// Produces a Firebase [AuthCredential] from an interactive Google sign-in
 /// (#441 PR1). Defaults to [GoogleSignInGateway.obtainCredential]; injected
@@ -57,11 +37,17 @@ bool isGoogleAccountAlreadyInUse(Object error) =>
     (error.code == 'credential-already-in-use' ||
         error.code == 'email-already-in-use');
 
-/// Orchestrates the email-link account recovery flows from spec §4.
+/// Orchestrates the email-link + Google account flows (link / restore).
 ///
 /// Lives one layer above [FirebaseConfig.auth] so the Firebase plumbing
 /// (sendSignInLinkToEmail / linkWithCredential / signInWithEmailLink /
 /// signOut) can be mocked in tests without poking Firebase internals.
+///
+/// Since #441 PR4 the email RECOVER half is a no-merge discard-shell swap
+/// ([restoreWithEmailLink], mirroring [restoreWithGoogle]) — the cross-UID
+/// merge engine (cleanup intents + `cleanupAnonUidArtifacts`) has no client
+/// writer anymore. See
+/// docs/plans/2026-06-11-durable-credential-recovery-rearchitecture.md.
 ///
 /// The service holds the "pending email" in SharedPreferences so the
 /// send-side (Settings / Recover screens) and the receive-side (bootstrap
@@ -75,9 +61,6 @@ class AuthRecoveryService {
     required SharedPreferences prefs,
     required CacheIsolationController cacheIsolationController,
     FirebaseFirestore? firestore,
-    CleanupAnonUidArtifacts? cleanupAnonUidArtifacts,
-    CleanupIntentFactory? cleanupIntentFactory,
-    RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
     GoogleCredentialFactory? googleCredentialFactory,
     FcmTokenRemover? removeFcmToken,
   }) : _auth = auth,
@@ -85,26 +68,6 @@ class AuthRecoveryService {
        _cacheIsolationController = cacheIsolationController,
        _firestore = firestore,
        _removeFcmToken = removeFcmToken ?? _noopFcmTokenRemover,
-       _cleanupAnonUidArtifacts =
-           cleanupAnonUidArtifacts ??
-           (({required oldUid, required cleanupSecret}) =>
-               FirebaseFunctionsService().cleanupAnonUidArtifacts(
-                 oldUid: oldUid,
-                 cleanupSecret: cleanupSecret,
-               )),
-       _cleanupIntentFactory =
-           cleanupIntentFactory ??
-           ((oldUid) async {
-             final secret = _generateCleanupSecret();
-             final targetFirestore = firestore ?? FirebaseFirestore.instance;
-             await targetFirestore
-                 .collection(_cleanupIntentCollection)
-                 .doc(oldUid)
-                 .set(buildCleanupIntentPayload(secret));
-             return secret;
-           }),
-       _recoveryCleanupFailureRecorder =
-           recoveryCleanupFailureRecorder ?? _recordCleanupFailureBreadcrumb,
        _googleCredentialFactory =
            googleCredentialFactory ?? _defaultGoogleCredentialFactory;
 
@@ -112,9 +75,6 @@ class AuthRecoveryService {
   final SharedPreferences _prefs;
   final CacheIsolationController _cacheIsolationController;
   final FirebaseFirestore? _firestore;
-  final CleanupAnonUidArtifacts _cleanupAnonUidArtifacts;
-  final CleanupIntentFactory _cleanupIntentFactory;
-  final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
   final GoogleCredentialFactory _googleCredentialFactory;
   final FcmTokenRemover _removeFcmToken;
 
@@ -130,59 +90,6 @@ class AuthRecoveryService {
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = 'auth.inFlightOp';
-  static const _cleanupIntentCollection = 'recoveryCleanupIntents';
-  static final Random _secureRandom = Random.secure();
-
-  static String _generateCleanupSecret() {
-    final bytes = Uint8List(32);
-    for (var i = 0; i < bytes.length; i += 1) {
-      bytes[i] = _secureRandom.nextInt(256);
-    }
-    return base64UrlEncode(bytes);
-  }
-
-  /// TTL window for `recoveryCleanupIntents` docs (#170). Generously longer
-  /// than the 15-min server-side validity (`cleanupIntentMaxAgeMs`) so a
-  /// Firestore TTL keyed on `expiresAt` never reaps an intent that is still
-  /// valid, even under realistic client clock skew. (TTL deletion is itself
-  /// best-effort and may lag — this is the earliest-eligible instant.)
-  static const Duration _cleanupIntentTtl = Duration(hours: 24);
-
-  /// Builds the exact `recoveryCleanupIntents/{oldUid}` write map (#170).
-  ///
-  /// Pure so the OUTBOUND wire shape — the contract the `validCleanupIntent`
-  /// rules gate admits and the TTL keys on — is unit-testable without driving
-  /// the full recovery flow. `createdAt` stays a server-timestamp sentinel (the
-  /// security control: server validity reads `createdAt`, not `expiresAt`);
-  /// `expiresAt` is a concrete client `Timestamp` the TTL reaps on.
-  @visibleForTesting
-  static Map<String, Object?> buildCleanupIntentPayload(
-    String secret, {
-    DateTime Function()? clock,
-  }) {
-    final now = (clock ?? DateTime.now)();
-    return {
-      'secret': secret,
-      'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(now.toUtc().add(_cleanupIntentTtl)),
-    };
-  }
-
-  static void _recordCleanupFailureBreadcrumb({
-    required String message,
-    required Map<String, Object?> data,
-  }) {
-    unawaited(
-      Sentry.addBreadcrumb(
-        Breadcrumb(
-          message: message,
-          category: 'auth.recovery.cleanup',
-          level: SentryLevel.warning,
-          data: Map<String, dynamic>.from(data),
-        ),
-      ),
-    );
-  }
 
   /// In-flight email-link operation kind. `'link'` attaches to the current
   /// anon UID via [User.linkWithCredential]; `'recover'` swaps to the
@@ -365,18 +272,20 @@ class AuthRecoveryService {
     }
   }
 
-  /// Sign in as the previously-linked user, then restart (#45).
+  /// Restore the previously-linked account via an email sign-in link, then
+  /// restart (#441 PR4 — the slim email fallback, D3). Cross-UID
+  /// discard-shell swap: identical protocol to [restoreWithGoogle], WITHOUT
+  /// the merge engine — the post-gate anon shell is provably empty (PR2
+  /// gates `fcm_tokens` writes; PR4 deleted the cleanup-intent writer), so
+  /// there is nothing to migrate and `cleanupAnonUidArtifacts` is never
+  /// invoked.
   ///
-  /// Used by the Home "Restore from email" path (spec §4.2). The current
-  /// anonymous UID is replaced, so this is a cross-UID swap: engage the
-  /// cache-isolation overlay FIRST (covers all cached UI + tears down the
-  /// leaf subscription holders), flush pending writes, mark the on-device
-  /// Firestore cache dirty BEFORE the auth change, then swap via the sign-in
-  /// itself, await the server cleanup to its natural terminal state and
-  /// trigger a true restart. The cold boot's cache barrier clears the
-  /// outgoing UID's cache before the first read. A FAILED sign-in leaves the
-  /// current session signed in — the guaranteed restart returns to it (#414).
-  Future<UserCredential> completeRecovery(
+  /// Ordering is load-bearing (see [restoreWithGoogle]); the one addition is
+  /// the email-path op-state (`pendingLinkEmail` / `inFlightOp`), cleared in
+  /// the `finally` alongside the guaranteed restart so a dead link can never
+  /// boot-loop the bootstrap (R3 P2-4). NO explicit signOut: a failed swap
+  /// MUST leave the current user signed in (#414/#213).
+  Future<UserCredential> restoreWithEmailLink(
     String emailLink, {
     String? overrideEmail,
     Duration pendingWritesTimeout = const Duration(seconds: 5),
@@ -384,167 +293,45 @@ class AuthRecoveryService {
     final email = (overrideEmail ?? readPendingEmail())?.trim();
     if (email == null || email.isEmpty) {
       throw StateError(
-        'No pending email available to complete recovery — call '
-        'setPendingEmail first or pass overrideEmail',
+        'No pending email available to restore — call setPendingEmail '
+        'first or pass overrideEmail',
       );
     }
-    final retiringUser = _auth.currentUser;
-    final oldUid = retiringUser != null && retiringUser.isAnonymous
-        ? retiringUser.uid
-        : null;
 
-    // Cover cached UI and stop the leaf subscriptions before any auth change.
+    // Owner-only rules block deleting fcm_tokens/{oldUid} after the UID
+    // swaps, and engageIsolation invalidates the notification provider — so
+    // remove the token while still signed in as the outgoing UID. Placed
+    // before isolation and outside the try/finally: a throw aborts the
+    // restore with the shell intact rather than stranding the overlay.
+    await _removeFcmToken();
+
     _cacheIsolationController.engageIsolation();
-
-    // Once isolation is engaged, the overlay covers everything until a restart.
-    // The finally GUARANTEES that restart — and clears the op-state first — on
-    // BOTH success and failure, so a failed swap (e.g. an expired link) can
-    // never strand the user on the overlay or loop the bootstrap on a dead
-    // link next boot (divergence from plan §3.5; see #45 plan "Failure paths").
     try {
-      String? cleanupSecret;
-      if (oldUid != null && oldUid.isNotEmpty) {
-        try {
-          cleanupSecret = await _cleanupIntentFactory(oldUid);
-        } catch (error, stackTrace) {
-          _recoveryCleanupFailureRecorder(
-            message: 'Recovery cleanup intent creation failed',
-            data: {'errorType': error.runtimeType.toString()},
-          );
-          FirebaseConfig.log(
-            'Recovery: cleanup intent creation failed (${error.runtimeType})',
-            stackTrace: stackTrace,
-          );
-        }
-      }
       try {
         final firestore = _firestore ?? FirebaseFirestore.instance;
         await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
       } on TimeoutException {
         FirebaseConfig.log(
-          'Recovery: waitForPendingWrites timed out after '
-          '${pendingWritesTimeout.inSeconds}s — continuing recovery',
+          'Restore: waitForPendingWrites timed out after '
+          '${pendingWritesTimeout.inSeconds}s — restoring anyway',
         );
       }
-
-      // Durable cross-restart marker: the cold boot clears the cache even if
-      // the process dies before restart(). Awaited so it is flushed (§6.4).
       await markFirestorePersistenceDirty(_prefs);
-
-      // No explicit signOut: signInWithEmailLink replaces the current session
-      // on success, and on failure (e.g. a consumed single-use link) the
-      // current user MUST survive — signing out first is how a no-email anon
-      // account gets orphaned (#414, the #213 failure class).
       final result = await _auth.signInWithEmailLink(
         email: email,
         emailLink: emailLink,
       );
-      FirebaseConfig.log('Recovery: recovered uid ${result.user?.uid}');
-
-      if (oldUid != null &&
-          oldUid.isNotEmpty &&
-          cleanupSecret != null &&
-          result.user?.uid != oldUid) {
-        // Await the scrub to its natural terminal state (no custom cap — the
-        // callable's 60s default client timeout bounds it). The server
-        // completes the scrub regardless of the imminent restart (gen2 onCall
-        // is not aborted by client disconnect), so this is byte-for-byte
-        // main's scrub outcome and restart cannot truncate a scrub main would
-        // have finished (§3.6).
-        await _cleanupWithInlineRetry(
-          oldUid: oldUid,
-          cleanupSecret: cleanupSecret,
-        );
-      }
-
+      FirebaseConfig.log('Restore: restored uid ${result.user?.uid}');
       return result;
     } finally {
       // Clear the op-state (a stale inFlightOp would make the next boot's
       // bootstrap re-enter recovery and loop on a dead link — R3 P2-4), then
-      // restart. Each step is independently guarded so a failed prefs write can
-      // NEVER skip restart() and strand the overlay (codex re-gate [P2]); the
-      // restart() itself is fail-safe (surfaces a manual affordance on channel
-      // failure), so it always runs last.
+      // restart. Each step is independently guarded so a failed prefs write
+      // can NEVER skip restart() and strand the overlay; the restart() itself
+      // is fail-safe (surfaces a manual affordance on channel failure), so it
+      // always runs last.
       await _safeClearRecoveryOpState();
       await _cacheIsolationController.restart();
-    }
-  }
-
-  /// Drives the idempotent cleanup callable to a terminal state with ONE
-  /// inline retry (#427) — still inside the isolation overlay, seconds after
-  /// intent creation, so the 15-min intent is valid and (on a structured
-  /// partial failure) provably unconsumed: the server deletes the intent only
-  /// when every group migrated. A group left behind keeps `memberIds:[oldUid]`
-  /// and silently vanishes from the restored account's balances, so a partial
-  /// merge is money-wrong, not cosmetic.
-  ///
-  /// Never throws: the credential must reach the bootstrap and the `finally`
-  /// restart must run regardless of the cleanup's fate.
-  Future<void> _cleanupWithInlineRetry({
-    required String oldUid,
-    required String cleanupSecret,
-  }) async {
-    var firstAttemptThrew = false;
-    try {
-      final outcome = await _cleanupAnonUidArtifacts(
-        oldUid: oldUid,
-        cleanupSecret: cleanupSecret,
-      );
-      if (outcome.complete) {
-        FirebaseConfig.log('Recovery: anon uid cleanup completed');
-        return;
-      }
-      FirebaseConfig.log(
-        'Recovery: anon uid cleanup partial '
-        '(${outcome.cascadeFailed.length} group(s) failed) — retrying once',
-      );
-    } catch (error, stackTrace) {
-      firstAttemptThrew = true;
-      FirebaseConfig.log(
-        'Recovery: anon uid cleanup failed (${error.runtimeType}) — '
-        'retrying once',
-        stackTrace: stackTrace,
-      );
-    }
-    try {
-      final retry = await _cleanupAnonUidArtifacts(
-        oldUid: oldUid,
-        cleanupSecret: cleanupSecret,
-      );
-      if (retry.complete) {
-        FirebaseConfig.log('Recovery: anon uid cleanup completed on retry');
-        return;
-      }
-      _recoveryCleanupFailureRecorder(
-        message: 'Recovery cleanup incomplete',
-        data: {'groupsFailed': retry.cascadeFailed},
-      );
-      FirebaseConfig.log(
-        'Recovery: anon uid cleanup still partial after retry '
-        '(${retry.cascadeFailed.length} group(s) stranded under old uid)',
-      );
-    } catch (error, stackTrace) {
-      if (firstAttemptThrew &&
-          error is FirebaseFunctionsException &&
-          error.code == 'permission-denied') {
-        // The first attempt threw client-side (e.g. a 60s timeout) but the
-        // server ran to completion and CONSUMED the intent — permission-denied
-        // on the retry means there is no intent left because the migration
-        // already fully succeeded. Recording it would file a false alarm.
-        FirebaseConfig.log(
-          'Recovery: cleanup retry permission-denied after a thrown first '
-          'attempt — intent consumed by a completed first invocation',
-        );
-        return;
-      }
-      _recoveryCleanupFailureRecorder(
-        message: 'Recovery cleanup incomplete',
-        data: {'errorType': error.runtimeType.toString()},
-      );
-      FirebaseConfig.log(
-        'Recovery: anon uid cleanup retry failed (${error.runtimeType})',
-        stackTrace: stackTrace,
-      );
     }
   }
 
