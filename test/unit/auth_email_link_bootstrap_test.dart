@@ -70,23 +70,23 @@ void main() {
     await pumpEventQueue();
 
     verify(() => service.completeEmailLink(any())).called(1);
-    verifyNever(() => service.completeRecovery(any()));
+    verifyNever(() => service.restoreWithEmailLink(any()));
   });
 
-  test('opRecover in pendingOp routes to completeRecovery', () async {
+  test('opRecover in pendingOp routes to restoreWithEmailLink', () async {
     when(() => service.readPendingEmail()).thenReturn('foo@example.com');
     when(
       () => service.readInFlightOp(),
     ).thenReturn(AuthRecoveryService.opRecover);
     when(
-      () => service.completeRecovery(any()),
+      () => service.restoreWithEmailLink(any()),
     ).thenAnswer((_) async => _MockUserCredential());
     await attach();
 
     uriStream.add(_validAuthLink());
     await pumpEventQueue();
 
-    verify(() => service.completeRecovery(any())).called(1);
+    verify(() => service.restoreWithEmailLink(any())).called(1);
     verifyNever(() => service.completeEmailLink(any()));
   });
 
@@ -118,7 +118,7 @@ void main() {
 
       expect(container.read(pendingEmailLinkProvider), isNotNull);
       verifyNever(() => service.completeEmailLink(any()));
-      verifyNever(() => service.completeRecovery(any()));
+      verifyNever(() => service.restoreWithEmailLink(any()));
     },
   );
 
@@ -138,7 +138,7 @@ void main() {
     expect(container.read(pendingEmailLinkProvider), isNull);
   });
 
-  test('cold-start initial link routes to completeRecovery', () async {
+  test('cold-start initial link routes to restoreWithEmailLink', () async {
     when(
       () => appLinks.getInitialLink(),
     ).thenAnswer((_) async => _validAuthLink());
@@ -147,23 +147,23 @@ void main() {
       () => service.readInFlightOp(),
     ).thenReturn(AuthRecoveryService.opRecover);
     when(
-      () => service.completeRecovery(any()),
+      () => service.restoreWithEmailLink(any()),
     ).thenAnswer((_) async => _MockUserCredential());
 
     await attach();
     await pumpEventQueue();
 
-    verify(() => service.completeRecovery(any())).called(1);
+    verify(() => service.restoreWithEmailLink(any())).called(1);
     verifyNever(() => service.completeEmailLink(any()));
   });
 
-  test('custom-scheme fallback link routes to completeRecovery', () async {
+  test('custom-scheme fallback link routes to restoreWithEmailLink', () async {
     when(() => service.readPendingEmail()).thenReturn('foo@example.com');
     when(
       () => service.readInFlightOp(),
     ).thenReturn(AuthRecoveryService.opRecover);
     when(
-      () => service.completeRecovery(any()),
+      () => service.restoreWithEmailLink(any()),
     ).thenAnswer((_) async => _MockUserCredential());
     await attach();
 
@@ -171,7 +171,7 @@ void main() {
     await pumpEventQueue();
 
     verify(
-      () => service.completeRecovery(_validAuthLink().toString()),
+      () => service.restoreWithEmailLink(_validAuthLink().toString()),
     ).called(1);
     verifyNever(() => service.completeEmailLink(any()));
   });
@@ -184,7 +184,7 @@ void main() {
         () => service.readInFlightOp(),
       ).thenReturn(AuthRecoveryService.opRecover);
       when(
-        () => service.completeRecovery(any()),
+        () => service.restoreWithEmailLink(any()),
       ).thenThrow(FirebaseAuthException(code: 'invalid-action-code'));
       await attach();
 
@@ -195,12 +195,12 @@ void main() {
       // must not collapse on first error. (Same oobCode would be dedupe-
       // suppressed; that's by design and covered in its own test.)
       when(
-        () => service.completeRecovery(any()),
+        () => service.restoreWithEmailLink(any()),
       ).thenAnswer((_) async => _MockUserCredential());
       uriStream.add(_validAuthLink(oobCode: 'NEXT001'));
       await pumpEventQueue();
 
-      verify(() => service.completeRecovery(any())).called(2);
+      verify(() => service.restoreWithEmailLink(any())).called(2);
     },
   );
 
@@ -212,9 +212,9 @@ void main() {
     ]) {
       test(
         'opLink failing with $code surfaces the conflict and never calls '
-        'completeRecovery',
+        'restoreWithEmailLink',
         () async {
-          // #414: auto-falling-back to completeRecovery signs the anon
+          // #414: auto-falling-back to restoreWithEmailLink signs the anon
           // account out and orphans its data. Recovery into the other
           // account is an explicit, consented action via RecoverScreen only.
           when(() => service.readPendingEmail()).thenReturn('foo@example.com');
@@ -230,7 +230,7 @@ void main() {
           await pumpEventQueue();
 
           verify(() => service.completeEmailLink(any())).called(1);
-          verifyNever(() => service.completeRecovery(any()));
+          verifyNever(() => service.restoreWithEmailLink(any()));
         },
       );
     }
@@ -277,11 +277,11 @@ void main() {
       await pumpEventQueue();
 
       verify(() => service.completeEmailLink(any())).called(2);
-      verifyNever(() => service.completeRecovery(any()));
+      verifyNever(() => service.restoreWithEmailLink(any()));
     });
 
     test(
-      'opLink failing with non-fallback code does NOT call completeRecovery',
+      'opLink failing with non-fallback code does NOT call restoreWithEmailLink',
       () async {
         when(() => service.readPendingEmail()).thenReturn('foo@example.com');
         when(
@@ -296,7 +296,7 @@ void main() {
         await pumpEventQueue();
 
         verify(() => service.completeEmailLink(any())).called(1);
-        verifyNever(() => service.completeRecovery(any()));
+        verifyNever(() => service.restoreWithEmailLink(any()));
       },
     );
 
@@ -310,14 +310,14 @@ void main() {
           () => service.readInFlightOp(),
         ).thenReturn(AuthRecoveryService.opRecover);
         when(
-          () => service.completeRecovery(any()),
+          () => service.restoreWithEmailLink(any()),
         ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
         await attach();
 
         uriStream.add(_validAuthLink());
         await pumpEventQueue();
 
-        verify(() => service.completeRecovery(any())).called(1);
+        verify(() => service.restoreWithEmailLink(any())).called(1);
         verifyNever(() => service.completeEmailLink(any()));
       },
     );
@@ -337,7 +337,7 @@ void main() {
         () => service.readInFlightOp(),
       ).thenReturn(AuthRecoveryService.opRecover);
       when(
-        () => service.completeRecovery(any()),
+        () => service.restoreWithEmailLink(any()),
       ).thenAnswer((_) async => _MockUserCredential());
 
       await attach();
@@ -347,7 +347,7 @@ void main() {
       uriStream.add(_validAuthLink());
       await pumpEventQueue();
 
-      verify(() => service.completeRecovery(any())).called(1);
+      verify(() => service.restoreWithEmailLink(any())).called(1);
     });
 
     test('different oobCodes are processed independently', () async {
@@ -362,7 +362,7 @@ void main() {
         () => service.readInFlightOp(),
       ).thenReturn(AuthRecoveryService.opRecover);
       when(
-        () => service.completeRecovery(any()),
+        () => service.restoreWithEmailLink(any()),
       ).thenAnswer((_) async => _MockUserCredential());
       await attach();
 
@@ -371,7 +371,7 @@ void main() {
       uriStream.add(secondLink);
       await pumpEventQueue();
 
-      verify(() => service.completeRecovery(any())).called(2);
+      verify(() => service.restoreWithEmailLink(any())).called(2);
     });
   });
 }

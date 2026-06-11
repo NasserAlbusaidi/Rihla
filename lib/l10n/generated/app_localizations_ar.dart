@@ -1309,10 +1309,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeJoinGroup => 'الانضمام لمجموعة';
 
   @override
-  String get homeRecover => 'استخدمت رحلة سابقًا — استعادة';
+  String get homeRestoreWithGoogle => 'سجّل الدخول عبر Google للاستعادة';
 
   @override
-  String get homeRestoreWithGoogle => 'سجّل الدخول عبر Google للاستعادة';
+  String get homeRestoreWithEmail => 'أو الاستعادة عبر البريد الإلكتروني';
 
   @override
   String get restoreGoogleFailed =>
@@ -2589,16 +2589,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String authRecoverPendingResendCountdown(int seconds) {
     return 'إعادة الإرسال خلال $seconds ث';
   }
-
-  @override
-  String get authMergeOnRecoverTitle => 'استعادة حسابك';
-
-  @override
-  String get authMergeOnRecoverBody =>
-      'سنسجّل دخولك إلى ذلك الحساب وننقل رحلات ومصاريف هذا الهاتف إليه. لن تفقد أي شيء على هذا الجهاز.';
-
-  @override
-  String get authMergeOnRecoverConfirm => 'استعادة ودمج';
 
   @override
   String get groupSettleUpMissingTitle => 'هذه المجموعة لم تعد متاحة';

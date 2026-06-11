@@ -52,10 +52,7 @@ void main() {
       auth: auth,
       prefs: prefs,
       cacheIsolationController: isolation,
-      cleanupAnonUidArtifacts: ({required oldUid, required cleanupSecret}) =>
-          throw StateError('merge engine must not be touched'),
-      cleanupIntentFactory: (_) =>
-          throw StateError('merge engine must not be touched'),
+      // The client merge engine was deleted in #441 PR4 — nothing to stub.
       googleCredentialFactory: googleCredentialFactory,
     );
   }

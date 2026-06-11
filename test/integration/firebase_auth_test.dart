@@ -198,8 +198,8 @@ void main() {
       'a restored EMAIL-LINKED session is KEPT on cold boot — no anonymous '
       'mint (#427 merge precondition)',
       () async {
-        // After a populated-device merge, completeRecovery restarts the app
-        // signed in as the recovered email-linked user. The cold boot MUST
+        // After an email-link restore, restoreWithEmailLink restarts the app
+        // signed in as the restored email-linked user. The cold boot MUST
         // land on that uid: the restored branch checks only
         // `restoredUser != null` (uid-type-agnostic), never re-mints. If this
         // ever regresses, the merge delivers the user to a fresh empty anon

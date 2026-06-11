@@ -395,8 +395,8 @@
   "homeStartFirstGroupBody": "خطّط للرحلات، وتتبع المصاريف، وسوِّ الحساب مع الأصدقاء.",
   "homeCreateGroup": "إنشاء مجموعة",
   "homeJoinGroup": "الانضمام لمجموعة",
-  "homeRecover": "استخدمت رحلة سابقًا — استعادة",
   "homeRestoreWithGoogle": "سجّل الدخول عبر Google للاستعادة",
+  "homeRestoreWithEmail": "أو الاستعادة عبر البريد الإلكتروني",
   "restoreGoogleFailed": "تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.",
   "homeBackupNudgeTitle": "احفظ نسخة من حسابك",
   "homeBackupNudgeBody": "مجموعاتك ومصاريفك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا حتى لا تفقدها عند تغيير الهاتف أو إعادة التثبيت أو فقدان الجهاز.",
@@ -766,10 +766,6 @@
   "authRecoverPendingResendErrorGeneric": "تعذّرت إعادة الإرسال. حاول بعد قليل.",
   "authRecoverPendingResendLink": "إعادة إرسال الرابط",
   "authRecoverPendingResendCountdown": "إعادة الإرسال خلال {seconds} ث",
-
-  "authMergeOnRecoverTitle": "استعادة حسابك",
-  "authMergeOnRecoverBody": "سنسجّل دخولك إلى ذلك الحساب وننقل رحلات ومصاريف هذا الهاتف إليه. لن تفقد أي شيء على هذا الجهاز.",
-  "authMergeOnRecoverConfirm": "استعادة ودمج",
 
   "groupSettleUpMissingTitle": "هذه المجموعة لم تعد متاحة",
   "groupSettleUpMissingMessage": "قد تكون قد أُزلت منها. اضغط أدناه للعودة إلى الرئيسية.",

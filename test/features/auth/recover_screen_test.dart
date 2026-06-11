@@ -11,8 +11,6 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/screens/recover_screen.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
-import 'package:safar/features/groups/models/group_model.dart';
-import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -56,14 +54,12 @@ Widget _wrap({
   required _MockRecoveryService service,
   required _MockFirebaseAuth firebaseAuth,
   required SharedPreferences prefs,
-  required List<Group> groups,
 }) {
   return ProviderScope(
     overrides: [
       authRecoveryServiceProvider.overrideWithValue(service),
       firebaseAuthProvider.overrideWithValue(firebaseAuth),
       sharedPreferencesProvider.overrideWithValue(prefs),
-      userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
@@ -73,15 +69,6 @@ Widget _wrap({
     ),
   );
 }
-
-Group _stubGroup(String id) => Group(
-  id: id,
-  name: 'Group $id',
-  inviteCode: 'INV',
-  createdBy: 'someone',
-  memberIds: const ['someone'],
-  createdAt: DateTime(2026, 1, 1),
-);
 
 Future<void> _typeAndSubmit(WidgetTester tester, String email) async {
   await tester.enterText(find.byKey(const Key('recover.email')), email);
@@ -104,12 +91,7 @@ void main() {
 
   testWidgets('rejects empty email', (tester) async {
     await tester.pumpWidget(
-      _wrap(
-        service: service,
-        firebaseAuth: firebaseAuth,
-        prefs: prefs,
-        groups: [],
-      ),
+      _wrap(service: service, firebaseAuth: firebaseAuth, prefs: prefs),
     );
     await tester.pumpAndSettle();
 
@@ -122,12 +104,7 @@ void main() {
 
   testWidgets('direct entry back button routes home', (tester) async {
     await tester.pumpWidget(
-      _wrap(
-        service: service,
-        firebaseAuth: firebaseAuth,
-        prefs: prefs,
-        groups: [],
-      ),
+      _wrap(service: service, firebaseAuth: firebaseAuth, prefs: prefs),
     );
     await tester.pumpAndSettle();
 
@@ -137,18 +114,12 @@ void main() {
     expect(find.text('HOME'), findsOneWidget);
   });
 
-  testWidgets('happy path on a fresh device sends and routes to pending', (
-    tester,
-  ) async {
+  testWidgets('happy path sends, routes to pending, and shows NO consent '
+      'dialog (#441 PR4 — no merge to consent to)', (tester) async {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
 
     await tester.pumpWidget(
-      _wrap(
-        service: service,
-        firebaseAuth: firebaseAuth,
-        prefs: prefs,
-        groups: [],
-      ),
+      _wrap(service: service, firebaseAuth: firebaseAuth, prefs: prefs),
     );
     await tester.pumpAndSettle();
 
@@ -156,94 +127,25 @@ void main() {
 
     verify(() => service.sendRecoveryLink('foo@example.com')).called(1);
     expect(find.text('PENDING:foo@example.com'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
     verifyNever(() => firebaseAuth.signOut());
   });
 
-  testWidgets('on a populated device, cancelling the merge dialog blocks '
-      'the send', (tester) async {
-    await tester.pumpWidget(
-      _wrap(
-        service: service,
-        firebaseAuth: firebaseAuth,
-        prefs: prefs,
-        groups: [_stubGroup('g1')],
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.byKey(const Key('recover.email')),
-      'foo@example.com',
-    );
-    await tester.tap(find.byKey(const Key('recover.submit')));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('mergeOnRecover.cancel')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('mergeOnRecover.cancel')));
-    await tester.pumpAndSettle();
-
-    verifyNever(() => service.sendRecoveryLink(any()));
-    verifyNever(() => firebaseAuth.signOut());
-  });
-
-  testWidgets('on a populated device, recovery proceeds WITHOUT signing out '
-      '(#427 merge, not orphan)', (tester) async {
+  testWidgets('does NOT mark persistence dirty on the recover screen', (
+    tester,
+  ) async {
     when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
 
     await tester.pumpWidget(
-      _wrap(
-        service: service,
-        firebaseAuth: firebaseAuth,
-        prefs: prefs,
-        groups: [_stubGroup('g1')],
-      ),
+      _wrap(service: service, firebaseAuth: firebaseAuth, prefs: prefs),
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const Key('recover.email')),
-      'foo@example.com',
-    );
-    await tester.tap(find.byKey(const Key('recover.submit')));
-    await tester.pumpAndSettle();
+    await _typeAndSubmit(tester, 'foo@example.com');
 
-    await tester.tap(find.byKey(const Key('mergeOnRecover.confirm')));
-    await tester.pumpAndSettle();
-
-    // The populated anon UID stays signed in; completeRecovery migrates its
-    // data into the restored account when the link is tapped.
-    verifyNever(() => firebaseAuth.signOut());
-    verify(() => service.sendRecoveryLink('foo@example.com')).called(1);
-    expect(find.text('PENDING:foo@example.com'), findsOneWidget);
-  });
-
-  testWidgets('populated device does NOT mark persistence dirty on the '
-      'recover screen', (tester) async {
-    when(() => service.sendRecoveryLink(any())).thenAnswer((_) async {});
-
-    await tester.pumpWidget(
-      _wrap(
-        service: service,
-        firebaseAuth: firebaseAuth,
-        prefs: prefs,
-        groups: [_stubGroup('g1')],
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.byKey(const Key('recover.email')),
-      'foo@example.com',
-    );
-    await tester.tap(find.byKey(const Key('recover.submit')));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('mergeOnRecover.confirm')));
-    await tester.pumpAndSettle();
-
-    // The merge keeps this UID's data; completeRecovery marks dirty itself
-    // right before its own restart. Marking here would wipe a cache that is
-    // still this user's.
+    // Sending a link must not touch the cache: restoreWithEmailLink marks
+    // dirty itself right before its own restart. Marking here would wipe a
+    // cache that is still this user's.
     expect(prefs.getBool(kFirestorePersistenceDirtyKey), isNull);
   });
 
@@ -253,12 +155,7 @@ void main() {
     ).thenThrow(firebase_auth.FirebaseAuthException(code: 'user-not-found'));
 
     await tester.pumpWidget(
-      _wrap(
-        service: service,
-        firebaseAuth: firebaseAuth,
-        prefs: prefs,
-        groups: [],
-      ),
+      _wrap(service: service, firebaseAuth: firebaseAuth, prefs: prefs),
     );
     await tester.pumpAndSettle();
 

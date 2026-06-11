@@ -1274,10 +1274,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeJoinGroup => 'Join Group';
 
   @override
-  String get homeRecover => 'I had Rihla before — restore';
+  String get homeRestoreWithGoogle => 'Sign in with Google to restore';
 
   @override
-  String get homeRestoreWithGoogle => 'Sign in with Google to restore';
+  String get homeRestoreWithEmail => 'Restore with email instead';
 
   @override
   String get restoreGoogleFailed =>
@@ -2537,16 +2537,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String authRecoverPendingResendCountdown(int seconds) {
     return 'Resend in ${seconds}s';
   }
-
-  @override
-  String get authMergeOnRecoverTitle => 'Restore your account';
-
-  @override
-  String get authMergeOnRecoverBody =>
-      'We\'ll sign you in to that account and move this phone\'s trips and expenses into it. Nothing on this device is lost.';
-
-  @override
-  String get authMergeOnRecoverConfirm => 'Restore and merge';
 
   @override
   String get groupSettleUpMissingTitle => 'This group is no longer available';

@@ -2238,17 +2238,17 @@ abstract class AppLocalizations {
   /// **'Join Group'**
   String get homeJoinGroup;
 
-  /// No description provided for @homeRecover.
-  ///
-  /// In en, this message translates to:
-  /// **'I had Rihla before — restore'**
-  String get homeRecover;
-
   /// No description provided for @homeRestoreWithGoogle.
   ///
   /// In en, this message translates to:
   /// **'Sign in with Google to restore'**
   String get homeRestoreWithGoogle;
+
+  /// No description provided for @homeRestoreWithEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore with email instead'**
+  String get homeRestoreWithEmail;
 
   /// No description provided for @restoreGoogleFailed.
   ///
@@ -4409,24 +4409,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resend in {seconds}s'**
   String authRecoverPendingResendCountdown(int seconds);
-
-  /// Title of the MergeOnRecoverDialog — shown when the user restores an account on a device that already has local groups.
-  ///
-  /// In en, this message translates to:
-  /// **'Restore your account'**
-  String get authMergeOnRecoverTitle;
-
-  /// Body copy of the MergeOnRecoverDialog explaining that this device's data is merged into the restored account, not discarded.
-  ///
-  /// In en, this message translates to:
-  /// **'We\'ll sign you in to that account and move this phone\'s trips and expenses into it. Nothing on this device is lost.'**
-  String get authMergeOnRecoverBody;
-
-  /// Confirmation CTA on the MergeOnRecoverDialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Restore and merge'**
-  String get authMergeOnRecoverConfirm;
 
   /// Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed).
   ///
