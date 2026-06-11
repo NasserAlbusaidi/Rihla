@@ -28,6 +28,7 @@ class MainActivity : FlutterActivity() {
     // cold boot (un-started Firestore) where the boot barrier may legally call
     // clearPersistence() — NOT a flutter_phoenix widget rebirth.
     private fun restartApp() {
+        flushPendingSharedPrefsWrites()
         val intent = packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) {
             intent.addFlags(
@@ -36,5 +37,27 @@ class MainActivity : FlutterActivity() {
             startActivity(intent)
         }
         Runtime.getRuntime().exit(0)
+    }
+
+    // FirebaseAuth persists its current user via SharedPreferences.apply(),
+    // whose disk write sits queued on android.app.QueuedWork until an activity
+    // pause flushes it. Runtime.exit(0) skips the lifecycle entirely, so the
+    // apply() queued by an auth swap milliseconds earlier is lost and the cold
+    // boot resurrects the PRE-swap user — restoreWithGoogle/restoreWithEmailLink
+    // succeed server-side yet never survive the restart. Drain QueuedWork
+    // before exiting; if the (unsupported-list) API is unavailable, a bounded
+    // sleep gives the queued writer time to hit disk.
+    private fun flushPendingSharedPrefsWrites() {
+        try {
+            Class.forName("android.app.QueuedWork")
+                .getMethod("waitToFinish")
+                .invoke(null)
+        } catch (_: Throwable) {
+            try {
+                Thread.sleep(300)
+            } catch (_: InterruptedException) {
+                // Proceed to exit; best-effort flush window elapsed.
+            }
+        }
     }
 }
