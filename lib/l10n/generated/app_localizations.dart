@@ -2289,13 +2289,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeBackupNudgeBody.
   ///
   /// In en, this message translates to:
-  /// **'Your groups and expenses live only on this phone. Add an email so a new phone, reinstall, or lost device can\'t erase them.'**
+  /// **'Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can\'t erase them.'**
   String get homeBackupNudgeBody;
 
   /// No description provided for @homeBackupNudgeCta.
   ///
   /// In en, this message translates to:
-  /// **'Add email'**
+  /// **'Link Google account'**
   String get homeBackupNudgeCta;
 
   /// No description provided for @homeBackupNudgeDismiss.

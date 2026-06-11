@@ -1301,10 +1301,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeBackupNudgeBody =>
-      'Your groups and expenses live only on this phone. Add an email so a new phone, reinstall, or lost device can\'t erase them.';
+      'Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can\'t erase them.';
 
   @override
-  String get homeBackupNudgeCta => 'Add email';
+  String get homeBackupNudgeCta => 'Link Google account';
 
   @override
   String get homeBackupNudgeDismiss => 'Not now';
