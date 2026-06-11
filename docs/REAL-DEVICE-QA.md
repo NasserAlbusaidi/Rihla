@@ -177,6 +177,82 @@ All nine rows recorded Pass against the production Firebase backend (`rihla-safa
 
 **Gate status:** `tool/check_real_device_qa_gate.sh` (with `RIHLA_SKIP_IOS_QA=yes`) still reports FAIL on its hard requirement of **two physical Android devices** (emulators are excluded by design). `RIHLA_REAL_DEVICE_QA_READY` is therefore left **unset** — flip it only after RD-04 is re-confirmed on a second physical Android (or the gate/criteria are amended to accept the emulator for RD-04). Tracked under #40.
 
+## Durable-credential recovery matrix (RD-10–RD-13)
+
+Added 2026-06-11 for the durable-credential recovery rework (epic #441; gate #444,
+restore entry #447, intent persistence #452, conflict dialog #453, Profile rework
+#454, QueuedWork-drain durability fix #457, boot-verified outcome marker
+#458/#460). The Google link/restore path is a **silent-fail surface** — a build
+signed with an unregistered key fails Google sign-in with `DEVELOPER_ERROR` /
+error 10 and the restore quietly does nothing — so build provenance is part of
+the evidence here.
+
+**Not yet run, and intentionally kept OUT of the gated matrix table above.**
+`tool/check_real_device_qa_gate.sh` asserts exactly **9** rows (`total != 9`) and
+requires every parsed `| RD-NN |` row's Android cell to start with `Pass`; the
+unit test `test/unit/release_workflow_gate_test.dart` pins the strings
+`Every RD-01 through RD-09 row` and `RD-09 | Arabic RTL golden path`. So adding
+`RD-10`–`RD-13` rows to that table now would either trip the count assertion or
+force a dishonest `Pass`. **When these are executed, promote each into the table
+above AND widen the gate in the same change** — bump `total` 9 → 13 in the gate
+script and update the two pinned strings to `RD-13` in the test. Until then they
+live here as a runbook + checklist. Tracked under release blocker #40.
+
+### Shared prerequisites
+
+- **Registered-SHA build.** A local debug APK works — the debug keystore's SHA-1
+  + SHA-256 were registered on the Firebase Android app in #446 (closed), as were
+  the upload and Play App Signing keys. An unregistered key → `DEVELOPER_ERROR` /
+  error 10 on Google sign-in (silent-ish).
+- **App Check debug token registered to prod**, because `createGroup` /
+  `joinGroupByInviteCode` are enforced. Cold-relaunch after registering (≈30-min
+  refresh race); delete the tokens afterwards.
+- **Production Firebase backend** (`rihla-safar`), not the emulator.
+  `backend-deployed` = `c009b700`, in sync with `main`.
+- **Two Google accounts:** account **A** (your durable test identity) and a second
+  account **B** already bound to a *different* UID, for the RD-12 conflict.
+- **Two physical Android devices** — RD-04's two-device requirement still governs
+  the matrix; the emulator is excluded by design.
+
+### On-device witnesses (trust these; everything else editorializes)
+
+```bash
+adb logcat -c && adb logcat | grep -iE 'Recovery:|Restore:|Firebase session|signing in anon'
+```
+
+- Boot UID — `Firebase session restored (uid: X)` or `No persisted Firebase
+  session — signing in anonymously` (`lib/core/config/firebase_config.dart:96/116`).
+- Link — `Recovery: linked Google to uid X` (`auth_recovery_service.dart:223`).
+- Restore — `Restore: restored uid X` (`auth_recovery_service.dart:284/352`).
+- **Durability witness** — the auth store's mtime must *advance* across the
+  swap+restart. A frozen mtime across a server-confirmed sign-in is exactly how
+  the #457 `exit(0)`-vs-`apply()` race hid:
+
+  ```bash
+  adb shell run-as com.safar.safar ls -l --time-style=full-iso shared_prefs/ | grep -i firebase.auth
+  ```
+
+- **Boot notice** — since #460 the success notice only fires when the booted UID
+  equals the marker's `expectedUid`; a swap that didn't survive the restart shows
+  the *failure* notice instead of lying.
+- `run-as … ping` lies under SELinux even when the app's own sockets work — use
+  the app's logcat and file mtimes, not shell network probes.
+
+### Pending checklist (#40)
+
+- [ ] **RD-10** Durable-credential gate — anon user taps Create/Join → Google link
+  sheet → link succeeds on the **same UID** (`isAnonymous` → false, UID unchanged)
+  → the create/join completes.
+- [ ] **RD-11** Google restore, fresh install — reinstall → empty home → "Restore
+  with Google" lands the **same durable UID**; prior groups + ledger reappear and
+  survive the forced restart.
+- [ ] **RD-12** Conflict switch — restoring/linking account **B** (bound elsewhere)
+  on an empty anon shell raises the conflict dialog; **switch** discards the shell,
+  signs into B, and the in-flight create/join resumes after restart.
+- [ ] **RD-13** Email fallback — fresh install → "Restore with email instead" runs
+  the slim email-link recovery and lands the durable account with **no merge and
+  no new UID**.
+
 ## RD-01: Create Group
 
 1. Fresh install the app or clear app data.
@@ -313,6 +389,97 @@ Pass criteria:
 - Invite codes, URLs, and currency codes remain visually LTR and readable.
 - The Arabic golden-path integration log completes without render exceptions
   on the same build.
+
+## RD-10: Durable-Credential Gate
+
+Prerequisites: see "Durable-credential recovery matrix" above (registered-SHA
+build, App Check token, prod backend, account A).
+
+1. Start from a fresh anonymous session. Record the boot UID `A` from
+   `Firebase session restored (uid: A)` (or the anon sign-in line).
+2. Tap **Create group** or **Join group**. The Google link sheet must appear
+   *before* the create/join proceeds.
+3. Complete Google sign-in with account `A`.
+
+Pass criteria:
+
+- Logcat shows `Recovery: linked Google to uid A` — the **same** UID as step 1,
+  with no UID change.
+- `isAnonymous` flips to false; the account is now durable.
+- The original Create/Join action then completes (group created or joined).
+
+Evidence to capture: the linked-uid logline, the resulting group/member doc id,
+and the build SHA / artifact under test.
+
+## RD-11: Google Restore, Fresh Install
+
+This is the row that was falsely "verified" on 2026-06-11 before #457 — the swap
+succeeded in memory but `Runtime.exit(0)` raced FirebaseAuth's `apply()` and the
+cold boot resurrected the pre-swap anon user. Re-prove it end to end.
+
+1. Clear app data or reinstall. Boot comes up anonymous; record the throwaway
+   anon UID `A'` (`No persisted Firebase session — signing in anonymously`).
+2. From the empty home state, tap **Restore with Google** and sign in with the
+   account whose durable UID is `B`.
+3. Let the app force-restart.
+
+Pass criteria (all four):
+
+- Boot-after-restart logs `Firebase session restored (uid: B)` — the durable UID,
+  **not** `A'`.
+- Prior groups and ledger reappear.
+- The #460 success notice shows (proves booted UID == marker `expectedUid`).
+- The auth-store mtime advanced across the restart.
+
+Fail signature: boot returns as `A'` (anon resurrected) and the #460 notice
+reports failure. If you see this, #457 is not in the build under test.
+
+Evidence to capture: pre-restart anon UID, post-restart `Firebase session
+restored (uid: B)` line, a screenshot of restored groups, and the build SHA.
+
+## RD-12: Conflict Switch
+
+Prerequisites: an empty anonymous shell on the device, plus account `B` already
+bound to a different UID.
+
+1. On the empty anon shell (UID `A'`, no groups), start a Create or Join so an
+   intent is in flight; this triggers the Google link sheet.
+2. Sign in with account `B` (bound to another UID).
+3. The conflict dialog must appear. Choose **switch**.
+4. Let the app force-restart.
+
+Pass criteria:
+
+- The conflict dialog appeared (not a silent overwrite).
+- The empty shell `A'` is discarded; boot-after-restart UID == `B`.
+- The in-flight Create/Join **resumes and completes** after the restart (intent
+  persistence, #452).
+
+Evidence to capture: the conflict-dialog screenshot, post-restart boot UID line,
+the completed create/join artifact, and the build SHA.
+
+## RD-13: Email Fallback
+
+Prerequisites: registered-SHA build, prod backend, and an inbox the durable
+account `B` can receive the recovery link at.
+
+1. Fresh install / clear data. From the empty home state, choose **Restore with
+   email instead**.
+2. Run the slim email-link recovery: send the link, open it on the device, and
+   complete sign-in.
+3. Let the app settle / restart.
+
+Pass criteria:
+
+- Logcat shows `Recovery: restoreWithEmailLink succeeded` then `Restore: restored
+  uid B`.
+- Boot UID == the durable `B`; prior groups reappear.
+- **No new UID and no merge** — the cross-UID merge engine was deleted in #441
+  PR5, so confirm the UID is reused (not minted) and there is zero merge-callable
+  traffic.
+
+Evidence to capture: the restore logline, post-restart boot UID, a restored-groups
+screenshot, and the build SHA.
 
 ## Resolved on `fix/post-launch-qa-v1.2`
 
