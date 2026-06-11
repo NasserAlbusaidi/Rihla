@@ -149,8 +149,8 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
 
     try {
       if (op == AuthRecoveryService.opRecover) {
-        final result = await service.completeRecovery(link);
-        FirebaseConfig.log('Recovery: completeRecovery succeeded');
+        final result = await service.restoreWithEmailLink(link);
+        FirebaseConfig.log('Recovery: restoreWithEmailLink succeeded');
         ref.read(pendingEmailLinkProvider.notifier).state = null;
         _showSnack('Restored ${result.user?.email ?? pendingEmail}');
       } else {
