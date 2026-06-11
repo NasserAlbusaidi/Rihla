@@ -91,7 +91,7 @@ The trust boundary and the recovery machinery are where being silently-wrong cos
 |---|---|---|
 | #217 | Post-launch hardening | Migrate activity-log `actorId`/`metadata` oldUid→newUid (follow-up to #216; migrate-not-scrub; inert but a defect-class match). |
 | #76 | Post-launch hardening | deleteAccount reaper for abandoned/timed-out deletions + `revokeRefreshTokens` before deleteUser (the one-liner is the cheap carve-out). |
-| #170 | Post-launch hardening | Firestore TTL on `recoveryCleanupIntents.expiresAt` (needs `expiresAt` on the write path + rules). **Gate.** |
+| #170 | Post-launch hardening | Firestore TTL on `recoveryCleanupIntents.expiresAt` (needs `expiresAt` on the write path + rules). **Gate.** — **OBSOLETE: collection + TTL deleted in #441 PR5.** |
 
 ### E · Runtime & schema hygiene · `cluster:schema-debt`
 **Root cause:** latent runtime/schema-shape debt, not user-visible, but it rots.

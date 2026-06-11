@@ -45,8 +45,7 @@ bool isGoogleAccountAlreadyInUse(Object error) =>
 ///
 /// Since #441 PR4 the email RECOVER half is a no-merge discard-shell swap
 /// ([restoreWithEmailLink], mirroring [restoreWithGoogle]) — the cross-UID
-/// merge engine (cleanup intents + `cleanupAnonUidArtifacts`) has no client
-/// writer anymore. See
+/// merge engine was deleted outright in #441 PR5. See
 /// docs/plans/2026-06-11-durable-credential-recovery-rearchitecture.md.
 ///
 /// The service holds the "pending email" in SharedPreferences so the
@@ -276,9 +275,9 @@ class AuthRecoveryService {
   /// restart (#441 PR4 — the slim email fallback, D3). Cross-UID
   /// discard-shell swap: identical protocol to [restoreWithGoogle], WITHOUT
   /// the merge engine — the post-gate anon shell is provably empty (PR2
-  /// gates `fcm_tokens` writes; PR4 deleted the cleanup-intent writer), so
-  /// there is nothing to migrate and `cleanupAnonUidArtifacts` is never
-  /// invoked.
+  /// gates `fcm_tokens` writes; the cleanup-intent writer and the server
+  /// cleanup callable were deleted in #441 PR4/PR5), so there is nothing to
+  /// migrate.
   ///
   /// Ordering is load-bearing (see [restoreWithGoogle]); the one addition is
   /// the email-path op-state (`pendingLinkEmail` / `inFlightOp`), cleared in

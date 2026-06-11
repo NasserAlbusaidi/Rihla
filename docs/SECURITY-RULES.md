@@ -21,7 +21,6 @@ explicitly allowed is refused.
 | `joinAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAudit/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
-| `recoveryCleanupIntents/{oldUid}` | ❌ (callable only) | retiring UID, secret 32-128 chars + `expiresAt` (#170 TTL) | retiring UID (same shape) | ❌ (callable only) |
 | `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh / self-leave / creator-remove | creator |
 | `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self-leave or creator-remove |
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
@@ -103,11 +102,11 @@ settlements are absolute.
 ### Identity rewrites vs. financial immutability (Admin-SDK maintenance)
 
 B1 (immutable `createdBy`) and B3 (append-only settlements) bind **peers**.
-Two callables write *through* those rules via the Admin SDK, which bypasses
-the rule engine entirely (see the §1 header and §5): `cleanupAnonUidArtifacts`
-repoints a recovered user's `oldUid → newUid` (same human, after email-link
-recovery — §4.3b), and `deleteAccount` repoints a departing `uid → tombstone`
-(§4.3a). Neither is gated by B1/B3.
+The `deleteAccount` callable writes *through* those rules via the Admin SDK,
+which bypasses the rule engine entirely (see the §1 header and §5):
+`deleteAccount` repoints a departing `uid → tombstone` (§4.3a). It is not
+gated by B1/B3. (The `cleanupAnonUidArtifacts` cross-UID migration callable
+was deleted in #441 PR5.)
 
 The contract that keeps server-side re-identification safe — **and that no
 rule enforces** — is: *these callables may repoint **identity** fields, but
@@ -118,18 +117,18 @@ pinned here.
 
 **Identity fields the Admin SDK MAY rewrite** (verified against the callables):
 
-| Field (record) | Peer rule | `cleanupAnonUidArtifacts` (recovery) | `deleteAccount` (deletion) |
-|---|---|---|---|
-| `createdBy` (group/event/expense/settlement) | immutable (B1) | `oldUid→newUid` | `uid→` sentinel (group keeps a remaining real creator if any) |
-| `memberIds` (group) | admin-update shape only | `oldUid→newUid` (dedup) | `uid` removed / tombstoned |
-| `participantIds` (event) | light/admin update | `oldUid→newUid` (dedup) | `uid→` tombstone |
-| `participantNames` **keys** (event) | — | key `oldUid→newUid` | key `uid→` tombstone |
-| `payerParticipantId` (expense/settlement) | set at create; not the B1 key | `oldUid→newUid` | `uid→` tombstone |
-| `recipientParticipantId` (settlement) | set at create | `oldUid→newUid` | `uid→` tombstone |
-| `customSplitParticipants` (expense) | — | `oldUid→newUid` (dedup) | — |
-| `splitDistribution` **keys** (expense) | values ≥ 0 (#192) | key `oldUid→newUid`; **sum-merge** on collision | key `uid→` tombstone |
-| `payerName` / `recipientName` (settlement, denormalized) | — | left untouched (same person) | scrubbed to `Deleted member` |
-| member subdoc `id` / `userId` | — | copied to `newUid` doc, old deleted | tombstoned |
+| Field (record) | Peer rule | `deleteAccount` (deletion) |
+|---|---|---|
+| `createdBy` (group/event/expense/settlement) | immutable (B1) | `uid→` sentinel (group keeps a remaining real creator if any) |
+| `memberIds` (group) | admin-update shape only | `uid` removed / tombstoned |
+| `participantIds` (event) | light/admin update | `uid→` tombstone |
+| `participantNames` **keys** (event) | — | key `uid→` tombstone |
+| `payerParticipantId` (expense/settlement) | set at create; not the B1 key | `uid→` tombstone |
+| `recipientParticipantId` (settlement) | set at create | `uid→` tombstone |
+| `customSplitParticipants` (expense) | — | — |
+| `splitDistribution` **keys** (expense) | values ≥ 0 (#192) | key `uid→` tombstone |
+| `payerName` / `recipientName` (settlement, denormalized) | — | scrubbed to `Deleted member` |
+| member subdoc `id` / `userId` | — | tombstoned |
 
 **Financial fields that NEVER change — even under the Admin SDK** (these appear
 in **no** update map in either callable):
@@ -148,11 +147,10 @@ non-negative `splitDistribution` values (#192). The Admin SDK is not bound by
 those floors; the table above is the discipline that substitutes for them on
 the server paths.
 
-> Sources (verify before relying): rewrites — `functions/src/callables/cleanupAnonUidArtifacts.ts`
-> (`settlementMigrationUpdate`, `mergeUidMapKey`, `processGroup`) and
-> `functions/src/callables/deleteAccount.ts` (`renameMapKey`, the expense /
-> settlement / event / group update builders). Field names —
-> `Expense.toFirestore` / `Settlement.toFirestore` in `lib/features/ledger/models/`.
+> Sources (verify before relying): rewrites — `functions/src/callables/deleteAccount.ts`
+> (`renameMapKey`, the expense / settlement / event / group update builders).
+> Field names — `Expense.toFirestore` / `Settlement.toFirestore` in `lib/features/ledger/models/`.
+> (`cleanupAnonUidArtifacts` was deleted in #441 PR5.)
 
 ### Soft delete is one-way
 
@@ -259,40 +257,6 @@ scheduled function (via the Admin SDK) to mark an **incomplete** account
 deletion so the reaper can finish abandoned/timed-out deletions (#76). The
 marker is deleted once the deletion converges; a Firestore TTL on
 `expiresAt` is the safety net. Clients never read or write it.
-
-### 4.3b `recoveryCleanupIntents/{oldUid}`
-
-Not sealed — the retiring anonymous UID may write a one-time bearer
-secret (`validCleanupIntent`):
-
-```
-match /recoveryCleanupIntents/{oldUid} {
-  allow create, update: if validCleanupIntent();
-  allow get, list, delete: if false;
-}
-```
-
-`validCleanupIntent` requires:
-
-- Caller is signed in and `request.auth.uid == {oldUid}` (only the
-  retiring UID can write its own intent)
-- Exact key set `{secret, createdAt, expiresAt}`
-- `secret` is a string of length 32–128
-- `createdAt` is a timestamp
-- `expiresAt` is a timestamp **strictly after** `createdAt` (#170)
-
-`get`, `list`, and `delete` are denied to clients. The intent is read
-and consumed server-side by the `cleanupAnonUidArtifacts` callable,
-which performs the UID rewrite after email-link recovery.
-
-**TTL (#170):** the client writes `expiresAt = now + 24h`; a Firestore
-TTL on `recoveryCleanupIntents.expiresAt` (declared in
-`firestore.indexes.json`) reaps abandoned bearer-secret docs. The 24h
-window is deliberately longer than the 15-minute server validity
-(`cleanupIntentMaxAgeMs` in `cleanupAnonUidArtifacts.ts`) so a TTL never
-reaps a still-valid intent under client clock skew. **Validity stays
-keyed on `createdAt`, not `expiresAt`** — the server never reads
-`expiresAt`; it is purely a GC marker.
 
 ### 4.4 `groups/{gid}`
 
@@ -604,8 +568,8 @@ allow delete: if false;  // B3
 ## 5. What the rules do **not** enforce
 
 These are conscious omissions; the listed callable or invariant carries
-the check instead. For what the `deleteAccount` and `cleanupAnonUidArtifacts`
-callables may and may not rewrite once they bypass the rules, see
+the check instead. For what the `deleteAccount` callable may and may not
+rewrite once it bypasses the rules, see
 [Identity rewrites vs. financial immutability](#identity-rewrites-vs-financial-immutability-admin-sdk-maintenance) in §3.
 
 | Concern | Why not in rules | Carried by |
@@ -613,7 +577,6 @@ callables may and may not rewrite once they bypass the rules, see
 | Invite-code redemption | A rule cannot atomically read `inviteCodes` + add to `memberIds` + fan out into all events while staying under the `get` budget. | `joinGroupByInviteCode` callable. |
 | Rate-limiting failed joins | Rules cannot increment a counter across requests. | `joinAttempts` doc, written by the callable. |
 | Account deletion cascade | Cross-collection scrub across hundreds of docs exceeds rules' write surface. | `deleteAccount` callable. |
-| UID migration after recovery | Same. Rules only let the retiring anon UID create/update a one-time `recoveryCleanupIntents/{oldUid}` secret; the Admin callable performs the actual rewrite after verifying it. | `cleanupAnonUidArtifacts` callable. |
 | Currency whitelist | `validCurrency` checks length only; the actual allowed set (OMR/USD/EUR/GBP/SAR/AED/JPY/KWD/BHD/QAR) lives in `MoneySerializer`. | Client validation + `MoneySerializer`. |
 | Money math correctness | Rules can validate fields, not arithmetic. | `BalanceCalculator` + unit tests under `test/unit/`. |
 | Server-side App Check enforcement | Rules don't see App Check tokens. | `{ enforceAppCheck: true }` on every callable. |
