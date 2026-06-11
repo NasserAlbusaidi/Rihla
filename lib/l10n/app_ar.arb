@@ -396,6 +396,8 @@
   "homeCreateGroup": "إنشاء مجموعة",
   "homeJoinGroup": "الانضمام لمجموعة",
   "homeRecover": "استخدمت رحلة سابقًا — استعادة",
+  "homeRestoreWithGoogle": "سجّل الدخول عبر Google للاستعادة",
+  "restoreGoogleFailed": "تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.",
   "homeBackupNudgeTitle": "احفظ نسخة من حسابك",
   "homeBackupNudgeBody": "مجموعاتك ومصاريفك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا حتى لا تفقدها عند تغيير الهاتف أو إعادة التثبيت أو فقدان الجهاز.",
   "homeBackupNudgeCta": "أضف بريدًا إلكترونيًا",

@@ -1312,6 +1312,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeRecover => 'استخدمت رحلة سابقًا — استعادة';
 
   @override
+  String get homeRestoreWithGoogle => 'سجّل الدخول عبر Google للاستعادة';
+
+  @override
+  String get restoreGoogleFailed =>
+      'تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.';
+
+  @override
   String get homeBackupNudgeTitle => 'احفظ نسخة من حسابك';
 
   @override

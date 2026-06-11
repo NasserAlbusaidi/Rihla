@@ -35,6 +35,28 @@ typedef CleanupIntentFactory = Future<String> Function(String oldUid);
 /// in tests because the plugin singleton needs live platform channels.
 typedef GoogleCredentialFactory = Future<AuthCredential> Function();
 
+/// Removes the current device's FCM token doc (#441 PR3). Injected so the
+/// discard-shell restore swap can delete `fcm_tokens/{oldUid}` BEFORE the UID
+/// changes (owner-only rules make it un-deletable afterward) without
+/// [AuthRecoveryService] depending on the notification layer. Wired in the
+/// provider to `notificationService.removeToken`; defaults to a no-op so the
+/// existing constructor callers and tests that don't exercise restore are
+/// unaffected.
+typedef FcmTokenRemover = Future<void> Function();
+
+/// True when a LINK attempt (#441 PR2 gate) failed because the chosen Google
+/// account already backs a different Firebase user. One-account-per-email can
+/// surface EITHER code, and [FirebaseAuthException.credential] is nullable
+/// (flutterfire #9920) — so we branch on the code alone and the caller
+/// re-obtains/reuses the Google credential for [AuthRecoveryService.restoreWithGoogle].
+///
+/// PR3's own restore path ([FirebaseAuth.signInWithCredential]) never throws
+/// these — they are link-only — so this classifier exists purely for the gate.
+bool isGoogleAccountAlreadyInUse(Object error) =>
+    error is FirebaseAuthException &&
+    (error.code == 'credential-already-in-use' ||
+        error.code == 'email-already-in-use');
+
 /// Orchestrates the email-link account recovery flows from spec §4.
 ///
 /// Lives one layer above [FirebaseConfig.auth] so the Firebase plumbing
@@ -57,10 +79,12 @@ class AuthRecoveryService {
     CleanupIntentFactory? cleanupIntentFactory,
     RecoveryCleanupFailureRecorder? recoveryCleanupFailureRecorder,
     GoogleCredentialFactory? googleCredentialFactory,
+    FcmTokenRemover? removeFcmToken,
   }) : _auth = auth,
        _prefs = prefs,
        _cacheIsolationController = cacheIsolationController,
        _firestore = firestore,
+       _removeFcmToken = removeFcmToken ?? _noopFcmTokenRemover,
        _cleanupAnonUidArtifacts =
            cleanupAnonUidArtifacts ??
            (({required oldUid, required cleanupSecret}) =>
@@ -92,6 +116,9 @@ class AuthRecoveryService {
   final CleanupIntentFactory _cleanupIntentFactory;
   final RecoveryCleanupFailureRecorder _recoveryCleanupFailureRecorder;
   final GoogleCredentialFactory _googleCredentialFactory;
+  final FcmTokenRemover _removeFcmToken;
+
+  static Future<void> _noopFcmTokenRemover() async {}
 
   /// Shared gateway so [GoogleSignIn.initialize] runs once per process, not
   /// once per service instance.
@@ -278,6 +305,64 @@ class AuthRecoveryService {
     final result = await user.linkWithCredential(credential);
     FirebaseConfig.log('Recovery: linked Google to uid ${result.user?.uid}');
     return result;
+  }
+
+  /// Restore the durable Google-backed account on this device, then restart
+  /// (#441 PR3). This is a cross-UID swap (the throwaway anon shell is replaced
+  /// by the Google-owned UID), so it runs the full cache-isolation protocol —
+  /// mirroring [completeRecovery]/[signOutCurrentDevice] but via
+  /// [FirebaseAuth.signInWithCredential] and WITHOUT the merge engine: the
+  /// post-gate shell is provably empty (PR2 gates `fcm_tokens` writes and drops
+  /// `recoveryCleanupIntents`), so there is nothing to migrate.
+  ///
+  /// Ordering is load-bearing:
+  /// 1. Obtain the credential FIRST — interactive, so a user-cancel / missing
+  ///    idToken / missing serverClientId throws here with the anon shell fully
+  ///    intact (no overlay, no swap, no restart). [credential] lets the PR2
+  ///    gate-conflict path reuse the Google credential from its failed link.
+  /// 2. Remove the FCM token BEFORE the swap — owner-only `fcm_tokens` rules
+  ///    make `fcm_tokens/{oldUid}` un-deletable once `request.auth.uid` changes,
+  ///    and [CacheIsolationController.engageIsolation] invalidates the
+  ///    notification provider, so this must precede both. Best-effort.
+  /// 3. Engage isolation (cover cached UI + tear down leaf subscriptions)
+  ///    BEFORE any auth change; the `finally` GUARANTEES the restart on success
+  ///    AND failure so the overlay can never strand the user.
+  /// 4. Flush pending writes, mark the cache dirty (awaited, so the cold boot
+  ///    clears the outgoing UID's cache even if the process dies before
+  ///    restart), then swap. NO explicit signOut: a failed swap MUST leave the
+  ///    current anon user signed in (#414/#213), and the guaranteed restart
+  ///    returns to it.
+  Future<UserCredential> restoreWithGoogle({
+    AuthCredential? credential,
+    Duration pendingWritesTimeout = const Duration(seconds: 5),
+  }) async {
+    final googleCredential = credential ?? await _googleCredentialFactory();
+
+    // Owner-only rules block deleting fcm_tokens/{oldUid} after the UID swaps,
+    // and engageIsolation invalidates the notification provider — so remove the
+    // token while still signed in as the outgoing anon UID. Best-effort by
+    // placement: this runs before isolation and outside the try/finally, so a
+    // throw aborts the restore with the shell intact rather than stranding it.
+    await _removeFcmToken();
+
+    _cacheIsolationController.engageIsolation();
+    try {
+      try {
+        final firestore = _firestore ?? FirebaseFirestore.instance;
+        await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
+      } on TimeoutException {
+        FirebaseConfig.log(
+          'Restore: waitForPendingWrites timed out after '
+          '${pendingWritesTimeout.inSeconds}s — restoring anyway',
+        );
+      }
+      await markFirestorePersistenceDirty(_prefs);
+      final result = await _auth.signInWithCredential(googleCredential);
+      FirebaseConfig.log('Restore: restored uid ${result.user?.uid}');
+      return result;
+    } finally {
+      await _cacheIsolationController.restart();
+    }
   }
 
   /// Sign in as the previously-linked user, then restart (#45).

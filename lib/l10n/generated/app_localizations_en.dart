@@ -1277,6 +1277,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeRecover => 'I had Rihla before — restore';
 
   @override
+  String get homeRestoreWithGoogle => 'Sign in with Google to restore';
+
+  @override
+  String get restoreGoogleFailed =>
+      'Couldn\'t sign in with Google. Please try again.';
+
+  @override
   String get homeBackupNudgeTitle => 'Back up your account';
 
   @override
