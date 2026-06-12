@@ -25,12 +25,15 @@ void main() {
       (tester) async {
     final fakeDb = FakeFirebaseFirestore();
     await fakeDb.doc('groups/g1/aggregates/balance').set({
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'currency': 'OMR',
-      'currencies': ['OMR'],
-      'netMilli': {'uid-a': 12500, 'uid-b': -12500},
-      'perEventNetMilli': {
-        'e1': {'uid-a': 12500, 'uid-b': -12500},
+      'netMilliByCurrency': {
+        'OMR': {'uid-a': 12500, 'uid-b': -12500},
+      },
+      'perEventNetMilliByCurrency': {
+        'e1': {
+          'OMR': {'uid-a': 12500, 'uid-b': -12500},
+        },
       },
       'eventCount': 1,
       'degraded': false,
@@ -73,7 +76,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // netMilli 12500 → 12.500 OMR owed to uid-a.
+    // netMilliByCurrency.OMR 12500 → 12.500 OMR owed to uid-a.
     final amounts = tester
         .widgetList<RAmount>(find.byType(RAmount))
         .map((w) => w.value)

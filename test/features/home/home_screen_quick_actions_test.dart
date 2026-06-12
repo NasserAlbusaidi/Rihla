@@ -43,7 +43,7 @@ List<Override> _baseOverrides(List<Group> groups) => [
       balances: <String, List<UserBalance>>{},
       totalSpent: <String, Decimal>{},
       eventCount: 0,
-      perEventBreakdown: <String, Map<String, Decimal>>{},
+      perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
       memberNames: <String, String>{},
       memberRawNames: <String, String>{},
     )),

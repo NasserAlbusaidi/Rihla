@@ -1907,11 +1907,10 @@ describe('Publish readiness Firestore rules', () => {
   // #366 — balance aggregate: server-only write, member read.
   function validAggregate(): Record<string, unknown> {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       currency: 'OMR',
-      currencies: ['OMR'],
-      netMilli: { owner: 1000, member: -1000 },
-      perEventNetMilli: { e1: { owner: 1000, member: -1000 } },
+      netMilliByCurrency: { OMR: { owner: 1000, member: -1000 } },
+      perEventNetMilliByCurrency: { e1: { OMR: { owner: 1000, member: -1000 } } },
       eventCount: 1,
       degraded: false,
       sourceTimeMs: 1,

@@ -79,9 +79,13 @@ final _balancesWithExpenses = (
   },
   totalSpent: <String, Decimal>{'OMR': Decimal.parse('30.000')},
   eventCount: 1,
-  perEventBreakdown: <String, Map<String, Decimal>>{
-    'uid-creator': {'event-1': Decimal.parse('15.000')},
-    'uid-member': {'event-1': Decimal.parse('-15.000')},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+    'uid-creator': {
+      'event-1': {'OMR': Decimal.parse('15.000')},
+    },
+    'uid-member': {
+      'event-1': {'OMR': Decimal.parse('-15.000')},
+    },
   },
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
   memberRawNames: <String, String>{},
@@ -109,7 +113,7 @@ final _balancesEmpty = (
   },
   totalSpent: <String, Decimal>{'OMR': Decimal.zero},
   eventCount: 0,
-  perEventBreakdown: <String, Map<String, Decimal>>{},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
   memberRawNames: <String, String>{},
 );
@@ -332,7 +336,7 @@ void main() {
           balances: const <String, List<UserBalance>>{},
           totalSpent: const <String, Decimal>{},
           eventCount: 0,
-          perEventBreakdown: const <String, Map<String, Decimal>>{},
+          perEventBreakdown: const <String, Map<String, Map<String, Decimal>>>{},
           memberNames: <String, String>{
             'uid-creator': 'Alice',
             'uid-member': 'Bob',

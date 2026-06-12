@@ -275,11 +275,10 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     await seedMember('g', OWNER);
     await seedMember('g', MEMBER);
     await getFirestore().doc('groups/g/aggregates/balance').set({
-      schemaVersion: 1,
+      schemaVersion: 2,
       currency: 'OMR',
-      currencies: ['OMR'],
-      netMilli: {},
-      perEventNetMilli: {},
+      netMilliByCurrency: {},
+      perEventNetMilliByCurrency: {},
       eventCount: 0,
       degraded: false,
       sourceTimeMs: 1,

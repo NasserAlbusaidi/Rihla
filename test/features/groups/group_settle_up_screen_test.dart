@@ -81,9 +81,13 @@ final _balancesOwed = (
   },
   totalSpent: <String, Decimal>{'OMR': Decimal.parse('15.500')},
   eventCount: 2,
-  perEventBreakdown: <String, Map<String, Decimal>>{
-    'uid-alice': {'event-1': Decimal.parse('7.750')},
-    'uid-bob': {'event-1': Decimal.parse('-7.750')},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+    'uid-alice': {
+      'event-1': {'OMR': Decimal.parse('7.750')},
+    },
+    'uid-bob': {
+      'event-1': {'OMR': Decimal.parse('-7.750')},
+    },
   },
   memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
   memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
@@ -113,7 +117,7 @@ final _balancesOwedAed = (
   },
   totalSpent: <String, Decimal>{'AED': Decimal.parse('15.50')},
   eventCount: 1,
-  perEventBreakdown: <String, Map<String, Decimal>>{},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
   memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
   memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
@@ -140,7 +144,7 @@ final _balancesSettled = (
   },
   totalSpent: <String, Decimal>{'OMR': Decimal.zero},
   eventCount: 0,
-  perEventBreakdown: <String, Map<String, Decimal>>{},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
   memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
   memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
@@ -1044,9 +1048,13 @@ void main() {
         balances: _balancesOwed.balances,
         totalSpent: _balancesOwed.totalSpent,
         eventCount: _balancesOwed.eventCount,
-        perEventBreakdown: <String, Map<String, Decimal>>{
-          'uid-alice': {longEventId: Decimal.parse('7.750')},
-          'uid-bob': {longEventId: Decimal.parse('-7.750')},
+        perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+          'uid-alice': {
+            longEventId: {'OMR': Decimal.parse('7.750')},
+          },
+          'uid-bob': {
+            longEventId: {'OMR': Decimal.parse('-7.750')},
+          },
         },
         memberNames: _balancesOwed.memberNames,
         memberRawNames: _balancesOwed.memberRawNames,
