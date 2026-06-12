@@ -1,4 +1,5 @@
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../groups/models/group_activity_log_model.dart';
 import '../models/activity_log_model.dart';
 
@@ -42,4 +43,17 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
           : l10n.activityGroupMemberLeft,
     _ => log.description,
   };
+}
+/// Currency for an amount-bearing group-activity row (#382 PR-4).
+///
+/// Settlement logs stamp `metadata.currency` with the bucket currency the
+/// settlement was recorded in; legacy rows lack the key. The metadata map is
+/// client-written by any member, so an unsupported value also falls back to
+/// the group currency rather than driving display precision.
+String activityAmountCurrency(GroupActivityLog log, String fallback) {
+  final raw = log.metadata['currency'];
+  if (raw is String && MoneySerializer.supportedCurrencies.contains(raw)) {
+    return raw;
+  }
+  return fallback;
 }
