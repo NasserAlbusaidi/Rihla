@@ -35,7 +35,7 @@ import { recomputeNet } from '../callables/groupNetBalance';
 // data. No retry option on purpose: a transiently lost event heals on the next
 // write or the reconciler, while retry on a deterministic bug would storm.
 
-export const AGGREGATE_SCHEMA_VERSION = 1;
+export const AGGREGATE_SCHEMA_VERSION = 2;
 
 const DEFAULT_MAX_BYTES = 900_000;
 
@@ -83,53 +83,41 @@ export async function refreshGroupBalanceAggregate(
 
   const result = await recomputeNet(db, groupRef);
 
-  // Shim #2 (#382 PR-2 — REMOVED in PR-3 when the v2 bucketed doc lands). The
-  // oracle now returns per-currency buckets (currency -> uid -> net), but the v1
-  // aggregate doc is flat. While the uniformity rules are LIVE (#382 PR-6
-  // relaxes them last) every prod group holds exactly one currency, so net has
-  // exactly one bucket; collapse it to the flat per-uid map the v1 encode
-  // expects — byte-identical to the pre-PR-2 doc. A >1-bucket map is unreachable
-  // in prod; if one ever appears (a legacy/Admin mixed-case doc) we mark the doc
-  // degraded so the client falls back to the once-path loudly rather than
-  // persist a half-currency cache. recomputeNet's finalizeNet guarantees a
-  // no-money group still yields a single (OMR) bucket of zeros, so the flat
-  // netMilli/perEventNetMilli key-sets are preserved.
-  const multiCurrency = result.net.size > 1;
-  const flatNet: Map<string, Decimal> = multiCurrency
-    ? new Map<string, Decimal>()
-    : (result.net.values().next().value ?? new Map<string, Decimal>());
-  const flatPerEventNet = new Map<string, Map<string, Decimal>>();
-  for (const [eventId, slice] of result.perEventNet) {
-    flatPerEventNet.set(
-      eventId,
-      slice.size > 1
-        ? new Map<string, Decimal>()
-        : (slice.values().next().value ?? new Map<string, Decimal>()),
-    );
-  }
-
-  const netMilli: Record<string, number> = {};
-  for (const [uid, value] of flatNet) {
-    netMilli[uid] = toMilli(value);
-  }
-  const perEventNetMilli: Record<string, Record<string, number>> = {};
-  for (const [eventId, slice] of flatPerEventNet) {
-    const encoded: Record<string, number> = {};
-    for (const [uid, value] of slice) {
-      encoded[uid] = toMilli(value);
+  // v2 (#382 PR-3): encode the oracle's per-currency buckets directly —
+  // ccy -> uid -> milli and eid -> ccy -> uid -> milli, zero transpose.
+  const netMilliByCurrency: Record<string, Record<string, number>> = {};
+  for (const ccy of [...result.net.keys()].sort()) {
+    const bucket: Record<string, number> = {};
+    for (const [uid, value] of result.net.get(ccy)!) {
+      bucket[uid] = toMilli(value);
     }
-    perEventNetMilli[eventId] = encoded;
+    netMilliByCurrency[ccy] = bucket;
   }
-  const currencies = [...result.currencies].sort();
+  const perEventNetMilliByCurrency: Record<
+    string,
+    Record<string, Record<string, number>>
+  > = {};
+  for (const [eventId, slice] of result.perEventNet) {
+    const perCcy: Record<string, Record<string, number>> = {};
+    for (const ccy of [...slice.keys()].sort()) {
+      const bucket: Record<string, number> = {};
+      for (const [uid, value] of slice.get(ccy)!) {
+        bucket[uid] = toMilli(value);
+      }
+      perCcy[ccy] = bucket;
+    }
+    perEventNetMilliByCurrency[eventId] = perCcy;
+  }
 
   // Firestore caps docs at 1 MiB. JSON length over the variable-size parts is
   // a conservative proxy; past the threshold we write a DEGRADED marker doc
   // (no maps) so the client falls back loudly instead of this write failing
-  // forever and freezing a stale doc in place. #382 PR-2: a >1-currency group
-  // (unreachable under live uniformity rules) also degrades — the flat v1 doc
-  // cannot represent multiple buckets.
-  const mapsBytes = JSON.stringify({ netMilli, perEventNetMilli, currencies }).length;
-  const degraded = multiCurrency || mapsBytes > maxBytes();
+  // forever and freezing a stale doc in place.
+  const mapsBytes = JSON.stringify({
+    netMilliByCurrency,
+    perEventNetMilliByCurrency,
+  }).length;
+  const degraded = mapsBytes > maxBytes();
   if (degraded) {
     logger.warn('balanceAggregator: degraded aggregate (maps exceed size cap)', {
       groupId,
@@ -144,7 +132,7 @@ export async function refreshGroupBalanceAggregate(
     degraded,
     sourceTimeMs,
     computedAt: FieldValue.serverTimestamp(),
-    ...(degraded ? {} : { currencies, netMilli, perEventNetMilli }),
+    ...(degraded ? {} : { netMilliByCurrency, perEventNetMilliByCurrency }),
   };
 
   const aggRef = groupRef.collection('aggregates').doc('balance');
