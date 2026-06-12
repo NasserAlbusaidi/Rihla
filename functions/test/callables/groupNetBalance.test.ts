@@ -130,36 +130,43 @@ describe('recomputeNet drill-down extension (#366)', () => {
     await clearFirestore();
   });
 
-  it('keeps the existing net contract (former-actor universe + both settlement scopes)', async () => {
+  it('keeps the existing net contract (former-actor universe + both settlement scopes), now per-currency bucketed', async () => {
     const db = getFirestore();
     const result = await recomputeNet(db, db.doc(`groups/${GROUP}`));
 
+    // #382 PR-2: net is per-currency. This all-OMR fixture has a single 'OMR'
+    // bucket whose per-uid values are byte-for-byte the pre-PR-2 flat net.
+    expect([...result.net.keys()]).toEqual(['OMR']);
+    const omr = result.net.get('OMR')!;
     // Universe {alice, bob, carol}: equal split 9.000 / 3 = 3.000 owed each.
     // alice: −3.000 + 1.000 (event settlement paid) − 2.000 (group settlement
     // received) = −4.000; bob: −3.000 − 1.000 + 2.000 = −2.000;
     // carol: 9.000 paid − 3.000 owed = +6.000. Conservation: sum = 0.
-    expect(result.net.get(ALICE)!.toFixed(3)).toBe('-4.000');
-    expect(result.net.get(BOB)!.toFixed(3)).toBe('-2.000');
-    expect(result.net.get(CAROL)!.toFixed(3)).toBe('6.000');
+    expect(omr.get(ALICE)!.toFixed(3)).toBe('-4.000');
+    expect(omr.get(BOB)!.toFixed(3)).toBe('-2.000');
+    expect(omr.get(CAROL)!.toFixed(3)).toBe('6.000');
     expect(result.currencies).toEqual(new Set(['OMR']));
     expect(result.liveEventRefs).toHaveLength(1);
   });
 
-  it('emits the participantIds-only drill-down slice (perEventNet)', async () => {
+  it('emits the participantIds-only drill-down slice (perEventNet), per-currency bucketed', async () => {
     const db = getFirestore();
     const result = await recomputeNet(db, db.doc(`groups/${GROUP}`));
 
     const slice = result.perEventNet.get(EVENT);
     expect(slice).toBeDefined();
+    // #382 PR-2: the slice is per-currency; this all-OMR event has one 'OMR' bucket.
+    expect([...slice!.keys()]).toEqual(['OMR']);
+    const omr = slice!.get('OMR')!;
     // Drill-down universe {alice, bob}: equal split 9.000 / 2 = 4.500 each;
     // carol's payment is DROPPED (payer outside universe); the event settlement
     // folds; the GROUP settlement does NOT.
-    expect(slice!.get(ALICE)!.toFixed(3)).toBe('-3.500');
-    expect(slice!.get(BOB)!.toFixed(3)).toBe('-5.500');
+    expect(omr.get(ALICE)!.toFixed(3)).toBe('-3.500');
+    expect(omr.get(BOB)!.toFixed(3)).toBe('-5.500');
     // The former actor never appears in the drill-down — the client contract
     // (_buildPerEventBreakdown is participantIds-only, pinned by
     // group_balance_provider_test.dart).
-    expect(slice!.has(CAROL)).toBe(false);
+    expect(omr.has(CAROL)).toBe(false);
     expect(result.perEventNet.size).toBe(1);
   });
 
