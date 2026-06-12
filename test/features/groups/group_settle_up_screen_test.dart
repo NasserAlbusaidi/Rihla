@@ -741,6 +741,7 @@ void main() {
       expect(activityService.logCalls.single.metadata, {
         'amount': '7.75',
         'recipientId': 'uid-alice',
+        'currency': 'OMR',
       });
     });
 

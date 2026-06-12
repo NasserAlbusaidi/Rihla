@@ -478,7 +478,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             actorName: actorName,
             description:
                 'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-            metadata: {'amount': amount.toString(), 'recipientId': toUserId},
+            metadata: {
+              'amount': amount.toString(),
+              'recipientId': toUserId,
+              'currency': currency,
+            },
           );
 
       if (context.mounted) {
