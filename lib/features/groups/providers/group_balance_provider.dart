@@ -955,14 +955,11 @@ final crossGroupHomeBalanceProvider =
     }
     final balance = balanceAsync.requireValue;
     partial = partial || balance.partial;
-    // Interim bridge until #382 PR-3 Task 9 rewires this fold per BUCKET key
-    // (D12): select the group-currency bucket, preserving the pre-v2
-    // group.currency fold byte-for-byte for prod data (singleton buckets).
-    _accumulateBucket(
-      byCurrencyMap,
-      group.currency,
-      balance.userNet[group.currency] ?? Decimal.zero,
-    );
+    // #382 PR-3 (D12): fold per BUCKET currency (the honest key), mirroring
+    // crossGroupBalanceProvider — group.currency plays no part in the fold.
+    for (final entry in balance.userNet.entries) {
+      _accumulateBucket(byCurrencyMap, entry.key, entry.value);
+    }
   }
 
   return AsyncValue.data((

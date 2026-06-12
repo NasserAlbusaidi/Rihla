@@ -325,7 +325,10 @@ void main() {
   });
 
   group('crossGroupHomeBalanceProvider (#366)', () {
-    test('buckets per group currency from aggregate docs; never cross-sums', () async {
+    test('folds per BUCKET key, not group.currency; never cross-sums', () async {
+      // #382 PR-3 (D12): the currency lives IN the bucket key. g2 is an
+      // OMR-currency group whose v2 doc carries a USD bucket — the fold must
+      // surface USD 2.5, not drop it into a group-currency OMR slot.
       await seedAggregate();
       await fakeDb.doc('groups/g2/aggregates/balance').set(_aggregateDoc(
             netMilliByCurrency: {
@@ -345,7 +348,7 @@ void main() {
           userGroupsProvider.overrideWith(
             (_) => Stream.value([
               _makeGroup(gid),
-              _makeGroup('g2', currency: 'USD'),
+              _makeGroup('g2'),
             ]),
           ),
         ],
