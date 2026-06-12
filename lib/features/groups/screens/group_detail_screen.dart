@@ -240,11 +240,10 @@ class _Content extends ConsumerWidget {
             final isLast = index == events.length - 1;
             return _EventRow(
               event: events[index],
-              // #382 PR-3: the breakdown is bucketed; this row stays
-              // single-currency until PR-5 — read the screen's already-
-              // selected bucket currency.
-              userShare: perEvent[events[index].id]?[currency],
-              currency: currency,
+              shareLines: nonZeroNetsGccFirst(
+                perEvent[events[index].id] ?? const <String, Decimal>{},
+              ),
+              groupCurrency: currency,
               divider: !isLast,
               onTap: () => GoRouter.of(
                 context,
@@ -770,15 +769,15 @@ class _SecondaryCtaButton extends StatelessWidget {
 class _EventRow extends StatelessWidget {
   const _EventRow({
     required this.event,
-    required this.userShare,
-    required this.currency,
+    required this.shareLines,
+    required this.groupCurrency,
     required this.divider,
     required this.onTap,
   });
 
   final Event event;
-  final Decimal? userShare;
-  final String currency;
+  final List<({String currency, Decimal net})> shareLines;
+  final String groupCurrency;
   final bool divider;
   final VoidCallback onTap;
 
@@ -788,8 +787,7 @@ class _EventRow extends StatelessWidget {
     final spacing = context.spacing;
     final dateLabel = _formatDates(context, event.startDate, event.endDate);
     final subtitle = dateLabel ?? _eventTypeLabel(context, event.type);
-    final share = userShare ?? Decimal.zero;
-    final hasShare = share != Decimal.zero;
+    final hasShare = shareLines.isNotEmpty;
 
     return InkWell(
       onTap: onTap,
@@ -850,13 +848,23 @@ class _EventRow extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (hasShare)
-                      RAmount(
-                        value: share,
-                        currency: currency,
-                        size: 15,
-                        sign: true,
-                        showCurrency: false,
-                      )
+                      // L7: ≥2 lines → every line carries its code; a sole
+                      // line only when foreign — keeps the single
+                      // group-currency render byte-identical to pre-PR-5.
+                      for (var i = 0; i < shareLines.length; i++)
+                        Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            top: i == 0 ? 0 : 2,
+                          ),
+                          child: RAmount(
+                            value: shareLines[i].net,
+                            currency: shareLines[i].currency,
+                            size: 15,
+                            sign: true,
+                            showCurrency: shareLines.length >= 2 ||
+                                shareLines[i].currency != groupCurrency,
+                          ),
+                        )
                     else
                       Text(
                         '—',
@@ -954,11 +962,6 @@ class _MembersCard extends StatelessWidget {
     }
 
     final members = data.memberNames.entries.toList();
-    final bucket =
-        selectCurrencyBucket(data.balances, group.currency).balances;
-    final netByUid = {
-      for (final b in bucket) b.participantId: b.netBalance,
-    };
     return Container(
       decoration: BoxDecoration(
         color: colors.cardSurface,
@@ -977,8 +980,10 @@ class _MembersCard extends StatelessWidget {
                 creatorId: group.createdBy,
                 currentUid: currentUid,
               ),
-              net: netByUid[members[i].key] ?? Decimal.zero,
-              currency: group.currency,
+              lines: nonZeroNetsGccFirst(
+                myNetByCurrency(data.balances, members[i].key),
+              ),
+              groupCurrency: group.currency,
               divider: i < members.length - 1,
               onTap: () => GoRouter.of(context).push(
                 '/group/${group.id}/settle-up?memberId=${members[i].key}',
@@ -1007,16 +1012,16 @@ class _MemberRow extends StatelessWidget {
   const _MemberRow({
     required this.name,
     required this.role,
-    required this.net,
-    required this.currency,
+    required this.lines,
+    required this.groupCurrency,
     required this.divider,
     required this.onTap,
   });
 
   final String name;
   final String? role;
-  final Decimal net;
-  final String currency;
+  final List<({String currency, Decimal net})> lines;
+  final String groupCurrency;
   final bool divider;
   final VoidCallback onTap;
 
@@ -1064,7 +1069,7 @@ class _MemberRow extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: context.spacing.space8),
-                if (net == Decimal.zero)
+                if (lines.isEmpty)
                   Text(
                     '—',
                     style: AppTypography.sans(
@@ -1073,12 +1078,28 @@ class _MemberRow extends StatelessWidget {
                     ),
                   )
                 else
-                  RAmount(
-                    value: net,
-                    currency: currency,
-                    size: 14,
-                    sign: true,
-                    showCurrency: false,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // L7: ≥2 lines → every line carries its code; a sole
+                      // line only when foreign — keeps the single
+                      // group-currency render byte-identical to pre-PR-5.
+                      for (var i = 0; i < lines.length; i++)
+                        Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            top: i == 0 ? 0 : 2,
+                          ),
+                          child: RAmount(
+                            value: lines[i].net,
+                            currency: lines[i].currency,
+                            size: 14,
+                            sign: true,
+                            showCurrency: lines.length >= 2 ||
+                                lines[i].currency != groupCurrency,
+                          ),
+                        ),
+                    ],
                   ),
               ],
             ),
