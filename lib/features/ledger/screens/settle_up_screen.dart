@@ -37,10 +37,14 @@ class SettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String eventId;
 
+  /// Highlight a specific member's tile via deep-link (`?memberId=`).
+  final String? preSelectedMemberId;
+
   const SettleUpScreen({
     super.key,
     required this.groupId,
     required this.eventId,
+    this.preSelectedMemberId,
   });
 
   @override
@@ -228,6 +232,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
+                    preSelectedMemberId: widget.preSelectedMemberId,
                     onRecord:
                         ({
                           required settlement,

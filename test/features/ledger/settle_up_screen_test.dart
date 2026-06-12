@@ -19,6 +19,7 @@ import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -67,6 +68,7 @@ void main() {
     Stream<List<Settlement>>? settlementsStream,
     SettlementService? settlementService,
     bool router = false,
+    String? preSelectedMemberId,
     List<Override> extraOverrides = const [],
   }) {
     final overrides = [
@@ -139,7 +141,11 @@ void main() {
             locale: locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const SettleUpScreen(groupId: groupId, eventId: eventId),
+            home: SettleUpScreen(
+              groupId: groupId,
+              eventId: eventId,
+              preSelectedMemberId: preSelectedMemberId,
+            ),
           );
 
     return ProviderScope(overrides: overrides, child: child);
@@ -505,6 +511,24 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    '#382 PR-5: preSelectedMemberId highlights the matching tile',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // Bob owes Alice 10.000 — one tile; alice is the toUserId party.
+      await tester.pumpWidget(
+        buildScreen(fakeDb, preSelectedMemberId: 'alice'),
+      );
+      await tester.pumpAndSettle();
+
+      final tile = tester.widget<GroupSettlementTile>(
+        find.byType(GroupSettlementTile),
+      );
+      expect(tile.isHighlighted, isTrue);
+    },
+  );
 
   testWidgets('back arrow is mirrored under Arabic RTL (#126)', (tester) async {
     final fakeDb = FakeFirebaseFirestore();
