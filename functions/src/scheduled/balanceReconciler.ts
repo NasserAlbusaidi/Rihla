@@ -36,10 +36,9 @@ export interface ReconciliationSummary {
 // would be noise, not harm.
 function fingerprint(data: FirebaseFirestore.DocumentData | undefined): string {
   return JSON.stringify({
-    n: data?.netMilli ?? null,
-    p: data?.perEventNetMilli ?? null,
+    n: data?.netMilliByCurrency ?? null,
+    p: data?.perEventNetMilliByCurrency ?? null,
     e: data?.eventCount ?? null,
-    c: data?.currencies ?? null,
   });
 }
 

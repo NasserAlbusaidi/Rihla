@@ -100,12 +100,15 @@ describe('runBalanceReconciliation (#366)', () => {
     testEnv.cleanup();
   });
 
-  it('backfills missing docs and heals a tampered one (with a drift warn)', async () => {
+  it('backfills missing docs and heals a stale v1 doc into v2 (with a drift warn)', async () => {
     const db = getFirestore();
     await seedGroup('g-a');
     await seedExpense('g-a', 10000); // alice +5.000, bob −5.000
     await seedGroup('g-b'); // no events — empty maps doc is still materialized
-    // g-a has a STALE-WRONG doc a trigger should have maintained.
+    // g-a carries a pre-rollout v1 doc: the first post-deploy sweep IS the
+    // v1→v2 backfill (#382 PR-3) — tx.set full-replace strips the dead v1
+    // fields, and the drift warn firing once per pre-existing v1 doc is
+    // intentional.
     await db.doc('groups/g-a/aggregates/balance').set({
       schemaVersion: 1,
       currency: 'OMR',
@@ -126,17 +129,56 @@ describe('runBalanceReconciliation (#366)', () => {
     expect(summary.failures).toBe(0);
 
     const a = (await db.doc('groups/g-a/aggregates/balance').get()).data()!;
-    expect(a.netMilli).toEqual({ [ALICE]: 5000, [BOB]: -5000 });
-    expect(a.perEventNetMilli).toEqual({ e1: { [ALICE]: 5000, [BOB]: -5000 } });
+    expect(a.schemaVersion).toBe(2);
+    expect(a.netMilliByCurrency).toEqual({
+      OMR: { [ALICE]: 5000, [BOB]: -5000 },
+    });
+    expect(a.perEventNetMilliByCurrency).toEqual({
+      e1: { OMR: { [ALICE]: 5000, [BOB]: -5000 } },
+    });
     expect(a.eventCount).toBe(1);
+    expect(a.netMilli).toBeUndefined();
+    expect(a.perEventNetMilli).toBeUndefined();
+    expect(a.currencies).toBeUndefined();
 
     const b = (await db.doc('groups/g-b/aggregates/balance').get()).data()!;
-    expect(b.netMilli).toEqual({});
+    expect(b.netMilliByCurrency).toEqual({});
     expect(b.eventCount).toBe(0);
 
     expect(warn).toHaveBeenCalledWith(
       'balanceReconciler: drift healed',
       expect.objectContaining({ groupId: 'g-a' }),
+    );
+  });
+
+  it('detects drift in a tampered v2 map even when eventCount matches', async () => {
+    const db = getFirestore();
+    await seedGroup('g-t');
+    await seedExpense('g-t', 10000);
+    // Right eventCount, wrong net bucket — only a fingerprint reading the v2
+    // map names can see this drift (D6: v1 names read null on both sides and
+    // detection goes permanently silent).
+    await db.doc('groups/g-t/aggregates/balance').set({
+      schemaVersion: 2,
+      currency: 'OMR',
+      netMilliByCurrency: { OMR: { [ALICE]: 999, [BOB]: -999 } },
+      perEventNetMilliByCurrency: { e1: { OMR: { [ALICE]: 999, [BOB]: -999 } } },
+      eventCount: 1,
+      degraded: false,
+      sourceTimeMs: 1,
+    });
+    const warn = jest.spyOn(logger, 'warn');
+
+    const summary = await runBalanceReconciliation(db);
+
+    expect(summary.drift).toBe(1);
+    const healed = (await db.doc('groups/g-t/aggregates/balance').get()).data()!;
+    expect(healed.netMilliByCurrency).toEqual({
+      OMR: { [ALICE]: 5000, [BOB]: -5000 },
+    });
+    expect(warn).toHaveBeenCalledWith(
+      'balanceReconciler: drift healed',
+      expect.objectContaining({ groupId: 'g-t' }),
     );
   });
 
