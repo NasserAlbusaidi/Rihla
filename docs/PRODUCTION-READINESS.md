@@ -154,12 +154,12 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-11, `fdf8460b`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-12, `8acb7fdf`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-11 deploy ceremony the `backend-deployed` tag is `fdf8460b` and
+    2026-06-12 deploy ceremony the `backend-deployed` tag is `8acb7fdf` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`).
     `docs/DEPLOY-LEDGER.md` is the authoritative per-deploy history; shipped
-    across the 2026-06-07…11 deploys:
+    across the 2026-06-07…12 deploys:
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
       `allocateShares`/`allocateExact`/`allocatePercent`) gain the
       negative-value→equal-split guard, mirroring the client byte-for-byte.
@@ -224,6 +224,16 @@ starts a new run.
       `@grpc/grpc-js` to `^1.14.4` under `google-gax` (GHSA-5375-pq7m-f5r2),
       re-bundled into prod Functions. Deps-only; functions logic / rules / indexes
       unchanged; 17 functions. Phase 1 of the v1.5.0 release.
+    - **#382 PR-2** (`8acb7fdf`, #467) — server balance oracle bucketed per
+      currency: `groupNetBalance.ts` `foldEventNet`/`recomputeNet` return
+      per-currency `net`/`perEventNet` (expenses AND settlements bucket by their
+      own per-doc currency); `deleteGroup`/`leaveGroup`/`removeMember` drop the
+      `currencies.size>1` refusal → require **zero in every currency bucket** (no
+      FX). `balanceAggregator` Shim #2 flattens the sole bucket → v1 aggregate doc
+      byte-identical; `balanceReconciler` untouched. Functions-only; 17 functions
+      unchanged. Backward-compatible — single-currency (all prod) behavior is
+      identical; the per-bucket logic is unreachable until PR-6 relaxes the
+      uniformity rules. Mirrors the merged client PR-1; #382 epic stays open.
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
