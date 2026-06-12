@@ -18,10 +18,10 @@ import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/services/expense_service.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 
-// RED → GREEN (#366 Task 10): homeGroupBalanceProvider is the SINGLE chooser
-// between the server aggregate doc (online steady state — zero per-event
-// reads) and the client once-path (offline/syncing/missing/degraded/legacy-
-// mixed — the only source that sees the user's own queued offline writes,
+// RED → GREEN (#366 Task 10; per-currency v2 #382 PR-3): homeGroupBalanceProvider
+// is the SINGLE chooser between the server aggregate doc (online steady state —
+// zero per-event reads) and the client once-path (offline/syncing/missing/
+// degraded — the only source that sees the user's own queued offline writes,
 // spec §0.7). These tests pin the chooser table row by row; the counting
 // fakes prove the aggregate path issues ZERO one-shot money reads.
 
@@ -95,20 +95,23 @@ Expense _makeExpense(String id, String payerId, Decimal amount, String eventId) 
     );
 
 Map<String, dynamic> _aggregateDoc({
-  Map<String, dynamic>? netMilli,
-  Map<String, dynamic>? perEventNetMilli,
+  Map<String, dynamic>? netMilliByCurrency,
+  Map<String, dynamic>? perEventNetMilliByCurrency,
   int eventCount = 2,
-  List<String> currencies = const ['OMR'],
   bool degraded = false,
 }) =>
     {
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'currency': 'OMR',
-      'currencies': currencies,
-      'netMilli': netMilli ?? {'uid-a': -4000, 'uid-b': 4000},
-      'perEventNetMilli': perEventNetMilli ??
+      'netMilliByCurrency': netMilliByCurrency ??
           {
-            'e1': {'uid-a': -4000, 'uid-b': 4000},
+            'OMR': {'uid-a': -4000, 'uid-b': 4000},
+          },
+      'perEventNetMilliByCurrency': perEventNetMilliByCurrency ??
+          {
+            'e1': {
+              'OMR': {'uid-a': -4000, 'uid-b': 4000},
+            },
           },
       'eventCount': eventCount,
       'degraded': degraded,
@@ -194,8 +197,10 @@ void main() {
       final result = await settle(container);
 
       expect(result.fromAggregate, isTrue);
-      expect(result.userNet, Decimal.parse('-4'));
-      expect(result.userPerEventNet, {'e1': Decimal.parse('-4')});
+      expect(result.userNet, {'OMR': Decimal.parse('-4')});
+      expect(result.userPerEventNet, {
+        'e1': {'OMR': Decimal.parse('-4')},
+      });
       expect(result.eventCount, 2);
       expect(result.partial, isFalse);
       expect(expFake.getCount, 0,
@@ -209,8 +214,8 @@ void main() {
       final result = await settle(container);
 
       expect(result.fromAggregate, isFalse);
-      // uid-b paid 20, equal split → uid-a owes 10.
-      expect(result.userNet, Decimal.fromInt(-10));
+      // uid-b paid 20, equal split → uid-a owes 10 (OMR bucket).
+      expect(result.userNet, {'OMR': Decimal.fromInt(-10)});
       expect(result.eventCount, 1);
       expect(expFake.getCount, greaterThan(0));
     });
@@ -222,16 +227,42 @@ void main() {
       final result = await settle(container);
 
       expect(result.fromAggregate, isFalse);
-      expect(result.userNet, Decimal.fromInt(-10));
+      expect(result.userNet, {'OMR': Decimal.fromInt(-10)});
     });
 
-    test('online + legacy-mixed currencies (>1) → once-path fallback', () async {
-      await seedAggregate(_aggregateDoc(currencies: ['OMR', 'USD']));
+    test('online + TWO-bucket v2 doc → aggregate path, both buckets, zero reads',
+        () async {
+      // The inverse of the deleted PR-1 "legacy-mixed → fallback" pin: a
+      // mixed-currency v2 doc is served straight from the aggregate (#382
+      // PR-3 drops the Shim #1 single-currency collapse).
+      await seedAggregate(_aggregateDoc(
+        netMilliByCurrency: {
+          'OMR': {'uid-a': -4000, 'uid-b': 4000},
+          'AED': {'uid-a': 2500, 'uid-b': -2500},
+        },
+        perEventNetMilliByCurrency: {
+          'e1': {
+            'OMR': {'uid-a': -4000, 'uid-b': 4000},
+            'AED': {'uid-a': 2500, 'uid-b': -2500},
+          },
+        },
+      ));
       final container = makeContainer(ConnectivityStatus.online);
 
       final result = await settle(container);
 
-      expect(result.fromAggregate, isFalse);
+      expect(result.fromAggregate, isTrue);
+      expect(result.userNet, {
+        'OMR': Decimal.parse('-4'),
+        'AED': Decimal.parse('2.5'),
+      });
+      expect(result.userPerEventNet, {
+        'e1': {'OMR': Decimal.parse('-4'), 'AED': Decimal.parse('2.5')},
+      });
+      expect(expFake.getCount, 0,
+          reason: 'a mixed-currency v2 doc must not fall back to one-shot '
+              'per-event money reads');
+      expect(setFake.getCount, 0);
     });
 
     test('offline + aggregate present → once-path (local truth wins)', () async {
@@ -241,7 +272,7 @@ void main() {
       final result = await settle(container);
 
       expect(result.fromAggregate, isFalse);
-      expect(result.userNet, Decimal.fromInt(-10));
+      expect(result.userNet, {'OMR': Decimal.fromInt(-10)});
       expect(expFake.getCount, greaterThan(0));
     });
 
@@ -287,7 +318,7 @@ void main() {
       final result =
           container.read(homeGroupBalanceProvider(gid)).requireValue;
 
-      expect(result.userNet, Decimal.zero);
+      expect(result.userNet, isEmpty);
       expect(result.eventCount, 0);
       expect(expFake.getCount, 0);
     });
@@ -297,9 +328,10 @@ void main() {
     test('buckets per group currency from aggregate docs; never cross-sums', () async {
       await seedAggregate();
       await fakeDb.doc('groups/g2/aggregates/balance').set(_aggregateDoc(
-            netMilli: {'uid-a': 2500},
-            perEventNetMilli: <String, dynamic>{},
-            currencies: ['USD'],
+            netMilliByCurrency: {
+              'USD': {'uid-a': 2500},
+            },
+            perEventNetMilliByCurrency: <String, dynamic>{},
           ));
       final container = ProviderContainer(
         overrides: [

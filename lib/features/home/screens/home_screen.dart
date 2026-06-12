@@ -646,7 +646,10 @@ class _GroupRow extends ConsumerWidget {
     // #104 once-path otherwise. The facade slices by the current uid itself.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
     final homeBalance = balanceAsync.valueOrNull;
-    final userNet = homeBalance?.userNet ?? Decimal.zero;
+    // Interim bridge until #382 PR-3 Task 10 (selectNetBucket + honest
+    // labels): read the group-currency bucket, preserving the pre-v2 row.
+    final userNet =
+        homeBalance?.userNet[group.currency] ?? Decimal.zero;
     final eventCount = homeBalance?.eventCount ?? 0;
     final memberCount = group.memberIds.length;
     final subtitle = context.l10n.homeGroupSubtitle(memberCount, eventCount);

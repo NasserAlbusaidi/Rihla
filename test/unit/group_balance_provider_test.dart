@@ -400,12 +400,12 @@ void main() {
         expect(result, isA<AsyncData<GroupBalances>>());
         final data = result.valueOrNull!;
 
-        // uid-1 net in event-a = paid 10 - owed 5 = +5
+        // uid-1 net in event-a = paid 10 - owed 5 = +5 (OMR bucket, #382 PR-3)
         expect(data.perEventBreakdown, contains('uid-1'));
         expect(data.perEventBreakdown['uid-1'], contains('event-a'));
         expect(
           data.perEventBreakdown['uid-1']!['event-a'],
-          equals(Decimal.parse('5.000')),
+          equals({'OMR': Decimal.parse('5.000')}),
         );
       },
     );
@@ -683,10 +683,10 @@ void main() {
         expect(data.perEventBreakdown.containsKey('uid-former'), isFalse);
 
         // A current participant's breakdown is unaffected (event-a: 20 split
-        // 2 ways, uid-1 paid => net +10).
+        // 2 ways, uid-1 paid => net +10 in the OMR bucket).
         expect(
           data.perEventBreakdown['uid-1']?['event-a'],
-          equals(Decimal.parse('10.000')),
+          equals({'OMR': Decimal.parse('10.000')}),
         );
       },
     );
@@ -1164,8 +1164,8 @@ void main() {
     });
 
     test(
-        'perEventBreakdown interim collapse: GCC-first bucket for a mixed '
-        'event, explicit zeros for a no-money event', () {
+        'perEventBreakdown buckets a mixed event per currency (#382 PR-3), '
+        'synthetic-OMR zero rows for a no-money event', () {
       final emptyEvent = _makeEvent(
         id: 'event-b',
         groupId: groupId,
@@ -1192,13 +1192,28 @@ void main() {
         groupSettlements: const [],
       );
 
-      // Mixed event-a: OMR ranks before AED (kSupportedCurrencies) → the
-      // drill-down shows the OMR view (interim until PR-3 buckets it).
-      expect(data.perEventBreakdown['uid-1']!['event-a'],
-          Decimal.parse('15.000'));
-      // No-money event-b: explicit zero rows preserved.
-      expect(data.perEventBreakdown['uid-1']!['event-b'], Decimal.zero);
-      expect(data.perEventBreakdown['uid-2']!['event-b'], Decimal.zero);
+      // Mixed event-a: BOTH currency slices surface under the event — the
+      // PR-1 GCC-first collapse is gone.
+      expect(
+        data.perEventBreakdown['uid-1']!['event-a'],
+        equals({
+          'OMR': Decimal.parse('15.000'),
+          'AED': Decimal.parse('-10.00'),
+        }),
+      );
+      expect(
+        data.perEventBreakdown['uid-2']!['event-a'],
+        equals({
+          'OMR': Decimal.parse('-15.000'),
+          'AED': Decimal.parse('10.00'),
+        }),
+      );
+      // No-money event-b: explicit zero rows preserved, keyed by the
+      // synthetic OMR bucket (mirrors the server oracle's bucketizeDrill).
+      expect(data.perEventBreakdown['uid-1']!['event-b'],
+          equals({'OMR': Decimal.zero}));
+      expect(data.perEventBreakdown['uid-2']!['event-b'],
+          equals({'OMR': Decimal.zero}));
     });
 
     test('no money records → empty bucket maps, memberNames still spans uids',

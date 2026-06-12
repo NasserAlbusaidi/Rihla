@@ -172,10 +172,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           suggestedAmount: suggestedAmount,
                           currency: currency,
                         ),
-                    buildBreakdown: (fromUserId, toUserId) =>
+                    buildBreakdown: (fromUserId, toUserId, currency) =>
                         _buildPerEventBreakdown(
                           fromUserId,
                           toUserId,
+                          currency,
                           balancesData,
                           eventNameMap,
                         ),
@@ -267,9 +268,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     );
   }
 
+  /// Per-event attribution for the [currency] bucket whose tile invoked it
+  /// (#382 PR-3): the breakdown is per-currency, so the pairwise
+  /// min-attribution below is per-bucket by construction — no cross-currency
+  /// netting, ever.
   Map<String, Decimal> _buildPerEventBreakdown(
     String fromUserId,
     String toUserId,
+    String currency,
     GroupBalances balancesData,
     Map<String, ({String name, EventType type, DateTime date})> eventNameMap,
   ) {
@@ -280,8 +286,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final allEventIds = {...fromBreakdown.keys, ...toBreakdown.keys};
 
     for (final eventId in allEventIds) {
-      final fromNet = fromBreakdown[eventId] ?? Decimal.zero;
-      final toNet = toBreakdown[eventId] ?? Decimal.zero;
+      final fromNet = fromBreakdown[eventId]?[currency] ?? Decimal.zero;
+      final toNet = toBreakdown[eventId]?[currency] ?? Decimal.zero;
 
       if (fromNet < Decimal.zero && toNet > Decimal.zero) {
         final attribution = fromNet.abs() < toNet ? fromNet.abs() : toNet;

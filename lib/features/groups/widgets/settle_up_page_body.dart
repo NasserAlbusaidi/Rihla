@@ -67,9 +67,15 @@ class SettleUpPageBody extends StatelessWidget {
   })
   onRecord;
 
-  /// Optional per-tile breakdown (e.g. group-level "per event" attribution).
+  /// Optional per-tile breakdown (e.g. group-level "per event" attribution),
+  /// computed in the invoking tile's BUCKET [currency] (#382 PR-3 — the
+  /// breakdown is per-currency; no cross-currency netting, ever).
   /// Return an empty map (or pass null) to hide the expand affordance.
-  final Map<String, Decimal> Function(String fromUserId, String toUserId)?
+  final Map<String, Decimal> Function(
+    String fromUserId,
+    String toUserId,
+    String currency,
+  )?
   buildBreakdown;
 
   const SettleUpPageBody({
@@ -192,7 +198,8 @@ class SettleUpPageBody extends StatelessWidget {
     tileKeys[index] = tileKey;
 
     final breakdown =
-        buildBreakdown?.call(fromUserId, toUserId) ?? const <String, Decimal>{};
+        buildBreakdown?.call(fromUserId, toUserId, currency) ??
+            const <String, Decimal>{};
 
     return GroupSettlementTile(
           fromName: fromName,

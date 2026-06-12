@@ -241,13 +241,16 @@ class _Content extends ConsumerWidget {
         }
         final perEvent = (currentUid != null && balances != null)
             ? balances.perEventBreakdown[currentUid] ?? const {}
-            : const <String, Decimal>{};
+            : const <String, Map<String, Decimal>>{};
         return SliverList(
           delegate: SliverChildBuilderDelegate((context, index) {
             final isLast = index == events.length - 1;
             return _EventRow(
               event: events[index],
-              userShare: perEvent[events[index].id],
+              // #382 PR-3: the breakdown is bucketed; this row stays
+              // single-currency until PR-5 — read the screen's already-
+              // selected bucket currency.
+              userShare: perEvent[events[index].id]?[currency],
               currency: currency,
               divider: !isLast,
               onTap: () => GoRouter.of(

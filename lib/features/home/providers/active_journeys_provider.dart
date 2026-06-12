@@ -157,8 +157,8 @@ final activeJourneysProvider =
     // either way. The active-window filter above still watches the LIVE
     // groupEventsProvider, so event add/remove refreshes the strip.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
-    final userEventBalances =
-        balanceAsync.valueOrNull?.userPerEventNet ?? const <String, Decimal>{};
+    final userEventBalances = balanceAsync.valueOrNull?.userPerEventNet ??
+        const <String, Map<String, Decimal>>{};
 
     for (final event in activeEvents) {
       entries.add(ActiveJourneyEntry(
@@ -173,7 +173,11 @@ final activeJourneysProvider =
         startDate: event.startDate,
         endDate: event.endDate,
         createdAt: event.createdAt,
-        userBalance: userEventBalances[event.id] ?? Decimal.zero,
+        // Interim bridge until #382 PR-3 Task 10 (selectNetBucket + honest
+        // labels): read the group-currency slice, preserving the pre-v2
+        // ticket.
+        userBalance:
+            userEventBalances[event.id]?[group.currency] ?? Decimal.zero,
         currency: group.currency,
       ));
     }
