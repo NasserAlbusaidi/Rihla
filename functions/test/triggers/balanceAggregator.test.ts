@@ -161,16 +161,17 @@ describe('refreshGroupBalanceAggregate (#366)', () => {
     const snap = await db.doc(AGG_PATH).get();
     expect(snap.exists).toBe(true);
     const data = snap.data()!;
-    expect(data.schemaVersion).toBe(1);
+    expect(data.schemaVersion).toBe(2);
     expect(data.currency).toBe('OMR');
-    expect(data.currencies).toEqual(['OMR']);
-    expect(data.netMilli).toEqual({
-      [ALICE]: -4000,
-      [BOB]: -2000,
-      [CAROL]: 6000,
+    expect(data.netMilliByCurrency).toEqual({
+      OMR: {
+        [ALICE]: -4000,
+        [BOB]: -2000,
+        [CAROL]: 6000,
+      },
     });
-    expect(data.perEventNetMilli).toEqual({
-      [EVENT]: { [ALICE]: -3500, [BOB]: -5500 },
+    expect(data.perEventNetMilliByCurrency).toEqual({
+      [EVENT]: { OMR: { [ALICE]: -3500, [BOB]: -5500 } },
     });
     expect(data.eventCount).toBe(1);
     expect(data.degraded).toBe(false);
@@ -187,7 +188,7 @@ describe('refreshGroupBalanceAggregate (#366)', () => {
     const data = (await db.doc(AGG_PATH).get()).data()!;
     expect(data.sentinel).toBe('keep');
     expect(data.sourceTimeMs).toBe(2000);
-    expect(data.netMilli).toBeUndefined();
+    expect(data.netMilliByCurrency).toBeUndefined();
   });
 
   it('overwrites idempotently on an equal sourceTimeMs (at-least-once redelivery / batch fan-out)', async () => {
@@ -198,8 +199,9 @@ describe('refreshGroupBalanceAggregate (#366)', () => {
     await refreshGroupBalanceAggregate(db, GROUP, 2000);
     const second = (await db.doc(AGG_PATH).get()).data()!;
 
-    expect(second.netMilli).toEqual(first.netMilli);
-    expect(second.perEventNetMilli).toEqual(first.perEventNetMilli);
+    expect(first.netMilliByCurrency).toBeDefined();
+    expect(second.netMilliByCurrency).toEqual(first.netMilliByCurrency);
+    expect(second.perEventNetMilliByCurrency).toEqual(first.perEventNetMilliByCurrency);
     expect(second.sourceTimeMs).toBe(2000);
   });
 
@@ -235,10 +237,10 @@ describe('refreshGroupBalanceAggregate (#366)', () => {
 
     const data = (await db.doc(AGG_PATH).get()).data()!;
     expect(data.degraded).toBe(true);
-    expect(data.netMilli).toBeUndefined();
-    expect(data.perEventNetMilli).toBeUndefined();
+    expect(data.netMilliByCurrency).toBeUndefined();
+    expect(data.perEventNetMilliByCurrency).toBeUndefined();
     expect(data.sourceTimeMs).toBe(3000);
-    expect(data.schemaVersion).toBe(1);
+    expect(data.schemaVersion).toBe(2);
   });
 });
 
@@ -319,10 +321,12 @@ describe('trigger wrappers (#366)', () => {
     expect(snap.data()!.sourceTimeMs).toBe(Date.parse(time));
     // The doc reflects the SEEDED Firestore state (parity case P1) — the
     // handler recomputes from the database, not from the trigger payload.
-    expect(snap.data()!.netMilli).toEqual({
-      [ALICE]: -4000,
-      [BOB]: -2000,
-      [CAROL]: 6000,
+    expect(snap.data()!.netMilliByCurrency).toEqual({
+      OMR: {
+        [ALICE]: -4000,
+        [BOB]: -2000,
+        [CAROL]: 6000,
+      },
     });
   });
 
@@ -526,7 +530,7 @@ describe('aggregate parity fixtures (#366)', () => {
     await clearFirestore();
   });
 
-  it('P2 (settlement axis): a group-scope settlement moves netMilli but NO perEvent slice', async () => {
+  it('P2 (settlement axis): a group-scope settlement moves the net bucket but NO perEvent slice', async () => {
     const db = getFirestore();
     await seedMinimalGroup('g-p2', [ALICE, BOB]);
     await db.doc('groups/g-p2/settlements/gs1').set({
@@ -550,10 +554,13 @@ describe('aggregate parity fixtures (#366)', () => {
     await refreshGroupBalanceAggregate(db, 'g-p2', 100);
 
     const data = (await db.doc('groups/g-p2/aggregates/balance').get()).data()!;
-    expect(data.netMilli).toEqual({ [ALICE]: 2500, [BOB]: -2500 });
+    expect(data.netMilliByCurrency).toEqual({ OMR: { [ALICE]: 2500, [BOB]: -2500 } });
     // The live event has no money — its drill-down slice is all-zero, and the
-    // group settlement NEVER appears in it (non-decomposition contract §0.3).
-    expect(data.perEventNetMilli).toEqual({ e1: { [ALICE]: 0, [BOB]: 0 } });
+    // group settlement NEVER appears in it (non-decomposition contract §0.3,
+    // per bucket since v2).
+    expect(data.perEventNetMilliByCurrency).toEqual({
+      e1: { OMR: { [ALICE]: 0, [BOB]: 0 } },
+    });
   });
 
   it('P3 (rounding): 3-way equal split of 0.100 OMR — alphabetically-last absorbs the remainder', async () => {
@@ -567,9 +574,11 @@ describe('aggregate parity fixtures (#366)', () => {
 
     const data = (await db.doc('groups/g-p3/aggregates/balance').get()).data()!;
     // 0.100 / 3 → 0.033 / 0.033 / 0.034 (carol, alphabetically last, absorbs).
-    expect(data.netMilli).toEqual({ [ALICE]: 67, [BOB]: -33, [CAROL]: -34 });
-    expect(data.perEventNetMilli).toEqual({
-      e1: { [ALICE]: 67, [BOB]: -33, [CAROL]: -34 },
+    expect(data.netMilliByCurrency).toEqual({
+      OMR: { [ALICE]: 67, [BOB]: -33, [CAROL]: -34 },
+    });
+    expect(data.perEventNetMilliByCurrency).toEqual({
+      e1: { OMR: { [ALICE]: 67, [BOB]: -33, [CAROL]: -34 } },
     });
   });
 
@@ -588,7 +597,7 @@ describe('aggregate parity fixtures (#366)', () => {
     await refreshGroupBalanceAggregate(db, 'g-p4', 100);
 
     const data = (await db.doc('groups/g-p4/aggregates/balance').get()).data()!;
-    expect(data.netMilli).toEqual({ [ALICE]: 6000, [BOB]: -6000 });
+    expect(data.netMilliByCurrency).toEqual({ OMR: { [ALICE]: 6000, [BOB]: -6000 } });
   });
 
   it('P5 (negative legacy, mirrors Dart 1c/TS 7c): negative exact value falls back to equal split', async () => {
@@ -605,7 +614,7 @@ describe('aggregate parity fixtures (#366)', () => {
 
     const data = (await db.doc('groups/g-p5/aggregates/balance').get()).data()!;
     // Negative entry → equal-split fallback: 5.000 each.
-    expect(data.netMilli).toEqual({ [ALICE]: 5000, [BOB]: -5000 });
+    expect(data.netMilliByCurrency).toEqual({ OMR: { [ALICE]: 5000, [BOB]: -5000 } });
   });
 });
 
