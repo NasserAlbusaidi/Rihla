@@ -41,37 +41,41 @@ void main() {
         _host(
           SettleUpPageBody(
             subjectName: 'Test Crew',
-            currency: 'OMR',
-            optimalSettlements: [
-              {
-                'fromUserId': 'uid-debtor',
-                'toUserId': 'uid-aaaa',
-                'fromUserName': 'Lena',
-                'toUserName': 'Sam (#aaaa)',
-                'amount': Decimal.parse('4.000'),
-              },
-              {
-                'fromUserId': 'uid-debtor',
-                'toUserId': 'uid-bbbb',
-                'fromUserName': 'Lena',
-                'toUserName': 'Sam (#bbbb)',
-                'amount': Decimal.parse('3.000'),
-              },
-            ],
-            balances: [
-              UserBalance(
-                participantId: 'uid-aaaa',
-                displayName: 'Sam (#aaaa)',
-                totalPaid: Decimal.parse('10.000'),
-                totalOwed: Decimal.parse('6.000'),
-                netBalance: Decimal.parse('4.000'),
-              ),
-              UserBalance(
-                participantId: 'uid-bbbb',
-                displayName: 'Sam (#bbbb)',
-                totalPaid: Decimal.parse('9.000'),
-                totalOwed: Decimal.parse('6.000'),
-                netBalance: Decimal.parse('3.000'),
+            buckets: [
+              (
+                currency: 'OMR',
+                optimalSettlements: [
+                  {
+                    'fromUserId': 'uid-debtor',
+                    'toUserId': 'uid-aaaa',
+                    'fromUserName': 'Lena',
+                    'toUserName': 'Sam (#aaaa)',
+                    'amount': Decimal.parse('4.000'),
+                  },
+                  {
+                    'fromUserId': 'uid-debtor',
+                    'toUserId': 'uid-bbbb',
+                    'fromUserName': 'Lena',
+                    'toUserName': 'Sam (#bbbb)',
+                    'amount': Decimal.parse('3.000'),
+                  },
+                ],
+                balances: [
+                  UserBalance(
+                    participantId: 'uid-aaaa',
+                    displayName: 'Sam (#aaaa)',
+                    totalPaid: Decimal.parse('10.000'),
+                    totalOwed: Decimal.parse('6.000'),
+                    netBalance: Decimal.parse('4.000'),
+                  ),
+                  UserBalance(
+                    participantId: 'uid-bbbb',
+                    displayName: 'Sam (#bbbb)',
+                    totalPaid: Decimal.parse('9.000'),
+                    totalOwed: Decimal.parse('6.000'),
+                    netBalance: Decimal.parse('3.000'),
+                  ),
+                ],
               ),
             ],
             rawNames: const {
@@ -89,6 +93,7 @@ void main() {
               required fromUserId,
               required toUserId,
               required suggestedAmount,
+              required String currency,
             }) {},
           ),
         ),
@@ -117,23 +122,27 @@ void main() {
         _host(
           SettleUpPageBody(
             subjectName: 'Test Crew',
-            currency: 'OMR',
-            optimalSettlements: [
-              {
-                'fromUserId': 'uid-debtor',
-                'toUserId': 'uid-bbbb',
-                'fromUserName': 'Lena',
-                'toUserName': 'Sam (#bbbb)',
-                'amount': Decimal.parse('3.000'),
-              },
-            ],
-            balances: [
-              UserBalance(
-                participantId: 'uid-bbbb',
-                displayName: 'Sam (#bbbb)',
-                totalPaid: Decimal.parse('9.000'),
-                totalOwed: Decimal.parse('6.000'),
-                netBalance: Decimal.parse('3.000'),
+            buckets: [
+              (
+                currency: 'OMR',
+                optimalSettlements: [
+                  {
+                    'fromUserId': 'uid-debtor',
+                    'toUserId': 'uid-bbbb',
+                    'fromUserName': 'Lena',
+                    'toUserName': 'Sam (#bbbb)',
+                    'amount': Decimal.parse('3.000'),
+                  },
+                ],
+                balances: [
+                  UserBalance(
+                    participantId: 'uid-bbbb',
+                    displayName: 'Sam (#bbbb)',
+                    totalPaid: Decimal.parse('9.000'),
+                    totalOwed: Decimal.parse('6.000'),
+                    netBalance: Decimal.parse('3.000'),
+                  ),
+                ],
               ),
             ],
             // rawNames stay RAW (the resolver change must never route the
@@ -150,6 +159,7 @@ void main() {
               required fromUserId,
               required toUserId,
               required suggestedAmount,
+              required String currency,
             }) {
               capturedFromRawName = fromRawName;
               capturedToRawName = toRawName;

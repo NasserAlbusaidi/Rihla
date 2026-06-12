@@ -19,18 +19,33 @@ import '../widgets/group_settlement_summary.dart';
 import 'all_settled_state.dart';
 import 'group_settlement_tile.dart';
 
+/// One currency bucket's settle-up data (#382 PR-1). [balances] and
+/// [optimalSettlements] MUST come from the same bucket; [currency] labels
+/// every amount in the section.
+typedef SettleBucket = ({
+  String currency,
+  List<UserBalance> balances,
+  List<Map<String, dynamic>> optimalSettlements,
+});
+
 /// Single-page body for the Settle-Up screens (group + event).
 ///
 /// Wireframe (Hi_GroupSettle, screens-group.jsx) renders one scrollable view:
 /// italic headline, two summary chips, optimized transfer cards, then
 /// "Each person's net" and a small recorded-payment history.
+///
+/// Renders one section (summary card, transfer tiles, net rows) per currency
+/// bucket (#382 PR-1) — with a single bucket (all prod data under the live
+/// uniformity rules) the page is pixel-identical to the pre-bucketing layout.
 class SettleUpPageBody extends StatelessWidget {
   /// Label shown after "Optimized to minimise the number of payments across …"
   /// — group name on the group screen, event name on the event screen.
   final String subjectName;
-  final String currency;
-  final List<Map<String, dynamic>> optimalSettlements;
-  final List<UserBalance> balances;
+
+  /// Per-currency sections, pre-sorted by the caller (GCC-first). Callers
+  /// pass one empty bucket carrying the group currency when there is no
+  /// money yet (keeps the zero summary card rendered).
+  final List<SettleBucket> buckets;
   final Map<String, String> rawNames;
   final AsyncValue<List<Settlement>> settlementsAsync;
   final String? currentUid;
@@ -39,6 +54,8 @@ class SettleUpPageBody extends StatelessWidget {
   /// Pre-selected member to highlight (deep-link).
   final String? preSelectedMemberId;
 
+  /// [currency] is the BUCKET currency the suggestion was computed in — the
+  /// settlement write must carry it (#382 PR-1).
   final void Function({
     required Map<String, dynamic> settlement,
     required String fromRawName,
@@ -46,6 +63,7 @@ class SettleUpPageBody extends StatelessWidget {
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
+    required String currency,
   })
   onRecord;
 
@@ -57,9 +75,7 @@ class SettleUpPageBody extends StatelessWidget {
   const SettleUpPageBody({
     super.key,
     required this.subjectName,
-    required this.currency,
-    required this.optimalSettlements,
-    required this.balances,
+    required this.buckets,
     required this.rawNames,
     required this.settlementsAsync,
     required this.currentUid,
@@ -71,18 +87,60 @@ class SettleUpPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Decimal totalPending = Decimal.zero;
-    for (final s in optimalSettlements) {
-      totalPending += (s['amount'] as Decimal);
-    }
-
+    final totalTransfers = buckets.fold<int>(
+      0,
+      (n, b) => n + b.optimalSettlements.length,
+    );
     final history = settlementsAsync.valueOrNull ?? const <Settlement>[];
-    final allSettled = optimalSettlements.isEmpty && history.isEmpty;
+    final allSettled = totalTransfers == 0 && history.isEmpty;
     final displayNames = <String, String>{
-      for (final balance in balances)
-        if (balance.displayName != null)
-          balance.participantId: balance.displayName!,
+      for (final bucket in buckets)
+        for (final balance in bucket.balances)
+          if (balance.displayName != null)
+            balance.participantId: balance.displayName!,
     };
+
+    // Tile indices run across ALL buckets so tileKeys / stagger delays stay
+    // globally unique (the callers' scroll-to-tile lookup relies on it).
+    var tileIndex = 0;
+    final sections = <Widget>[];
+    for (final bucket in buckets) {
+      Decimal totalPending = Decimal.zero;
+      for (final s in bucket.optimalSettlements) {
+        totalPending += (s['amount'] as Decimal);
+      }
+      sections.addAll([
+        const SizedBox(height: 18),
+        GroupSettlementSummaryCard(
+          totalPending: totalPending,
+          currency: bucket.currency,
+        ),
+      ]);
+      if (allSettled && bucket == buckets.first) {
+        sections.addAll([
+          SizedBox(height: context.spacing.space32),
+          const AllSettledState(),
+        ]);
+      }
+      if (bucket.optimalSettlements.isNotEmpty) {
+        sections.add(const SizedBox(height: 18));
+        for (final settlement in bucket.optimalSettlements) {
+          sections.add(
+            _buildTile(context, settlement, bucket.currency, tileIndex),
+          );
+          tileIndex++;
+        }
+      }
+      if (bucket.balances.isNotEmpty) {
+        sections.addAll([
+          SizedBox(height: context.spacing.space24),
+          _NetBalancesSection(
+            balances: bucket.balances,
+            currency: bucket.currency,
+          ),
+        ]);
+      }
+    }
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -91,26 +149,13 @@ class SettleUpPageBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SettlementIntro(
-            transferCount: optimalSettlements.length,
+            transferCount: totalTransfers,
             subjectName: subjectName,
           ),
-          const SizedBox(height: 18),
-          GroupSettlementSummaryCard(
-            totalPending: totalPending,
-            currency: currency,
-          ),
-          if (allSettled) ...[
+          ...sections,
+          if (allSettled && buckets.isEmpty) ...[
             SizedBox(height: context.spacing.space32),
             const AllSettledState(),
-          ],
-          if (optimalSettlements.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            for (var i = 0; i < optimalSettlements.length; i++)
-              _buildTile(context, optimalSettlements[i], i),
-          ],
-          if (balances.isNotEmpty) ...[
-            SizedBox(height: context.spacing.space24),
-            _NetBalancesSection(balances: balances, currency: currency),
           ],
           if (history.isNotEmpty) ...[
             SizedBox(height: context.spacing.space24),
@@ -128,6 +173,7 @@ class SettleUpPageBody extends StatelessWidget {
   Widget _buildTile(
     BuildContext context,
     Map<String, dynamic> settlement,
+    String currency,
     int index,
   ) {
     final fromUserId = settlement['fromUserId'] as String;
@@ -183,6 +229,7 @@ class SettleUpPageBody extends StatelessWidget {
                     fromUserId: fromUserId,
                     toUserId: toUserId,
                     suggestedAmount: amount,
+                    currency: currency,
                   );
                 }
               : null,

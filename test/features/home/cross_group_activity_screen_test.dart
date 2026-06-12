@@ -80,9 +80,9 @@ List<Override> _baseOverrides({
     )),
   ),
   groupBalancesProvider.overrideWith(
-    (ref, groupId) => AsyncValue.data((
-      balances: <UserBalance>[],
-      totalSpent: Decimal.zero,
+    (ref, groupId) => const AsyncValue.data((
+      balances: <String, List<UserBalance>>{},
+      totalSpent: <String, Decimal>{},
       eventCount: 0,
       perEventBreakdown: <String, Map<String, Decimal>>{},
       memberNames: <String, String>{},

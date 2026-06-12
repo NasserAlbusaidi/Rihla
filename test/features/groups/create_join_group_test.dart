@@ -738,9 +738,9 @@ void main() {
             'group-1',
           ).overrideWith((ref) => Stream.value(testMembers)),
           groupBalancesProvider('group-1').overrideWith(
-            (ref) => AsyncValue.data((
-              balances: <UserBalance>[],
-              totalSpent: Decimal.zero,
+            (ref) => const AsyncValue.data((
+              balances: <String, List<UserBalance>>{},
+              totalSpent: <String, Decimal>{},
               eventCount: 0,
               perEventBreakdown: <String, Map<String, Decimal>>{},
               memberNames: <String, String>{},

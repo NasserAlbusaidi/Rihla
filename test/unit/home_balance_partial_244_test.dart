@@ -114,7 +114,7 @@ Expense _expense(String id, Decimal amount, String eventId) => Expense(
       createdAt: DateTime(2025, 1, 1),
     );
 
-Decimal _netOf(GroupBalances b, String uid) => b.balances
+Decimal _netOf(GroupBalances b, String uid) => b.balances['OMR']!
     .firstWhere((x) => x.participantId == uid)
     .netBalance;
 

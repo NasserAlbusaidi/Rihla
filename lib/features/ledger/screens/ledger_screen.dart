@@ -21,6 +21,7 @@ import '../../groups/providers/group_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
+import '../../../core/constants/supported_currencies.dart';
 import '../providers/expense_provider.dart';
 import '../providers/ledger_view_provider.dart';
 import '../utils/ledger_categories.dart';
@@ -148,7 +149,11 @@ class _Body extends ConsumerWidget {
       ledgerViewProvider((groupId: groupId, eventId: eventId)),
     );
     final participants = data.participants;
-    final balances = data.balances;
+    // #382 PR-1: this surface stays single-currency until PR-5 — select the
+    // group's currency bucket (load-gated non-null here, the only prod bucket
+    // under the live uniformity rules). The trip caption below renders ALL
+    // per-currency totals.
+    final balances = selectCurrencyBucket(data.balances, currency).balances;
     final eventTotal = data.eventTotal;
     final rosterDisplayNames = data.rosterDisplayNames;
     final expensePayerDisplayNames = data.expensePayerDisplayNames;
@@ -273,8 +278,10 @@ class _Body extends ConsumerWidget {
               if (hasExpenses)
                 SliverToBoxAdapter(
                   child: LedgerTripCaption(
-                    total: eventTotal,
-                    currency: currency,
+                    totals: [
+                      for (final c in sortedGccFirst(eventTotal.keys))
+                        (currency: c, total: eventTotal[c]!),
+                    ],
                     expenseCount: expenses.length,
                     settledCount: settlements.length,
                   ),

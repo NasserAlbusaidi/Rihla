@@ -22,8 +22,8 @@ typedef LedgerSettlementNames = ({String? payerName, String? recipientName});
 /// a chip-tap `setState` re-runs only the cheap filter pass, not this (#106).
 typedef LedgerView = ({
   List<Participant> participants,
-  List<UserBalance> balances,
-  Decimal eventTotal,
+  Map<String, List<UserBalance>> balances,
+  Map<String, Decimal> eventTotal,
   Map<String, String> rosterDisplayNames,
   Map<String, String> expensePayerDisplayNames,
   Map<String, LedgerSettlementNames> settlementDisplayNames,
@@ -68,8 +68,8 @@ final ledgerViewProvider = Provider.family<LedgerView, EventRef>((ref, eventRef)
     // non-null. Defensive empty so a provider-level read can't NPE.
     return (
       participants: const <Participant>[],
-      balances: const <UserBalance>[],
-      eventTotal: Decimal.zero,
+      balances: const <String, List<UserBalance>>{},
+      eventTotal: const <String, Decimal>{},
       rosterDisplayNames: const <String, String>{},
       expensePayerDisplayNames: const <String, String>{},
       settlementDisplayNames: const <String, LedgerSettlementNames>{},
@@ -119,10 +119,8 @@ final ledgerViewProvider = Provider.family<LedgerView, EventRef>((ref, eventRef)
     participants: participants,
   );
 
-  final eventTotal = expenses.fold<Decimal>(
-    Decimal.zero,
-    (sum, e) => sum + e.amount,
-  );
+  final eventTotal =
+      BalanceCalculator.calculateTotalExpensesByCurrency(expenses);
 
   final expensePayerDisplayNames = <String, String>{
     for (final expense in expenses)

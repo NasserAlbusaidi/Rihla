@@ -51,23 +51,25 @@ void main() {
   ];
 
   final balances = (
-    balances: <UserBalance>[
-      UserBalance(
-        participantId: 'uid-creator',
-        displayName: 'Alice',
-        totalPaid: Decimal.zero,
-        totalOwed: Decimal.zero,
-        netBalance: Decimal.zero,
-      ),
-      UserBalance(
-        participantId: 'uid-member',
-        displayName: 'Bob',
-        totalPaid: Decimal.zero,
-        totalOwed: Decimal.zero,
-        netBalance: Decimal.zero,
-      ),
-    ],
-    totalSpent: Decimal.zero,
+    balances: <String, List<UserBalance>>{
+      'OMR': [
+        UserBalance(
+          participantId: 'uid-creator',
+          displayName: 'Alice',
+          totalPaid: Decimal.zero,
+          totalOwed: Decimal.zero,
+          netBalance: Decimal.zero,
+        ),
+        UserBalance(
+          participantId: 'uid-member',
+          displayName: 'Bob',
+          totalPaid: Decimal.zero,
+          totalOwed: Decimal.zero,
+          netBalance: Decimal.zero,
+        ),
+      ],
+    },
+    totalSpent: <String, Decimal>{'OMR': Decimal.zero},
     eventCount: 0,
     perEventBreakdown: <String, Map<String, Decimal>>{},
     memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},

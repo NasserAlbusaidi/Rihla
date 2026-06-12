@@ -185,7 +185,9 @@ class GroupDangerSection extends ConsumerWidget {
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
-    final memberCount = balances?.balances.length ?? 0;
+    // memberNames spans every known uid (== the old flat list's length) and,
+    // unlike the bucket map, survives a zero-money group (#382 PR-1).
+    final memberCount = balances?.memberNames.length ?? 0;
 
     showDeleteGroupSheet(
       context,
@@ -210,11 +212,14 @@ class GroupDangerSection extends ConsumerWidget {
     final uid = FirebaseConfig.currentUser?.uid;
     final balances = ref.read(groupBalancesProvider(groupId)).valueOrNull;
     if (balances != null && uid != null) {
-      final userBalance = balances.balances.where(
-        (b) => b.participantId == uid,
+      // #382 PR-1: settled = zero in EVERY currency bucket. Uid absent from
+      // all buckets (no money activity) is settled — vacuously allowed.
+      final hasOutstanding = balances.balances.values.any(
+        (bucket) => bucket.any(
+          (b) => b.participantId == uid && b.netBalance != Decimal.zero,
+        ),
       );
-      if (userBalance.isNotEmpty &&
-          userBalance.first.netBalance != Decimal.zero) {
+      if (hasOutstanding) {
         messenger.showSnackBar(
           SnackBar(
             content: Text(context.l10n.groupSettleBeforeLeaving),
@@ -290,8 +295,9 @@ class GroupDangerSection extends ConsumerWidget {
     final balancesAsync = ref.read(groupBalancesProvider(groupId));
     final balances = balancesAsync.valueOrNull;
     if (balances != null) {
-      final hasOutstanding = balances.balances.any(
-        (b) => b.netBalance != Decimal.zero,
+      // #382 PR-1: deletable = every member zero in EVERY currency bucket.
+      final hasOutstanding = balances.balances.values.any(
+        (bucket) => bucket.any((b) => b.netBalance != Decimal.zero),
       );
       if (hasOutstanding) {
         if (context.mounted) {

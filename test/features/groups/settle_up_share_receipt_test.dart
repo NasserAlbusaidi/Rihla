@@ -35,22 +35,26 @@ Widget _host(Widget body, {Locale? locale}) {
 SettleUpPageBody _bodyWithHistory() {
   return SettleUpPageBody(
     subjectName: 'Beach House',
-    currency: 'OMR',
-    optimalSettlements: const [],
-    balances: [
-      UserBalance(
-        participantId: 'uid-ahmed',
-        displayName: 'Ahmed',
-        totalPaid: Decimal.parse('5.000'),
-        totalOwed: Decimal.zero,
-        netBalance: Decimal.parse('5.000'),
-      ),
-      UserBalance(
-        participantId: 'uid-sara',
-        displayName: 'Sara',
-        totalPaid: Decimal.zero,
-        totalOwed: Decimal.parse('5.000'),
-        netBalance: Decimal.parse('-5.000'),
+    buckets: [
+      (
+        currency: 'OMR',
+        optimalSettlements: const <Map<String, dynamic>>[],
+        balances: [
+          UserBalance(
+            participantId: 'uid-ahmed',
+            displayName: 'Ahmed',
+            totalPaid: Decimal.parse('5.000'),
+            totalOwed: Decimal.zero,
+            netBalance: Decimal.parse('5.000'),
+          ),
+          UserBalance(
+            participantId: 'uid-sara',
+            displayName: 'Sara',
+            totalPaid: Decimal.zero,
+            totalOwed: Decimal.parse('5.000'),
+            netBalance: Decimal.parse('-5.000'),
+          ),
+        ],
       ),
     ],
     rawNames: const {'uid-ahmed': 'Ahmed', 'uid-sara': 'Sara'},
@@ -75,6 +79,7 @@ SettleUpPageBody _bodyWithHistory() {
       required fromUserId,
       required toUserId,
       required suggestedAmount,
+      required String currency,
     }) {},
   );
 }

@@ -57,23 +57,25 @@ final _testMembers = [
 /// Used for the balance toggle and settle-up navigation tests.
 /// totalSpent > 0 so the balance hero is rendered (D-19).
 final _membersWithBalances = (
-  balances: <UserBalance>[
-    UserBalance(
-      participantId: 'uid-creator',
-      displayName: 'Alice',
-      totalPaid: Decimal.parse('30.000'),
-      totalOwed: Decimal.parse('15.000'),
-      netBalance: Decimal.parse('15.000'),
-    ),
-    UserBalance(
-      participantId: 'uid-member',
-      displayName: 'Bob',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.parse('15.000'),
-      netBalance: Decimal.parse('-15.000'),
-    ),
-  ],
-  totalSpent: Decimal.parse('30.000'),
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-creator',
+        displayName: 'Alice',
+        totalPaid: Decimal.parse('30.000'),
+        totalOwed: Decimal.parse('15.000'),
+        netBalance: Decimal.parse('15.000'),
+      ),
+      UserBalance(
+        participantId: 'uid-member',
+        displayName: 'Bob',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.parse('15.000'),
+        netBalance: Decimal.parse('-15.000'),
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.parse('30.000')},
   eventCount: 1,
   perEventBreakdown: <String, Map<String, Decimal>>{
     'uid-creator': {'evt-1': Decimal.parse('15.000')},
@@ -89,23 +91,25 @@ final _membersWithBalances = (
 /// Even with no expenses, we supply the two members with zero balances
 /// so the members & balances section renders both names.
 final _membersWithZeroBalance = (
-  balances: <UserBalance>[
-    UserBalance(
-      participantId: 'uid-creator',
-      displayName: 'Alice',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.zero,
-      netBalance: Decimal.zero,
-    ),
-    UserBalance(
-      participantId: 'uid-member',
-      displayName: 'Bob',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.zero,
-      netBalance: Decimal.zero,
-    ),
-  ],
-  totalSpent: Decimal.zero,
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-creator',
+        displayName: 'Alice',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+      UserBalance(
+        participantId: 'uid-member',
+        displayName: 'Bob',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.zero},
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},

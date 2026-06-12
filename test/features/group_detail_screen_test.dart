@@ -59,23 +59,25 @@ final _testMembers = [
 
 /// GroupBalances with totalSpent > 0 (expenses exist).
 final _balancesWithExpenses = (
-  balances: <UserBalance>[
-    UserBalance(
-      participantId: 'uid-creator',
-      displayName: 'Alice',
-      totalPaid: Decimal.parse('30.000'),
-      totalOwed: Decimal.parse('15.000'),
-      netBalance: Decimal.parse('15.000'),
-    ),
-    UserBalance(
-      participantId: 'uid-member',
-      displayName: 'Bob',
-      totalPaid: Decimal.parse('0.000'),
-      totalOwed: Decimal.parse('15.000'),
-      netBalance: Decimal.parse('-15.000'),
-    ),
-  ],
-  totalSpent: Decimal.parse('30.000'),
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-creator',
+        displayName: 'Alice',
+        totalPaid: Decimal.parse('30.000'),
+        totalOwed: Decimal.parse('15.000'),
+        netBalance: Decimal.parse('15.000'),
+      ),
+      UserBalance(
+        participantId: 'uid-member',
+        displayName: 'Bob',
+        totalPaid: Decimal.parse('0.000'),
+        totalOwed: Decimal.parse('15.000'),
+        netBalance: Decimal.parse('-15.000'),
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.parse('30.000')},
   eventCount: 1,
   perEventBreakdown: <String, Map<String, Decimal>>{
     'uid-creator': {'event-1': Decimal.parse('15.000')},
@@ -87,23 +89,25 @@ final _balancesWithExpenses = (
 
 /// GroupBalances with totalSpent == 0 (no expenses yet).
 final _balancesEmpty = (
-  balances: <UserBalance>[
-    UserBalance(
-      participantId: 'uid-creator',
-      displayName: 'Alice',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.zero,
-      netBalance: Decimal.zero,
-    ),
-    UserBalance(
-      participantId: 'uid-member',
-      displayName: 'Bob',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.zero,
-      netBalance: Decimal.zero,
-    ),
-  ],
-  totalSpent: Decimal.zero,
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-creator',
+        displayName: 'Alice',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+      UserBalance(
+        participantId: 'uid-member',
+        displayName: 'Bob',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.zero},
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
@@ -317,6 +321,42 @@ void main() {
       expect(find.text('Alice'), findsWidgets);
       expect(find.text('Bob'), findsOneWidget);
     });
+
+    testWidgets(
+      'members rows render from memberNames when the group has NO money yet '
+      '(empty bucket map, #382 PR-1)',
+      (tester) async {
+        // A zero-money group has no currency buckets at all — the members
+        // card must still list everyone (memberNames is the row source).
+        final noMoney = (
+          balances: const <String, List<UserBalance>>{},
+          totalSpent: const <String, Decimal>{},
+          eventCount: 0,
+          perEventBreakdown: const <String, Map<String, Decimal>>{},
+          memberNames: <String, String>{
+            'uid-creator': 'Alice',
+            'uid-member': 'Bob',
+          },
+          memberRawNames: <String, String>{},
+        );
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(noMoney),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await _scrollUntilVisible(
+          tester,
+          find.byKey(GroupKeys.membersAndBalancesSection),
+        );
+
+        expect(find.text('Alice'), findsWidgets);
+        expect(find.text('Bob'), findsOneWidget);
+      },
+    );
 
     testWidgets('shows current user balance amount when expenses exist', (
       tester,

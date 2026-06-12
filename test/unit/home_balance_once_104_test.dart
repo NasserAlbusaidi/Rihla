@@ -367,8 +367,9 @@ void main() {
               .balances;
         }
 
-        Decimal netA(GroupBalances b) =>
-            b.balances.firstWhere((x) => x.participantId == 'uid-a').netBalance;
+        Decimal netA(GroupBalances b) => b.balances['OMR']!
+            .firstWhere((x) => x.participantId == 'uid-a')
+            .netBalance;
 
         eventsCtrl.add([_makeEvent('e1', gid)]);
         expect(netA(await settle()), Decimal.fromInt(-10)); // owes 10 on e1 only

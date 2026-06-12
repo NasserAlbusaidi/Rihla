@@ -158,11 +158,16 @@ class GroupMembersSection extends ConsumerWidget {
     // is the sole authority (#318). Never skip the callable just because the
     // local balance is null — that was the offline orphan-debt hole.
     if (balances != null) {
-      final memberBalance = balances.balances.where(
-        (b) => b.participantId == member.userId,
+      // #382 PR-1: removable = the target is zero in EVERY currency bucket.
+      // Absent from all buckets (no money activity) is settled.
+      final hasOutstanding = balances.balances.values.any(
+        (bucket) => bucket.any(
+          (b) =>
+              b.participantId == member.userId &&
+              b.netBalance != Decimal.zero,
+        ),
       );
-      if (memberBalance.isNotEmpty &&
-          memberBalance.first.netBalance != Decimal.zero) {
+      if (hasOutstanding) {
         messenger.showSnackBar(
           SnackBar(
             content: Text(

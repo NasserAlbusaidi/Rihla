@@ -20,3 +20,20 @@ const List<String> kSupportedCurrencies = [
   'BHD',
   'JPY',
 ];
+
+/// GCC-first display rank: the [kSupportedCurrencies] index, with unknown
+/// codes after all known ones (#382 PR-1 bucket ordering).
+int currencyGccRank(String code) {
+  final i = kSupportedCurrencies.indexOf(code);
+  return i < 0 ? kSupportedCurrencies.length : i;
+}
+
+/// Currency codes sorted GCC-first ([currencyGccRank]), ties alphabetical —
+/// the canonical order for rendering per-currency buckets (#382 PR-1).
+List<String> sortedGccFirst(Iterable<String> codes) {
+  return codes.toList()
+    ..sort((a, b) {
+      final r = currencyGccRank(a).compareTo(currencyGccRank(b));
+      return r != 0 ? r : a.compareTo(b);
+    });
+}

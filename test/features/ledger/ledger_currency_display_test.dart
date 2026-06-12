@@ -22,8 +22,7 @@ void main() {
     await tester.pumpWidget(
       host(
         LedgerTripCaption(
-          total: Decimal.parse('142.50'),
-          currency: 'USD',
+          totals: [(currency: 'USD', total: Decimal.parse('142.50'))],
           expenseCount: 3,
           settledCount: 0,
         ),
@@ -38,8 +37,7 @@ void main() {
     await tester.pumpWidget(
       host(
         LedgerTripCaption(
-          total: Decimal.parse('1200'),
-          currency: 'JPY',
+          totals: [(currency: 'JPY', total: Decimal.parse('1200'))],
           expenseCount: 2,
           settledCount: 0,
         ),

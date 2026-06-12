@@ -194,16 +194,18 @@ CrossGroupActivityEntry _toEntry(
 /// Minimal GroupBalances with a known user balance so tests can verify
 /// personal balance display.
 GroupBalances _testGroupBalances({Decimal? net}) => (
-  balances: [
-    UserBalance(
-      participantId: 'test-user-id',
-      displayName: 'Test User',
-      totalPaid: Decimal.parse('10.000'),
-      totalOwed: Decimal.parse('20.000'),
-      netBalance: net ?? Decimal.parse('-5.500'),
-    ),
-  ],
-  totalSpent: Decimal.parse('25.000'),
+  balances: {
+    'OMR': [
+      UserBalance(
+        participantId: 'test-user-id',
+        displayName: 'Test User',
+        totalPaid: Decimal.parse('10.000'),
+        totalOwed: Decimal.parse('20.000'),
+        netBalance: net ?? Decimal.parse('-5.500'),
+      ),
+    ],
+  },
+  totalSpent: {'OMR': Decimal.parse('25.000')},
   eventCount: 1,
   perEventBreakdown: {},
   memberNames: {'test-user-id': 'Test User'},
@@ -429,9 +431,9 @@ void main() {
         (ref) => const AsyncValue.data([]),
       ),
       groupBalancesProvider.overrideWith(
-        (ref, groupId) => AsyncValue.data((
-          balances: <UserBalance>[],
-          totalSpent: Decimal.zero,
+        (ref, groupId) => const AsyncValue.data((
+          balances: <String, List<UserBalance>>{},
+          totalSpent: <String, Decimal>{},
           eventCount: 0,
           perEventBreakdown: <String, Map<String, Decimal>>{},
           memberNames: <String, String>{},
@@ -538,9 +540,9 @@ void main() {
               (ref) => const AsyncValue.data([]),
             ),
             groupBalancesProvider.overrideWith(
-              (ref, groupId) => AsyncValue.data((
-                balances: <UserBalance>[],
-                totalSpent: Decimal.zero,
+              (ref, groupId) => const AsyncValue.data((
+                balances: <String, List<UserBalance>>{},
+                totalSpent: <String, Decimal>{},
                 eventCount: 0,
                 perEventBreakdown: <String, Map<String, Decimal>>{},
                 memberNames: <String, String>{},

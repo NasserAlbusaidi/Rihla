@@ -23,17 +23,21 @@ void main() {
     createdAt: DateTime(2025, 1, 1),
   );
 
-  GroupBalances balancesWithNet(Decimal net) => (
-    balances: [
-      UserBalance(
-        participantId: uid,
-        displayName: 'User',
-        totalPaid: Decimal.zero,
-        totalOwed: Decimal.zero,
-        netBalance: net,
-      ),
-    ],
-    totalSpent: Decimal.zero,
+  // #382 PR-1: the currency now lives IN the balance record (the bucket
+  // key) — the provider derives byCurrency from it, not from group.currency.
+  GroupBalances balancesWithNet(Decimal net, String currency) => (
+    balances: {
+      currency: [
+        UserBalance(
+          participantId: uid,
+          displayName: 'User',
+          totalPaid: Decimal.zero,
+          totalOwed: Decimal.zero,
+          netBalance: net,
+        ),
+      ],
+    },
+    totalSpent: <String, Decimal>{},
     eventCount: 0,
     perEventBreakdown: const {},
     memberNames: const {},
@@ -53,7 +57,7 @@ void main() {
         for (final g in groups)
           groupBalancesProvider(
             g.id,
-          ).overrideWith((_) => AsyncValue.data(balancesWithNet(g.net))),
+          ).overrideWith((_) => AsyncValue.data(balancesWithNet(g.net, g.currency))),
       ],
     );
     addTearDown(container.dispose);

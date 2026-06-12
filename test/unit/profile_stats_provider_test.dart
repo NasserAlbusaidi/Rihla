@@ -11,6 +11,7 @@ import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 
@@ -98,8 +99,8 @@ void main() {
         ];
 
         final g1Balances = AsyncValue<GroupBalances>.data((
-          balances: [],
-          totalSpent: Decimal.parse('10.000'),
+          balances: <String, List<UserBalance>>{},
+          totalSpent: {'OMR': Decimal.parse('10.000')},
           eventCount: 3,
           perEventBreakdown: {},
           memberNames: {'uid0': 'Alice'},
@@ -107,8 +108,8 @@ void main() {
         ));
 
         final g2Balances = AsyncValue<GroupBalances>.data((
-          balances: [],
-          totalSpent: Decimal.parse('10.000'),
+          balances: <String, List<UserBalance>>{},
+          totalSpent: {'OMR': Decimal.parse('10.000')},
           eventCount: 3,
           perEventBreakdown: {},
           memberNames: {'uid0': 'Alice'},
@@ -175,10 +176,12 @@ void main() {
           createdAt: DateTime(2026, 1, 2),
         );
 
-        AsyncValue<GroupBalances> balances(Decimal spent) =>
+        // #382 PR-1: the spend currency now lives IN the record (the
+        // totalSpent bucket key) — the provider merges by it, not group.currency.
+        AsyncValue<GroupBalances> balances(Decimal spent, String currency) =>
             AsyncValue<GroupBalances>.data((
-              balances: [],
-              totalSpent: spent,
+              balances: <String, List<UserBalance>>{},
+              totalSpent: {currency: spent},
               eventCount: 0,
               perEventBreakdown: {},
               memberNames: {'uid0': 'Alice'},
@@ -194,10 +197,10 @@ void main() {
             groupEventsProvider('g2').overrideWith((ref) => Stream.value([])),
             groupBalancesProvider(
               'g1',
-            ).overrideWith((ref) => balances(Decimal.parse('10.000'))),
+            ).overrideWith((ref) => balances(Decimal.parse('10.000'), 'OMR')),
             groupBalancesProvider(
               'g2',
-            ).overrideWith((ref) => balances(Decimal.parse('10.00'))),
+            ).overrideWith((ref) => balances(Decimal.parse('10.00'), 'USD')),
           ],
         );
         addTearDown(container.dispose);

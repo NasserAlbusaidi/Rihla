@@ -142,7 +142,7 @@ void main() {
 
     expect(view.expensePayerDisplayNames['x-omar'], 'Omar (former member)');
     expect(
-      view.balances.where((b) => b.participantId == 'uid-omar'),
+      view.balances['OMR']!.where((b) => b.participantId == 'uid-omar'),
       isNotEmpty,
       reason: 'departed split-recipient must be folded into the universe (#249)',
     );

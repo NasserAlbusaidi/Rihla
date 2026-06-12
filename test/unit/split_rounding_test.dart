@@ -58,7 +58,7 @@ void main() {
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
         participants: participants,
-      );
+      )['OMR']!;
 
       // Payer paid 10.000; everyone owes some share
       final totalOwed = balances.fold(
@@ -83,7 +83,7 @@ void main() {
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
         participants: participants,
-      );
+      )['OMR']!;
 
       final totalOwed = balances.fold(
         Decimal.zero,
@@ -106,7 +106,7 @@ void main() {
         final balances = BalanceCalculator.calculateBalances(
           expenses: [expense],
           participants: participants,
-        );
+        )['OMR']!;
 
         final totalOwed = balances.fold(
           Decimal.zero,
@@ -131,7 +131,7 @@ void main() {
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
         participants: participants,
-      );
+      )['OMR']!;
 
       final totalOwed = balances.fold(
         Decimal.zero,
@@ -157,7 +157,7 @@ void main() {
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense],
         participants: participants,
-      );
+      )['OMR']!;
 
       final totalOwed = balances.fold(
         Decimal.zero,
