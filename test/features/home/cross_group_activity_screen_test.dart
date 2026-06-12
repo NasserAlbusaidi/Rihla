@@ -263,6 +263,46 @@ void main() {
       },
     );
 
+    testWidgets(
+      'metadata.currency wins over the entry (group) currency; legacy rows '
+      'fall back (#382 PR-4)',
+      (tester) async {
+        final stamped = _makeActivity(
+          's3',
+          'Alice',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': '20.25', 'currency': 'USD'},
+        );
+        final legacy = _makeActivity(
+          's4',
+          'Bob',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': '7.750'},
+        );
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const CrossGroupActivityScreen(),
+            overrides: _baseOverrides(
+              activityOverride: AsyncValue.data([
+                _makeEntry(stamped, 'Oman Trip', 'g1'), // entry currency OMR
+                _makeEntry(legacy, 'Oman Trip', 'g1'),
+              ]),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final amounts = tester
+            .widgetList<RAmount>(find.byType(RAmount))
+            .toList();
+        expect(amounts, hasLength(2));
+        expect(amounts.map((a) => a.currency), containsAll(['USD', 'OMR']));
+      },
+    );
+
     testWidgets('shows error state on error', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(
