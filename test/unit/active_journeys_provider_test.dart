@@ -42,23 +42,24 @@ Event _makeEvent({
   );
 }
 
-GroupBalances _makeGroupBalances(String eventId, Decimal userNet) {
+GroupBalances _makeGroupBalances(String eventId, Map<String, Decimal> nets) {
   return (
     balances: {
-      'OMR': [
-        UserBalance(
-          participantId: 'uid-user',
-          displayName: 'Nasser',
-          totalPaid: Decimal.zero,
-          totalOwed: Decimal.zero,
-          netBalance: userNet,
-        ),
-      ],
+      for (final entry in nets.entries)
+        entry.key: [
+          UserBalance(
+            participantId: 'uid-user',
+            displayName: 'Nasser',
+            totalPaid: Decimal.zero,
+            totalOwed: Decimal.zero,
+            netBalance: entry.value,
+          ),
+        ],
     },
-    totalSpent: {'OMR': Decimal.zero},
+    totalSpent: {for (final ccy in nets.keys) ccy: Decimal.zero},
     eventCount: 1,
     perEventBreakdown: {
-      'uid-user': {eventId: userNet},
+      'uid-user': {eventId: nets},
     },
     memberNames: const {'uid-user': 'Nasser'},
     memberRawNames: const {'uid-user': 'Nasser'},
@@ -116,7 +117,8 @@ void main() {
         startDate: DateTime.now().subtract(const Duration(days: 1)),
         endDate: DateTime.now().add(const Duration(days: 1)),
       );
-      final balances = _makeGroupBalances(eventId, Decimal.parse('4.250'));
+      final balances =
+          _makeGroupBalances(eventId, {'OMR': Decimal.parse('4.250')});
 
       final container = ProviderContainer(
         overrides: [
@@ -142,5 +144,99 @@ void main() {
       expect(entries.single.eventId, eventId);
       expect(entries.single.userBalance, Decimal.parse('4.250'));
     });
+
+    test(
+      'labels an AED-only event under an OMR group AED — honest, '
+      'not group.currency (#382 PR-3)',
+      () async {
+        const groupId = 'aed-group';
+        const eventId = 'aed-event';
+        final group = _makeGroup(id: groupId); // currency defaults to 'OMR'
+        final activeEvent = _makeEvent(
+          id: eventId,
+          groupId: groupId,
+          startDate: DateTime.now().subtract(const Duration(days: 1)),
+          endDate: DateTime.now().add(const Duration(days: 1)),
+        );
+        final balances =
+            _makeGroupBalances(eventId, {'AED': Decimal.parse('10.50')});
+
+        final container = ProviderContainer(
+          overrides: [
+            currentUserIdProvider.overrideWith((_) => 'uid-user'),
+            userGroupsProvider.overrideWith((_) => Stream.value([group])),
+            groupEventsProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value([activeEvent])),
+            groupBalancesOnceProvider(
+              groupId,
+            ).overrideWith(
+              (_) => (balances: balances, failedEventIds: const <String>{}),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.listen(
+          activeJourneysProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
+        await _pump(container);
+
+        final entries = container.read(activeJourneysProvider).valueOrNull!;
+        expect(entries, hasLength(1));
+        expect(entries.single.currency, 'AED');
+        expect(entries.single.userBalance, Decimal.parse('10.50'));
+      },
+    );
+
+    test(
+      'selects the GCC-first non-zero bucket deterministically — '
+      'OMR wins over a non-zero USD bucket (#382 PR-3)',
+      () async {
+        const groupId = 'multi-group';
+        const eventId = 'multi-event';
+        final group = _makeGroup(id: groupId);
+        final activeEvent = _makeEvent(
+          id: eventId,
+          groupId: groupId,
+          startDate: DateTime.now().subtract(const Duration(days: 1)),
+          endDate: DateTime.now().add(const Duration(days: 1)),
+        );
+        final balances = _makeGroupBalances(eventId, {
+          'USD': Decimal.parse('7.25'),
+          'OMR': Decimal.parse('1.500'),
+        });
+
+        final container = ProviderContainer(
+          overrides: [
+            currentUserIdProvider.overrideWith((_) => 'uid-user'),
+            userGroupsProvider.overrideWith((_) => Stream.value([group])),
+            groupEventsProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value([activeEvent])),
+            groupBalancesOnceProvider(
+              groupId,
+            ).overrideWith(
+              (_) => (balances: balances, failedEventIds: const <String>{}),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.listen(
+          activeJourneysProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
+        await _pump(container);
+
+        final entries = container.read(activeJourneysProvider).valueOrNull!;
+        expect(entries, hasLength(1));
+        expect(entries.single.currency, 'OMR');
+        expect(entries.single.userBalance, Decimal.parse('1.500'));
+      },
+    );
   });
 }
