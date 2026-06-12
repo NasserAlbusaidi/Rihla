@@ -110,16 +110,9 @@ class _Content extends ConsumerWidget {
     final balancesAsync = ref.watch(groupBalancesProvider(group.id));
     final currentUid = ref.watch(currentUserIdProvider);
     final balances = balancesAsync.valueOrNull;
-    // #382 PR-1: this card stays single-currency until PR-5 — select the
-    // group's currency bucket (the only prod bucket under the live rules).
-    final userNet = (balances == null || currentUid == null)
-        ? Decimal.zero
-        : (selectCurrencyBucket(balances.balances, group.currency)
-                  .balances
-                  .where((b) => b.participantId == currentUid)
-                  .firstOrNull
-                  ?.netBalance ??
-              Decimal.zero);
+    final balanceLines = nonZeroNetsGccFirst(
+      myNetByCurrency(balances?.balances ?? const {}, currentUid),
+    );
 
     return RefreshIndicator(
       color: context.colors.primary,
@@ -137,7 +130,7 @@ class _Content extends ConsumerWidget {
             sliver: SliverToBoxAdapter(
               child: _BalanceCard(
                 group: group,
-                userNet: userNet,
+                lines: balanceLines,
                 memberNames:
                     balances?.memberNames.values.toList() ?? const <String>[],
                 onAddPrimary: () {
@@ -518,14 +511,14 @@ class _OverflowMenu extends StatelessWidget {
 class _BalanceCard extends StatelessWidget {
   const _BalanceCard({
     required this.group,
-    required this.userNet,
+    required this.lines,
     required this.memberNames,
     required this.onAddPrimary,
     required this.onSettleUp,
   });
 
   final Group group;
-  final Decimal userNet;
+  final List<({String currency, Decimal net})> lines;
   final List<String> memberNames;
   final VoidCallback onAddPrimary;
   final VoidCallback onSettleUp;
@@ -534,23 +527,24 @@ class _BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final spacing = context.spacing;
-    final isPositive = userNet > Decimal.zero;
-    final isNegative = userNet < Decimal.zero;
-    final tone = isPositive
-        ? AmountTone.sage
-        : isNegative
-        ? AmountTone.rust
-        : AmountTone.ink;
-    final captionColor = isPositive
+    final allPositive =
+        lines.isNotEmpty && lines.every((l) => l.net > Decimal.zero);
+    final allNegative =
+        lines.isNotEmpty && lines.every((l) => l.net < Decimal.zero);
+    final captionColor = allPositive
         ? colors.success
-        : isNegative
+        : allNegative
         ? colors.error
         : colors.textSecondary;
-    final captionText = isPositive
+    // L7: tri-state caption only when all non-zero lines share one sign;
+    // mixed signs → omitted (signed, toned amounts self-explain).
+    final String? captionText = lines.isEmpty
+        ? context.l10n.groupAllSettled
+        : allPositive
         ? context.l10n.groupTheyOweYou
-        : isNegative
+        : allNegative
         ? context.l10n.groupYouOwe
-        : context.l10n.groupAllSettled;
+        : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -580,29 +574,45 @@ class _BalanceCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: context.spacing.space8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              RAmount(
-                value: userNet,
-                currency: group.currency,
-                size: 32,
-                sign: !userNet.isZero,
-                tone: tone,
-                showCurrency: false,
-              ),
-              const Spacer(),
-              Text(
-                captionText,
-                style: AppTypography.sans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: captionColor,
+          if (lines.length >= 2)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var i = 0; i < lines.length; i++)
+                        Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            top: i == 0 ? 0 : 4,
+                          ),
+                          child: RAmount(
+                            value: lines[i].net,
+                            currency: lines[i].currency,
+                            size: 24,
+                            sign: true,
+                            tone: lines[i].net > Decimal.zero
+                                ? AmountTone.sage
+                                : AmountTone.rust,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+                if (captionText != null)
+                  Text(
+                    captionText,
+                    style: AppTypography.sans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: captionColor,
+                    ),
+                  ),
+              ],
+            )
+          else
+            _singleLineRow(context, captionText!, captionColor),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -625,6 +635,46 @@ class _BalanceCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// 0/1-line render — byte-identical to the pre-PR-5 single-currency card
+  /// for the all-zero and group-currency cases (L7); a sole foreign-currency
+  /// line carries its code.
+  Widget _singleLineRow(
+    BuildContext context,
+    String captionText,
+    Color captionColor,
+  ) {
+    final line = lines.isEmpty ? null : lines.first;
+    final net = line?.net ?? Decimal.zero;
+    final tone = net > Decimal.zero
+        ? AmountTone.sage
+        : net < Decimal.zero
+        ? AmountTone.rust
+        : AmountTone.ink;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        RAmount(
+          value: net,
+          currency: line?.currency ?? group.currency,
+          size: 32,
+          sign: !net.isZero,
+          tone: tone,
+          showCurrency: line != null && line.currency != group.currency,
+        ),
+        const Spacer(),
+        Text(
+          captionText,
+          style: AppTypography.sans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: captionColor,
+          ),
+        ),
+      ],
     );
   }
 }
