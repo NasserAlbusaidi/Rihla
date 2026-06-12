@@ -18,6 +18,7 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../../core/constants/supported_currencies.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../ledger/models/expense_model.dart';
@@ -81,7 +82,10 @@ class EventCommandCenter extends ConsumerWidget {
             groupId: groupId,
             eventId: eventId,
             groupName: group?.name,
-            currency: group?.currency ?? 'OMR',
+            // Null while the group doc loads — bucket selection then falls
+            // back to the sole bucket (#382 PR-1), which is more honest than
+            // the old transient 'OMR' formatting for a non-OMR group.
+            currency: group?.currency,
           );
         },
       ),
@@ -104,7 +108,7 @@ class _Content extends ConsumerWidget {
   final String groupId;
   final String eventId;
   final String? groupName;
-  final String currency;
+  final String? currency;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -118,7 +122,14 @@ class _Content extends ConsumerWidget {
         ref.watch(groupMembersProvider(groupId)).valueOrNull ?? [];
 
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
-    final balances = balancesAsync.valueOrNull ?? const <UserBalance>[];
+    // #382 PR-1: hero/breakdown/roster stay single-currency until PR-5 —
+    // select the group's currency bucket (sole bucket while the group doc
+    // loads). The summary strip below renders ALL per-currency totals.
+    final buckets =
+        balancesAsync.valueOrNull ?? const <String, List<UserBalance>>{};
+    final selected = selectCurrencyBucket(buckets, currency);
+    final balances = selected.balances;
+    final displayCurrency = selected.currency;
     // #289: distinguish same-named LIVE members across the hub (roster,
     // breakdown, recent rows) while still labelling departed ones.
     final participantDisplayNames = MemberNameResolver.disambiguateEventScoped(
@@ -126,10 +137,7 @@ class _Content extends ConsumerWidget {
       members: groupMembers,
     );
 
-    final total = expenses.fold<Decimal>(
-      Decimal.zero,
-      (sum, e) => sum + e.amount,
-    );
+    final totals = BalanceCalculator.calculateTotalExpensesByCurrency(expenses);
 
     final UserBalance? userBalance = currentUid == null
         ? null
@@ -171,7 +179,7 @@ class _Content extends ConsumerWidget {
               state: state,
               amount: userBalance?.netBalance.abs(),
               breakdown: breakdown,
-              currency: currency,
+              currency: displayCurrency,
               onAddExpense: () {
                 HapticService.lightClick();
                 GoRouter.of(
@@ -193,9 +201,11 @@ class _Content extends ConsumerWidget {
             padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
             sliver: SliverToBoxAdapter(
               child: _LedgerSummaryStrip(
-                total: total,
+                totals: [
+                  for (final c in sortedGccFirst(totals.keys))
+                    (currency: c, total: totals[c]!),
+                ],
                 count: expenses.length,
-                currency: currency,
                 onTap: () {
                   HapticService.lightClick();
                   GoRouter.of(
@@ -588,15 +598,15 @@ class _BreakdownRow extends StatelessWidget {
 
 class _LedgerSummaryStrip extends StatelessWidget {
   const _LedgerSummaryStrip({
-    required this.total,
+    required this.totals,
     required this.count,
-    required this.currency,
     required this.onTap,
   });
 
-  final Decimal total;
+  /// Per-currency totals, pre-sorted by the caller (GCC-first, #382 PR-1).
+  /// A single-currency event renders exactly as the old flat total did.
+  final List<({String currency, Decimal total})> totals;
   final int count;
-  final String currency;
   final VoidCallback onTap;
 
   @override
@@ -623,16 +633,18 @@ class _LedgerSummaryStrip extends StatelessWidget {
                   children: [
                     _Overline(label: context.l10n.eventTripTotal),
                     SizedBox(height: context.spacing.space4),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.end,
+                      spacing: context.spacing.space8,
+                      runSpacing: 2,
                       children: [
-                        RAmount(
-                          value: total,
-                          currency: currency,
-                          size: 20,
-                          weight: FontWeight.w800,
-                        ),
-                        SizedBox(width: context.spacing.space8),
+                        for (final t in totals)
+                          RAmount(
+                            value: t.total,
+                            currency: t.currency,
+                            size: 20,
+                            weight: FontWeight.w800,
+                          ),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 2),
                           child: Text(

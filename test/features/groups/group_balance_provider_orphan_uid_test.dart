@@ -142,7 +142,7 @@ void main() {
       await _pumpUntilData(container);
 
       final data = container.read(groupBalancesProvider(_groupId)).valueOrNull!;
-      final byUid = {for (final b in data.balances) b.participantId: b};
+      final byUid = {for (final b in data.balances['OMR']!) b.participantId: b};
 
       expect(data.memberNames['orphan'], 'Aisha (former member)');
       expect(data.memberRawNames['orphan'], 'Aisha');
@@ -184,7 +184,7 @@ void main() {
       await _pumpUntilData(container);
 
       final data = container.read(groupBalancesProvider(_groupId)).valueOrNull!;
-      final byUid = {for (final b in data.balances) b.participantId: b};
+      final byUid = {for (final b in data.balances['OMR']!) b.participantId: b};
 
       expect(byUid['alice']!.netBalance, Decimal.zero);
       expect(byUid['bob']!.netBalance, Decimal.zero);

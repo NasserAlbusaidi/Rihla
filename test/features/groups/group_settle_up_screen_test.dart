@@ -61,23 +61,25 @@ final _testEvent = Event(
 
 /// Two-person GroupBalances: Bob owes Alice 7.750 OMR.
 final _balancesOwed = (
-  balances: <UserBalance>[
-    UserBalance(
-      participantId: 'uid-alice',
-      displayName: 'Alice',
-      totalPaid: Decimal.parse('15.500'),
-      totalOwed: Decimal.parse('7.750'),
-      netBalance: Decimal.parse('7.750'),
-    ),
-    UserBalance(
-      participantId: 'uid-bob',
-      displayName: 'Bob',
-      totalPaid: Decimal.parse('0.000'),
-      totalOwed: Decimal.parse('7.750'),
-      netBalance: Decimal.parse('-7.750'),
-    ),
-  ],
-  totalSpent: Decimal.parse('15.500'),
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-alice',
+        displayName: 'Alice',
+        totalPaid: Decimal.parse('15.500'),
+        totalOwed: Decimal.parse('7.750'),
+        netBalance: Decimal.parse('7.750'),
+      ),
+      UserBalance(
+        participantId: 'uid-bob',
+        displayName: 'Bob',
+        totalPaid: Decimal.parse('0.000'),
+        totalOwed: Decimal.parse('7.750'),
+        netBalance: Decimal.parse('-7.750'),
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.parse('15.500')},
   eventCount: 2,
   perEventBreakdown: <String, Map<String, Decimal>>{
     'uid-alice': {'event-1': Decimal.parse('7.750')},
@@ -87,25 +89,56 @@ final _balancesOwed = (
   memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
+/// #382 PR-1: the same debt denominated in a FOREIGN (non-group) currency
+/// bucket — pins that the recorded settlement carries the BUCKET currency,
+/// never the group currency.
+final _balancesOwedAed = (
+  balances: <String, List<UserBalance>>{
+    'AED': [
+      UserBalance(
+        participantId: 'uid-alice',
+        displayName: 'Alice',
+        totalPaid: Decimal.parse('15.50'),
+        totalOwed: Decimal.parse('7.75'),
+        netBalance: Decimal.parse('7.75'),
+      ),
+      UserBalance(
+        participantId: 'uid-bob',
+        displayName: 'Bob',
+        totalPaid: Decimal.parse('0.00'),
+        totalOwed: Decimal.parse('7.75'),
+        netBalance: Decimal.parse('-7.75'),
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'AED': Decimal.parse('15.50')},
+  eventCount: 1,
+  perEventBreakdown: <String, Map<String, Decimal>>{},
+  memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+);
+
 /// All-settled GroupBalances.
 final _balancesSettled = (
-  balances: <UserBalance>[
-    UserBalance(
-      participantId: 'uid-alice',
-      displayName: 'Alice',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.zero,
-      netBalance: Decimal.zero,
-    ),
-    UserBalance(
-      participantId: 'uid-bob',
-      displayName: 'Bob',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.zero,
-      netBalance: Decimal.zero,
-    ),
-  ],
-  totalSpent: Decimal.zero,
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-alice',
+        displayName: 'Alice',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+      UserBalance(
+        participantId: 'uid-bob',
+        displayName: 'Bob',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.zero,
+        netBalance: Decimal.zero,
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.zero},
   eventCount: 0,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
@@ -706,6 +739,50 @@ void main() {
         'recipientId': 'uid-alice',
       });
     });
+
+    testWidgets(
+      'recorded settlement carries the BUCKET currency, not group.currency '
+      '(#382 PR-1)',
+      (tester) async {
+        // The group is OMR, but the outstanding debt lives in an AED bucket —
+        // the write must be denominated in AED (mislabeling it OMR was the
+        // pre-bucketing behavior for foreign-currency data).
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Bobby',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final settlementService = _RecordingGroupSettlementService();
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwedAed),
+            currentUid: 'uid-bob',
+            extraOverrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(settlementService.addCalls, hasLength(1));
+        expect(settlementService.addCalls.single.currency, 'AED');
+        expect(
+          settlementService.addCalls.single.amount,
+          Decimal.parse('7.75'),
+        );
+      },
+    );
 
     testWidgets(
       '#412: an offline group settlement whose write never acks still '

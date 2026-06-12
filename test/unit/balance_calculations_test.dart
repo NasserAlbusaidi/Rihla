@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/trip/models/trip_model.dart';
 
@@ -62,7 +63,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('4.500'));
       expect(owedFor(balances, 'p2'), Decimal.zero);
@@ -83,7 +84,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('2.000'));
       expect(owedFor(balances, 'p2'), Decimal.parse('4.000'));
@@ -104,7 +105,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('0.333'));
       expect(owedFor(balances, 'p2'), Decimal.parse('0.333'));
@@ -125,7 +126,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('2.250'));
       expect(owedFor(balances, 'p2'), Decimal.parse('3.750'));
@@ -148,7 +149,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['OMR']!;
 
         expect(owedFor(balances, 'p1'), Decimal.parse('3.333'));
         expect(owedFor(balances, 'p2'), Decimal.parse('3.333'));
@@ -170,7 +171,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('2.500'));
       expect(owedFor(balances, 'p2'), Decimal.parse('2.500'));
@@ -191,7 +192,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('0.333'));
       expect(owedFor(balances, 'p2'), Decimal.parse('0.333'));
@@ -213,7 +214,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['OMR']!;
 
         expect(owedFor(balances, 'p1'), Decimal.parse('4.500'));
         expect(owedFor(balances, 'p2'), Decimal.parse('4.500'));
@@ -269,7 +270,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['OMR']!;
 
         expect(owedFor(balances, 'p1'), Decimal.parse('3.000'));
         expect(owedFor(balances, 'p2'), Decimal.parse('3.000'));
@@ -295,7 +296,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('6.000'));
       expect(owedFor(balances, 'p2'), Decimal.zero);
@@ -319,7 +320,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['OMR']!;
 
         expect(owedFor(balances, 'p1'), Decimal.parse('5.000'));
         expect(owedFor(balances, 'p2'), Decimal.parse('5.000'));
@@ -347,7 +348,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['OMR']!;
 
         expect(owedFor(balances, 'p1'), Decimal.parse('3.000'));
         expect(owedFor(balances, 'p2'), Decimal.parse('3.000'));
@@ -381,7 +382,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['USD']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('3.33'));
       expect(owedFor(balances, 'p2'), Decimal.parse('3.33'));
@@ -392,7 +393,7 @@ void main() {
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense(amount: '1000', currency: 'JPY', splitMode: null)],
         participants: participants,
-      );
+      )['JPY']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('333'));
       expect(owedFor(balances, 'p2'), Decimal.parse('333'));
@@ -415,7 +416,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['JPY']!;
 
       expect(owedFor(balances, 'p1'), Decimal.parse('333'));
       expect(owedFor(balances, 'p2'), Decimal.parse('333'));
@@ -426,7 +427,7 @@ void main() {
       final balances = BalanceCalculator.calculateBalances(
         expenses: [expense(amount: '1000', currency: 'JPY', splitMode: null)],
         participants: participants,
-      );
+      )['JPY']!;
 
       final totalOwed = balances.fold(
         Decimal.zero,
@@ -443,13 +444,216 @@ void main() {
             expense(amount: '1.000', currency: 'XYZ', splitMode: null),
           ],
           participants: participants,
-        );
+        )['OMR']!;
       }, returnsNormally);
 
       // OMR 3dp behaviour preserved for unknown currency: 1.000 / 3.
       expect(owedFor(balances, 'p1'), Decimal.parse('0.333'));
       expect(owedFor(balances, 'p2'), Decimal.parse('0.333'));
       expect(owedFor(balances, 'p3'), Decimal.parse('0.334'));
+    });
+  });
+
+  group('BalanceCalculator bucketing (#382 PR-1)', () {
+    final participants = [
+      participant('p1'),
+      participant('p2'),
+      participant('p3'),
+    ];
+
+    Settlement settlement({
+      required String amount,
+      required String payerId,
+      required String recipientId,
+      String currency = 'OMR',
+    }) {
+      return Settlement(
+        id: 'settle-$amount-$currency',
+        tripId: 'event-1',
+        payerParticipantId: payerId,
+        recipientParticipantId: recipientId,
+        amount: Decimal.parse(amount),
+        settledAt: DateTime(2026),
+        currency: currency,
+      );
+    }
+
+    void expectBucketConserved(List<UserBalance> bucket) {
+      final sumNet = bucket.fold(Decimal.zero, (sum, b) => sum + b.netBalance);
+      expect(sumNet, Decimal.zero, reason: 'bucket must conserve sum(net)==0');
+    }
+
+    test('mixed-currency event produces one independent bucket per currency',
+        () {
+      final buckets = BalanceCalculator.calculateBalances(
+        expenses: [
+          expense(amount: '30.000', payerId: 'p1', splitMode: null),
+          expense(amount: '20.00', currency: 'AED', payerId: 'p2',
+              splitMode: null),
+        ],
+        participants: participants,
+      );
+
+      expect(buckets.keys.toSet(), {'OMR', 'AED'});
+
+      // Every participant appears in every bucket, in participants order.
+      for (final bucket in buckets.values) {
+        expect(
+          bucket.map((b) => b.participantId).toList(),
+          ['p1', 'p2', 'p3'],
+        );
+        expectBucketConserved(bucket);
+      }
+
+      // OMR bucket: p1 paid 30, all owe 10 each.
+      final omr = buckets['OMR']!;
+      expect(owedFor(omr, 'p1'), Decimal.parse('10.000'));
+      expect(omr.singleWhere((b) => b.participantId == 'p1').netBalance,
+          Decimal.parse('20.000'));
+      expect(omr.singleWhere((b) => b.participantId == 'p1').totalPaid,
+          Decimal.parse('30.000'));
+
+      // AED bucket: p2 paid 20, 6.67/6.67/6.66 split (2dp, remainder to p3).
+      final aed = buckets['AED']!;
+      expect(aed.singleWhere((b) => b.participantId == 'p2').totalPaid,
+          Decimal.parse('20.00'));
+      expect(owedFor(aed, 'p1'), Decimal.parse('6.66'));
+      expect(owedFor(aed, 'p2'), Decimal.parse('6.66'));
+      expect(owedFor(aed, 'p3'), Decimal.parse('6.68'));
+      // OMR money never leaks into the AED bucket.
+      expect(aed.singleWhere((b) => b.participantId == 'p1').totalPaid,
+          Decimal.zero);
+    });
+
+    test('per-bucket remainder goes to the alphabetically-last recipient at '
+        'that bucket\'s own precision (OMR 3dp vs AED 2dp)', () {
+      final buckets = BalanceCalculator.calculateBalances(
+        expenses: [
+          expense(amount: '1.000', splitMode: null), // OMR 3dp
+          expense(amount: '1.00', currency: 'AED', splitMode: null), // 2dp
+        ],
+        participants: participants,
+      );
+
+      final omr = buckets['OMR']!;
+      expect(owedFor(omr, 'p1'), Decimal.parse('0.333'));
+      expect(owedFor(omr, 'p3'), Decimal.parse('0.334'));
+
+      final aed = buckets['AED']!;
+      expect(owedFor(aed, 'p1'), Decimal.parse('0.33'));
+      expect(owedFor(aed, 'p3'), Decimal.parse('0.34'));
+    });
+
+    test('settlement folds ONLY into its own currency bucket', () {
+      final buckets = BalanceCalculator.calculateBalances(
+        expenses: [
+          expense(amount: '30.000', payerId: 'p1', splitMode: null),
+          expense(amount: '20.00', currency: 'AED', payerId: 'p2',
+              splitMode: null),
+        ],
+        settlements: [
+          // p3 pays back p2 in AED — must not touch the OMR bucket.
+          settlement(
+              amount: '6.68', payerId: 'p3', recipientId: 'p2',
+              currency: 'AED'),
+        ],
+        participants: participants,
+      );
+
+      final omrP3 = buckets['OMR']!.singleWhere((b) => b.participantId == 'p3');
+      expect(omrP3.netBalance, Decimal.parse('-10.000'),
+          reason: 'AED settlement must not adjust the OMR bucket');
+
+      final aedP3 = buckets['AED']!.singleWhere((b) => b.participantId == 'p3');
+      expect(aedP3.netBalance, Decimal.zero,
+          reason: 'p3 settled the AED debt in AED');
+      expectBucketConserved(buckets['AED']!);
+      expectBucketConserved(buckets['OMR']!);
+    });
+
+    test('a settlement in a currency with no expenses creates its own bucket',
+        () {
+      final buckets = BalanceCalculator.calculateBalances(
+        expenses: const [],
+        settlements: [
+          settlement(
+              amount: '5.00', payerId: 'p1', recipientId: 'p2',
+              currency: 'USD'),
+        ],
+        participants: participants,
+      );
+
+      expect(buckets.keys.toSet(), {'USD'});
+      final usd = buckets['USD']!;
+      expect(usd.singleWhere((b) => b.participantId == 'p1').netBalance,
+          Decimal.parse('5.00'));
+      expect(usd.singleWhere((b) => b.participantId == 'p2').netBalance,
+          Decimal.parse('-5.00'));
+      expectBucketConserved(usd);
+    });
+
+    test('unsupported settlement currency is fenced into the OMR bucket', () {
+      final buckets = BalanceCalculator.calculateBalances(
+        expenses: [expense(amount: '3.000', payerId: 'p1', splitMode: null)],
+        settlements: [
+          settlement(
+              amount: '1.000', payerId: 'p2', recipientId: 'p1',
+              currency: 'XYZ'),
+        ],
+        participants: participants,
+      );
+
+      expect(buckets.keys.toSet(), {'OMR'},
+          reason: 'XYZ fences to OMR — no garbage bucket key');
+      final p2 = buckets['OMR']!.singleWhere((b) => b.participantId == 'p2');
+      // owed 1.000 from the split, paid back 1.000 via the fenced settlement.
+      expect(p2.netBalance, Decimal.zero);
+    });
+
+    test('no money records → empty map (no buckets)', () {
+      final buckets = BalanceCalculator.calculateBalances(
+        expenses: const [],
+        participants: participants,
+      );
+      expect(buckets, isEmpty);
+    });
+
+    test('single-currency result is element-for-element the pre-flip list', () {
+      final buckets = BalanceCalculator.calculateBalances(
+        expenses: [
+          expense(amount: '9.000', payerId: 'p2', splitMode: null),
+        ],
+        participants: participants,
+      );
+
+      expect(buckets.keys.toList(), ['OMR']);
+      final bucket = buckets['OMR']!;
+      expect(bucket.map((b) => b.participantId).toList(), ['p1', 'p2', 'p3']);
+      expect(bucket[0].totalPaid, Decimal.zero);
+      expect(bucket[0].totalOwed, Decimal.parse('3.000'));
+      expect(bucket[0].netBalance, Decimal.parse('-3.000'));
+      expect(bucket[1].totalPaid, Decimal.parse('9.000'));
+      expect(bucket[1].netBalance, Decimal.parse('6.000'));
+      expect(bucket[0].displayName, 'p1');
+    });
+
+    test('calculateTotalExpensesByCurrency buckets by fenced currency', () {
+      final totals = BalanceCalculator.calculateTotalExpensesByCurrency([
+        expense(amount: '10.000', splitMode: null),
+        expense(amount: '2.500', splitMode: null),
+        expense(amount: '7.00', currency: 'AED', splitMode: null),
+        expense(amount: '1.000', currency: 'XYZ', splitMode: null), // fenced
+      ]);
+
+      expect(totals.keys.toSet(), {'OMR', 'AED'});
+      expect(totals['OMR'], Decimal.parse('13.500'));
+      expect(totals['AED'], Decimal.parse('7.00'));
+    });
+
+    test('calculateTotalExpensesByCurrency returns empty map for no expenses',
+        () {
+      expect(BalanceCalculator.calculateTotalExpensesByCurrency(const []),
+          isEmpty);
     });
   });
 }

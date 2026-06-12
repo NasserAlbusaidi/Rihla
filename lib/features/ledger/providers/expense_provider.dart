@@ -92,7 +92,7 @@ final eventSettlementsProvider =
 /// Takes a record `({EventRef eventRef, Event event})` to carry both
 /// the EventRef (for provider lookups) and the Event (for participant data).
 final eventBalancesProvider = Provider.family<
-    AsyncValue<List<UserBalance>>,
+    AsyncValue<Map<String, List<UserBalance>>>,
     ({EventRef eventRef, Event event})>((ref, params) {
   final expensesAsync = ref.watch(eventExpensesProvider(params.eventRef));
   final settlementsAsync =
@@ -293,7 +293,9 @@ class BalanceCalculator {
     );
   }
 
-  /// Calculate balances with proper scope handling
+  /// Calculate balances with proper scope handling, bucketed per currency
+  /// (#382 PR-1 — amounts in different currencies are NEVER summed; there is
+  /// no FX).
   ///
   /// - Global: Split among all participants
   /// - Personal: Only the payer is responsible (no split)
@@ -301,21 +303,38 @@ class BalanceCalculator {
   ///
   /// Legacy `subGroup` scope (logistics feature, removed in Phase 39) falls
   /// back to global behaviour for back-compat with persisted Firestore docs.
-  static List<UserBalance> calculateBalances({
+  ///
+  /// Bucket keys are the fence-validated currencies appearing in the money
+  /// records (unsupported → OMR, the #47 fence — the same value that drives
+  /// allocation precision, so a bucket's key can never disagree with its
+  /// scale). Every bucket lists EVERY participant in [participants] order,
+  /// zeros included, so a single-currency input's sole bucket is
+  /// element-for-element the pre-#382 flat result. No money records → `{}`.
+  static Map<String, List<UserBalance>> calculateBalances({
     required List<Expense> expenses,
     required List<Participant> participants,
     List<Settlement> settlements = const [],
   }) {
     debugCalculateBalancesCount++;
-    if (participants.isEmpty) return [];
+    if (participants.isEmpty) return {};
 
-    // Maps: participantId -> amounts
-    final Map<String, Decimal> paidMap = {
-      for (var p in participants) p.id: Decimal.zero,
-    };
-    final Map<String, Decimal> owedMap = {
-      for (var p in participants) p.id: Decimal.zero,
-    };
+    // currency -> participantId -> amount. Each bucket is pre-seeded with
+    // every participant at zero so the containsKey membership gate below
+    // keeps dropping keys outside the universe (the #192/#223 drop-guard —
+    // the parity contract with the TS oracle).
+    final paidByCurrency = <String, Map<String, Decimal>>{};
+    final owedByCurrency = <String, Map<String, Decimal>>{};
+    final adjByCurrency = <String, Map<String, Decimal>>{};
+
+    Map<String, Decimal> bucketFor(
+      Map<String, Map<String, Decimal>> maps,
+      String currency,
+    ) {
+      return maps.putIfAbsent(
+        currency,
+        () => {for (var p in participants) p.id: Decimal.zero},
+      );
+    }
 
     // Process each expense
     for (final expense in expenses) {
@@ -327,6 +346,8 @@ class BalanceCalculator {
       final currency = MoneySerializer.isSupported(expense.currency)
           ? expense.currency
           : 'OMR';
+      final paidMap = bucketFor(paidByCurrency, currency);
+      final owedMap = bucketFor(owedByCurrency, currency);
 
       // Track what payer paid
       if (paidMap.containsKey(payerId)) {
@@ -413,43 +434,53 @@ class BalanceCalculator {
       }
     }
 
-    // Apply settlement adjustments
-    final Map<String, Decimal> settlementAdjustmentMap = {
-      for (var p in participants) p.id: Decimal.zero,
-    };
-
+    // Apply settlement adjustments — each settlement adjusts ONLY its own
+    // currency's bucket (per-doc currency, fenced like expenses; #382 PR-1).
+    // A settlement in a currency with no expense activity still creates that
+    // bucket: it is real money flow.
     for (final s in settlements) {
+      final currency = MoneySerializer.isSupported(s.currency)
+          ? s.currency
+          : 'OMR';
+      final adjMap = bucketFor(adjByCurrency, currency);
       if (s.payerParticipantId != null &&
-          settlementAdjustmentMap.containsKey(s.payerParticipantId)) {
-        settlementAdjustmentMap[s.payerParticipantId!] =
-            settlementAdjustmentMap[s.payerParticipantId!]! +
-            s.amount;
+          adjMap.containsKey(s.payerParticipantId)) {
+        adjMap[s.payerParticipantId!] =
+            adjMap[s.payerParticipantId!]! + s.amount;
       }
       if (s.recipientParticipantId != null &&
-          settlementAdjustmentMap.containsKey(s.recipientParticipantId)) {
-        settlementAdjustmentMap[s.recipientParticipantId!] =
-            settlementAdjustmentMap[s.recipientParticipantId!]! -
-            s.amount;
+          adjMap.containsKey(s.recipientParticipantId)) {
+        adjMap[s.recipientParticipantId!] =
+            adjMap[s.recipientParticipantId!]! - s.amount;
       }
     }
 
-    // Build final balances
-    return participants.map((p) {
-      final totalPaid = paidMap[p.id] ?? Decimal.zero;
-      final totalOwed = owedMap[p.id] ?? Decimal.zero;
-      final settlementAdj = settlementAdjustmentMap[p.id] ?? Decimal.zero;
+    // Build final balances per bucket. Expense processing seeds paid+owed
+    // buckets together, so the union below is paid ∪ adj keys.
+    final allCurrencies = <String>{
+      ...paidByCurrency.keys,
+      ...adjByCurrency.keys,
+    };
 
-      // Net = (what they paid + settlements given) - what they owe
-      final netBalance = (totalPaid + settlementAdj) - totalOwed;
+    return {
+      for (final currency in allCurrencies)
+        currency: participants.map((p) {
+          final totalPaid = paidByCurrency[currency]?[p.id] ?? Decimal.zero;
+          final totalOwed = owedByCurrency[currency]?[p.id] ?? Decimal.zero;
+          final settlementAdj = adjByCurrency[currency]?[p.id] ?? Decimal.zero;
 
-      return UserBalance(
-        participantId: p.id,
-        displayName: p.displayName ?? 'Unknown',
-        totalPaid: totalPaid,
-        totalOwed: totalOwed,
-        netBalance: netBalance,
-      );
-    }).toList();
+          // Net = (what they paid + settlements given) - what they owe
+          final netBalance = (totalPaid + settlementAdj) - totalOwed;
+
+          return UserBalance(
+            participantId: p.id,
+            displayName: p.displayName ?? 'Unknown',
+            totalPaid: totalPaid,
+            totalOwed: totalOwed,
+            netBalance: netBalance,
+          );
+        }).toList(),
+    };
   }
 
   static Map<String, Decimal> _allocateShares(
@@ -687,7 +718,43 @@ class BalanceCalculator {
     return settlements;
   }
 
-  static Decimal calculateTotalExpenses(List<Expense> expenses) {
-    return expenses.fold(Decimal.zero, (sum, e) => sum + e.amount);
+  /// Per-currency expense totals (#382 PR-1). Keys are fence-validated like
+  /// [calculateBalances] bucket keys (unsupported → OMR). Empty input → `{}`.
+  static Map<String, Decimal> calculateTotalExpensesByCurrency(
+    List<Expense> expenses,
+  ) {
+    final totals = <String, Decimal>{};
+    for (final e in expenses) {
+      final currency = MoneySerializer.isSupported(e.currency)
+          ? e.currency
+          : 'OMR';
+      totals[currency] = (totals[currency] ?? Decimal.zero) + e.amount;
+    }
+    return totals;
   }
+}
+
+/// Interim single-bucket selection for display surfaces that stay
+/// single-currency until #382 PR-5. Under the live uniformity rules every
+/// prod bucket map is empty or a singleton `{group.currency: …}`.
+///
+/// - [preferred] non-null → that bucket (empty list when absent);
+/// - [preferred] null (group doc still loading) → the sole bucket when exactly
+///   one exists (its own key becomes the display currency), else
+///   `('OMR', const [])`.
+({String currency, List<UserBalance> balances}) selectCurrencyBucket(
+  Map<String, List<UserBalance>> buckets,
+  String? preferred,
+) {
+  if (preferred != null) {
+    return (
+      currency: preferred,
+      balances: buckets[preferred] ?? const <UserBalance>[],
+    );
+  }
+  if (buckets.length == 1) {
+    final entry = buckets.entries.single;
+    return (currency: entry.key, balances: entry.value);
+  }
+  return (currency: 'OMR', balances: const <UserBalance>[]);
 }

@@ -81,7 +81,12 @@ void main() {
     settledAt: DateTime(2026),
   );
 
-  Decimal netFor(GroupBalances balances, String uid) => balances.balances
+  // #382 PR-1 interim parity statement: the client fold now buckets per
+  // currency while the v1 aggregate doc stays flat until PR-3. Every case
+  // here is single-currency OMR, so the sole 'OMR' bucket must reproduce the
+  // pinned netMilli values byte-for-byte. PR-3 introduces the bucketed v2 doc.
+  Decimal netFor(GroupBalances balances, String uid) => balances
+      .balances['OMR']!
       .singleWhere((b) => b.participantId == uid)
       .netBalance;
 

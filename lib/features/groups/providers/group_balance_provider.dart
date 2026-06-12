@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/supported_currencies.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
@@ -70,17 +71,21 @@ final groupActivityProvider =
 /// Consumed by the group dashboard UI widgets and group settlement screens.
 ///
 /// Fields:
-/// - [balances]: Per-member net balances aggregated across all group events
-///   and group-level settlements.
-/// - [totalSpent]: Sum of all expenses across all group events (OMR Decimal).
+/// - [balances]: Per-CURRENCY per-member balances aggregated across all group
+///   events and group-level settlements (#382 PR-1). Bucket keys are
+///   fence-validated currencies; every bucket lists every known uid, zeros
+///   included. No money records → empty map. Amounts in different currencies
+///   are NEVER summed (no FX).
+/// - [totalSpent]: Per-currency sum of all expenses across all group events.
 /// - [eventCount]: Number of events included in the computation.
 /// - [perEventBreakdown]: memberId → eventId → netBalance for that member in
-///   that event. Used for drill-down UI views.
+///   that event. Used for drill-down UI views. Stays FLAT in PR-1 (single
+///   collapse point in [_buildPerEventBreakdown]; bucketed in #382 PR-3).
 /// - [memberNames]: memberId → displayName map for settlement rendering.
 /// - [memberRawNames]: memberId → raw displayName map for settlement writes.
 typedef GroupBalances = ({
-  List<UserBalance> balances,
-  Decimal totalSpent,
+  Map<String, List<UserBalance>> balances,
+  Map<String, Decimal> totalSpent,
   int eventCount,
   Map<String, Map<String, Decimal>> perEventBreakdown,
   Map<String, String> memberNames,
@@ -265,9 +270,11 @@ GroupBalances computeGroupBalances({
     eventSettlementsByEvent[settlement.tripId]?.add(settlement);
   }
 
-  final totalPaidPerUid = <String, Decimal>{};
-  final totalOwedPerUid = <String, Decimal>{};
-  final netBalancePerUid = <String, Decimal>{};
+  // currency -> uid -> amount (#382 PR-1). The three maps share key sets per
+  // currency because they fold from the same per-event bucket entries.
+  final totalPaidByCurrency = <String, Map<String, Decimal>>{};
+  final totalOwedByCurrency = <String, Map<String, Decimal>>{};
+  final netByCurrency = <String, Map<String, Decimal>>{};
   final allMemberIds = members.map((m) => m.userId).toSet();
   final liveMemberIds = members
       .where((m) => !m.isTombstone)
@@ -313,44 +320,56 @@ GroupBalances computeGroupBalances({
       );
     }).toList();
 
-    final eventBalances = BalanceCalculator.calculateBalances(
+    final eventBuckets = BalanceCalculator.calculateBalances(
       expenses: eventExpenses,
       settlements: eventSettlements,
       participants: eventParticipants,
     );
 
-    for (final balance in eventBalances) {
-      totalPaidPerUid.update(
-        balance.participantId,
-        (value) => value + balance.totalPaid,
-        ifAbsent: () => balance.totalPaid,
-      );
-      totalOwedPerUid.update(
-        balance.participantId,
-        (value) => value + balance.totalOwed,
-        ifAbsent: () => balance.totalOwed,
-      );
-      netBalancePerUid.update(
-        balance.participantId,
-        (value) => value + balance.netBalance,
-        ifAbsent: () => balance.netBalance,
-      );
-    }
+    eventBuckets.forEach((currency, eventBalances) {
+      final paid = totalPaidByCurrency.putIfAbsent(currency, () => {});
+      final owed = totalOwedByCurrency.putIfAbsent(currency, () => {});
+      final net = netByCurrency.putIfAbsent(currency, () => {});
+      for (final balance in eventBalances) {
+        paid.update(
+          balance.participantId,
+          (value) => value + balance.totalPaid,
+          ifAbsent: () => balance.totalPaid,
+        );
+        owed.update(
+          balance.participantId,
+          (value) => value + balance.totalOwed,
+          ifAbsent: () => balance.totalOwed,
+        );
+        net.update(
+          balance.participantId,
+          (value) => value + balance.netBalance,
+          ifAbsent: () => balance.netBalance,
+        );
+      }
+    });
   }
 
-  final groupScopedSettlementAdj = <String, Decimal>{};
+  // Group-scoped settlements adjust ONLY their own per-doc currency bucket
+  // (#382 PR-1 — fenced like the calculator's settlement fold; a legacy OMR
+  // settlement in any group lands in the OMR bucket, the original obligation).
+  final groupAdjByCurrency = <String, Map<String, Decimal>>{};
   for (final settlement in groupSettlements) {
+    final currency = MoneySerializer.isSupported(settlement.currency)
+        ? settlement.currency
+        : 'OMR';
+    final adj = groupAdjByCurrency.putIfAbsent(currency, () => {});
     final payerId = settlement.payerParticipantId;
     final recipientId = settlement.recipientParticipantId;
     if (payerId != null) {
-      groupScopedSettlementAdj.update(
+      adj.update(
         payerId,
         (value) => value + settlement.amount,
         ifAbsent: () => settlement.amount,
       );
     }
     if (recipientId != null) {
-      groupScopedSettlementAdj.update(
+      adj.update(
         recipientId,
         (value) => value - settlement.amount,
         ifAbsent: () => -settlement.amount,
@@ -361,10 +380,10 @@ GroupBalances computeGroupBalances({
   final allUids = <String>{
     ...allMemberIds,
     ...allFormerFinancialActorsSeen,
-    ...totalPaidPerUid.keys,
-    ...totalOwedPerUid.keys,
-    ...netBalancePerUid.keys,
-    ...groupScopedSettlementAdj.keys,
+    for (final m in totalPaidByCurrency.values) ...m.keys,
+    for (final m in totalOwedByCurrency.values) ...m.keys,
+    for (final m in netByCurrency.values) ...m.keys,
+    for (final m in groupAdjByCurrency.values) ...m.keys,
   };
 
   // Resolve every uid once, then derive display + raw name maps from it.
@@ -383,18 +402,26 @@ GroupBalances computeGroupBalances({
     for (final entry in displaysByUid.entries) entry.key: entry.value.rawName,
   };
 
-  final balances = allUids.map((uid) {
-    final eventNet = netBalancePerUid[uid] ?? Decimal.zero;
-    final groupSettlementNet = groupScopedSettlementAdj[uid] ?? Decimal.zero;
-    return UserBalance(
-      participantId: uid,
-      displayName:
-          memberNames[uid] ?? MemberNameResolver.format(displaysByUid[uid]!),
-      totalPaid: totalPaidPerUid[uid] ?? Decimal.zero,
-      totalOwed: totalOwedPerUid[uid] ?? Decimal.zero,
-      netBalance: eventNet + groupSettlementNet,
-    );
-  }).toList();
+  final allCurrencies = <String>{
+    ...netByCurrency.keys,
+    ...groupAdjByCurrency.keys,
+  };
+  final balances = <String, List<UserBalance>>{
+    for (final currency in allCurrencies)
+      currency: allUids.map((uid) {
+        final eventNet = netByCurrency[currency]?[uid] ?? Decimal.zero;
+        final groupSettlementNet =
+            groupAdjByCurrency[currency]?[uid] ?? Decimal.zero;
+        return UserBalance(
+          participantId: uid,
+          displayName: memberNames[uid] ??
+              MemberNameResolver.format(displaysByUid[uid]!),
+          totalPaid: totalPaidByCurrency[currency]?[uid] ?? Decimal.zero,
+          totalOwed: totalOwedByCurrency[currency]?[uid] ?? Decimal.zero,
+          netBalance: eventNet + groupSettlementNet,
+        );
+      }).toList(),
+  };
 
   // Step 7: Compute per-event breakdown (RESEARCH Pattern 4). This drill-down
   // intentionally keeps using event.participantIds only; aggregate balances
@@ -407,7 +434,7 @@ GroupBalances computeGroupBalances({
 
   return (
     balances: balances,
-    totalSpent: BalanceCalculator.calculateTotalExpenses(allExpenses),
+    totalSpent: BalanceCalculator.calculateTotalExpensesByCurrency(allExpenses),
     eventCount: events.length,
     perEventBreakdown: perEventBreakdown,
     memberNames: memberNames,
@@ -458,19 +485,36 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
 
     if (participants.isEmpty) continue;
 
-    final eventBalances = BalanceCalculator.calculateBalances(
+    final eventBuckets = BalanceCalculator.calculateBalances(
       expenses: expenses,
       settlements: settlements,
       participants: participants,
     );
 
-    for (final b in eventBalances) {
+    // #382 PR-1 interim collapse (removed in PR-3, which buckets the
+    // breakdown): no money → explicit zero rows (preserves the pre-bucketing
+    // shape); otherwise the GCC-first bucket. Under the live uniformity rules
+    // every prod event has at most one bucket, so this is exact; a mixed
+    // FIXTURE event shows a deterministic single-currency view. Display-only —
+    // no write reads the breakdown.
+    if (eventBuckets.isEmpty) {
+      for (final p in participants) {
+        breakdown.putIfAbsent(p.id, () => {})[event.id] = Decimal.zero;
+      }
+      continue;
+    }
+    final chosen = _gccFirstCurrency(eventBuckets.keys);
+    for (final b in eventBuckets[chosen]!) {
       breakdown.putIfAbsent(b.participantId, () => {})[event.id] = b.netBalance;
     }
   }
 
   return breakdown;
 }
+
+/// GCC-first currency pick — the codebase's standard bucket ordering.
+String _gccFirstCurrency(Iterable<String> currencies) =>
+    sortedGccFirst(currencies).first;
 
 // ---------------------------------------------------------------------------
 // currentUserIdProvider — injectable UID for testability
@@ -627,11 +671,16 @@ final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
     }
     final balances = balancesAsync.valueOrNull;
     if (balances == null) continue;
-    final userBalance = balances.balances
-        .where((b) => b.participantId == uid)
-        .firstOrNull;
-    final groupNet = userBalance?.netBalance ?? Decimal.zero;
-    _accumulateBucket(byCurrencyMap, group.currency, groupNet);
+    // #382 PR-1: fold per BUCKET currency (the honest key), not group.currency.
+    // Identical for prod data (uniformity rules ⇒ singleton {group.currency}).
+    for (final entry in balances.balances.entries) {
+      final userNet = entry.value
+              .where((b) => b.participantId == uid)
+              .firstOrNull
+              ?.netBalance ??
+          Decimal.zero;
+      _accumulateBucket(byCurrencyMap, entry.key, userNet);
+    }
   }
 
   return AsyncValue.data((
@@ -836,11 +885,24 @@ final homeGroupBalanceProvider =
     }
   }
 
+  // Shim #1 (#382 PR-1, removed in PR-3): under the live uniformity rules
+  // every bucket map is empty or a singleton {group.currency: …}; collapse to
+  // the flat facade shape by selecting the group's currency bucket (sole
+  // bucket while the groups list loads). Foreign-currency buckets are
+  // prod-unreachable until PR-6; PR-3 makes the facade per-currency.
+  final groupCurrency = ref
+      .watch(userGroupsProvider)
+      .valueOrNull
+      ?.where((g) => g.id == groupId)
+      .firstOrNull
+      ?.currency;
+
   final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
   return onceAsync.whenData((once) {
     final balances = once.balances;
+    final selected = selectCurrencyBucket(balances.balances, groupCurrency);
     return (
-      userNet: balances.balances
+      userNet: selected.balances
               .where((b) => b.participantId == uid)
               .firstOrNull
               ?.netBalance ??

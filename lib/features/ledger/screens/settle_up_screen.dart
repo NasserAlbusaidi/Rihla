@@ -17,6 +17,7 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
+import '../../../core/constants/supported_currencies.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
@@ -24,6 +25,7 @@ import '../../groups/widgets/record_payment_sheet.dart';
 import '../../groups/widgets/settle_up_page_body.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
+import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
 
 /// Event-scoped Settle Up screen.
@@ -190,23 +192,38 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     );
                   }).toList();
 
-                  final balances = BalanceCalculator.calculateBalances(
+                  final bucketed = BalanceCalculator.calculateBalances(
                     expenses: expenses,
                     settlements: settlements,
                     participants: participants,
                   );
 
-                  final optimalSettlements =
-                      BalanceCalculator.calculateOptimalSettlements(
-                        balances: balances,
-                        userNames: userDisplayNames,
-                      );
+                  // #382 PR-1: one section per currency bucket, the optimizer
+                  // run per bucket (no cross-currency netting, ever). No money
+                  // yet → one empty group-currency bucket (zero summary card).
+                  // The recorded settlement carries the BUCKET currency.
+                  final buckets = <SettleBucket>[
+                    for (final c in sortedGccFirst(bucketed.keys))
+                      (
+                        currency: c,
+                        balances: bucketed[c]!,
+                        optimalSettlements:
+                            BalanceCalculator.calculateOptimalSettlements(
+                              balances: bucketed[c]!,
+                              userNames: userDisplayNames,
+                            ),
+                      ),
+                    if (bucketed.isEmpty)
+                      (
+                        currency: groupCurrency,
+                        balances: const <UserBalance>[],
+                        optimalSettlements: const <Map<String, dynamic>>[],
+                      ),
+                  ];
 
                   return SettleUpPageBody(
                     subjectName: event.name,
-                    currency: groupCurrency,
-                    optimalSettlements: optimalSettlements,
-                    balances: balances,
+                    buckets: buckets,
                     rawNames: userRawNames,
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
@@ -219,6 +236,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           required fromUserId,
                           required toUserId,
                           required suggestedAmount,
+                          required currency,
                         }) => _showRecordPaymentSheet(
                           context,
                           settlement: settlement,
@@ -227,7 +245,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           fromUserId: fromUserId,
                           toUserId: toUserId,
                           suggestedAmount: suggestedAmount,
-                          currency: groupCurrency,
+                          currency: currency,
                         ),
                   );
                 },

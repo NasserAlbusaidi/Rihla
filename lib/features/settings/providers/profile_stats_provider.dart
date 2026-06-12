@@ -100,8 +100,14 @@ final profileStatsProvider = Provider<AsyncValue<ProfileStats>>((ref) {
     } else {
       final balances = balancesAsync.valueOrNull;
       if (balances != null) {
-        spentMap[group.currency] =
-            (spentMap[group.currency] ?? Decimal.zero) + balances.totalSpent;
+        // #382 PR-1: merge by the BUCKET currency (the honest key — equal to
+        // group.currency for all prod data under the uniformity rules). Never
+        // collapse back to group.currency: that re-introduces the #378
+        // cross-currency sum for legacy/forged mixed docs.
+        for (final entry in balances.totalSpent.entries) {
+          spentMap[entry.key] =
+              (spentMap[entry.key] ?? Decimal.zero) + entry.value;
+        }
       }
     }
   }

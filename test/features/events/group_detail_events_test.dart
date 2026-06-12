@@ -169,12 +169,12 @@ Widget _wrap(
       ).overrideWith((ref) => Stream.value(_testMembers)),
       groupEventsProvider(_groupId).overrideWith((ref) => Stream.value(events)),
       groupBalancesProvider(_groupId).overrideWith(
-        (ref) => AsyncValue.data((
-          balances: const <UserBalance>[],
-          totalSpent: Decimal.zero,
+        (ref) => const AsyncValue.data((
+          balances: <String, List<UserBalance>>{},
+          totalSpent: <String, Decimal>{},
           eventCount: 0,
-          perEventBreakdown: const <String, Map<String, Decimal>>{},
-          memberNames: const <String, String>{},
+          perEventBreakdown: <String, Map<String, Decimal>>{},
+          memberNames: <String, String>{},
           memberRawNames: <String, String>{},
         )),
       ),

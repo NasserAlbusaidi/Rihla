@@ -105,7 +105,7 @@ void main() {
               ),
             ],
             participants: participants,
-          );
+          )['OMR']!;
 
           // Residual (amount - sum) = -0.001 lands on alphabetically-last key p2.
           expect(owedFor(balances, 'p1'), Decimal.parse('5.000'));
@@ -131,7 +131,7 @@ void main() {
               ),
             ],
             participants: participants,
-          );
+          )['OMR']!;
 
           // Residual (+0.001) lands on alphabetically-last key p2.
           expect(owedFor(balances, 'p1'), Decimal.parse('5.000'));
@@ -157,7 +157,7 @@ void main() {
               ),
             ],
             participants: participants,
-          );
+          )['OMR']!;
 
           // Residual (-0.001) lands on p3 (sortedKeys.last), not on the larger p1.
           expect(owedFor(balances, 'p1'), Decimal.parse('6.001'));
@@ -191,7 +191,7 @@ void main() {
               ),
             ],
             participants: participants,
-          );
+          )['OMR']!;
 
           // Invariant: residual normalization never drives any owed below zero.
           expect(owedFor(balances, 'p1') >= Decimal.zero, isTrue);
@@ -235,7 +235,7 @@ void main() {
               ),
             ],
             participants: participants,
-          );
+          )['OMR']!;
 
           // Invariant: no owed is ever negative, for any input.
           expect(owedFor(balances, 'p1') >= Decimal.zero, isTrue);
@@ -262,7 +262,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['OMR']!;
 
         expect(owedFor(balances, 'p1'), Decimal.parse('2.250'));
         expect(owedFor(balances, 'p2'), Decimal.parse('3.750'));
@@ -287,7 +287,7 @@ void main() {
               ),
             ],
             participants: participants,
-          );
+          )['OMR']!;
 
           expect(owedFor(balances, 'p1'), Decimal.parse('3.333'));
           expect(owedFor(balances, 'p2'), Decimal.parse('3.333'));
@@ -325,7 +325,7 @@ void main() {
               settlement(payer: 'p1', recipient: 'p2', amount: '2.000'),
             ],
             participants: participants,
-          );
+          )['OMR']!;
 
           // Settlements and equal split are conservation-neutral; the only term
           // that breaks sum(net)==0 today is the un-healed exact drift (-0.001).
@@ -349,7 +349,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['JPY']!;
 
         expect(owedFor(balances, 'p1'), Decimal.parse('333'));
         expect(owedFor(balances, 'p2'), Decimal.parse('333'));

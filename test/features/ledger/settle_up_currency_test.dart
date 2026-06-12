@@ -20,6 +20,12 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 /// #261 PR-A: event settle-up must write the OWNING GROUP's currency, not a
 /// hardcoded 'OMR'. RED before A4: settle_up_screen had `const currency = 'OMR'`
 /// so a USD group's settlement persisted as OMR (amountFils scaled by 1000).
+///
+/// #382 PR-1: the write currency now derives from the debt's BUCKET (the
+/// expense's own currency) rather than threading group.currency. Under the
+/// live uniformity rules expense.currency == group.currency for every real
+/// doc, so the fixture expense carries the scenario currency — same intent
+/// (no hardcoded OMR), derived through the bucket key.
 void main() {
   const groupId = 'group-1';
   const eventId = 'event-1';
@@ -37,8 +43,9 @@ void main() {
     createdAt: DateTime(2026, 5, 16),
   );
 
-  // Alice paid 20 split equally → bob owes alice 10 (currency-blind amount).
-  final expenses = [
+  // Alice paid 20 split equally → bob owes alice 10, denominated in the
+  // scenario currency (rules pin expense.currency == group.currency).
+  List<Expense> expensesIn(String currency) => [
     Expense(
       id: 'expense-1',
       tripId: eventId,
@@ -48,6 +55,7 @@ void main() {
       scope: ExpenseScope.global,
       createdAt: DateTime(2026, 5, 16),
       createdBy: 'alice',
+      currency: currency,
     ),
   ];
 
@@ -58,7 +66,7 @@ void main() {
         eventDetailProvider(eventRef).overrideWith((_) => Stream.value(event)),
         eventExpensesProvider(
           eventRef,
-        ).overrideWith((_) => Stream.value(expenses)),
+        ).overrideWith((_) => Stream.value(expensesIn(currency))),
         eventSettlementsProvider(
           eventRef,
         ).overrideWith((_) => Stream.value(const <Settlement>[])),

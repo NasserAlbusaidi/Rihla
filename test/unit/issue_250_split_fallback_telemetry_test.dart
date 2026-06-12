@@ -160,7 +160,7 @@ void main() {
             ),
           ],
           participants: participants,
-        );
+        )['OMR']!;
 
         expect(captured, hasLength(1));
         expect(captured.single.reason, c.expected);
@@ -183,7 +183,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
       Decimal owed(String id) =>
           balances.singleWhere((b) => b.participantId == id).totalOwed;
       // Equal split over the distribution's keys {p1, p2}.
@@ -208,7 +208,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
       expect(captured, isEmpty);
     });
 
@@ -226,7 +226,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
       expect(captured, isEmpty);
     });
 
@@ -244,7 +244,7 @@ void main() {
           ),
         ],
         participants: participants,
-      );
+      )['OMR']!;
       expect(captured, isEmpty);
     });
   });

@@ -24,6 +24,7 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../events/models/event_model.dart';
+import '../../ledger/providers/expense_provider.dart';
 import '../../events/providers/event_provider.dart';
 import '../../events/utils/event_display.dart';
 import '../keys/group_keys.dart';
@@ -109,9 +110,12 @@ class _Content extends ConsumerWidget {
     final balancesAsync = ref.watch(groupBalancesProvider(group.id));
     final currentUid = ref.watch(currentUserIdProvider);
     final balances = balancesAsync.valueOrNull;
+    // #382 PR-1: this card stays single-currency until PR-5 — select the
+    // group's currency bucket (the only prod bucket under the live rules).
     final userNet = (balances == null || currentUid == null)
         ? Decimal.zero
-        : (balances.balances
+        : (selectCurrencyBucket(balances.balances, group.currency)
+                  .balances
                   .where((b) => b.participantId == currentUid)
                   .firstOrNull
                   ?.netBalance ??
@@ -875,7 +879,11 @@ class _MembersCard extends StatelessWidget {
     final spacing = context.spacing;
     final data = balancesAsync.valueOrNull;
 
-    if (data == null || data.balances.isEmpty) {
+    // #382 PR-1: memberNames (currency-independent, spans every known uid)
+    // is the row source — the bucket map is empty for a zero-money group, but
+    // the members card must still list everyone. Same key set and order as
+    // the old flat balances list.
+    if (data == null || data.memberNames.isEmpty) {
       return Container(
         padding: EdgeInsets.symmetric(vertical: 18, horizontal: context.spacing.space16),
         decoration: BoxDecoration(
@@ -892,7 +900,12 @@ class _MembersCard extends StatelessWidget {
       );
     }
 
-    final balances = data.balances;
+    final members = data.memberNames.entries.toList();
+    final bucket =
+        selectCurrencyBucket(data.balances, group.currency).balances;
+    final netByUid = {
+      for (final b in bucket) b.participantId: b.netBalance,
+    };
     return Container(
       decoration: BoxDecoration(
         color: colors.cardSurface,
@@ -902,23 +915,20 @@ class _MembersCard extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       child: Column(
         children: [
-          for (var i = 0; i < balances.length; i++)
+          for (var i = 0; i < members.length; i++)
             _MemberRow(
-              name:
-                  balances[i].displayName ??
-                  data.memberNames[balances[i].participantId] ??
-                  context.l10n.groupFormerMember,
+              name: members[i].value,
               role: _roleFor(
                 context: context,
-                participantId: balances[i].participantId,
+                participantId: members[i].key,
                 creatorId: group.createdBy,
                 currentUid: currentUid,
               ),
-              net: balances[i].netBalance,
+              net: netByUid[members[i].key] ?? Decimal.zero,
               currency: group.currency,
-              divider: i < balances.length - 1,
+              divider: i < members.length - 1,
               onTap: () => GoRouter.of(context).push(
-                '/group/${group.id}/settle-up?memberId=${balances[i].participantId}',
+                '/group/${group.id}/settle-up?memberId=${members[i].key}',
               ),
             ),
         ],

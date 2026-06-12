@@ -67,6 +67,7 @@ Expense _makeExpense({
   List<String>? customSplitParticipants,
   SplitMode? splitMode,
   Map<String, Decimal>? splitDistribution,
+  String currency = 'OMR',
 }) {
   return Expense(
     id: id,
@@ -78,6 +79,7 @@ Expense _makeExpense({
     splitMode: splitMode,
     splitDistribution: splitDistribution,
     createdAt: DateTime(2025, 1, 1),
+    currency: currency,
   );
 }
 
@@ -89,6 +91,7 @@ Settlement _makeSettlement({
   required Decimal amount,
   String scope = 'group',
   String tripId = 'group-1',
+  String currency = 'OMR',
 }) {
   return Settlement(
     id: id,
@@ -98,6 +101,7 @@ Settlement _makeSettlement({
     amount: amount,
     settledAt: DateTime(2025, 1, 2),
     scope: scope,
+    currency: currency,
   );
 }
 
@@ -156,7 +160,12 @@ ProviderContainer _singleEventContainer({
   );
 }
 
-Decimal _sumNet(GroupBalances data) => data.balances.fold(
+// #382 PR-1: every fixture in this file is single-currency OMR, so the
+// behavioral assertions read the sole 'OMR' bucket.
+List<UserBalance> _omrBucket(GroupBalances data) =>
+    data.balances['OMR'] ?? const <UserBalance>[];
+
+Decimal _sumNet(GroupBalances data) => _omrBucket(data).fold(
   Decimal.zero,
   (sum, b) => sum + b.netBalance,
 );
@@ -248,10 +257,10 @@ void main() {
         expect(result, isA<AsyncData<GroupBalances>>());
         final data = result.valueOrNull!;
 
-        // totalSpent = 10 + 20 = 30 OMR
-        expect(data.totalSpent, equals(Decimal.parse('30.000')));
+        // totalSpent = 10 + 20 = 30, all OMR → a single OMR bucket (#382 PR-1)
+        expect(data.totalSpent, equals({'OMR': Decimal.parse('30.000')}));
         expect(data.eventCount, equals(2));
-        expect(data.balances, hasLength(2));
+        expect(_omrBucket(data), hasLength(2));
         expect(data.memberNames, containsPair('uid-1', 'Alice'));
         expect(data.memberNames, containsPair('uid-2', 'Bob'));
       },
@@ -321,10 +330,10 @@ void main() {
       expect(result, isA<AsyncData<GroupBalances>>());
       final data = result.valueOrNull!;
 
-      final uid1Balance = data.balances.firstWhere(
+      final uid1Balance = _omrBucket(data).firstWhere(
         (b) => b.participantId == 'uid-1',
       );
-      final uid2Balance = data.balances.firstWhere(
+      final uid2Balance = _omrBucket(data).firstWhere(
         (b) => b.participantId == 'uid-2',
       );
 
@@ -503,8 +512,9 @@ void main() {
 
       expect(result, isA<AsyncData<GroupBalances>>());
       final data = result.valueOrNull!;
-      // totalSpent = 15.000 + 25.500 + 9.500 = 50.000
-      expect(data.totalSpent, equals(Decimal.parse('50.000')));
+      // totalSpent = 15.000 + 25.500 + 9.500 = 50.000, all OMR → one bucket
+      // keyed per currency (#382 PR-1 — the currency-blind scalar is gone).
+      expect(data.totalSpent, equals({'OMR': Decimal.parse('50.000')}));
     });
   });
 
@@ -663,7 +673,7 @@ void main() {
 
         // Aggregate INCLUDES the former actor (event-b split 3 ways: paid 30,
         // owes 10 => net +20).
-        final former = data.balances
+        final former = _omrBucket(data)
             .where((b) => b.participantId == 'uid-former')
             .toList();
         expect(former, hasLength(1));
@@ -738,7 +748,7 @@ void main() {
 
         // 9.000 / 3 = 3.000 each. uid-1 paid 9 → +6; uid-2 → -3; uid-3 → -3.
         expect(_sumNet(data), equals(Decimal.zero));
-        final carol = data.balances.singleWhere(
+        final carol = _omrBucket(data).singleWhere(
           (b) => b.participantId == 'uid-3',
         );
         expect(carol.netBalance, equals(Decimal.parse('-3.000')));
@@ -802,7 +812,7 @@ void main() {
       // uid-3: owed 3, settlementAdj +3 → 0 (settled their share).
       expect(_sumNet(data), equals(Decimal.zero));
       expect(
-        data.balances.singleWhere((b) => b.participantId == 'uid-3').netBalance,
+        _omrBucket(data).singleWhere((b) => b.participantId == 'uid-3').netBalance,
         equals(Decimal.zero),
       );
     });
@@ -859,7 +869,7 @@ void main() {
         // → -4.
         expect(_sumNet(data), equals(Decimal.zero));
         expect(
-          data.balances
+          _omrBucket(data)
               .singleWhere((b) => b.participantId == 'uid-3')
               .netBalance,
           equals(Decimal.parse('-4.000')),
@@ -905,7 +915,7 @@ void main() {
         // ghost dropped → uid-1 +6, uid-2 -3 → sum +3 (NOT healed). ghost
         // never appears (not a member).
         expect(
-          data.balances.any((b) => b.participantId == 'ghost'),
+          _omrBucket(data).any((b) => b.participantId == 'ghost'),
           isFalse,
         );
         expect(_sumNet(data), equals(Decimal.parse('3.000')));
@@ -1043,6 +1053,166 @@ void main() {
       addTearDown(container.dispose);
 
       expect(await readFailed(container), isEmpty);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // #382 PR-1: per-currency bucketing of the group fold (pure computeGroupBalances)
+  // ---------------------------------------------------------------------------
+
+  group('computeGroupBalances bucketing (#382 PR-1)', () {
+    const groupId = 'group-1';
+    final members = [
+      _makeMember(userId: 'uid-1', groupId: groupId, displayName: 'Alice'),
+      _makeMember(userId: 'uid-2', groupId: groupId, displayName: 'Bob'),
+    ];
+    final event = _makeEvent(
+      id: 'event-a',
+      groupId: groupId,
+      participantIds: ['uid-1', 'uid-2'],
+      participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+    );
+
+    Decimal sumNetIn(GroupBalances data, String currency) =>
+        (data.balances[currency] ?? const <UserBalance>[])
+            .fold(Decimal.zero, (sum, b) => sum + b.netBalance);
+
+    test('a mixed-currency event buckets independently, conserving per bucket',
+        () {
+      final data = computeGroupBalances(
+        events: [event],
+        members: members,
+        allExpenses: [
+          _makeExpense(
+            id: 'x1',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('30.000'),
+          ),
+          _makeExpense(
+            id: 'x2',
+            payerParticipantId: 'uid-2',
+            amount: Decimal.parse('20.00'),
+            currency: 'AED',
+          ),
+        ],
+        allEventSettlements: const [],
+        groupSettlements: const [],
+      );
+
+      expect(data.balances.keys.toSet(), {'OMR', 'AED'});
+      expect(data.totalSpent,
+          equals({'OMR': Decimal.parse('30.000'), 'AED': Decimal.parse('20.00')}));
+      // Every known uid appears in every bucket.
+      for (final bucket in data.balances.values) {
+        expect(bucket.map((b) => b.participantId).toSet(),
+            {'uid-1', 'uid-2'});
+      }
+      // OMR: uid-1 paid 30, each owes 15 → +15 / -15.
+      final omr1 = data.balances['OMR']!
+          .singleWhere((b) => b.participantId == 'uid-1');
+      expect(omr1.netBalance, Decimal.parse('15.000'));
+      // AED: uid-2 paid 20, each owes 10 → uid-1 -10 / uid-2 +10. OMR money
+      // never leaks into the AED bucket.
+      final aed1 = data.balances['AED']!
+          .singleWhere((b) => b.participantId == 'uid-1');
+      expect(aed1.netBalance, Decimal.parse('-10.00'));
+      expect(aed1.totalPaid, Decimal.zero);
+      expect(sumNetIn(data, 'OMR'), Decimal.zero);
+      expect(sumNetIn(data, 'AED'), Decimal.zero);
+    });
+
+    test('a group settlement adjusts ONLY its own currency bucket', () {
+      final data = computeGroupBalances(
+        events: [event],
+        members: members,
+        allExpenses: [
+          _makeExpense(
+            id: 'x1',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('30.000'),
+          ),
+          _makeExpense(
+            id: 'x2',
+            payerParticipantId: 'uid-2',
+            amount: Decimal.parse('20.00'),
+            currency: 'AED',
+          ),
+        ],
+        allEventSettlements: const [],
+        groupSettlements: [
+          // uid-1 pays back the 10 AED debt — must not touch the OMR bucket.
+          _makeSettlement(
+            id: 's1',
+            payerParticipantId: 'uid-1',
+            recipientParticipantId: 'uid-2',
+            amount: Decimal.parse('10.00'),
+            currency: 'AED',
+          ),
+        ],
+      );
+
+      final omr1 = data.balances['OMR']!
+          .singleWhere((b) => b.participantId == 'uid-1');
+      expect(omr1.netBalance, Decimal.parse('15.000'),
+          reason: 'AED settlement must not adjust the OMR bucket');
+      final aed1 = data.balances['AED']!
+          .singleWhere((b) => b.participantId == 'uid-1');
+      expect(aed1.netBalance, Decimal.zero,
+          reason: 'uid-1 settled the AED debt in AED');
+      expect(sumNetIn(data, 'OMR'), Decimal.zero);
+      expect(sumNetIn(data, 'AED'), Decimal.zero);
+    });
+
+    test(
+        'perEventBreakdown interim collapse: GCC-first bucket for a mixed '
+        'event, explicit zeros for a no-money event', () {
+      final emptyEvent = _makeEvent(
+        id: 'event-b',
+        groupId: groupId,
+        participantIds: ['uid-1', 'uid-2'],
+        participantNames: {'uid-1': 'Alice', 'uid-2': 'Bob'},
+      );
+      final data = computeGroupBalances(
+        events: [event, emptyEvent],
+        members: members,
+        allExpenses: [
+          _makeExpense(
+            id: 'x1',
+            payerParticipantId: 'uid-1',
+            amount: Decimal.parse('30.000'),
+          ),
+          _makeExpense(
+            id: 'x2',
+            payerParticipantId: 'uid-2',
+            amount: Decimal.parse('20.00'),
+            currency: 'AED',
+          ),
+        ],
+        allEventSettlements: const [],
+        groupSettlements: const [],
+      );
+
+      // Mixed event-a: OMR ranks before AED (kSupportedCurrencies) → the
+      // drill-down shows the OMR view (interim until PR-3 buckets it).
+      expect(data.perEventBreakdown['uid-1']!['event-a'],
+          Decimal.parse('15.000'));
+      // No-money event-b: explicit zero rows preserved.
+      expect(data.perEventBreakdown['uid-1']!['event-b'], Decimal.zero);
+      expect(data.perEventBreakdown['uid-2']!['event-b'], Decimal.zero);
+    });
+
+    test('no money records → empty bucket maps, memberNames still spans uids',
+        () {
+      final data = computeGroupBalances(
+        events: [event],
+        members: members,
+        allExpenses: const [],
+        allEventSettlements: const [],
+        groupSettlements: const [],
+      );
+      expect(data.balances, isEmpty);
+      expect(data.totalSpent, isEmpty);
+      expect(data.memberNames.keys.toSet(), {'uid-1', 'uid-2'});
     });
   });
 }

@@ -19,7 +19,9 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../../events/models/event_model.dart';
 import '../../events/models/event_type_config.dart';
+import '../../../core/constants/supported_currencies.dart';
 import '../../events/providers/event_provider.dart';
+import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -119,17 +121,32 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             Expanded(
               child: balancesAsync.when(
                 data: (balancesData) {
-                  final optimalSettlements =
-                      BalanceCalculator.calculateOptimalSettlements(
-                        balances: balancesData.balances,
-                        userNames: balancesData.memberNames,
-                      );
+                  // #382 PR-1: one section per currency bucket, the optimizer
+                  // run per bucket (no cross-currency netting, ever). No money
+                  // yet → one empty group-currency bucket (zero summary card).
+                  // The recorded settlement carries the BUCKET currency.
+                  final buckets = <SettleBucket>[
+                    for (final c in sortedGccFirst(balancesData.balances.keys))
+                      (
+                        currency: c,
+                        balances: balancesData.balances[c]!,
+                        optimalSettlements:
+                            BalanceCalculator.calculateOptimalSettlements(
+                              balances: balancesData.balances[c]!,
+                              userNames: balancesData.memberNames,
+                            ),
+                      ),
+                    if (balancesData.balances.isEmpty)
+                      (
+                        currency: group.currency,
+                        balances: const <UserBalance>[],
+                        optimalSettlements: const <Map<String, dynamic>>[],
+                      ),
+                  ];
 
                   final body = SettleUpPageBody(
                     subjectName: group.name,
-                    currency: group.currency,
-                    optimalSettlements: optimalSettlements,
-                    balances: balancesData.balances,
+                    buckets: buckets,
                     rawNames: balancesData.memberRawNames,
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
@@ -143,6 +160,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           required fromUserId,
                           required toUserId,
                           required suggestedAmount,
+                          required currency,
                         }) => _showRecordPaymentSheet(
                           context,
                           group: group,
@@ -152,6 +170,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           fromUserId: fromUserId,
                           toUserId: toUserId,
                           suggestedAmount: suggestedAmount,
+                          currency: currency,
                         ),
                     buildBreakdown: (fromUserId, toUserId) =>
                         _buildPerEventBreakdown(
@@ -312,6 +331,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
+    // #382 PR-1: the BUCKET currency the suggestion was computed in — the
+    // write must carry it (== group.currency for all prod data; a foreign
+    // legacy/forged bucket is rules-refused, the correct outcome until PR-6).
+    required String currency,
   }) async {
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
@@ -320,7 +343,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final isReceiving = ref.read(currentUserIdProvider) == toUserId;
     final result = await showRecordPaymentSheet(
       context,
-      currency: group.currency,
+      currency: currency,
       fromName: fromDisplayName,
       toName: toDisplayName,
       suggestedAmount: suggestedAmount,
@@ -350,7 +373,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           SnackBar(
             content: Text(
               context.l10n.settleUpAmountExceedsOutstanding(
-                AppFormatters.formatCurrency(suggestedAmount, group.currency),
+                AppFormatters.formatCurrency(suggestedAmount, currency),
               ),
             ),
           ),
@@ -368,6 +391,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       toName: toRawName,
       amount: editedAmount,
       note: noteText,
+      currency: currency,
     );
   }
 
@@ -379,6 +403,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     required String fromName,
     required String toName,
     required Decimal amount,
+    required String currency,
     String? note,
   }) async {
     try {
@@ -419,7 +444,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               payerParticipantId: fromUserId,
               recipientParticipantId: toUserId,
               amount: amount,
-              currency: group.currency,
+              currency: currency,
               note: note,
               payerName: fromName,
               recipientName: toName,
@@ -446,7 +471,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             actorId: currentUid,
             actorName: actorName,
             description:
-                'settled ${AppFormatters.formatCurrency(amount, group.currency)} with $counterpartyName',
+                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
             metadata: {'amount': amount.toString(), 'recipientId': toUserId},
           );
 

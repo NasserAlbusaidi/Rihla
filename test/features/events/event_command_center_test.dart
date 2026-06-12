@@ -253,7 +253,7 @@ Widget _wrap({
         eventBalancesProvider((
           eventRef: eventRef,
           event: event,
-        )).overrideWith((_) => AsyncValue.data(balances)),
+        )).overrideWith((_) => AsyncValue.data({currency: balances})),
     ],
     child: MaterialApp(
       theme: AppTheme.lightTheme,
@@ -336,7 +336,7 @@ Future<void> _pumpEventHubRouter(
           eventBalancesProvider((
             eventRef: eventRef,
             event: event,
-          )).overrideWithValue(AsyncValue.data(balances)),
+          )).overrideWithValue(AsyncValue.data({'OMR': balances})),
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,

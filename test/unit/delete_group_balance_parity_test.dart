@@ -72,6 +72,11 @@ void main() {
   Decimal netFor(List<UserBalance> balances, String id) =>
       balances.singleWhere((b) => b.participantId == id).netBalance;
 
+  // #382 PR-1 interim parity statement: the client calculator now returns
+  // per-currency buckets while the TS oracle (recomputeNet) stays flat until
+  // PR-2. Every case here is single-currency OMR, so the client's sole 'OMR'
+  // bucket must reproduce the pinned flat server values byte-for-byte. PR-2
+  // buckets the server and grows this suite with mixed-currency cases.
   group('deleteGroup gate parity (#190 §8.4-B)', () {
     test(
       'case 1: §8.1 case 7/8 fixtures net to all-zero (client and server agree '
@@ -102,7 +107,7 @@ void main() {
               settledAt: DateTime(2026),
             ),
           ],
-        );
+        )['OMR']!;
 
         expect(netFor(balances, 'owner'), Decimal.zero);
         expect(netFor(balances, 'member'), Decimal.zero);
@@ -146,7 +151,7 @@ void main() {
               settledAt: DateTime(2026),
             ),
           ],
-        );
+        )['OMR']!;
 
         expect(netFor(balances, 'owner'), Decimal.zero);
         expect(netFor(balances, 'member'), Decimal.zero);
@@ -179,7 +184,7 @@ void main() {
               },
             ),
           ],
-        );
+        )['OMR']!;
 
         expect(netFor(balances, 'owner'), Decimal.parse('5.000'));
         expect(netFor(balances, 'member'), Decimal.parse('-5.000'));
@@ -208,7 +213,7 @@ void main() {
               },
             ),
           ],
-        );
+        )['OMR']!;
 
         expect(netFor(balances, 'owner'), Decimal.parse('4.000'));
         expect(netFor(balances, 'member'), Decimal.parse('-4.000'));
@@ -236,7 +241,7 @@ void main() {
               },
             ),
           ],
-        );
+        )['OMR']!;
 
         expect(netFor(balances, 'owner'), Decimal.parse('5.000'));
         expect(netFor(balances, 'member'), Decimal.parse('-5.000'));
@@ -267,7 +272,7 @@ void main() {
               },
             ),
           ],
-        );
+        )['OMR']!;
 
         // shares over sorted keys [ghost, member, owner] = 2.000 each, but
         // owedMap is seeded only for the universe {owner, member} → ghost's
@@ -313,7 +318,7 @@ void main() {
               },
             ),
           ],
-        );
+        )['OMR']!;
 
         expect(
           netFor(balances, 'owner'),
@@ -352,7 +357,7 @@ void main() {
               scope: ExpenseScope.global,
             ),
           ],
-        );
+        )['OMR']!;
 
         expect(
           netFor(balances, 'owner'),

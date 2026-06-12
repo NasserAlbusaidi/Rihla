@@ -211,20 +211,20 @@ class _SettledRow extends StatelessWidget {
   }
 }
 
-/// Mono one-liner summarizing the trip total, expense count, and settlement
-/// count. Hidden in the empty state by the caller.
+/// Mono one-liner summarizing the trip total(s), expense count, and settlement
+/// count. Hidden in the empty state by the caller. Renders one amount segment
+/// per currency (#382 PR-1) — a single-currency event looks exactly as before.
 class LedgerTripCaption extends StatelessWidget {
   const LedgerTripCaption({
     super.key,
-    required this.total,
-    required this.currency,
+    required this.totals,
     required this.expenseCount,
     required this.settledCount,
     this.label,
   });
 
-  final Decimal total;
-  final String currency;
+  /// Per-currency totals, pre-sorted by the caller (GCC-first).
+  final List<({String currency, Decimal total})> totals;
   final int expenseCount;
   final int settledCount;
   final String? label;
@@ -274,8 +274,13 @@ class LedgerTripCaption extends StatelessWidget {
         runSpacing: 2,
         children: [
           Text(effectiveLabel, style: labelStyle),
-          Text('·', style: dotStyle),
-          Text(AppFormatters.formatCurrency(total, currency), style: amountStyle),
+          for (final t in totals) ...[
+            Text('·', style: dotStyle),
+            Text(
+              AppFormatters.formatCurrency(t.total, t.currency),
+              style: amountStyle,
+            ),
+          ],
           Text('·', style: dotStyle),
           Text(tail, style: tailStyle),
         ],

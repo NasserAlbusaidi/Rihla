@@ -44,16 +44,18 @@ Event _makeEvent({
 
 GroupBalances _makeGroupBalances(String eventId, Decimal userNet) {
   return (
-    balances: [
-      UserBalance(
-        participantId: 'uid-user',
-        displayName: 'Nasser',
-        totalPaid: Decimal.zero,
-        totalOwed: Decimal.zero,
-        netBalance: userNet,
-      ),
-    ],
-    totalSpent: Decimal.zero,
+    balances: {
+      'OMR': [
+        UserBalance(
+          participantId: 'uid-user',
+          displayName: 'Nasser',
+          totalPaid: Decimal.zero,
+          totalOwed: Decimal.zero,
+          netBalance: userNet,
+        ),
+      ],
+    },
+    totalSpent: {'OMR': Decimal.zero},
     eventCount: 1,
     perEventBreakdown: {
       'uid-user': {eventId: userNet},

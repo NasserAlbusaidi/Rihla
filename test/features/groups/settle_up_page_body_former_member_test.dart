@@ -28,23 +28,27 @@ void main() {
             child: Scaffold(
               body: SettleUpPageBody(
                 subjectName: 'Camp',
-                currency: 'OMR',
-                optimalSettlements: [
-                  {
-                    'fromUserId': 'bob',
-                    'toUserId': 'orphan',
-                    'fromUserName': 'Bob',
-                    'toUserName': 'Aisha (former member)',
-                    'amount': Decimal.parse('4.000'),
-                  },
-                ],
-                balances: [
-                  UserBalance(
-                    participantId: 'orphan',
-                    displayName: 'Aisha (former member)',
-                    totalPaid: Decimal.parse('30.000'),
-                    totalOwed: Decimal.parse('10.000'),
-                    netBalance: Decimal.parse('20.000'),
+                buckets: [
+                  (
+                    currency: 'OMR',
+                    optimalSettlements: [
+                      {
+                        'fromUserId': 'bob',
+                        'toUserId': 'orphan',
+                        'fromUserName': 'Bob',
+                        'toUserName': 'Aisha (former member)',
+                        'amount': Decimal.parse('4.000'),
+                      },
+                    ],
+                    balances: [
+                      UserBalance(
+                        participantId: 'orphan',
+                        displayName: 'Aisha (former member)',
+                        totalPaid: Decimal.parse('30.000'),
+                        totalOwed: Decimal.parse('10.000'),
+                        netBalance: Decimal.parse('20.000'),
+                      ),
+                    ],
                   ),
                 ],
                 rawNames: const {'bob': 'Bob', 'orphan': 'Aisha'},
@@ -59,6 +63,7 @@ void main() {
                       required fromUserId,
                       required toUserId,
                       required suggestedAmount,
+                      required String currency,
                     }) {
                       capturedFromRawName = fromRawName;
                       capturedToRawName = toRawName;

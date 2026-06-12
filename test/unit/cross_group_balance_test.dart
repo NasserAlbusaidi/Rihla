@@ -42,8 +42,8 @@ Group _makeGroup({required String id, required String name}) {
 /// Build a minimal [GroupBalances] record for testing.
 GroupBalances _makeGroupBalances({required List<UserBalance> balances}) {
   return (
-    balances: balances,
-    totalSpent: Decimal.zero,
+    balances: {'OMR': balances},
+    totalSpent: {'OMR': Decimal.zero},
     eventCount: 0,
     perEventBreakdown: const {},
     memberNames: const {},

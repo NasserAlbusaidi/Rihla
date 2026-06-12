@@ -134,23 +134,25 @@ final _testMembers = [
 ];
 
 final _outstandingBalances = (
-  balances: <UserBalance>[
-    UserBalance(
-      participantId: 'uid-creator',
-      displayName: 'Alice',
-      totalPaid: Decimal.fromInt(30),
-      totalOwed: Decimal.fromInt(15),
-      netBalance: Decimal.fromInt(15),
-    ),
-    UserBalance(
-      participantId: 'uid-member',
-      displayName: 'Bob',
-      totalPaid: Decimal.zero,
-      totalOwed: Decimal.fromInt(15),
-      netBalance: Decimal.fromInt(-15),
-    ),
-  ],
-  totalSpent: Decimal.fromInt(30),
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-creator',
+        displayName: 'Alice',
+        totalPaid: Decimal.fromInt(30),
+        totalOwed: Decimal.fromInt(15),
+        netBalance: Decimal.fromInt(15),
+      ),
+      UserBalance(
+        participantId: 'uid-member',
+        displayName: 'Bob',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.fromInt(15),
+        netBalance: Decimal.fromInt(-15),
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.fromInt(30)},
   eventCount: 1,
   perEventBreakdown: <String, Map<String, Decimal>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
@@ -537,6 +539,111 @@ void main() {
           buildOverrides(
             groupService: groupService,
             groupBalances: _outstandingBalances,
+            eventExpenses: Stream.value([_expense()]),
+            eventSettlements: Stream.value(const <Settlement>[]),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await confirmDelete(tester);
+
+      verifyNever(
+        () => groupService.deleteGroup(groupId: any(named: 'groupId')),
+      );
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.groupSettleBeforeDeleting), findsOneWidget);
+    },
+  );
+
+  // #382 PR-1: "deletable" = every member zero in EVERY currency bucket.
+  testWidgets(
+    'two buckets BOTH settled allow delete (false-block regression, #382 PR-1)',
+    (tester) async {
+      // The dangerous failure direction: a wrong-restrictive gate has NO
+      // server fallback (early return) — a group settled in both of two
+      // currency buckets must reach the callable.
+      UserBalance zero(String id, String name) => UserBalance(
+        participantId: id,
+        displayName: name,
+        totalPaid: Decimal.fromInt(10),
+        totalOwed: Decimal.fromInt(10),
+        netBalance: Decimal.zero,
+      );
+      final settledTwoBuckets = (
+        balances: <String, List<UserBalance>>{
+          'OMR': [zero('uid-creator', 'Alice'), zero('uid-member', 'Bob')],
+          'AED': [zero('uid-creator', 'Alice'), zero('uid-member', 'Bob')],
+        },
+        totalSpent: <String, Decimal>{
+          'OMR': Decimal.fromInt(20),
+          'AED': Decimal.fromInt(20),
+        },
+        eventCount: 1,
+        perEventBreakdown: <String, Map<String, Decimal>>{},
+        memberNames: <String, String>{
+          'uid-creator': 'Alice',
+          'uid-member': 'Bob',
+        },
+        memberRawNames: <String, String>{},
+      );
+
+      final groupService = _MockGroupService();
+      when(
+        () => groupService.deleteGroup(groupId: any(named: 'groupId')),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        buildApp(
+          buildOverrides(
+            groupService: groupService,
+            groupBalances: settledTwoBuckets,
+            eventExpenses: Stream.value([_expense()]),
+            eventSettlements: Stream.value(const <Settlement>[]),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await confirmDelete(tester);
+
+      verify(() => groupService.deleteGroup(groupId: 'g1')).called(1);
+    },
+  );
+
+  testWidgets(
+    'a nonzero FOREIGN-currency bucket blocks delete even when the group-'
+    'currency bucket is settled (#382 PR-1)',
+    (tester) async {
+      UserBalance bal(String id, String name, int net) => UserBalance(
+        participantId: id,
+        displayName: name,
+        totalPaid: net > 0 ? Decimal.fromInt(net) : Decimal.zero,
+        totalOwed: net < 0 ? Decimal.fromInt(-net) : Decimal.zero,
+        netBalance: Decimal.fromInt(net),
+      );
+      final mixedOutstanding = (
+        balances: <String, List<UserBalance>>{
+          'OMR': [bal('uid-creator', 'Alice', 0), bal('uid-member', 'Bob', 0)],
+          'AED': [bal('uid-creator', 'Alice', 5), bal('uid-member', 'Bob', -5)],
+        },
+        totalSpent: <String, Decimal>{'OMR': Decimal.zero, 'AED': Decimal.fromInt(5)},
+        eventCount: 1,
+        perEventBreakdown: <String, Map<String, Decimal>>{},
+        memberNames: <String, String>{
+          'uid-creator': 'Alice',
+          'uid-member': 'Bob',
+        },
+        memberRawNames: <String, String>{},
+      );
+
+      final groupService = _MockGroupService();
+
+      await tester.pumpWidget(
+        buildApp(
+          buildOverrides(
+            groupService: groupService,
+            groupBalances: mixedOutstanding,
             eventExpenses: Stream.value([_expense()]),
             eventSettlements: Stream.value(const <Settlement>[]),
           ),

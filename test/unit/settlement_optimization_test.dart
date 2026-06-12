@@ -560,7 +560,7 @@ void main() {
       final balances = BalanceCalculator.calculateBalances(
         expenses: expenses,
         participants: participants,
-      );
+      )['OMR']!;
 
       final optimalSettlements =
           BalanceCalculator.calculateOptimalSettlements(balances: balances);
@@ -577,12 +577,12 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // calculateTotalExpenses
+  // calculateTotalExpensesByCurrency
   // ---------------------------------------------------------------------------
-  group('calculateTotalExpenses', () {
-    test('Empty list — returns Decimal.zero', () {
-      final total = BalanceCalculator.calculateTotalExpenses([]);
-      expect(total, Decimal.zero);
+  group('calculateTotalExpensesByCurrency (#382 PR-1)', () {
+    test('Empty list — returns an empty map', () {
+      final totals = BalanceCalculator.calculateTotalExpensesByCurrency([]);
+      expect(totals, isEmpty);
     });
 
     test('Multiple expenses from different events — correct sum', () {
@@ -613,13 +613,14 @@ void main() {
         ),
       ];
 
-      final total = BalanceCalculator.calculateTotalExpenses(expenses);
-      expect(total, Decimal.parse('70.000'),
+      final totals =
+          BalanceCalculator.calculateTotalExpensesByCurrency(expenses);
+      expect(totals['OMR'], Decimal.parse('70.000'),
           reason: '30 + 25.5 + 14.5 = 70.000');
     });
 
     test('Mix of scopes — all included in total regardless of scope', () {
-      // calculateTotalExpenses sums all expenses regardless of scope
+      // calculateTotalExpensesByCurrency sums all expenses regardless of scope
       final expenses = [
         Expense(
           id: 'e1',
@@ -657,8 +658,9 @@ void main() {
         ),
       ];
 
-      final total = BalanceCalculator.calculateTotalExpenses(expenses);
-      expect(total, Decimal.parse('50.000'),
+      final totals =
+          BalanceCalculator.calculateTotalExpensesByCurrency(expenses);
+      expect(totals['OMR'], Decimal.parse('50.000'),
           reason: '10 + 5 + 15 + 20 = 50.000 across all 4 scopes');
     });
 
@@ -674,8 +676,9 @@ void main() {
         ),
       ];
 
-      final total = BalanceCalculator.calculateTotalExpenses(expenses);
-      expect(total, Decimal.parse('33.333'));
+      final totals =
+          BalanceCalculator.calculateTotalExpensesByCurrency(expenses);
+      expect(totals['OMR'], Decimal.parse('33.333'));
     });
   });
 }
