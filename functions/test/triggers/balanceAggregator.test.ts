@@ -608,3 +608,147 @@ describe('aggregate parity fixtures (#366)', () => {
     expect(data.netMilli).toEqual({ [ALICE]: 5000, [BOB]: -5000 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// #382 PR-3 — aggregate doc v2: per-currency milli maps replace the flat v1
+// fields. Two-bucket groups encode BOTH buckets instead of degrading (the
+// Shim #2 behavior this RED test replaces).
+// ---------------------------------------------------------------------------
+
+describe('aggregate doc v2 (#382 PR-3)', () => {
+  const G = 'g-v2';
+  const V2_AGG = `groups/${G}/aggregates/balance`;
+
+  // One event, two currencies (OMR 9.000 + AED 21.00, alice pays both, equal
+  // split with bob), plus a group-scope AED settlement (bob → alice 2.00).
+  async function seedTwoCurrencyGroup(): Promise<void> {
+    const db = getFirestore();
+    await db.doc(`groups/${G}`).set({
+      id: G,
+      name: G,
+      inviteCode: 'ABC123',
+      createdBy: ALICE,
+      memberIds: [ALICE, BOB],
+      currency: 'OMR',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isDeleted: false,
+      deletedAt: null,
+    });
+    for (const uid of [ALICE, BOB]) {
+      await db.doc(`groups/${G}/members/${uid}`).set({
+        id: uid,
+        userId: uid,
+        displayName: uid,
+        role: uid === ALICE ? 'CREATOR' : 'MEMBER',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+        isShadow: false,
+        isTombstone: false,
+      });
+    }
+    await db.doc(`groups/${G}/events/e1`).set({
+      id: 'e1',
+      groupId: G,
+      name: 'e1',
+      type: 'trip',
+      createdBy: ALICE,
+      participantIds: [ALICE, BOB],
+      participantNames: { [ALICE]: 'Alice', [BOB]: 'Bob' },
+      modules: { ledger: true },
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+    await db.doc(`groups/${G}/events/e1/expenses/x1`).set({
+      id: 'x1',
+      eventId: 'e1',
+      description: 'Fuel',
+      amountFils: 9000,
+      currency: 'OMR',
+      payerParticipantId: ALICE,
+      scope: 'global',
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-03T00:00:00.000Z',
+      createdBy: ALICE,
+      lastEditedBy: ALICE,
+    });
+    await db.doc(`groups/${G}/events/e1/expenses/x2`).set({
+      id: 'x2',
+      eventId: 'e1',
+      description: 'Lunch',
+      amountFils: 2100,
+      currency: 'AED',
+      payerParticipantId: ALICE,
+      scope: 'global',
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-03T01:00:00.000Z',
+      createdBy: ALICE,
+      lastEditedBy: ALICE,
+    });
+    await db.doc(`groups/${G}/settlements/gs1`).set({
+      id: 'gs1',
+      groupId: G,
+      eventId: G,
+      scope: 'group',
+      payerParticipantId: BOB,
+      recipientParticipantId: ALICE,
+      payerName: 'Bob',
+      recipientName: 'Alice',
+      amountFils: 200,
+      currency: 'AED',
+      note: null,
+      isDeleted: false,
+      deletedAt: null,
+      settledAt: '2026-01-05T00:00:00.000Z',
+      createdBy: BOB,
+    });
+  }
+
+  beforeEach(async () => {
+    delete process.env.BALANCE_AGGREGATE_MAX_BYTES;
+    await clearFirestore();
+    await seedTwoCurrencyGroup();
+  });
+
+  afterAll(async () => {
+    await clearFirestore();
+  });
+
+  it('encodes both currency buckets exactly (×1000 milli per bucket), v1 fields absent', async () => {
+    const db = getFirestore();
+    await refreshGroupBalanceAggregate(db, G, 1000);
+
+    const data = (await db.doc(V2_AGG).get()).data()!;
+    expect(data.schemaVersion).toBe(2);
+    expect(data.degraded).toBe(false);
+    expect(data.netMilliByCurrency).toEqual({
+      // AED: 21.00 / 2 = 10.50 each, then the 2.00 group settlement: 8.50.
+      AED: { [ALICE]: 8500, [BOB]: -8500 },
+      // OMR: 9.000 / 2 = 4.500 each.
+      OMR: { [ALICE]: 4500, [BOB]: -4500 },
+    });
+    expect(data.perEventNetMilliByCurrency).toEqual({
+      e1: {
+        AED: { [ALICE]: 10500, [BOB]: -10500 },
+        OMR: { [ALICE]: 4500, [BOB]: -4500 },
+      },
+    });
+    expect(data.netMilli).toBeUndefined();
+    expect(data.perEventNetMilli).toBeUndefined();
+    expect(data.currencies).toBeUndefined();
+  });
+
+  it('folds a group-scope AED settlement into netMilliByCurrency.AED but NO per-event slice (non-decomposition per bucket)', async () => {
+    const db = getFirestore();
+    await refreshGroupBalanceAggregate(db, G, 1000);
+
+    const data = (await db.doc(V2_AGG).get()).data()!;
+    expect(data.netMilliByCurrency.AED).toEqual({ [ALICE]: 8500, [BOB]: -8500 });
+    expect(data.perEventNetMilliByCurrency.e1.AED).toEqual({
+      [ALICE]: 10500,
+      [BOB]: -10500,
+    });
+  });
+});
