@@ -93,7 +93,6 @@ class LedgerDayCard extends StatelessWidget {
     required this.dayLabel,
     required this.sub,
     required this.items,
-    required this.currency,
     required this.currentParticipantId,
     required this.participantCount,
     required this.expensePayerDisplayNames,
@@ -104,7 +103,6 @@ class LedgerDayCard extends StatelessWidget {
   final String dayLabel;
   final String? sub;
   final List<LedgerTimelineItem> items;
-  final String currency;
   final String? currentParticipantId;
   final int participantCount;
   final Map<String, String> expensePayerDisplayNames;
@@ -169,7 +167,7 @@ class LedgerDayCard extends StatelessWidget {
             settlement.recipientName ??
             context.l10n.ledgerSomeoneLower,
         amount: settlement.amount,
-        currency: currency,
+        currency: settlement.currency,
         note: settlement.note,
       ),
     };

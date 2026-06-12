@@ -29,7 +29,6 @@ void main() {
             dayLabel: 'Today',
             sub: null,
             items: [LedgerExpenseItem(expense)],
-            currency: 'OMR',
             currentParticipantId: 'alice',
             participantCount: 3,
             expensePayerDisplayNames: const {

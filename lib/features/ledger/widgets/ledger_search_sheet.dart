@@ -27,7 +27,6 @@ Future<void> showLedgerSearchSheet(
   settlementDisplayNames,
   required String groupId,
   required String eventId,
-  required String currency,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -43,7 +42,6 @@ Future<void> showLedgerSearchSheet(
       settlementDisplayNames: settlementDisplayNames,
       groupId: groupId,
       eventId: eventId,
-      currency: currency,
     ),
   );
 }
@@ -56,7 +54,6 @@ class _LedgerSearchSheet extends StatefulWidget {
     required this.settlementDisplayNames,
     required this.groupId,
     required this.eventId,
-    required this.currency,
   });
 
   final List<Expense> expenses;
@@ -66,7 +63,6 @@ class _LedgerSearchSheet extends StatefulWidget {
   settlementDisplayNames;
   final String groupId;
   final String eventId;
-  final String currency;
 
   @override
   State<_LedgerSearchSheet> createState() => _LedgerSearchSheetState();
@@ -105,7 +101,6 @@ class _LedgerSearchSheetState extends State<_LedgerSearchSheet> {
       widget.expenses,
       widget.settlements,
       _query,
-      currency: widget.currency,
       expensePayerDisplayNames: widget.expensePayerDisplayNames,
       settlementDisplayNames: widget.settlementDisplayNames,
     );
@@ -473,16 +468,11 @@ final class _SettlementHit extends _SearchHit {
   _SettlementHit(
     this.settlement,
     this.payerDisplay,
-    this.recipientDisplay, {
-    required String currency,
-  }) : _currency = currency;
+    this.recipientDisplay,
+  );
   final Settlement settlement;
   final String? payerDisplay;
   final String? recipientDisplay;
-
-  // #261: settlements carry no currency field on the model, so the owning
-  // group's currency is threaded in (== group.currency under Model A rules).
-  final String _currency;
 
   @override
   IconData get leadingIcon => Iconsax.arrow_swap;
@@ -502,7 +492,7 @@ final class _SettlementHit extends _SearchHit {
   @override
   Decimal get amount => settlement.amount;
   @override
-  String get currency => _currency;
+  String get currency => settlement.currency;
   @override
   DateTime get date => settlement.settledAt;
 }
@@ -512,7 +502,6 @@ List<_SearchHit> _filter(
   List<Expense> expenses,
   List<Settlement> settlements,
   String query, {
-  String currency = 'OMR',
   Map<String, String> expensePayerDisplayNames = const {},
   Map<String, ({String payerName, String recipientName})>
       settlementDisplayNames =
@@ -552,7 +541,6 @@ List<_SearchHit> _filter(
             settlement.payerName,
         settlementDisplayNames[settlement.id]?.recipientName ??
             settlement.recipientName,
-        currency: currency,
       ),
   ]..sort((a, b) => b.date.compareTo(a.date));
 
