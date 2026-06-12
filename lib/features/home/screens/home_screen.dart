@@ -22,6 +22,7 @@ import '../../auth/widgets/google_restore_action.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../ledger/providers/expense_provider.dart';
 import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
 import '../providers/dashboard_providers.dart';
@@ -646,13 +647,19 @@ class _GroupRow extends ConsumerWidget {
     // #104 once-path otherwise. The facade slices by the current uid itself.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
     final homeBalance = balanceAsync.valueOrNull;
-    final userNet = homeBalance?.userNet ?? Decimal.zero;
+    // One amount per row until #382 PR-5: the GCC-first non-zero bucket,
+    // labeled with its own currency (honest — D11). Settled ⇔ every bucket
+    // zero or the map is empty (D10), which is exactly when sel.net is zero.
+    final sel = selectNetBucket(
+      homeBalance?.userNet ?? const <String, Decimal>{},
+      fallbackCurrency: group.currency,
+    );
     final eventCount = homeBalance?.eventCount ?? 0;
     final memberCount = group.memberIds.length;
     final subtitle = context.l10n.homeGroupSubtitle(memberCount, eventCount);
-    final balanceCaption = userNet > Decimal.zero
+    final balanceCaption = sel.net > Decimal.zero
         ? context.l10n.homeTheyOweYou
-        : userNet < Decimal.zero
+        : sel.net < Decimal.zero
         ? context.l10n.homeYouOwe
         : context.l10n.homeSettled;
 
@@ -700,10 +707,10 @@ class _GroupRow extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     RAmount(
-                      value: userNet,
-                      currency: group.currency,
+                      value: sel.net,
+                      currency: sel.currency,
                       size: 16,
-                      sign: !userNet.isZero,
+                      sign: !sel.net.isZero,
                     ),
                     const SizedBox(height: 2),
                     Text(

@@ -322,7 +322,7 @@ export interface RecomputeResult {
   // (expense_provider.dart:313-484) and computeGroupBalances.balances
   // (group_balance_provider.dart:405-424). Expenses AND settlements (event- and
   // group-scope) bucket by their OWN per-doc currency (raw, case-preserved via
-  // currencyOf — NOT uppercased; only the `currencies` Set below uppercases).
+  // currencyOf — NOT uppercased).
   // The gates check zero in EVERY bucket. A no-money group with participants
   // carries a single OMR bucket of universe-zeros (finalizeNet) so the flat v1
   // aggregate doc key-set is preserved.
@@ -344,17 +344,6 @@ export interface RecomputeResult {
   // #366: count of events in balance scope (strict isDeleted === false outside
   // a deleteGroup lock window), mirroring GroupBalances.eventCount.
   eventCount: number;
-  // #261/#382: the distinct set of EXPENSE currencies (uppercased) that
-  // contributed to the buckets. SINCE #382 PR-2 this is NO LONGER a gate input —
-  // the gates use the per-currency `net` buckets above, which DO include
-  // settlement currencies (matching the client). It is retained ONLY because the
-  // v1 balance-aggregate doc's `currencies[]` field reads it
-  // (balanceAggregator.ts) and the reconciler fingerprints it
-  // (scheduled/balanceReconciler.ts) — keeping it expense-only + uppercased
-  // keeps the v1 doc byte-identical under Shim #2 (#382 PR-3 replaces this with
-  // a bucketed v2 doc). Built from EXPENSES ONLY (foldEventNet:392) — settlement
-  // currencies live in `net`, not here.
-  currencies: Set<string>;
 }
 
 // One event's money fold: each universe member's event-scoped net
@@ -364,15 +353,12 @@ export interface RecomputeResult {
 // financial actors ∪ member-gated split recipients — feeds `net`) and once with
 // the participantIds-only drill-down universe (feeds `perEventNet`). The fold
 // itself is identical either way: payers/recipients outside the universe are
-// dropped (`.has()` gates — the load-bearing drop), equal-split recipients
-// default to the universe, and expense currencies are recorded into the
-// function-scoped `currencies` set (Set.add is idempotent, so the double call
-// per event cannot double-count).
+// dropped (`.has()` gates — the load-bearing drop) and equal-split recipients
+// default to the universe.
 function foldEventNet(
   expenses: DocumentData[],
   settlements: DocumentData[],
   universe: Set<string>,
-  currencies: Set<string>,
 ): Map<string, Map<string, Decimal>> {
   // currency -> uid -> amount. Each bucket is lazily created and seeded with the
   // universe at zero, mirroring the client calculateBalances `bucketFor`
@@ -399,10 +385,6 @@ function foldEventNet(
 
   for (const e of expenses) {
     const currency = currencyOf(e.currency);
-    // The `currencies` Set is uppercased on purpose (a legacy/Admin group mixing
-    // 'omr'/'OMR' should not appear as two EXPENSE currencies in the v1 doc); the
-    // net bucket KEY above stays raw to match the client byte-for-byte.
-    currencies.add(currency.toUpperCase());
     const paidBucket = bucketFor(paid, currency);
     const owedBucket = bucketFor(owed, currency); // seed owed alongside paid → owed.keys ⊆ paid.keys
     const amount = fromSubunits(amountFilsOf(e), currency);
@@ -567,11 +549,6 @@ export async function recomputeNet(
   const seenUids = new Set<string>();
   const perEventNet = new Map<string, Map<string, Map<string, Decimal>>>();
 
-  // #261: function scope (NOT per-event) so cross-event currency mixing — an OMR
-  // expense in e1 and a USD expense in e2 — is recorded for the v1 doc's
-  // currencies[]. Expense fold only (settlement currencies live in net buckets).
-  const currencies = new Set<string>();
-
   // Skip soft-deleted events wholesale (the client drops them at
   // event_provider.dart:42 — their live children must NOT enter the balance).
   // Exception: when resuming a #205 deleteGroup lock, include events already
@@ -645,7 +622,7 @@ export async function recomputeNet(
     // Record the full universe (incl. a no-money event's participants) so
     // finalizeNet reproduces today's flat-net key-set.
     for (const uid of universe) seenUids.add(uid);
-    const eventNet = foldEventNet(expenses, settlements, universe, currencies);
+    const eventNet = foldEventNet(expenses, settlements, universe);
     for (const [currency, bucket] of eventNet) {
       for (const [uid, delta] of bucket) addNet(currency, uid, delta);
     }
@@ -659,7 +636,7 @@ export async function recomputeNet(
       perEventNet.set(
         eventDoc.id,
         bucketizeDrill(
-          foldEventNet(expenses, settlements, drillUniverse, currencies),
+          foldEventNet(expenses, settlements, drillUniverse),
           drillUniverse,
         ),
       );
@@ -690,7 +667,6 @@ export async function recomputeNet(
   return {
     net: finalizeNet(netByCurrency, seenUids),
     liveEventRefs: liveEventDocs.map((doc) => doc.ref),
-    currencies,
     perEventNet,
     eventCount: liveEventDocs.length,
   };

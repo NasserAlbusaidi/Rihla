@@ -154,7 +154,7 @@ final _outstandingBalances = (
   },
   totalSpent: <String, Decimal>{'OMR': Decimal.fromInt(30)},
   eventCount: 1,
-  perEventBreakdown: <String, Map<String, Decimal>>{},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
   memberRawNames: <String, String>{},
 );
@@ -580,7 +580,7 @@ void main() {
           'AED': Decimal.fromInt(20),
         },
         eventCount: 1,
-        perEventBreakdown: <String, Map<String, Decimal>>{},
+        perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
         memberNames: <String, String>{
           'uid-creator': 'Alice',
           'uid-member': 'Bob',
@@ -629,7 +629,7 @@ void main() {
         },
         totalSpent: <String, Decimal>{'OMR': Decimal.zero, 'AED': Decimal.fromInt(5)},
         eventCount: 1,
-        perEventBreakdown: <String, Map<String, Decimal>>{},
+        perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
         memberNames: <String, String>{
           'uid-creator': 'Alice',
           'uid-member': 'Bob',

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+import '../../../core/constants/supported_currencies.dart';
 import '../../../core/models/split_mode.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/types/event_ref.dart';
@@ -757,4 +758,20 @@ class BalanceCalculator {
     return (currency: entry.key, balances: entry.value);
   }
   return (currency: 'OMR', balances: const <UserBalance>[]);
+}
+
+/// Interim one-amount selection for home surfaces until #382 PR-5 renders
+/// full per-currency rows: the GCC-first NON-ZERO bucket, labeled with its
+/// own currency (honest — never relabeled to the group default); all-zero or
+/// empty → ([fallbackCurrency], zero). Deterministic: with multiple non-zero
+/// buckets the [sortedGccFirst] order decides.
+({String currency, Decimal net}) selectNetBucket(
+  Map<String, Decimal> buckets, {
+  required String fallbackCurrency,
+}) {
+  for (final c in sortedGccFirst(buckets.keys)) {
+    final v = buckets[c]!;
+    if (v != Decimal.zero) return (currency: c, net: v);
+  }
+  return (currency: fallbackCurrency, net: Decimal.zero);
 }

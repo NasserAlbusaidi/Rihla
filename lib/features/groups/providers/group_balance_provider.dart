@@ -78,16 +78,16 @@ final groupActivityProvider =
 ///   are NEVER summed (no FX).
 /// - [totalSpent]: Per-currency sum of all expenses across all group events.
 /// - [eventCount]: Number of events included in the computation.
-/// - [perEventBreakdown]: memberId → eventId → netBalance for that member in
-///   that event. Used for drill-down UI views. Stays FLAT in PR-1 (single
-///   collapse point in [_buildPerEventBreakdown]; bucketed in #382 PR-3).
+/// - [perEventBreakdown]: memberId → eventId → currency → netBalance for that
+///   member in that event (#382 PR-3 buckets the drill-down; a no-money event
+///   carries an explicit synthetic-OMR zero row). Used for drill-down UI views.
 /// - [memberNames]: memberId → displayName map for settlement rendering.
 /// - [memberRawNames]: memberId → raw displayName map for settlement writes.
 typedef GroupBalances = ({
   Map<String, List<UserBalance>> balances,
   Map<String, Decimal> totalSpent,
   int eventCount,
-  Map<String, Map<String, Decimal>> perEventBreakdown,
+  Map<String, Map<String, Map<String, Decimal>>> perEventBreakdown,
   Map<String, String> memberNames,
   Map<String, String> memberRawNames,
 });
@@ -446,24 +446,27 @@ GroupBalances computeGroupBalances({
 // Helper: per-event breakdown
 // ---------------------------------------------------------------------------
 
-/// Builds a breakdown of each member's net balance per event.
+/// Builds a breakdown of each member's net balance per event, per currency
+/// bucket (#382 PR-3).
 ///
-/// Returns: memberId → { eventId → netBalance }
+/// Returns: memberId → { eventId → { currency → netBalance } }
 ///
 /// For each event, participants are derived from [Event.participantIds] and
 /// [Event.participantNames] (UID-based per D-04). Only events with at least
-/// one participant are included.
+/// one participant are included. A no-money event yields an explicit
+/// synthetic-OMR zero row per participant (mirrors the server oracle's
+/// `bucketizeDrill` — there is no real currency to key the zeros).
 ///
 /// Reuses the per-event expense/settlement maps the caller already built from
 /// its own `ref.watch` fan-out — no redundant re-watch here (#112). The
 /// participant set stays [Event.participantIds]-only on purpose: the aggregate
 /// balances above fold in former financial actors, but the drill-down does not.
-Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
+Map<String, Map<String, Map<String, Decimal>>> _buildPerEventBreakdown(
   List<Event> events,
   Map<String, List<Expense>> expensesByEvent,
   Map<String, List<Settlement>> eventSettlementsByEvent,
 ) {
-  final breakdown = <String, Map<String, Decimal>>{};
+  final breakdown = <String, Map<String, Map<String, Decimal>>>{};
 
   for (final event in events) {
     final expenses = expensesByEvent[event.id] ?? const <Expense>[];
@@ -491,30 +494,25 @@ Map<String, Map<String, Decimal>> _buildPerEventBreakdown(
       participants: participants,
     );
 
-    // #382 PR-1 interim collapse (removed in PR-3, which buckets the
-    // breakdown): no money → explicit zero rows (preserves the pre-bucketing
-    // shape); otherwise the GCC-first bucket. Under the live uniformity rules
-    // every prod event has at most one bucket, so this is exact; a mixed
-    // FIXTURE event shows a deterministic single-currency view. Display-only —
-    // no write reads the breakdown.
     if (eventBuckets.isEmpty) {
       for (final p in participants) {
-        breakdown.putIfAbsent(p.id, () => {})[event.id] = Decimal.zero;
+        breakdown.putIfAbsent(p.id, () => {})[event.id] = {
+          'OMR': Decimal.zero,
+        };
       }
       continue;
     }
-    final chosen = _gccFirstCurrency(eventBuckets.keys);
-    for (final b in eventBuckets[chosen]!) {
-      breakdown.putIfAbsent(b.participantId, () => {})[event.id] = b.netBalance;
-    }
+    eventBuckets.forEach((currency, eventBalances) {
+      for (final b in eventBalances) {
+        breakdown
+            .putIfAbsent(b.participantId, () => {})
+            .putIfAbsent(event.id, () => {})[currency] = b.netBalance;
+      }
+    });
   }
 
   return breakdown;
 }
-
-/// GCC-first currency pick — the codebase's standard bucket ordering.
-String _gccFirstCurrency(Iterable<String> currencies) =>
-    sortedGccFirst(currencies).first;
 
 // ---------------------------------------------------------------------------
 // currentUserIdProvider — injectable UID for testability
@@ -823,12 +821,18 @@ final groupBalanceAggregateProvider =
 
 /// What the home surfaces need from one group's balances, source-agnostic.
 ///
+/// Per-currency end-to-end (#382 PR-3): [userNet] is currency → net,
+/// [userPerEventNet] is eventId → currency → net (eventId-major, mirroring
+/// the v2 aggregate doc). Amounts in different currencies are NEVER summed.
+/// A uid absent from a net bucket is zero in that currency; settled ⇔ every
+/// bucket zero, and an empty map ≡ an all-zero map (D10).
+///
 /// [partial] is only ever true on the fallback path (#244 — a per-event read
 /// failed); the aggregate path saw every event server-side. [fromAggregate]
 /// exists for tests/diagnostics, never for display branching.
 typedef HomeGroupBalance = ({
-  Decimal userNet,
-  Map<String, Decimal> userPerEventNet,
+  Map<String, Decimal> userNet,
+  Map<String, Map<String, Decimal>> userPerEventNet,
   int eventCount,
   bool partial,
   bool fromAggregate,
@@ -842,11 +846,10 @@ typedef HomeGroupBalance = ({
 ///   queued local writes are FRESHER than any server doc while offline (the
 ///   post-#412 ledgerRevision bump fires on queued outcomes too)
 /// - aggregate loading                          → loading
-/// - aggregate present, single currency         → aggregate (zero per-event
-///   reads — the O(G×E) → O(G) win)
-/// - aggregate missing / degraded / legacy-mixed currencies / stream error
-///                                              → once-path (today's behavior,
-///   incl. the #244 partial affordance)
+/// - aggregate present                          → aggregate (zero per-event
+///   reads — the O(G×E) → O(G) win; per-currency since #382 PR-3)
+/// - aggregate missing / degraded / stream error → once-path (today's
+///   behavior, incl. the #244 partial affordance)
 ///
 /// The aggregate is a DISPLAY CACHE — nothing may write money based on it;
 /// settle-up and all in-group surfaces keep computing live.
@@ -854,9 +857,9 @@ final homeGroupBalanceProvider =
     Provider.family<AsyncValue<HomeGroupBalance>, String>((ref, groupId) {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) {
-    return AsyncValue.data((
-      userNet: Decimal.zero,
-      userPerEventNet: const <String, Decimal>{},
+    return const AsyncValue.data((
+      userNet: <String, Decimal>{},
+      userPerEventNet: <String, Map<String, Decimal>>{},
       eventCount: 0,
       partial: false,
       fromAggregate: false,
@@ -871,10 +874,7 @@ final homeGroupBalanceProvider =
       return const AsyncValue.loading();
     }
     final aggregate = aggAsync.valueOrNull;
-    // currencies.length > 1 ⇒ legacy mixed-currency group: the flat net is
-    // not honest in a single currency — fall back to the client compute,
-    // which buckets by group currency exactly as before #366.
-    if (aggregate != null && aggregate.currencies.length <= 1) {
+    if (aggregate != null) {
       return AsyncValue.data((
         userNet: aggregate.netFor(uid),
         userPerEventNet: aggregate.perEventNetFor(uid),
@@ -885,30 +885,22 @@ final homeGroupBalanceProvider =
     }
   }
 
-  // Shim #1 (#382 PR-1, removed in PR-3): under the live uniformity rules
-  // every bucket map is empty or a singleton {group.currency: …}; collapse to
-  // the flat facade shape by selecting the group's currency bucket (sole
-  // bucket while the groups list loads). Foreign-currency buckets are
-  // prod-unreachable until PR-6; PR-3 makes the facade per-currency.
-  final groupCurrency = ref
-      .watch(userGroupsProvider)
-      .valueOrNull
-      ?.where((g) => g.id == groupId)
-      .firstOrNull
-      ?.currency;
-
   final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
   return onceAsync.whenData((once) {
     final balances = once.balances;
-    final selected = selectCurrencyBucket(balances.balances, groupCurrency);
+    // Mirror the bucket key-set of the once-path balances: zero when the uid
+    // is absent from a bucket (matches GroupBalanceAggregate.netFor).
     return (
-      userNet: selected.balances
-              .where((b) => b.participantId == uid)
-              .firstOrNull
-              ?.netBalance ??
-          Decimal.zero,
-      userPerEventNet:
-          balances.perEventBreakdown[uid] ?? const <String, Decimal>{},
+      userNet: {
+        for (final entry in balances.balances.entries)
+          entry.key: entry.value
+                  .where((b) => b.participantId == uid)
+                  .firstOrNull
+                  ?.netBalance ??
+              Decimal.zero,
+      },
+      userPerEventNet: balances.perEventBreakdown[uid] ??
+          const <String, Map<String, Decimal>>{},
       eventCount: balances.eventCount,
       partial: once.failedEventIds.isNotEmpty,
       fromAggregate: false,
@@ -963,7 +955,11 @@ final crossGroupHomeBalanceProvider =
     }
     final balance = balanceAsync.requireValue;
     partial = partial || balance.partial;
-    _accumulateBucket(byCurrencyMap, group.currency, balance.userNet);
+    // #382 PR-3 (D12): fold per BUCKET currency (the honest key), mirroring
+    // crossGroupBalanceProvider — group.currency plays no part in the fold.
+    for (final entry in balance.userNet.entries) {
+      _accumulateBucket(byCurrencyMap, entry.key, entry.value);
+    }
   }
 
   return AsyncValue.data((

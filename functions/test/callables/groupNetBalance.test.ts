@@ -145,7 +145,6 @@ describe('recomputeNet drill-down extension (#366)', () => {
     expect(omr.get(ALICE)!.toFixed(3)).toBe('-4.000');
     expect(omr.get(BOB)!.toFixed(3)).toBe('-2.000');
     expect(omr.get(CAROL)!.toFixed(3)).toBe('6.000');
-    expect(result.currencies).toEqual(new Set(['OMR']));
     expect(result.liveEventRefs).toHaveLength(1);
   });
 

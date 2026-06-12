@@ -5,6 +5,7 @@ import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../ledger/providers/expense_provider.dart';
 
 /// One entry in the Home "Active journeys" strip — a flattened event view
 /// enriched with the current user's net balance and the participating members'
@@ -29,7 +30,9 @@ class ActiveJourneyEntry {
   /// Group ID the event belongs to.
   final String groupId;
 
-  /// Owning group's currency (#261) — every event's money is in group.currency.
+  /// Currency of the bucket [userBalance] was selected from (#382 PR-3 —
+  /// honest label, never relabeled to the group default); falls back to
+  /// `group.currency` only when every bucket is zero.
   final String currency;
 
   /// Event name — `Event.name`.
@@ -157,10 +160,16 @@ final activeJourneysProvider =
     // either way. The active-window filter above still watches the LIVE
     // groupEventsProvider, so event add/remove refreshes the strip.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
-    final userEventBalances =
-        balanceAsync.valueOrNull?.userPerEventNet ?? const <String, Decimal>{};
+    final userEventBalances = balanceAsync.valueOrNull?.userPerEventNet ??
+        const <String, Map<String, Decimal>>{};
 
     for (final event in activeEvents) {
+      // One amount per ticket until #382 PR-5: the GCC-first non-zero bucket,
+      // labeled with its own currency (honest — D11).
+      final sel = selectNetBucket(
+        userEventBalances[event.id] ?? const <String, Decimal>{},
+        fallbackCurrency: group.currency,
+      );
       entries.add(ActiveJourneyEntry(
         eventId: event.id,
         groupId: group.id,
@@ -173,8 +182,8 @@ final activeJourneysProvider =
         startDate: event.startDate,
         endDate: event.endDate,
         createdAt: event.createdAt,
-        userBalance: userEventBalances[event.id] ?? Decimal.zero,
-        currency: group.currency,
+        userBalance: sel.net,
+        currency: sel.currency,
       ));
     }
   }

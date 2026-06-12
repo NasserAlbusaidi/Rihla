@@ -43,7 +43,7 @@ List<Override> _overrides(List<Group> groups) => [
       balances: <String, List<UserBalance>>{},
       totalSpent: <String, Decimal>{},
       eventCount: 0,
-      perEventBreakdown: <String, Map<String, Decimal>>{},
+      perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
       memberNames: <String, String>{},
       memberRawNames: <String, String>{},
     )),
@@ -154,6 +154,59 @@ void main() {
       expect(find.text('Start your first group'), findsOneWidget);
       expect(find.text('Create Group'), findsOneWidget);
     });
+
+    testWidgets(
+      'group row labels an AED-only balance AED — honest, '
+      'not group.currency (#382 PR-3)',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildTestApp(
+            prefs: prefs,
+            overrides: [
+              ..._overrides([_makeGroup('g1', 'Desert Crew')]),
+              homeGroupBalanceProvider.overrideWith(
+                (ref, groupId) => AsyncValue.data((
+                  userNet: {'AED': Decimal.parse('10.50')},
+                  userPerEventNet: const <String, Map<String, Decimal>>{},
+                  eventCount: 1,
+                  partial: false,
+                  fromAggregate: true,
+                )),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final row = find
+            .ancestor(
+              of: find.text('Desert Crew'),
+              matching: find.byType(InkWell),
+            )
+            .first;
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.textContaining('AED', findRichText: true),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.textContaining('10.50', findRichText: true),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.textContaining('OMR', findRichText: true),
+          ),
+          findsNothing,
+        );
+      },
+    );
 
     testWidgets('group row navigates through GoRouter', (tester) async {
       await tester.pumpWidget(

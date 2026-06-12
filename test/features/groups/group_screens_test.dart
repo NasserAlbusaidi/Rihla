@@ -77,9 +77,13 @@ final _membersWithBalances = (
   },
   totalSpent: <String, Decimal>{'OMR': Decimal.parse('30.000')},
   eventCount: 1,
-  perEventBreakdown: <String, Map<String, Decimal>>{
-    'uid-creator': {'evt-1': Decimal.parse('15.000')},
-    'uid-member': {'evt-1': Decimal.parse('-15.000')},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+    'uid-creator': {
+      'evt-1': {'OMR': Decimal.parse('15.000')},
+    },
+    'uid-member': {
+      'evt-1': {'OMR': Decimal.parse('-15.000')},
+    },
   },
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
   memberRawNames: <String, String>{},
@@ -111,7 +115,7 @@ final _membersWithZeroBalance = (
   },
   totalSpent: <String, Decimal>{'OMR': Decimal.zero},
   eventCount: 0,
-  perEventBreakdown: <String, Map<String, Decimal>>{},
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
   memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
   memberRawNames: <String, String>{},
 );

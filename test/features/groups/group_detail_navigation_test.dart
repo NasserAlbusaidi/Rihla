@@ -71,7 +71,7 @@ void main() {
     },
     totalSpent: <String, Decimal>{'OMR': Decimal.zero},
     eventCount: 0,
-    perEventBreakdown: <String, Map<String, Decimal>>{},
+    perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
     memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
     memberRawNames: <String, String>{},
   );
