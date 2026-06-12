@@ -775,3 +775,31 @@ class BalanceCalculator {
   }
   return (currency: fallbackCurrency, net: Decimal.zero);
 }
+
+/// Non-zero buckets, GCC-first ([sortedGccFirst]) — the canonical line list
+/// for per-currency display surfaces (#382 PR-5). Empty result ⇔ settled
+/// everywhere. "Non-zero" is EXACT `!= Decimal.zero` — no tolerance, so a
+/// sub-tolerance residual renders instead of silently reading as settled.
+List<({String currency, Decimal net})> nonZeroNetsGccFirst(
+  Map<String, Decimal> nets,
+) {
+  return [
+    for (final c in sortedGccFirst(nets.keys))
+      if (nets[c] != Decimal.zero) (currency: c, net: nets[c]!),
+  ];
+}
+
+/// [uid]'s net per currency from a bucketed balance map (#382 PR-5). Buckets
+/// where [uid] is absent or nets exactly zero are dropped; null [uid] → `{}`.
+Map<String, Decimal> myNetByCurrency(
+  Map<String, List<UserBalance>> buckets,
+  String? uid,
+) {
+  if (uid == null) return const {};
+  return {
+    for (final entry in buckets.entries)
+      for (final balance in entry.value)
+        if (balance.participantId == uid && balance.netBalance != Decimal.zero)
+          entry.key: balance.netBalance,
+  };
+}
