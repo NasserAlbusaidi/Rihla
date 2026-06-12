@@ -154,9 +154,9 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-12, `8acb7fdf`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-12, `b12a3f00`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-12 deploy ceremony the `backend-deployed` tag is `8acb7fdf` and
+    2026-06-12 deploy ceremony the `backend-deployed` tag is `b12a3f00` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`).
     `docs/DEPLOY-LEDGER.md` is the authoritative per-deploy history; shipped
     across the 2026-06-07…12 deploys:
@@ -234,6 +234,17 @@ starts a new run.
       unchanged. Backward-compatible — single-currency (all prod) behavior is
       identical; the per-bucket logic is unreachable until PR-6 relaxes the
       uniformity rules. Mirrors the merged client PR-1; #382 epic stays open.
+    - **#382 PR-3** (`b12a3f00`, #471) — aggregate doc v2: `balanceAggregator`
+      drops Shim #2 and writes `schemaVersion: 2` per-currency milli maps
+      (`netMilliByCurrency` `{ccy:{uid:int}}` + `perEventNetMilliByCurrency`
+      `{eid:{ccy:{uid:int}}}`, eventId-major); `degraded` is byte-cap-only;
+      `balanceReconciler` fingerprint re-keyed to the v2 fields (first sweep =
+      v1→v2 backfill); dead `RecomputeResult.currencies` deleted. Client half
+      (v2 decoder, facade serves mixed docs, Shim #1 dropped, bucket-key
+      cross-group fold) merged in the same PR; v1-pinned clients decode v2 docs
+      as null → once-path fallback. Functions-only; 17 functions unchanged.
+      #382 epic stays open (PR-4 activity-log currency / PR-5 stepped settle /
+      PR-6 rules relaxation remain).
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
