@@ -317,42 +317,43 @@ function stringArray(value: unknown): string[] {
 }
 
 export interface RecomputeResult {
-  net: Map<string, Decimal>;
+  // #382 PR-2: per-CURRENCY net buckets. currency -> uid -> net, mirroring the
+  // client BalanceCalculator.calculateBalances → Map<currency, List<UserBalance>>
+  // (expense_provider.dart:313-484) and computeGroupBalances.balances
+  // (group_balance_provider.dart:405-424). Expenses AND settlements (event- and
+  // group-scope) bucket by their OWN per-doc currency (raw, case-preserved via
+  // currencyOf — NOT uppercased; only the `currencies` Set below uppercases).
+  // The gates check zero in EVERY bucket. A no-money group with participants
+  // carries a single OMR bucket of universe-zeros (finalizeNet) so the flat v1
+  // aggregate doc key-set is preserved.
+  net: Map<string, Map<string, Decimal>>;
   liveEventRefs: DocumentReference[];
-  // #366: per-event drill-down slice for the balance-aggregate doc. Universe =
-  // event.participantIds ONLY (no former financial actors, no member-gated
-  // split-recipient fold) and group-scope settlements are NOT folded — this
-  // mirrors the client _buildPerEventBreakdown
-  // (lib/features/groups/providers/group_balance_provider.dart:432-471), which
-  // is pinned participantIds-only by group_balance_provider_test.dart. Events
-  // with empty participantIds are omitted. NON-DECOMPOSITION: net is NOT the
-  // sum of these slices (different universes + group settlements + drops) —
-  // never reconcile one from the other.
-  perEventNet: Map<string, Map<string, Decimal>>;
+  // #366/#382: per-event drill-down slice, now also per-currency
+  // (eid -> currency -> uid -> net). Universe = event.participantIds ONLY (no
+  // former financial actors, no member-gated split-recipient fold) and
+  // group-scope settlements are NOT folded — this mirrors the client
+  // _buildPerEventBreakdown
+  // (lib/features/groups/providers/group_balance_provider.dart:461-513), which
+  // is pinned participantIds-only by group_balance_provider_test.dart. A
+  // no-money event yields a single OMR bucket of participantIds-zeros
+  // (bucketizeDrill), matching the client's explicit zero-rows. Events with
+  // empty participantIds are omitted. NON-DECOMPOSITION: net is NOT the sum of
+  // these slices (different universes + group settlements + drops) — never
+  // reconcile one from the other.
+  perEventNet: Map<string, Map<string, Map<string, Decimal>>>;
   // #366: count of events in balance scope (strict isDeleted === false outside
   // a deleteGroup lock window), mirroring GroupBalances.eventCount.
   eventCount: number;
-  // #261: the distinct set of EXPENSE currencies that actually contributed to
-  // `net`. The flat scalar `net` is only a true settled-check when a group holds
-  // ONE expense currency (Model A); two different EXPENSE currencies can net to a
-  // fake Decimal 0 (+10 OMR / −10 USD), so the balance-zero gates (deleteGroup/
-  // leaveGroup/removeMember) refuse when size > 1 rather than act on a
-  // meaningless scalar.
-  //
-  // SCOPE — built from EXPENSES ONLY, NOT settlements. This is deliberate and
-  // load-bearing, NOT an oversight: LEGACY (pre-#376/#377) settlements were
-  // written OMR-scale even in a non-OMR group (the client used to hardcode
-  // 'OMR'; since #376/#377 both settle-up paths write group.currency), so a
-  // legitimate single-expense-currency group can carry an OMR settlement
-  // against a non-OMR debt — folding settlement currency would (a) falsely flag
-  // that group as mixed (false-nonzero → a STUCK, undeletable group), (b) break
-  // deleteGroup test 9, and (c) diverge from the client BalanceCalculator (which
-  // has the SAME currency-blindness and shows that group as settled) — a parity
-  // break. The residual gap this leaves — a non-OMR expense "settled" by an
-  // incomparable OMR settlement — is the DEEPER expense-vs-settlement currency-
-  // blindness that Model B (per-currency buckets) owns; it defends legacy/Admin
-  // docs and pre-exists this guard. Do NOT "fix" it here by adding settlement
-  // currencies.
+  // #261/#382: the distinct set of EXPENSE currencies (uppercased) that
+  // contributed to the buckets. SINCE #382 PR-2 this is NO LONGER a gate input —
+  // the gates use the per-currency `net` buckets above, which DO include
+  // settlement currencies (matching the client). It is retained ONLY because the
+  // v1 balance-aggregate doc's `currencies[]` field reads it
+  // (balanceAggregator.ts) and the reconciler fingerprints it
+  // (scheduled/balanceReconciler.ts) — keeping it expense-only + uppercased
+  // keeps the v1 doc byte-identical under Shim #2 (#382 PR-3 replaces this with
+  // a bucketed v2 doc). Built from EXPENSES ONLY (foldEventNet:392) — settlement
+  // currencies live in `net`, not here.
   currencies: Set<string>;
 }
 
@@ -372,28 +373,42 @@ function foldEventNet(
   settlements: DocumentData[],
   universe: Set<string>,
   currencies: Set<string>,
-): Map<string, Decimal> {
-  const paid = new Map<string, Decimal>();
-  const owed = new Map<string, Decimal>();
-  const settlementAdj = new Map<string, Decimal>();
-  for (const uid of universe) {
-    paid.set(uid, new Money(0));
-    owed.set(uid, new Money(0));
-    settlementAdj.set(uid, new Money(0));
-  }
+): Map<string, Map<string, Decimal>> {
+  // currency -> uid -> amount. Each bucket is lazily created and seeded with the
+  // universe at zero, mirroring the client calculateBalances `bucketFor`
+  // (expense_provider.dart:329-337); the .has() membership gate below keeps
+  // dropping keys outside the universe (the #192/#223 drop-guard). Bucket KEY is
+  // the raw fenced currency (currencyOf — case-preserved), exactly the client's
+  // `MoneySerializer.isSupported(x) ? x : 'OMR'` key, NOT uppercased.
+  const paid = new Map<string, Map<string, Decimal>>();
+  const owed = new Map<string, Map<string, Decimal>>();
+  const adj = new Map<string, Map<string, Decimal>>();
+
+  const bucketFor = (
+    maps: Map<string, Map<string, Decimal>>,
+    currency: string,
+  ): Map<string, Decimal> => {
+    let bucket = maps.get(currency);
+    if (bucket == null) {
+      bucket = new Map<string, Decimal>();
+      for (const uid of universe) bucket.set(uid, new Money(0));
+      maps.set(currency, bucket);
+    }
+    return bucket;
+  };
 
   for (const e of expenses) {
     const currency = currencyOf(e.currency);
-    // #261: normalize case — currencyOf returns the raw code, but the net math
-    // (currencyScale) uppercases internally, so a legacy/Admin group mixing
-    // 'omr' and 'OMR' decodes to a TRUE zero. Without toUpperCase the set would
-    // be {'omr','OMR'} (size 2) and falsely brick a genuinely-settled group —
-    // exactly the legacy/Admin population this guard exists to defend.
+    // The `currencies` Set is uppercased on purpose (a legacy/Admin group mixing
+    // 'omr'/'OMR' should not appear as two EXPENSE currencies in the v1 doc); the
+    // net bucket KEY above stays raw to match the client byte-for-byte.
     currencies.add(currency.toUpperCase());
+    const paidBucket = bucketFor(paid, currency);
+    const owedBucket = bucketFor(owed, currency); // seed owed alongside paid → owed.keys ⊆ paid.keys
     const amount = fromSubunits(amountFilsOf(e), currency);
     const payerId = e.payerParticipantId;
-    if (typeof payerId === 'string' && paid.has(payerId)) {
-      paid.set(payerId, paid.get(payerId)!.plus(amount));
+    if (typeof payerId === 'string' && paidBucket.has(payerId)) {
+      paidBucket.set(payerId, paidBucket.get(payerId)!.plus(amount));
     }
 
     const mode = decodeSplitMode(e.splitMode);
@@ -424,31 +439,92 @@ function foldEventNet(
       allocations = allocateEqual(amount, recipients, currency);
     }
 
-    // Fold owed, dropping any recipient outside the universe (the load-bearing
-    // drop: an out-of-universe splitDistribution key never offsets the payer).
+    // Fold owed into this expense's currency bucket, dropping any recipient
+    // outside the universe (the load-bearing drop: an out-of-universe
+    // splitDistribution key never offsets the payer).
     for (const [uid, value] of allocations) {
-      if (owed.has(uid)) owed.set(uid, owed.get(uid)!.plus(value));
+      if (owedBucket.has(uid)) owedBucket.set(uid, owedBucket.get(uid)!.plus(value));
     }
   }
 
   for (const s of settlements) {
     const currency = currencyOf(s.currency);
+    const adjBucket = bucketFor(adj, currency);
     const amount = fromSubunits(amountFilsOf(s), currency);
     const payerId = s.payerParticipantId;
     const recipientId = s.recipientParticipantId;
-    if (typeof payerId === 'string' && settlementAdj.has(payerId)) {
-      settlementAdj.set(payerId, settlementAdj.get(payerId)!.plus(amount));
+    if (typeof payerId === 'string' && adjBucket.has(payerId)) {
+      adjBucket.set(payerId, adjBucket.get(payerId)!.plus(amount));
     }
-    if (typeof recipientId === 'string' && settlementAdj.has(recipientId)) {
-      settlementAdj.set(recipientId, settlementAdj.get(recipientId)!.minus(amount));
+    if (typeof recipientId === 'string' && adjBucket.has(recipientId)) {
+      adjBucket.set(recipientId, adjBucket.get(recipientId)!.minus(amount));
     }
   }
 
-  const net = new Map<string, Decimal>();
-  for (const uid of universe) {
-    net.set(uid, paid.get(uid)!.plus(settlementAdj.get(uid)!).minus(owed.get(uid)!));
+  // Net per bucket. Bucket union = paid.keys ∪ adj.keys (owed.keys ⊆ paid.keys
+  // since each expense seeds both) — mirrors calculateBalances:460-463. Each
+  // bucket lists every universe uid (zeros included), mirroring :467-482.
+  const allCurrencies = new Set<string>([...paid.keys(), ...adj.keys()]);
+  const net = new Map<string, Map<string, Decimal>>();
+  for (const currency of allCurrencies) {
+    const paidBucket = paid.get(currency);
+    const owedBucket = owed.get(currency);
+    const adjBucket = adj.get(currency);
+    const bucketNet = new Map<string, Decimal>();
+    for (const uid of universe) {
+      const p = paidBucket?.get(uid) ?? new Money(0);
+      const o = owedBucket?.get(uid) ?? new Money(0);
+      const a = adjBucket?.get(uid) ?? new Money(0);
+      bucketNet.set(uid, p.plus(a).minus(o));
+    }
+    net.set(currency, bucketNet);
   }
   return net;
+}
+
+// Restore the flat-net key-set + no-money zero-rows the v1 aggregate doc and the
+// gates expect (#382 PR-2). A no-money event still surfaces its participants as
+// zeros (the pre-bucketing fold seeded the universe), but under bucketing there
+// is no real currency to key those zeros — so when NO real currency exists we
+// emit a single OMR bucket of seen-uid-zeros, and when real currencies DO exist
+// we list every seen uid in each (zeros for the absent), mirroring the client
+// `balances` build (group_balance_provider.dart:405-424). The fallback fires
+// ONLY when there is no real currency, so it never inflates net.size for a group
+// that holds money (which would falsely degrade the aggregate doc).
+function finalizeNet(
+  netByCurrency: Map<string, Map<string, Decimal>>,
+  seenUids: Set<string>,
+): Map<string, Map<string, Decimal>> {
+  if (netByCurrency.size === 0) {
+    if (seenUids.size === 0) return new Map();
+    const zeros = new Map<string, Decimal>();
+    for (const uid of seenUids) zeros.set(uid, new Money(0));
+    return new Map([['OMR', zeros]]);
+  }
+  const out = new Map<string, Map<string, Decimal>>();
+  for (const [currency, bucket] of netByCurrency) {
+    const full = new Map<string, Decimal>();
+    for (const uid of seenUids) full.set(uid, bucket.get(uid) ?? new Money(0));
+    // Defensive: a bucket uid not in seenUids (should not happen — seenUids ⊇
+    // every event universe ∪ group-settlement parties) is preserved.
+    for (const [uid, value] of bucket) if (!full.has(uid)) full.set(uid, value);
+    out.set(currency, full);
+  }
+  return out;
+}
+
+// Per-event drill-down: foldEventNet already seeds the drill universe per real
+// bucket; a no-money event returns {} → emit the OMR zero-rows the v1 doc's
+// perEventNetMilli expects (mirror _buildPerEventBreakdown's explicit zero rows,
+// group_balance_provider.dart:500-505).
+function bucketizeDrill(
+  slice: Map<string, Map<string, Decimal>>,
+  drillUniverse: Set<string>,
+): Map<string, Map<string, Decimal>> {
+  if (slice.size > 0) return slice;
+  const zeros = new Map<string, Decimal>();
+  for (const uid of drillUniverse) zeros.set(uid, new Money(0));
+  return new Map([['OMR', zeros]]);
 }
 
 export async function recomputeNet(
@@ -474,14 +550,26 @@ export async function recomputeNet(
     }
   }
 
-  const net = new Map<string, Decimal>();
-  const addNet = (uid: string, delta: Decimal): void => {
-    net.set(uid, (net.get(uid) ?? new Money(0)).plus(delta));
+  // #382 PR-2: per-currency net buckets. addNet routes a delta into (ccy, uid).
+  const netByCurrency = new Map<string, Map<string, Decimal>>();
+  const addNet = (currency: string, uid: string, delta: Decimal): void => {
+    let bucket = netByCurrency.get(currency);
+    if (bucket == null) {
+      bucket = new Map<string, Decimal>();
+      netByCurrency.set(currency, bucket);
+    }
+    bucket.set(uid, (bucket.get(uid) ?? new Money(0)).plus(delta));
   };
-  const perEventNet = new Map<string, Map<string, Decimal>>();
+  // seenUids = the server analog of the client `allUids` (minus bare members):
+  // ∪ event universes ∪ group-settlement parties. finalizeNet lists these in
+  // each bucket so the flat v1-doc net key-set (incl. no-money zero rows) is
+  // preserved (#382 PR-2).
+  const seenUids = new Set<string>();
+  const perEventNet = new Map<string, Map<string, Map<string, Decimal>>>();
 
   // #261: function scope (NOT per-event) so cross-event currency mixing — an OMR
-  // expense in e1 and a USD expense in e2 — is also detected. Expense fold only.
+  // expense in e1 and a USD expense in e2 — is recorded for the v1 doc's
+  // currencies[]. Expense fold only (settlement currencies live in net buckets).
   const currencies = new Set<string>();
 
   // Skip soft-deleted events wholesale (the client drops them at
@@ -554,24 +642,33 @@ export async function recomputeNet(
     }
     if (universe.size === 0) continue;
 
+    // Record the full universe (incl. a no-money event's participants) so
+    // finalizeNet reproduces today's flat-net key-set.
+    for (const uid of universe) seenUids.add(uid);
     const eventNet = foldEventNet(expenses, settlements, universe, currencies);
-    for (const [uid, delta] of eventNet) {
-      addNet(uid, delta);
+    for (const [currency, bucket] of eventNet) {
+      for (const [uid, delta] of bucket) addNet(currency, uid, delta);
     }
 
-    // #366: drill-down slice — same fold, participantIds-only universe. Skip
-    // empty-participant events (the client skips participants.isEmpty).
+    // #366/#382: drill-down slice — same fold, participantIds-only universe, now
+    // per-currency. Skip empty-participant events (the client skips
+    // participants.isEmpty). A no-money event yields the OMR zero-rows
+    // (bucketizeDrill), matching the client's explicit zero rows.
     const drillUniverse = new Set<string>(participantIds);
     if (drillUniverse.size > 0) {
       perEventNet.set(
         eventDoc.id,
-        foldEventNet(expenses, settlements, drillUniverse, currencies),
+        bucketizeDrill(
+          foldEventNet(expenses, settlements, drillUniverse, currencies),
+          drillUniverse,
+        ),
       );
     }
   }
 
   // Group-scope settlements fold into net globally (not bounded to any event
-  // universe). Mirror group_balance_provider.dart:285-304.
+  // universe), each into its OWN per-doc currency bucket. Mirror the client
+  // groupAdjByCurrency fold (group_balance_provider.dart:353-378).
   const groupSettlementsSnap = await groupRef.collection('settlements').get();
   for (const doc of groupSettlementsSnap.docs) {
     const s = doc.data();
@@ -580,12 +677,18 @@ export async function recomputeNet(
     const amount = fromSubunits(amountFilsOf(s), currency);
     const payerId = s.payerParticipantId;
     const recipientId = s.recipientParticipantId;
-    if (typeof payerId === 'string') addNet(payerId, amount);
-    if (typeof recipientId === 'string') addNet(recipientId, amount.negated());
+    if (typeof payerId === 'string') {
+      seenUids.add(payerId);
+      addNet(currency, payerId, amount);
+    }
+    if (typeof recipientId === 'string') {
+      seenUids.add(recipientId);
+      addNet(currency, recipientId, amount.negated());
+    }
   }
 
   return {
-    net,
+    net: finalizeNet(netByCurrency, seenUids),
     liveEventRefs: liveEventDocs.map((doc) => doc.ref),
     currencies,
     perEventNet,

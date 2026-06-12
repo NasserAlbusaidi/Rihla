@@ -276,10 +276,12 @@ describe('leaveGroup callable — server-authoritative self-leave + balance gate
     expect((await groupData('g')).memberIds).toEqual([OWNER, MEMBER]);
   });
 
-  test('8b. mixed-currency group blocks leave even when the leaver nets to a fake zero (#261)', async () => {
-    // OWNER pays 10.000 OMR (equal → each owes 5.000); MEMBER pays 10.00 USD
-    // (equal → each owes 5.00). MEMBER net = 10(USD) − 5(OMR) − 5(USD) = a FAKE
-    // zero, so isZero() would WRONGLY allow the leave. currencies {OMR,USD} → refuse.
+  test('8b. mixed-currency group blocks leave when the leaver is non-zero in a bucket (#261/#382)', async () => {
+    // OWNER pays 10.000 OMR (equal → each owes 5.000) → OMR bucket MEMBER −5;
+    // MEMBER pays 10.00 USD (equal → each owes 5.00) → USD bucket MEMBER +5.
+    // #382 PR-2: MEMBER is non-zero in BOTH buckets → the per-bucket gate
+    // refuses. (Pre-PR-2 the flat scalar MEMBER net = 10 − 5 − 5 faked zero and
+    // only currencies.size>1 caught the money-loss path.)
     await seedGroup('g');
     await seedMember('g', OWNER);
     await seedMember('g', MEMBER);
@@ -321,5 +323,50 @@ describe('leaveGroup callable — server-authoritative self-leave + balance gate
     // The uuid-keyed creator doc (a .doc(uid) lookup would MISS it) is deleted.
     expect(await docExists(`groups/g/members/${creatorDocId}`)).toBe(false);
     expect(await membersWithUserId('g', OWNER)).toBe(0);
+  });
+
+  test('8c. mixed-currency group ALLOWS leave when the leaver is settled in EVERY bucket (#382 PR-2)', async () => {
+    // Mirror of deleteGroup 9e for leave: a 2-currency group where the leaver
+    // nets zero in each bucket. Pre-PR-2 the currencies.size>1 guard refused
+    // unconditionally; the per-bucket gate now lets the square leaver out.
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    // OMR: OWNER pays 10.000 global-equal → MEMBER owes 5.000; MEMBER→OWNER
+    // 5.000 OMR clears MEMBER's OMR bucket to zero.
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      currency: 'OMR',
+      payerParticipantId: OWNER,
+      createdBy: OWNER,
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 5000,
+      currency: 'OMR',
+    });
+    // USD: OWNER pays 10.00 global-equal → MEMBER owes 5.00; MEMBER→OWNER 5.00
+    // USD clears MEMBER's USD bucket to zero.
+    await seedExpense('groups/g/events/e1/expenses/x2', {
+      amountFils: 1000,
+      currency: 'USD',
+      payerParticipantId: OWNER,
+      createdBy: OWNER,
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s2', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 500,
+      currency: 'USD',
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: MEMBER },
+    } as any);
+    expect(res).toMatchObject({ mode: 'left', alreadyLeft: false });
+    expect((await groupData('g')).memberIds).toEqual([OWNER]);
   });
 });

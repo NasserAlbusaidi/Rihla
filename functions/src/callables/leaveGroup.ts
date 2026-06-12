@@ -83,19 +83,19 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
     // the client ledger + deleteGroup use; a missing entry means the leaver never
     // had a financial position ⇒ owes nothing ⇒ allowed. isZero() is exact (the
     // allocators close residuals, incl. the #223 in-tolerance close-out).
-    const { net, currencies } = await recomputeNet(db, groupRef);
-    // #261: a mixed-currency group's per-actor net is a meaningless flat scalar
-    // (a +10 OMR / −10 USD position fakes Decimal 0), so isZero() below cannot
-    // be trusted. Refuse rather than let a member leave while owing per-currency.
-    // Unreachable under Model A; defends legacy/Admin-written docs.
-    if (currencies.size > 1) {
-      throw new HttpsError(
-        'failed-precondition',
-        'This group holds more than one currency; leaving is not supported.',
-      );
-    }
-    const leaverNet = net.get(uid);
-    if (leaverNet && !leaverNet.isZero()) {
+    const { net } = await recomputeNet(db, groupRef);
+    // #382 PR-2: net is per-currency buckets (currency -> uid -> net). The
+    // leaver may leave only when they net exactly zero in EVERY currency bucket
+    // — no FX, so each currency must clear independently. (The old
+    // `currencies.size > 1` refusal is gone: a mixed group where the leaver is
+    // square per-currency is fine.) A missing entry ⇒ no position in that
+    // currency ⇒ zero. isZero() is exact (the allocators close residuals, incl.
+    // the #223 in-tolerance close-out).
+    const leaverOutstanding = [...net.values()].some((bucket) => {
+      const v = bucket.get(uid);
+      return v != null && !v.isZero();
+    });
+    if (leaverOutstanding) {
       throw new HttpsError(
         'failed-precondition',
         'You have an unsettled balance and cannot leave the group.',

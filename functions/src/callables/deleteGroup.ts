@@ -251,20 +251,18 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
       await enforceDeleteGroupRateLimit(db, uid);
       await pauseAfterLockIfRequested();
 
-      const { net, liveEventRefs, currencies } = await recomputeNet(db, groupRef);
-      // #261: a mixed-currency group nets to a meaningless flat scalar (a
-      // +10 OMR / −10 USD group fakes Decimal 0), so the balance-zero check
-      // below cannot be trusted. Refuse rather than risk deleting a group with
-      // real per-currency debt. Under Model A (one currency per group) this is
-      // unreachable for app data; it defends legacy/Admin-written docs.
-      if (currencies.size > 1) {
-        throw new HttpsError(
-          'failed-precondition',
-          'Group holds more than one currency and cannot be deleted.',
-        );
-      }
-      const outstanding = [...net.entries()].filter(([, value]) => !value.isZero());
-      if (outstanding.length > 0) {
+      const { net, liveEventRefs } = await recomputeNet(db, groupRef);
+      // #382 PR-2: net is now per-currency buckets (currency -> uid -> net). A
+      // group is settled only when EVERY actor in EVERY currency bucket nets
+      // exactly zero — no FX, so each currency must clear on its own. (The old
+      // `currencies.size > 1` refusal is gone: a mixed-currency group whose
+      // buckets each settle independently is now deletable; an unsettled bucket
+      // refuses.) isZero() is exact (the allocators close residuals, incl. the
+      // #223 in-tolerance close-out).
+      const hasOutstanding = [...net.values()].some(
+        (bucket) => [...bucket.values()].some((value) => !value.isZero()),
+      );
+      if (hasOutstanding) {
         throw new HttpsError(
           'failed-precondition',
           'Group has unsettled balances and cannot be deleted.',

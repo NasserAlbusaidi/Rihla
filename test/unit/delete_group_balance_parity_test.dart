@@ -375,5 +375,61 @@ void main() {
         );
       },
     );
+
+    test(
+      'case 5: a two-currency event buckets independently — OMR settled, USD '
+      'outstanding (the #382 PR-2 per-bucket gate must refuse) (#382)',
+      () {
+        // owner pays 10.000 OMR global-equal {owner, member} → owner +5.000,
+        // member −5.000; member→owner 5.000 OMR settles the OMR bucket to zero.
+        // member pays 6.00 USD global-equal → member +3.00, owner −3.00; no USD
+        // settlement, so the USD bucket stays non-zero. The buckets NEVER net
+        // across currencies (no FX): the server recomputeNet must reproduce the
+        // SAME two independent buckets, so its per-bucket gate refuses deletion
+        // on the live USD debt even though OMR is settled (orthogonal axis:
+        // currency + settlements, vs cases 2/4's identity axis).
+        final buckets = BalanceCalculator.calculateBalances(
+          participants: [participant('owner'), participant('member')],
+          expenses: [
+            expense(
+              amount: '10.000',
+              splitMode: null,
+              scope: ExpenseScope.global,
+              currency: 'OMR',
+            ),
+            expense(
+              amount: '6.00',
+              payerId: 'member',
+              splitMode: null,
+              scope: ExpenseScope.global,
+              currency: 'USD',
+            ),
+          ],
+          settlements: [
+            Settlement(
+              id: 's-omr',
+              tripId: 'event-1',
+              payerParticipantId: 'member',
+              recipientParticipantId: 'owner',
+              amount: Decimal.parse('5.000'),
+              settledAt: DateTime(2026),
+              currency: 'OMR',
+            ),
+          ],
+        );
+
+        // Exactly two independent buckets — no cross-currency bleed.
+        expect(buckets.keys.toSet(), {'OMR', 'USD'});
+
+        // OMR bucket settled.
+        expect(netFor(buckets['OMR']!, 'owner'), Decimal.zero);
+        expect(netFor(buckets['OMR']!, 'member'), Decimal.zero);
+
+        // USD bucket outstanding (member +3.00, owner −3.00) — the per-bucket
+        // gate REFUSES on this even though OMR is settled.
+        expect(netFor(buckets['USD']!, 'member'), Decimal.parse('3.00'));
+        expect(netFor(buckets['USD']!, 'owner'), Decimal.parse('-3.00'));
+      },
+    );
   });
 }

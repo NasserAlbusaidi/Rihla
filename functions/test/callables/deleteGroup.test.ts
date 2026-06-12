@@ -514,7 +514,7 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     // USD scale 100. amountFils 1000 = $10.00. percent 60/40 persisted as
     // 60000/40000 (value x 1000). The /1000 decode gives 60.0/40.0 → owner owes
     // $6.00, member owes $4.00. A 0..100-raw read (60000/40000) hits
-    // |sum-100|>0.001 and falls back to EQUAL 50/50 ($5/$5). The settlement
+    // |sum-100|>0.001 and falls back to EQUAL 50/50 ($5/$5). The USD settlement
     // below zeroes the 60/40 net only; under the buggy raw read it does not, so
     // a raw-read server wrongly returns failed-precondition.
     await seedExpense('groups/g/events/e1/expenses/x1', {
@@ -525,12 +525,18 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
       scope: 'global',
       splitDistribution: { [OWNER]: 60000, [MEMBER]: 40000 },
     });
-    // owner paid $10, owes $6 → +$4; member owes $4 → -$4. member→owner $4.
+    // owner paid $10, owes $6 → +$4; member owes $4 → -$4. member→owner $4 USD.
+    // #382 PR-2: the settlement is in the expense's OWN currency (USD) so it
+    // lands in the SAME bucket as the debt and zeroes it. A cross-currency (OMR)
+    // settlement would land in a separate OMR bucket and NOT settle the USD debt
+    // (no FX) — that case is test 9f. (Pre-PR-2 this test used an OMR settlement
+    // that "settled" the USD debt only because the flat scalar net was
+    // currency-blind; bucketing ends that, so the fixture is now currency-correct.)
     await seedEventSettlement('groups/g/events/e1/settlements/s1', {
       payerParticipantId: MEMBER,
       recipientParticipantId: OWNER,
-      amountFils: 4000, // settlements are OMR scale (1000) → 4.000 == $4 numeric
-      currency: 'OMR',
+      amountFils: 400, // USD scale (100) → $4.00 == owner's +$4
+      currency: 'USD',
     });
 
     const res = await wrapped({
@@ -540,18 +546,18 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect(res).toMatchObject({ mode: 'softDelete' });
   });
 
-  test('9b. mixed-currency group (fake cross-currency zero) is REFUSED (#261)', async () => {
+  test('9b. mixed-currency group with an unsettled bucket is REFUSED (#261/#382)', async () => {
     await seedGroup('g', { currency: 'OMR' });
     await seedMember('g', OWNER);
     await seedMember('g', MEMBER);
     await seedEvent('g', 'e1');
-    // Two global-equal expenses that net to a FAKE zero ACROSS currencies:
-    // OWNER pays 10.000 OMR (each owes 5.000); MEMBER pays 10.00 USD (each owes
-    // 5.00). Per-uid bare-Decimal net: OWNER = 10 − 5(OMR) − 5(USD) = 0;
-    // MEMBER = 10 − 5 − 5 = 0. The flat scalar gate sees zero and would delete a
-    // group with real unsettled per-currency debt (the money-loss path). The
-    // mixed-EXPENSE-currency guard must refuse instead. Settlements are NOT
-    // counted toward the currency set (OMR-scale by convention — see test 9).
+    // Two global-equal expenses, each in its own currency bucket: OWNER pays
+    // 10.000 OMR (each owes 5.000) → OMR bucket {OWNER +5, MEMBER −5}; MEMBER
+    // pays 10.00 USD (each owes 5.00) → USD bucket {OWNER −5, MEMBER +5}.
+    // #382 PR-2: the per-bucket gate finds BOTH buckets non-zero → refuse.
+    // (Pre-PR-2 the flat scalar net cross-cancelled to a FAKE 0 — OWNER = 10 − 5
+    // − 5 = 0 — and only the currencies.size>1 guard caught the money-loss path;
+    // now the per-currency buckets catch it directly and the guard is gone.)
     await seedExpense('groups/g/events/e1/expenses/x1', {
       amountFils: 10000,
       currency: 'OMR',
@@ -575,8 +581,10 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
   });
 
-  test('9c. cross-event mixed currency (OMR in e1, USD in e2) is REFUSED (#261)', async () => {
-    // Locks the function-scope currencies Set: a per-event set would miss this.
+  test('9c. cross-event mixed currency (OMR in e1, USD in e2) is REFUSED (#261/#382)', async () => {
+    // Cross-event buckets: e1's OMR expense and e2's USD expense each leave a
+    // non-zero bucket, so the #382 per-bucket gate refuses. (Also still pins the
+    // function-scope currencies Set for the v1 doc: a per-event set would miss it.)
     await seedGroup('g', { currency: 'OMR' });
     await seedMember('g', OWNER);
     await seedMember('g', MEMBER);
@@ -638,6 +646,89 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
       auth: { uid: OWNER },
     } as any);
     expect(res).toMatchObject({ mode: 'softDelete' });
+  });
+
+  test('9e. mixed-currency group with EVERY bucket settled DELETES (#382 PR-2)', async () => {
+    // The headline behavior #382 PR-2 enables: a group holding two currencies is
+    // deletable when each clears independently (no cross-currency netting).
+    // Pre-PR-2 the currencies.size>1 guard refused this unconditionally.
+    await seedGroup('g', { currency: 'OMR' });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    // OMR bucket: OWNER pays 10.000 global-equal → OWNER +5, MEMBER −5;
+    // MEMBER→OWNER 5.000 OMR clears it.
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 10000,
+      currency: 'OMR',
+      payerParticipantId: OWNER,
+      scope: 'global',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 5000,
+      currency: 'OMR',
+    });
+    // USD bucket: MEMBER pays 10.00 global-equal → MEMBER +5, OWNER −5;
+    // OWNER→MEMBER 5.00 USD clears it.
+    await seedExpense('groups/g/events/e1/expenses/x2', {
+      amountFils: 1000,
+      currency: 'USD',
+      payerParticipantId: MEMBER,
+      createdBy: MEMBER,
+      scope: 'global',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    await seedEventSettlement('groups/g/events/e1/settlements/s2', {
+      payerParticipantId: OWNER,
+      recipientParticipantId: MEMBER,
+      createdBy: OWNER,
+      amountFils: 500,
+      currency: 'USD',
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g' },
+      auth: { uid: OWNER },
+    } as any);
+    expect(res).toMatchObject({ mode: 'softDelete' });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(true);
+  });
+
+  test('9f. a DIFFERENT-currency settlement does NOT settle the debt (no FX) → REFUSED (#382 PR-2)', async () => {
+    // Money-safety: a USD debt cannot be cleared by an OMR settlement — different
+    // buckets, no FX. Pre-PR-2 the flat scalar net was currency-blind and
+    // numerically zeroed, so the group WRONGLY deleted; the per-bucket gate now
+    // refuses, protecting the still-unsettled USD debt.
+    await seedGroup('g', { currency: 'USD' });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    // OWNER pays 10.00 USD, global-equal → OWNER +5 USD, MEMBER −5 USD.
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 1000,
+      currency: 'USD',
+      payerParticipantId: OWNER,
+      scope: 'global',
+      splitMode: 'equally',
+      splitDistribution: {},
+    });
+    // MEMBER→OWNER 5.000 OMR — lands in the OMR bucket, NOT the USD bucket.
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: OWNER,
+      amountFils: 5000,
+      currency: 'OMR',
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
   });
 
   test('10. percent split happy path (70/30) settles to zero (HARD REQ #3)', async () => {
