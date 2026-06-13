@@ -3792,30 +3792,6 @@ abstract class AppLocalizations {
   /// **'Currency'**
   String get groupCurrency;
 
-  /// No description provided for @groupDefaultSplit.
-  ///
-  /// In en, this message translates to:
-  /// **'Default split'**
-  String get groupDefaultSplit;
-
-  /// No description provided for @groupDefaultSplitEqual.
-  ///
-  /// In en, this message translates to:
-  /// **'Equal'**
-  String get groupDefaultSplitEqual;
-
-  /// No description provided for @groupReminders.
-  ///
-  /// In en, this message translates to:
-  /// **'Reminders'**
-  String get groupReminders;
-
-  /// No description provided for @groupRemindersWeekly.
-  ///
-  /// In en, this message translates to:
-  /// **'Weekly'**
-  String get groupRemindersWeekly;
-
   /// No description provided for @groupSettingsLoadFailed.
   ///
   /// In en, this message translates to:

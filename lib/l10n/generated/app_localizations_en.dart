@@ -2213,18 +2213,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupCurrency => 'Currency';
 
   @override
-  String get groupDefaultSplit => 'Default split';
-
-  @override
-  String get groupDefaultSplitEqual => 'Equal';
-
-  @override
-  String get groupReminders => 'Reminders';
-
-  @override
-  String get groupRemindersWeekly => 'Weekly';
-
-  @override
   String get groupSettingsLoadFailed => 'Could not load settings';
 
   @override

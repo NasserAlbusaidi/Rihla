@@ -2278,18 +2278,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupCurrency => 'العملة';
 
   @override
-  String get groupDefaultSplit => 'التقسيم الافتراضي';
-
-  @override
-  String get groupDefaultSplitEqual => 'متساوٍ';
-
-  @override
-  String get groupReminders => 'التذكيرات';
-
-  @override
-  String get groupRemindersWeekly => 'أسبوعيًا';
-
-  @override
   String get groupSettingsLoadFailed => 'تعذّر تحميل الإعدادات';
 
   @override

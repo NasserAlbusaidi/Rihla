@@ -89,7 +89,12 @@ class GroupSettingsScreen extends ConsumerWidget {
               _SettingsTopBar(groupId: groupId),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, 6, context.spacing.space20, context.spacing.space20),
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    context.spacing.space20,
+                    6,
+                    context.spacing.space20,
+                    context.spacing.space20,
+                  ),
                   child: SkeletonLoader.generic(count: 3),
                 ),
               ),
@@ -198,16 +203,6 @@ class _DefaultsSection extends StatelessWidget {
                 key: GroupKeys.settingsCurrencyTile,
                 title: context.l10n.groupCurrency,
                 value: currency,
-                divider: true,
-              ),
-              _DefaultsRow(
-                title: context.l10n.groupDefaultSplit,
-                value: context.l10n.groupDefaultSplitEqual,
-                divider: true,
-              ),
-              _DefaultsRow(
-                title: context.l10n.groupReminders,
-                value: context.l10n.groupRemindersWeekly,
                 divider: false,
               ),
             ],
