@@ -735,43 +735,30 @@ class BalanceCalculator {
   }
 }
 
-/// Interim single-bucket selection for display surfaces that stay
-/// single-currency until #382 PR-5. Under the live uniformity rules every
-/// prod bucket map is empty or a singleton `{group.currency: …}`.
-///
-/// - [preferred] non-null → that bucket (empty list when absent);
-/// - [preferred] null (group doc still loading) → the sole bucket when exactly
-///   one exists (its own key becomes the display currency), else
-///   `('OMR', const [])`.
-({String currency, List<UserBalance> balances}) selectCurrencyBucket(
-  Map<String, List<UserBalance>> buckets,
-  String? preferred,
+/// Non-zero buckets, GCC-first ([sortedGccFirst]) — the canonical line list
+/// for per-currency display surfaces (#382 PR-5). Empty result ⇔ settled
+/// everywhere. "Non-zero" is EXACT `!= Decimal.zero` — no tolerance, so a
+/// sub-tolerance residual renders instead of silently reading as settled.
+List<({String currency, Decimal net})> nonZeroNetsGccFirst(
+  Map<String, Decimal> nets,
 ) {
-  if (preferred != null) {
-    return (
-      currency: preferred,
-      balances: buckets[preferred] ?? const <UserBalance>[],
-    );
-  }
-  if (buckets.length == 1) {
-    final entry = buckets.entries.single;
-    return (currency: entry.key, balances: entry.value);
-  }
-  return (currency: 'OMR', balances: const <UserBalance>[]);
+  return [
+    for (final c in sortedGccFirst(nets.keys))
+      if (nets[c] != Decimal.zero) (currency: c, net: nets[c]!),
+  ];
 }
 
-/// Interim one-amount selection for home surfaces until #382 PR-5 renders
-/// full per-currency rows: the GCC-first NON-ZERO bucket, labeled with its
-/// own currency (honest — never relabeled to the group default); all-zero or
-/// empty → ([fallbackCurrency], zero). Deterministic: with multiple non-zero
-/// buckets the [sortedGccFirst] order decides.
-({String currency, Decimal net}) selectNetBucket(
-  Map<String, Decimal> buckets, {
-  required String fallbackCurrency,
-}) {
-  for (final c in sortedGccFirst(buckets.keys)) {
-    final v = buckets[c]!;
-    if (v != Decimal.zero) return (currency: c, net: v);
-  }
-  return (currency: fallbackCurrency, net: Decimal.zero);
+/// [uid]'s net per currency from a bucketed balance map (#382 PR-5). Buckets
+/// where [uid] is absent or nets exactly zero are dropped; null [uid] → `{}`.
+Map<String, Decimal> myNetByCurrency(
+  Map<String, List<UserBalance>> buckets,
+  String? uid,
+) {
+  if (uid == null) return const {};
+  return {
+    for (final entry in buckets.entries)
+      for (final balance in entry.value)
+        if (balance.participantId == uid && balance.netBalance != Decimal.zero)
+          entry.key: balance.netBalance,
+  };
 }

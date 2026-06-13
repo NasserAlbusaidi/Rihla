@@ -9,6 +9,10 @@ import '../../../core/utils/formatters.dart';
 /// V5R hero kind — drives copy, sign treatment, and tonal color.
 enum LedgerHeroKind { positive, negative, settled, empty }
 
+/// One per-currency hero line (#382 PR-5): the current user's net for that
+/// bucket plus the count of people they are unsettled with in it.
+typedef LedgerHeroLine = ({String currency, Decimal net, int peopleCount});
+
 /// Italic Instrument Serif statement hero. The money is *inline* with the prose.
 ///
 /// Copy variants:
@@ -16,6 +20,10 @@ enum LedgerHeroKind { positive, negative, settled, empty }
 ///   negative   →  localized balance owed by the current user.
 ///   settled    →  localized settled-state copy plus inline sage badge.
 ///   empty      →  localized empty-state copy.
+///
+/// Multi-line mode (#382 PR-5): when [lines] carries 2+ entries the hero
+/// stacks one statement per currency bucket ([kind]/[amount]/[currency] are
+/// ignored — mixed signs have no honest single kind, each line self-explains).
 class LedgerHeroStatement extends StatelessWidget {
   const LedgerHeroStatement({
     super.key,
@@ -23,19 +31,44 @@ class LedgerHeroStatement extends StatelessWidget {
     required this.amount,
     required this.currency,
     this.peopleCount = 0,
+    this.lines = const [],
   });
 
   final LedgerHeroKind kind;
   final Decimal amount;
   final String currency;
   final int peopleCount;
+  final List<LedgerHeroLine> lines;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final l10n = context.l10n;
-    final double baseSize = kind == LedgerHeroKind.empty ? 28 : 32;
 
+    if (lines.length >= 2) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < lines.length; i++)
+              Padding(
+                padding: EdgeInsetsDirectional.only(top: i == 0 ? 0 : 6),
+                child: _statementLine(
+                  context,
+                  positive: lines[i].net > Decimal.zero,
+                  amount: lines[i].net,
+                  currency: lines[i].currency,
+                  peopleCount: lines[i].peopleCount,
+                  baseSize: 24,
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    final double baseSize = kind == LedgerHeroKind.empty ? 28 : 32;
     final baseStyle = AppTypography.display(
       fontSize: baseSize,
       color: colors.textPrimary,
@@ -43,64 +76,25 @@ class LedgerHeroStatement extends StatelessWidget {
       height: 1.1,
     );
     final tailStyle = baseStyle.copyWith(color: colors.textSecondary);
-    final numStyle = AppTypography.display(
-      fontSize: baseSize,
-      color: switch (kind) {
-        LedgerHeroKind.positive => colors.successText,
-        LedgerHeroKind.negative => colors.errorText,
-        _ => colors.textPrimary,
-      },
-      letterSpacing: -0.6,
-      height: 1.1,
-    );
-    final monoPrefixStyle = AppTypography.mono(
-      fontSize: baseSize * 0.36,
-      color: colors.textSecondary,
-      letterSpacing: 1.2,
-      fontWeight: FontWeight.w500,
-    );
-    final fractionStyle = numStyle.copyWith(fontSize: baseSize * 0.62);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
       child: switch (kind) {
-        LedgerHeroKind.positive => _ProseRow(
-          baseStyle: baseStyle,
-          tailStyle: tailStyle,
-          children: [
-            TextSpan(text: '${l10n.ledgerHeroPositivePrefix} '),
-            _inlineMoney(
-              amount,
-              sign: '+',
-              currency: currency,
-              numStyle: numStyle,
-              prefixStyle: monoPrefixStyle,
-              fractionStyle: fractionStyle,
-            ),
-            TextSpan(
-              text: ' ${l10n.ledgerHeroPositiveTail(peopleCount)}',
-              style: tailStyle,
-            ),
-          ],
+        LedgerHeroKind.positive => _statementLine(
+          context,
+          positive: true,
+          amount: amount,
+          currency: currency,
+          peopleCount: peopleCount,
+          baseSize: baseSize,
         ),
-        LedgerHeroKind.negative => _ProseRow(
-          baseStyle: baseStyle,
-          tailStyle: tailStyle,
-          children: [
-            TextSpan(text: '${l10n.ledgerHeroNegativePrefix} '),
-            _inlineMoney(
-              amount.abs(),
-              sign: '−',
-              currency: currency,
-              numStyle: numStyle,
-              prefixStyle: monoPrefixStyle,
-              fractionStyle: fractionStyle,
-            ),
-            TextSpan(
-              text: ' ${l10n.ledgerHeroNegativeTail(peopleCount)}',
-              style: tailStyle,
-            ),
-          ],
+        LedgerHeroKind.negative => _statementLine(
+          context,
+          positive: false,
+          amount: amount,
+          currency: currency,
+          peopleCount: peopleCount,
+          baseSize: baseSize,
         ),
         LedgerHeroKind.settled => _SettledRow(baseStyle: baseStyle),
         LedgerHeroKind.empty => _ProseRow(
@@ -112,6 +106,64 @@ class LedgerHeroStatement extends StatelessWidget {
           ],
         ),
       },
+    );
+  }
+
+  static Widget _statementLine(
+    BuildContext context, {
+    required bool positive,
+    required Decimal amount,
+    required String currency,
+    required int peopleCount,
+    required double baseSize,
+  }) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    final baseStyle = AppTypography.display(
+      fontSize: baseSize,
+      color: colors.textPrimary,
+      letterSpacing: -0.5,
+      height: 1.1,
+    );
+    final tailStyle = baseStyle.copyWith(color: colors.textSecondary);
+    final numStyle = AppTypography.display(
+      fontSize: baseSize,
+      color: positive ? colors.successText : colors.errorText,
+      letterSpacing: -0.6,
+      height: 1.1,
+    );
+    final monoPrefixStyle = AppTypography.mono(
+      fontSize: baseSize * 0.36,
+      color: colors.textSecondary,
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w500,
+    );
+    final fractionStyle = numStyle.copyWith(fontSize: baseSize * 0.62);
+
+    return _ProseRow(
+      baseStyle: baseStyle,
+      tailStyle: tailStyle,
+      children: [
+        TextSpan(
+          text: positive
+              ? '${l10n.ledgerHeroPositivePrefix} '
+              : '${l10n.ledgerHeroNegativePrefix} ',
+        ),
+        _inlineMoney(
+          amount.abs(),
+          sign: positive ? '+' : '−',
+          currency: currency,
+          numStyle: numStyle,
+          prefixStyle: monoPrefixStyle,
+          fractionStyle: fractionStyle,
+        ),
+        TextSpan(
+          text: positive
+              ? ' ${l10n.ledgerHeroPositiveTail(peopleCount)}'
+              : ' ${l10n.ledgerHeroNegativeTail(peopleCount)}',
+          style: tailStyle,
+        ),
+      ],
     );
   }
 

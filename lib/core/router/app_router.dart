@@ -360,6 +360,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                       child: SettleUpScreen(
                         groupId: state.pathParameters['gid']!,
                         eventId: state.pathParameters['eid']!,
+                        preSelectedMemberId:
+                            state.uri.queryParameters['memberId'],
                       ),
                       transitionsBuilder: _sharedAxisTransition,
                     ),

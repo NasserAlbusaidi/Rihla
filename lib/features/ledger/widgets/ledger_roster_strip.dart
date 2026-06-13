@@ -25,11 +25,16 @@ class LedgerRosterPerson {
     required this.participantId,
     required this.displayName,
     required this.signedAmount,
+    this.currency,
   });
 
   final String participantId;
   final String displayName;
   final Decimal signedAmount;
+
+  /// This entry's bucket currency (#382 PR-5) — the screen emits one entry
+  /// per (person, non-zero bucket). Null → the strip-level fallback currency.
+  final String? currency;
 }
 
 class LedgerRosterStrip extends StatelessWidget {
@@ -267,7 +272,7 @@ class _Chip extends StatelessWidget {
     final fg = positive ? colors.successText : colors.errorText;
     final prefix = positive ? '+' : '−';
     final abs = person.signedAmount.abs().toStringAsFixed(
-      AppFormatters.currencyConfig[currency]?.decimals ?? 3,
+      AppFormatters.currencyConfig[person.currency ?? currency]?.decimals ?? 3,
     );
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),

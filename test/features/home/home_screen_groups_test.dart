@@ -208,6 +208,119 @@ void main() {
       },
     );
 
+    testWidgets(
+      'group row renders every non-zero currency bucket; mixed signs '
+      'omit the tri-state caption (#382 PR-5)',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildTestApp(
+            prefs: prefs,
+            overrides: [
+              ..._overrides([_makeGroup('g1', 'Desert Crew')]),
+              homeGroupBalanceProvider.overrideWith(
+                (ref, groupId) => AsyncValue.data((
+                  userNet: {
+                    'OMR': Decimal.parse('5'),
+                    'USD': Decimal.parse('-3'),
+                  },
+                  userPerEventNet: const <String, Map<String, Decimal>>{},
+                  eventCount: 1,
+                  partial: false,
+                  fromAggregate: true,
+                )),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        // The two-currency hero pushes the lazily-built groups sliver below
+        // the fold — bring the row on screen first.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
+        await tester.pumpAndSettle();
+
+        final row = find
+            .ancestor(
+              of: find.text('Desert Crew'),
+              matching: find.byType(InkWell),
+            )
+            .first;
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.textContaining('OMR', findRichText: true),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.textContaining('USD', findRichText: true),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: row, matching: find.text('they owe you')),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: row, matching: find.text('you owe')),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: row, matching: find.text('settled')),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'group row keeps the tri-state caption when all non-zero buckets '
+      'share one sign (#382 PR-5)',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildTestApp(
+            prefs: prefs,
+            overrides: [
+              ..._overrides([_makeGroup('g1', 'Desert Crew')]),
+              homeGroupBalanceProvider.overrideWith(
+                (ref, groupId) => AsyncValue.data((
+                  userNet: {
+                    'OMR': Decimal.parse('5'),
+                    'USD': Decimal.parse('3'),
+                  },
+                  userPerEventNet: const <String, Map<String, Decimal>>{},
+                  eventCount: 1,
+                  partial: false,
+                  fromAggregate: true,
+                )),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
+        await tester.pumpAndSettle();
+
+        final row = find
+            .ancestor(
+              of: find.text('Desert Crew'),
+              matching: find.byType(InkWell),
+            )
+            .first;
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.textContaining('USD', findRichText: true),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: row, matching: find.text('they owe you')),
+          findsOneWidget,
+        );
+      },
+    );
+
     testWidgets('group row navigates through GoRouter', (tester) async {
       await tester.pumpWidget(
         _buildTestApp(

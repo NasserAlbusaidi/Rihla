@@ -173,6 +173,43 @@ void main() {
       },
     );
 
+    test('currencyExplainerSeen defaults to false', () async {
+      final container = await makeContainer();
+      expect(
+        container.read(settingsProvider).currencyExplainerSeen,
+        isFalse,
+      );
+    });
+
+    test(
+      'setCurrencyExplainerSeen updates and persists currencyExplainerSeen',
+      () async {
+        final container = await makeContainer();
+        await container
+            .read(settingsProvider.notifier)
+            .setCurrencyExplainerSeen(true);
+        expect(
+          container.read(settingsProvider).currencyExplainerSeen,
+          isTrue,
+        );
+
+        // Survives a reload from the same SharedPreferences store.
+        final reloaded = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+            deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+          ],
+        );
+        addTearDown(reloaded.dispose);
+        expect(
+          reloaded.read(settingsProvider).currencyExplainerSeen,
+          isTrue,
+        );
+      },
+    );
+
     test('settingsServiceProvider returns SettingsService instance', () async {
       final container = await makeContainer();
       final service = container.read(settingsServiceProvider);

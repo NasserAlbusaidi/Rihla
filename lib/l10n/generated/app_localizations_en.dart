@@ -1111,6 +1111,69 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpEachPersonNet => 'Each person\'s net';
 
   @override
+  String settleUpSettleAllWith(Object name) {
+    return 'Settle all with $name';
+  }
+
+  @override
+  String settleUpSettleAllWithCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count payments',
+      one: '1 payment',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpStepIndicator(int current, int total) {
+    return '$current of $total';
+  }
+
+  @override
+  String settleUpSteppedRecordedAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Recorded $count payments.',
+      one: 'Recorded 1 payment.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedAllWillSync(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Recorded $count payments — will sync when online.',
+      one: 'Recorded 1 payment — will sync when online.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartial(int recorded, int total) {
+    return 'Recorded $recorded of $total payments.';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartialWillSync(int recorded, int total) {
+    return 'Recorded $recorded of $total payments — will sync when online.';
+  }
+
+  @override
+  String get currencyExplainerTitle => 'Each currency settles separately';
+
+  @override
+  String get currencyExplainerBody =>
+      'We never invent exchange rates, so OMR can\'t cancel out AED. You\'ll record one payment per currency.';
+
+  @override
+  String get currencyExplainerGotIt => 'Got it';
+
+  @override
   String get settleUpPaymentHistory => 'Payment history';
 
   @override

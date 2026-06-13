@@ -149,11 +149,6 @@ class _Body extends ConsumerWidget {
       ledgerViewProvider((groupId: groupId, eventId: eventId)),
     );
     final participants = data.participants;
-    // #382 PR-1: this surface stays single-currency until PR-5 — select the
-    // group's currency bucket (load-gated non-null here, the only prod bucket
-    // under the live uniformity rules). The trip caption below renders ALL
-    // per-currency totals.
-    final balances = selectCurrencyBucket(data.balances, currency).balances;
     final eventTotal = data.eventTotal;
     final rosterDisplayNames = data.rosterDisplayNames;
     final expensePayerDisplayNames = data.expensePayerDisplayNames;
@@ -174,50 +169,104 @@ class _Body extends ConsumerWidget {
     final currentPid = event.participantIds.contains(currentUserId)
         ? currentUserId
         : null;
-    final myBalance = _resolveMyBalance(
-      balances,
-      currentPid,
-      context.l10n.ledgerYou,
+    // #382 PR-5: every currency bucket renders; "settled" ⇔ every bucket
+    // zero. Each bucket lists every participant, so the first hit carries the
+    // same display name the old single-bucket lookup resolved (and no money
+    // records ⇒ no buckets ⇒ the "You" fallback, exactly as before).
+    String? myDisplayName;
+    for (final bucket in data.balances.values) {
+      for (final b in bucket) {
+        if (b.participantId == currentPid) {
+          myDisplayName = b.displayName;
+          break;
+        }
+      }
+      if (myDisplayName != null) break;
+    }
+    final myLines = nonZeroNetsGccFirst(
+      myNetByCurrency(data.balances, currentPid),
     );
+
+    int bucketPeopleCount(String c) =>
+        (data.balances[c] ?? const <UserBalance>[])
+            .where(
+              (b) =>
+                  b.participantId != currentPid &&
+                  b.netBalance != Decimal.zero,
+            )
+            .length;
 
     // From the current user's perspective:
     //   negative net for someone else → they owe you (positive chip)
     //   positive net for someone else → you owe them (negative chip)
-    final roster =
-        balances
-            .where((b) => b.participantId != currentPid)
-            .map(
-              (b) => LedgerRosterPerson(
-                participantId: b.participantId,
-                displayName:
-                    rosterDisplayNames[b.participantId] ??
-                    b.displayName ??
-                    context.l10n.ledgerMemberFallback,
-                signedAmount: -b.netBalance,
-              ),
-            )
-            .toList()
-          ..sort(
-            (a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()),
+    // One entry per (person, non-zero bucket); settled-everywhere people keep
+    // a single zero entry so their EVEN chip stays on the strip.
+    final othersByPid = <String, UserBalance>{};
+    for (final bucket in data.balances.values) {
+      for (final b in bucket) {
+        if (b.participantId != currentPid) {
+          othersByPid.putIfAbsent(b.participantId, () => b);
+        }
+      }
+    }
+    final roster = <LedgerRosterPerson>[];
+    for (final other in othersByPid.values) {
+      final displayName =
+          rosterDisplayNames[other.participantId] ??
+          other.displayName ??
+          context.l10n.ledgerMemberFallback;
+      final otherLines = nonZeroNetsGccFirst(
+        myNetByCurrency(data.balances, other.participantId),
+      );
+      if (otherLines.isEmpty) {
+        roster.add(
+          LedgerRosterPerson(
+            participantId: other.participantId,
+            displayName: displayName,
+            signedAmount: Decimal.zero,
+          ),
+        );
+      } else {
+        for (final line in otherLines) {
+          roster.add(
+            LedgerRosterPerson(
+              participantId: other.participantId,
+              displayName: displayName,
+              signedAmount: -line.net,
+              currency: line.currency,
+            ),
           );
+        }
+      }
+    }
+    roster.sort(
+      (a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()),
+    );
 
     final hasExpenses = expenses.isNotEmpty;
-    final isSettled = hasExpenses && myBalance.netBalance == Decimal.zero;
+    final isSettled = hasExpenses && myLines.isEmpty;
+    final singleLine = myLines.length == 1 ? myLines.first : null;
     final heroKind = !hasExpenses
         ? LedgerHeroKind.empty
         : isSettled
         ? LedgerHeroKind.settled
-        : myBalance.netBalance > Decimal.zero
+        : (singleLine == null || singleLine.net > Decimal.zero)
         ? LedgerHeroKind.positive
         : LedgerHeroKind.negative;
+    final heroLines = <LedgerHeroLine>[
+      if (hasExpenses)
+        for (final line in myLines)
+          (
+            currency: line.currency,
+            net: line.net,
+            peopleCount: bucketPeopleCount(line.currency),
+          ),
+    ];
     final rosterState = !hasExpenses
         ? LedgerRosterState.empty
         : isSettled
         ? LedgerRosterState.settled
         : LedgerRosterState.live;
-    final peopleCount = roster
-        .where((p) => p.signedAmount != Decimal.zero)
-        .length;
 
     final filteredExpenses = categoryFilter == null
         ? expenses
@@ -270,9 +319,11 @@ class _Body extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: LedgerHeroStatement(
                   kind: heroKind,
-                  amount: myBalance.netBalance,
-                  currency: currency,
-                  peopleCount: peopleCount,
+                  amount: singleLine?.net ?? Decimal.zero,
+                  currency: singleLine?.currency ?? currency,
+                  peopleCount:
+                      heroLines.length == 1 ? heroLines.first.peopleCount : 0,
+                  lines: heroLines,
                 ),
               ),
               if (hasExpenses)
@@ -292,7 +343,7 @@ class _Body extends ConsumerWidget {
                   others: roster,
                   currency: currency,
                   currentUserDisplayName:
-                      myBalance.displayName ?? context.l10n.ledgerYou,
+                      myDisplayName ?? context.l10n.ledgerYou,
                   onPersonTap: (p) => GoRouter.of(context).push(
                     '/group/$groupId/event/$eventId/ledger/'
                     'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',
@@ -386,22 +437,6 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  static UserBalance _resolveMyBalance(
-    List<UserBalance> balances,
-    String? currentPid,
-    String fallbackDisplayName,
-  ) {
-    return balances.firstWhere(
-      (b) => b.participantId == currentPid,
-      orElse: () => UserBalance(
-        participantId: currentPid ?? '',
-        displayName: fallbackDisplayName,
-        totalPaid: Decimal.zero,
-        totalOwed: Decimal.zero,
-        netBalance: Decimal.zero,
-      ),
-    );
-  }
 }
 
 // ──────────────────────────── Cover header

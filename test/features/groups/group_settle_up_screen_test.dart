@@ -149,6 +149,55 @@ final _balancesSettled = (
   memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
+/// #382 PR-5 Task 13: two same-direction buckets — Bob owes Alice in BOTH
+/// OMR and USD. The optimizer runs per bucket, so (me=Bob ↔ Alice) spans two
+/// buckets → one stepped "settle all" card whose tap walks one record sheet
+/// per bucket.
+final _balancesTwoBucket = (
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-alice',
+        displayName: 'Alice',
+        totalPaid: Decimal.parse('20.000'),
+        totalOwed: Decimal.parse('10.000'),
+        netBalance: Decimal.parse('10.000'),
+      ),
+      UserBalance(
+        participantId: 'uid-bob',
+        displayName: 'Bob',
+        totalPaid: Decimal.parse('0.000'),
+        totalOwed: Decimal.parse('10.000'),
+        netBalance: Decimal.parse('-10.000'),
+      ),
+    ],
+    'USD': [
+      UserBalance(
+        participantId: 'uid-alice',
+        displayName: 'Alice',
+        totalPaid: Decimal.parse('40.00'),
+        totalOwed: Decimal.parse('20.00'),
+        netBalance: Decimal.parse('20.00'),
+      ),
+      UserBalance(
+        participantId: 'uid-bob',
+        displayName: 'Bob',
+        totalPaid: Decimal.parse('0.00'),
+        totalOwed: Decimal.parse('20.00'),
+        netBalance: Decimal.parse('-20.00'),
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{
+    'OMR': Decimal.parse('20.000'),
+    'USD': Decimal.parse('40.00'),
+  },
+  eventCount: 2,
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
+  memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+);
+
 final _testSettlement1 = Settlement(
   id: 'stl-1',
   tripId: _groupId,
@@ -1110,5 +1159,154 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+
+  // #382 PR-5 Task 13: stepped walk on the GROUP settle-up screen. Mirrors the
+  // event-screen walk (Task 12) but pins the L6 bump asymmetry — group
+  // settlements are live-watched, so the walk must NOT bump ledgerRevision —
+  // and that each step logs a group_settlement activity row carrying its
+  // BUCKET currency in metadata (the PR-4 stamp, per step).
+  group('#382 PR-5: stepped settle walk (group screen)', () {
+    testWidgets(
+      'happy walk: two addGroupSettlement (OMR then USD), revision stays 0, '
+      'two logGroupEvent with per-bucket currency, one final snackbar',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Bobby',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final settlementService = _RecordingGroupSettlementService();
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesTwoBucket),
+            currentUid: 'uid-bob',
+            extraOverrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(GroupSettleUpScreen)),
+        );
+
+        final card = find.byKey(const ValueKey('settle-stepped-uid-alice'));
+        await tester.ensureVisible(card);
+        await tester.tap(card);
+        await tester.pumpAndSettle();
+
+        // Step 1 of 2.
+        expect(find.text('1 of 2'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        // Step 2 of 2 (no final snackbar yet).
+        expect(find.text('2 of 2'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(settlementService.addCalls, hasLength(2));
+        expect(settlementService.addCalls[0].currency, 'OMR');
+        expect(settlementService.addCalls[1].currency, 'USD');
+        // L6: group settlements are live-watched — NO ledgerRevision bump.
+        expect(container.read(ledgerRevisionProvider), 0);
+        // Each step logs a group_settlement row carrying its BUCKET currency.
+        expect(activityService.logCalls, hasLength(2));
+        expect(activityService.logCalls[0].type, 'group_settlement');
+        expect(activityService.logCalls[0].actorName, 'Bobby');
+        expect(activityService.logCalls[0].metadata, {
+          'amount': '10',
+          'recipientId': 'uid-alice',
+          'currency': 'OMR',
+        });
+        expect(activityService.logCalls[1].metadata, {
+          'amount': '20',
+          'recipientId': 'uid-alice',
+          'currency': 'USD',
+        });
+        // One final summary snackbar; no per-step "Settlement recorded.".
+        expect(find.text('Settlement recorded.'), findsNothing);
+        expect(find.text('Recorded 2 payments.'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'offline walk: both writes queue, will-sync final snackbar, '
+      'connectivity goes syncing, revision stays 0',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Bobby',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final settlementService = _RecordingGroupSettlementService(
+          neverAck: true,
+        );
+        final activityService = _RecordingGroupActivityService();
+        final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
+          ..setOffline();
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesTwoBucket),
+            currentUid: 'uid-bob',
+            extraOverrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              connectivityProvider.overrideWith((ref) => connectivity),
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(GroupSettleUpScreen)),
+        );
+
+        final card = find.byKey(const ValueKey('settle-stepped-uid-alice'));
+        await tester.ensureVisible(card);
+        await tester.tap(card);
+        await tester.pumpAndSettle();
+
+        // Step 1: confirm. The write never acks — fixed pumps only (never
+        // pumpAndSettle while the write future is deliberately pending).
+        expect(find.text('1 of 2'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pump(const Duration(milliseconds: 500));
+
+        // Step 2: the next sheet is presented; confirm it too.
+        expect(find.text('2 of 2'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pump(const Duration(milliseconds: 500));
+
+        // Both writes were handed to the SDK queue (noteQueuedWrite per step).
+        expect(settlementService.addCalls, hasLength(2));
+        expect(connectivity.state, ConnectivityStatus.syncing);
+        // Both activity rows were ALSO queued (not lost behind the hung await).
+        expect(activityService.logCalls, hasLength(2));
+        // L6 holds offline too.
+        expect(container.read(ledgerRevisionProvider), 0);
+        // The final summary reports the queued (will-sync) outcome.
+        expect(
+          find.text('Recorded 2 payments — will sync when online.'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }
