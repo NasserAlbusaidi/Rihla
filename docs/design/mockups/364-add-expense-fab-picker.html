@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#364 — Persistent Add-expense FAB with group→event picker · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Bottom-nav bar — BottomNavShell chrome, 3 tabs */
+  .bottom-nav {
+    height: 60px; flex: none;
+    background: var(--card); border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 var(--s8); position: relative; z-index: 1;
+  }
+  .bottom-nav .nav-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 3px; flex: 1; cursor: pointer; color: var(--ink-4);
+    font-family: var(--font-sans); font-size: 10px; font-weight: 500;
+  }
+  .bottom-nav .nav-item.active { color: var(--primary); }
+  .bottom-nav .nav-item .nav-icon { font-size: 20px; line-height: 1; }
+
+  /* Amount inside an input — keep mono font */
+  .input.r-amount { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#364 · Add-expense FAB <span class="saffron">→</span> group → event</h1>
+  <p>Logging a spend takes 3+ taps today (home → group → event hub → <b>Ledger</b> → <b>+ Add expense</b>).
+     A persistent FAB on the <b>Groups</b>/<b>Activity</b> tabs shortcuts the app's most important action —
+     but expenses are <i>event-scoped</i>, so a tab-level FAB has no event context and must resolve a target
+     <code>group → event</code> before it can route into <code>/group/:gid/event/:eid/ledger/add</code>.
+     Path-based only, deep-link safe, no <code>state.extra</code>. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#364</span>
+    <h2 class="issue-title">design(ledger): persistent Add-expense FAB with group→event picker</h2>
+    <span class="issue-meta">P2 · decision · routing surface · Gate before build</span>
+  </div>
+  <p class="issue-desc">All three put a saffron FAB on the <code>BottomNavShell</code> (over Groups + Activity tabs).
+     They differ on how a context-free tap <b>resolves the target event</b>: V1 walks an explicit two-step
+     sheet (group, then event); V2 jumps straight into add for the <b>last-active event</b> with a
+     <b>Change</b> escape hatch; V3 expands the FAB into recent group/event shortcuts. Every path ends at the
+     same route — <code>/group/:gid/event/:eid/ledger/add</code> — so back-guard and deep-link behavior is
+     identical regardless of which UI ships. No <code>state.extra</code> in any variant; all navigation is
+     path-based so cold deep-links work.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant V2 (quick add, last-active) — one tap to the add screen for the common
+     case (you're logging into the trip you're already on), with <b>Change</b> for the rest. Fewest taps where it matters.</p>
+
+  <div class="variant-row">
+
+    <!-- ============ V1 · Two-step picker ============ -->
+    <div class="variant">
+      <div class="variant-label">V1 · Two-step picker <span class="tag">group → event</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <!-- Groups tab app bar -->
+          <div class="app-bar">
+            <div class="icon-btn center"><span class="avatar sm av-5">N</span></div>
+            <div class="title">Rihla<span style="color:var(--primary)">.</span></div>
+            <div class="icon-btn center muted">◔</div>
+          </div>
+          <!-- Background screen content (dimmed by scrim) -->
+          <div class="sheet-wrap">
+            <div class="content tight" style="flex:1">
+              <div class="uppercase-label" style="margin-top:4px">Active journeys</div>
+              <div class="ticket">
+                <div class="cover"></div>
+                <div class="perf"></div>
+                <div class="list-row">
+                  <div class="row-body">
+                    <div class="row-title serif" style="font-size:17px">Salalah Khareef</div>
+                    <div class="row-sub mono">3 events · 5 people</div>
+                  </div>
+                  <div class="r-amount neg lg"><span class="ccy">OMR</span>18<span class="dec">.400</span></div>
+                </div>
+              </div>
+              <div class="card flush">
+                <div class="list-row">
+                  <span class="avatar av-2">DT</span>
+                  <div class="row-body"><div class="row-title">Dubai Trip</div>
+                    <div class="row-sub mono">1 event · 4 people</div></div>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+            </div>
+            <!-- Step 1 sheet: pick group -->
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Add to which group?</div>
+              <div class="sheet-sub">Step 1 of 2 — pick the trip, then the event.</div>
+              <div class="card flush">
+                <div class="list-row">
+                  <span class="avatar av-1">SK</span>
+                  <div class="row-body"><div class="row-title">Salalah Khareef</div>
+                    <div class="row-sub mono">3 events</div></div>
+                  <span class="chevron">›</span>
+                </div>
+                <div class="list-row">
+                  <span class="avatar av-2">DT</span>
+                  <div class="row-body"><div class="row-title">Dubai Trip</div>
+                    <div class="row-sub mono">1 event</div></div>
+                  <span class="chevron">›</span>
+                </div>
+                <div class="list-row">
+                  <span class="avatar av-4">FH</span>
+                  <div class="row-body"><div class="row-title">Flat Housemates</div>
+                    <div class="row-sub mono">2 events</div></div>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item active">
+              <span class="nav-icon">⊞</span>Groups
+            </div>
+            <div class="nav-item">
+              <span class="nav-icon">◷</span>Activity
+            </div>
+          </div>
+        </div>
+        <!-- FAB above bottom-nav — positioned relative to .phone -->
+        <div class="fab" style="bottom:calc(var(--s24) + 60px)">＋</div>
+      </div>
+      <p class="variant-note"><b>FAB → modal sheet, group then event.</b> A predictable, zero-guessing flow:
+         step 1 lists your groups, step 2 lists that group's events, tapping an event routes to
+         <code>/group/:gid/event/:eid/ledger/add</code>. The slowest of the three (two deliberate taps
+         before the form) but the only one that never picks the wrong target for you. Implement as a
+         stateless <code>showModalBottomSheet</code> off the <code>BottomNavShell</code> FAB; each tap
+         <code>context.push</code>es the next path segment — no <code>state.extra</code>.</p>
+    </div>
+
+    <!-- ============ V2 · Quick add (last-active) · PICK ============ -->
+    <div class="variant pick">
+      <div class="variant-label">V2 · Quick add (last-active) <span class="tag">1 tap</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <!-- Activity tab app bar -->
+          <div class="app-bar">
+            <div class="title sans">Activity</div>
+          </div>
+          <div class="sheet-wrap">
+            <div class="content tight" style="flex:1">
+              <div class="list-row" style="padding-inline:0">
+                <span class="avatar sm av-3">KH</span>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Khalid added <b>Lunch · Bait Al Luban</b></div>
+                  <div class="row-sub mono">Salalah Khareef · 2h ago</div></div>
+              </div>
+              <div class="list-row" style="padding-inline:0">
+                <span class="avatar sm av-6">YA</span>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Yusuf settled up with you</div>
+                  <div class="row-sub mono">Dubai Trip · yesterday</div></div>
+              </div>
+            </div>
+            <!-- Quick-add sheet: pre-filled target + Change -->
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="between" style="margin-bottom:var(--s4)">
+                <div class="sheet-title">New expense</div>
+                <button class="btn text sm">Change ▾</button>
+              </div>
+              <!-- Resolved target chip -->
+              <div class="card soft" style="display:flex;align-items:center;gap:var(--s12);margin-bottom:var(--s16)">
+                <span class="avatar sm av-1">SK</span>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:14px">Salalah Khareef · <span class="serif">Day 2 — Wadi Darbat</span></div>
+                  <div class="row-sub mono">Last event you used</div>
+                </div>
+                <span class="pill-tag">DEFAULT</span>
+              </div>
+              <div class="field" style="margin-bottom:var(--s12)">
+                <span class="field-label">Amount</span>
+                <!-- Amount rendered as mono .r-amount inside the focused input -->
+                <div class="input focus" style="font-size:22px">
+                  <span class="r-amount neu"><span class="ccy">OMR</span>12<span class="dec">.500</span></span>
+                </div>
+              </div>
+              <div class="field" style="margin-bottom:var(--s16)">
+                <span class="field-label">What for?</span>
+                <div class="input muted">Coffee &amp; dates</div>
+              </div>
+              <button class="btn grad block">Save expense</button>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item">
+              <span class="nav-icon">⊞</span>Groups
+            </div>
+            <div class="nav-item active">
+              <span class="nav-icon">◷</span>Activity
+            </div>
+          </div>
+        </div>
+        <!-- Extended FAB above bottom-nav -->
+        <div class="fab extended" style="bottom:calc(var(--s24) + 60px)">＋ Expense</div>
+      </div>
+      <p class="variant-note"><b>FAB opens add, pre-targeted to your last-active event</b> — the trip you're
+         already living in — with a <b>Change ▾</b> link that drops to the V1 picker for the rare miss.
+         Single tap to a fillable form for the 90% case. The "last-active event" is a SharedPrefs pointer
+         (<code>{gid, eid}</code>) updated on every successful ledger write; if it's empty/stale the FAB
+         falls through to the V1 sheet. <b>Change</b> and the empty fallback both route the same path-based
+         way — no <code>state.extra</code>. All amounts shown in OMR (3 dp, code-first, monospace).</p>
+    </div>
+
+    <!-- ============ V3 · Expanding FAB ============ -->
+    <div class="variant">
+      <div class="variant-label">V3 · Expanding FAB <span class="tag">recent shortcuts</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center"><span class="avatar sm av-5">N</span></div>
+            <div class="title">Rihla<span style="color:var(--primary)">.</span></div>
+            <div class="icon-btn center muted">◔</div>
+          </div>
+          <div class="content tight" style="flex:1">
+            <div class="uppercase-label" style="margin-top:4px">Active journeys</div>
+            <div class="ticket">
+              <div class="cover"></div>
+              <div class="perf"></div>
+              <div class="list-row">
+                <div class="row-body">
+                  <div class="row-title serif" style="font-size:17px">Salalah Khareef</div>
+                  <div class="row-sub mono">3 events · 5 people</div>
+                </div>
+                <div class="r-amount neg lg"><span class="ccy">OMR</span>18<span class="dec">.400</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- Speed-dial scrim (standard opacity) -->
+          <div class="scrim"></div>
+          <!-- Speed-dial items — right-aligned, stacked above FAB -->
+          <div style="position:absolute;right:var(--s20);bottom:calc(var(--s24) + 60px + 70px);display:flex;flex-direction:column;align-items:flex-end;gap:var(--s12)">
+            <div class="row" style="gap:var(--s8)">
+              <span class="toast">Wadi Darbat · Salalah</span>
+              <span class="avatar av-1">SK</span>
+            </div>
+            <div class="row" style="gap:var(--s8)">
+              <span class="toast">Airport taxi · Dubai Trip</span>
+              <span class="avatar av-2">DT</span>
+            </div>
+            <div class="row" style="gap:var(--s8)">
+              <span class="toast">Groceries · Flat Housemates</span>
+              <span class="avatar av-4">FH</span>
+            </div>
+            <div class="row" style="gap:var(--s8)">
+              <span class="toast" style="background:var(--card);color:var(--ink);border:1px solid var(--border);box-shadow:var(--shadow-raised)">More groups…</span>
+              <span class="chip glyph">⋯</span>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item active">
+              <span class="nav-icon">⊞</span>Groups
+            </div>
+            <div class="nav-item">
+              <span class="nav-icon">◷</span>Activity
+            </div>
+          </div>
+        </div>
+        <!-- Expanded (dismiss) FAB above bottom-nav -->
+        <div class="fab" style="bottom:calc(var(--s24) + 60px)">✕</div>
+      </div>
+      <p class="variant-note"><b>FAB expands into a speed-dial of recent group→event targets.</b> Tap the FAB,
+         pick a recent event shortcut, land in <code>/group/:gid/event/:eid/ledger/add</code> — bypassing
+         the group step for the events you touch most. Visually rich but heavier: a vertical speed-dial
+         scales badly past ~4 entries and the "More…" tail still falls back to the V1 sheet, so it's two
+         flows to build and test. Each row carries a pre-resolved <code>{gid, eid}</code> and
+         <code>context.push</code>es the add path directly — no <code>state.extra</code>.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

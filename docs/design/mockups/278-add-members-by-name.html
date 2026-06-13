@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#278 — Add members by name at creation (shadow placeholders) · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#278 · Add members <span class="saffron">by name</span> at creation</h1>
+  <p>A fresh group is a <b>group of one</b>: <code>createGroup</code> writes only the creator's member
+     doc, and every friend must self-install + join by code before anything can be split. The
+     <code>GroupMember.isShadow</code> field exists and the split UI already renders a "Shadow Profile"
+     label — but <b>no write path ever creates a shadow member</b>. These variants are the
+     <i>creation surface</i> for letting the creator seed placeholder people now, claimed on join later.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#278</span>
+    <h2 class="issue-title">feat(groups): add members by name at creation (isShadow model is dormant)</h2>
+    <span class="issue-meta">P2 · enhancement · design · screen: CreateGroupScreen</span>
+  </div>
+  <p class="issue-desc">All three live inside the existing <code>create_group_screen.dart</code> form
+     (group name → your name → OMR currency). V1 and V2 add a people-seeding section that writes
+     <b><code>isShadow:true</code></b> member docs; V3 is the honest counter-case — skip names entirely
+     and lean on the invite link. Shadow people render with the dashed <code>.avatar.shadow</code> + a
+     <code>Shadow</code> <code>.pill-tag</code> so it's clear they're unclaimed placeholders until a real
+     person joins and claims the name.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (chips field) — one calm "Who's in?" line on the
+     screen they already fill in, lowest friction to escape the group-of-one trap, and chips read as
+     lightweight/erasable rather than a roster commitment.</p>
+
+  <div class="variant-row">
+
+    <!-- ============================= Variant 1 ============================= -->
+    <div class="variant pick">
+      <div class="variant-label">V1 · "Who's in?" chips field</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">×</div>
+            <div class="title sans">New group</div>
+            <div class="row" style="justify-content:flex-end;flex:none">
+              <span class="btn sm" style="background:var(--ink);color:var(--paper)">Create</span>
+            </div>
+          </div>
+          <div class="content tight" style="padding-top:8px">
+            <div class="serif" style="font-size:28px;line-height:1.05;color:var(--ink)">A group<br>to split.</div>
+            <div class="tiny muted" style="margin-bottom:4px">Name it, add who's coming, share the code.</div>
+
+            <div class="field" style="margin-top:6px">
+              <div class="field-label">GROUP NAME</div>
+              <div class="input">Sur Beach Trip</div>
+            </div>
+
+            <div class="field">
+              <div class="field-label">YOUR NAME IN THE GROUP</div>
+              <div class="input">Nasser</div>
+            </div>
+
+            <!-- The new seeding line -->
+            <div class="field" style="margin-top:6px">
+              <div class="field-label">WHO'S IN? <span class="muted">— add names now or invite later</span></div>
+              <div class="chip-row" style="margin:2px 0 4px">
+                <span class="chip selected" style="gap:8px">
+                  <span class="avatar sm av-5">N</span> Nasser <span class="pill-tag" style="padding:2px 7px">YOU</span>
+                </span>
+                <span class="chip" style="gap:8px">
+                  <span class="avatar sm shadow">S</span> Sara
+                  <span class="pill-tag" style="padding:2px 7px">Shadow</span>
+                  <span class="muted" style="font-size:14px">×</span>
+                </span>
+                <span class="chip" style="gap:8px">
+                  <span class="avatar sm shadow">K</span> Khalid
+                  <span class="pill-tag" style="padding:2px 7px">Shadow</span>
+                  <span class="muted" style="font-size:14px">×</span>
+                </span>
+              </div>
+              <div class="input focus" style="display:flex;align-items:center;gap:8px;color:var(--ink-4)">
+                <span style="color:var(--primary);font-weight:600">+</span> Type a name…
+              </div>
+              <div class="tiny muted" style="margin-top:2px">Placeholders hold their share until they join and claim it.</div>
+            </div>
+
+            <div class="field">
+              <div class="field-label">DEFAULT CURRENCY</div>
+              <div class="input" style="color:var(--ink-3)">OMR</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a single "Who's in?" field below your-name — type a name → it
+         becomes a dashed shadow chip; you sit first with a <code>YOU</code> tag. <b>Why distinct:</b> it
+         reads as lightweight tagging, not roster-building, so seeding people feels optional and erasable
+         (each chip has an ×). <b>Implies:</b> a new chips widget in <code>create_group_screen.dart</code>
+         feeding a list into <code>createGroup</code>, which writes one <code>isShadow:true</code> member
+         doc per chip alongside the creator's — the lowest-friction cure for group-of-one.</p>
+    </div>
+
+    <!-- ============================= Variant 2 ============================= -->
+    <div class="variant">
+      <div class="variant-label">V2 · Member list + "Add person"</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">×</div>
+            <div class="title sans">New group</div>
+            <div class="row" style="justify-content:flex-end;flex:none">
+              <span class="btn sm" style="background:var(--ink);color:var(--paper)">Create</span>
+            </div>
+          </div>
+          <div class="content tight" style="padding-top:8px">
+            <div class="field">
+              <div class="field-label">GROUP NAME</div>
+              <div class="input">Sur Beach Trip</div>
+            </div>
+
+            <div class="field">
+              <div class="field-label">YOUR NAME IN THE GROUP</div>
+              <div class="input">Nasser</div>
+            </div>
+
+            <div class="section-header"><span class="label">Members · 3</span></div>
+            <div class="card flush raised">
+              <div class="list-row">
+                <span class="avatar av-5 row-lead">N</span>
+                <div class="row-body">
+                  <div class="row-title">Nasser</div>
+                  <div class="row-sub">That's you · creator</div>
+                </div>
+                <div class="row-trail"><span class="pill-tag">YOU</span></div>
+              </div>
+              <div class="list-row">
+                <span class="avatar shadow row-lead">S</span>
+                <div class="row-body">
+                  <div class="row-title">Sara</div>
+                  <div class="row-sub">Placeholder · claimed on join</div>
+                </div>
+                <div class="row-trail"><span class="pill-tag">Shadow</span><span class="muted" style="font-size:16px">×</span></div>
+              </div>
+              <div class="list-row">
+                <span class="avatar shadow row-lead">M</span>
+                <div class="row-body">
+                  <div class="row-title">Mariam</div>
+                  <div class="row-sub">Placeholder · claimed on join</div>
+                </div>
+                <div class="row-trail"><span class="pill-tag">Shadow</span><span class="muted" style="font-size:16px">×</span></div>
+              </div>
+            </div>
+            <button class="btn secondary block">+ Add person</button>
+
+            <div class="field">
+              <div class="field-label">DEFAULT CURRENCY</div>
+              <div class="input" style="color:var(--ink-3)">OMR</div>
+            </div>
+            <div class="card soft" style="padding:12px 14px">
+              <div class="tiny muted">Each placeholder gets a share of expenses. When they install Rihla and
+                join with your code, they pick their name and take it over.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a proper member list — you pinned at the top, dashed shadow rows
+         below, an "Add person" button opening a name prompt. <b>Why distinct:</b> the explicit roster
+         metaphor (Splitwise-style) scales better when seeding 5–6 people and makes each placeholder's
+         "claimed on join" status legible per-row. <b>Implies:</b> a richer list widget + add-name sheet
+         in <code>create_group_screen.dart</code>; same <code>isShadow:true</code> writes as V1, but
+         heavier UI for the common 2–3-person case.</p>
+    </div>
+
+    <!-- ============================= Variant 3 ============================= -->
+    <div class="variant">
+      <div class="variant-label">V3 · Invite-only (no names)</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">×</div>
+            <div class="title sans">New group</div>
+            <div class="row" style="justify-content:flex-end;flex:none">
+              <span class="btn sm" style="background:var(--ink);color:var(--paper)">Create</span>
+            </div>
+          </div>
+          <div class="content tight" style="padding-top:8px">
+            <div class="field">
+              <div class="field-label">GROUP NAME</div>
+              <div class="input">Sur Beach Trip</div>
+            </div>
+            <div class="field">
+              <div class="field-label">YOUR NAME IN THE GROUP</div>
+              <div class="input">Nasser</div>
+            </div>
+            <div class="field">
+              <div class="field-label">DEFAULT CURRENCY</div>
+              <div class="input" style="color:var(--ink-3)">OMR</div>
+            </div>
+
+            <div class="section-header"><span class="label">Getting people in</span></div>
+            <div class="card raised" style="text-align:center;padding:var(--s20)">
+              <div class="uppercase-label" style="margin-bottom:8px">Invite code (after create)</div>
+              <div class="mono" style="font-size:24px;letter-spacing:6px;font-weight:600;color:var(--ink)">7K4MQ9</div>
+              <div class="tiny muted" style="margin-top:6px">rihla-safar.web.app/join/7K4MQ9</div>
+              <div class="tiny muted" style="margin-top:10px;max-width:220px;margin-left:auto;margin-right:auto">Real people join with their own names — no placeholders to reconcile later.</div>
+            </div>
+            <div class="card soft" style="padding:12px 14px">
+              <div class="tiny muted">No shadow members, no claim/merge step. Trade-off: until someone joins
+                you're still a group of one — you can log spending but can't split it yet.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> the deliberate counter-direction — no name fields at all, just
+         push the invite code/link harder. <b>Why distinct:</b> it sidesteps the entire claim/merge problem
+         and keeps the create screen untouched, surfacing the real cost of <i>not</i> doing #278 (the
+         group-of-one wait). <b>Implies:</b> zero new write paths — but #278's persona pain (split tonight's
+         dinner before anyone installs) stays unsolved, which is exactly why V1/V2 exist.</p>
+    </div>
+
+  </div>
+
+  <p class="variant-note" style="max-width:900px;margin-top:18px">
+    <b>Scope note (Gate):</b> this mockup is the <b>creation surface only</b>. The hard parts — claiming a
+    shadow member on join, merging their accrued share into the real <code>userId</code>, and the
+    name-collision guard (#279) — are <b>money + schema</b> changes that touch balances and Firestore rules,
+    so they are <b>Gate-mandatory</b> and specced separately. V1 vs V2 differ only in how the creator types
+    names; both produce the same <code>isShadow:true</code> member docs.
+  </p>
+</div>
+</body>
+</html>

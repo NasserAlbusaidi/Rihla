@@ -10,6 +10,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
 import '../keys/activity_keys.dart';
 import '../models/activity_log_model.dart';
@@ -116,7 +117,6 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
           children: [
             _TopBar(
               title: eventAsync.valueOrNull?.name ?? context.l10n.activityTitle,
-              loading: eventAsync.isLoading,
             ),
             const SizedBox(height: 6),
             Expanded(
@@ -166,19 +166,9 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i == days.length) {
-          return Padding(
-            padding: EdgeInsets.all(context.spacing.space16),
-            child: Center(
-              child: SizedBox(
-                width: context.spacing.space16,
-                height: context.spacing.space16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: context.colors.primary,
-                ),
-              ),
-            ),
-          );
+          // Next-page footer reuses the same skeleton primitive instead of a
+          // bare spinner, so the screen has ONE loading treatment (#488).
+          return SkeletonLoader.expenseList(count: 1);
         }
         return Padding(
           key: ValueKey('activity-day-${days[i].label}'),
@@ -197,9 +187,8 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
 // ──────────────────────────── Top bar
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.loading});
+  const _TopBar({required this.title});
   final String title;
-  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +236,7 @@ class _TopBar extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    loading ? '…' : title,
+                    title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.display(
@@ -493,21 +482,9 @@ class _LoadingShimmer extends StatelessWidget {
   const _LoadingShimmer();
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return ListView.builder(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
-      itemCount: 3,
-      itemBuilder: (ctx, i) => Padding(
-        padding: EdgeInsets.only(top: i == 0 ? context.spacing.space4 : context.spacing.space16),
-        child: Container(
-          height: 110,
-          decoration: BoxDecoration(
-            color: colors.cardSoft,
-            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-          ),
-        ),
-      ),
-    );
+    // The shared, reduce-motion-aware skeleton primitive — same treatment the
+    // cross-group activity feed uses (#488), so loading reads consistently.
+    return SkeletonLoader.expenseList();
   }
 }
 

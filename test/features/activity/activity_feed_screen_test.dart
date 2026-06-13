@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +15,7 @@ import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 /// Throws on the first fetch (initial-load error), then delegates to the real
 /// fake-backed query so the retry path can be exercised.
@@ -35,6 +38,19 @@ class _FailingActivityService extends ActivityService {
       limit: limit,
     );
   }
+}
+
+/// Never resolves the first page, holding the screen in its first-page
+/// loading state so the loading skeleton stays on screen.
+class _NeverCompletingActivityService extends ActivityService {
+  _NeverCompletingActivityService(super.db) : super.withFirestore();
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId,
+    String eventId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) => Completer<QuerySnapshot<Map<String, dynamic>>>().future;
 }
 
 void main() {
@@ -169,7 +185,7 @@ void main() {
     );
     await tester.pump(
       const Duration(seconds: 1),
-    ); // NOT pumpAndSettle: footer spinner is infinite
+    ); // NOT pumpAndSettle: the footer skeleton shimmer is infinite
     // Newest row is on-screen at the top after page 1 loads. The actor name is a
     // span inside the row's Text.rich, so match with findRichText.
     expect(find.textContaining('Actor 0', findRichText: true), findsOneWidget);
@@ -194,7 +210,8 @@ void main() {
 
     // Scroll down until the page-2 row appears. scrollUntilVisible advances the
     // clock by `duration` (pump, NOT pumpAndSettle) between small drags — the
-    // footer spinner is an infinite animation, so pumpAndSettle would hang. The
+    // footer skeleton shimmer is an infinite animation, so pumpAndSettle would
+    // hang. The
     // small step keeps the offset from overshooting the lazy list's shrinking
     // maxScrollExtent (a larger single drag pins the position past the end and
     // stalls pagination).
@@ -253,6 +270,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(ActivityKeys.errorView), findsNothing);
   });
+
+  testWidgets(
+    'first-page load uses the shared SkeletonLoader — one unified treatment, '
+    'no bare spinner or opaque blocks (#488)',
+    (tester) async {
+      // Event resolves (buildRoute default); the page fetch never completes,
+      // so the screen sits in its first-page loading state.
+      await tester.pumpWidget(
+        buildRoute([
+          activityServiceProvider.overrideWithValue(
+            _NeverCompletingActivityService(FakeFirebaseFirestore()),
+          ),
+        ]),
+      );
+      await tester.pump(); // event data resolves; _loadPage hangs -> loading
+
+      expect(find.byType(SkeletonLoader), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    },
+  );
 
   // ── #248 PR 3: expense audit before/after rendering ──────────────────────
 

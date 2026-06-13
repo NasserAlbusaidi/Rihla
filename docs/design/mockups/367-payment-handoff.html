@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#367 — Payment handoff (WhatsApp / IBAN / QR) · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* WhatsApp brand colour — third-party constant, not a Rihla token */
+  :root {
+    --wa-green: #25D366;
+    --wa-text:  #06351b;
+  }
+  /* WhatsApp chip (mirrors .btn.whatsapp but for .chip) */
+  .chip.whatsapp {
+    background: var(--wa-green);
+    border: none;
+    color: var(--wa-text);
+    font-weight: 600;
+  }
+  /* QR placeholder — CSS-only grid so no external image needed */
+  .qr-placeholder {
+    width: 172px; height: 172px;
+    margin: 0 auto var(--s12);
+    border-radius: var(--r-sm);
+    background: repeating-conic-gradient(var(--ink) 0 25%, var(--card) 0 50%) 0 0 / 22px 22px;
+    border: 6px solid var(--card);
+    box-shadow: inset 0 0 0 1px var(--rule-2);
+  }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#367 · Payment <span class="saffron">handoff</span></h1>
+  <p>Today the <b>Mark paid</b> sheet (<code>record_payment_sheet.dart</code>) has cosmetic
+     Cash / Bank / Other chips and just records a settlement — it never helps you <i>actually pay</i>.
+     The GCC norm is an IBAN bank transfer. Rihla still <b>does not move money</b>; it launches the
+     out-of-band action (WhatsApp with a prefilled amount, copy a redacted IBAN, or show a QR), then
+     you come back and mark it paid. Schema decision (member doc vs profile) is the ADR prerequisite.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#367</span>
+    <h2 class="issue-title">feat(settle-up): payment handoff — WhatsApp / IBAN / QR</h2>
+    <span class="issue-meta">design · privacy · decision · needs payment-handle schema (ADR)</span>
+  </div>
+  <p class="issue-desc">All three variants add a <b>handoff layer</b> above the existing record step and
+     keep the "Rihla doesn't move money" framing. They differ on <b>where the channels live</b>: a dedicated
+     handoff block inside the Mark-paid sheet (V1 — pick), an inline <i>Pay via</i> strip on each
+     settle-up row (V2), or a QR-first hand-the-phone moment (V3). The IBAN is always shown redacted
+     (middle masked); copy fires a SnackBar. Schema (member doc vs profile, PII treatment) is decided in the
+     ADR — these mock the UI only. Gate-category change: schema + write-adjacent → Gate required before
+     implementation.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (Handoff sheet) — channels sit where the user
+     already is (confirming a payment), reuses the existing <code>_MarkPaidSheet</code> +
+     <code>shareText</code> path, and degrades gracefully when a creditor has no IBAN on file.</p>
+
+  <div class="variant-row">
+
+    <!-- ==================== VARIANT 1 — Handoff sheet (PICK) ==================== -->
+    <div class="variant pick">
+      <div class="variant-label">1 · Handoff sheet <span class="tag">channel chips</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <div class="scrim"></div>
+          <div class="sheet-wrap">
+            <div class="spacer"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+
+              <!-- Header: avatar + name + context -->
+              <div class="center" style="margin-bottom:var(--s12)">
+                <span class="avatar lg av-5" style="margin:0 auto var(--s8)">M</span>
+                <div class="sheet-title">Pay Mariam</div>
+                <div class="sheet-sub" style="margin-bottom:0">You owe her for Beach House</div>
+              </div>
+
+              <!-- Amount card -->
+              <div class="card soft" style="display:flex;align-items:center;justify-content:space-between;padding:var(--s12) var(--s16);margin-bottom:var(--s16)">
+                <div class="row">
+                  <span class="avatar sm av-5">M</span>
+                  <div class="col" style="gap:1px">
+                    <div class="row-title" style="font-size:14px">Mariam Al-Farsi</div>
+                    <div class="row-sub">Suggested · whole balance</div>
+                  </div>
+                </div>
+                <span class="r-amount lg neg"><span class="ccy">OMR</span>18<span class="dec">.500</span></span>
+              </div>
+
+              <!-- Handoff channels -->
+              <div class="uppercase-label" style="margin-bottom:var(--s8)">Hand off via</div>
+              <div class="col" style="gap:10px;margin-bottom:var(--s16)">
+
+                <!-- WhatsApp row -->
+                <div class="card" style="display:flex;align-items:center;gap:var(--s12);padding:var(--s12) var(--s16)">
+                  <span style="width:34px;height:34px;border-radius:var(--r-pill);background:var(--wa-green);color:var(--wa-text);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none">✆</span>
+                  <div class="row-body">
+                    <div class="row-title" style="font-size:14px">WhatsApp Mariam</div>
+                    <div class="row-sub">Opens chat · message + amount prefilled</div>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+
+                <!-- Copy IBAN row -->
+                <div class="card" style="display:flex;align-items:center;gap:var(--s12);padding:var(--s12) var(--s16)">
+                  <span class="chip glyph" style="width:34px;height:34px;flex:none;font-size:14px">⧉</span>
+                  <div class="row-body">
+                    <div class="row-title" style="font-size:14px">Copy IBAN</div>
+                    <div class="row-sub mono" style="letter-spacing:.5px">OM81 •••• •••• 4421</div>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+
+                <!-- QR row -->
+                <div class="card" style="display:flex;align-items:center;gap:var(--s12);padding:var(--s12) var(--s16)">
+                  <span class="chip glyph" style="width:34px;height:34px;flex:none;font-size:14px">▦</span>
+                  <div class="row-body">
+                    <div class="row-title" style="font-size:14px">Show transfer QR</div>
+                    <div class="row-sub">IBAN + amount · scan to pay</div>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+
+              </div>
+
+              <!-- Disclaimer -->
+              <div class="banner info" style="border-radius:var(--r-input);margin-bottom:var(--s16)">
+                <span class="muted">ⓘ</span>
+                <span class="tiny">Rihla doesn't move money — it just opens the app. Mark it paid once the transfer's done.</span>
+              </div>
+
+              <div class="row" style="gap:10px">
+                <button class="btn secondary block">Not yet</button>
+                <button class="btn grad block">I've paid</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> the existing Mark-paid sheet gains a <i>Hand off via</i> block —
+         WhatsApp (deep-links a prefilled message via <code>shareText</code>), Copy IBAN (redacted middle,
+         SnackBar on copy), Show QR. <b>Why pick:</b> keeps handoff and record in one sheet where the user
+         is already confirming; reuses <code>_MarkPaidSheet</code> in <code>record_payment_sheet.dart</code>
+         with no new screen. Rows hide via <code>canLaunchUrl</code> / missing-IBAN fallback. <b>Gate:</b>
+         schema + write-adjacent → fresh-context Opus gate before implementation.</p>
+    </div>
+
+    <!-- ==================== VARIANT 2 — Inline "Pay via" on the settle row ==================== -->
+    <div class="variant">
+      <div class="variant-label">2 · Inline "Pay via" <span class="tag">per-creditor</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted"> </div>
+          </div>
+          <div class="content tight">
+
+            <div class="section-header"><span class="label">You owe</span></div>
+
+            <div class="card flush">
+
+              <!-- Creditor 1: Mariam — has IBAN -->
+              <div class="list-row" style="flex-wrap:wrap;row-gap:10px">
+                <span class="avatar av-5">M</span>
+                <div class="row-body">
+                  <div class="row-title">Mariam Al-Farsi</div>
+                  <div class="row-sub mono" style="letter-spacing:.5px">IBAN OM81 •••• 4421</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount lg neg"><span class="ccy">OMR</span>18<span class="dec">.500</span></span>
+                </div>
+                <div class="chip-row" style="width:100%;margin-top:2px">
+                  <span class="chip whatsapp" style="flex:1;justify-content:center">✆ WhatsApp</span>
+                  <span class="chip" style="flex:1;justify-content:center">⧉ Copy IBAN</span>
+                  <span class="chip glyph">▦</span>
+                </div>
+                <button class="btn sm block secondary" style="width:100%">Mark paid</button>
+              </div>
+
+              <!-- Creditor 2: Khalid — no IBAN -->
+              <div class="list-row" style="flex-wrap:wrap;row-gap:10px">
+                <span class="avatar av-4">K</span>
+                <div class="row-body">
+                  <div class="row-title">Khalid Al-Rashdi</div>
+                  <div class="row-sub" style="color:var(--ink-4)">No IBAN on file</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount lg neg"><span class="ccy">OMR</span>6<span class="dec">.250</span></span>
+                </div>
+                <div class="chip-row" style="width:100%;margin-top:2px">
+                  <span class="chip whatsapp" style="flex:1;justify-content:center">✆ WhatsApp</span>
+                  <span class="chip" style="flex:1;justify-content:center;opacity:.45;pointer-events:none">⧉ Copy IBAN</span>
+                </div>
+                <button class="btn sm block secondary" style="width:100%">Mark paid</button>
+              </div>
+
+            </div>
+
+            <div class="banner info">
+              <span class="muted">ⓘ</span>
+              <span class="tiny">Rihla doesn't move money. WhatsApp & QR launch the app; "Mark paid" just logs it here.</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> each creditor row on the settle-up screen carries its own
+         <i>Pay via</i> strip — WhatsApp / Copy IBAN / QR — with the redacted IBAN shown under the name.
+         Khalid's Copy-IBAN chip is dimmed (no handle on file); WhatsApp stays as the fallback channel.
+         <b>Why distinct:</b> no sheet hop; settle every person from one scroll on a multi-creditor trip.
+         <b>Implies:</b> lives on the settle-up list screen, not the sheet; more surface area exposed per row.</p>
+    </div>
+
+    <!-- ==================== VARIANT 3 — QR-forward ==================== -->
+    <div class="variant">
+      <div class="variant-label">3 · QR-forward <span class="tag">hand the phone</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <div class="scrim"></div>
+          <div class="sheet-wrap">
+            <div class="spacer"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+
+              <div class="center" style="margin-bottom:var(--s16)">
+                <div class="sheet-title">Pay Mariam</div>
+                <div class="sheet-sub" style="margin-bottom:0">Scan with any bank app</div>
+              </div>
+
+              <!-- QR placeholder + amount -->
+              <div class="card raised center" style="padding:var(--s20)">
+                <div class="qr-placeholder"></div>
+                <span class="r-amount hero neg"><span class="ccy">OMR</span>18<span class="dec">.500</span></span>
+                <div class="row-sub mono" style="letter-spacing:.5px;margin-top:6px">OM81 •••• •••• 4421 · Mariam Al-Farsi</div>
+              </div>
+
+              <!-- Fallback chips -->
+              <div class="chip-row" style="justify-content:center;margin:var(--s16) 0">
+                <span class="chip whatsapp">✆ WhatsApp</span>
+                <span class="chip">⧉ Copy IBAN</span>
+                <span class="chip">↗ Share image</span>
+              </div>
+
+              <!-- Disclaimer -->
+              <div class="banner info" style="border-radius:var(--r-input);margin-bottom:var(--s16)">
+                <span class="muted">ⓘ</span>
+                <span class="tiny">Rihla doesn't move money — this is Mariam's transfer code. Tap below once it clears.</span>
+              </div>
+
+              <button class="btn grad block">I've paid Mariam</button>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a QR encoding the creditor's IBAN + amount fills the sheet —
+         hand the phone over or scan it into a bank app; WhatsApp / Copy / Share-image sit below as
+         fallbacks. <b>Why distinct:</b> bets that scan-to-pay is faster than copying an IBAN — an
+         in-person "scan me" moment. <b>Weaknesses:</b> needs a QR-encode library + IBAN schema loaded;
+         weakest fallback story when creditor has no IBAN, leans on the share row.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

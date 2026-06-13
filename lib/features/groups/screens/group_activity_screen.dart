@@ -53,6 +53,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   DocumentSnapshot? _lastDocument;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  bool _loadFailed = false;
   _Filter _filter = _Filter.all;
   late final ScrollController _scrollController;
 
@@ -80,7 +81,10 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
 
   Future<void> _loadPage() async {
     if (_isLoadingMore || !_hasMore) return;
-    setState(() => _isLoadingMore = true);
+    setState(() {
+      _isLoadingMore = true;
+      _loadFailed = false;
+    });
     try {
       final service = ref.read(groupActivityServiceProvider);
       final snap = await service.fetchActivityPageRaw(
@@ -103,7 +107,10 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _isLoadingMore = false);
+      setState(() {
+        _isLoadingMore = false;
+        _loadFailed = true;
+      });
     }
   }
 
@@ -142,6 +149,19 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     if (_isLoadingMore && _activities.isEmpty) {
       return SkeletonLoader.expenseList();
     }
+    // A failed first load must surface a real, retryable error — never the
+    // "No activity yet" empty state, which falsely reads as "this group is
+    // empty" when the fetch actually failed (#488).
+    if (_loadFailed && _activities.isEmpty) {
+      return EmptyStateView(
+        key: GroupKeys.activityErrorView,
+        icon: Iconsax.activity,
+        title: context.l10n.activityLoadFailedTitle,
+        message: context.l10n.activityLoadFailedMessage,
+        actionLabel: context.l10n.activityReload,
+        onAction: _loadPage,
+      );
+    }
     if (_activities.isEmpty) {
       return EmptyStateView(
         icon: Iconsax.activity,
@@ -166,6 +186,19 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i == days.length) {
+          // A failed *pagination* fetch shows a retry, not a perpetual
+          // spinner indistinguishable from "reached the end" (#488).
+          if (_loadFailed) {
+            return Padding(
+              padding: EdgeInsets.all(context.spacing.space16),
+              child: Center(
+                child: TextButton(
+                  onPressed: _loadPage,
+                  child: Text(context.l10n.activityReload),
+                ),
+              ),
+            );
+          }
           return Padding(
             padding: EdgeInsets.all(context.spacing.space16),
             child: Center(

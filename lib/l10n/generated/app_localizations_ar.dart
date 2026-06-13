@@ -364,6 +364,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileStatsLifetime => 'الإجمالي';
 
   @override
+  String get profileStatsLoadFailed => 'تعذّر تحميل إحصاءاتك';
+
+  @override
   String profileStatsSpentMore(int count) {
     return '+$count';
   }
@@ -1332,15 +1335,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String settleUpSuggestedAmount(Object amount) {
     return 'المقترح: $amount';
   }
-
-  @override
-  String get settleUpMethodCash => 'نقدًا';
-
-  @override
-  String get settleUpMethodBank => 'بنك';
-
-  @override
-  String get settleUpMethodOther => 'أخرى';
 
   @override
   String get settleUpAllSettledTitle => 'تمت التسوية بالكامل';

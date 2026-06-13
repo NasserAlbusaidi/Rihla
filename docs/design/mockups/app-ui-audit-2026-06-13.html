@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rihla — honest app-UI audit (before → better)</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  .audit-block { max-width: 1280px; margin: 0 auto var(--s32);
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--r-card); padding: var(--s24); }
+  .audit-head { display:flex; align-items:baseline; gap:var(--s12); flex-wrap:wrap; margin-bottom:var(--s8); }
+  .audit-num { font-family:var(--font-mono); font-weight:600; font-size:13px; color:#1c1a17;
+    background:var(--primary); padding:3px 10px; border-radius:var(--r-pill); }
+  .audit-title { color:#F3EEE2; font-size:20px; font-weight:600; margin:0; }
+  .audit-sev { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.4px; padding:3px 9px;
+    border-radius:var(--r-pill); }
+  .sev-money { background:#f7e3dc; color:var(--rust-text); border:1px solid var(--rust); }
+  .sev-clarity { background:#fdf0d8; color:#7a5305; border:1px solid var(--amber); }
+  .sev-consistency { background:rgba(255,255,255,.06); color:#C7C1B3; border:1px solid rgba(255,255,255,.14); }
+  .audit-desc { color:#C7C1B3; font-size:14px; max-width:980px; margin:var(--s8) 0 var(--s16); line-height:1.55; }
+  .audit-desc code { background:rgba(255,255,255,.06); padding:1px 6px; border-radius:5px; font-size:12.5px; color:#E8C89A; }
+  .findings { color:#B8B2A4; font-size:13px; max-width:980px; margin:0 0 var(--s20); padding-left:18px; line-height:1.6; }
+  .findings li { margin-bottom:5px; }
+  .findings b { color:#E8DFC9; }
+
+  .ba-row { display:flex; flex-wrap:wrap; gap:var(--s32); align-items:flex-start; }
+  .ba { width:360px; }
+  .ba-cap { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:14px; font-weight:600; }
+  .ba-tag { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.6px; padding:3px 9px; border-radius:var(--r-pill); }
+  .ba-now  .ba-tag { background:var(--rust); color:#fff; }
+  .ba-now  .ba-cap { color:#E7A793; }
+  .ba-next .ba-tag { background:var(--sage); color:#fff; }
+  .ba-next .ba-cap { color:#A9C0A2; }
+  .ba-now  .phone { box-shadow:0 0 0 2px rgba(168,75,51,.85), var(--shadow-floating); }
+  .ba-next .phone { box-shadow:0 0 0 2px rgba(92,122,87,.9), var(--shadow-floating); }
+  .ba-note { color:#ADA797; font-size:12.5px; margin-top:10px; line-height:1.5; }
+  .ba-note b { color:#D9D3C5; }
+  .arrow-col { display:flex; align-items:center; align-self:stretch; color:var(--primary); font-size:30px; }
+
+  /* annotation pin on a "now" phone */
+  .pin { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
+    border-radius:var(--r-pill); background:var(--rust); color:#fff; font-family:var(--font-mono);
+    font-size:11px; font-weight:700; padding:0 5px; vertical-align:middle; }
+  .anno { background:#f7e3dc; border:1px solid var(--rust); border-radius:var(--r-input);
+    padding:8px 10px; font-size:11.5px; color:var(--rust-text); line-height:1.45; display:flex; gap:7px; }
+  .anno .pin { flex:none; margin-top:1px; }
+  .good { background:#e8efe4; border:1px solid var(--sage); border-radius:var(--r-input);
+    padding:8px 10px; font-size:11.5px; color:var(--sage-text); line-height:1.45; }
+
+  /* compact triptych phones for the states section */
+  .mini-row { display:flex; gap:var(--s16); flex-wrap:wrap; }
+  .mini { width:232px; }
+  .mini .phone { width:232px; height:420px; border-width:7px; border-radius:30px; }
+  .mini-cap { font-size:12px; font-weight:600; margin-bottom:6px; }
+
+  /* system hygiene swatches */
+  .hyg-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+  .hyg { background:var(--paper); border-radius:var(--r-card); padding:16px; }
+  .hyg h4 { margin:0 0 4px; font-size:14px; color:var(--ink); }
+  .hyg p { margin:0 0 12px; font-size:12.5px; color:var(--ink-3); }
+  .hyg .swrow { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .nav-pill { width:48px; height:48px; border-radius:var(--r-pill); display:flex; align-items:center;
+    justify-content:center; background:var(--card-soft); border:1px solid var(--border); color:var(--ink-2); font-size:18px; }
+</style>
+</head>
+<body>
+
+<div class="page-head wrap">
+  <h1><span class="saffron">Rihla</span> · honest app-UI audit</h1>
+  <p>Mapped the whole app from the live screens (not the aspirational mockups) and pinned the real rough edges.
+     The verdict up front: <b style="color:#E8DFC9">the visual language is genuinely good</b> — saffron-on-paper, the
+     serif-italic voice, mono money, the ticket-card metaphor. None of that needs changing. The problems are
+     <b style="color:#E8DFC9">structural and consistency-level</b>: the app restates the same balance three ways on
+     every money screen, the split editor previews a number that can be wrong, navigation is one hub too deep, and
+     loading/error states drift screen-to-screen against your own DESIGN.md §10 contract. Each block below is a
+     <span class="ba-now" style="display:inline"><span class="ba-tag">NOW</span></span> (what the code renders today)
+     beside a <span class="ba-next" style="display:inline"><span class="ba-tag">BETTER</span></span> built on the same
+     <code>rihla.css</code> tokens. Pick what's worth filing.</p>
+  <div class="legend">
+    <span><span class="audit-sev sev-money">money-wrong</span> can show an incorrect figure</span>
+    <span><span class="audit-sev sev-clarity">clarity</span> confusing / redundant / hidden</span>
+    <span><span class="audit-sev sev-consistency">consistency</span> drifts from the system</span>
+  </div>
+</div>
+
+<!-- ===================================================================== 1 -->
+<section class="audit-block">
+  <div class="audit-head">
+    <span class="audit-num">A1</span>
+    <h2 class="audit-title">The split preview can show the wrong per-person amount</h2>
+    <span class="audit-sev sev-money">money-wrong</span>
+  </div>
+  <p class="audit-desc">
+    Adding an expense is split across <b>three stacked sections</b> — “Paid by”, “Split between” (who), “How” (the
+    math). The “Split between” card always previews <code>amount ÷ count</code> as “X.XXX each”
+    (<code>_SplitPreviewCard</code>, <code>expense_editor_body.dart:43</code>) — it never reads the chosen split
+    <i>mode</i>. So when you weight a split by shares/exact/percent in the “How” sheet, the preview <b>still says the
+    equal figure</b>, and the ledger row then <b>hides the per-head share entirely for non-equal splits</b>
+    (<code>ledger_day_card.dart:311</code>). The user can set a weighted split and never see a true per-person number
+    anywhere. There are also two separate payer pickers (“Paid by → Change” and a second dropdown inside “Customise”).
+  </p>
+  <ul class="findings">
+    <li><b>Fix:</b> one <b>Split</b> card that is the single source of truth — payer inline, mode as a segmented control, and <b>real <code>allocateOwed</code> figures per person</b> that update live with an “adds up to TOTAL” reconciliation footer.</li>
+    <li>Kill the second payer picker. Show your own share, highlighted. This is exactly the WYSIWYG intent of #242/#203 but applied to the everyday flow, not a helper.</li>
+  </ul>
+  <div class="ba-row">
+    <!-- NOW -->
+    <div class="ba ba-now">
+      <div class="ba-cap"><span class="ba-tag">NOW</span> Add expense — weighted split</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn">✕</div><div class="title sans">Add expense</div><button class="btn sm">Add</button></div>
+          <div class="content tight">
+            <div class="center" style="padding:6px 0 2px">
+              <div class="uppercase-label" style="font-size:9px">AMOUNT · OMR</div>
+              <div class="r-amount hero neu" style="margin-top:2px"><span class="ccy" style="font-size:18px">OMR</span>48<span class="dec">.000</span></div>
+              <div style="height:3px;width:120px;background:var(--primary);margin:6px auto 0;border-radius:9px"></div>
+            </div>
+            <div class="field"><div class="input">Dinner at Bait Al Luban</div></div>
+            <div class="chip-row"><span class="chip selected">🍽 Food</span><span class="chip">🛏 Lodging</span><span class="chip">🚕 Transit</span></div>
+
+            <div class="section-header"><span class="label">PAID BY</span><span class="see-all">Change</span></div>
+            <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+              <div class="avatar sm av-3">N</div><div class="row-body"><div class="row-title" style="font-size:14px">You</div><div class="row-sub">Paid full amount</div></div><span class="chevron">›</span>
+            </div>
+
+            <div class="section-header"><span class="label">SPLIT BETWEEN</span><span class="see-all">Customise</span></div>
+            <div class="card soft">
+              <div class="between"><span class="tiny mono" style="color:var(--ink-3)">GLOBAL · 4 WAYS</span><span class="pill-tag">EVENT DEFAULT</span></div>
+              <div class="r-amount lg neu" style="margin:6px 0 10px"><span class="ccy">OMR</span>12<span class="dec">.000</span> <span class="tiny muted" style="font-weight:400">each</span></div>
+              <div class="row" style="gap:14px">
+                <div class="col center"><div class="avatar sm av-1">A</div><div class="tiny">Ahmed</div></div>
+                <div class="col center"><div class="avatar sm av-2">S</div><div class="tiny">Sara</div></div>
+                <div class="col center"><div class="avatar sm av-4">K</div><div class="tiny">Khalid</div></div>
+                <div class="col center"><div class="avatar sm av-3">N</div><div class="tiny">You</div></div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">HOW</span><span class="see-all">Customise</span></div>
+            <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+              <div class="chip glyph">%</div><div class="row-body"><div class="row-title" style="font-size:14px">Weighted by shares</div><div class="row-sub">Ahmed ×2 · others ×1</div></div><span class="chevron">›</span>
+            </div>
+
+            <div class="anno"><span class="pin">1</span><div>“12.000 each” is wrong — the split is <b>by shares</b> (Ahmed pays double). The preview never reads the mode.</div></div>
+            <div class="anno"><span class="pin">2</span><div>Three sections, three sheets, <b>two payer pickers</b>. The ledger row will then hide the share line entirely.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">→</div>
+
+    <!-- BETTER -->
+    <div class="ba ba-next">
+      <div class="ba-cap"><span class="ba-tag">BETTER</span> One Split card, true figures</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn">✕</div><div class="title sans">Add expense</div><button class="btn sm">Add</button></div>
+          <div class="content tight">
+            <div class="center" style="padding:6px 0 2px">
+              <div class="uppercase-label" style="font-size:9px">AMOUNT · OMR</div>
+              <div class="r-amount hero neu" style="margin-top:2px"><span class="ccy" style="font-size:18px">OMR</span>48<span class="dec">.000</span></div>
+              <div style="height:3px;width:120px;background:var(--primary);margin:6px auto 0;border-radius:9px"></div>
+            </div>
+            <div class="field"><div class="input">Dinner at Bait Al Luban</div></div>
+            <div class="chip-row"><span class="chip selected">🍽 Food</span><span class="chip">🛏 Lodging</span><span class="chip">🚕 Transit</span></div>
+
+            <div class="section-header"><span class="label">SPLIT</span></div>
+            <div class="card">
+              <div class="between" style="margin-bottom:10px">
+                <div class="row" style="gap:8px"><span class="tiny muted">Paid by</span><span class="chip sm selected" style="padding:4px 10px"><span class="avatar sm av-3" style="width:18px;height:18px;font-size:9px">N</span> You</span></div>
+              </div>
+              <div class="row" style="gap:6px;margin-bottom:12px"><span class="chip sm">Equally</span><span class="chip sm selected">Shares</span><span class="chip sm">Exact</span><span class="chip sm">%</span></div>
+
+              <div class="list-row" style="padding:8px 0"><div class="avatar sm av-1">A</div><div class="row-body"><div class="row-title" style="font-size:14px">Ahmed</div><div class="row-sub">2 shares</div></div><span class="r-amount neu">19<span class="dec">.200</span></span></div>
+              <div class="list-row" style="padding:8px 0"><div class="avatar sm av-2">S</div><div class="row-body"><div class="row-title" style="font-size:14px">Sara</div><div class="row-sub">1 share</div></div><span class="r-amount neu">9<span class="dec">.600</span></span></div>
+              <div class="list-row" style="padding:8px 0"><div class="avatar sm av-4">K</div><div class="row-body"><div class="row-title" style="font-size:14px">Khalid</div><div class="row-sub">1 share</div></div><span class="r-amount neu">9<span class="dec">.600</span></span></div>
+              <div class="list-row" style="padding:8px 0;background:var(--saffron-tint);border-radius:10px;margin:0 -6px;padding-left:6px;padding-right:6px"><div class="avatar sm av-3">N</div><div class="row-body"><div class="row-title" style="font-size:14px">You</div><div class="row-sub">1 share · paid, owe nothing</div></div><span class="r-amount neu">9<span class="dec">.600</span></span></div>
+
+              <div class="good" style="margin-top:12px">✓ Adds up to <b>OMR&nbsp;48.000</b> — every person sees their real amount before saving.</div>
+            </div>
+            <div class="ba-note" style="color:#6B675D">Mode, payer, and per-person amounts in one card. The ledger row then shows the same true share.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================== 2 -->
+<section class="audit-block">
+  <div class="audit-head">
+    <span class="audit-num">A2</span>
+    <h2 class="audit-title">Every money screen restates your balance three ways</h2>
+    <span class="audit-sev sev-clarity">clarity</span>
+  </div>
+  <p class="audit-desc">
+    On group detail, the hero shows <i>your</i> net, and then the Members card lists everyone’s net <b>including
+    yours again</b>, tagged “You” — the same number twice with no link between them. The ledger does the same with a
+    serif prose hero + a roster strip + a mono “trip total” caption (three visual languages for balance in the first
+    ~280px). Settle-up stacks a headline + a summary card + “each person’s net” + transfer cards. And group detail has
+    <b>two “New event” buttons</b> ~40px apart (the hero CTA and the section header action).
+  </p>
+  <ul class="findings">
+    <li><b>Fix:</b> the hero owns <i>your</i> number once, with the counterparties named inline (“Ahmed &amp; Sara owe you”). The people card becomes a <b>roster</b> — others’ nets, and your own row just says “You” without repeating the hero figure.</li>
+    <li>One “New event” entry (section header). Hero CTAs are the two verbs that matter: <b>Settle up</b> + <b>Add expense</b>.</li>
+  </ul>
+  <div class="ba-row">
+    <!-- NOW -->
+    <div class="ba ba-now">
+      <div class="ba-cap"><span class="ba-tag">NOW</span> Group detail</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div style="height:120px;background:linear-gradient(120deg,#e8b878,#d17b2c 60%,#b5641a);position:relative">
+            <div class="app-bar" style="position:absolute;top:0;left:0;right:0"><div class="nav-pill" style="width:36px;height:36px;background:rgba(255,255,255,.85)">‹</div><div class="spacer"></div><div class="nav-pill" style="width:36px;height:36px;background:rgba(255,255,255,.85)">＋</div><div class="nav-pill" style="width:36px;height:36px;background:rgba(255,255,255,.85)">⋯</div></div>
+            <div style="position:absolute;bottom:12px;left:16px;color:#fff"><div class="uppercase-label" style="color:rgba(255,255,255,.85)">GROUP · 4 MEMBERS</div><div class="serif" style="font-size:28px">Salalah Squad</div></div>
+          </div>
+          <div class="content tight">
+            <div class="card raised">
+              <div class="between"><span class="serif" style="font-size:15px">Your balance here</span><div class="avatar-stack"><span class="avatar sm av-1">A</span><span class="avatar sm av-2">S</span><span class="avatar sm av-4">K</span></div></div>
+              <div class="between" style="margin-top:6px"><span class="r-amount pos" style="font-size:30px">+12<span class="dec">.340</span></span><span class="tiny" style="color:var(--sage-text);font-weight:600">they owe you</span></div>
+              <div class="row" style="gap:8px;margin-top:14px"><button class="btn block">＋ New event</button><button class="btn secondary block">Settle up</button></div>
+            </div>
+            <div class="section-header"><span class="label">EVENTS</span><span class="see-all">＋ New event</span></div>
+            <div class="anno"><span class="pin">1</span><div>“New event” appears <b>twice</b>, ~40px apart.</div></div>
+            <div class="card flush">
+              <div class="list-row"><div class="avatar av-2" style="border-radius:12px">⛺</div><div class="row-body"><div class="row-title">Salalah road trip</div><div class="row-sub mono">MAR 18 – 22</div></div><span class="r-amount pos">+12<span class="dec">.340</span></span></div>
+            </div>
+            <div class="section-header"><span class="label">MEMBERS</span></div>
+            <div class="card flush">
+              <div class="list-row"><div class="avatar sm av-1">A</div><div class="row-body"><div class="row-title" style="font-size:14px">Ahmed</div></div><span class="r-amount neg">−8<span class="dec">.200</span></span></div>
+              <div class="list-row"><div class="avatar sm av-2">S</div><div class="row-body"><div class="row-title" style="font-size:14px">Sara</div></div><span class="r-amount neg">−4<span class="dec">.140</span></span></div>
+              <div class="list-row" style="background:#f7e3dc"><div class="avatar sm av-3">N</div><div class="row-body"><div class="row-title" style="font-size:14px">You <span class="muted tiny">· You</span></div></div><span class="r-amount pos">+12<span class="dec">.340</span></span></div>
+            </div>
+            <div class="anno"><span class="pin">2</span><div>Your <b>+12.340</b> is printed again here, with no link to the hero above.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">→</div>
+
+    <!-- BETTER -->
+    <div class="ba ba-next">
+      <div class="ba-cap"><span class="ba-tag">BETTER</span> One balance truth + roster</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div style="height:120px;background:linear-gradient(120deg,#e8b878,#d17b2c 60%,#b5641a);position:relative">
+            <div class="app-bar" style="position:absolute;top:0;left:0;right:0"><div class="nav-pill" style="width:36px;height:36px;background:rgba(255,255,255,.85)">‹</div><div class="spacer"></div><div class="nav-pill" style="width:36px;height:36px;background:rgba(255,255,255,.85)">＋</div><div class="nav-pill" style="width:36px;height:36px;background:rgba(255,255,255,.85)">⋯</div></div>
+            <div style="position:absolute;bottom:12px;left:16px;color:#fff"><div class="uppercase-label" style="color:rgba(255,255,255,.85)">GROUP · 4 MEMBERS</div><div class="serif" style="font-size:28px">Salalah Squad</div></div>
+          </div>
+          <div class="content tight">
+            <div class="card raised">
+              <div class="uppercase-label">YOUR BALANCE</div>
+              <div class="r-amount pos" style="font-size:38px;margin:2px 0 2px"><span class="ccy">OMR</span>12<span class="dec">.340</span></div>
+              <div class="row" style="gap:6px;color:var(--sage-text);font-size:13px;font-weight:600"><span class="avatar sm av-1" style="width:20px;height:20px;font-size:10px">A</span><span class="avatar sm av-2" style="width:20px;height:20px;font-size:10px">S</span> Ahmed &amp; Sara owe you</div>
+              <div class="row" style="gap:8px;margin-top:14px"><button class="btn block grad">Settle up</button><button class="btn secondary block">＋ Add expense</button></div>
+            </div>
+            <div class="section-header"><span class="label">EVENTS</span><span class="see-all">＋ New event</span></div>
+            <div class="card flush">
+              <div class="list-row"><div class="avatar av-2" style="border-radius:12px">⛺</div><div class="row-body"><div class="row-title">Salalah road trip</div><div class="row-sub mono">MAR 18 – 22</div></div><span class="r-amount pos">+12<span class="dec">.340</span></span></div>
+            </div>
+            <div class="section-header"><span class="label">PEOPLE</span><span class="see-all">Settle up</span></div>
+            <div class="card flush">
+              <div class="list-row"><div class="avatar sm av-1">A</div><div class="row-body"><div class="row-title" style="font-size:14px">Ahmed</div><div class="row-sub">owes you</div></div><span class="r-amount pos">8<span class="dec">.200</span></span></div>
+              <div class="list-row"><div class="avatar sm av-2">S</div><div class="row-body"><div class="row-title" style="font-size:14px">Sara</div><div class="row-sub">owes you</div></div><span class="r-amount pos">4<span class="dec">.140</span></span></div>
+              <div class="list-row"><div class="avatar sm av-3">N</div><div class="row-body"><div class="row-title" style="font-size:14px">You</div><div class="row-sub muted">shown above</div></div><span class="chevron">›</span></div>
+            </div>
+            <div class="good">One number for you, named counterparties, roster for everyone else. No figure printed twice.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================== 3 -->
+<section class="audit-block">
+  <div class="audit-head">
+    <span class="audit-num">A3</span>
+    <h2 class="audit-title">Profile says “Anonymous traveller” even after you back up — and hides the one thing protecting your data</h2>
+    <span class="audit-sev sev-clarity">clarity</span>
+  </div>
+  <p class="audit-desc">
+    The identity hero hardcodes the tagline <code>profileAnonymousTraveller</code> (<code>profile_screen.dart:405</code>)
+    with no branch on durability — a user who linked Google or email <b>still reads “Anonymous traveller.”</b> Meanwhile
+    “Linked email — Not set” renders as a neutral grey row (<code>:942</code>), identical in weight to a benign
+    preference, despite being the <b>single guard against anonymous data loss</b>. Restore entries are scattered across a
+    pending banner, two account rows, and a credential sheet.
+  </p>
+  <ul class="findings">
+    <li><b>Fix:</b> a <b>status chip in the hero</b> — amber “⚠ Not backed up” for anon, sage “✓ Backed up · email/Google” once durable. The hero tells the truth about your account state.</li>
+    <li>When anon, a single <b>“Back up this account”</b> card states the stakes (“your trips live only on this phone”) and routes to link. Group recovery/restore under one labelled block; delete stays in its own danger zone.</li>
+  </ul>
+  <div class="ba-row">
+    <!-- NOW -->
+    <div class="ba ba-now">
+      <div class="ba-cap"><span class="ba-tag">NOW</span> Profile (anonymous)</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn"></div><div class="title sans">Profile</div><div class="icon-btn">⤴</div></div>
+          <div class="content tight">
+            <div class="card raised pad-lg center" style="border-radius:28px">
+              <div class="avatar lg av-3" style="margin:0 auto 10px">N</div>
+              <div class="serif" style="font-size:26px">Nasser ✎</div>
+              <div class="muted tiny" style="margin-top:2px">Anonymous traveller</div>
+              <div class="row" style="justify-content:center;gap:8px;margin-top:12px"><span class="chip sm">▦ QR</span><span class="chip sm">⧉ @nasser</span></div>
+            </div>
+            <div class="anno"><span class="pin">1</span><div>Hardcoded “Anonymous traveller” — shows even if you’ve linked Google/email.</div></div>
+            <div class="section-header"><span class="label">ACCOUNT</span></div>
+            <div class="card flush">
+              <div class="list-row"><div class="row-lead">✉</div><div class="row-body"><div class="row-title" style="font-size:14px">Linked email</div></div><span class="row-sub" style="margin:0">Not set ›</span></div>
+              <div class="list-row"><div class="row-lead">🗑</div><div class="row-body"><div class="row-title" style="font-size:14px">Delete account</div></div><span class="tiny" style="color:var(--rust-text)">Permanent</span></div>
+            </div>
+            <div class="anno"><span class="pin">2</span><div>“Not set” is a quiet grey row — yet it’s the <b>only</b> thing standing between you and total data loss.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">→</div>
+
+    <!-- BETTER -->
+    <div class="ba ba-next">
+      <div class="ba-cap"><span class="ba-tag">BETTER</span> Status-aware identity</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn"></div><div class="title sans">Profile</div><div class="icon-btn">⤴</div></div>
+          <div class="content tight">
+            <div class="card raised pad-lg center" style="border-radius:28px">
+              <div class="avatar lg av-3" style="margin:0 auto 10px">N</div>
+              <div class="serif" style="font-size:26px">Nasser ✎</div>
+              <div class="row" style="justify-content:center;margin-top:8px"><span class="pill-tag warn" style="font-size:11px;padding:4px 12px">⚠ Not backed up</span></div>
+            </div>
+            <div class="card" style="border-color:var(--amber);background:#fdf0d8">
+              <div class="row" style="gap:10px;align-items:flex-start"><div style="font-size:20px">🛟</div><div class="col" style="gap:2px"><div class="row-title" style="font-size:14px;color:#7a5305">Back up this account</div><div class="tiny" style="color:#8a6a18">Your trips live only on this phone. Add an email or Google so you never lose them.</div></div></div>
+              <button class="btn block grad" style="margin-top:12px">Back up now</button>
+            </div>
+            <div class="section-header"><span class="label">BACKUP &amp; RECOVERY</span></div>
+            <div class="card flush">
+              <div class="list-row"><div class="row-lead">✉</div><div class="row-body"><div class="row-title" style="font-size:14px">Link a recovery email</div></div><span class="chevron">›</span></div>
+              <div class="list-row"><div class="row-lead">↻</div><div class="row-body"><div class="row-title" style="font-size:14px">Restore from another device</div></div><span class="chevron">›</span></div>
+            </div>
+            <div class="section-header"><span class="label">DANGER</span></div>
+            <div class="card flush">
+              <div class="list-row"><div class="row-lead" style="color:var(--rust-text)">🗑</div><div class="row-body"><div class="row-title" style="font-size:14px;color:var(--rust-text)">Delete account</div></div><span class="tiny" style="color:var(--rust-text)">Permanent</span></div>
+            </div>
+            <div class="good">Backed-up users instead see a sage “✓ Backed up · email” chip and no warning card.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================== 4 -->
+<section class="audit-block">
+  <div class="audit-head">
+    <span class="audit-num">A4</span>
+    <h2 class="audit-title">Loading &amp; error states drift screen-to-screen (and one error lies)</h2>
+    <span class="audit-sev sev-consistency">consistency</span>
+  </div>
+  <p class="audit-desc">
+    Your DESIGN.md §10 says <i>every async surface needs all four states with a layout-matched skeleton</i>. In practice:
+    the cross-group Activity feed shows a <b>blank screen</b> while loading (<code>cross_group_activity_screen.dart:69</code>),
+    Create-event shows a <b>bare spinner</b> (<code>create_event_screen.dart:227</code>), the Profile stats show
+    <b>em-dashes</b> with no loading/error state, and the group Activity screen <b>swallows fetch errors</b>
+    (<code>group_activity_screen.dart:104</code>) so a network failure renders “No activity yet” — telling the user the
+    group is empty when loading actually <i>failed</i>.
+  </p>
+  <ul class="findings">
+    <li><b>Fix:</b> the <code>SkeletonLoader</code> you already built, everywhere first-paint loads; <code>EmptyStateView</code> for empties; and a real error card with Retry that never masquerades as “empty”.</li>
+  </ul>
+  <div class="mini-row" style="margin-top:8px">
+    <div class="mini ba-now"><div class="mini-cap" style="color:#E7A793">NOW · Activity loading = blank</div>
+      <div class="phone"><div class="phone-screen"><div class="status-bar"><span>9:41</span><span class="dots">▮</span></div><div class="app-bar"><div class="title">Activity</div></div><div class="content"><div class="chip-row"><span class="chip selected">All</span><span class="chip">Settles</span><span class="chip">Events</span></div><div style="flex:1"></div></div></div></div>
+    </div>
+    <div class="mini ba-now"><div class="mini-cap" style="color:#E7A793">NOW · Create event = spinner</div>
+      <div class="phone"><div class="phone-screen"><div class="module-header"><div class="mh-title">Trip</div></div><div class="content" style="align-items:center;justify-content:center;flex:1"><div class="skel-circle skel" style="border-radius:50%"></div></div></div></div>
+    </div>
+    <div class="mini ba-now"><div class="mini-cap" style="color:#E7A793">NOW · Load failed → “empty”</div>
+      <div class="phone"><div class="phone-screen"><div class="status-bar"><span>9:41</span><span class="dots">⚠</span></div><div class="app-bar"><div class="title sans">Salalah Squad</div></div><div class="empty-state" style="margin:auto"><div class="empty-icon">🗓</div><div class="empty-title">No activity yet</div><div class="empty-msg">(but it actually failed to load)</div></div></div></div>
+    </div>
+  </div>
+  <div class="mini-row" style="margin-top:18px">
+    <div class="mini ba-next"><div class="mini-cap" style="color:#A9C0A2">BETTER · skeleton list</div>
+      <div class="phone"><div class="phone-screen"><div class="status-bar"><span>9:41</span><span class="dots">▮</span></div><div class="app-bar"><div class="title">Activity</div></div><div class="content"><div class="chip-row"><span class="chip selected">All</span><span class="chip">Settles</span></div><div class="card flush"><div class="skel-row"><div class="skel-circle skel"></div><div style="flex:1"><div class="skel skel-line" style="width:70%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-row"><div class="skel-circle skel"></div><div style="flex:1"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-row"><div class="skel-circle skel"></div><div style="flex:1"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:45%"></div></div></div></div></div></div></div>
+    </div>
+    <div class="mini ba-next"><div class="mini-cap" style="color:#A9C0A2">BETTER · skeleton form</div>
+      <div class="phone"><div class="phone-screen"><div class="module-header"><div class="mh-title">Trip</div></div><div class="content"><div class="skel skel-line" style="height:48px;border-radius:14px"></div><div class="skel skel-line" style="height:48px;border-radius:14px"></div><div class="skel skel-line" style="height:80px;border-radius:14px"></div><div class="skel skel-line" style="height:52px;border-radius:9999px;width:100%"></div></div></div></div>
+    </div>
+    <div class="mini ba-next"><div class="mini-cap" style="color:#A9C0A2">BETTER · honest error</div>
+      <div class="phone"><div class="phone-screen"><div class="status-bar"><span>9:41</span><span class="dots">⚠</span></div><div class="app-bar"><div class="title sans">Salalah Squad</div></div><div class="empty-state" style="margin:auto"><div class="empty-icon" style="background:#f7e3dc;color:var(--rust-text)">⚠</div><div class="empty-title">Couldn’t load activity</div><div class="empty-msg">Check your connection and try again.</div><button class="btn secondary sm" style="margin-top:8px">Retry</button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================== 5 -->
+<section class="audit-block">
+  <div class="audit-head">
+    <span class="audit-num">A5</span>
+    <h2 class="audit-title">Creating an event is three screens to reach a ledger</h2>
+    <span class="audit-sev sev-clarity">clarity</span>
+  </div>
+  <p class="audit-desc">
+    Type picker → details form → command-center hub. The type picker exists only to set <b>one enum</b> before the form
+    (<code>event_type_picker_screen.dart</code>), and it pre-selects “Trip” anyway. That’s a whole screen earning its
+    place by holding a single choice. (The hub itself is content-rich and stays — the redundancy worth removing is the
+    <b>picker</b>, not the hub.)
+  </p>
+  <ul class="findings">
+    <li><b>Fix:</b> fold the type into a <b>chip row at the top of the create form</b> — one screen to create an event. Saves a tap and a transition on the single most common creation flow.</li>
+  </ul>
+  <div class="ba-row">
+    <div class="ba ba-now">
+      <div class="ba-cap"><span class="ba-tag">NOW</span> Screen 1 of 2 before the form</div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn">✕</div><div class="title sans">New</div><div class="icon-btn"></div></div>
+          <div class="content">
+            <div class="serif" style="font-size:28px">What kind of journey?</div>
+            <div class="muted tiny">Pick a type to tailor the event.</div>
+            <div class="row" style="gap:12px"><div class="card" style="flex:1;border:2px solid var(--ink);text-align:center;padding:18px 8px"><div style="font-size:24px">⛺</div><div class="row-title" style="font-size:14px;margin-top:6px">Trip</div></div><div class="card" style="flex:1;text-align:center;padding:18px 8px"><div style="font-size:24px">🏕</div><div class="row-title" style="font-size:14px;margin-top:6px">Camping</div></div></div>
+            <div class="row" style="gap:12px"><div class="card" style="flex:1;text-align:center;padding:18px 8px"><div style="font-size:24px">✈</div><div class="row-title" style="font-size:14px;margin-top:6px">Travel</div></div><div class="card" style="flex:1;text-align:center;padding:18px 8px"><div style="font-size:24px">🌙</div><div class="row-title" style="font-size:14px;margin-top:6px">Night out</div></div></div>
+            <button class="btn block grad">Continue with Trip →</button>
+            <div class="anno"><span class="pin">!</span><div>A full screen for one enum that’s already defaulted. Then the form. Then the hub.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">→</div>
+
+    <div class="ba ba-next">
+      <div class="ba-cap"><span class="ba-tag">BETTER</span> Type folded into the form</div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="module-header"><div class="mh-top"><span style="font-size:18px">‹</span><div class="mh-title">New event</div></div><div class="mh-sub">in Salalah Squad</div></div>
+          <div class="content">
+            <div class="field"><div class="field-label">TYPE</div><div class="chip-row"><span class="chip selected">⛺ Trip</span><span class="chip">🏕 Camping</span><span class="chip">✈ Travel</span><span class="chip">🌙 Night out</span></div></div>
+            <div class="field"><div class="field-label">NAME</div><div class="input">Salalah road trip</div></div>
+            <div class="field"><div class="field-label">DATES (OPTIONAL)</div><div class="input muted">Mar 18 → Mar 22</div></div>
+            <div class="field"><div class="field-label">WHO’S IN</div><div class="row" style="gap:6px"><span class="avatar sm av-1">A</span><span class="avatar sm av-2">S</span><span class="avatar sm av-4">K</span><span class="avatar sm av-3">N</span><span class="tiny muted">all 4</span></div></div>
+            <button class="btn block grad">Create event</button>
+            <div class="good">One screen → create → land straight in the ledger.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================== 6 -->
+<section class="audit-block">
+  <div class="audit-head">
+    <span class="audit-num">A6</span>
+    <h2 class="audit-title">System hygiene — small drifts, one consistent system</h2>
+    <span class="audit-sev sev-consistency">consistency</span>
+  </div>
+  <p class="audit-desc">
+    Not worth phone frames — but these add up. The same patterns are hand-rolled per screen and have quietly diverged.
+    Each is a small, mechanical consolidation against tokens you already have.
+  </p>
+  <div class="hyg-grid">
+    <div class="hyg">
+      <h4>Header heights drift: 36 / 44 / 48px</h4>
+      <p>Join (36), settings (44), settle-up/activity (48) — and the back affordance is a different widget on each (paper-circle, ghost-icon, plain IconButton, Material BackButton/CloseButton, filled-square).</p>
+      <div class="swrow"><div class="nav-pill">‹</div><div class="nav-pill" style="border-radius:12px">‹</div><div class="nav-pill" style="background:transparent;border:none">✕</div><div class="nav-pill" style="background:var(--card)">↩</div></div>
+      <p style="margin-top:10px;color:var(--sage-text)"><b>→</b> One header primitive, one back button, one height.</p>
+    </div>
+    <div class="hyg">
+      <h4>Four+ avatar widgets</h4>
+      <p><code>RAvatar</code>, <code>_Avatar</code>, <code>_MiniAvatar</code>, and a stock <code>CircleAvatar</code> in the payer dropdown — slightly different sizes/colors for the same person.</p>
+      <div class="swrow"><span class="avatar sm av-2">S</span><span class="avatar av-2">S</span><span class="avatar lg av-2">S</span></div>
+      <p style="margin-top:10px;color:var(--sage-text)"><b>→</b> <code>RAvatar</code> everywhere; DEC-3 already mandates one stable color per person.</p>
+    </div>
+    <div class="hyg">
+      <h4>Activity rows rendered three ways</h4>
+      <p>Home “Recently”, the cross-group feed, and the per-event feed all consume the same data through three different row widgets — and the cross-group feed’s selected filter chip uses near-black, not saffron.</p>
+      <div class="swrow"><span class="chip selected">All</span><span class="chip" style="background:var(--ink);color:#fff;border-color:var(--ink)">All</span></div>
+      <p style="margin-top:10px;color:var(--sage-text)"><b>→</b> One shared <code>ActivityRow</code> + saffron selected-chip everywhere.</p>
+    </div>
+    <div class="hyg">
+      <h4>Dead / inert affordances</h4>
+      <p>The create-group glyph row looks like a picker but selects nothing (<code>_GlyphRow</code>, no <code>onTap</code>). Group-settings “Defaults” hardcodes “Equally / Weekly”. Settle-up collects a payment method that’s never persisted. Payment history can’t be corrected.</p>
+      <p style="margin-top:10px;color:var(--sage-text)"><b>→</b> Wire them (glyph picker = #287) or remove them. Don’t ship controls that do nothing.</p>
+    </div>
+  </div>
+</section>
+
+<div class="wrap" style="color:#8a857a;font-size:12.5px;margin-top:8px;padding-bottom:48px">
+  Built against <code>assets/rihla.css</code> from a full read of the live screens, 2026-06-13. Priority order:
+  <b style="color:#E8C89A">A1 (money-wrong) → A2 / A3 (clarity) → A4 (states) → A5 / A6 (polish)</b>.
+  A1, A2, the settle-up surface, and the event flow touch the Gate categories (money / routing) — spec + fresh-context Gate before code.
+</div>
+
+</body>
+</html>

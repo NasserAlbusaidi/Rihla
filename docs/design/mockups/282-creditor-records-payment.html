@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#282 — Creditor records a payment received · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Sage icon well — no rgba literal; composited from the token at the token layer */
+  .icon-well-sage {
+    background: color-mix(in srgb, var(--sage) 16%, transparent);
+    color: var(--sage-text);
+  }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#282 · The lender logs a repayment too</h1>
+  <p>Today <b>Mark paid</b> renders only for the <i>debtor</i> (<code>isYourAction = fromUserId == currentUid</code> in
+     <code>settle_up_page_body.dart:136</code>; the button is gated in <code>group_settlement_tile.dart:205</code>). A
+     creditor who got paid back in cash can't record it — they wait on a possibly-disengaged debtor and the ledger drifts
+     from reality. The tile already computes <code>isCreditor</code>; it just shows no action. Both directions append a
+     settlement, so this stays inside the existing append-only model. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#282</span>
+    <h2 class="issue-title">feat(settle-up): let the creditor record a payment received (not only the debtor)</h2>
+    <span class="issue-meta">P2 · money · append-only · reuses record_payment_sheet</span>
+  </div>
+  <p class="issue-desc">Both variants surface a creditor-side action and a sheet that frames the repayment from the
+     lender's point of view (<b>"Ahmed paid you back"</b>). They differ on the entry point: <b>V1</b> mirrors the existing
+     per-row affordance so each "owed to you" row carries its own <b>Record received</b> button; <b>V2</b> consolidates
+     both directions behind one <b>Record a payment</b> entry that asks "you paid / you received" first. Same settlement
+     write underneath — the fork is purely the affordance shape.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (symmetric affordance) — it mirrors the proven per-tile button the
+     debtor already taps, scopes each action to its row (right payer/payee/amount pre-filled, zero direction ambiguity),
+     and is the smallest faithful change: unhook the <code>onRecord: isYourAction ? …</code> gate to also fire when
+     <code>isCreditor</code>.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant 1 — symmetric affordance (RECOMMENDED) -->
+    <div class="variant pick">
+      <div class="variant-label">1 · Symmetric affordance <span class="tag">per-row button</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content tight">
+            <div>
+              <div class="serif" style="font-size:26px;color:var(--ink);line-height:1.05">2 transfers settle it up</div>
+              <div class="tiny muted" style="margin-top:8px">Optimised to minimise the number of payments across Sandbar Weekend.</div>
+            </div>
+
+            <!-- summary chip card -->
+            <div class="card raised between" style="margin-top:4px">
+              <div class="uppercase-label">Still pending</div>
+              <div class="r-amount lg neu"><span class="ccy">OMR</span>20<span class="dec">.250</span></div>
+            </div>
+
+            <!-- Row where YOU OWE — debtor: Mark paid (existing) -->
+            <div class="card raised">
+              <div class="row" style="gap:var(--s12)">
+                <div class="avatar sm av-1">N</div>
+                <div class="spacer" style="position:relative;height:24px;display:flex;align-items:center;justify-content:center">
+                  <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--rule-2)"></div>
+                  <span class="r-amount neg" style="position:relative;background:var(--card);padding:0 8px;font-size:15px"><span class="ccy">OMR</span>7<span class="dec">.750</span></span>
+                  <span style="position:absolute;right:0;color:var(--ink-4);font-size:13px">›</span>
+                </div>
+                <div class="avatar sm av-3">K</div>
+              </div>
+              <div class="between" style="margin-top:var(--s12)">
+                <div class="tiny" style="color:var(--ink-2);font-weight:600">Nasser <span class="muted" style="font-weight:500">→</span> Khalid</div>
+                <button class="btn sm" style="background:var(--saffron-tint);color:var(--primary-dark)">Mark paid</button>
+              </div>
+            </div>
+
+            <!-- Row where YOU'RE OWED — creditor: NEW Record received -->
+            <div class="card" style="border-color:var(--sage);box-shadow:var(--shadow-raised)">
+              <div class="row" style="gap:var(--s12)">
+                <div class="avatar sm av-2">A</div>
+                <div class="spacer" style="position:relative;height:24px;display:flex;align-items:center;justify-content:center">
+                  <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--rule-2)"></div>
+                  <span class="r-amount pos" style="position:relative;background:var(--card);padding:0 8px;font-size:15px"><span class="ccy">OMR</span>12<span class="dec">.500</span></span>
+                  <span style="position:absolute;right:0;color:var(--ink-4);font-size:13px">›</span>
+                </div>
+                <div class="avatar sm av-1">N</div>
+              </div>
+              <div class="between" style="margin-top:var(--s12)">
+                <div class="tiny" style="color:var(--ink-2);font-weight:600">Ahmed <span class="muted" style="font-weight:500">→</span> Nasser <span class="pill-tag" style="margin-inline-start:6px">owes you</span></div>
+                <button class="btn sm success">Record received</button>
+              </div>
+            </div>
+
+            <!-- mirrored sheet — shown as bottom sheet overlay -->
+            <div class="sheet" style="border-radius:var(--r-sheet);box-shadow:var(--shadow-floating);margin-top:var(--s8)">
+              <div class="sheet-handle"></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:var(--s12)">
+                <div class="empty-icon icon-well-sage" style="width:56px;height:56px;font-size:24px">✓</div>
+                <div class="sheet-title" style="margin:0">Record this payment?</div>
+                <div class="sheet-sub" style="margin:0;text-align:center">Ahmed paid you back — recorded straight away.</div>
+              </div>
+              <div class="card raised between" style="margin-bottom:var(--s12)">
+                <div class="row" style="gap:10px">
+                  <div class="avatar sm av-2">A</div>
+                  <div class="col">
+                    <div style="font-size:13px;font-weight:600;color:var(--ink)">Ahmed paid you</div>
+                    <div class="tiny" style="color:var(--primary);font-weight:500">Tap to edit amount</div>
+                  </div>
+                </div>
+                <div class="r-amount pos lg"><span class="ccy">OMR</span>12<span class="dec">.500</span></div>
+              </div>
+              <div class="chip-row" style="margin-bottom:var(--s12)">
+                <span class="chip selected" style="flex:1;justify-content:center">● Cash</span>
+                <span class="chip" style="flex:1;justify-content:center">Bank</span>
+                <span class="chip" style="flex:1;justify-content:center">Other</span>
+              </div>
+              <div class="banner sync" style="border-radius:12px;margin-bottom:var(--s16)">
+                <span style="color:var(--primary-dark)">✓</span> Records Ahmed's repayment immediately — no extra step.
+              </div>
+              <div class="row" style="gap:10px">
+                <button class="btn secondary block" style="flex:1">Not yet</button>
+                <button class="btn success block" style="flex:1">Record received</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> the "owed to you" tile gets its own <b>Record received</b> button (sage, mirroring
+         the debtor's saffron Mark-paid), opening the same sheet re-titled from the lender's side. <b>Why distinct:</b> it's
+         the per-row pattern users already know — no mode switch, each action carries its row's exact payer/payee/amount.
+         <b>Implements:</b> change <code>onRecord: isYourAction ? …</code> in <code>settle_up_page_body.dart:158</code> to
+         also fire on <code>isCreditor</code>, parametrise <code>group_settlement_tile.dart</code>'s button label/tone, and
+         pass a "received" framing flag into <code>record_payment_sheet.dart</code>.</p>
+    </div>
+
+    <!-- Variant 2 — unified record entry -->
+    <div class="variant">
+      <div class="variant-label">2 · Unified record <span class="tag">one entry + picker</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content tight">
+            <div>
+              <div class="serif" style="font-size:26px;color:var(--ink);line-height:1.05">2 transfers settle it up</div>
+              <div class="tiny muted" style="margin-top:8px">Optimised to minimise the number of payments across Sandbar Weekend.</div>
+            </div>
+
+            <div class="card raised between" style="margin-top:4px">
+              <div class="uppercase-label">Still pending</div>
+              <div class="r-amount lg neu"><span class="ccy">OMR</span>20<span class="dec">.250</span></div>
+            </div>
+
+            <!-- tiles WITHOUT per-row buttons; single record entry below -->
+            <div class="card raised">
+              <div class="row" style="gap:var(--s12)">
+                <div class="avatar sm av-1">N</div>
+                <div class="spacer" style="position:relative;height:24px;display:flex;align-items:center;justify-content:center">
+                  <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--rule-2)"></div>
+                  <span class="r-amount neg" style="position:relative;background:var(--card);padding:0 8px;font-size:15px"><span class="ccy">OMR</span>7<span class="dec">.750</span></span>
+                  <span style="position:absolute;right:0;color:var(--ink-4);font-size:13px">›</span>
+                </div>
+                <div class="avatar sm av-3">K</div>
+              </div>
+              <div class="tiny" style="color:var(--ink-2);font-weight:600;margin-top:var(--s12)">Nasser <span class="muted" style="font-weight:500">→</span> Khalid <span class="pill-tag flag" style="margin-inline-start:6px">you owe</span></div>
+            </div>
+            <div class="card raised">
+              <div class="row" style="gap:var(--s12)">
+                <div class="avatar sm av-2">A</div>
+                <div class="spacer" style="position:relative;height:24px;display:flex;align-items:center;justify-content:center">
+                  <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--rule-2)"></div>
+                  <span class="r-amount pos" style="position:relative;background:var(--card);padding:0 8px;font-size:15px"><span class="ccy">OMR</span>12<span class="dec">.500</span></span>
+                  <span style="position:absolute;right:0;color:var(--ink-4);font-size:13px">›</span>
+                </div>
+                <div class="avatar sm av-1">N</div>
+              </div>
+              <div class="tiny" style="color:var(--ink-2);font-weight:600;margin-top:var(--s12)">Ahmed <span class="muted" style="font-weight:500">→</span> Nasser <span class="pill-tag" style="margin-inline-start:6px">owes you</span></div>
+            </div>
+
+            <button class="btn block grad" style="margin-top:4px">+ Record a payment</button>
+
+            <!-- direction-picker sheet -->
+            <div class="sheet" style="border-radius:var(--r-sheet);box-shadow:var(--shadow-floating);margin-top:var(--s8)">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Record a payment</div>
+              <div class="sheet-sub">Who settled up — and which way did the money go?</div>
+              <div class="col" style="gap:10px;margin-bottom:var(--s12)">
+                <div class="card between" style="border-color:var(--rule-2)">
+                  <div class="row" style="gap:10px">
+                    <div class="avatar sm av-1">N</div>
+                    <div class="col"><div style="font-size:13px;font-weight:600;color:var(--ink)">You paid someone</div>
+                      <div class="tiny muted">e.g. you handed Khalid cash</div></div>
+                  </div>
+                  <span style="color:var(--ink-4);font-size:18px">○</span>
+                </div>
+                <div class="card between" style="border-color:var(--sage);background:var(--card)">
+                  <div class="row" style="gap:10px">
+                    <div class="avatar sm av-2">A</div>
+                    <div class="col"><div style="font-size:13px;font-weight:600;color:var(--ink)">You received a payment</div>
+                      <div class="tiny" style="color:var(--sage-text)">Ahmed paid you back</div></div>
+                  </div>
+                  <span style="color:var(--sage);font-size:18px">●</span>
+                </div>
+              </div>
+              <div class="card raised between" style="margin-bottom:var(--s12)">
+                <div class="tiny" style="font-weight:600;color:var(--ink)">Ahmed paid you</div>
+                <div class="r-amount pos lg"><span class="ccy">OMR</span>12<span class="dec">.500</span></div>
+              </div>
+              <button class="btn success block">Record received</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> tiles drop their per-row buttons; a single <b>Record a payment</b> CTA opens a
+         sheet that first asks direction (you paid / you received) before the amount step. <b>Why distinct:</b> one mental
+         model for both sides and room to later record an off-suggestion payment, at the cost of an extra tap and a chance
+         to pick the wrong direction. <b>Implements:</b> a new direction-select step prepended to
+         <code>record_payment_sheet.dart</code> plus a footer CTA in <code>settle_up_page_body.dart</code> — a larger change
+         that diverges from the established per-tile affordance.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#245 — Auto-seed default event + skip the hub · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Local helpers — no new colors, no new fonts */
+  .icon-btn { width: 40px; height: 40px; border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 20px; }
+  .see-all { font-size: 12px; color: var(--primary); font-weight: 600; }
+  .mh-top { display: flex; align-items: center; }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#245 · <span class="saffron">Group → add expense</span>, no hub</h1>
+  <p>Today a fresh group makes you create an <b>event container</b>, name it, then tap through the
+     <code>EventCommandCenter</code> hub before you can log a thing — ≥3 taps + a naming decision for the
+     ~90% one-trip case. Post-Phase-39 an event is just a <b>ledger-only scope</b>, so that tier is pure
+     activation tax with no payload. Auto-seed one default event on <code>createGroup</code> and skip the hub
+     for single-event groups so the path collapses to Splitwise's <b>group → +</b>. UX-only, no data-model
+     change; the multi-event model survives for the minority who need it. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#245</span>
+    <h2 class="issue-title">feat(groups): auto-seed a default event + skip the hub for single-event groups</h2>
+    <span class="issue-meta">P2 · enhancement · decision · touches routing + group-create → Gate</span>
+  </div>
+  <p class="issue-desc">All three keep the auto-seeded event under the hood — they differ on <b>what the group
+     screen does with it</b>. A "before" frame shows the current 3-tap gauntlet. V1 drops straight into the
+     ledger (no hub). V2 keeps a thin event strip above the ledger. V3 uses an empty-state teaching card.
+     The hub (<code>EventCommandCenter</code>) only reappears once a 2nd event exists.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (Collapsed) — drop onto the ledger with a prominent
+     + Add expense; a quiet <b>Events (1)</b> affordance reveals the hub only when ≥2 exist. Closest to
+     Splitwise parity and removes every interstitial from the first-expense path.</p>
+
+  <div class="variant-row">
+
+    <!-- ───────────────────────── Before (current state) -->
+    <div class="variant">
+      <div class="variant-label">Before · Current flow <span class="tag">≥3 taps</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <!-- Group detail — empty state, no event seeded -->
+          <div class="module-header" style="padding-bottom:var(--s24)">
+            <div class="mh-top" style="justify-content:space-between">
+              <div class="icon-btn" style="color:var(--paper-deep)">‹</div>
+              <div class="row" style="gap:6px">
+                <div class="icon-btn" style="color:var(--paper-deep)">⌃</div>
+                <div class="icon-btn" style="color:var(--paper-deep)">⋯</div>
+              </div>
+            </div>
+            <div class="uppercase-label" style="color:var(--saffron-soft);letter-spacing:2px;margin-bottom:4px">GROUP · 1 MEMBER</div>
+            <div class="mh-title">Salalah Khareef</div>
+          </div>
+
+          <div class="content tight" style="padding-top:var(--s16)">
+            <!-- EmptyStateView — only action is "Create event" -->
+            <div class="empty-state" style="padding-top:var(--s32)">
+              <div class="empty-icon">📋</div>
+              <div class="empty-title">No events yet</div>
+              <div class="empty-msg">Create an event to start logging expenses.</div>
+              <button class="btn block grad" style="max-width:240px;margin-top:var(--s8)">Create event</button>
+            </div>
+
+            <!-- Tap 1: Create event → event type picker (separate screen, shown inline as annotation) -->
+            <div class="card soft" style="border:1px dashed var(--rule-2);padding:var(--s12) var(--s16)">
+              <div class="uppercase-label" style="margin-bottom:4px">Tap 1 → event type picker</div>
+              <div class="tiny muted">Name, dates, participants form — required even for a simple ledger</div>
+            </div>
+
+            <div class="card soft" style="border:1px dashed var(--rule-2);padding:var(--s12) var(--s16)">
+              <div class="uppercase-label" style="margin-bottom:4px">Tap 2 → EventCommandCenter hub</div>
+              <div class="tiny muted">Full hub screen with Ledger →, +Add expense, Participants actions</div>
+            </div>
+
+            <div class="card soft" style="border:1px dashed var(--rule-2);padding:var(--s12) var(--s16)">
+              <div class="uppercase-label" style="margin-bottom:4px">Tap 3 → Add expense screen</div>
+              <div class="tiny muted" style="color:var(--rust-text)">First expense reachable only here</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Current state:</b> <code>createGroup</code> seeds no event.
+         Empty state's sole CTA is <em>Create event</em>, which routes to a type picker + name/dates form.
+         Tapping the created event row pushes the bare <code>/group/:gid/event/:eid</code> →
+         <code>EventCommandCenter</code> hub. The user then taps <em>Ledger →</em> or <em>+Add expense</em>
+         from the hub. Net: ≥3 taps + a naming decision before the first expense.</p>
+    </div>
+
+    <!-- ───────────────────────── Variant 1 — Collapsed (PICK) -->
+    <div class="variant pick">
+      <div class="variant-label">V1 · Collapsed → ledger <span class="tag">group = ledger</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <!-- Group cover header (mirrors _CoverHeader) -->
+          <div class="module-header" style="padding-bottom:var(--s24)">
+            <div class="mh-top" style="justify-content:space-between">
+              <div class="icon-btn" style="color:var(--paper-deep)">‹</div>
+              <div class="row" style="gap:6px">
+                <div class="icon-btn" style="color:var(--paper-deep)">⌃</div>
+                <div class="icon-btn" style="color:var(--paper-deep)">⋯</div>
+              </div>
+            </div>
+            <div class="uppercase-label" style="color:var(--saffron-soft);letter-spacing:2px;margin-bottom:4px">GROUP · 4 MEMBERS</div>
+            <div class="mh-title">Salalah Khareef</div>
+          </div>
+
+          <div class="content tight" style="padding-top:var(--s16)">
+            <!-- Balance card (primary is now Add expense) -->
+            <div class="card raised pad-lg">
+              <div class="between" style="align-items:baseline">
+                <div class="serif muted" style="font-size:14px">Your balance here</div>
+                <div class="avatar-stack">
+                  <span class="avatar sm av-1">AH</span><span class="avatar sm av-2">SA</span>
+                  <span class="avatar sm av-3">KH</span><span class="avatar sm av-5">LA</span>
+                </div>
+              </div>
+              <div class="between" style="margin-top:var(--s8);align-items:baseline">
+                <span class="r-amount lg pos"><span class="ccy">OMR</span>14<span class="dec">.250</span></span>
+                <span class="tiny" style="color:var(--sage-text);font-weight:600">They owe you</span>
+              </div>
+              <div class="row" style="gap:var(--s8);margin-top:14px">
+                <button class="btn block grad sm" style="flex:1">+ Add expense</button>
+                <button class="btn block secondary sm" style="flex:1">Settle up</button>
+              </div>
+            </div>
+
+            <!-- Events affordance: collapsed to a single quiet line (N=1) -->
+            <div class="between" style="padding:0 var(--s4)">
+              <span class="uppercase-label">Ledger</span>
+              <span class="tiny muted mono">Events (1)</span>
+            </div>
+
+            <!-- The ledger itself — no hub interstitial -->
+            <div class="card raised flush">
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar sm av-1">AH</span></div>
+                <div class="row-body">
+                  <div class="row-title">Sea-view chalet</div>
+                  <div class="row-sub">Ahmed paid · 2h ago</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>40<span class="dec">.000</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar sm av-2">SA</span></div>
+                <div class="row-body">
+                  <div class="row-title">Groceries — Lulu</div>
+                  <div class="row-sub">Sara paid · 5h ago</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>17<span class="dec">.000</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar sm av-3">KH</span></div>
+                <div class="row-body">
+                  <div class="row-title">Fuel · Muscat → Salalah</div>
+                  <div class="row-sub">Khalid paid · yesterday</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>22<span class="dec">.500</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fab extended">+ Add expense</div>
+      </div>
+      <p class="variant-note"><b>What:</b> tapping the group lands directly on the auto-seeded event's ledger — no
+         hub, no event-type picker. The <b>Events (1)</b> mono line is the only trace of the tier; it stays inert
+         until a 2nd event exists, then it links to the hub. <b>Why distinct:</b> the most aggressive collapse —
+         Splitwise parity, the event tier is invisible-until-needed. <b>Implementation:</b> auto-seed in
+         <code>createGroup</code> (<code>group_provider.dart:~99</code>); when <code>groupEventsProvider.length == 1</code>,
+         <code>group_detail_screen.dart</code> renders the ledger sliver inline instead of the events list + routes the
+         group tap past <code>/group/:gid/event/:eid</code> straight to <code>…/ledger</code>.
+         <b>Gate:</b> routing change.</p>
+    </div>
+
+    <!-- ───────────────────────── Variant 2 — Soft hub -->
+    <div class="variant">
+      <div class="variant-label">V2 · Soft hub strip <span class="tag">strip + ledger</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <div class="module-header" style="padding-bottom:var(--s24)">
+            <div class="mh-top" style="justify-content:space-between">
+              <div class="icon-btn" style="color:var(--paper-deep)">‹</div>
+              <div class="row" style="gap:6px">
+                <div class="icon-btn" style="color:var(--paper-deep)">⌃</div>
+                <div class="icon-btn" style="color:var(--paper-deep)">⋯</div>
+              </div>
+            </div>
+            <div class="uppercase-label" style="color:var(--saffron-soft);letter-spacing:2px;margin-bottom:4px">GROUP · 4 MEMBERS</div>
+            <div class="mh-title">Salalah Khareef</div>
+          </div>
+
+          <div class="content tight" style="padding-top:var(--s16)">
+            <!-- Slim event strip: replaces the full EventCommandCenter hub -->
+            <div class="card raised" style="padding:var(--s12) var(--s16)">
+              <div class="row" style="gap:var(--s12)">
+                <span class="chip glyph" style="font-size:18px">⛰</span>
+                <div class="col" style="flex:1;min-width:0">
+                  <div class="uppercase-label" style="font-size:9px;letter-spacing:1.5px">TRIP · JUL 4–18</div>
+                  <div class="row-title" style="font-size:14px">Salalah Khareef</div>
+                </div>
+                <div class="col" style="text-align:right">
+                  <span class="r-amount" style="font-size:14px"><span class="ccy">OMR</span>79<span class="dec">.500</span></span>
+                  <span class="tiny muted">total</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Balance hero -->
+            <div class="card raised pad-lg">
+              <div class="between" style="align-items:baseline">
+                <div class="serif muted" style="font-size:14px">Your balance</div>
+                <div class="avatar-stack">
+                  <span class="avatar sm av-1">AH</span><span class="avatar sm av-2">SA</span>
+                  <span class="avatar sm av-3">KH</span><span class="avatar sm av-5">LA</span>
+                </div>
+              </div>
+              <div class="between" style="margin-top:var(--s8);align-items:baseline">
+                <span class="r-amount lg pos"><span class="ccy">OMR</span>14<span class="dec">.250</span></span>
+                <span class="tiny" style="color:var(--sage-text);font-weight:600">They owe you</span>
+              </div>
+              <button class="btn block grad sm" style="margin-top:14px">+ Add expense</button>
+            </div>
+
+            <div class="between" style="padding:0 var(--s4)">
+              <span class="uppercase-label">Recent</span>
+              <span class="see-all">Ledger →</span>
+            </div>
+
+            <div class="card raised flush">
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar sm av-1">AH</span></div>
+                <div class="row-body">
+                  <div class="row-title">Sea-view chalet</div>
+                  <div class="row-sub">Ahmed paid · 2h ago</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>40<span class="dec">.000</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar sm av-2">SA</span></div>
+                <div class="row-body">
+                  <div class="row-title">Groceries — Lulu</div>
+                  <div class="row-sub">Sara paid · 5h ago</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>17<span class="dec">.000</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> the hub shrinks to a single non-interactive strip pinned above the
+         ledger — event glyph, date range, trip total — instead of a full-screen interstitial. The balance hero
+         and ledger sit directly below, so the first-expense tap is still one tap. <b>Why distinct:</b> keeps the
+         event's identity visible (a recap surface for #202) without spending a whole screen on it.
+         <b>Implementation:</b> <code>group_detail_screen.dart</code> renders a new <code>_EventStrip</code> widget from the
+         single <code>groupEventsProvider</code> entry; <code>EventCommandCenter</code> stays routed but only reached when ≥2 events.
+         <b>Gate:</b> routing change.</p>
+    </div>
+
+    <!-- ───────────────────────── Variant 3 — Empty-state teach -->
+    <div class="variant">
+      <div class="variant-label">V3 · Teach the second event <span class="tag">copy-led</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <div class="module-header" style="padding-bottom:var(--s24)">
+            <div class="mh-top" style="justify-content:space-between">
+              <div class="icon-btn" style="color:var(--paper-deep)">‹</div>
+              <div class="row" style="gap:6px">
+                <div class="icon-btn" style="color:var(--paper-deep)">⌃</div>
+                <div class="icon-btn" style="color:var(--paper-deep)">⋯</div>
+              </div>
+            </div>
+            <div class="uppercase-label" style="color:var(--saffron-soft);letter-spacing:2px;margin-bottom:4px">GROUP · 4 MEMBERS</div>
+            <div class="mh-title">Salalah Khareef</div>
+          </div>
+
+          <div class="content tight" style="padding-top:var(--s16)">
+            <div class="card raised pad-lg">
+              <div class="between" style="align-items:baseline">
+                <div class="serif muted" style="font-size:14px">Your balance here</div>
+                <div class="avatar-stack">
+                  <span class="avatar sm av-1">AH</span><span class="avatar sm av-2">SA</span>
+                  <span class="avatar sm av-3">KH</span><span class="avatar sm av-5">LA</span>
+                </div>
+              </div>
+              <div class="between" style="margin-top:var(--s8);align-items:baseline">
+                <span class="r-amount lg neu"><span class="ccy">OMR</span>0<span class="dec">.000</span></span>
+                <span class="tiny muted" style="font-weight:600">All settled</span>
+              </div>
+              <button class="btn block grad sm" style="margin-top:14px">+ Add expense</button>
+            </div>
+
+            <!-- Empty ledger that teaches WHEN a 2nd event earns its keep -->
+            <div class="empty-state" style="padding:var(--s24) var(--s20)">
+              <div class="empty-icon">🧾</div>
+              <div class="empty-title">One ledger, ready to go</div>
+              <div class="empty-msg">
+                We started a shared ledger for this group. Add your first expense — most trips only ever need
+                this one.
+              </div>
+              <div class="divider" style="margin:var(--s20) 0 var(--s16);width:100%"></div>
+              <div class="uppercase-label" style="margin-bottom:6px">Need a second event?</div>
+              <div class="tiny muted" style="max-width:260px;text-align:center">
+                Split a different occasion — a weekend trip, a dinner — without mixing its bills into this one.
+              </div>
+              <button class="btn text" style="margin-top:var(--s12)">+ New event</button>
+            </div>
+          </div>
+        </div>
+        <div class="fab extended">+ Add expense</div>
+      </div>
+      <p class="variant-note"><b>What:</b> same collapse as V1, but the first-run state leads with copy — it names
+         the auto-seeded ledger ("we started one for you"), nudges the first expense, and only then explains
+         <i>when</i> a second event is worth it. <b>Why distinct:</b> the others remove the decision; this one keeps
+         it but reframes it so the multi-event tier is discoverable, not buried. <b>Implementation:</b> swap the
+         <code>EmptyStateView</code> in <code>group_detail_screen.dart:192</code> for a richer teaching card; the seed +
+         single-event routing collapse is shared with V1. <b>Gate:</b> routing change.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
