@@ -17,6 +17,7 @@ import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/offline_banner.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
@@ -344,7 +345,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.spacing.radiusCard)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+        ),
         title: Row(
           children: [
             Icon(Iconsax.trash, color: context.colors.error),
@@ -498,7 +501,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       return;
     }
     // #289: distinguish two same-named members in the custom-split sheet.
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(
+      event,
+    );
     final participants = [
       for (final id in ids)
         SplitParticipant(
@@ -695,7 +700,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       ),
                     ] else
                       Padding(
-                        padding: EdgeInsets.symmetric(vertical: context.spacing.space24),
+                        padding: EdgeInsets.symmetric(
+                          vertical: context.spacing.space24,
+                        ),
                         child: const Center(child: CircularProgressIndicator()),
                       ),
                     if (_isEdit && widget.onDelete != null)
@@ -773,7 +780,12 @@ class _ExpenseTopBar extends StatelessWidget {
                   backgroundColor: context.colors.primary,
                   foregroundColor: context.colors.textOnPrimary,
                   minimumSize: const Size(64, 40),
-                  padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space16, 9, context.spacing.space16, 11),
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    context.spacing.space16,
+                    9,
+                    context.spacing.space16,
+                    11,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(
                       context.spacing.radiusSmall,
@@ -895,7 +907,9 @@ class _AmountHero extends StatelessWidget {
                     ),
                     if (fraction.isNotEmpty)
                       Padding(
-                        padding: EdgeInsets.only(bottom: context.spacing.space8),
+                        padding: EdgeInsets.only(
+                          bottom: context.spacing.space8,
+                        ),
                         child: Text(
                           fraction,
                           style: AppTypography.mono(
@@ -1024,11 +1038,7 @@ class _DescriptionFieldState extends State<_DescriptionField> {
 /// #382 PR-6: tappable row showing the picked currency (code + display name)
 /// with a trailing chevron. Opens [CurrencyPickerSheet]. Add mode only.
 class _CurrencyRow extends StatelessWidget {
-  const _CurrencyRow({
-    super.key,
-    required this.currency,
-    required this.onTap,
-  });
+  const _CurrencyRow({super.key, required this.currency, required this.onTap});
 
   final String currency;
   final VoidCallback onTap;
@@ -1056,7 +1066,11 @@ class _CurrencyRow extends StatelessWidget {
                 color: colors.selectionFill,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Iconsax.dollar_circle, size: 18, color: colors.primary),
+              child: Icon(
+                Iconsax.dollar_circle,
+                size: 18,
+                color: colors.primary,
+              ),
             ),
             title: currencyDisplayName(currency, context.l10n),
             subtitle: currency,
@@ -1137,7 +1151,9 @@ class _ExpenseProvenanceByline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(
+      event,
+    );
     String resolve(String uid) =>
         displayNames[uid] ??
         event.participantNames[uid] ??
@@ -1255,7 +1271,10 @@ class _CategoryStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     return categoriesAsync.when(
       loading: () => Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space24, vertical: context.spacing.space12),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space24,
+          vertical: context.spacing.space12,
+        ),
         child: const LinearProgressIndicator(),
       ),
       error: (_, _) => Padding(
@@ -1368,7 +1387,9 @@ class _PaidByCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectivePayerId = payerId ?? event.participantIds.firstOrNull;
     // #289: distinguish two same-named members in the "Paid by" attribution.
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(
+      event,
+    );
     final payerName =
         displayNames[effectivePayerId] ??
         event.participantNames[effectivePayerId] ??
@@ -1380,7 +1401,7 @@ class _PaidByCard extends StatelessWidget {
         onTap: onTap,
         child: _CardShell(
           child: _InfoRow(
-            leading: _Avatar(name: payerName, size: 32),
+            leading: RAvatar(name: payerName, size: 32),
             title: payerName,
             subtitle: context.l10n.editorSelectedPaidFullAmount,
             trailing: DirectionalIcon(
@@ -1436,7 +1457,9 @@ class _SplitPreviewCard extends StatelessWidget {
     final count = ids.length;
     // #289: distinguish two same-named members; the compact tile keeps the
     // ` (#…)` discriminator alive through the first-name collapse.
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(
+      event,
+    );
     final each = count == 0
         ? Decimal.zero
         : (amount / Decimal.fromInt(count)).toDecimal(
@@ -1506,7 +1529,9 @@ class _SplitPreviewCard extends StatelessWidget {
             const SizedBox(height: 14),
             if (count == 0)
               Padding(
-                padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+                padding: EdgeInsets.symmetric(
+                  vertical: context.spacing.space12,
+                ),
                 child: Text(
                   l10n.editorTapCustomiseSplit,
                   style: AppTypography.sans(
@@ -1581,7 +1606,7 @@ class _ParticipantSplitTile extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _Avatar(name: name, size: 28),
+          RAvatar(name: name, size: 28),
           Text(
             firstName,
             maxLines: 1,
@@ -1842,7 +1867,10 @@ class _InfoRow extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: dense ? 12 : 14),
       child: Row(
         children: [
-          if (leading != null) ...[leading!, SizedBox(width: context.spacing.space12)],
+          if (leading != null) ...[
+            leading!,
+            SizedBox(width: context.spacing.space12),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1889,35 +1917,6 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.name, required this.size});
-
-  final String name;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: context.colors.saffronTint,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: AppTypography.sans(
-            fontSize: size * 0.38,
-            fontWeight: FontWeight.w800,
-            color: context.colors.primaryDark,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 Color _categoryColor(BuildContext context, String name) {
   final colors = context.colors;
   final normalized = name.toLowerCase();
@@ -1954,7 +1953,9 @@ class _PayerPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(
+      event,
+    );
     return SafeArea(
       top: false,
       child: Container(
@@ -1977,7 +1978,12 @@ class _PayerPickerSheet extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, context.spacing.space4, context.spacing.space20, context.spacing.space12),
+              padding: EdgeInsetsDirectional.fromSTEB(
+                context.spacing.space20,
+                context.spacing.space4,
+                context.spacing.space20,
+                context.spacing.space12,
+              ),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
@@ -2030,8 +2036,10 @@ class _PayerOption extends StatelessWidget {
     final colors = context.colors;
     return ListTile(
       onTap: onTap,
-      contentPadding: EdgeInsetsDirectional.symmetric(horizontal: context.spacing.space12),
-      leading: _Avatar(name: name, size: 36),
+      contentPadding: EdgeInsetsDirectional.symmetric(
+        horizontal: context.spacing.space12,
+      ),
+      leading: RAvatar(name: name, size: 36),
       title: Text(
         name,
         style: AppTypography.sans(

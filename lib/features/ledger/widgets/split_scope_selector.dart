@@ -7,6 +7,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/expense_scope_display_name.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
@@ -189,7 +190,9 @@ class _CustomParticipantSelector extends ConsumerWidget {
     final participants = _eventParticipants(event);
     final participantsAsync = AsyncValue.data(participants);
     // #289: distinguish two same-named members exactly where money is split.
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(
+      event,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,7 +367,9 @@ class _PayerSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final participants = _eventParticipants(event);
     // #289: distinguish two same-named members in the "who paid" picker.
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    final displayNames = MemberNameResolver.disambiguateEventParticipants(
+      event,
+    );
 
     final currentUid = ref.watch(currentUserProvider)?.uid;
 
@@ -391,7 +396,10 @@ class _PayerSelector extends ConsumerWidget {
         ),
         SizedBox(height: context.spacing.space12),
         Container(
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: context.spacing.space4),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.space16,
+            vertical: context.spacing.space4,
+          ),
           decoration: BoxDecoration(
             color: context.colors.inputFill,
             borderRadius: BorderRadius.circular(16),
@@ -414,27 +422,11 @@ class _PayerSelector extends ConsumerWidget {
                   value: p.id,
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: context.colors.selectionFill,
-                        child: Text(
-                          (name.isNotEmpty
-                                  ? name[0]
-                                  : context.l10n.editorUnknownParticipant[0])
-                              .toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: context.colors.primary,
-                          ),
-                        ),
-                      ),
+                      RAvatar(name: name, size: 28),
                       SizedBox(width: context.spacing.space12),
                       Expanded(
                         child: Text(
-                          isMe
-                              ? context.l10n.editorParticipantMe(name)
-                              : name,
+                          isMe ? context.l10n.editorParticipantMe(name) : name,
                           style: TextStyle(
                             fontWeight: isMe
                                 ? FontWeight.bold
