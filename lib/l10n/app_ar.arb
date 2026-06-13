@@ -138,6 +138,7 @@
   "profileStatsAllTime": "كل الوقت",
   "profileStatsActive": "نشطة",
   "profileStatsLifetime": "الإجمالي",
+  "profileStatsLoadFailed": "تعذّر تحميل إحصاءاتك",
   "profileStatsSpentMore": "+{count}",
 
   "profileShareMessage": "أقسم مصاريف الرحلات مع رحلة. جرّبها.",

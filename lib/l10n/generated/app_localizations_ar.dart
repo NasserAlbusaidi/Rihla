@@ -364,6 +364,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileStatsLifetime => 'الإجمالي';
 
   @override
+  String get profileStatsLoadFailed => 'تعذّر تحميل إحصاءاتك';
+
+  @override
   String profileStatsSpentMore(int count) {
     return '+$count';
   }

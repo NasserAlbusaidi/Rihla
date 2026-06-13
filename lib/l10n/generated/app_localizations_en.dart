@@ -364,6 +364,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileStatsLifetime => 'lifetime';
 
   @override
+  String get profileStatsLoadFailed => 'Couldn\'t load your stats';
+
+  @override
   String profileStatsSpentMore(int count) {
     return '+$count';
   }

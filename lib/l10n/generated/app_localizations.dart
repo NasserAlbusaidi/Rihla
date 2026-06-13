@@ -782,6 +782,12 @@ abstract class AppLocalizations {
   /// **'lifetime'**
   String get profileStatsLifetime;
 
+  /// No description provided for @profileStatsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your stats'**
+  String get profileStatsLoadFailed;
+
   /// Overflow indicator on the Profile Spent stat when lifetime spend spans more than two currencies; shows how many additional currency lines are hidden. Digit-only; no FX, currencies never summed.
   ///
   /// In en, this message translates to:

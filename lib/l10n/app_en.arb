@@ -468,6 +468,7 @@
     "description": "Subtitle on the Groups stat card."
   },
   "profileStatsLifetime": "lifetime",
+  "profileStatsLoadFailed": "Couldn't load your stats",
   "@profileStatsLifetime": {
     "description": "Subtitle on the Spent stat card."
   },
