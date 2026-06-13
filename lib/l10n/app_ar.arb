@@ -79,6 +79,7 @@
   "profileNotificationsEnabled": "مُفعّل",
   "profileNotificationsDisabledHint": "فعّل من إعدادات الجهاز",
   "profileNotificationsSubtitle": "النشاط والتسويات",
+  "profileNotificationsErrorHint": "تعذّر التسجيل — اضغط لإعادة المحاولة",
 
   "profileAboutVersion": "الإصدار",
   "profileAboutSendFeedback": "إرسال ملاحظات",

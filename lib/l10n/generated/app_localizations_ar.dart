@@ -205,6 +205,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileNotificationsSubtitle => 'النشاط والتسويات';
 
   @override
+  String get profileNotificationsErrorHint =>
+      'تعذّر التسجيل — اضغط لإعادة المحاولة';
+
+  @override
   String get profileAboutVersion => 'الإصدار';
 
   @override
