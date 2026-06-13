@@ -890,6 +890,22 @@
     }
   },
   "settleUpEachPersonNet": "Each person's net",
+  "settleUpSettleAllWith": "Settle all with {name}",
+  "@settleUpSettleAllWith": {
+    "description": "Label on the #382 PR-5 stepped-settle card: records the user's debt with one counterparty across every currency bucket as a sequence of independent settlements. {name} is the counterparty's display name.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settleUpSettleAllWithCount": "{count, plural, =1{1 payment} other{{count} payments}}",
+  "@settleUpSettleAllWithCount": {
+    "description": "Caption under the #382 PR-5 stepped-settle card showing how many separate per-currency payments the stepped walk will record.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "settleUpPaymentHistory": "Payment history",
   "settleUpUnknown": "Unknown",
   "settleUpPaidConnector": "paid",

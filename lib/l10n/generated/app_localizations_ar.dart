@@ -1147,6 +1147,26 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpEachPersonNet => 'صافي كل شخص';
 
   @override
+  String settleUpSettleAllWith(Object name) {
+    return 'تسوية الكل مع $name';
+  }
+
+  @override
+  String settleUpSettleAllWithCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count دفعة',
+      many: '$count دفعة',
+      few: '$count دفعات',
+      two: 'دفعتان',
+      one: 'دفعة واحدة',
+      zero: 'لا دفعات',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get settleUpPaymentHistory => 'سجل الدفعات';
 
   @override

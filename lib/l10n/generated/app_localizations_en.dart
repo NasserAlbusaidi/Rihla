@@ -1111,6 +1111,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpEachPersonNet => 'Each person\'s net';
 
   @override
+  String settleUpSettleAllWith(Object name) {
+    return 'Settle all with $name';
+  }
+
+  @override
+  String settleUpSettleAllWithCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count payments',
+      one: '1 payment',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get settleUpPaymentHistory => 'Payment history';
 
   @override

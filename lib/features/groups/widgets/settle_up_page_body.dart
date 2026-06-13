@@ -28,6 +28,87 @@ typedef SettleBucket = ({
   List<Map<String, dynamic>> optimalSettlements,
 });
 
+/// One step of a stepped-settle walk (#382 PR-5 D2): a single per-currency
+/// settlement, in the bucket [currency] it was computed in. Mirrors the named
+/// args of [SettleUpPageBody.onRecord] so the walk driver can reuse the exact
+/// per-settlement record machinery once per bucket.
+typedef SettleStepRequest = ({
+  Map<String, dynamic> settlement,
+  String fromRawName,
+  String toRawName,
+  String fromUserId,
+  String toUserId,
+  Decimal suggestedAmount,
+  String currency,
+});
+
+/// Counterparty pairs (involving [currentUid]) that owe across ≥2 currency
+/// buckets, each as an ordered list of per-bucket steps (#382 PR-5 D2).
+///
+/// Scans every bucket's `optimalSettlements` for suggestions where
+/// [currentUid] is the payer or recipient, groups them by the OTHER party, and
+/// keeps only counterparties spanning ≥2 buckets — single-bucket pairs are the
+/// existing per-tile flow, so a stepped card there would be redundant (L2).
+/// Steps inherit each bucket's order; callers pass buckets GCC-first so the
+/// step list is GCC-first. The raw-name fallback matches `_buildTile`'s
+/// (`rawNames[uid] ?? stripDiscriminator(name)`), keeping the write path raw.
+List<({String otherUid, String otherName, List<SettleStepRequest> steps})>
+steppedSettlePairs({
+  required List<SettleBucket> buckets,
+  required String? currentUid,
+  required Map<String, String> rawNames,
+}) {
+  if (currentUid == null) return const [];
+
+  final byCounterparty =
+      <String, ({String otherName, List<SettleStepRequest> steps})>{};
+
+  for (final bucket in buckets) {
+    for (final settlement in bucket.optimalSettlements) {
+      final fromUserId = settlement['fromUserId'] as String;
+      final toUserId = settlement['toUserId'] as String;
+      final involvesMe = fromUserId == currentUid || toUserId == currentUid;
+      if (!involvesMe) continue;
+
+      final otherUid = fromUserId == currentUid ? toUserId : fromUserId;
+      final fromName = settlement['fromUserName'] as String?;
+      final toName = settlement['toUserName'] as String?;
+      final otherName = (fromUserId == currentUid ? toName : fromName) ?? '';
+
+      final step = (
+        settlement: settlement,
+        fromRawName:
+            rawNames[fromUserId] ??
+            MemberNameResolver.stripDiscriminator(fromName ?? ''),
+        toRawName:
+            rawNames[toUserId] ??
+            MemberNameResolver.stripDiscriminator(toName ?? ''),
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        suggestedAmount: settlement['amount'] as Decimal,
+        currency: bucket.currency,
+      );
+
+      final existing = byCounterparty[otherUid];
+      if (existing == null) {
+        byCounterparty[otherUid] = (otherName: otherName, steps: [step]);
+      } else {
+        existing.steps.add(step);
+      }
+    }
+  }
+
+  return [
+    for (final entry in byCounterparty.entries)
+      if (entry.value.steps.length >= 2)
+        (
+          otherUid: entry.key,
+          otherName: entry.value.otherName,
+          steps: entry.value.steps,
+        ),
+  ];
+}
+
 /// Single-page body for the Settle-Up screens (group + event).
 ///
 /// Wireframe (Hi_GroupSettle, screens-group.jsx) renders one scrollable view:
@@ -78,6 +159,13 @@ class SettleUpPageBody extends StatelessWidget {
   )?
   buildBreakdown;
 
+  /// Optional one-gesture "settle all with X" driver (#382 PR-5 D2). When
+  /// non-null, every counterparty owing across ≥2 currency buckets gets a
+  /// stepped card whose tap hands the per-bucket [SettleStepRequest] list to
+  /// the screen's walk driver. Null → no stepped cards (the per-tile flow is
+  /// the only path).
+  final void Function(List<SettleStepRequest> steps)? onRecordStepped;
+
   const SettleUpPageBody({
     super.key,
     required this.subjectName,
@@ -89,6 +177,7 @@ class SettleUpPageBody extends StatelessWidget {
     required this.onRecord,
     this.buildBreakdown,
     this.preSelectedMemberId,
+    this.onRecordStepped,
   });
 
   @override
@@ -99,6 +188,13 @@ class SettleUpPageBody extends StatelessWidget {
     );
     final history = settlementsAsync.valueOrNull ?? const <Settlement>[];
     final allSettled = totalTransfers == 0 && history.isEmpty;
+    final steppedPairs = onRecordStepped == null
+        ? const <({String otherUid, String otherName, List<SettleStepRequest> steps})>[]
+        : steppedSettlePairs(
+            buckets: buckets,
+            currentUid: currentUid,
+            rawNames: rawNames,
+          );
     final displayNames = <String, String>{
       for (final bucket in buckets)
         for (final balance in bucket.balances)
@@ -158,6 +254,13 @@ class SettleUpPageBody extends StatelessWidget {
             transferCount: totalTransfers,
             subjectName: subjectName,
           ),
+          for (final pair in steppedPairs)
+            _SteppedSettleCard(
+              key: ValueKey('settle-stepped-${pair.otherUid}'),
+              otherName: pair.otherName,
+              steps: pair.steps,
+              onTap: () => onRecordStepped!(pair.steps),
+            ),
           ...sections,
           if (allSettled && buckets.isEmpty) ...[
             SizedBox(height: context.spacing.space32),
@@ -288,6 +391,99 @@ class _SettlementIntro extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One-gesture "settle all with X" card (#382 PR-5 D2). Shown above the bucket
+/// sections for each counterparty owing across ≥2 currency buckets; tapping it
+/// drives the per-bucket stepped walk. The caption joins each step's
+/// code-first amount so the user sees exactly what the walk will record before
+/// they start.
+class _SteppedSettleCard extends StatelessWidget {
+  const _SteppedSettleCard({
+    super.key,
+    required this.otherName,
+    required this.steps,
+    required this.onTap,
+  });
+
+  final String otherName;
+  final List<SettleStepRequest> steps;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final amounts = steps
+        .map(
+          (s) => AppFormatters.formatCurrency(s.suggestedAmount, s.currency),
+        )
+        .join(' · ');
+    final caption =
+        '${context.l10n.settleUpSettleAllWithCount(steps.length)} · $amounts';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: context.colors.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+              border: Border.all(color: context.colors.primary),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space16,
+              vertical: context.spacing.space12,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Iconsax.cards,
+                  size: 18,
+                  color: context.colors.primary,
+                ),
+                SizedBox(width: context.spacing.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.settleUpSettleAllWith(otherName),
+                        style: TextStyle(
+                          color: context.colors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        caption,
+                        style: TextStyle(
+                          color: context.colors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: context.spacing.space8),
+                DirectionalIcon(
+                  Iconsax.arrow_right_3,
+                  size: 16,
+                  color: context.colors.primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

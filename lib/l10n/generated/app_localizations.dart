@@ -1970,6 +1970,18 @@ abstract class AppLocalizations {
   /// **'Each person\'s net'**
   String get settleUpEachPersonNet;
 
+  /// Label on the #382 PR-5 stepped-settle card: records the user's debt with one counterparty across every currency bucket as a sequence of independent settlements. {name} is the counterparty's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle all with {name}'**
+  String settleUpSettleAllWith(Object name);
+
+  /// Caption under the #382 PR-5 stepped-settle card showing how many separate per-currency payments the stepped walk will record.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 payment} other{{count} payments}}'**
+  String settleUpSettleAllWithCount(int count);
+
   /// No description provided for @settleUpPaymentHistory.
   ///
   /// In en, this message translates to:
