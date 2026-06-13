@@ -205,6 +205,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileNotificationsSubtitle => 'Activity & settles';
 
   @override
+  String get profileNotificationsErrorHint =>
+      'Couldn\'t register — tap to retry';
+
+  @override
   String get profileAboutVersion => 'Version';
 
   @override

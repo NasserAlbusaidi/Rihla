@@ -268,6 +268,10 @@
   "@profileNotificationsSubtitle": {
     "description": "Default subtitle on the Notifications row in active _NotificationPrefRow when notifications are not OS-blocked."
   },
+  "profileNotificationsErrorHint": "Couldn't register — tap to retry",
+  "@profileNotificationsErrorHint": {
+    "description": "Subtitle on the Notifications row when registration failed (NotificationStatus.error): the user is opted-in but the token write threw, so nothing is delivered. Tapping retries (#482)."
+  },
 
   "profileAboutVersion": "Version",
   "@profileAboutVersion": {
