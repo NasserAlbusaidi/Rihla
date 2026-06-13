@@ -11,6 +11,7 @@ import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/share_helper.dart';
 import '../../../shared/widgets/directional_icon.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../keys/group_keys.dart';
@@ -190,7 +191,9 @@ class SettleUpPageBody extends StatelessWidget {
     final history = settlementsAsync.valueOrNull ?? const <Settlement>[];
     final allSettled = totalTransfers == 0 && history.isEmpty;
     final steppedPairs = onRecordStepped == null
-        ? const <({String otherUid, String otherName, List<SettleStepRequest> steps})>[]
+        ? const <
+            ({String otherUid, String otherName, List<SettleStepRequest> steps})
+          >[]
         : steppedSettlePairs(
             buckets: buckets,
             currentUid: currentUid,
@@ -307,7 +310,7 @@ class SettleUpPageBody extends StatelessWidget {
 
     final breakdown =
         buildBreakdown?.call(fromUserId, toUserId, currency) ??
-            const <String, Decimal>{};
+        const <String, Decimal>{};
 
     return GroupSettlementTile(
           fromName: fromName,
@@ -420,9 +423,7 @@ class _SteppedSettleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final amounts = steps
-        .map(
-          (s) => AppFormatters.formatCurrency(s.suggestedAmount, s.currency),
-        )
+        .map((s) => AppFormatters.formatCurrency(s.suggestedAmount, s.currency))
         .join(' · ');
     final caption =
         '${context.l10n.settleUpSettleAllWithCount(steps.length)} · $amounts';
@@ -446,11 +447,7 @@ class _SteppedSettleCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  Iconsax.cards,
-                  size: 18,
-                  color: context.colors.primary,
-                ),
+                Icon(Iconsax.cards, size: 18, color: context.colors.primary),
                 SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(
@@ -557,10 +554,13 @@ class _NetBalanceRow extends StatelessWidget {
               : BorderSide.none,
         ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: context.spacing.space12),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: context.spacing.space12,
+      ),
       child: Row(
         children: [
-          _MiniAvatar(name: name),
+          RAvatar(name: name, size: 28),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Text(
@@ -582,35 +582,6 @@ class _NetBalanceRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _MiniAvatar extends StatelessWidget {
-  const _MiniAvatar({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: context.colors.saffronTint,
-        shape: BoxShape.circle,
-        border: Border.all(color: context.colors.rule2),
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(
-            color: context.colors.ink2,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
       ),
     );
   }
@@ -797,7 +768,10 @@ class _HistoryTile extends StatelessWidget {
                 ),
               ),
               Text(
-                AppFormatters.formatCurrency(settlement.amount, settlement.currency),
+                AppFormatters.formatCurrency(
+                  settlement.amount,
+                  settlement.currency,
+                ),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
