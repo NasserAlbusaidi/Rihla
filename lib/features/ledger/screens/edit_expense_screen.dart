@@ -85,6 +85,9 @@ class EditExpenseScreen extends ConsumerWidget {
             // decimals). The write preserves it via _save → updateExpense
             // (currency: original.currency), unchanged.
             currency: expense.currency,
+            // #382 PR-6: edit mode never shows the picker/warning (body's
+            // !_isEdit gate); the dominant signal is add-mode only.
+            dominantCurrency: null,
             initial: expense,
             onSubmit: (payload) => _save(ref, expense, payload),
             onDelete: () => _delete(context, ref, expense),

@@ -2,6 +2,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:decimal/decimal.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -11,6 +12,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/expense_category_model.dart';
+import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/add_expense_screen.dart';
@@ -247,6 +249,133 @@ void main() {
         find.textContaining('USD', findRichText: true),
         findsWidgets,
       );
+    },
+  );
+
+  // #382 PR-6 (Task 5 — parent wiring): the smart default is computed in the
+  // parent from the event's expense history. Pumps the add screen with
+  // [eventExpensesProvider] overridden so the body seeds the picker from
+  // last-used-in-event instead of the group default.
+  Expense seedExpense({
+    required String id,
+    required String currency,
+    required DateTime createdAt,
+    bool isDeleted = false,
+  }) {
+    return Expense(
+      id: id,
+      tripId: eventId,
+      payerParticipantId: 'uid-yasmin',
+      amount: Decimal.fromInt(10),
+      scope: ExpenseScope.global,
+      createdAt: createdAt,
+      currency: currency,
+      isDeleted: isDeleted,
+    );
+  }
+
+  Future<void> pumpWithHistory(
+    WidgetTester tester, {
+    required String groupCurrency,
+    required List<Expense> eventExpenses,
+  }) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final fakeDb = FakeFirebaseFirestore();
+    const EventRef eventRef = (groupId: groupId, eventId: eventId);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          currentUserIdProvider.overrideWithValue('uid-yasmin'),
+          expenseServiceProvider.overrideWithValue(
+            ExpenseService.withFirestore(fakeDb),
+          ),
+          eventExpensesProvider(eventRef).overrideWith(
+            (ref) => Stream.value(eventExpenses),
+          ),
+          groupDetailProvider(groupId).overrideWith(
+            (ref) => Stream.value(
+              Group(
+                id: groupId,
+                name: 'Trip',
+                inviteCode: 'ABC123',
+                createdBy: 'uid-yasmin',
+                memberIds: const ['uid-yasmin'],
+                currency: groupCurrency,
+                createdAt: DateTime(2026),
+              ),
+            ),
+          ),
+          eventDetailProvider((
+            groupId: groupId,
+            eventId: eventId,
+          )).overrideWith((ref) => Stream.value(event)),
+          tripCategoriesProvider(
+            eventId,
+          ).overrideWith((ref) => Stream.value(const <ExpenseCategory>[])),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const AddExpenseScreen(groupId: groupId, eventId: eventId),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    '#382 PR-6: OMR group whose event already has a USD expense → add-expense '
+    'defaults the hero to USD (last-used-in-event)',
+    (tester) async {
+      await pumpWithHistory(
+        tester,
+        groupCurrency: 'OMR',
+        eventExpenses: [
+          seedExpense(
+            id: 'e-usd',
+            currency: 'USD',
+            createdAt: DateTime(2026, 3, 22),
+          ),
+        ],
+      );
+
+      // The smart default = last-used (USD), NOT the group default (OMR).
+      expect(find.text('AMOUNT · USD'), findsOneWidget);
+      expect(find.text('AMOUNT · OMR'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#382 PR-6: event [OMR@t1, OMR@t2, USD@t3] → default USD (most-recent), '
+    'group default ignored',
+    (tester) async {
+      await pumpWithHistory(
+        tester,
+        groupCurrency: 'OMR',
+        eventExpenses: [
+          seedExpense(
+            id: 'e1',
+            currency: 'OMR',
+            createdAt: DateTime(2026, 3, 20),
+          ),
+          seedExpense(
+            id: 'e2',
+            currency: 'OMR',
+            createdAt: DateTime(2026, 3, 21),
+          ),
+          seedExpense(
+            id: 'e3',
+            currency: 'USD',
+            createdAt: DateTime(2026, 3, 22),
+          ),
+        ],
+      );
+
+      // Recency wins for the default: the most-recent expense is USD.
+      expect(find.text('AMOUNT · USD'), findsOneWidget);
     },
   );
 }
