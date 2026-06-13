@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
@@ -89,7 +90,12 @@ class GroupSettingsScreen extends ConsumerWidget {
               _SettingsTopBar(groupId: groupId),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, 6, context.spacing.space20, context.spacing.space20),
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    context.spacing.space20,
+                    6,
+                    context.spacing.space20,
+                    context.spacing.space20,
+                  ),
                   child: SkeletonLoader.generic(count: 3),
                 ),
               ),
@@ -118,7 +124,8 @@ class _SettingsTopBar extends StatelessWidget {
           children: [
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: _GhostIconButton(
+              child: RIconButton(
+                variant: RIconButtonVariant.ghost,
                 key: GroupKeys.settingsBackButton,
                 icon: Directionality.of(context) == TextDirection.rtl
                     ? Iconsax.arrow_right
@@ -140,31 +147,6 @@ class _SettingsTopBar extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GhostIconButton extends StatelessWidget {
-  const _GhostIconButton({super.key, required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkResponse(
-        onTap: onTap,
-        radius: 22,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(icon, size: 18, color: context.colors.textPrimary),
         ),
       ),
     );

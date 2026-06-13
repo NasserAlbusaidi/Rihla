@@ -12,6 +12,8 @@ abstract final class ProfileKeys {
   static const statGroups = Key('profile_stat_groups');
   static const statEvents = Key('profile_stat_events');
   static const statSpent = Key('profile_stat_spent');
+  // #488: explicit error state for the stats grid (≠ the loading skeleton).
+  static const statsErrorCard = Key('profile_stats_error_card');
 
   // Phase 26 keys — notifications, about, and support sections
   static const notificationToggleTile = Key('profile_notification_toggle_tile');

@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -60,7 +61,9 @@ class EventSettingsScreen extends ConsumerWidget {
 
             return SingleChildScrollView(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.space24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -118,23 +121,13 @@ class EventSettingsScreen extends ConsumerWidget {
   Widget _buildBackButton(BuildContext context) {
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Container(
+      child: RIconButton(
         key: EventKeys.settingsBackButton,
-        decoration: BoxDecoration(
-          color: context.colors.inputFill,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: context.colors.inputFill),
-        ),
-        child: IconButton(
-          icon: Icon(
-            Directionality.of(context) == TextDirection.rtl
-                ? Iconsax.arrow_right
-                : Iconsax.arrow_left,
-            color: context.colors.textPrimary,
-            size: 20,
-          ),
-          onPressed: () => GoRouter.of(context).pop(),
-        ),
+        variant: RIconButtonVariant.ghost,
+        icon: Directionality.of(context) == TextDirection.rtl
+            ? Iconsax.arrow_right
+            : Iconsax.arrow_left,
+        onTap: () => GoRouter.of(context).pop(),
       ),
     );
   }

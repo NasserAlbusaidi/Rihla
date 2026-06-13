@@ -24,6 +24,8 @@ import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/data_deletion_service.dart';
@@ -65,7 +67,6 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
-    final statsAsync = ref.watch(profileStatsProvider);
     final isDurable = ref.watch(isDurableUserProvider);
     final l10n = context.l10n;
 
@@ -98,7 +99,7 @@ class ProfileScreen extends ConsumerWidget {
                       const _BackupAccountCard(),
                     ],
                     const SizedBox(height: 14),
-                    _StatsGrid(statsAsync: statsAsync)
+                    const _StatsGrid()
                         .animate()
                         .fadeIn(delay: 160.ms, duration: 400.ms)
                         .slideY(begin: 0.08),
@@ -627,49 +628,137 @@ class _IdentityChip extends StatelessWidget {
 
 // ──────────────────────────── Stats grid
 
-class _StatsGrid extends StatelessWidget {
-  const _StatsGrid({required this.statsAsync});
-  final AsyncValue<ProfileStats> statsAsync;
+class _StatsGrid extends ConsumerWidget {
+  const _StatsGrid();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    // #488: explicit loading skeleton + error state — never an ambiguous "—"
+    // that reads as zero / no-data when the stats actually failed or are still
+    // loading.
+    return ref
+        .watch(profileStatsProvider)
+        .when(
+          loading: () => const _StatsGridSkeleton(),
+          error: (_, _) => const _StatsErrorCard(),
+          data: (stats) => Padding(
+            key: ProfileKeys.statsSection,
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    statKey: ProfileKeys.statEvents,
+                    keyLabel: l10n.profileStatsJourneysLabel,
+                    value: '${stats.eventCount}',
+                    sub: l10n.profileStatsAllTime,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _StatCard(
+                    statKey: ProfileKeys.statGroups,
+                    keyLabel: l10n.profileStatsGroupsLabel,
+                    value: '${stats.groupCount}',
+                    sub: l10n.profileStatsActive,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _StatCard(
+                    statKey: ProfileKeys.statSpent,
+                    keyLabel: l10n.profileStatsSpentLabel,
+                    valueWidget: _SpentValue(spent: stats.spentByCurrency),
+                    sub: l10n.profileStatsLifetime,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+  }
+}
+
+/// Layout-matched skeleton for the 3-tile stats grid (#488).
+class _StatsGridSkeleton extends StatelessWidget {
+  const _StatsGridSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    final stats = statsAsync.valueOrNull;
-    final l10n = context.l10n;
+    return SkeletonLoader(
+      itemCount: 1,
+      itemBuilder: (context, _) => Padding(
+        key: ProfileKeys.statsSection,
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
+        child: const Row(
+          children: [
+            Expanded(
+              child: SkeletonBlock(
+                width: double.infinity,
+                height: 88,
+                borderRadius: 16,
+              ),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: SkeletonBlock(
+                width: double.infinity,
+                height: 88,
+                borderRadius: 16,
+              ),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: SkeletonBlock(
+                width: double.infinity,
+                height: 88,
+                borderRadius: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact, explicit error state for the stats grid with a retry (#488).
+class _StatsErrorCard extends ConsumerWidget {
+  const _StatsErrorCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     return Padding(
-      key: ProfileKeys.statsSection,
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: Row(
-        children: [
-          Expanded(
-            child: _StatCard(
-              statKey: ProfileKeys.statEvents,
-              keyLabel: l10n.profileStatsJourneysLabel,
-              value: stats == null ? '—' : '${stats.eventCount}',
-              sub: l10n.profileStatsAllTime,
+      child: Container(
+        key: ProfileKeys.statsErrorCard,
+        padding: EdgeInsets.all(context.spacing.space16),
+        decoration: BoxDecoration(
+          color: colors.cardSurface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: context.shadows.raised,
+        ),
+        child: Row(
+          children: [
+            Icon(Iconsax.warning_2, size: 18, color: colors.textSecondary),
+            SizedBox(width: context.spacing.space12),
+            Expanded(
+              child: Text(
+                context.l10n.profileStatsLoadFailed,
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              statKey: ProfileKeys.statGroups,
-              keyLabel: l10n.profileStatsGroupsLabel,
-              value: stats == null ? '—' : '${stats.groupCount}',
-              sub: l10n.profileStatsActive,
+            TextButton(
+              onPressed: () => ref.invalidate(profileStatsProvider),
+              child: Text(context.l10n.commonRetry),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              statKey: ProfileKeys.statSpent,
-              keyLabel: l10n.profileStatsSpentLabel,
-              valueWidget: stats == null
-                  ? null
-                  : _SpentValue(spent: stats.spentByCurrency),
-              value: stats == null ? '—' : null,
-              sub: l10n.profileStatsLifetime,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

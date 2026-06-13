@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/r_icon_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -334,7 +335,7 @@ void main() {
     testWidgets('renders close button in top bar', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
-      expect(find.byType(CloseButton), findsOneWidget);
+      expect(find.byType(RIconButton), findsOneWidget);
     });
 
     testWidgets(
@@ -343,7 +344,7 @@ void main() {
         await tester.pumpWidget(await buildCreateRoute());
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byType(CloseButton));
+        await tester.tap(find.byType(RIconButton));
         await tester.pumpAndSettle();
 
         expect(find.text('Home'), findsOneWidget);
@@ -446,7 +447,7 @@ void main() {
         await tester.pumpWidget(await buildJoinInviteRoute());
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byType(BackButton));
+        await tester.tap(find.byType(RIconButton));
         await tester.pumpAndSettle();
 
         expect(find.text('Home'), findsOneWidget);
