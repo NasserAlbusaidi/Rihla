@@ -15,9 +15,9 @@ import '../keys/group_keys.dart';
 /// (tier 6 · sheets & pickers).
 ///
 /// Shows a sage check badge, italic display title, payee card with the
-/// suggested amount, method chips (Cash / Bank transfer / Other), and a
-/// saffron-tinted banner noting that recording is immediate (no confirmation
-/// step — #281). Returns a [RecordPaymentResult] on confirm; null on dismiss.
+/// suggested amount, and a saffron-tinted banner noting that recording is
+/// immediate (no confirmation step — #281). Returns a [RecordPaymentResult]
+/// on confirm; null on dismiss.
 Future<RecordPaymentResult?> showRecordPaymentSheet(
   BuildContext context, {
   required String currency,
@@ -74,7 +74,6 @@ class _MarkPaidSheet extends StatefulWidget {
 class _MarkPaidSheetState extends State<_MarkPaidSheet> {
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
-  PaymentMethod _method = PaymentMethod.cash;
   bool _showAmountEditor = false;
 
   @override
@@ -204,26 +203,6 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                       setState(() => _showAmountEditor = !_showAmountEditor),
                 ),
               ),
-              SizedBox(height: spacing.space16),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: spacing.space24),
-                child: Row(
-                  children: [
-                    for (final m in PaymentMethod.values) ...[
-                      _MethodChip(
-                        method: m,
-                        active: _method == m,
-                        onTap: () {
-                          HapticService.selection();
-                          setState(() => _method = m);
-                        },
-                      ),
-                      if (m != PaymentMethod.values.last)
-                        SizedBox(width: context.spacing.space8),
-                    ],
-                  ],
-                ),
-              ),
               SizedBox(height: spacing.space12),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
@@ -309,7 +288,9 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                               context.l10n.settleUpDoesntMoveMoney,
                               style: AppTypography.sans(
                                 fontSize: 11,
-                                color: colors.primaryDark.withValues(alpha: 0.8),
+                                color: colors.primaryDark.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                             ),
                           ],
@@ -365,7 +346,6 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                               RecordPaymentResult(
                                 amount: _amountController.text.trim(),
                                 note: _noteController.text.trim(),
-                                method: _method,
                               ),
                             );
                           },
@@ -554,91 +534,10 @@ class _PayeeCard extends StatelessWidget {
   }
 }
 
-class _MethodChip extends StatelessWidget {
-  const _MethodChip({
-    required this.method,
-    required this.active,
-    required this.onTap,
-  });
-
-  final PaymentMethod method;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? colors.cardSurface : colors.inputFill,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: active ? colors.textPrimary : colors.rule,
-              width: 0.5,
-            ),
-            boxShadow: active ? context.shadows.raised : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (active) ...[
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: colors.success,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                SizedBox(width: context.spacing.space8),
-              ],
-              Flexible(
-                child: Text(
-                  _methodLabel(context, method),
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.sans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: active ? colors.textPrimary : colors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _methodLabel(BuildContext context, PaymentMethod method) {
-    return switch (method) {
-      PaymentMethod.cash => context.l10n.settleUpMethodCash,
-      PaymentMethod.bank => context.l10n.settleUpMethodBank,
-      PaymentMethod.other => context.l10n.settleUpMethodOther,
-    };
-  }
-}
-
-/// Payment methods surfaced on the Mark Paid sheet.
-enum PaymentMethod { cash, bank, other }
-
 /// Result returned from [showRecordPaymentSheet].
 class RecordPaymentResult {
-  const RecordPaymentResult({
-    required this.amount,
-    required this.note,
-    this.method = PaymentMethod.cash,
-  });
+  const RecordPaymentResult({required this.amount, required this.note});
 
   final String amount;
   final String note;
-  final PaymentMethod method;
 }
