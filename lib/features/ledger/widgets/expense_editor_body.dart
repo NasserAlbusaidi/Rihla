@@ -9,6 +9,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/currency_display_name.dart';
 import '../../../core/utils/expense_scope_display_name.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
@@ -19,7 +20,9 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
+import '../../groups/widgets/currency_picker_sheet.dart';
 import '../../trip/providers/trip_provider.dart';
+import '../keys/ledger_keys.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
@@ -63,6 +66,12 @@ class ExpenseEditorPayload {
   /// per-participant weight/amount/percent.
   final Map<String, Decimal>? splitDistribution;
 
+  /// The ISO code the expense is denominated in (#382 PR-6). In add mode this
+  /// is the user's picked currency (smart default = last-used / group default);
+  /// in edit mode it equals the expense's stored currency. The host scales
+  /// `amountFils` by this code, so it must reach the write.
+  final String currency;
+
   const ExpenseEditorPayload({
     required this.amount,
     required this.description,
@@ -72,6 +81,7 @@ class ExpenseEditorPayload {
     required this.customSplitParticipants,
     required this.splitMode,
     required this.splitDistribution,
+    required this.currency,
   });
 }
 
@@ -85,11 +95,17 @@ class ExpenseEditorBody extends ConsumerStatefulWidget {
   final String eventId;
   final ExpenseEditorMode mode;
 
-  /// The currency the expense is denominated in. Under Model A (#261) this is
-  /// the owning group's currency in add mode, and the expense's own stored
-  /// currency in edit mode. Threaded by the parent — the body never defaults it
-  /// (a silent 'OMR' would mis-scale a non-OMR group 10× and be rules-rejected).
+  /// The currency the expense is denominated in. In add mode this carries the
+  /// smart default (last-used-in-event → group default, #382 PR-6) and seeds the
+  /// picker; in edit mode it's the expense's own stored currency. Threaded by
+  /// the parent — the body never defaults it (a silent 'OMR' would mis-scale a
+  /// non-OMR group 10×).
   final String currency;
+
+  /// The event's dominant (most-frequent) currency, used only to drive the soft
+  /// fat-finger warning in add mode (#382 PR-6). Null while the event's expenses
+  /// are still loading or in edit mode → no warning.
+  final String? dominantCurrency;
 
   /// Pre-fill values (edit mode only).
   final Expense? initial;
@@ -108,6 +124,7 @@ class ExpenseEditorBody extends ConsumerStatefulWidget {
     required this.mode,
     required this.currency,
     required this.onSubmit,
+    this.dominantCurrency,
     this.initial,
     this.onDelete,
   }) : assert(
@@ -130,6 +147,16 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   String? _selectedPayerId;
   late Set<String> _customSplitParticipants;
 
+  /// The ISO code the (add-mode) user has chosen for this expense (#382 PR-6).
+  /// Seeded from [widget.currency] (the smart default) and re-seeded by
+  /// [didUpdateWidget] until the user picks manually. Unused in edit mode —
+  /// [effectiveCurrency] returns [widget.currency] there.
+  late String _selectedCurrency;
+
+  /// True once the user taps the currency row, freezing [_selectedCurrency]
+  /// against a late-arriving smart default (so a manual pick is never clobbered).
+  bool _currencyManuallyPicked = false;
+
   /// How the expense total is divided. Defaults to [SplitMode.equally] in add
   /// mode and to whatever the existing expense stored in edit mode.
   late SplitMode _splitMode;
@@ -147,9 +174,18 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
   bool get _isEdit => widget.mode == ExpenseEditorMode.edit;
 
+  /// The currency every money surface in the editor scales/labels with (#382
+  /// PR-6). Edit mode is immutable (the stored currency); add mode follows the
+  /// picker. EVERY consumer of the denominating currency must read this, not
+  /// [widget.currency] — the amount hero, the input-decimal clamp, and any
+  /// exact-split entry/preview, or the picked scale silently diverges from the
+  /// persisted one.
+  String get effectiveCurrency => _isEdit ? widget.currency : _selectedCurrency;
+
   @override
   void initState() {
     super.initState();
+    _selectedCurrency = widget.currency;
     final initial = widget.initial;
     if (initial != null) {
       _amount = initial.amount.toString();
@@ -176,6 +212,20 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _splitDistribution = null;
     }
     _amountFocusNode.addListener(_selectDefaultZeroOnFocus);
+  }
+
+  @override
+  void didUpdateWidget(covariant ExpenseEditorBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // #382 PR-6: the parent computes the smart default asynchronously (from the
+    // event's expense history) and may hand it down AFTER the first frame. Adopt
+    // the late default as long as the user hasn't picked manually — so the form
+    // never gates on the history yet still lands on last-used-in-event.
+    if (!_isEdit &&
+        !_currencyManuallyPicked &&
+        widget.currency != oldWidget.currency) {
+      _selectedCurrency = widget.currency;
+    }
   }
 
   @override
@@ -269,6 +319,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
           splitDistribution: _splitMode == SplitMode.equally
               ? null
               : _splitDistribution,
+          currency: effectiveCurrency,
         ),
       );
     } catch (e) {
@@ -420,6 +471,24 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     }
   }
 
+  /// #382 PR-6: pick the currency this expense is denominated in (add mode
+  /// only). Reuses the create-group [CurrencyPickerSheet]; a manual pick freezes
+  /// the smart default ([_currencyManuallyPicked]) so a late event-history
+  /// default can't clobber it.
+  Future<void> _openCurrencySheet() async {
+    HapticService.lightClick();
+    final picked = await CurrencyPickerSheet.show(
+      context,
+      selected: effectiveCurrency,
+    );
+    if (picked == null || picked == _selectedCurrency || !mounted) return;
+    HapticService.selection();
+    setState(() {
+      _selectedCurrency = picked;
+      _currencyManuallyPicked = true;
+    });
+  }
+
   Future<void> _openSplitModeSheet(Event event) async {
     HapticService.lightClick();
     final amount = Decimal.tryParse(_amount) ?? Decimal.zero;
@@ -450,7 +519,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                 : context.l10n.editorTitleNewExpense)
           : _noteController.text.trim(),
       total: amount,
-      currency: widget.currency,
+      currency: effectiveCurrency,
       participants: participants,
       initialMode: _splitMode,
       initialDistribution: _splitDistribution,
@@ -533,11 +602,32 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       controller: _amountController,
                       focusNode: _amountFocusNode,
                       amount: _amount,
-                      currency: widget.currency,
+                      currency: effectiveCurrency,
                       onChanged: (value) =>
                           setState(() => _amount = _sanitizeAmount(value)),
                       onTap: _queueSelectDefaultZero,
                     ),
+                    // #382 PR-6: per-expense currency picker (add mode only).
+                    // Edit keeps the stored currency immutable (changing it would
+                    // strand any settlement recorded against the old bucket).
+                    if (!_isEdit)
+                      _CurrencyRow(
+                        key: LedgerKeys.expenseCurrencyField,
+                        currency: effectiveCurrency,
+                        onTap: _openCurrencySheet,
+                      ),
+                    // #382 PR-6: soft fat-finger warning — non-blocking, reactive.
+                    // Shown only when the picked currency diverges from the
+                    // event's dominant (most-frequent) one; picking the dominant
+                    // makes it vanish. Never in edit mode (currency is immutable).
+                    if (!_isEdit &&
+                        widget.dominantCurrency != null &&
+                        effectiveCurrency != widget.dominantCurrency)
+                      _CurrencyMismatchNotice(
+                        key: LedgerKeys.expenseCurrencyWarning,
+                        selected: effectiveCurrency,
+                        dominant: widget.dominantCurrency!,
+                      ),
                     _DescriptionField(controller: _noteController),
                     // #248 PR5: provenance byline — who ADDED / last EDITED this
                     // expense, distinct from who PAID (the "Paid by" card). Edit
@@ -579,7 +669,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         child: _SplitPreviewCard(
                           event: event,
                           amount: Decimal.tryParse(_amount) ?? Decimal.zero,
-                          currency: widget.currency,
+                          currency: effectiveCurrency,
                           scope: _scope,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
                           customSplitParticipants: _customSplitParticipants,
@@ -625,7 +715,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
   String _sanitizeAmount(String value) {
     final maxDecimals =
-        AppFormatters.currencyConfig[widget.currency]?.decimals ?? 3;
+        AppFormatters.currencyConfig[effectiveCurrency]?.decimals ?? 3;
     final normalized = normalizeLocalizedDecimalInput(
       value,
       decimalDigits: maxDecimals,
@@ -925,6 +1015,109 @@ class _DescriptionFieldState extends State<_DescriptionField> {
           focusedErrorBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: context.colors.error, width: 1.5),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// #382 PR-6: tappable row showing the picked currency (code + display name)
+/// with a trailing chevron. Opens [CurrencyPickerSheet]. Add mode only.
+class _CurrencyRow extends StatelessWidget {
+  const _CurrencyRow({
+    super.key,
+    required this.currency,
+    required this.onTap,
+  });
+
+  final String currency;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space24,
+        context.spacing.space8,
+        context.spacing.space24,
+        0,
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: _CardShell(
+          child: _InfoRow(
+            leading: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.selectionFill,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Iconsax.dollar_circle, size: 18, color: colors.primary),
+            ),
+            title: currencyDisplayName(currency, context.l10n),
+            subtitle: currency,
+            trailing: DirectionalIcon(
+              Iconsax.arrow_right_3,
+              size: 18,
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// #382 PR-6: inline, non-blocking soft warning shown in the add-expense form
+/// when the picked currency diverges from the event's dominant (most-frequent)
+/// one — a fat-finger guard. Amber soft-notice idiom (tint + icon + text); it
+/// never blocks submit and vanishes reactively when the dominant is picked.
+class _CurrencyMismatchNotice extends StatelessWidget {
+  const _CurrencyMismatchNotice({
+    super.key,
+    required this.selected,
+    required this.dominant,
+  });
+
+  final String selected;
+  final String dominant;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space24,
+        context.spacing.space8,
+        context.spacing.space24,
+        0,
+      ),
+      child: Container(
+        padding: EdgeInsets.all(context.spacing.space12),
+        decoration: BoxDecoration(
+          color: colors.warning.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.warning.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Icon(Iconsax.warning_2, size: 18, color: colors.warning),
+            SizedBox(width: context.spacing.space8),
+            Expanded(
+              child: Text(
+                context.l10n.editorCurrencyMismatch(selected, dominant),
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

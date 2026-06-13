@@ -1538,6 +1538,12 @@ abstract class AppLocalizations {
   /// **'{amount} each'**
   String editorEachAmount(Object amount);
 
+  /// Soft, non-blocking warning shown in the add-expense form when the picked currency differs from the event's dominant (most-frequent) currency — a fat-finger guard, not a hard block (#382 PR-6). {selected} is the picked ISO code, {dominant} the event's most-used ISO code.
+  ///
+  /// In en, this message translates to:
+  /// **'This expense is in {selected}, but this event mostly uses {dominant}.'**
+  String editorCurrencyMismatch(Object selected, Object dominant);
+
   /// No description provided for @editorPickAtLeastTwoToSplit.
   ///
   /// In en, this message translates to:

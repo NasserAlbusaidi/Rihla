@@ -275,10 +275,12 @@ service cloud.firestore {
       }
 
       function validCreatorMetadataUpdate() {
-        // #261 (Model A): currency is settable ONLY at create (validGroupCreate)
-        // and is immutable thereafter — dropped from the metadata allow-list so a
-        // creator cannot change it (the scalar cross-expense aggregation has no
-        // currency dimension; mutating it would silently misvalue existing money).
+        // #261/#382: currency is settable ONLY at create (validGroupCreate) and is
+        // immutable thereafter — dropped from the metadata allow-list so a creator
+        // cannot change it. Post-#382 group.currency is the DEFAULT currency for
+        // new expenses (each money doc carries its own per-doc currency, bucketed
+        // independently), not a constraint every money doc must match; but mutating
+        // a live group's default has no benefit and is left immutable.
         return isCreator()
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['name', 'updatedAt'])
@@ -490,21 +492,6 @@ service cloud.firestore {
               || d.splitDistribution.values().join(',').matches('^[0-9,]+$');
           }
 
-          // #261 (Model A: one-currency-per-group) - a money doc's currency must
-          // equal the owning group's currency, making group.currency the single
-          // authoritative dimension for cross-expense aggregation. Enforced in the
-          // create/update WRAPPERS (unconditional create, diff-gated update) — NOT
-          // in validExpenseBase, which re-runs wholesale on every update INCLUDING
-          // soft-delete; gating here keeps a legacy currency-mismatched doc
-          // soft-deletable (same trap splitValuesNonNegative avoids). Tautology
-          // today (every group + write is OMR, #61); live enforcement once Phase 2
-          // moves the write hardcodes off 'OMR'. Zero added reads: the caller
-          // already fetched groupData(groupId) via {event,group}AllowsClientWrites,
-          // and rules cache identical get()s within one evaluation.
-          function currencyMatchesGroup(d) {
-            return d.currency == groupData(groupId).currency;
-          }
-
           // #194 - free-text fields present on every expense create map
           // (expense_service.dart writes all of them). Bounds + charset; the
           // base keeps nullableString for the type guarantee.
@@ -581,7 +568,6 @@ service cloud.firestore {
               && eventAllowsClientWrites(groupId, eventId)
               && validExpenseBase(request.resource.data, true)
               && splitValuesNonNegative(request.resource.data)
-              && currencyMatchesGroup(request.resource.data)
               && validExpenseFreeText(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
               // #248: when present, lastEditedBy must be the caller (unforgeable
@@ -656,12 +642,13 @@ service cloud.firestore {
               && validExpenseBase(request.resource.data, affectsExpenseAllocation())
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
                 || splitValuesNonNegative(request.resource.data))
-              // #261: diff-gated like splitValuesNonNegative above — only an update
-              // that TOUCHES currency must match the group; a pure soft-delete
-              // (currency absent from the diff) is never re-checked, so a legacy
-              // mismatched doc stays soft-deletable.
-              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['currency'])
-                || currencyMatchesGroup(request.resource.data))
+              // #382 PR-6: per-expense currency. An expense's currency need only be
+              // a SUPPORTED code (validExpenseBase validCurrency floor at :563), no
+              // longer one that equals group.currency — the old diff-gated
+              // currencyMatchesGroup clause is deleted. The client never exposes an
+              // edit-currency control (edit mode is currency-immutable), so a
+              // valid-code currency change on update is rules-permitted but
+              // unexercised (L10).
               // #248 PR4: lastEditedBy is now MANDATORY and pinned to the caller on
               // EVERY expense update (was diff-gated in PR1). With edit open to any
               // participant, an editor who OMITTED lastEditedBy would let the
@@ -704,11 +691,11 @@ service cloud.firestore {
             && data.recipientParticipantId in participants()
             && isValidNullableDisplayName(data.payerName)
             && isValidNullableDisplayName(data.recipientName)
-            // #261: event-settlement currency must equal the owning group's
-            // currency (mirrors the group-settlement equality at validGroup
-            // SettlementBase). Reached ONLY via validEventSettlementCreate
-            // (settlement updates/deletes are denied), so create-only is safe.
-            && currencyMatchesGroup(data)
+            // #382 PR-6: a settlement's currency need only be a SUPPORTED code
+            // (validSettlementCore validCurrency floor), no longer one that equals
+            // group.currency — the old currencyMatchesGroup equality is deleted.
+            // The stepped-settle UI only offers currencies with a non-zero bucket
+            // client-side (L3); the server just validates a supported code.
             && validSettlementCore(data);
           }
 
@@ -893,14 +880,13 @@ service cloud.firestore {
           && data.recipientParticipantId in groupData(groupId).memberIds
           && isValidNullableDisplayName(data.payerName)
           && isValidNullableDisplayName(data.recipientName)
-          // #193 - group settle-up writes the owning group's currency by
-          // construction (group_settle_up_screen.dart), so a divergent code is a
-          // crafted write. #261 (Model A): event-settlement equality is now ALSO
-          // enforced (validEventSettlementBase, via currencyMatchesGroup) — both
-          // settlement scopes pin to group.currency. Since #376/#377 BOTH client
-          // settle-up paths thread group.currency into the write (the old 'OMR'
-          // hardcode is gone), so this equality is live, not a tautology.
-          && data.currency == groupData(groupId).currency
+          // #382 PR-6: a group settlement's currency need only be a SUPPORTED code
+          // (validSettlementCore validCurrency floor), no longer one that equals
+          // group.currency — the old equality is deleted. The stepped-settle UI
+          // only offers currencies with a non-zero bucket client-side (L3); the
+          // server just validates a supported code. A crafted settlement in a
+          // no-debt currency is append-only (B3) and correctable by an offsetting
+          // row, so no server bucket-existence check is needed.
           && validSettlementCore(data);
         }
 

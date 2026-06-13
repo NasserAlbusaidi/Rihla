@@ -13,6 +13,7 @@ import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
+import '../providers/expense_currency_default.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/expense_editor_body.dart';
 import '../widgets/expense_success_dialog.dart';
@@ -38,10 +39,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// fresh state without coupling the body to the parent's lifecycle.
   int _formGeneration = 0;
 
-  Future<void> _handleSubmit(
-    ExpenseEditorPayload payload,
-    String currency,
-  ) async {
+  Future<void> _handleSubmit(ExpenseEditorPayload payload) async {
     final currentUid = ref.read(currentUserIdProvider);
     if (currentUid == null || currentUid.isEmpty) {
       throw StateError('Cannot add expense without an authenticated user.');
@@ -64,10 +62,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             eventId: widget.eventId,
             payerParticipantId: payload.payerParticipantId,
             amount: payload.amount,
-            // #261: write the owning group's currency, not a hardcoded 'OMR'.
-            // amountFils is scaled by this currency, so it must match the group
-            // or the rules reject the write (currencyMatchesGroup).
-            currency: currency,
+            // #382 PR-6: write the per-expense currency the user picked (smart
+            // default = last-used-in-event → group default). amountFils is
+            // scaled by this code; rules now require only a supported code, not
+            // an exact group match.
+            currency: payload.currency,
             description: payload.description,
             scope: payload.scope,
             customSplitParticipants: payload.customSplitParticipants,
@@ -119,10 +118,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // #261: the expense currency is the owning group's currency. Gate the
-    // editor on the group resolving — never default to 'OMR' for an unloaded
+    // #261: the expense's default currency is the owning group's currency. Gate
+    // the editor on the group resolving — never default to 'OMR' for an unloaded
     // group (a non-OMR group would mis-scale 10× and be rules-rejected).
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
+
+    // #382 PR-6: the smart per-expense default is last-used-in-event → group
+    // default. Watch the event's expenses WITHOUT gating the form (no skeleton
+    // delay); while they load, fall back to the group default with no warning.
+    final eventExpensesAsync = ref.watch(
+      eventExpensesProvider((groupId: widget.groupId, eventId: widget.eventId)),
+    );
 
     return groupAsync.when(
       loading: () => Scaffold(
@@ -141,6 +147,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             message: context.l10n.editorCouldNotLoadExpenseMessage,
           );
         }
+        // #382 PR-6: derive the smart default (last-used-in-event → group
+        // default) and the event's dominant currency (for the soft warning).
+        // Do NOT gate on the expenses resolving: while they load, default to
+        // the group currency with no dominant (no warning).
+        final defaultCurrency = eventExpensesAsync.maybeWhen(
+          data: (expenses) => defaultExpenseCurrency(expenses, group.currency),
+          orElse: () => group.currency,
+        );
+        final dominantCurrency = eventExpensesAsync.maybeWhen(
+          data: dominantEventCurrency,
+          orElse: () => null,
+        );
         return KeyedSubtree(
           key: LedgerKeys.addExpenseScreen,
           child: ExpenseEditorBody(
@@ -148,8 +166,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             groupId: widget.groupId,
             eventId: widget.eventId,
             mode: ExpenseEditorMode.add,
-            currency: group.currency,
-            onSubmit: (payload) => _handleSubmit(payload, group.currency),
+            currency: defaultCurrency,
+            dominantCurrency: dominantCurrency,
+            onSubmit: _handleSubmit,
           ),
         );
       },

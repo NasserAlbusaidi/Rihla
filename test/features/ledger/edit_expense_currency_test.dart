@@ -6,6 +6,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
@@ -77,6 +78,18 @@ void main() {
   ) async {
     await pumpEdit(tester, currency: 'OMR');
     expect(find.text('AMOUNT · OMR'), findsOneWidget);
+  });
+
+  // #382 PR-6 (Task 6): the soft currency-mismatch warning is add-mode only.
+  // Edit hides the picker (currency is immutable) and the parent passes
+  // dominantCurrency:null, so the warning must never render in edit mode.
+  testWidgets('edit mode never shows the currency-mismatch warning', (
+    tester,
+  ) async {
+    await pumpEdit(tester, currency: 'USD');
+    expect(find.byKey(LedgerKeys.expenseCurrencyWarning), findsNothing);
+    // The picker row itself is also hidden in edit mode.
+    expect(find.byKey(LedgerKeys.expenseCurrencyField), findsNothing);
   });
 }
 
