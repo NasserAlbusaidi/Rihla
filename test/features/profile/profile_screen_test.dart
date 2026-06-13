@@ -100,8 +100,9 @@ List<Override> _phase26Overrides({
   bool pushEnabled = false,
   String version = '2.2.0',
   OpenNotificationSettings? openSettings,
+  MockNotificationService? notifService,
 }) {
-  final mockNotifService = MockNotificationService();
+  final mockNotifService = notifService ?? MockNotificationService();
   when(mockNotifService.initialize).thenAnswer((_) async => true);
   when(mockNotifService.removeToken).thenAnswer((_) async {});
 
@@ -693,6 +694,50 @@ void main() {
           reason: 'denied switch tap must also deep-link to OS settings',
         );
         expect(prefs.getBool('settings_push_notifications'), isTrue);
+      },
+    );
+
+    testWidgets(
+      'registration-error state reads OFF with a retry hint, and tapping retries '
+      'without flipping the pref (#482)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'TestUser',
+          'settings_push_notifications': true,
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final notif = MockNotificationService();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(
+              prefs: prefs,
+              pushEnabled: true,
+              notifStatus: NotificationStatus.error,
+              notifService: notif,
+            ),
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        // The switch must NOT read a confident ON while delivery is failing.
+        final switchWidget = tester.widget<Switch>(
+          find.byKey(ProfileKeys.notificationSwitch),
+        );
+        expect(switchWidget.value, isFalse);
+        expect(find.text("Couldn't register — tap to retry"), findsOneWidget);
+
+        // Tapping the switch retries registration instead of toggling the pref.
+        await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
+        await tester.pumpAndSettle();
+
+        verify(notif.initialize).called(1);
+        expect(
+          prefs.getBool('settings_push_notifications'),
+          isTrue,
+          reason: 'the error-state tap retries; it must not flip the pref off',
+        );
       },
     );
   });
