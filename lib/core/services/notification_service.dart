@@ -182,6 +182,14 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
+  /// Re-writes the stored token doc so its `locale` follows an app-language
+  /// change (#483). The server localizes push copy from `fcm_tokens/{uid}.locale`
+  /// (#53), which is otherwise frozen at first-write — a user who switches
+  /// EN↔AR would keep receiving the old language until a random token rotation.
+  /// Delegates to [_saveToken], so it no-ops while push is off/uninitialized and
+  /// stays a silent skip for anonymous shells (#441).
+  Future<void> refreshTokenLocale() => _saveToken();
+
   /// Save FCM token to Firestore.
   Future<void> _saveToken() async {
     if (!_initialized) return;

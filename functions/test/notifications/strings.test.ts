@@ -48,4 +48,17 @@ describe('notification copy', () => {
     expect(settlementTitle('ar', '')).toBe('مجموعتك');
     expect(memberJoinTitle('en', '')).toBe('your group');
   });
+
+  // #483: the empty-name fallback must be per-locale, INSIDE the body builder —
+  // an Arabic recipient must never get the English literal 'Someone' spliced
+  // into an RTL sentence (mirrors the groupLabel fallback).
+  test('empty actor/joiner name falls back to a localized default', () => {
+    expect(settlementBody('en', '   ', '10.500')).toContain('Someone');
+    expect(settlementBody('ar', '', '10.500')).toContain('شخص ما');
+    expect(settlementBody('ar', '   ', '10.500')).not.toContain('Someone');
+
+    expect(memberJoinBody('en', '')).toContain('Someone');
+    expect(memberJoinBody('ar', '   ')).toContain('شخص ما');
+    expect(memberJoinBody('ar', '')).not.toContain('Someone');
+  });
 });
