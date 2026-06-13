@@ -735,47 +735,6 @@ class BalanceCalculator {
   }
 }
 
-/// Interim single-bucket selection for display surfaces that stay
-/// single-currency until #382 PR-5. Under the live uniformity rules every
-/// prod bucket map is empty or a singleton `{group.currency: …}`.
-///
-/// - [preferred] non-null → that bucket (empty list when absent);
-/// - [preferred] null (group doc still loading) → the sole bucket when exactly
-///   one exists (its own key becomes the display currency), else
-///   `('OMR', const [])`.
-({String currency, List<UserBalance> balances}) selectCurrencyBucket(
-  Map<String, List<UserBalance>> buckets,
-  String? preferred,
-) {
-  if (preferred != null) {
-    return (
-      currency: preferred,
-      balances: buckets[preferred] ?? const <UserBalance>[],
-    );
-  }
-  if (buckets.length == 1) {
-    final entry = buckets.entries.single;
-    return (currency: entry.key, balances: entry.value);
-  }
-  return (currency: 'OMR', balances: const <UserBalance>[]);
-}
-
-/// Interim one-amount selection for home surfaces until #382 PR-5 renders
-/// full per-currency rows: the GCC-first NON-ZERO bucket, labeled with its
-/// own currency (honest — never relabeled to the group default); all-zero or
-/// empty → ([fallbackCurrency], zero). Deterministic: with multiple non-zero
-/// buckets the [sortedGccFirst] order decides.
-({String currency, Decimal net}) selectNetBucket(
-  Map<String, Decimal> buckets, {
-  required String fallbackCurrency,
-}) {
-  for (final c in sortedGccFirst(buckets.keys)) {
-    final v = buckets[c]!;
-    if (v != Decimal.zero) return (currency: c, net: v);
-  }
-  return (currency: fallbackCurrency, net: Decimal.zero);
-}
-
 /// Non-zero buckets, GCC-first ([sortedGccFirst]) — the canonical line list
 /// for per-currency display surfaces (#382 PR-5). Empty result ⇔ settled
 /// everywhere. "Non-zero" is EXACT `!= Decimal.zero` — no tolerance, so a
