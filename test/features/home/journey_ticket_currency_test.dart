@@ -19,8 +19,8 @@ void main() {
     startDate: null,
     endDate: null,
     createdAt: DateTime(2026),
-    userBalance: Decimal.parse(balance),
-    currency: currency,
+    nets: [(currency: currency, net: Decimal.parse(balance))],
+    fallbackCurrency: currency,
   );
 
   Widget host(Widget child) => MaterialApp(
@@ -41,5 +41,48 @@ void main() {
     await tester.pumpWidget(host(JourneyTicketCard(entry: entry('USD', '12.50'))));
     expect(find.textContaining('USD'), findsOneWidget);
     expect(find.textContaining('OMR'), findsNothing);
+  });
+
+  testWidgets('journey ticket renders every currency bucket (#382 PR-5)', (
+    tester,
+  ) async {
+    final multi = ActiveJourneyEntry(
+      eventId: 'e1',
+      groupId: 'g1',
+      title: 'Tokyo',
+      type: EventType.trip,
+      memberNames: const ['Aisha', 'Bilal'],
+      startDate: null,
+      endDate: null,
+      createdAt: DateTime(2026),
+      nets: [
+        (currency: 'OMR', net: Decimal.parse('1.4')),
+        (currency: 'AED', net: Decimal.parse('41')),
+      ],
+      fallbackCurrency: 'OMR',
+    );
+    await tester.pumpWidget(host(JourneyTicketCard(entry: multi)));
+    expect(find.textContaining('OMR'), findsOneWidget);
+    expect(find.textContaining('AED'), findsOneWidget);
+  });
+
+  testWidgets('settled journey ticket renders zero in fallback currency', (
+    tester,
+  ) async {
+    final settled = ActiveJourneyEntry(
+      eventId: 'e1',
+      groupId: 'g1',
+      title: 'Tokyo',
+      type: EventType.trip,
+      memberNames: const ['Aisha', 'Bilal'],
+      startDate: null,
+      endDate: null,
+      createdAt: DateTime(2026),
+      nets: const [],
+      fallbackCurrency: 'OMR',
+    );
+    await tester.pumpWidget(host(JourneyTicketCard(entry: settled)));
+    expect(settled.isSettled, isTrue);
+    expect(find.textContaining('OMR'), findsOneWidget);
   });
 }
