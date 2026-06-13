@@ -1677,18 +1677,30 @@ describe('Publish readiness Firestore rules', () => {
   });
 
   // ===========================================================================
-  // #261 (Model A) — expense currency must equal the owning group's currency,
-  // enforced in the create/update WRAPPERS (unconditional create, diff-gated
-  // update — NOT in validExpenseBase, so a legacy divergent doc stays
-  // soft-deletable). A tautology today (every group + every write is OMR);
-  // becomes live enforcement when Phase 2 moves the 'OMR' write hardcodes.
+  // #382 PR-6 (per-expense currency) — an expense's currency need only be a
+  // SUPPORTED code (validCurrency floor in validExpenseBase); it no longer has
+  // to equal the owning group's currency. group.currency is now just the
+  // smart DEFAULT for new expenses. The four currencyMatchesGroup clauses are
+  // deleted; a divergent-but-supported code is allowed, an unsupported code
+  // (XYZ) is still denied by the floor.
   // ===========================================================================
-  test('#261 expense create with a currency divergent from the group is denied', async () => {
-    // g1 is OMR; USD is allow-listed (validCurrency passes) but mismatches the
-    // group — currencyMatchesGroup is the sole denial axis.
+  test('#382 expense create with a currency divergent from the group is allowed', async () => {
+    // g1 is OMR; USD is allow-listed (validCurrency passes). Post-PR-6 the
+    // currencyMatchesGroup equality is gone, so a divergent supported code is
+    // accepted — the validCurrency floor is the sole currency gate.
     const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/expenses/expUsd').set(
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expUsd').set(
       validExpense({ id: 'expUsd', currency: 'USD' }),
+    ));
+  });
+
+  test('#382 expense create with an unsupported currency code is still denied (validCurrency floor)', async () => {
+    // Divergent AND invalid: XYZ is not in the 10-code allow-list, so the
+    // validExpenseBase validCurrency floor rejects it even after the
+    // currencyMatchesGroup equality is removed.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expXyz').set(
+      validExpense({ id: 'expXyz', currency: 'XYZ' }),
     ));
   });
 
@@ -1699,12 +1711,12 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
-  test('#261 expense update that changes currency to a divergent code is denied', async () => {
+  test('#382 expense update that changes currency to a divergent supported code is allowed', async () => {
     await seedExpense({ id: 'expCurU', createdBy: 'member' }); // OMR
     const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/expenses/expCurU').update({
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expCurU').update({
       currency: 'USD',
-      lastEditedBy: 'member', // #248 PR4: stamp so the denial isolates the currency guard (not the lastEditedBy pin)
+      lastEditedBy: 'member', // #248 PR4: stamp so the success isolates the currency change (not the lastEditedBy pin)
     }));
   });
 
@@ -1760,22 +1772,43 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
-  test('#193 group settlement with a supported-but-divergent currency is denied', async () => {
-    // Group g1 currency is OMR; USD is in the allow-list but mismatches the group.
+  test('#382 group settlement with a supported-but-divergent currency is allowed', async () => {
+    // Group g1 currency is OMR; USD is in the allow-list. Post-PR-6 the
+    // group-settlement currency==group.currency equality is gone, so a divergent
+    // supported code is accepted (the stepped-settle UI only offers non-zero
+    // buckets client-side; the server validates a supported code, L3).
     const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/settlements/gsetUsd').set(
+    await assertSucceeds(member.doc('groups/g1/settlements/gsetUsd').set(
       validGroupSettlement({ id: 'gsetUsd', currency: 'USD' }),
     ));
   });
 
-  test('#261 event settlement with a divergent supported currency is denied (cross-currency equality enforced)', async () => {
-    // #261 (Model A): event settlement currency must equal the owning group's
-    // currency (g1 is OMR; USD is allow-listed but mismatches). Resolves the
-    // prior #61 deferral — Phase 2 must move event settle-up off the 'OMR'
-    // hardcode to group.currency before any non-OMR group can settle up.
+  test('#382 group settlement with an unsupported currency code is still denied (validSettlementCore floor)', async () => {
+    // Divergent AND invalid: XYZ is not in the allow-list, so validSettlementCore
+    // rejects it even after the group.currency equality is removed.
     const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setUsd').set(
+    await assertFails(member.doc('groups/g1/settlements/gsetXyz').set(
+      validGroupSettlement({ id: 'gsetXyz', currency: 'XYZ' }),
+    ));
+  });
+
+  test('#382 event settlement with a divergent supported currency is allowed', async () => {
+    // #382 PR-6: event settlement currency need only be a supported code, not
+    // equal to the owning group's currency (g1 is OMR; USD is allow-listed). The
+    // currencyMatchesGroup equality in validEventSettlementBase is deleted; the
+    // validSettlementCore floor is the sole currency gate.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setUsd').set(
       validSettlement({ id: 'setUsd', currency: 'USD' }),
+    ));
+  });
+
+  test('#382 event settlement with an unsupported currency code is still denied (validSettlementCore floor)', async () => {
+    // Divergent AND invalid: XYZ is not in the allow-list, so validSettlementCore
+    // rejects it even after the currencyMatchesGroup equality is removed.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/settlements/setXyzDiv').set(
+      validSettlement({ id: 'setXyzDiv', currency: 'XYZ' }),
     ));
   });
 
