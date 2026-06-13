@@ -16,6 +16,7 @@ import 'package:safar/core/config/app_metadata.dart';
 import 'package:safar/core/providers/app_bootstrap_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_service.dart';
+import 'package:safar/core/services/notification_settings_launcher.dart';
 import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
@@ -98,6 +99,7 @@ List<Override> _phase26Overrides({
   NotificationStatus notifStatus = NotificationStatus.off,
   bool pushEnabled = false,
   String version = '2.2.0',
+  OpenNotificationSettings? openSettings,
 }) {
   final mockNotifService = MockNotificationService();
   when(mockNotifService.initialize).thenAnswer((_) async => true);
@@ -108,6 +110,8 @@ List<Override> _phase26Overrides({
     profileStatsProvider.overrideWith((ref) => _statsData()),
     notificationStatusProvider.overrideWith((ref) => notifStatus),
     notificationServiceProvider.overrideWithValue(mockNotifService),
+    if (openSettings != null)
+      openNotificationSettingsProvider.overrideWithValue(openSettings),
     appBootstrapProvider.overrideWith((ref) {}),
     appMetadataProvider.overrideWith(
       (ref) => Future.value(
@@ -609,29 +613,86 @@ void main() {
     );
 
     testWidgets(
-      'shows notification toggle in disabled state with subtitle when permission denied',
+      'permission-denied ROW tap deep-links to OS settings, never toggling the pref (#470)',
       (tester) async {
         SharedPreferences.setMockInitialValues({
           'settings_device_name': 'TestUser',
+          'settings_push_notifications': true,
         });
         final prefs = await SharedPreferences.getInstance();
 
+        var openedSettings = 0;
         await tester.pumpWidget(
           _buildTestApp(
             const ProfileScreen(),
             overrides: _phase26Overrides(
               prefs: prefs,
               notifStatus: NotificationStatus.permissionDenied,
+              openSettings: () async => openedSettings++,
             ),
           ),
         );
         await _pumpWithAnimations(tester);
 
+        // Hint still points the user at the recovery path.
         expect(find.text('Enable in device Settings'), findsOneWidget);
+        // Switch reads OFF (the OS is blocking) — but is no longer a dead control.
         final switchWidget = tester.widget<Switch>(
           find.byKey(ProfileKeys.notificationSwitch),
         );
-        expect(switchWidget.onChanged, isNull);
+        expect(switchWidget.value, isFalse);
+
+        await tester.tap(find.byKey(ProfileKeys.notificationToggleTile));
+        await tester.pumpAndSettle();
+
+        // Tapping deep-links to OS settings, the only Android 13+ recovery path.
+        expect(
+          openedSettings,
+          1,
+          reason: 'denied tap must deep-link to OS notification settings',
+        );
+        // Profile-layer contract: the denied tap routes to settings, NOT through
+        // onChanged — so it never flips the pref off. (The bootstrap force-reset
+        // guard — that intent survives a denial — lives in
+        // app_bootstrap_wiring_test.dart, where the reset code actually runs;
+        // here appBootstrapProvider is a no-op stub.)
+        expect(prefs.getBool('settings_push_notifications'), isTrue);
+      },
+    );
+
+    testWidgets(
+      'permission-denied SWITCH tap also deep-links to OS settings (#470)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'TestUser',
+          'settings_push_notifications': true,
+        });
+        final prefs = await SharedPreferences.getInstance();
+
+        var openedSettings = 0;
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(
+              prefs: prefs,
+              notifStatus: NotificationStatus.permissionDenied,
+              openSettings: () async => openedSettings++,
+            ),
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        // The Switch has its own onChanged closure, distinct from the row InkWell;
+        // tapping the Switch directly must route to settings, not be a dead control.
+        await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
+        await tester.pumpAndSettle();
+
+        expect(
+          openedSettings,
+          1,
+          reason: 'denied switch tap must also deep-link to OS settings',
+        );
+        expect(prefs.getBool('settings_push_notifications'), isTrue);
       },
     );
   });
@@ -694,6 +755,40 @@ void main() {
           find.byKey(ProfileKeys.notificationSwitch),
         );
         expect(switchWidget.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'non-denied tap toggles the pref and does NOT open OS settings (#470)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'TestUser',
+        });
+        final prefs = await SharedPreferences.getInstance();
+
+        var openedSettings = 0;
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: _phase26Overrides(
+              prefs: prefs,
+              notifStatus: NotificationStatus.off,
+              openSettings: () async => openedSettings++,
+            ),
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
+        await tester.pumpAndSettle();
+
+        // Off/enabled state: the toggle drives intent, never the settings deep-link.
+        expect(
+          openedSettings,
+          0,
+          reason: 'a non-denied tap must not open OS settings',
+        );
+        expect(prefs.getBool('settings_push_notifications'), isTrue);
       },
     );
   });

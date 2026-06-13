@@ -92,6 +92,47 @@ void main() {
     );
 
     test(
+      'does NOT reset pushNotificationsEnabled when initialize() fails (#470)',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            notificationServiceProvider.overrideWithValue(
+              mockNotificationService,
+            ),
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        // OS permission denied → initialize() returns false.
+        when(
+          () => mockNotificationService.initialize(),
+        ).thenAnswer((_) async => false);
+
+        // User explicitly opted in.
+        await container
+            .read(settingsProvider.notifier)
+            .setPushNotificationsEnabled(true);
+
+        container.read(appBootstrapProvider);
+
+        // Drain the async syncNotifications() chain (initialize → would-reset).
+        for (var i = 0; i < 5; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        // Intent must survive: OS reality is reflected by
+        // notificationStatusProvider, never by mutating the persisted pref.
+        expect(
+          container.read(settingsProvider).pushNotificationsEnabled,
+          isTrue,
+        );
+      },
+    );
+
+    test(
       'does not call removeToken() when notifications are already off on activation',
       () async {
         final container = ProviderContainer(
