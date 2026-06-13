@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#202 — Event closeout summary + shareable trip recap · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#202 · Event closeout <span class="saffron">+ trip recap</span></h1>
+  <p>Once an event is <b>explicitly closed</b> by an admin (never derived from dates) it earns a
+     read-only <b>Closeout</b> reached from the event hub / ledger. Two layers: a restrained
+     <b>accounting summary</b> users can trust, and a polished <b>"wrapped"</b> recap they can review
+     and share via <code>shareText</code>. Spending is snapshot-frozen at close; settlement status stays
+     live. Which is the screen, and which is the artifact? <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#202</span>
+    <h2 class="issue-title">money/ux: add event closeout summary and shareable trip recap</h2>
+    <span class="issue-meta">P2 · post-release · money + design · cluster:settlement-ux</span>
+  </div>
+  <p class="issue-desc">All three render the same closed event — <b>Wadi Shab Weekend</b>, OMR 142.350 across
+     5 people — so the only fork is the <b>frame</b>. V1 treats closeout as an accounting receipt. V2 treats it
+     as a celebration. V3 makes the accounting the screen and the celebration the shareable card behind one
+     <b>Share recap</b> button — trust first, delight opt-in. New <code>EventCloseout</code> screen at
+     <code>/group/:gid/event/:eid/closeout</code>; reuses <code>BalanceCalculator</code> + <code>shareText</code>.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant C (hybrid) — the money summary is the destination users
+     return to; the wrapped card is an <b>optional</b> share artifact, not the primary surface.</p>
+
+  <div class="variant-row">
+
+    <!-- ════════════════════════ V1 · RECEIPT ════════════════════════ -->
+    <div class="variant">
+      <div class="variant-label">A · Receipt summary <span class="tag">accounting</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Wadi Shab Weekend</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content tight">
+
+            <div class="banner sync" style="border-radius:var(--r-sm);justify-content:center;gap:6px">
+              <span style="font-size:13px">🔒</span> Closed by Ahmed · spending frozen
+            </div>
+
+            <!-- Headline total -->
+            <div class="card raised" style="text-align:center;padding:var(--s20)">
+              <div class="uppercase-label" style="margin-bottom:6px">Total spent · 6 expenses</div>
+              <div class="r-amount hero neu"><span class="ccy">OMR</span>142.<span class="dec">350</span></div>
+            </div>
+
+            <!-- Your position -->
+            <div class="section-header"><span class="label">Your position</span></div>
+            <div class="card" style="padding:0">
+              <div class="list-row">
+                <div class="row-body"><div class="row-sub mono">YOU PAID</div></div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>64.<span class="dec">000</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-body"><div class="row-sub mono">YOUR SHARE</div></div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>28.<span class="dec">470</span></span></div>
+              </div>
+              <div class="list-row" style="background:var(--card-soft)">
+                <div class="row-body"><div class="row-title">Net — you're owed</div></div>
+                <div class="row-trail"><span class="r-amount lg pos">+<span class="ccy">OMR</span>35.<span class="dec">530</span></span></div>
+              </div>
+            </div>
+
+            <!-- Highlights -->
+            <div class="row" style="gap:var(--s8)">
+              <div class="card" style="flex:1;padding:var(--s12)">
+                <div class="uppercase-label" style="font-size:10px">Top payer</div>
+                <div class="row" style="gap:6px;margin-top:6px">
+                  <div class="avatar sm av-1">A</div>
+                  <div class="tiny" style="font-weight:600">Ahmed</div>
+                </div>
+                <div class="r-amount neu" style="font-size:13px;margin-top:6px"><span class="ccy">OMR</span>64.<span class="dec">000</span></div>
+              </div>
+              <div class="card" style="flex:1;padding:var(--s12)">
+                <div class="uppercase-label" style="font-size:10px">Biggest expense</div>
+                <div class="tiny" style="font-weight:600;margin-top:6px">Boat &amp; guide</div>
+                <div class="r-amount neu" style="font-size:13px;margin-top:6px"><span class="ccy">OMR</span>45.<span class="dec">000</span></div>
+              </div>
+            </div>
+
+            <!-- Category breakdown -->
+            <div class="section-header"><span class="label">By category</span></div>
+            <div class="card" style="padding:var(--s16)">
+              <div class="between" style="margin-bottom:8px">
+                <div class="row" style="gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:var(--cat1)"></span><span class="tiny">Activities</span></div>
+                <span class="r-amount neu tiny"><span class="ccy">OMR</span>52.<span class="dec">000</span></span>
+              </div>
+              <div style="height:6px;border-radius:var(--r-pill);background:var(--cat1);width:78%;margin-bottom:14px"></div>
+              <div class="between" style="margin-bottom:8px">
+                <div class="row" style="gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:var(--cat3)"></span><span class="tiny">Food</span></div>
+                <span class="r-amount neu tiny"><span class="ccy">OMR</span>48.<span class="dec">850</span></span>
+              </div>
+              <div style="height:6px;border-radius:var(--r-pill);background:var(--cat3);width:72%;margin-bottom:14px"></div>
+              <div class="between" style="margin-bottom:8px">
+                <div class="row" style="gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:var(--cat2)"></span><span class="tiny">Stay</span></div>
+                <span class="r-amount neu tiny"><span class="ccy">OMR</span>41.<span class="dec">500</span></span>
+              </div>
+              <div style="height:6px;border-radius:var(--r-pill);background:var(--cat2);width:62%"></div>
+            </div>
+
+            <!-- Participant nets (all 5 — nets sum to zero) -->
+            <div class="section-header"><span class="label">Who's up / down</span></div>
+            <div class="card" style="padding:0">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-1">A</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Ahmed</div></div>
+                <div class="row-trail"><span class="r-amount pos tiny">+<span class="ccy">OMR</span>35.<span class="dec">530</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-2">S</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Sara</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>12.<span class="dec">340</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-4">K</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Khalid</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>11.<span class="dec">090</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-3">M</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Mohammed</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>6.<span class="dec">050</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-6">N</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Nasser</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>6.<span class="dec">050</span></span></div>
+              </div>
+            </div>
+
+            <!-- Settlement status -->
+            <div class="card soft" style="border-color:var(--amber);background:var(--saffron-tint)">
+              <div class="row" style="gap:8px;margin-bottom:6px">
+                <span style="font-size:15px">⚠️</span>
+                <div class="row-title" style="font-size:14px">Outstanding balances</div>
+              </div>
+              <div class="tiny muted" style="margin-bottom:12px">4 people still owe. Settle inside this event, or roll it up to the group ledger.</div>
+              <button class="btn block grad" style="margin-bottom:8px">Settle this event</button>
+              <button class="btn block secondary sm">Settle at group level</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The trustworthy ledger.</b> Pure accounting: total, your paid/share/net,
+         top payer, biggest expense, category + participant breakdowns, and a clear event-vs-group settlement
+         choice. No celebration. <b>Implies:</b> a single <code>EventCloseout</code> screen rendering
+         <code>BalanceCalculator</code> output read-only — fastest to ship, but no share artifact, so the
+         recap acceptance box goes unmet.</p>
+    </div>
+
+    <!-- ════════════════════════ V2 · TRIP WRAPPED ════════════════════════ -->
+    <div class="variant">
+      <div class="variant-label">B · Trip wrapped <span class="tag">premium recap</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Recap</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content">
+
+            <!-- The shareable wrapped card -->
+            <div class="ticket">
+              <div class="cover">
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:var(--s16)">
+                  <div class="mono" style="font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.9)">RIHLA · WRAPPED · MAR 2026</div>
+                  <div class="serif" style="font-size:25px;color:var(--on-primary);line-height:1.05;margin-top:2px">Wadi Shab Weekend</div>
+                </div>
+              </div>
+              <div class="perf"></div>
+              <div style="padding:var(--s20) var(--s16) var(--s16);text-align:center">
+                <div class="uppercase-label" style="margin-bottom:6px">Total spent · 3 nights</div>
+                <div class="r-amount hero neu" style="font-size:42px"><span class="ccy">OMR</span>142.<span class="dec">350</span></div>
+
+                <!-- stats row -->
+                <div class="row" style="gap:var(--s8);margin-top:var(--s20);text-align:start">
+                  <div class="card soft" style="flex:1;padding:var(--s12)">
+                    <div class="uppercase-label" style="font-size:9px">People</div>
+                    <div class="serif" style="font-size:22px;line-height:1">5</div>
+                  </div>
+                  <div class="card soft" style="flex:1;padding:var(--s12)">
+                    <div class="uppercase-label" style="font-size:9px">Expenses</div>
+                    <div class="serif" style="font-size:22px;line-height:1">6</div>
+                  </div>
+                  <div class="card soft" style="flex:1;padding:var(--s12)">
+                    <div class="uppercase-label" style="font-size:9px">Avg / day</div>
+                    <div class="r-amount neu" style="font-size:14px;margin-top:5px"><span class="ccy">OMR</span>47.<span class="dec">450</span></div>
+                  </div>
+                </div>
+
+                <div class="divider" style="margin:var(--s16) 0"></div>
+
+                <!-- biggest moment + top payer -->
+                <div class="between" style="margin-bottom:12px">
+                  <div class="col" style="text-align:start">
+                    <div class="uppercase-label" style="font-size:9px">Top spender</div>
+                    <div class="row" style="gap:6px;margin-top:5px"><div class="avatar sm av-1">A</div><span class="tiny" style="font-weight:600">Ahmed</span></div>
+                  </div>
+                  <div class="col" style="text-align:end">
+                    <div class="uppercase-label" style="font-size:9px">Biggest splurge</div>
+                    <div class="tiny" style="font-weight:600;margin-top:5px">Boat &amp; guide</div>
+                    <div class="r-amount neu" style="font-size:13px;margin-top:2px"><span class="ccy">OMR</span>45.<span class="dec">000</span></div>
+                  </div>
+                </div>
+
+                <!-- mini category bar -->
+                <div class="uppercase-label" style="font-size:9px;text-align:start;margin-bottom:6px">Where it went</div>
+                <div class="row" style="height:12px;border-radius:var(--r-pill);overflow:hidden;gap:2px">
+                  <div style="background:var(--cat1);width:37%"></div>
+                  <div style="background:var(--cat3);width:34%"></div>
+                  <div style="background:var(--cat2);width:29%"></div>
+                </div>
+                <div class="row" style="gap:var(--s12);margin-top:8px;justify-content:center">
+                  <div class="row" style="gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--cat1)"></span><span class="tiny muted">Activities</span></div>
+                  <div class="row" style="gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--cat3)"></span><span class="tiny muted">Food</span></div>
+                  <div class="row" style="gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--cat2)"></span><span class="tiny muted">Stay</span></div>
+                </div>
+
+                <div class="row" style="gap:6px;justify-content:center;margin-top:var(--s16)">
+                  <div class="avatar-stack">
+                    <div class="avatar sm av-1">A</div><div class="avatar sm av-2">S</div>
+                    <div class="avatar sm av-3">M</div><div class="avatar sm av-4">K</div>
+                    <div class="avatar sm av-6">N</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn block grad" style="margin-top:var(--s8)">Share recap</button>
+            <button class="btn block text">View full summary →</button>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The celebration.</b> Leads with a hero serif total inside a <code>.ticket</code>
+         CoverArt band, a few tasteful stats (no jokey superlatives per the spec), and a mini category bar — the
+         card <i>is</i> the share artifact. <b>Implies:</b> the wrapped card is the primary screen, with the
+         accounting tucked under "View full summary." Risk: leads with delight before trust — the money summary
+         the issue centres on is one tap away, not the destination.</p>
+    </div>
+
+    <!-- ════════════════════════ V3 · HYBRID (PICK) ════════════════════════ -->
+    <div class="variant pick">
+      <div class="variant-label">C · Summary + share <span class="tag">hybrid</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <!-- closeout uses the dark module header to signal a distinct read-only surface -->
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn" style="color:var(--on-primary)">‹</div>
+              <div class="spacer"></div>
+              <span class="pill-tag" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:var(--on-primary)">🔒 CLOSED</span>
+            </div>
+            <div class="mh-title">Wadi Shab Weekend</div>
+            <div class="mh-sub">Closed by Ahmed · 14 Mar · spending frozen</div>
+          </div>
+
+          <div class="content tight">
+
+            <!-- Headline total + your net -->
+            <div class="card raised" style="padding:var(--s20)">
+              <div class="uppercase-label" style="margin-bottom:6px">Total spent · 6 expenses</div>
+              <div class="r-amount hero neu"><span class="ccy">OMR</span>142.<span class="dec">350</span></div>
+              <div class="divider" style="margin:var(--s16) 0"></div>
+              <div class="between">
+                <div class="col">
+                  <div class="row-sub mono">YOUR NET</div>
+                  <div class="serif" style="font-size:18px;color:var(--sage-text)">You're owed</div>
+                </div>
+                <span class="r-amount lg pos">+<span class="ccy">OMR</span>35.<span class="dec">530</span></span>
+              </div>
+              <div class="row" style="gap:var(--s16);margin-top:12px">
+                <div class="col"><div class="row-sub mono">PAID</div><span class="r-amount neu tiny"><span class="ccy">OMR</span>64.<span class="dec">000</span></span></div>
+                <div class="col"><div class="row-sub mono">SHARE</div><span class="r-amount neu tiny"><span class="ccy">OMR</span>28.<span class="dec">470</span></span></div>
+              </div>
+            </div>
+
+            <!-- highlights -->
+            <div class="row" style="gap:var(--s8)">
+              <div class="card" style="flex:1;padding:var(--s12)">
+                <div class="uppercase-label" style="font-size:10px">Top payer</div>
+                <div class="row" style="gap:6px;margin-top:6px"><div class="avatar sm av-1">A</div><span class="tiny" style="font-weight:600">Ahmed</span></div>
+              </div>
+              <div class="card" style="flex:1;padding:var(--s12)">
+                <div class="uppercase-label" style="font-size:10px">Biggest</div>
+                <div class="tiny" style="font-weight:600;margin-top:6px">Boat &amp; guide</div>
+                <div class="r-amount neu" style="font-size:12px;margin-top:3px"><span class="ccy">OMR</span>45.<span class="dec">000</span></div>
+              </div>
+            </div>
+
+            <!-- category breakdown -->
+            <div class="section-header"><span class="label">By category</span></div>
+            <div class="card" style="padding:var(--s16)">
+              <div class="between" style="margin-bottom:8px">
+                <div class="row" style="gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:var(--cat1)"></span><span class="tiny">Activities</span></div>
+                <span class="r-amount neu tiny"><span class="ccy">OMR</span>52.<span class="dec">000</span></span>
+              </div>
+              <div style="height:6px;border-radius:var(--r-pill);background:var(--cat1);width:78%;margin-bottom:12px"></div>
+              <div class="between" style="margin-bottom:8px">
+                <div class="row" style="gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:var(--cat3)"></span><span class="tiny">Food</span></div>
+                <span class="r-amount neu tiny"><span class="ccy">OMR</span>48.<span class="dec">850</span></span>
+              </div>
+              <div style="height:6px;border-radius:var(--r-pill);background:var(--cat3);width:72%;margin-bottom:12px"></div>
+              <div class="between" style="margin-bottom:8px">
+                <div class="row" style="gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:var(--cat2)"></span><span class="tiny">Stay</span></div>
+                <span class="r-amount neu tiny"><span class="ccy">OMR</span>41.<span class="dec">500</span></span>
+              </div>
+              <div style="height:6px;border-radius:var(--r-pill);background:var(--cat2);width:62%"></div>
+            </div>
+
+            <!-- participant nets (all 5 — nets sum to zero) -->
+            <div class="section-header"><span class="label">Who's up / down</span></div>
+            <div class="card" style="padding:0">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-1">A</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Ahmed</div></div>
+                <div class="row-trail"><span class="r-amount pos tiny">+<span class="ccy">OMR</span>35.<span class="dec">530</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-2">S</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Sara</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>12.<span class="dec">340</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-4">K</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Khalid</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>11.<span class="dec">090</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-3">M</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Mohammed</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>6.<span class="dec">050</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-6">N</div></div>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Nasser</div></div>
+                <div class="row-trail"><span class="r-amount neg tiny">−<span class="ccy">OMR</span>6.<span class="dec">050</span></span></div>
+              </div>
+            </div>
+
+            <!-- settlement status — LIVE -->
+            <div class="card soft" style="border-color:var(--amber);background:var(--saffron-tint)">
+              <div class="between" style="margin-bottom:6px">
+                <div class="row" style="gap:8px"><span style="font-size:14px">⚠️</span><div class="row-title" style="font-size:14px">Outstanding</div></div>
+                <span class="pill-tag warn">LIVE</span>
+              </div>
+              <div class="tiny muted" style="margin-bottom:12px">4 people still owe. Settlements stay live after close.</div>
+              <button class="btn block grad sm" style="margin-bottom:8px">Settle this event</button>
+              <button class="btn block secondary sm">Settle at group level</button>
+            </div>
+
+            <!-- the recap entry point — no emoji decoration -->
+            <button class="btn block secondary" style="gap:8px">Share trip recap</button>
+
+          </div>
+
+          <!-- the wrapped card surfaced as a peeking share sheet -->
+          <div class="sheet-wrap">
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="ticket" style="margin-bottom:var(--s16)">
+                <div class="cover" style="height:78px">
+                  <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:var(--s12)">
+                    <div class="mono" style="font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.9)">RIHLA · WRAPPED</div>
+                    <div class="serif" style="font-size:20px;color:var(--on-primary);line-height:1.05">Wadi Shab Weekend</div>
+                  </div>
+                </div>
+                <div class="perf"></div>
+                <div style="padding:var(--s16);text-align:center">
+                  <div class="r-amount neu" style="font-size:30px"><span class="ccy">OMR</span>142.<span class="dec">350</span></div>
+                  <div class="row" style="gap:var(--s16);justify-content:center;margin-top:8px">
+                    <span class="tiny muted">5 people</span><span class="tiny muted">·</span>
+                    <span class="tiny muted">6 expenses</span><span class="tiny muted">·</span>
+                    <span class="tiny muted">3 nights</span>
+                  </div>
+                  <div class="row" style="height:10px;border-radius:var(--r-pill);overflow:hidden;gap:2px;margin-top:var(--s12)">
+                    <div style="background:var(--cat1);width:37%"></div>
+                    <div style="background:var(--cat3);width:34%"></div>
+                    <div style="background:var(--cat2);width:29%"></div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn block grad">Share card</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p class="variant-note"><b>Trust first, delight opt-in.</b> The accounting summary IS the screen
+         (frozen spending up top, <span class="pill-tag warn" style="font-size:9px">LIVE</span> settlement below —
+         honoring the snapshot rule); the wrapped card is the artifact behind <b>Share trip recap</b>, shown here
+         mid-open as a bottom sheet that hands the rendered card to <code>shareText</code>. <b>Implies:</b> one
+         <code>EventCloseout</code> screen + a <code>RecapShareSheet</code> widget — satisfies every acceptance
+         box (summary, breakdowns, event-vs-group CTA, wrapped recap, shareable card, snapshot/live split).</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#361 — Cold-start white-flash · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* layout-only: stage the native OS launch window vs the Flutter splash frame */
+  .launch-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s16);
+  }
+  .launch-stage .bar {
+    width: 120px;
+    height: 4px;
+    border-radius: var(--r-pill);
+    overflow: hidden;
+    margin-top: var(--s24);
+  }
+  .launch-stage .bar i {
+    display: block;
+    width: 42%;
+    height: 100%;
+    border-radius: var(--r-pill);
+  }
+  /* the brand "R" tile: 88×88, radius 22, ink border, saffron-soft fill */
+  .brand-tile {
+    width: 88px;
+    height: 88px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .brand-tile span {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 56px;
+    line-height: 1;
+  }
+
+  /* before variant: white background to depict the bug */
+  .phone-screen.white-bug {
+    background: #FFFFFF;
+  }
+  .phone-screen.white-bug .launch-stage {
+    background: #FFFFFF;
+  }
+  /* ghost tile/bar colors in the before (bug) frame — use ink-4 / border tokens */
+  .brand-tile.ghost {
+    background: #FFFFFF;
+    border: 2px dashed var(--border);
+  }
+  .brand-tile.ghost span {
+    color: var(--ink-4);
+  }
+  .bar.ghost {
+    background: var(--paper-deep);
+  }
+  .bar.ghost i {
+    background: var(--border);
+  }
+
+  /* night phone: dark scaffold (AppColorTokens.dark.scaffoldBackground) */
+  .phone-screen.night {
+    background: #1B1A17;
+  }
+  .phone-screen.night .launch-stage {
+    background: #1B1A17;
+  }
+  .phone-screen.night .status-bar {
+    color: #EFE8D7;
+  }
+  .phone-screen.night .seq-stage-label {
+    color: var(--ink-4);
+  }
+  /* night brand tile: same saffron-soft fill but over dark scaffold */
+  .brand-tile.night-tile {
+    background: var(--saffron-soft);
+    border: 2px solid #EFE8D7;
+  }
+  .brand-tile.night-tile span {
+    color: #1B1A17;
+  }
+  .serif-wordmark-night {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 42px;
+    color: #EFE8D7;
+    line-height: 1;
+  }
+  .bar.night-bar {
+    background: rgba(244,221,184,.18);
+  }
+  .bar.night-bar i {
+    background: var(--primary);
+  }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#361 · Cold-start <span class="saffron">white-flash</span></h1>
+  <p>On a cold launch the native OS window paints <code>launch_background.xml</code> — the stock
+     Flutter <b>plain white</b> — for a beat before the first Dart frame draws the paper-tinted
+     <code>SplashScreen</code> (the saffron <b>R</b> tile + <b>Rihla</b> wordmark). The result is a
+     jarring white flash that breaks the brand the instant the app opens. The fix swaps the launch
+     drawable to the scaffold <code>#F6F1E6</code> paper + a centered mark so native→Flutter is one
+     continuous frame. Both light and dark modes need a matching <code>values-night</code> entry.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#361</span>
+    <h2 class="issue-title">polish(startup): match launch_background.xml to the splash</h2>
+    <span class="issue-meta">P3 · design · android launch drawable · light + dark</span>
+  </div>
+  <p class="issue-desc">This is a <b>correctness fix, not a design fork</b> — the three phones below show
+     the <b>Before</b> state (today's bug) and the correct <b>After</b> for both light and dark system
+     themes. <b>Before</b> is today's stock-white native window. <b>After · light</b> matches
+     <code>launch_background.xml</code> to <code>AppColorTokens.light.scaffoldBackground</code>
+     (<code>#F6F1E6</code>) with the centered <b>R</b> mark, so the OS splash is indistinguishable from
+     the first Dart frame. <b>After · dark</b> adds a matching <code>values-night</code> drawable
+     (<code>#1B1A17</code> dark scaffold) to eliminate the same flash in dark mode. Acceptance: no
+     white→brand jump on cold start in either system theme.</p>
+  <p class="issue-rec"><b>Recommendation:</b> <b>After · light</b> is the primary deliverable; ship
+     <b>After · dark</b> in the same PR via <code>values-night/launch_background.xml</code>. Both are
+     required — the issue acceptance criteria explicitly calls out light <b>and</b> dark.</p>
+
+  <div class="variant-row">
+
+    <!-- BEFORE: stock white native launch window -->
+    <div class="variant">
+      <div class="variant-label">Before · native launch window <span class="tag">today</span></div>
+      <div class="phone">
+        <!-- phone-screen.white-bug forces white to depict the stock launch_background -->
+        <div class="phone-screen white-bug">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="launch-stage">
+            <div class="tiny mono muted">OS launch window · ~120–400 ms</div>
+            <!-- stock white: empty frame, no brand at all -->
+            <div class="brand-tile ghost">
+              <span>R</span>
+            </div>
+            <div class="bar ghost"><i></i></div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The flash.</b> <code>launch_background.xml</code> is the stock
+         <code>@android:color/white</code> template, so the native window is blank white until Flutter's
+         first frame renders. The user sees white → paper-and-saffron pop — a visible seam at the worst
+         possible moment. Nothing to design here; it is simply wrong.</p>
+    </div>
+
+    <!-- AFTER (LIGHT): launch background matches the Flutter splash -->
+    <div class="variant pick">
+      <div class="variant-label">After · light — paper launch + mark <span class="tag">fix</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="launch-stage">
+            <div class="tiny mono muted">OS launch window → first Dart frame</div>
+            <!-- the real _IconBox: saffron-soft fill, ink border, serif R -->
+            <div class="brand-tile" style="background:var(--saffron-soft);border:2px solid var(--ink)">
+              <span style="color:var(--ink)">R</span>
+            </div>
+            <div class="serif" style="font-size:42px;color:var(--ink);line-height:1">Rihla</div>
+            <div class="tiny muted">رحلة</div>
+            <div class="bar" style="background:var(--saffron-soft)"><i style="background:var(--primary)"></i></div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Seamless (light).</b> The native window now paints <code>#F6F1E6</code>
+         paper with the same centered <b>R</b> tile the Dart <code>SplashScreen</code> draws — the
+         hand-off is invisible. <b>Implementation:</b> edit
+         <code>android/app/src/main/res/drawable/launch_background.xml</code>
+         (and <code>drawable-v21/</code>) to a paper color layer + centered mark bitmap. No
+         <code>flutter_native_splash</code> package needed. Verify on a real cold launch in
+         light mode.</p>
+    </div>
+
+    <!-- AFTER (DARK): values-night variant -->
+    <div class="variant">
+      <div class="variant-label">After · dark — night scaffold + mark <span class="tag">fix</span></div>
+      <div class="phone">
+        <div class="phone-screen night">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="launch-stage">
+            <div class="tiny mono" style="color:var(--ink-3)">OS launch window → first Dart frame</div>
+            <!-- same tile but over dark scaffold -->
+            <div class="brand-tile night-tile">
+              <span>R</span>
+            </div>
+            <div class="serif-wordmark-night">Rihla</div>
+            <div class="tiny" style="color:var(--ink-3)">رحلة</div>
+            <div class="bar night-bar"><i></i></div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Seamless (dark).</b> <code>values-night/launch_background.xml</code>
+         paints the dark scaffold (<code>#1B1A17</code>) with the same centered mark — eliminating the
+         white flash for users whose system theme is dark. Ship in the same PR as the light fix;
+         both drawables change together. Verify on a real cold launch with dark system theme.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
