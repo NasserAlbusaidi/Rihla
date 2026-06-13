@@ -60,6 +60,9 @@ abstract final class GroupKeys {
   static const settleUpGroupTotalLabel = Key('group_settle_up_total_label');
   static const settleUpAllSettledMessage = Key('group_settle_up_all_settled');
   static const settleUpRecordSheetTitle = Key('group_settle_up_record_title');
+  // #382 PR-5: step overline on the record-payment sheet during a stepped walk.
+  static const settleUpRecordSheetStepIndicator =
+      Key('group_settle_up_record_step_indicator');
 
   static const settleUpRecordPaymentButton =
       Key('group_settle_up_record_payment_button');

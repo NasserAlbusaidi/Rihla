@@ -28,6 +28,9 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
   // *received* (rather than the debtor confirming one they made). The write is
   // identical (fromName=payer → toName=recipient); only the copy reframes.
   bool isReceiving = false,
+  // #382 PR-5: pre-formatted "k of N" overline shown above the title during a
+  // stepped multi-currency walk; null on the single-tile path.
+  String? stepLabel,
 }) {
   return showModalBottomSheet<RecordPaymentResult>(
     context: context,
@@ -42,6 +45,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
       toName: toName,
       suggestedAmount: suggestedAmount,
       isReceiving: isReceiving,
+      stepLabel: stepLabel,
     ),
   );
 }
@@ -53,6 +57,7 @@ class _MarkPaidSheet extends StatefulWidget {
     required this.toName,
     required this.suggestedAmount,
     this.isReceiving = false,
+    this.stepLabel,
   });
 
   final String currency;
@@ -60,6 +65,7 @@ class _MarkPaidSheet extends StatefulWidget {
   final String toName;
   final Decimal suggestedAmount;
   final bool isReceiving;
+  final String? stepLabel;
 
   @override
   State<_MarkPaidSheet> createState() => _MarkPaidSheetState();
@@ -127,6 +133,20 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
                 child: Column(
                   children: [
+                    if (widget.stepLabel != null) ...[
+                      Text(
+                        widget.stepLabel!,
+                        key: GroupKeys.settleUpRecordSheetStepIndicator,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.sans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textSecondary,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: spacing.space12),
+                    ],
                     Container(
                       width: 64,
                       height: 64,

@@ -906,6 +906,18 @@
       }
     }
   },
+  "settleUpStepIndicator": "{current} of {total}",
+  "@settleUpStepIndicator": {
+    "description": "Overline on the record-payment sheet during a #382 PR-5 stepped multi-currency walk, e.g. '1 of 2'. {current} is the 1-based step number, {total} the bucket count.",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "settleUpPaymentHistory": "Payment history",
   "settleUpUnknown": "Unknown",
   "settleUpPaidConnector": "paid",

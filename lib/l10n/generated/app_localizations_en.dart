@@ -1127,6 +1127,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpStepIndicator(int current, int total) {
+    return '$current of $total';
+  }
+
+  @override
   String get settleUpPaymentHistory => 'Payment history';
 
   @override

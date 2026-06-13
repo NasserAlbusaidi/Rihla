@@ -1982,6 +1982,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 payment} other{{count} payments}}'**
   String settleUpSettleAllWithCount(int count);
 
+  /// Overline on the record-payment sheet during a #382 PR-5 stepped multi-currency walk, e.g. '1 of 2'. {current} is the 1-based step number, {total} the bucket count.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String settleUpStepIndicator(int current, int total);
+
   /// No description provided for @settleUpPaymentHistory.
   ///
   /// In en, this message translates to:
