@@ -17,6 +17,7 @@ import '../keys/group_keys.dart';
 import '../services/member_name_resolver.dart';
 import '../widgets/group_settlement_summary.dart';
 import 'all_settled_state.dart';
+import 'currency_buckets_explainer.dart';
 import 'group_settlement_tile.dart';
 
 /// One currency bucket's settle-up data (#382 PR-1). [balances] and
@@ -254,6 +255,10 @@ class SettleUpPageBody extends StatelessWidget {
             transferCount: totalTransfers,
             subjectName: subjectName,
           ),
+          // #382 PR-5 L9: one-time "each currency settles separately" card,
+          // shown only with ≥2 buckets. The widget self-gates on the seen flag.
+          if (buckets.length >= 2)
+            CurrencyBucketsExplainer(bucketCount: buckets.length),
           for (final pair in steppedPairs)
             _SteppedSettleCard(
               key: ValueKey('settle-stepped-${pair.otherUid}'),

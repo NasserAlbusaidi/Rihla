@@ -10,7 +10,9 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -33,6 +35,15 @@ void main() {
   const groupId = 'group-1';
   const eventId = 'event-1';
   const eventRef = (groupId: groupId, eventId: eventId);
+
+  // The ≥2-bucket settle-up body renders the one-time currencies-don't-net
+  // explainer (#382 PR-5), a ConsumerWidget reading settingsProvider — so every
+  // app-booting test here must override sharedPreferencesProvider.
+  late SharedPreferences prefs;
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
 
   final event = Event(
     id: eventId,
@@ -72,6 +83,7 @@ void main() {
     List<Override> extraOverrides = const [],
   }) {
     final overrides = [
+      sharedPreferencesProvider.overrideWithValue(prefs),
       currentUserIdProvider.overrideWithValue(currentUid),
       eventDetailProvider(
         eventRef,

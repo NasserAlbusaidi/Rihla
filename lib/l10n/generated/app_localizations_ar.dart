@@ -1212,6 +1212,16 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get currencyExplainerTitle => 'كل عملة تُسوّى على حدة';
+
+  @override
+  String get currencyExplainerBody =>
+      'لا نخترع أسعار صرف، لذا لا يمكن للريال العماني أن يلغي الدرهم الإماراتي. ستسجّل دفعة واحدة لكل عملة.';
+
+  @override
+  String get currencyExplainerGotIt => 'فهمت';
+
+  @override
   String get settleUpPaymentHistory => 'سجل الدفعات';
 
   @override

@@ -2012,6 +2012,24 @@ abstract class AppLocalizations {
   /// **'Recorded {recorded} of {total} payments — will sync when online.'**
   String settleUpSteppedRecordedPartialWillSync(int recorded, int total);
 
+  /// Title of the one-time settle-up explainer (#382 PR-5) shown when a group has balances in two or more currencies, explaining why currencies never net against each other.
+  ///
+  /// In en, this message translates to:
+  /// **'Each currency settles separately'**
+  String get currencyExplainerTitle;
+
+  /// Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): no rates are invented, one currency can't cancel another, one payment per currency.
+  ///
+  /// In en, this message translates to:
+  /// **'We never invent exchange rates, so OMR can\'t cancel out AED. You\'ll record one payment per currency.'**
+  String get currencyExplainerBody;
+
+  /// Dismiss button on the one-time settle-up currencies-don't-net explainer (#382 PR-5); tapping it hides the card for good.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get currencyExplainerGotIt;
+
   /// No description provided for @settleUpPaymentHistory.
   ///
   /// In en, this message translates to:

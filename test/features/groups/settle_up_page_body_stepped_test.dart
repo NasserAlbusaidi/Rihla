@@ -2,11 +2,13 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/groups/widgets/settle_up_page_body.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// TDD RED — #382 PR-5 Task 10: stepped-settle affordance (D2).
 ///
@@ -15,8 +17,11 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 /// emits the per-bucket steps GCC-first via [onRecordStepped]. Single-bucket
 /// pairs and pure third-party pairs surface no card; a null [onRecordStepped]
 /// suppresses all cards.
-Widget _host(Widget body) {
+Widget _host(Widget body, {required SharedPreferences prefs}) {
   return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+    ],
     child: MaterialApp(
       theme: AppTheme.lightTheme,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -193,6 +198,8 @@ void main() {
     ) async {
       List<SettleStepRequest>? captured;
       final tileKeys = <int, GlobalKey>{};
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
         _host(
@@ -214,6 +221,7 @@ void main() {
             }) {},
             onRecordStepped: (steps) => captured = steps,
           ),
+          prefs: prefs,
         ),
       );
       await tester.pumpAndSettle();
@@ -234,6 +242,8 @@ void main() {
 
     testWidgets('no stepped cards when onRecordStepped is null', (tester) async {
       final tileKeys = <int, GlobalKey>{};
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         _host(
           SettleUpPageBody(
@@ -253,6 +263,7 @@ void main() {
               required String currency,
             }) {},
           ),
+          prefs: prefs,
         ),
       );
       await tester.pumpAndSettle();

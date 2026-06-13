@@ -1164,6 +1164,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get currencyExplainerTitle => 'Each currency settles separately';
+
+  @override
+  String get currencyExplainerBody =>
+      'We never invent exchange rates, so OMR can\'t cancel out AED. You\'ll record one payment per currency.';
+
+  @override
+  String get currencyExplainerGotIt => 'Got it';
+
+  @override
   String get settleUpPaymentHistory => 'Payment history';
 
   @override

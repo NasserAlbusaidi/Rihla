@@ -67,6 +67,12 @@ abstract final class GroupKeys {
   static const settleUpRecordPaymentButton =
       Key('group_settle_up_record_payment_button');
 
+  // #382 PR-5: one-time inline "each currency settles separately" explainer,
+  // shown in the settle-up body when there are ≥2 currency buckets.
+  static const currencyExplainerCard = Key('group_settle_up_currency_explainer');
+  static const currencyExplainerGotIt =
+      Key('group_settle_up_currency_explainer_got_it');
+
   // #359: share a plain-text receipt of a recorded payment.
   static const settleUpShareReceiptButton =
       Key('group_settle_up_share_receipt_button');

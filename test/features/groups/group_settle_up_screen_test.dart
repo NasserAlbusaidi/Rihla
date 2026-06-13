@@ -1242,6 +1242,10 @@ void main() {
       'offline walk: both writes queue, will-sync final snackbar, '
       'connectivity goes syncing, revision stays 0',
       (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Bobby',
+        });
+        final prefs = await SharedPreferences.getInstance();
         final settlementService = _RecordingGroupSettlementService(
           neverAck: true,
         );
@@ -1255,6 +1259,7 @@ void main() {
             balancesAsync: AsyncValue.data(_balancesTwoBucket),
             currentUid: 'uid-bob',
             extraOverrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
               connectivityProvider.overrideWith((ref) => connectivity),
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
