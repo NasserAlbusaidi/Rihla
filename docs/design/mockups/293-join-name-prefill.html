@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#293 — Join name pre-fill bleed + mistype lockout · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#293 · Join screen — <span class="saffron">name bleed</span> &amp; mistype lockout</h1>
+  <p>Two rough edges on <code>join_group_screen.dart</code>. (1) <b>Your name</b> silently seeds from the
+     device-wide <code>deviceName</code> — a nickname from a friends group leaks into a family ledger.
+     (2) The code field <b>auto-submits on the 6th char</b> (<code>if (value.length == 6) _joinGroup()</code>),
+     so a hand-relayed code mistyped a few times fires fast failures that burn the 5/hr lockout in
+     <code>joinGroupByInviteCode.ts</code>. Both variants keep the real layout (mood header → name → code →
+     hint → CTA); they differ on the name field and how the code commits. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#293</span>
+    <h2 class="issue-title">polish(join): name pre-fills from cross-group device name; mistyped codes burn the 5/hr limit</h2>
+    <span class="issue-meta">P3 · design · join_group_screen.dart + joinGroupByInviteCode.ts</span>
+  </div>
+  <p class="issue-desc">The fix is two-part and the same in both: <b>kill the auto-submit</b> on the 6th
+     character (manual <b>Join group</b> button only) and add a <b>typo-tolerant note</b> reminding the user
+     the code never contains <code>O / 0 / I / 1</code>. The fork is only the name field — <b>blank with a
+     one-tap "use my usual name" chip</b> vs. <b>pre-filled but explicitly confirmed for this group</b>.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant V1 (Blank + hint) — a blank field can't silently
+     leak the wrong persona; the chip keeps the common case one tap, and removing auto-submit stops the
+     lockout burn.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant 1 — Blank + hint (RECOMMENDED) -->
+    <div class="variant pick">
+      <div class="variant-label">V1 · Blank + hint</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Join group</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content">
+            <div class="col" style="gap:6px">
+              <div class="serif" style="font-size:30px;line-height:1.05;color:var(--ink)">Got a code from<br>a friend?</div>
+              <div class="tiny muted" style="max-width:280px">Enter it below to jump into their group. You'll pick how your name shows up here.</div>
+            </div>
+
+            <!-- Your name: blank + use-my-usual-name chip -->
+            <div class="field" style="margin-top:14px">
+              <div class="field-label">YOUR NAME</div>
+              <div style="border-bottom:1.5px solid var(--rule-2);padding:11px 2px">
+                <span class="muted" style="font-size:17px">Name for this group…</span>
+              </div>
+              <div class="chip-row" style="margin-top:10px">
+                <span class="chip selected"><span style="opacity:.7">↻</span>&nbsp;Use my usual name (Nasser)</span>
+              </div>
+            </div>
+
+            <!-- Invite code: manual commit, no auto-submit -->
+            <div class="field" style="margin-top:18px">
+              <div class="field-label">INVITE CODE</div>
+              <div class="tiny muted" style="margin-top:2px">Ask the group's creator — it's in their invite link.</div>
+              <input class="input code focus" value="7K4MQ9" readonly style="margin-top:10px" aria-label="invite code">
+              <div class="row tiny muted" style="margin-top:8px;gap:6px;align-items:flex-start">
+                <span style="color:var(--primary-dark);font-weight:700">ⓘ</span>
+                <span style="line-height:1.4">Codes never use <b>O</b>, <b>0</b>, <b>I</b> or <b>1</b> — if you typed one, it's a letter/number mix-up.</span>
+              </div>
+            </div>
+
+            <button class="btn block grad" style="margin-top:22px">Join group</button>
+            <div class="tiny muted center" style="margin-top:10px">Won't submit until you tap — mistypes don't count.</div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Blank name field</b> + a <code>Use my usual name (Nasser)</code> chip that
+         fills it on tap, so <code>deviceName</code> never auto-leaks into the wrong ledger while the common
+         case stays one tap. The code field drops the <code>length == 6</code> auto-submit for a manual
+         <b>Join group</b> tap plus an excludes-<code>O/0/I/1</code> note, so a mistyped relayed code gets
+         fixed before it ever burns the 5/hr limit. Implementation: in <code>build()</code> stop seeding
+         <code>_nameController</code> from <code>deviceName</code>, add the chip, and delete the
+         <code>if (value.length == 6) _joinGroup()</code> branch in <code>_InviteCodeField.onChanged</code>.</p>
+    </div>
+
+    <!-- Variant 2 — Confirm-on-prefill -->
+    <div class="variant">
+      <div class="variant-label">V2 · Confirm-on-prefill <span class="tag">2 actions</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Join group</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content">
+            <div class="col" style="gap:6px">
+              <div class="serif" style="font-size:30px;line-height:1.05;color:var(--ink)">Got a code from<br>a friend?</div>
+              <div class="tiny muted" style="max-width:280px">Enter it below to jump into their group. Check your name looks right for this one.</div>
+            </div>
+
+            <!-- Your name: pre-filled with explicit confirm -->
+            <div class="field" style="margin-top:14px">
+              <div class="field-label">YOUR NAME</div>
+              <div class="row" style="border-bottom:1.5px solid var(--ink);padding:9px 2px;gap:10px">
+                <div class="avatar sm av-5">N</div>
+                <span style="font-size:17px;color:var(--ink);font-weight:600;flex:1">Nasser</span>
+                <span class="tiny" style="color:var(--primary-dark);font-weight:600">Edit</span>
+              </div>
+              <div class="banner info" style="margin-top:10px;border-radius:var(--r-input);border:1px solid var(--border);align-items:flex-start;gap:8px">
+                <span style="color:var(--primary-dark);font-weight:700;margin-top:1px">ⓘ</span>
+                <span style="line-height:1.4">Is <b>Nasser</b> right for <b>this</b> group? It's pulled from your last one — tap Edit if the family knows you by another name.</span>
+              </div>
+            </div>
+
+            <!-- Invite code: manual commit, no auto-submit -->
+            <div class="field" style="margin-top:18px">
+              <div class="field-label">INVITE CODE</div>
+              <div class="tiny muted" style="margin-top:2px">Ask the group's creator — it's in their invite link.</div>
+              <input class="input code focus" value="7K4MQ9" readonly style="margin-top:10px" aria-label="invite code">
+              <div class="row tiny muted" style="margin-top:8px;gap:6px;align-items:flex-start">
+                <span style="color:var(--primary-dark);font-weight:700">ⓘ</span>
+                <span style="line-height:1.4">Codes never use <b>O</b>, <b>0</b>, <b>I</b> or <b>1</b> — if you typed one, it's a letter/number mix-up.</span>
+              </div>
+            </div>
+
+            <button class="btn block grad" style="margin-top:22px">Join as Nasser</button>
+            <div class="tiny muted center" style="margin-top:10px">Won't submit until you tap — mistypes don't count.</div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Keeps the pre-fill</b> from <code>deviceName</code> but makes it loud: the
+         field shows an explicit "is this right for <i>this</i> group?" prompt and the CTA reads
+         <b>Join as Nasser</b>, so the persona is a conscious choice rather than a silent default. Same
+         code-field fix (manual commit + excludes note). Lower-friction for the repeat joiner who always
+         uses one name, but it still ships a default the user must actively reject — keeping the bleed risk
+         that V1 removes outright. Implementation: keep the <code>deviceName</code> seed, add the confirm
+         banner + dynamic CTA label in <code>_UnderlinedTextField</code> / <code>build()</code>.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

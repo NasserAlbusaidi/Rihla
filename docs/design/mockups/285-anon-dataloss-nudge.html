@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#285 — Surface anon data-loss + prompt email-link · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#285 · Don't let a <span class="saffron">reinstall</span> wipe their groups</h1>
+  <p>Identity is a device-bound anonymous UID — a reinstall, a new phone, or "clear data" silently
+     orphans <b>every</b> group and expense unless an email was linked <i>beforehand</i>. Today the only
+     hint is a buried <code>Linked email · Not set</code> row in Profile, and active users see no prompt at
+     all. We add a <b>one-time, non-blocking</b> nudge after the first group/expense — copy that states the
+     real stakes without alarming. Hits joiners hardest (they just typed a code; zero account mental model).
+     Which surface? <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#285</span>
+    <h2 class="issue-title">privacy/design: surface the anonymous data-loss risk + prompt email-link</h2>
+    <span class="issue-meta">P2 · privacy · design · reuses /recover</span>
+  </div>
+  <p class="issue-desc">All three are the same nudge — fired once after the first group is created/joined (a
+     <code>SharedPreferences</code> "seen" flag, like <code>notificationPromptSeen</code> in #288), routing
+     <b>Add email</b> → the existing <code>/recover</code> flow. They differ only in <b>how loud the surface is</b>:
+     a card woven into the home feed, a deliberate one-time bottom sheet, or a thin inline strip above the groups list.
+     Copy must name the stakes — <i>new phone / reinstall loses your groups</i> — calmly, never blocking the app.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant B (bottom sheet) — a money-loss risk earns one
+     deliberate, focused moment the user must actively dismiss, yet it never blocks and never returns.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant A — Home card -->
+    <div class="variant">
+      <div class="variant-label">A · Home card <span class="tag">dismissible</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">◐</div>
+            <div class="title">Rihla</div>
+            <div class="icon-btn center muted">○</div>
+          </div>
+          <div class="content tight">
+            <div class="uppercase-label" style="padding:0 4px">Good morning, Nasser</div>
+
+            <!-- the nudge, woven into the feed above journeys -->
+            <div class="card raised" style="border-inline-start:3px solid var(--primary)">
+              <div class="row" style="align-items:flex-start;gap:12px">
+                <div class="empty-icon" style="width:40px;height:40px;font-size:18px;flex:none">⚓</div>
+                <div class="col" style="flex:1;min-width:0;gap:4px">
+                  <div class="row" style="justify-content:space-between">
+                    <div class="row-title">Save your data</div>
+                    <div class="chevron" style="font-size:15px">✕</div>
+                  </div>
+                  <div class="tiny muted" style="line-height:1.5">
+                    Your groups live on this phone only. Link an email so a new phone
+                    or reinstall doesn't lose them.
+                  </div>
+                  <div class="row" style="gap:8px;margin-top:10px">
+                    <button class="btn sm grad">Add email</button>
+                    <button class="btn sm text">Later</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">Active Journeys</span><span class="see-all">See all</span></div>
+            <div class="ticket">
+              <div class="cover"></div>
+              <div class="perf"></div>
+              <div style="padding:12px 16px 14px">
+                <div class="row-title">Salalah Khareef</div>
+                <div class="tiny muted mono" style="margin-top:2px">3 events · 4 people</div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">Groups</span><span class="see-all">New</span></div>
+            <div class="list-row" style="padding-inline:4px">
+              <div class="avatar av-2">SK</div>
+              <div class="row-body"><div class="row-title">Salalah Khareef</div><div class="row-sub">4 people · 3 events</div></div>
+              <div class="row-trail">
+                <div class="col" style="align-items:flex-end">
+                  <span class="r-amount pos"><span class="ccy">OMR</span>18<span class="dec">.500</span></span>
+                  <span class="row-sub">they owe you</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a dismissible card injected at the top of the home feed
+         (a new <code>_DataLossNudgeCard</code> sliver in <code>home_screen.dart</code> <code>_buildLoaded</code>,
+         above the journeys section). <b>Why distinct:</b> zero interruption — it lives in the scroll, easy to
+         scroll past. <b>Implies:</b> lowest friction but also lowest salience; a joiner skimming for their balance
+         may never read it, which is the exact persona we're protecting.</p>
+    </div>
+
+    <!-- Variant B — Bottom sheet (RECOMMENDED) -->
+    <div class="variant pick">
+      <div class="variant-label">B · Bottom sheet <span class="tag">one-time</span></div>
+      <div class="phone">
+        <div class="phone-screen" style="position:relative">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">◐</div>
+            <div class="title">Rihla</div>
+            <div class="icon-btn center muted">○</div>
+          </div>
+          <!-- dimmed home behind the sheet -->
+          <div class="content tight" style="opacity:.45">
+            <div class="uppercase-label" style="padding:0 4px">Good morning, Nasser</div>
+            <div class="card raised" style="height:120px"></div>
+            <div class="section-header"><span class="label">Groups</span></div>
+            <div class="list-row" style="padding-inline:4px">
+              <div class="avatar av-2">SK</div>
+              <div class="row-body"><div class="row-title">Salalah Khareef</div><div class="row-sub">4 people</div></div>
+            </div>
+          </div>
+
+          <!-- one-time nudge sheet -->
+          <div class="sheet-wrap">
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="center" style="margin-bottom:14px">
+                <div class="empty-icon" style="margin:0 auto 12px">⚓</div>
+                <div class="sheet-title">Don't lose your groups</div>
+              </div>
+              <div class="tiny muted" style="line-height:1.6;text-align:center;padding:0 8px;margin-bottom:16px">
+                Right now your groups and expenses live only on this phone — there's no account.
+                If you get a new phone, reinstall, or clear app data, they're gone. Link an email
+                now and you can always get them back.
+              </div>
+              <div class="card soft" style="display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:16px">
+                <span style="font-size:16px">📱</span>
+                <span class="tiny" style="color:var(--ink-2)">Takes 20 seconds · we only use it to restore your data</span>
+              </div>
+              <button class="btn block grad" style="margin-bottom:8px">Add email</button>
+              <button class="btn block text">Not now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a one-time <code>showModalBottomSheet</code> fired once after the first
+         group/createjoin (guarded by a <code>dataLossNudgeSeen</code> prefs flag), <b>Add email</b> → <code>/recover</code>.
+         <b>Why distinct + the pick:</b> a deliberate, focused moment the user must actively dismiss — exactly right for a
+         silent money-loss trap a skimmer would miss — yet it's non-blocking (taps the scrim or "Not now" to dismiss) and
+         never reappears. <b>Implies:</b> mirrors the proven #288 <code>NotificationPrompt</code> pattern; the dismiss must
+         persist so it can't nag.</p>
+    </div>
+
+    <!-- Variant C — Inline strip -->
+    <div class="variant">
+      <div class="variant-label">C · Inline strip <span class="tag">persistent</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">◐</div>
+            <div class="title">Rihla</div>
+            <div class="icon-btn center muted">○</div>
+          </div>
+          <div class="content tight">
+            <div class="uppercase-label" style="padding:0 4px">Good morning, Nasser</div>
+            <div class="card raised" style="height:118px;display:flex;align-items:center;justify-content:center">
+              <span class="serif" style="font-size:20px;color:var(--ink-3)">You're all settled</span>
+            </div>
+
+            <!-- thin inline strip above the groups list -->
+            <div class="banner sync" style="border-radius:var(--r-input);gap:10px;padding:11px 14px">
+              <span style="font-size:15px">⚓</span>
+              <span style="flex:1;line-height:1.4">A new phone would lose your groups. <b>Link an email</b> to keep them safe.</span>
+              <button class="btn sm grad" style="min-height:32px;padding:6px 14px">Add email</button>
+            </div>
+
+            <div class="section-header"><span class="label">Groups</span><span class="see-all">New</span></div>
+            <div class="list-row" style="padding-inline:4px">
+              <div class="avatar av-2">SK</div>
+              <div class="row-body"><div class="row-title">Salalah Khareef</div><div class="row-sub">4 people · 3 events</div></div>
+              <div class="row-trail">
+                <div class="col" style="align-items:flex-end">
+                  <span class="r-amount pos"><span class="ccy">OMR</span>18<span class="dec">.500</span></span>
+                  <span class="row-sub">they owe you</span>
+                </div>
+              </div>
+            </div>
+            <div class="list-row" style="padding-inline:4px">
+              <div class="avatar av-5">MK</div>
+              <div class="row-body"><div class="row-title">Mariam's Kitchen Fund</div><div class="row-sub">3 people · 1 event</div></div>
+              <div class="row-trail">
+                <div class="col" style="align-items:flex-end">
+                  <span class="r-amount neg"><span class="ccy">OMR</span>6<span class="dec">.250</span></span>
+                  <span class="row-sub">you owe</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a slim saffron-tint strip pinned above the Groups list (a
+         <code>SliverToBoxAdapter</code> banner in <code>_buildLoaded</code>), <b>Add</b> → <code>/recover</code>,
+         a small ✕ to dismiss. <b>Why distinct:</b> stays put across sessions until dismissed, so the warning persists
+         for a user who isn't ready yet. <b>Implies:</b> persistent visibility is good for a safety message but risks
+         banner-blindness; needs its own dismiss flag so it doesn't become permanent chrome.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#365 — Per-person net across all groups (Friends view) · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#365 · <span class="saffron">People</span> — net across every group</h1>
+  <p>The home hero already shows the headline net + the <b>owed to you</b> / <b>you owe</b> subtotals.
+     This adds the Splitwise-style <b>per-person</b> breakdown beneath it: "Ahmed owes you OMR 5.000",
+     "you owe Sara OMR 3.000", summed across <i>all</i> groups. Same human = same person even though
+     they hold a different member doc per group — match by <code>userId</code> field, never the doc id
+     (#294). Aggregation is OMR-only today (#261). <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#365</span>
+    <h2 class="issue-title">feat(home): per-person net across all groups (Splitwise “Friends” view)</h2>
+    <span class="issue-meta">P2 · design · decision · cluster:multi-currency · blocked by #261</span>
+  </div>
+  <p class="issue-desc">All three sit <b>beneath the existing hero + two subtotals</b> on the home dashboard
+     (<code>balance_hero_card.dart</code> stays untouched; this is a new section). They differ on how the
+     same per-person data is grouped and drilled into. Net per person is the signed sum of that person's
+     balance across every shared group, keyed by stable <code>userId</code> — sage = they owe you, rust =
+     you owe them. Currency caveat: amounts are OMR-only until #261 lands a real aggregation contract; a
+     mixed-currency person is blocked, not summed (10 USD + 10 OMR ≠ “20”).</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant V1 (flat net list) — one tap-through row per person, lowest friction, mirrors Splitwise Friends and the existing group-row pattern in <b>home_screen.dart</b>.</p>
+
+  <div class="variant-row">
+
+    <!-- ============================ V1 — Net list (RECOMMENDED) ============================ -->
+    <div class="variant pick">
+      <div class="variant-label">V1 · Net list <span class="tag">flat</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <!-- Home top bar: avatar · Rihla wordmark · bell -->
+          <div class="app-bar">
+            <div class="avatar av-5" style="width:32px;height:32px;font-size:12px;margin-inline-start:6px">N</div>
+            <div class="title">Rihla</div>
+            <div class="icon-btn center muted" style="font-size:18px">⌃</div>
+          </div>
+
+          <div class="content tight">
+            <div class="uppercase-label" style="margin-inline-start:4px">Good evening, Nasser</div>
+
+            <!-- Existing hero (condensed) — UNCHANGED, shown for context -->
+            <div class="card raised pad-lg">
+              <div class="between" style="align-items:baseline">
+                <span class="serif" style="font-size:16px;color:var(--ink-3)">Across all journeys</span>
+                <span class="mono tiny" style="letter-spacing:1.5px;color:var(--ink-4)">OMR</span>
+              </div>
+              <div class="r-amount hero pos" style="margin:8px 0 2px">
+                <span class="ccy">OMR</span>9.<span class="dec">500</span>
+              </div>
+              <div class="tiny"><span style="color:var(--sage-text);font-weight:600">you're owed</span> <span class="muted">overall</span></div>
+              <div style="height:5px;border-radius:3px;overflow:hidden;display:flex;margin-top:14px">
+                <div style="flex:73;background:var(--sage)"></div><div style="flex:27;background:var(--rust)"></div>
+              </div>
+              <div class="row" style="margin-top:10px;justify-content:space-between">
+                <span class="tiny muted">● owed to you</span>
+                <span class="r-amount neu" style="font-size:12px"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+              </div>
+              <div class="row" style="margin-top:6px;justify-content:space-between">
+                <span class="tiny muted">● you owe</span>
+                <span class="r-amount neu" style="font-size:12px"><span class="ccy">OMR</span>3.<span class="dec">000</span></span>
+              </div>
+            </div>
+
+            <!-- NEW: per-person section -->
+            <div class="section-header">
+              <span class="label">People</span>
+              <span class="see-all">Settle up</span>
+            </div>
+
+            <div class="card raised flush">
+              <!-- owes you -->
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-1">A</div></div>
+                <div class="row-body">
+                  <div class="row-title">Ahmed</div>
+                  <div class="row-sub">across Beach House · Muscat trip</div>
+                </div>
+                <div class="row-trail">
+                  <div class="col" style="align-items:flex-end">
+                    <span class="r-amount pos lg"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+                    <span class="tiny" style="color:var(--sage-text);font-weight:600">owes you</span>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-3">M</div></div>
+                <div class="row-body">
+                  <div class="row-title">Mariam</div>
+                  <div class="row-sub">across Eid dinners</div>
+                </div>
+                <div class="row-trail">
+                  <div class="col" style="align-items:flex-end">
+                    <span class="r-amount pos lg"><span class="ccy">OMR</span>7.<span class="dec">500</span></span>
+                    <span class="tiny" style="color:var(--sage-text);font-weight:600">owes you</span>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+              <!-- you owe -->
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-2">S</div></div>
+                <div class="row-body">
+                  <div class="row-title">Sara</div>
+                  <div class="row-sub">across Beach House</div>
+                </div>
+                <div class="row-trail">
+                  <div class="col" style="align-items:flex-end">
+                    <span class="r-amount neg lg"><span class="ccy">OMR</span>3.<span class="dec">000</span></span>
+                    <span class="tiny" style="color:var(--rust-text);font-weight:600">you owe</span>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+              <!-- mixed currency blocked -->
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-4">K</div></div>
+                <div class="row-body">
+                  <div class="row-title">Khalid</div>
+                  <div class="row-sub">2 currencies</div>
+                </div>
+                <div class="row-trail">
+                  <span class="pill-tag warn">OMR + USD</span>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="tiny muted center" style="margin-top:4px">Tap a person for the per-group breakdown</div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>One flat row per person</b>, ranked by absolute net, sage/rust by sign — the
+         lowest-friction read of "who do I square up with". Each row taps through to a cross-group breakdown
+         (the same drill V3 shows inline). A new <code>peopleNetProvider</code> folds every group's per-user
+         balance keyed by <code>userId</code> (not member doc id, #294) into one list, rendered as a section
+         below <code>BalanceHeroCard</code> in <b>home_screen.dart</b>. Mixed-currency people surface a blocked
+         pill instead of a wrong sum (#261).</p>
+    </div>
+
+    <!-- ============================ V2 — Two sections ============================ -->
+    <div class="variant">
+      <div class="variant-label">V2 · Two sections <span class="tag">grouped</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="avatar av-5" style="width:32px;height:32px;font-size:12px;margin-inline-start:6px">N</div>
+            <div class="title">Rihla</div>
+            <div class="icon-btn center muted" style="font-size:18px">⌃</div>
+          </div>
+
+          <div class="content tight">
+            <div class="uppercase-label" style="margin-inline-start:4px">Good evening, Nasser</div>
+
+            <!-- hero (condensed) -->
+            <div class="card raised pad-lg">
+              <div class="between" style="align-items:baseline">
+                <span class="serif" style="font-size:16px;color:var(--ink-3)">Across all journeys</span>
+                <span class="mono tiny" style="letter-spacing:1.5px;color:var(--ink-4)">OMR</span>
+              </div>
+              <div class="r-amount hero pos" style="margin:8px 0 2px">
+                <span class="ccy">OMR</span>9.<span class="dec">500</span>
+              </div>
+              <div class="tiny"><span style="color:var(--sage-text);font-weight:600">you're owed</span> <span class="muted">overall</span></div>
+            </div>
+
+            <!-- Owes you -->
+            <div class="section-header">
+              <span class="label" style="color:var(--sage-text)">Owes you</span>
+              <span class="r-amount pos" style="font-size:13px"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+            </div>
+            <div class="card raised flush">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-1">A</div></div>
+                <div class="row-body"><div class="row-title">Ahmed</div></div>
+                <div class="row-trail">
+                  <span class="r-amount pos"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-3">M</div></div>
+                <div class="row-body"><div class="row-title">Mariam</div></div>
+                <div class="row-trail">
+                  <span class="r-amount pos"><span class="ccy">OMR</span>7.<span class="dec">500</span></span>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- You owe -->
+            <div class="section-header">
+              <span class="label" style="color:var(--rust-text)">You owe</span>
+              <span class="r-amount neg" style="font-size:13px"><span class="ccy">OMR</span>3.<span class="dec">000</span></span>
+            </div>
+            <div class="card raised flush">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-2">S</div></div>
+                <div class="row-body"><div class="row-title">Sara</div></div>
+                <div class="row-trail">
+                  <span class="r-amount neg"><span class="ccy">OMR</span>3.<span class="dec">000</span></span>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Blocked -->
+            <div class="section-header">
+              <span class="label muted">Needs review</span>
+            </div>
+            <div class="card soft">
+              <div class="row">
+                <div class="avatar sm av-4">K</div>
+                <div class="row-body" style="margin-inline-start:4px">
+                  <div class="row-title">Khalid</div>
+                  <div class="row-sub">Balances in OMR + USD — can't net yet</div>
+                </div>
+                <span class="pill-tag warn">#261</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Direction-first:</b> a sage "Owes you" section and a rust "You owe" section,
+         each with its own subtotal header, plus a "Needs review" bucket for mixed-currency people. Reads like
+         a statement — clearer for "who do I chase vs who do I pay" — at the cost of more vertical space and a
+         person never appearing twice. Same <code>peopleNetProvider</code> as V1, partitioned by sign into two
+         <code>SectionHeader</code> blocks in <b>home_screen.dart</b>.</p>
+    </div>
+
+    <!-- ============================ V3 — Per-person detail ============================ -->
+    <div class="variant">
+      <div class="variant-label">V3 · Per-person detail <span class="tag">expandable</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="avatar av-5" style="width:32px;height:32px;font-size:12px;margin-inline-start:6px">N</div>
+            <div class="title">Rihla</div>
+            <div class="icon-btn center muted" style="font-size:18px">⌃</div>
+          </div>
+
+          <div class="content tight">
+            <div class="uppercase-label" style="margin-inline-start:4px">Good evening, Nasser</div>
+
+            <!-- hero (condensed) -->
+            <div class="card raised pad-lg">
+              <div class="between" style="align-items:baseline">
+                <span class="serif" style="font-size:16px;color:var(--ink-3)">Across all journeys</span>
+                <span class="mono tiny" style="letter-spacing:1.5px;color:var(--ink-4)">OMR</span>
+              </div>
+              <div class="r-amount hero pos" style="margin:8px 0 2px">
+                <span class="ccy">OMR</span>9.<span class="dec">500</span>
+              </div>
+              <div class="tiny"><span style="color:var(--sage-text);font-weight:600">you're owed</span> <span class="muted">overall</span></div>
+            </div>
+
+            <div class="section-header">
+              <span class="label">People</span>
+              <span class="see-all">Settle up</span>
+            </div>
+
+            <!-- Expanded person — Ahmed -->
+            <div class="card raised">
+              <div class="row" style="justify-content:space-between">
+                <div class="row" style="gap:12px">
+                  <div class="avatar av-1">A</div>
+                  <div class="col">
+                    <span class="row-title">Ahmed</span>
+                    <span class="tiny" style="color:var(--sage-text);font-weight:600">owes you · net</span>
+                  </div>
+                </div>
+                <div class="col" style="align-items:flex-end">
+                  <span class="r-amount pos lg"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+                  <span class="chevron" style="font-size:16px">⌄</span>
+                </div>
+              </div>
+
+              <hr class="divider" style="margin:12px 0">
+
+              <!-- per-group contributions -->
+              <div class="between" style="margin:2px 0 8px">
+                <span class="uppercase-label">From these groups</span>
+              </div>
+              <div class="row" style="justify-content:space-between;padding:6px 0">
+                <span class="tiny" style="color:var(--ink-2)">Beach House</span>
+                <span class="r-amount pos" style="font-size:13px"><span class="ccy">OMR</span>8.<span class="dec">000</span></span>
+              </div>
+              <div class="row" style="justify-content:space-between;padding:6px 0">
+                <span class="tiny" style="color:var(--ink-2)">Muscat trip</span>
+                <span class="r-amount neg" style="font-size:13px"><span class="ccy">OMR</span>3.<span class="dec">000</span></span>
+              </div>
+              <hr class="divider" style="margin:8px 0">
+              <div class="row" style="justify-content:space-between">
+                <span class="tiny muted">Net across 2 groups</span>
+                <span class="r-amount pos" style="font-size:13px"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+              </div>
+              <button class="btn sm grad block" style="margin-top:14px">Settle up with Ahmed</button>
+            </div>
+
+            <!-- collapsed rows -->
+            <div class="card raised flush">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-3">M</div></div>
+                <div class="row-body">
+                  <div class="row-title">Mariam</div>
+                  <div class="row-sub mono">1 group</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount pos"><span class="ccy">OMR</span>7.<span class="dec">500</span></span>
+                  <span class="chevron">⌄</span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-2">S</div></div>
+                <div class="row-body">
+                  <div class="row-title">Sara</div>
+                  <div class="row-sub mono">1 group</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neg"><span class="ccy">OMR</span>3.<span class="dec">000</span></span>
+                  <span class="chevron">⌄</span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-4">K</div></div>
+                <div class="row-body">
+                  <div class="row-title">Khalid</div>
+                  <div class="row-sub">mixed currencies</div>
+                </div>
+                <div class="row-trail">
+                  <span class="pill-tag warn">OMR + USD</span>
+                  <span class="chevron">⌄</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Expand-in-place:</b> a person row opens to reveal which groups contribute to
+         the net (Beach House +8, Muscat −3 = net +5) plus an inline "Settle up with Ahmed". Most transparent
+         — answers "why do they owe me that" without leaving home — but the densest and most state-heavy
+         (per-row expanded state, per-group rows on demand). Needs the same per-group decomposition the
+         tap-through routes of V1/V2 would show on a separate screen, just folded into the home list.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

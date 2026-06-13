@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/error_message_translator.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -224,11 +227,16 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           ),
           Expanded(
             child: membersAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(
-                child: Text(
-                  context.l10n.groupCreateError(friendlyMessageFor(context, err)),
-                ),
+              // #488: layout-matched skeleton + a real error state, not a bare
+              // spinner / naked Text.
+              loading: SkeletonLoader.cardList,
+              error: (err, _) => EmptyStateView(
+                icon: Iconsax.warning_2,
+                title: context.l10n.groupMembersLoadFailed,
+                message: friendlyMessageFor(context, err),
+                actionLabel: context.l10n.commonRetry,
+                onAction: () =>
+                    ref.invalidate(groupMembersProvider(widget.groupId)),
               ),
               data: (members) {
                 // Pre-populate participant selection once on first data load (D-04)

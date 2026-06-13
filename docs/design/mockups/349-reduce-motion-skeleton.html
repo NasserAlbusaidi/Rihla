@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#349 — Skeleton shimmer respects reduce-motion · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#349 · Skeleton respects <span class="saffron">reduce-motion</span></h1>
+  <p>The home dashboard's loading skeleton runs an animated <code>ShimmerEffect</code> even when the
+     OS reduce-motion flag is set. Entrance fades already honor <code>MediaQuery.disableAnimations</code>;
+     the shimmer does not. This is an accessibility correctness fix, not a visual fork — the two phones
+     below are the <b>same skeleton in its two states</b>, switched by the OS flag.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#349</span>
+    <h2 class="issue-title">polish(a11y): skeleton shimmer ignores reduce-motion (MediaQuery.disableAnimations)</h2>
+    <span class="issue-meta">P3 · design · a11y</span>
+  </div>
+  <p class="issue-desc">Both phones show the <b>same</b> home loading skeleton (balance hero, journeys, groups list).
+     The only difference is the OS reduce-motion setting: on the left the gradient sweeps left→right
+     (the <code>shimmer</code> keyframe); on the right it's a flat neutral fill with no animation.
+     Nothing else — layout, sizing, colors — changes. There is no design choice to make here; the
+     recommended treatment is to gate the animation on <code>MediaQuery.disableAnimations</code>.</p>
+  <p class="issue-rec"><b>Recommendation:</b> <b>ship the gated behavior</b> — when reduce-motion is on, swap <code>.skel</code> for <code>.skel.static</code>. This is the fix, not a competing direction.</p>
+
+  <div class="variant-row">
+
+    <!-- State 1: motion on — animated shimmer -->
+    <div class="variant">
+      <div class="variant-label">Motion ON · animated shimmer <span class="tag">.skel</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="avatar sm av-4" style="margin-inline-start:4px">N</div>
+            <div class="title">Rihla<span style="color:var(--primary)"> ·</span></div>
+            <div class="icon-btn center muted" style="width:40px">◔</div>
+          </div>
+          <div class="content tight">
+
+            <!-- Balance hero skeleton -->
+            <div class="card raised" style="padding:var(--s20)">
+              <div class="skel skel-line" style="width:90px;height:11px;margin:0 0 14px"></div>
+              <div class="skel" style="width:180px;height:34px;border-radius:8px;margin-bottom:16px"></div>
+              <div style="display:flex;gap:12px">
+                <div class="skel" style="flex:1;height:48px;border-radius:12px"></div>
+                <div class="skel" style="flex:1;height:48px;border-radius:12px"></div>
+              </div>
+            </div>
+
+            <!-- Active journeys label -->
+            <div class="section-header">
+              <span class="skel skel-line" style="width:120px;height:11px;margin:0"></span>
+            </div>
+            <div class="card flush">
+              <div class="skel-row">
+                <div class="skel skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel skel-line" style="width:150px"></div>
+                  <div class="skel skel-line" style="width:90px;height:10px"></div>
+                </div>
+                <div class="skel" style="width:56px;height:18px;border-radius:8px"></div>
+              </div>
+            </div>
+
+            <!-- Groups label -->
+            <div class="section-header">
+              <span class="skel skel-line" style="width:80px;height:11px;margin:0"></span>
+            </div>
+            <div class="card flush">
+              <div class="skel-row">
+                <div class="skel skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel skel-line" style="width:160px"></div>
+                  <div class="skel skel-line" style="width:110px;height:10px"></div>
+                </div>
+              </div>
+              <div class="skel-row" style="border-top:1px solid var(--rule)">
+                <div class="skel skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel skel-line" style="width:130px"></div>
+                  <div class="skel skel-line" style="width:90px;height:10px"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Default path.</b> The animated gradient sweeps to signal "content is
+         loading". This is the existing behavior and stays unchanged — <code>ShimmerEffect</code> drives
+         it in <code>skeleton_loader.dart:309</code> and the home <code>Skeletonizer</code> at
+         <code>home_screen.dart:363</code>.</p>
+    </div>
+
+    <!-- State 2: reduce-motion on — static fill -->
+    <div class="variant pick">
+      <div class="variant-label">Reduce-motion ON · static fill <span class="tag">.skel.static</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="avatar sm av-4" style="margin-inline-start:4px">N</div>
+            <div class="title">Rihla<span style="color:var(--primary)"> ·</span></div>
+            <div class="icon-btn center muted" style="width:40px">◔</div>
+          </div>
+          <div class="content tight">
+
+            <!-- Balance hero skeleton -->
+            <div class="card raised" style="padding:var(--s20)">
+              <div class="skel static skel-line" style="width:90px;height:11px;margin:0 0 14px"></div>
+              <div class="skel static" style="width:180px;height:34px;border-radius:8px;margin-bottom:16px"></div>
+              <div style="display:flex;gap:12px">
+                <div class="skel static" style="flex:1;height:48px;border-radius:12px"></div>
+                <div class="skel static" style="flex:1;height:48px;border-radius:12px"></div>
+              </div>
+            </div>
+
+            <!-- Active journeys label -->
+            <div class="section-header">
+              <span class="skel static skel-line" style="width:120px;height:11px;margin:0"></span>
+            </div>
+            <div class="card flush">
+              <div class="skel-row">
+                <div class="skel static skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel static skel-line" style="width:150px"></div>
+                  <div class="skel static skel-line" style="width:90px;height:10px"></div>
+                </div>
+                <div class="skel static" style="width:56px;height:18px;border-radius:8px"></div>
+              </div>
+            </div>
+
+            <!-- Groups label -->
+            <div class="section-header">
+              <span class="skel static skel-line" style="width:80px;height:11px;margin:0"></span>
+            </div>
+            <div class="card flush">
+              <div class="skel-row">
+                <div class="skel static skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel static skel-line" style="width:160px"></div>
+                  <div class="skel static skel-line" style="width:110px;height:10px"></div>
+                </div>
+              </div>
+              <div class="skel-row" style="border-top:1px solid var(--rule)">
+                <div class="skel static skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel static skel-line" style="width:130px"></div>
+                  <div class="skel static skel-line" style="width:90px;height:10px"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The fix.</b> When <code>MediaQuery.disableAnimations</code> is true,
+         render the identical skeleton with the shimmer keyframe disabled — a flat <code>--paper-deep</code>
+         fill (here, <code>.skel.static</code>). Same shapes, no motion, so vestibular-sensitive users
+         see a calm placeholder. Implement by passing reduce-motion into the <code>ShimmerEffect</code>
+         (or swapping to a no-op effect) at <code>skeleton_loader.dart:309</code>; the home
+         <code>Skeletonizer</code> at <code>home_screen.dart:363</code> reads
+         <code>MediaQuery.disableAnimationsOf(context)</code> and passes the flag down.
+         A widget test wraps the skeleton under a <code>MediaQuery</code> override with
+         <code>disableAnimations: true</code> and asserts no <code>ShimmerEffect</code> (or that the
+         static branch is rendered) — this is AC 3 of the issue and must ship alongside the
+         implementation.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

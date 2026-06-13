@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#357 — Saved, will sync · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Three-phone state-set layout for Variant A */
+  .state-set { display: flex; gap: 12px; align-items: flex-start; }
+  .state-phone { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .state-phone .phone { width: 200px; height: 360px; border-radius: 28px; border-width: 7px; }
+  .state-phone .phone .status-bar { height: 32px; font-size: 10px; padding: 0 14px; }
+  .state-phone .phone .app-bar { height: 44px; padding: 0 var(--s8); }
+  .state-phone .phone .app-bar .title { font-size: 14px; }
+  .state-phone .phone .app-bar .title.sans { font-size: 13px; }
+  .state-phone .phone .icon-btn { width: 32px; height: 32px; }
+  .state-phone .phone .content { padding: var(--s12) var(--s12) var(--s16); gap: var(--s12); }
+  .state-phone .phone .card { padding: var(--s12); border-radius: var(--r-input); }
+  .state-phone .phone .r-amount.hero { font-size: 26px; }
+  .state-phone .phone .list-row { padding: var(--s8) var(--s12); }
+  .state-phone .phone .row-title { font-size: 13px; }
+  .state-phone .phone .row-sub { font-size: 11px; }
+  .state-phone .phone .avatar { width: 32px; height: 32px; font-size: 11px; }
+  .state-phone .phone .banner { font-size: 11.5px; padding: 8px var(--s12); gap: 7px; }
+  .state-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    color: var(--saffron-soft); letter-spacing: .6px; text-align: center; }
+  .state-label .pill-tag { display: inline-block; }
+  /* Variant A needs wider container to fit 3 phones */
+  .variant.triple { width: 680px; }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#357 · Saved — will sync</h1>
+  <p><code>ConnectivityNotifier</code> already defines a third <code>syncing</code> state
+     (<code>setSyncing()</code>) that <i>nothing renders</i> — <code>OfflineBanner</code> only ever
+     checks <code>== offline</code>. This wires the dead state into the banner as a reassuring
+     <b>"Saved — will sync"</b> strip, and mounts the banner on the write surfaces it's missing from
+     (add/edit expense, settle-up). No custom queue — the Firestore SDK already replays offline writes.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#357</span>
+    <h2 class="issue-title">design(offline): surface the dead <code>syncing</code> state as "Saved — will sync"</h2>
+    <span class="issue-meta">P3 · design · copy/state fix · no visual fork</span>
+  </div>
+  <p class="issue-desc">This is a <b>treatment</b>, not a design fork: there is one correct behaviour — give the
+     already-defined <code>syncing</code> state a banner, and put <code>OfflineBanner</code> on the screens
+     that write money. Variant A shows the full <b>state set</b> (offline → syncing → online) across three
+     phone frames so each transition is legible. Variant B shows the <code>syncing</code> banner in situ on
+     the add-expense write surface — the acceptance criterion that is currently unmet. The only real decision
+     is <b>tone</b>: the <code>.banner.sync</code> token is saffron-soft (calm, reassuring) vs the amber
+     <code>.banner</code> of offline (caution) — both already exist in <code>rihla.css</code>.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant A (the three-state strip set) — it is the literal acceptance criterion: the dead <code>syncing</code> state surfaces a transient "Saved — will sync" affordance, distinct in tone from offline, gone when online. Variant B shows the same fix live on the add-expense surface — both ship together.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant A — three-state strip set, one phone per state -->
+    <div class="variant triple pick">
+      <div class="variant-label">A · The three states <span class="tag">offline → syncing → online</span></div>
+      <div class="state-set">
+
+        <!-- State 1: OFFLINE -->
+        <div class="state-phone">
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+              <div class="app-bar">
+                <div class="icon-btn center muted">‹</div>
+                <div class="title sans">Add expense</div>
+                <div class="icon-btn center muted"></div>
+              </div>
+              <div class="banner">
+                <span aria-hidden="true">☁︎</span>
+                <span>Offline — changes will sync later</span>
+              </div>
+              <div class="content">
+                <div class="card raised center">
+                  <div class="r-amount hero neu"><span class="ccy">OMR</span>24<span class="dec">.500</span></div>
+                </div>
+                <div class="card flush">
+                  <div class="list-row">
+                    <div class="row-lead"><div class="avatar av-1">N</div></div>
+                    <div class="row-body">
+                      <div class="row-title">Paid by Nasser</div>
+                      <div class="row-sub">Split · 4 people</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="state-label">① Offline<br><span class="pill-tag warn" style="margin-top:4px">no network</span></div>
+        </div>
+
+        <!-- State 2: SYNCING — the NEW wiring -->
+        <div class="state-phone">
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+              <div class="app-bar">
+                <div class="icon-btn center muted">‹</div>
+                <div class="title sans">Add expense</div>
+                <div class="icon-btn center muted"></div>
+              </div>
+              <div class="banner sync">
+                <span aria-hidden="true">↻</span>
+                <span>Saved — will sync</span>
+              </div>
+              <div class="content">
+                <div class="card raised center">
+                  <div class="r-amount hero neu"><span class="ccy">OMR</span>24<span class="dec">.500</span></div>
+                </div>
+                <div class="card flush">
+                  <div class="list-row">
+                    <div class="row-lead"><div class="avatar av-1">N</div></div>
+                    <div class="row-body">
+                      <div class="row-title">Paid by Nasser</div>
+                      <div class="row-sub">Split · 4 people</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="state-label">② Syncing<br><span class="pill-tag" style="margin-top:4px">setSyncing()</span></div>
+        </div>
+
+        <!-- State 3: ONLINE — no banner, AnimatedSize collapses -->
+        <div class="state-phone">
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+              <div class="app-bar">
+                <div class="icon-btn center muted">‹</div>
+                <div class="title sans">Add expense</div>
+                <div class="icon-btn center muted"></div>
+              </div>
+              <!-- no banner: AnimatedSize → SizedBox.shrink -->
+              <div class="content">
+                <div class="card raised center">
+                  <div class="r-amount hero neu"><span class="ccy">OMR</span>24<span class="dec">.500</span></div>
+                </div>
+                <div class="card flush">
+                  <div class="list-row">
+                    <div class="row-lead"><div class="avatar av-1">N</div></div>
+                    <div class="row-body">
+                      <div class="row-title">Paid by Nasser</div>
+                      <div class="row-sub">Split · 4 people</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card soft center" style="padding:var(--s12)">
+                  <span class="tiny muted" style="color:var(--sage-text)">✓</span>
+                  <span class="tiny muted"> Synced — banner collapses</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="state-label">③ Online<br><span class="pill-tag" style="margin-top:4px;color:var(--sage-text)">no banner</span></div>
+        </div>
+
+      </div><!-- /.state-set -->
+      <p class="variant-note"><b>The set, not a choice.</b> One banner widget, three states: amber
+         <code>.banner</code> (offline, existing), the new saffron-soft <code>.banner.sync</code>
+         ("Saved — will sync"), and nothing when online. Implements in
+         <b><code>offline_banner.dart</code></b> — replace the <code>isOffline</code> bool with a
+         <code>switch (status)</code> over <code>ConnectivityStatus</code>; the existing
+         <code>AnimatedSize</code> already collapses to <code>SizedBox.shrink</code> on online.
+         The amber/saffron tone split is deliberate: offline = caution, syncing = reassurance.
+         Pointers: <code>connectivity_provider.dart:9/112</code>, <code>offline_banner.dart:15</code>.</p>
+    </div>
+
+    <!-- Variant B — syncing strip in situ on the live add-expense surface -->
+    <div class="variant">
+      <div class="variant-label">B · In context, mid-save <span class="tag">add-expense surface</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">✕</div>
+            <div class="title sans">Add expense</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+
+          <!-- the NEW syncing banner, mounted on a screen it is currently absent from -->
+          <div class="banner sync">
+            <span aria-hidden="true">↻</span>
+            <span>Saved — will sync</span>
+          </div>
+
+          <div class="content" style="gap:14px">
+            <div class="field">
+              <div class="field-label uppercase-label">Amount · OMR</div>
+              <div class="card soft center" style="padding:var(--s16)">
+                <div class="r-amount lg neu"><span class="ccy">OMR</span>24<span class="dec">.500</span></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label uppercase-label">Description</div>
+              <div class="input">Dinner at Bait Al Luban</div>
+            </div>
+
+            <div class="field">
+              <div class="field-label uppercase-label">Category</div>
+              <div class="chip-row">
+                <span class="chip selected">Food &amp; Dining</span>
+                <span class="chip">Transport</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label uppercase-label">Paid by</div>
+              <div class="card flush">
+                <div class="list-row">
+                  <div class="row-lead"><div class="avatar av-1">N</div></div>
+                  <div class="row-body">
+                    <div class="row-title">Nasser</div>
+                    <div class="row-sub">You</div>
+                  </div>
+                  <span class="btn text sm">Change</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label uppercase-label">Split between</div>
+              <div class="card flush">
+                <div class="list-row">
+                  <div class="row-lead">
+                    <div class="avatar-stack">
+                      <div class="avatar sm av-1">N</div>
+                      <div class="avatar sm av-2">S</div>
+                      <div class="avatar sm av-3">M</div>
+                      <div class="avatar sm av-4">K</div>
+                    </div>
+                  </div>
+                  <div class="row-body">
+                    <div class="row-title">Equally</div>
+                    <div class="row-sub mono">4 ways · <span class="r-amount neu" style="font-size:11px"><span class="ccy">OMR</span>6<span class="dec">.125</span></span> each</div>
+                  </div>
+                  <span class="btn text sm">Customise</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn block grad" style="margin-top:var(--s4)">Add expense</button>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Same fix, shown live.</b> The acceptance criterion also asks for the banner on
+         the main write surfaces — <code>OfflineBanner</code> is mounted on home/ledger/event today, but
+         <b>not</b> on <code>add_expense_screen.dart</code> / <code>edit_expense_screen.dart</code> /
+         <code>settle_up_screen.dart</code>. Drop <code>const OfflineBanner()</code> under the app bar
+         on each. No queue, no cache: Firestore persistence replays the write; <code>setSyncing()</code>
+         just gives the user the "it's saved, don't worry" signal until <code>checkConnectivity()</code>
+         flips back to online. Split is OMR 24.500 ÷ 4 = OMR 6.125.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

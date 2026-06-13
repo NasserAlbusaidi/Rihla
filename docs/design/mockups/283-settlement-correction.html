@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#283 — Discoverable settlement correction · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#283 · <span class="saffron">Fix a wrong payment</span></h1>
+  <p>Settlements are <b>append-only by design</b> (<code>settlement_service.dart</code> — no delete, no edit; invariant B3).
+     But the payment-history tile in <code>settle_up_page_body.dart</code> (<code>_HistoryTile</code>) is fully inert, so a
+     non-technical user who records the wrong amount, person, or payee has no discoverable way to fix it — and won't
+     intuit "record an offsetting reverse payment." The correction must <i>add a reversing entry</i>, never delete or edit.
+     Question: how do we surface it without breaking append-only? <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#283</span>
+    <h2 class="issue-title">feat(settle-up): discoverable correction for a mistaken settlement (offsetting entry; keep append-only)</h2>
+    <span class="issue-meta">P2 · money · design · enhancement</span>
+  </div>
+  <p class="issue-desc">All three variants live on the existing <b>Payment history</b> footer beneath "Each person's net".
+     None deletes or edits the original row — every path writes a new <b>reversing settlement</b> (Layla → Ahmed
+     <span class="r-amount neg" style="font-size:inherit"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+     becomes a fresh Ahmed → Layla entry). They differ only on <b>how the correction is discovered and how clearly the
+     append-only mental model is taught</b> at the moment of action.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant C (correction sheet) — it previews the reversing entry and says in plain words "we add a reversing entry; the original stays in history, nothing is deleted," giving the clearest mental model before anything is recorded.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant A — overflow menu -->
+    <div class="variant">
+      <div class="variant-label">A · ⋯ menu on the tile <span class="tag">low surface</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted"> </div>
+          </div>
+          <div class="content tight">
+            <div class="uppercase-label" style="padding-inline-start:4px">Payment history</div>
+
+            <!-- tile with revealed ⋯ menu -->
+            <div class="card raised" style="padding:0;position:relative;overflow:visible">
+              <div class="list-row">
+                <div class="row-lead">
+                  <div class="avatar sm" style="background:rgba(92,122,87,.14);color:var(--sage-text)">✓</div>
+                </div>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:13px;font-weight:500">
+                    <b style="font-weight:700">Layla</b> paid <b style="font-weight:700">Ahmed</b></div>
+                  <div class="row-sub">Jun 6</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neu"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+                  <span class="chevron" style="font-size:20px">⋯</span>
+                </div>
+              </div>
+              <!-- popover menu -->
+              <div class="card" style="position:absolute;right:10px;top:52px;width:208px;padding:6px;box-shadow:var(--shadow-floating);z-index:2">
+                <div class="list-row" style="padding:11px 12px;gap:10px">
+                  <span style="color:var(--rust-text);font-size:15px">↺</span>
+                  <div class="row-body">
+                    <div class="row-title" style="font-size:14px;color:var(--rust-text)">Correct this payment</div>
+                    <div class="row-sub" style="margin-top:1px">Adds a reversing entry</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card raised" style="padding:0;opacity:.5">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm" style="background:rgba(92,122,87,.14);color:var(--sage-text)">✓</div></div>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:13px;font-weight:500"><b style="font-weight:700">Khalid</b> paid <b style="font-weight:700">Sara</b></div>
+                  <div class="row-sub">Jun 4</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>12.<span class="dec">500</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a quiet <code>⋯</code> trailing the amount; tapping opens a one-item popover → confirm.
+         <b>Distinct because</b> it adds zero resting clutter — the affordance is hidden until summoned, matching how rare
+         corrections are. <b>Implies:</b> a <code>PopupMenuButton</code> in <code>_HistoryTile</code>; the menu does the
+         teaching, so the append-only rationale is easy to skip past. Lowest discoverability of the three.</p>
+    </div>
+
+    <!-- Variant B — inline link -->
+    <div class="variant">
+      <div class="variant-label">B · "Made a mistake?" link <span class="tag">always visible</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted"> </div>
+          </div>
+          <div class="content tight">
+            <div class="uppercase-label" style="padding-inline-start:4px">Payment history</div>
+
+            <div class="card raised" style="padding:0">
+              <div class="list-row" style="padding-bottom:6px">
+                <div class="row-lead"><div class="avatar sm" style="background:rgba(92,122,87,.14);color:var(--sage-text)">✓</div></div>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:13px;font-weight:500"><b style="font-weight:700">Layla</b> paid <b style="font-weight:700">Ahmed</b></div>
+                  <div class="row-sub">Jun 6</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>5.<span class="dec">000</span></span></div>
+              </div>
+              <div style="padding:0 16px 12px 58px">
+                <span style="color:var(--primary-dark);font-size:12px;font-weight:600">Made a mistake? Add a correction</span>
+              </div>
+            </div>
+
+            <div class="card raised" style="padding:0">
+              <div class="list-row" style="padding-bottom:6px">
+                <div class="row-lead"><div class="avatar sm" style="background:rgba(92,122,87,.14);color:var(--sage-text)">✓</div></div>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:13px;font-weight:500"><b style="font-weight:700">Khalid</b> paid <b style="font-weight:700">Sara</b></div>
+                  <div class="row-sub">Jun 4</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>12.<span class="dec">500</span></span></div>
+              </div>
+              <div style="padding:0 16px 12px 58px">
+                <span style="color:var(--primary-dark);font-size:12px;font-weight:600">Made a mistake? Add a correction</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a calm saffron link under every history row, so the correction is discoverable
+         without any hidden gesture. <b>Distinct because</b> it leads with the user's own language ("made a mistake?")
+         rather than a system verb. <b>Implies:</b> a second line inside <code>_HistoryTile</code>; the cost is permanent
+         visual weight on a list that's mostly correct, which can read as nagging on a long history.</p>
+    </div>
+
+    <!-- Variant C — correction sheet (RECOMMENDED) -->
+    <div class="variant pick">
+      <div class="variant-label">C · Correction sheet <span class="tag">previews reversal</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted"> </div>
+          </div>
+
+          <div class="sheet-wrap">
+            <div class="content tight" style="flex:1">
+              <div class="uppercase-label" style="padding-inline-start:4px">Payment history</div>
+              <div class="card raised" style="padding:0;opacity:.45">
+                <div class="list-row">
+                  <div class="row-lead"><div class="avatar sm" style="background:rgba(92,122,87,.14);color:var(--sage-text)">✓</div></div>
+                  <div class="row-body">
+                    <div class="row-title" style="font-size:13px;font-weight:500"><b style="font-weight:700">Layla</b> paid <b style="font-weight:700">Ahmed</b></div>
+                    <div class="row-sub">Jun 6</div>
+                  </div>
+                  <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>5.<span class="dec">000</span></span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="scrim"></div>
+
+            <!-- correction sheet -->
+            <div class="sheet" style="position:relative">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Correct this payment</div>
+              <div class="sheet-sub">We don't delete or edit — we add a reversing entry. The original stays in history.</div>
+
+              <!-- original (struck-through context) -->
+              <div class="uppercase-label" style="margin-bottom:6px">Original</div>
+              <div class="card soft" style="padding:12px 14px;margin-bottom:14px">
+                <div class="between">
+                  <div class="row" style="gap:10px">
+                    <span class="avatar sm av-5">L</span>
+                    <span style="font-size:13px;color:var(--ink-2)">Layla → Ahmed · Jun 6</span>
+                  </div>
+                  <span class="r-amount neu"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+                </div>
+              </div>
+
+              <!-- reversing entry preview -->
+              <div class="uppercase-label" style="margin-bottom:6px">We'll add</div>
+              <div class="card raised" style="padding:12px 14px;margin-bottom:16px;border:1px solid var(--rule-2)">
+                <div class="between">
+                  <div class="row" style="gap:10px">
+                    <span class="avatar sm" style="background:var(--saffron-tint);color:var(--primary-dark)">↺</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--ink)">Reversal · Ahmed → Layla</span>
+                  </div>
+                  <span class="r-amount neg lg">−<span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+                </div>
+                <div class="divider"></div>
+                <div class="between">
+                  <span class="tiny muted">Net effect on this pair</span>
+                  <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>0.<span class="dec">000</span></span>
+                </div>
+              </div>
+
+              <button class="btn block grad">Record reversing entry</button>
+              <button class="btn block text" style="margin-top:6px">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> a dedicated sheet that shows the original row, previews the exact reversing
+         entry (−<span class="r-amount neg" style="font-size:inherit"><span class="ccy">OMR</span>5.<span class="dec">000</span></span>
+         the other direction), confirms the pair nets to zero, and states the append-only rule in plain words before any write.
+         <b>Recommended</b> because it's the only option that <b>teaches the mental model</b> at the moment of action —
+         critical for money correctness on a path that must never delete. <b>Implies:</b> reach it from A's <code>⋯</code> or
+         B's link; the sheet calls <code>SettlementService.addSettlement</code> with payer/recipient swapped + same amount —
+         no new write semantics, just a new entry. Mark the reversal <code>note</code> "correction of &lt;id&gt;" for the audit feed.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

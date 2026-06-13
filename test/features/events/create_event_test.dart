@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +22,8 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/empty_state_view.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 class _MockEventService extends Mock implements EventService {}
 
@@ -153,6 +157,58 @@ void main() {
       'settings_device_name': 'Test User',
     });
     prefs = await SharedPreferences.getInstance();
+  });
+
+  // -------------------------------------------------------------------------
+  // CreateEventScreen async states (#488)
+  // -------------------------------------------------------------------------
+
+  group('CreateEventScreen async states (#488)', () {
+    Widget wrapWithMembers(Stream<List<GroupMember>> members) => ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        groupMembersProvider('group-1').overrideWith((ref) => members),
+        groupDetailProvider(
+          'group-1',
+        ).overrideWith((ref) => Stream.value(_testGroup)),
+        eventLoadingProvider.overrideWith((ref) => false),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const CreateEventScreen(
+          groupId: 'group-1',
+          eventType: EventType.trip,
+        ),
+      ),
+    );
+
+    testWidgets('loading shows a skeleton, not a bare spinner (#488)', (
+      tester,
+    ) async {
+      // A never-completing members stream keeps the screen in loading.
+      await tester.pumpWidget(
+        wrapWithMembers(Completer<List<GroupMember>>().future.asStream()),
+      );
+      await tester.pump(); // one frame; skeleton shimmer never settles
+
+      expect(find.byType(SkeletonLoader), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('member-load error shows an EmptyStateView with retry (#488)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrapWithMembers(Stream.error(Exception('network'))),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EmptyStateView), findsOneWidget);
+      expect(find.text("Couldn't load members"), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+    });
   });
 
   // -------------------------------------------------------------------------

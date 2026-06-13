@@ -91,6 +91,8 @@ abstract final class GroupKeys {
   // ActivityScreen header keys
   static const activityScreenTitle = Key('group_activity_screen_title');
   static const activityBackButton = Key('group_activity_back_button');
+  // #488: distinct error state when activity load fails (≠ the empty state).
+  static const activityErrorView = Key('group_activity_error_view');
 
   // Parameterized keys for list items
   static Key groupCard(String groupId) => Key('group_card_$groupId');

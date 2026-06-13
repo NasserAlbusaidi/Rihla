@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#352 — Soft rationale before the OS push prompt · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#352 · <span class="saffron">Ask before the ask</span></h1>
+  <p>Right after a successful join or create (#288), <code>NotificationPrompt.maybePrompt()</code> jumps
+     <i>straight</i> to the Android system permission dialog — zero context. A cold OS prompt with no "why"
+     gets denied, and a denial is permanent. These variants insert a soft in-app rationale <b>before</b> the
+     OS dialog: <b>Not now</b> sets <code>notificationPromptSeen</code> and never nags; only <b>Turn on</b>
+     calls <code>notificationService.initialize()</code>. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#352</span>
+    <h2 class="issue-title">design(notifications): soft in-app rationale before the OS push prompt</h2>
+    <span class="issue-meta">P2 · design · builds on #288</span>
+  </div>
+  <p class="issue-desc">All three keep the same contract — <b>Turn on</b> is the only path that triggers the OS dialog,
+     <b>Not now</b> persists <code>notificationPromptSeen</code> so the soft ask never repeats. They differ on
+     <b>surface and weight</b>: a full illustrated sheet that sells the value, a minimal one-liner sheet, or a
+     dismissible inline card on Home that waits for a calmer moment instead of interrupting the success screen.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (illustrated rationale sheet) — the value bullets earn the OS
+     prompt, which lifts grant-rate; it's the lightest lift (a new <code>showModalBottomSheet</code> in front of the
+     existing <code>maybePrompt()</code> call) and keeps the moment-of-relevance from #288.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant 1 — Illustrated rationale sheet (PICK) -->
+    <div class="variant pick">
+      <div class="variant-label">1 · Illustrated rationale sheet <span class="tag">bottom sheet</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Beach House</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <!-- dimmed group-detail behind the sheet -->
+          <div class="content" style="opacity:.5">
+            <div class="card raised" style="text-align:center">
+              <div class="uppercase-label" style="margin-bottom:var(--s8)">Invite code</div>
+              <div class="mono" style="font-size:24px;letter-spacing:6px;font-weight:600">7K4MQ9</div>
+            </div>
+            <div class="section-header"><span class="label">Members</span></div>
+            <div class="row" style="gap:var(--s8)">
+              <div class="avatar av-3">N</div>
+              <div class="row-body"><div class="row-title">Nasser</div><div class="row-sub">You · just created</div></div>
+            </div>
+          </div>
+          <!-- soft rationale sheet -->
+          <div class="sheet-wrap">
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="center" style="margin-bottom:var(--s16)">
+                <div class="empty-icon" style="margin:0 auto var(--s12)">🔔</div>
+                <div class="sheet-title">Stay in the loop</div>
+                <div class="sheet-sub" style="margin-bottom:0">Rihla can ping you when the ledger moves — so you’re never the last to know who paid.</div>
+              </div>
+              <div class="col" style="gap:var(--s12);margin-bottom:var(--s20)">
+                <div class="row" style="gap:var(--s12);align-items:flex-start">
+                  <div class="chip glyph" style="flex:none">🧾</div>
+                  <div class="row-body"><div class="row-title">New expenses</div>
+                    <div class="row-sub">When someone adds a bill to a shared event.</div></div>
+                </div>
+                <div class="row" style="gap:var(--s12);align-items:flex-start">
+                  <div class="chip glyph" style="flex:none">🤝</div>
+                  <div class="row-body"><div class="row-title">Settle-ups</div>
+                    <div class="row-sub">When a friend marks a debt to you as paid.</div></div>
+                </div>
+                <div class="row" style="gap:var(--s12);align-items:flex-start">
+                  <div class="chip glyph" style="flex:none">👋</div>
+                  <div class="row-body"><div class="row-title">People joining</div>
+                    <div class="row-sub">When someone hops into a group with your code.</div></div>
+                </div>
+              </div>
+              <button class="btn block grad" style="margin-bottom:var(--s8)">Turn on notifications</button>
+              <button class="btn block text">Not now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>A full illustrated sheet that sells the value before the OS asks.</b> Three concrete
+         bullets in the app’s own voice answer “why allow this?”, which is what lifts the system grant-rate — a denied
+         OS prompt is permanent. Implementation: a new <code>NotificationRationaleSheet</code> shown via
+         <code>showModalBottomSheet</code>, wired in front of the existing <code>maybePrompt()</code> call in
+         <code>create_group_screen.dart</code> / <code>join_group_screen.dart</code>; <b>Turn on</b> → <code>maybePrompt()</code>,
+         <b>Not now</b> → <code>setNotificationPromptSeen(true)</code>. Heaviest copy surface (EN + AR).</p>
+    </div>
+
+    <!-- Variant 2 — Minimal one-liner sheet -->
+    <div class="variant">
+      <div class="variant-label">2 · Minimal one-liner <span class="tag">bottom sheet</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Beach House</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content" style="opacity:.5">
+            <div class="card raised" style="text-align:center">
+              <div class="uppercase-label" style="margin-bottom:var(--s8)">Invite code</div>
+              <div class="mono" style="font-size:24px;letter-spacing:6px;font-weight:600">7K4MQ9</div>
+            </div>
+            <div class="section-header"><span class="label">Members</span></div>
+            <div class="row" style="gap:var(--s8)">
+              <div class="avatar av-3">N</div>
+              <div class="row-body"><div class="row-title">Nasser</div><div class="row-sub">You · just created</div></div>
+            </div>
+          </div>
+          <div class="sheet-wrap">
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="row" style="gap:var(--s16);align-items:center;margin-bottom:var(--s20)">
+                <div class="empty-icon" style="flex:none">🔔</div>
+                <div class="row-body">
+                  <div class="sheet-title" style="margin-bottom:var(--s4)">Get notified?</div>
+                  <div class="sheet-sub" style="margin-bottom:0">Know the moment someone adds an expense or settles up.</div>
+                </div>
+              </div>
+              <button class="btn block grad" style="margin-bottom:var(--s8)">Turn on</button>
+              <button class="btn block text">Not now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>One icon, one sentence, two buttons — the smallest honest rationale.</b> Same contract
+         and same insertion point as V1, just a compact single-line sheet instead of bulleted value props. Distinct
+         direction: bets that a brief “why” is enough and minimal interruption beats a persuasive pitch. Cheapest to
+         build and translate, but it sells the value less hard, so the OS grant-rate lift is smaller than V1’s.</p>
+    </div>
+
+    <!-- Variant 3 — Inline card on Home -->
+    <div class="variant">
+      <div class="variant-label">3 · Inline card on Home <span class="tag">deferred · dismissible</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Rihla</div>
+            <div class="icon-btn center muted">⚙</div>
+          </div>
+          <div class="content tight">
+            <!-- the rationale lives inline, not as an interrupt -->
+            <div class="card soft pad-lg">
+              <div class="row" style="gap:var(--s12);align-items:flex-start;margin-bottom:var(--s12)">
+                <div class="chip glyph" style="flex:none">🔔</div>
+                <div class="row-body">
+                  <div class="row-title">Turn on notifications</div>
+                  <div class="row-sub" style="margin-top:var(--s4)">Get a ping when someone adds an expense or settles up with you. No spam.</div>
+                </div>
+                <div class="chevron" style="flex:none">×</div>
+              </div>
+              <div class="row" style="gap:var(--s8)">
+                <button class="btn sm grad" style="flex:1">Turn on</button>
+                <button class="btn sm secondary" style="flex:1">Not now</button>
+              </div>
+            </div>
+            <div class="section-header"><span class="label">Your journeys</span></div>
+            <div class="ticket">
+              <div class="cover"></div>
+              <div class="perf"></div>
+              <div class="list-row">
+                <div class="row-body">
+                  <div class="row-title serif" style="font-size:18px">Beach House</div>
+                  <div class="row-sub">3 members · 1 event</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="list-row card raised">
+              <div class="avatar av-2">S</div>
+              <div class="row-body"><div class="row-title">Sara settled with you</div><div class="row-sub mono">2h ago</div></div>
+              <div class="row-trail"><span class="r-amount pos"><span class="ccy">OMR</span>4.<span class="dec">250</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>No interrupt at all — a dismissible card on Home that waits for a calmer moment.</b>
+         The success screen stays clean; the ask rides in the dashboard where the user already sees ledger activity
+         worth being notified about. <b>Turn on</b> → OS prompt, <b>Not now</b> / × → <code>notificationPromptSeen</code>.
+         Distinct because it trades #288’s moment-of-relevance for zero friction, but it’s the biggest build: a new
+         conditional Home card + dismiss state, and it risks blindness (banner-card gets ignored, never tapped).</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
