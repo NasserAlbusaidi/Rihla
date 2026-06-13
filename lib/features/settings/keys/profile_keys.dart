@@ -37,6 +37,10 @@ abstract final class ProfileKeys {
   static const displaySection = Key('profile_display_section');
   static const pendingRecoveryBanner = Key('profile_pending_recovery_banner');
 
+  // #487 — identity hero backup-state honesty
+  static const backupStatusChip = Key('profile_backup_status_chip');
+  static const backupAccountCard = Key('profile_backup_account_card');
+
   // #428 PR-B — account-section rework
   static const googleAccountTile = Key('profile_google_account_tile');
   static const googleLinkTile = Key('profile_google_link_tile');
