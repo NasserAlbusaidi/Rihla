@@ -1132,6 +1132,38 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpSteppedRecordedAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Recorded $count payments.',
+      one: 'Recorded 1 payment.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedAllWillSync(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Recorded $count payments — will sync when online.',
+      one: 'Recorded 1 payment — will sync when online.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartial(int recorded, int total) {
+    return 'Recorded $recorded of $total payments.';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartialWillSync(int recorded, int total) {
+    return 'Recorded $recorded of $total payments — will sync when online.';
+  }
+
+  @override
   String get settleUpPaymentHistory => 'Payment history';
 
   @override

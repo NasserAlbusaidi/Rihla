@@ -1988,6 +1988,30 @@ abstract class AppLocalizations {
   /// **'{current} of {total}'**
   String settleUpStepIndicator(int current, int total);
 
+  /// Single summary snackbar after a #382 PR-5 stepped multi-currency walk records EVERY per-currency payment while online. {count} is the number of payments recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Recorded 1 payment.} other{Recorded {count} payments.}}'**
+  String settleUpSteppedRecordedAll(int count);
+
+  /// Single summary snackbar after a #382 PR-5 stepped walk records every per-currency payment while offline (queued for replay). {count} is the number of payments recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Recorded 1 payment — will sync when online.} other{Recorded {count} payments — will sync when online.}}'**
+  String settleUpSteppedRecordedAllWillSync(int count);
+
+  /// Single summary snackbar after a #382 PR-5 stepped walk stops early (cancelled or failed) having recorded only some of the per-currency payments. {recorded} is how many succeeded, {total} the planned count.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded {recorded} of {total} payments.'**
+  String settleUpSteppedRecordedPartial(int recorded, int total);
+
+  /// Single summary snackbar after a #382 PR-5 stepped walk stops early having queued (offline) only some of the per-currency payments. {recorded} is how many were recorded, {total} the planned count.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded {recorded} of {total} payments — will sync when online.'**
+  String settleUpSteppedRecordedPartialWillSync(int recorded, int total);
+
   /// No description provided for @settleUpPaymentHistory.
   ///
   /// In en, this message translates to:

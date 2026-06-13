@@ -547,6 +547,287 @@ void main() {
         .any((t) => t.transform.getRow(0).x == -1.0);
     expect(mirrored, isTrue);
   });
+
+  // #382 PR-5 Task 12: stepped walk on the event settle-up screen. A
+  // counterparty owing across two currency buckets surfaces one stepped card;
+  // tapping it walks one record sheet per bucket (each its own independent
+  // write), suppressing per-step success snackbars and emitting ONE final
+  // summary snackbar.
+  group('#382 PR-5: stepped settle walk', () {
+    // Two same-direction buckets (bob owes alice in OMR + USD): alice paid one
+    // expense in each currency, so bob is the payer in both buckets.
+    final twoBucketExpenses = [
+      Expense(
+        id: 'expense-omr',
+        tripId: eventId,
+        payerParticipantId: 'alice',
+        amount: Decimal.parse('20.000'),
+        currency: 'OMR',
+        description: 'Dinner',
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 5, 16),
+        createdBy: 'alice',
+      ),
+      Expense(
+        id: 'expense-usd',
+        tripId: eventId,
+        payerParticipantId: 'alice',
+        amount: Decimal.parse('80.00'),
+        currency: 'USD',
+        description: 'Hotel',
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 5, 16),
+        createdBy: 'alice',
+      ),
+    ];
+
+    // Mixed-direction buckets (orthogonal axis — identity/direction): bob owes
+    // alice OMR (bob = payer → "Mark paid"), alice owes bob USD (bob =
+    // recipient → "Mark received"). Two #282 framings within one walk.
+    final mixedDirectionExpenses = [
+      Expense(
+        id: 'expense-omr',
+        tripId: eventId,
+        payerParticipantId: 'alice',
+        amount: Decimal.parse('20.000'),
+        currency: 'OMR',
+        description: 'Dinner',
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 5, 16),
+        createdBy: 'alice',
+      ),
+      Expense(
+        id: 'expense-usd',
+        tripId: eventId,
+        payerParticipantId: 'bob',
+        amount: Decimal.parse('80.00'),
+        currency: 'USD',
+        description: 'Hotel',
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 5, 16),
+        createdBy: 'bob',
+      ),
+    ];
+
+    testWidgets(
+      'happy walk: two writes (OMR then USD), two bumps, one final snackbar, '
+      'no per-step success snackbar',
+      (tester) async {
+        registerFallbackValue(Decimal.zero);
+        final fakeDb = FakeFirebaseFirestore();
+        final service = _RecordingSettlementService();
+
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            settlementService: service,
+            expensesStream: Stream.value(twoBucketExpenses),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(SettleUpScreen)),
+        );
+
+        final card = find.byKey(const ValueKey('settle-stepped-alice'));
+        await tester.ensureVisible(card);
+        await tester.tap(card);
+        await tester.pumpAndSettle();
+
+        // Step 1 of 2.
+        expect(find.text('1 of 2'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        // Step 2 of 2 (no final snackbar yet).
+        expect(find.text('2 of 2'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(service.calls, hasLength(2));
+        expect(service.calls[0].currency, 'OMR');
+        expect(service.calls[1].currency, 'USD');
+        // Two independent #104 bumps.
+        expect(container.read(ledgerRevisionProvider), 2);
+        // One final summary snackbar; no per-step "Settlement recorded.".
+        expect(find.text('Settlement recorded.'), findsNothing);
+        expect(find.text('Recorded 2 payments.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('cancel at step 2: one write, partial final snackbar', (
+      tester,
+    ) async {
+      registerFallbackValue(Decimal.zero);
+      final fakeDb = FakeFirebaseFirestore();
+      final service = _RecordingSettlementService();
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          settlementService: service,
+          expensesStream: Stream.value(twoBucketExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(const ValueKey('settle-stepped-alice'));
+      await tester.ensureVisible(card);
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+
+      // Confirm step 1, cancel step 2 ("Not yet").
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+      expect(find.text('2 of 2'), findsOneWidget);
+      await tester.tap(find.byKey(GroupKeys.notNowButton));
+      await tester.pumpAndSettle();
+
+      expect(service.calls, hasLength(1));
+      expect(find.text('Recorded 1 of 2 payments.'), findsOneWidget);
+    });
+
+    testWidgets(
+      'write error at step 2: one write, error snackbar, partial snackbar, '
+      'walk stopped',
+      (tester) async {
+        registerFallbackValue(Decimal.zero);
+        final fakeDb = FakeFirebaseFirestore();
+        final service = _RecordingSettlementService(throwOnCall: 2);
+
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            settlementService: service,
+            expensesStream: Stream.value(twoBucketExpenses),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final card = find.byKey(const ValueKey('settle-stepped-alice'));
+        await tester.ensureVisible(card);
+        await tester.tap(card);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+        expect(find.text('2 of 2'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(service.calls, hasLength(2));
+        // #360 error snackbar shows first (L4 — errors stay loud per step).
+        expect(
+          find.text("Couldn't record settlement. Please try again."),
+          findsOneWidget,
+        );
+        // No further sheet pushed — the walk stopped.
+        expect(find.byKey(GroupKeys.settleUpRecordSheetTitle), findsNothing);
+
+        // The final partial summary is queued behind the error snackbar; let
+        // the error auto-dismiss so the summary surfaces (L3).
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+        expect(find.text('Recorded 1 of 2 payments.'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'mixed-direction walk: step 1 "Mark paid", step 2 "Mark received"; '
+      'each write preserves its bucket payer/recipient direction',
+      (tester) async {
+        registerFallbackValue(Decimal.zero);
+        final fakeDb = FakeFirebaseFirestore();
+        final service = _RecordingSettlementService();
+
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            settlementService: service,
+            expensesStream: Stream.value(mixedDirectionExpenses),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final card = find.byKey(const ValueKey('settle-stepped-alice'));
+        await tester.ensureVisible(card);
+        await tester.tap(card);
+        await tester.pumpAndSettle();
+
+        // Step 1 (OMR): bob owes alice → "Mark this paid?".
+        expect(find.text('Mark this paid?'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        // Step 2 (USD): #282 flips — alice owes bob → "Mark this received?".
+        expect(find.text('Mark this received?'), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(service.calls, hasLength(2));
+        // OMR step: bob is payer, alice recipient.
+        expect(service.calls[0].currency, 'OMR');
+        expect(service.calls[0].payerParticipantId, 'bob');
+        expect(service.calls[0].recipientParticipantId, 'alice');
+        // USD step: direction reverses (alice owes bob).
+        expect(service.calls[1].currency, 'USD');
+        expect(service.calls[1].payerParticipantId, 'alice');
+        expect(service.calls[1].recipientParticipantId, 'bob');
+      },
+    );
+  });
+}
+
+/// Records each [addSettlement] call so a stepped walk can be asserted, and
+/// returns a deserialized [Settlement] (the acked path). [throwOnCall] (1-based)
+/// makes that call throw to exercise the per-step error stop.
+class _RecordingSettlementService extends SettlementService {
+  _RecordingSettlementService({this.throwOnCall})
+    : super.withFirestore(FakeFirebaseFirestore());
+
+  final int? throwOnCall;
+  final List<({
+    String payerParticipantId,
+    String recipientParticipantId,
+    String currency,
+    Decimal amount,
+  })>
+  calls = [];
+
+  @override
+  Future<Settlement> addSettlement({
+    required String groupId,
+    required String eventId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required Decimal amount,
+    required String createdBy,
+    String currency = 'OMR',
+    String? payerName,
+    String? recipientName,
+    String? note,
+  }) async {
+    calls.add((
+      payerParticipantId: payerParticipantId,
+      recipientParticipantId: recipientParticipantId,
+      currency: currency,
+      amount: amount,
+    ));
+    if (throwOnCall != null && calls.length == throwOnCall) {
+      throw StateError('write failed');
+    }
+    return Settlement(
+      id: 'settlement-${calls.length}',
+      tripId: eventId,
+      payerParticipantId: payerParticipantId,
+      recipientParticipantId: recipientParticipantId,
+      amount: amount,
+      currency: currency,
+      createdBy: createdBy,
+      settledAt: DateTime(2026, 5, 16),
+    );
+  }
 }
 
 class _FailingSettlementService extends SettlementService {

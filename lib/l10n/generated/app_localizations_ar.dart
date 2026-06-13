@@ -1172,6 +1172,46 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String settleUpSteppedRecordedAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'تم تسجيل $count دفعة.',
+      many: 'تم تسجيل $count دفعة.',
+      few: 'تم تسجيل $count دفعات.',
+      two: 'تم تسجيل دفعتين.',
+      one: 'تم تسجيل دفعة واحدة.',
+      zero: 'لم تُسجَّل دفعات.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedAllWillSync(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'تم تسجيل $count دفعة — ستتم المزامنة عند الاتصال.',
+      many: 'تم تسجيل $count دفعة — ستتم المزامنة عند الاتصال.',
+      few: 'تم تسجيل $count دفعات — ستتم المزامنة عند الاتصال.',
+      two: 'تم تسجيل دفعتين — ستتم المزامنة عند الاتصال.',
+      one: 'تم تسجيل دفعة واحدة — ستتم المزامنة عند الاتصال.',
+      zero: 'لم تُسجَّل دفعات — ستتم المزامنة عند الاتصال.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartial(int recorded, int total) {
+    return 'تم تسجيل $recorded من $total دفعات.';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartialWillSync(int recorded, int total) {
+    return 'تم تسجيل $recorded من $total دفعات — ستتم المزامنة عند الاتصال.';
+  }
+
+  @override
   String get settleUpPaymentHistory => 'سجل الدفعات';
 
   @override
