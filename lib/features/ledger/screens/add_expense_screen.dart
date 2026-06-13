@@ -38,10 +38,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// fresh state without coupling the body to the parent's lifecycle.
   int _formGeneration = 0;
 
-  Future<void> _handleSubmit(
-    ExpenseEditorPayload payload,
-    String currency,
-  ) async {
+  Future<void> _handleSubmit(ExpenseEditorPayload payload) async {
     final currentUid = ref.read(currentUserIdProvider);
     if (currentUid == null || currentUid.isEmpty) {
       throw StateError('Cannot add expense without an authenticated user.');
@@ -64,10 +61,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             eventId: widget.eventId,
             payerParticipantId: payload.payerParticipantId,
             amount: payload.amount,
-            // #261: write the owning group's currency, not a hardcoded 'OMR'.
-            // amountFils is scaled by this currency, so it must match the group
-            // or the rules reject the write (currencyMatchesGroup).
-            currency: currency,
+            // #382 PR-6: write the per-expense currency the user picked (smart
+            // default = last-used-in-event → group default). amountFils is
+            // scaled by this code; rules now require only a supported code, not
+            // an exact group match.
+            currency: payload.currency,
             description: payload.description,
             scope: payload.scope,
             customSplitParticipants: payload.customSplitParticipants,
@@ -149,7 +147,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             eventId: widget.eventId,
             mode: ExpenseEditorMode.add,
             currency: group.currency,
-            onSubmit: (payload) => _handleSubmit(payload, group.currency),
+            onSubmit: _handleSubmit,
           ),
         );
       },
