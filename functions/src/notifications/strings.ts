@@ -57,3 +57,25 @@ export function memberJoinBody(locale: Locale, joinerName: string): string {
     ? `انضم ${joiner} إلى المجموعة.`
     : `${joiner} joined the group.`;
 }
+
+export function expenseTitle(locale: Locale, groupName: string): string {
+  return groupLabel(locale, groupName);
+}
+
+// #179 expense-created push. The empty-name fallback is localized internally via
+// actorLabel (#483 pattern). `description` is user free-text in any language, so
+// it is appended after a `·` separator (never grammatically embedded) to stay
+// correct in both locales; an empty description is dropped.
+export function expenseBody(
+  locale: Locale,
+  actorName: string,
+  amountText: string,
+  description: string,
+): string {
+  const actor = actorLabel(locale, actorName);
+  const label = description.trim();
+  const tail = label.length > 0 ? ` · ${label}` : '';
+  return locale === 'ar'
+    ? `أضاف ${actor} مصروفًا${tail} بقيمة ${amountText}.`
+    : `${actor} added an expense${tail} (${amountText}).`;
+}

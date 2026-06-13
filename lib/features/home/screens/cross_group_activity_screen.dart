@@ -11,6 +11,7 @@ import '../../../core/utils/localized_dates.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../providers/dashboard_providers.dart';
 
 /// Full-screen cross-group activity feed (saffron travel-journal direction).
@@ -66,7 +67,8 @@ class _CrossGroupActivityScreenState
     AsyncValue<List<CrossGroupActivityEntry>> activityAsync,
   ) {
     return activityAsync.when(
-      loading: () => const SizedBox.shrink(),
+      // #488: a layout-matched skeleton, not a blank screen, while loading.
+      loading: SkeletonLoader.expenseList,
       error: (_, _) => EmptyStateView(
         icon: Iconsax.warning_2,
         title: context.l10n.activityLoadFailedTitle,

@@ -364,6 +364,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileStatsLifetime => 'lifetime';
 
   @override
+  String get profileStatsLoadFailed => 'Couldn\'t load your stats';
+
+  @override
   String profileStatsSpentMore(int count) {
     return '+$count';
   }
@@ -1284,15 +1287,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String settleUpSuggestedAmount(Object amount) {
     return 'Suggested: $amount';
   }
-
-  @override
-  String get settleUpMethodCash => 'Cash';
-
-  @override
-  String get settleUpMethodBank => 'Bank';
-
-  @override
-  String get settleUpMethodOther => 'Other';
 
   @override
   String get settleUpAllSettledTitle => 'All settled up';

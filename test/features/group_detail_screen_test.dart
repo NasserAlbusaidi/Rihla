@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +22,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
@@ -803,6 +806,58 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Retry'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'events section shows a layout-matched skeleton while events load, '
+      'not a blank gap (#488)',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              currentUserIdProvider.overrideWithValue('uid-creator'),
+              groupDetailProvider(
+                _groupId,
+              ).overrideWith((ref) => Stream.value(_testGroup)),
+              groupMembersProvider(
+                _groupId,
+              ).overrideWith((ref) => Stream.value(_testMembers)),
+              // Never-completing stream keeps groupEventsProvider in
+              // AsyncLoading so the events section renders its loading branch.
+              groupEventsProvider(_groupId).overrideWith(
+                (ref) =>
+                    Stream<List<Event>>.fromFuture(Completer<List<Event>>().future),
+              ),
+              groupBalancesProvider(
+                _groupId,
+              ).overrideWith((ref) => AsyncValue.data(_balancesEmpty)),
+              groupActivityProvider(
+                _groupId,
+              ).overrideWith((ref) => Stream.value(const [])),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              // Reduce-motion (#349) swaps the infinite shimmer for a static
+              // fill, so pumpAndSettle drains the finite balance-card fade
+              // without spinning forever on the skeleton ticker.
+              home: Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                  child: const GroupDetailScreen(groupId: _groupId),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SkeletonLoader), findsOneWidget);
+        // The empty-state must NOT masquerade for the loading state.
+        expect(find.byKey(GroupKeys.noEventsEmpty), findsNothing);
       },
     );
   });
