@@ -11,6 +11,7 @@ import '../../../core/utils/localized_dates.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../providers/dashboard_providers.dart';
 
@@ -130,7 +131,14 @@ class _TopBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (canPop)
-            _BackButton(onTap: () => GoRouter.of(context).pop())
+            RIconButton(
+              variant: RIconButtonVariant.ghost,
+              icon: Directionality.of(context) == TextDirection.rtl
+                  ? Iconsax.arrow_right
+                  : Iconsax.arrow_left,
+              tooltip: context.l10n.commonBack,
+              onTap: () => GoRouter.of(context).pop(),
+            )
           else
             const SizedBox(width: 40),
           const SizedBox(width: 8),
@@ -160,33 +168,6 @@ class _TopBar extends StatelessWidget {
           ),
           const SizedBox(width: 40),
         ],
-      ),
-    );
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  const _BackButton({required this.onTap});
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Tooltip(
-      message: context.l10n.commonBack,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 24,
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(
-            Directionality.of(context) == TextDirection.rtl
-                ? Iconsax.arrow_right
-                : Iconsax.arrow_left,
-            size: 20,
-            color: colors.textPrimary,
-          ),
-        ),
       ),
     );
   }
