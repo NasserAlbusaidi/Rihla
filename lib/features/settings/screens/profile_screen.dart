@@ -66,6 +66,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final statsAsync = ref.watch(profileStatsProvider);
+    final isDurable = ref.watch(isDurableUserProvider);
     final l10n = context.l10n;
 
     return Scaffold(
@@ -90,6 +91,12 @@ class ProfileScreen extends ConsumerWidget {
                         .animate()
                         .fadeIn(delay: 80.ms, duration: 400.ms)
                         .slideY(begin: 0.08),
+                    // #487: anonymous users get a prominent prompt naming the
+                    // stakes; durable users never see it.
+                    if (!isDurable) ...[
+                      const SizedBox(height: 14),
+                      const _BackupAccountCard(),
+                    ],
                     const SizedBox(height: 14),
                     _StatsGrid(statsAsync: statsAsync)
                         .animate()
@@ -323,15 +330,16 @@ class _PendingRecoveryBanner extends ConsumerWidget {
 
 // ──────────────────────────── Identity card
 
-class _IdentityCard extends StatelessWidget {
+class _IdentityCard extends ConsumerWidget {
   const _IdentityCard({required this.name, required this.onEditName});
   final String name;
   final VoidCallback onEditName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final l10n = context.l10n;
+    final isDurable = ref.watch(isDurableUserProvider);
     final hasName = name.trim().isNotEmpty;
     final displayName = hasName ? name : l10n.profileSetYourName;
     // When no name is set there is no real @handle to share. A literal
@@ -403,14 +411,10 @@ class _IdentityCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  SizedBox(height: context.spacing.space4),
-                  Text(
-                    l10n.profileAnonymousTraveller,
-                    style: AppTypography.sans(
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                    ),
-                  ),
+                  SizedBox(height: context.spacing.space8),
+                  // #487: the hero tells the truth about backup state instead
+                  // of an unconditional "Anonymous traveller".
+                  _BackupStatusChip(isDurable: isDurable),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -449,6 +453,132 @@ class _IdentityCard extends StatelessWidget {
   String _slug(String name) {
     final cleaned = name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '');
     return cleaned.replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+}
+
+/// Hero pill that states whether the account is backed up (#487): sage when
+/// durable (Google/email linked), amber when still anonymous.
+class _BackupStatusChip extends StatelessWidget {
+  const _BackupStatusChip({required this.isDurable});
+  final bool isDurable;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    final accent = isDurable ? colors.success : colors.warning;
+    return Container(
+      key: ProfileKeys.backupStatusChip,
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space12,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+        border: Border.all(color: accent.withValues(alpha: 0.4), width: 0.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isDurable ? Iconsax.shield_tick : Iconsax.warning_2,
+            size: 13,
+            color: accent,
+          ),
+          SizedBox(width: context.spacing.space4),
+          Text(
+            isDurable
+                ? l10n.profileBackupStatusBackedUp
+                : l10n.profileBackupStatusNotBackedUp,
+            style: AppTypography.sans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: accent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Anonymous-only card that names the stakes of not being backed up and routes
+/// to the durable-credential (Google/email) flow (#487). Hidden once durable.
+class _BackupAccountCard extends StatelessWidget {
+  const _BackupAccountCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
+      child: GestureDetector(
+        onTap: () {
+          HapticService.selection();
+          showDurableCredentialSheet(context);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          key: ProfileKeys.backupAccountCard,
+          padding: EdgeInsets.all(context.spacing.space16),
+          decoration: BoxDecoration(
+            color: colors.warning.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
+            border: Border.all(
+              color: colors.warning.withValues(alpha: 0.35),
+              width: 0.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colors.warning.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(Iconsax.warning_2, size: 20, color: colors.warning),
+              ),
+              SizedBox(width: context.spacing.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.profileBackupCardTitle,
+                      style: AppTypography.sans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: context.spacing.space4),
+                    Text(
+                      l10n.profileBackupCardBody,
+                      style: AppTypography.sans(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: context.spacing.space8),
+              DirectionalIcon(
+                Iconsax.arrow_right_3,
+                size: 16,
+                color: colors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -18,6 +18,7 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_service.dart';
 import 'package:safar/core/services/notification_settings_launcher.dart';
 import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
@@ -134,6 +135,53 @@ List<Override> _phase26Overrides({
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  group('identity hero backup state (#487)', () {
+    Future<void> pumpHero(
+      WidgetTester tester, {
+      required bool durable,
+      String? email,
+    }) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Sam'});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: [
+            ..._phase26Overrides(prefs: prefs),
+            isDurableUserProvider.overrideWithValue(durable),
+            linkedEmailProvider.overrideWithValue(email),
+            googleAccountProvider.overrideWithValue(null),
+          ],
+        ),
+      );
+      await _pumpWithAnimations(tester);
+    }
+
+    testWidgets('anonymous user → hero shows "Not backed up"', (tester) async {
+      await pumpHero(tester, durable: false);
+      expect(find.text('Not backed up'), findsOneWidget);
+      expect(find.text('Backed up'), findsNothing);
+    });
+
+    testWidgets('durable user → hero shows "Backed up"', (tester) async {
+      await pumpHero(tester, durable: true, email: 'sam@example.com');
+      expect(find.text('Backed up'), findsOneWidget);
+      expect(find.text('Not backed up'), findsNothing);
+    });
+
+    testWidgets('anonymous user → "Back up this account" card is shown', (
+      tester,
+    ) async {
+      await pumpHero(tester, durable: false);
+      expect(find.byKey(ProfileKeys.backupAccountCard), findsOneWidget);
+    });
+
+    testWidgets('durable user → back-up card hidden', (tester) async {
+      await pumpHero(tester, durable: true, email: 'sam@example.com');
+      expect(find.byKey(ProfileKeys.backupAccountCard), findsNothing);
+    });
   });
 
   testWidgets('direct profile back button routes home when showBack is true', (
@@ -643,6 +691,9 @@ void main() {
         );
         expect(switchWidget.value, isFalse);
 
+        await tester.ensureVisible(
+          find.byKey(ProfileKeys.notificationToggleTile),
+        );
         await tester.tap(find.byKey(ProfileKeys.notificationToggleTile));
         await tester.pumpAndSettle();
 
@@ -685,6 +736,7 @@ void main() {
 
         // The Switch has its own onChanged closure, distinct from the row InkWell;
         // tapping the Switch directly must route to settings, not be a dead control.
+        await tester.ensureVisible(find.byKey(ProfileKeys.notificationSwitch));
         await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
         await tester.pumpAndSettle();
 
@@ -729,6 +781,7 @@ void main() {
         expect(find.text("Couldn't register — tap to retry"), findsOneWidget);
 
         // Tapping the switch retries registration instead of toggling the pref.
+        await tester.ensureVisible(find.byKey(ProfileKeys.notificationSwitch));
         await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
         await tester.pumpAndSettle();
 
@@ -763,6 +816,7 @@ void main() {
       );
       await _pumpWithAnimations(tester);
 
+      await tester.ensureVisible(find.byKey(ProfileKeys.notificationSwitch));
       await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
       await tester.pumpAndSettle();
 
@@ -793,6 +847,7 @@ void main() {
         );
         await _pumpWithAnimations(tester);
 
+        await tester.ensureVisible(find.byKey(ProfileKeys.notificationSwitch));
         await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
         await tester.pumpAndSettle();
 
@@ -824,6 +879,7 @@ void main() {
         );
         await _pumpWithAnimations(tester);
 
+        await tester.ensureVisible(find.byKey(ProfileKeys.notificationSwitch));
         await tester.tap(find.byKey(ProfileKeys.notificationSwitch));
         await tester.pumpAndSettle();
 
