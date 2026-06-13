@@ -23,6 +23,15 @@ function groupLabel(locale: Locale, groupName: string): string {
   return locale === 'ar' ? 'مجموعتك' : 'your group';
 }
 
+// #483: empty-name fallback for an actor/joiner, localized PER LOCALE. Keeping
+// it inside the body builder (like groupLabel) ensures an Arabic recipient
+// never gets the English literal 'Someone' spliced into an RTL sentence.
+function actorLabel(locale: Locale, name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length > 0) return trimmed;
+  return locale === 'ar' ? 'شخص ما' : 'Someone';
+}
+
 export function settlementTitle(locale: Locale, groupName: string): string {
   return groupLabel(locale, groupName);
 }
@@ -32,9 +41,10 @@ export function settlementBody(
   actorName: string,
   amountText: string,
 ): string {
+  const actor = actorLabel(locale, actorName);
   return locale === 'ar'
-    ? `سجّل ${actorName} تسوية بقيمة ${amountText}.`
-    : `${actorName} recorded a ${amountText} settlement.`;
+    ? `سجّل ${actor} تسوية بقيمة ${amountText}.`
+    : `${actor} recorded a ${amountText} settlement.`;
 }
 
 export function memberJoinTitle(locale: Locale, groupName: string): string {
@@ -42,7 +52,8 @@ export function memberJoinTitle(locale: Locale, groupName: string): string {
 }
 
 export function memberJoinBody(locale: Locale, joinerName: string): string {
+  const joiner = actorLabel(locale, joinerName);
   return locale === 'ar'
-    ? `انضم ${joinerName} إلى المجموعة.`
-    : `${joinerName} joined the group.`;
+    ? `انضم ${joiner} إلى المجموعة.`
+    : `${joiner} joined the group.`;
 }

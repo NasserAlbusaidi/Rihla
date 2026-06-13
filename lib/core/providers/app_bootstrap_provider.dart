@@ -64,4 +64,20 @@ final appBootstrapProvider = Provider<void>((ref) {
       unawaited(ref.read(notificationServiceProvider).initialize());
     }
   });
+
+  // #483: re-save the token's stored `locale` when the app language changes, so
+  // server-rendered push copy (localized from `fcm_tokens/{uid}.locale`) follows
+  // the switch instead of staying frozen at the language present when the token
+  // was first written. `refreshTokenLocale` no-ops while push is off /
+  // uninitialized and stays a silent skip for anonymous shells, so this only
+  // writes for a push-enabled durable user.
+  ref.listen<String>(
+    settingsProvider.select((value) => value.languageCode),
+    (previous, next) {
+      if (previous == null || previous == next) return;
+      if (ref.read(settingsProvider).pushNotificationsEnabled) {
+        unawaited(ref.read(notificationServiceProvider).refreshTokenLocale());
+      }
+    },
+  );
 });

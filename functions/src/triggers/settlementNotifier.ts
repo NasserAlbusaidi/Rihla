@@ -54,15 +54,15 @@ async function notifySettlement(
   ];
   if (targets.length === 0) return;
 
-  // Third-party recorder (createdBy is neither party) MUST fall to 'Someone' —
-  // never mislabel the actor as the recipient (Gate P2 #53).
+  // Third-party recorder (createdBy is neither party) resolves to an empty name;
+  // settlementBody localizes the empty-name fallback per recipient locale (#483)
+  // — never mislabel the actor as the recipient (Gate P2 #53).
   const actorName =
     createdBy === payer
       ? asString(data.payerName)
       : createdBy === recipient
         ? asString(data.recipientName)
         : '';
-  const resolvedActor = actorName.trim().length > 0 ? actorName : 'Someone';
 
   const amountText = formatAmount(amountFils, asString(data.currency) || 'OMR');
   const groupName = await resolveGroupName(gid);
@@ -74,7 +74,7 @@ async function notifySettlement(
     targets,
     (locale) => ({
       title: settlementTitle(locale, groupName),
-      body: settlementBody(locale, resolvedActor, amountText),
+      body: settlementBody(locale, actorName, amountText),
     }),
     payload,
   );

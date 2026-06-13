@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -23,6 +24,9 @@ void main() {
       () => mockNotificationService.initialize(),
     ).thenAnswer((_) async => true);
     when(() => mockNotificationService.removeToken()).thenAnswer((_) async {});
+    when(
+      () => mockNotificationService.refreshTokenLocale(),
+    ).thenAnswer((_) async {});
   });
 
   group('appBootstrapProvider wiring', () {
@@ -254,5 +258,56 @@ void main() {
         verifyNever(() => mockNotificationService.initialize());
       },
     );
+  });
+
+  // #483: the server localizes push copy from fcm_tokens/{uid}.locale, which is
+  // frozen at token-write time. A language switch updates prefs + state but
+  // never re-saved the token, so an EN→AR user kept getting English pushes until
+  // a random FCM rotation. Bootstrap must re-save the token locale on a language
+  // change — but only for a push-enabled user (the service no-ops otherwise).
+  group('appBootstrapProvider language-change token re-save (#483)', () {
+    Future<ProviderContainer> makeContainer({required bool pushEnabled}) async {
+      final container = ProviderContainer(
+        overrides: [
+          notificationServiceProvider.overrideWithValue(
+            mockNotificationService,
+          ),
+          sharedPreferencesProvider.overrideWithValue(
+            await SharedPreferences.getInstance(),
+          ),
+          // Pin the boot language to 'en' so the EN→AR change is deterministic.
+          deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+        ],
+      );
+      addTearDown(container.dispose);
+      if (pushEnabled) {
+        await container
+            .read(settingsProvider.notifier)
+            .setPushNotificationsEnabled(true);
+      }
+      container.read(appBootstrapProvider);
+      await Future<void>.delayed(Duration.zero);
+      return container;
+    }
+
+    test('re-saves the token locale on a language change when push is on', () async {
+      final container = await makeContainer(pushEnabled: true);
+      clearInteractions(mockNotificationService);
+
+      await container.read(settingsProvider.notifier).setLanguage('ar');
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => mockNotificationService.refreshTokenLocale()).called(1);
+    });
+
+    test('does NOT re-save the token locale when push is off', () async {
+      final container = await makeContainer(pushEnabled: false);
+      clearInteractions(mockNotificationService);
+
+      await container.read(settingsProvider.notifier).setLanguage('ar');
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockNotificationService.refreshTokenLocale());
+    });
   });
 }

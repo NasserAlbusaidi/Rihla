@@ -41,10 +41,10 @@ function mockSendEach(count: number): jest.Mock {
   return sendEach;
 }
 
-async function seedToken(uid: string): Promise<void> {
+async function seedToken(uid: string, locale = 'en'): Promise<void> {
   await getFirestore()
     .doc(`fcm_tokens/${uid}`)
-    .set({ user_id: uid, token: `tok-${uid}`, locale: 'en', platform: 'android' });
+    .set({ user_id: uid, token: `tok-${uid}`, locale, platform: 'android' });
 }
 
 async function seedGroup(gid: string, name: string): Promise<void> {
@@ -119,6 +119,26 @@ describe('eventSettlementNotifier', () => {
     expect(messages).toHaveLength(2);
     expect(messages[0].notification.body).toContain('Someone');
     expect(messages[0].notification.body).not.toContain('Bilal');
+  });
+
+  test('third-party recorder uses the localized empty-name fallback for an Arabic recipient (#483)', async () => {
+    await seedGroup('g1', 'Trip');
+    await seedToken('payer', 'ar');
+    await seedToken('recipient', 'ar');
+    const sendEach = mockSendEach(2);
+
+    await wrapEvent(
+      eventSettlement(
+        { ...base, payerParticipantId: 'payer', recipientParticipantId: 'recipient', createdBy: 'thirdparty' },
+        { gid: 'g1', eid: 'e1', settlementId: 's1' },
+      ),
+    );
+
+    const messages = sendEach.mock.calls[0][0];
+    expect(messages).toHaveLength(2);
+    // The Arabic recipient must get 'شخص ما', NOT the English 'Someone'.
+    expect(messages[0].notification.body).toContain('شخص ما');
+    expect(messages[0].notification.body).not.toContain('Someone');
   });
 
   test('deleted settlement is not notified', async () => {

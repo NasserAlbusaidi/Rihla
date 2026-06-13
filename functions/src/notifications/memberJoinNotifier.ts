@@ -14,12 +14,14 @@ export async function notifyMemberJoin(
   existingMemberIds: string[],
 ): Promise<void> {
   const targets = existingMemberIds.filter((id) => id !== joinerUid);
-  const name = joinerName.trim().length > 0 ? joinerName : 'Someone';
+  // #483: pass the (possibly empty) joiner name straight through; memberJoinBody
+  // localizes the empty-name fallback per recipient locale, so an Arabic
+  // recipient never gets the English literal 'Someone'.
   await sendToUids(
     targets,
     (locale) => ({
       title: memberJoinTitle(locale, groupName),
-      body: memberJoinBody(locale, name),
+      body: memberJoinBody(locale, joinerName),
     }),
     { type: 'member_join', groupId: gid },
   );

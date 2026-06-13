@@ -188,6 +188,77 @@ void main() {
   );
 
   test(
+    'refreshTokenLocale re-saves the stored token with the current locale (#483)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      var locale = 'en';
+      final serviceProvider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        localeResolver: () => locale,
+        tokenRefresh: tokenRefresh.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+      final service = container.read(serviceProvider);
+      await service.initialize();
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['locale'],
+        'en',
+      );
+
+      // App language switches EN→AR: refreshTokenLocale must rewrite the locale.
+      locale = 'ar';
+      await service.refreshTokenLocale();
+
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['locale'],
+        'ar',
+      );
+    },
+  );
+
+  test(
+    'refreshTokenLocale is a no-op when notifications were never initialized (#483)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final serviceProvider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        localeResolver: () => 'ar',
+        tokenRefresh: tokenRefresh.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+
+      final service = container.read(serviceProvider);
+      // No initialize() → push is off → must not write a token.
+      await service.refreshTokenLocale();
+
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).exists,
+        isFalse,
+      );
+      verifyNever(messaging.getToken);
+    },
+  );
+
+  test(
     'removeToken deletes the stored token, cancels listeners, and marks off',
     () async {
       final db = FakeFirebaseFirestore();
