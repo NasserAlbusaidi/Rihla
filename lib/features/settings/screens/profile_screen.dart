@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -715,8 +717,11 @@ class _PreferencesCard extends ConsumerWidget {
     final notifStatus = ref.watch(notificationStatusProvider);
     final isPermissionDenied =
         notifStatus == NotificationStatus.permissionDenied;
+    // #482: a token-write failure leaves the user opted-in but undelivered. The
+    // switch must read OFF (not a confident ON) and offer a retry.
+    final isError = notifStatus == NotificationStatus.error;
     final notificationsOn =
-        settings.pushNotificationsEnabled && !isPermissionDenied;
+        settings.pushNotificationsEnabled && !isPermissionDenied && !isError;
     final colors = context.colors;
 
     return Padding(
@@ -730,6 +735,7 @@ class _PreferencesCard extends ConsumerWidget {
             ),
             value: notificationsOn,
             permissionDenied: isPermissionDenied,
+            errored: isError,
             onChanged: (value) {
               HapticService.selection();
               ref
@@ -741,6 +747,12 @@ class _PreferencesCard extends ConsumerWidget {
             onOpenSettings: () {
               HapticService.selection();
               ref.read(openNotificationSettingsProvider)();
+            },
+            // #482: registration failed (transient FCM/Firestore error) — retry
+            // re-runs initialize() to attempt the token write again.
+            onRetry: () {
+              HapticService.selection();
+              unawaited(ref.read(notificationServiceProvider).initialize());
             },
           ),
           // #61: 1.0 is OMR-only. The currency picker was orphaned (it wrote
@@ -1077,8 +1089,10 @@ class _NotificationPrefRow extends StatelessWidget {
     required this.leading,
     required this.value,
     required this.permissionDenied,
+    required this.errored,
     required this.onChanged,
     required this.onOpenSettings,
+    required this.onRetry,
   });
 
   final Widget leading;
@@ -1088,15 +1102,34 @@ class _NotificationPrefRow extends StatelessWidget {
   /// OS settings page instead of toggling the pref — the toggle can't re-request
   /// permission itself on Android 13+ (#470).
   final bool permissionDenied;
+
+  /// Registration failed (a transient FCM/Firestore token-write error): the
+  /// user is opted-in but receives nothing. The switch reads OFF and a tap
+  /// retries instead of toggling the pref (#482). Mutually exclusive with
+  /// [permissionDenied]; denial takes precedence if both somehow hold.
+  final bool errored;
   final ValueChanged<bool> onChanged;
   final VoidCallback onOpenSettings;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // Denied → every tap (row or switch) deep-links to OS settings; the switch
-    // stays visually OFF because the OS is blocking delivery.
-    final onTap = permissionDenied ? onOpenSettings : () => onChanged(!value);
+    // Denied → deep-link to OS settings; errored → retry; otherwise toggle the
+    // pref. In the first two the switch stays visually OFF (nothing is being
+    // delivered), so a tap is a recovery action, not a value flip.
+    final String subtitle;
+    final VoidCallback onTap;
+    if (permissionDenied) {
+      subtitle = context.l10n.profileNotificationsDisabledHint;
+      onTap = onOpenSettings;
+    } else if (errored) {
+      subtitle = context.l10n.profileNotificationsErrorHint;
+      onTap = onRetry;
+    } else {
+      subtitle = context.l10n.profileNotificationsSubtitle;
+      onTap = () => onChanged(!value);
+    }
     return InkWell(
       key: ProfileKeys.notificationToggleTile,
       onTap: onTap,
@@ -1123,9 +1156,7 @@ class _NotificationPrefRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        permissionDenied
-                            ? context.l10n.profileNotificationsDisabledHint
-                            : context.l10n.profileNotificationsSubtitle,
+                        subtitle,
                         style: AppTypography.sans(
                           fontSize: 12,
                           color: colors.textSecondary,
@@ -1139,7 +1170,9 @@ class _NotificationPrefRow extends StatelessWidget {
                   value: value,
                   onChanged: permissionDenied
                       ? (_) => onOpenSettings()
-                      : onChanged,
+                      : errored
+                          ? (_) => onRetry()
+                          : onChanged,
                   activeThumbColor: colors.primary,
                   activeTrackColor: colors.primary,
                   inactiveTrackColor: colors.cardSoft,

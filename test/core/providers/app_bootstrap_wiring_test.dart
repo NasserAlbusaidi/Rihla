@@ -1,9 +1,15 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/app_bootstrap_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_service.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockNotificationService extends Mock implements NotificationService {}
@@ -18,6 +24,9 @@ void main() {
       () => mockNotificationService.initialize(),
     ).thenAnswer((_) async => true);
     when(() => mockNotificationService.removeToken()).thenAnswer((_) async {});
+    when(
+      () => mockNotificationService.refreshTokenLocale(),
+    ).thenAnswer((_) async {});
   });
 
   group('appBootstrapProvider wiring', () {
@@ -159,6 +168,146 @@ void main() {
       // The grep verification in CI/acceptance criteria handles this —
       // this test documents the intent.
       expect(true, isTrue, reason: 'Verified by grep in acceptance criteria');
+    });
+  });
+
+  // #480: an in-place anon→durable link (Settings "Link Google", home backup
+  // nudge, or email-link completion) keeps the SAME uid, so the pref-listener
+  // (pushNotificationsEnabled unchanged) never re-fires and no restart re-runs
+  // bootstrap. Only the join/create gate re-saved the token. Bootstrap must
+  // re-register on the link transition so a push-enabled user who upgrades by
+  // ANY path actually gets an fcm_tokens doc.
+  group('appBootstrapProvider anon→durable token re-save (#480)', () {
+    Future<ProviderContainer> makeContainer(
+      StreamController<User?> authChanges, {
+      required bool pushEnabled,
+    }) async {
+      final container = ProviderContainer(
+        overrides: [
+          notificationServiceProvider.overrideWithValue(
+            mockNotificationService,
+          ),
+          sharedPreferencesProvider.overrideWithValue(
+            await SharedPreferences.getInstance(),
+          ),
+          authUserChangesProvider.overrideWith((ref) => authChanges.stream),
+        ],
+      );
+      addTearDown(container.dispose);
+      if (pushEnabled) {
+        await container
+            .read(settingsProvider.notifier)
+            .setPushNotificationsEnabled(true);
+      }
+      container.read(appBootstrapProvider);
+      await Future<void>.delayed(Duration.zero);
+      return container;
+    }
+
+    test(
+      're-calls initialize() on in-place anon→durable link when push is on',
+      () async {
+        final authChanges = StreamController<User?>();
+        addTearDown(authChanges.close);
+        await makeContainer(authChanges, pushEnabled: true);
+
+        // Establish the anon baseline, then ignore the boot-time initialize().
+        authChanges.add(MockUser(uid: 'u1', isAnonymous: true));
+        await Future<void>.delayed(Duration.zero);
+        clearInteractions(mockNotificationService);
+
+        // Same uid, now durable = an in-place linkWithCredential.
+        authChanges.add(MockUser(uid: 'u1', isAnonymous: false));
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockNotificationService.initialize()).called(1);
+      },
+    );
+
+    test('does NOT re-register when push is off', () async {
+      final authChanges = StreamController<User?>();
+      addTearDown(authChanges.close);
+      await makeContainer(authChanges, pushEnabled: false);
+
+      authChanges.add(MockUser(uid: 'u1', isAnonymous: true));
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(mockNotificationService);
+
+      authChanges.add(MockUser(uid: 'u1', isAnonymous: false));
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockNotificationService.initialize());
+    });
+
+    test(
+      'does NOT re-register on a uid SWAP (recovery already restarts)',
+      () async {
+        final authChanges = StreamController<User?>();
+        addTearDown(authChanges.close);
+        await makeContainer(authChanges, pushEnabled: true);
+
+        authChanges.add(MockUser(uid: 'anon-uid', isAnonymous: true));
+        await Future<void>.delayed(Duration.zero);
+        clearInteractions(mockNotificationService);
+
+        // Different uid + durable = a sign-out/sign-in swap, not an in-place
+        // link; that path restarts the app and re-runs bootstrap on its own.
+        authChanges.add(MockUser(uid: 'durable-uid', isAnonymous: false));
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(() => mockNotificationService.initialize());
+      },
+    );
+  });
+
+  // #483: the server localizes push copy from fcm_tokens/{uid}.locale, which is
+  // frozen at token-write time. A language switch updates prefs + state but
+  // never re-saved the token, so an EN→AR user kept getting English pushes until
+  // a random FCM rotation. Bootstrap must re-save the token locale on a language
+  // change — but only for a push-enabled user (the service no-ops otherwise).
+  group('appBootstrapProvider language-change token re-save (#483)', () {
+    Future<ProviderContainer> makeContainer({required bool pushEnabled}) async {
+      final container = ProviderContainer(
+        overrides: [
+          notificationServiceProvider.overrideWithValue(
+            mockNotificationService,
+          ),
+          sharedPreferencesProvider.overrideWithValue(
+            await SharedPreferences.getInstance(),
+          ),
+          // Pin the boot language to 'en' so the EN→AR change is deterministic.
+          deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+        ],
+      );
+      addTearDown(container.dispose);
+      if (pushEnabled) {
+        await container
+            .read(settingsProvider.notifier)
+            .setPushNotificationsEnabled(true);
+      }
+      container.read(appBootstrapProvider);
+      await Future<void>.delayed(Duration.zero);
+      return container;
+    }
+
+    test('re-saves the token locale on a language change when push is on', () async {
+      final container = await makeContainer(pushEnabled: true);
+      clearInteractions(mockNotificationService);
+
+      await container.read(settingsProvider.notifier).setLanguage('ar');
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => mockNotificationService.refreshTokenLocale()).called(1);
+    });
+
+    test('does NOT re-save the token locale when push is off', () async {
+      final container = await makeContainer(pushEnabled: false);
+      clearInteractions(mockNotificationService);
+
+      await container.read(settingsProvider.notifier).setLanguage('ar');
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockNotificationService.refreshTokenLocale());
     });
   });
 }

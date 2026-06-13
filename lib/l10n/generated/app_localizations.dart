@@ -482,6 +482,12 @@ abstract class AppLocalizations {
   /// **'Activity & settles'**
   String get profileNotificationsSubtitle;
 
+  /// Subtitle on the Notifications row when registration failed (NotificationStatus.error): the user is opted-in but the token write threw, so nothing is delivered. Tapping retries (#482).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t register — tap to retry'**
+  String get profileNotificationsErrorHint;
+
   /// About-section tile label showing the app version (ProfileAboutSection widget).
   ///
   /// In en, this message translates to:

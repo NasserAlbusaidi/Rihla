@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_config.dart';
@@ -28,7 +29,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 });
 
 /// Service for handling push notifications via Firebase Cloud Messaging.
-class NotificationService {
+class NotificationService with WidgetsBindingObserver {
   NotificationService(
     this._ref, {
     FirebaseMessaging? messaging,
@@ -42,6 +43,7 @@ class NotificationService {
     LocalNotifier? localNotifier,
     void Function(String location)? onNavigate,
     Future<RemoteMessage?> Function()? initialMessage,
+    Future<NotificationSettings> Function()? notificationSettings,
   }) : _messaging = messaging,
        _firestoreOverride = firestore,
        _currentUserIdOverride = currentUserId,
@@ -52,7 +54,8 @@ class NotificationService {
        _openedMessagesOverride = openedMessages,
        _localNotifierOverride = localNotifier,
        _onNavigateOverride = onNavigate,
-       _initialMessageOverride = initialMessage;
+       _initialMessageOverride = initialMessage,
+       _notificationSettingsOverride = notificationSettings;
 
   final Ref _ref;
 
@@ -66,8 +69,10 @@ class NotificationService {
   final Stream<RemoteMessage>? _openedMessagesOverride;
   final void Function(String location)? _onNavigateOverride;
   final Future<RemoteMessage?> Function()? _initialMessageOverride;
+  final Future<NotificationSettings> Function()? _notificationSettingsOverride;
   LocalNotifier? _localNotifierOverride;
   bool _initialized = false;
+  bool _lifecycleObserverAdded = false;
   int _notificationId = 0;
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<RemoteMessage>? _messageSubscription;
@@ -121,11 +126,18 @@ class NotificationService {
   Future<RemoteMessage?> _getInitialMessage() =>
       _initialMessageOverride?.call() ?? _messaging!.getInitialMessage();
 
+  /// Read-only OS permission snapshot — NEVER `requestPermission`, which would
+  /// re-prompt on every resume (#482).
+  Future<NotificationSettings> _getNotificationSettings() =>
+      _notificationSettingsOverride?.call() ??
+      _messaging!.getNotificationSettings();
+
   /// Initialize Firebase Messaging. Call only after the user has opted in.
   Future<bool> initialize() async {
     if (_initialized) {
       await _saveToken();
       _setStatus(NotificationStatus.enabled);
+      _addLifecycleObserver();
       return true;
     }
 
@@ -151,6 +163,7 @@ class NotificationService {
           (message) => unawaited(_onForegroundMessage(message)),
         );
         _messageOpenedSubscription ??= _openedMessages.listen(_onMessageTap);
+        _addLifecycleObserver();
 
         // Cold-start tap: the app was launched FROM a notification while
         // terminated. Route once after listeners are wired.
@@ -168,6 +181,14 @@ class NotificationService {
       return false;
     }
   }
+
+  /// Re-writes the stored token doc so its `locale` follows an app-language
+  /// change (#483). The server localizes push copy from `fcm_tokens/{uid}.locale`
+  /// (#53), which is otherwise frozen at first-write — a user who switches
+  /// EN↔AR would keep receiving the old language until a random token rotation.
+  /// Delegates to [_saveToken], so it no-ops while push is off/uninitialized and
+  /// stays a silent skip for anonymous shells (#441).
+  Future<void> refreshTokenLocale() => _saveToken();
 
   /// Save FCM token to Firestore.
   Future<void> _saveToken() async {
@@ -311,6 +332,66 @@ class NotificationService {
     await _cancelSubscriptions();
   }
 
+  /// #482: the OS notification permission can be revoked (or re-granted) in
+  /// system Settings while the app is alive. Re-read it on resume so the
+  /// Settings toggle stops reading a confident ON after a revoke — and recovers
+  /// after a re-grant.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_recheckPermissionOnResume());
+    }
+  }
+
+  void _addLifecycleObserver() {
+    if (_lifecycleObserverAdded) return;
+    try {
+      WidgetsBinding.instance.addObserver(this);
+      _lifecycleObserverAdded = true;
+    } catch (_) {
+      // No widgets binding (pure unit tests) — the resume re-check is wired in
+      // production only; tests drive didChangeAppLifecycleState directly.
+    }
+  }
+
+  void _removeLifecycleObserver() {
+    if (!_lifecycleObserverAdded) return;
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {
+      // see _addLifecycleObserver
+    }
+    _lifecycleObserverAdded = false;
+  }
+
+  Future<void> _recheckPermissionOnResume() async {
+    try {
+      final status = (await _getNotificationSettings()).authorizationStatus;
+      final granted = status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional;
+      if (!granted) {
+        // notDetermined shouldn't occur post opt-in; only a real denial flips
+        // the toggle so a transient unknown never blanks a working state.
+        if (status == AuthorizationStatus.denied) {
+          _setStatus(NotificationStatus.permissionDenied);
+        }
+        return;
+      }
+      // Permission is present. If setup never completed (the user granted it in
+      // OS Settings AFTER an in-app denial), run the full init so a token is
+      // actually saved — otherwise the toggle reads ON with no token (#482).
+      // initialize() does NOT re-prompt: requestPermission returns the existing
+      // grant without UI once it's already granted.
+      if (!_initialized) {
+        await initialize();
+      } else {
+        _setStatus(NotificationStatus.enabled);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('FCM: resume permission re-check failed: $e');
+    }
+  }
+
   void _setStatus(NotificationStatus status) {
     _ref.read(notificationStatusProvider.notifier).state = status;
   }
@@ -322,5 +403,6 @@ class NotificationService {
     _tokenRefreshSubscription = null;
     _messageSubscription = null;
     _messageOpenedSubscription = null;
+    _removeLifecycleObserver();
   }
 }

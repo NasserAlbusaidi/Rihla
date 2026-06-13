@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -188,6 +189,77 @@ void main() {
   );
 
   test(
+    'refreshTokenLocale re-saves the stored token with the current locale (#483)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      var locale = 'en';
+      final serviceProvider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        localeResolver: () => locale,
+        tokenRefresh: tokenRefresh.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+      final service = container.read(serviceProvider);
+      await service.initialize();
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['locale'],
+        'en',
+      );
+
+      // App language switches EN→AR: refreshTokenLocale must rewrite the locale.
+      locale = 'ar';
+      await service.refreshTokenLocale();
+
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['locale'],
+        'ar',
+      );
+    },
+  );
+
+  test(
+    'refreshTokenLocale is a no-op when notifications were never initialized (#483)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final serviceProvider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        localeResolver: () => 'ar',
+        tokenRefresh: tokenRefresh.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+
+      final service = container.read(serviceProvider);
+      // No initialize() → push is off → must not write a token.
+      await service.refreshTokenLocale();
+
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).exists,
+        isFalse,
+      );
+      verifyNever(messaging.getToken);
+    },
+  );
+
+  test(
     'removeToken deletes the stored token, cancels listeners, and marks off',
     () async {
       final db = FakeFirebaseFirestore();
@@ -339,6 +411,113 @@ void main() {
       expect(h.nav, ['/group/g5']);
     });
   });
+
+  group('resume permission re-check (#482)', () {
+    test(
+      'an OS permission revoke while running flips the status to permissionDenied',
+      () async {
+        final messaging = _MockFirebaseMessaging();
+        final tokenRefresh = StreamController<String>.broadcast();
+        var osStatus = AuthorizationStatus.authorized;
+        final provider = _serviceProvider(
+          messaging: messaging,
+          firestore: FakeFirebaseFirestore(),
+          currentUserId: () => 'uid-1',
+          tokenRefresh: tokenRefresh.stream,
+          notificationSettings: () async => _settings(osStatus),
+        );
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        addTearDown(tokenRefresh.close);
+
+        when(
+          () => messaging.requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+          ),
+        ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+        when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+        final service = container.read(provider);
+        await service.initialize();
+        expect(
+          container.read(notificationStatusProvider),
+          NotificationStatus.enabled,
+        );
+
+        // User revokes the permission in OS Settings, then returns to the app.
+        osStatus = AuthorizationStatus.denied;
+        service.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          container.read(notificationStatusProvider),
+          NotificationStatus.permissionDenied,
+        );
+      },
+    );
+
+    test(
+      'granting in OS Settings after an in-app denial recovers on resume and '
+      'saves a token (no confident-ON-with-no-token)',
+      () async {
+        final db = FakeFirebaseFirestore();
+        final messaging = _MockFirebaseMessaging();
+        final tokenRefresh = StreamController<String>.broadcast();
+        var osStatus = AuthorizationStatus.denied;
+        final provider = _serviceProvider(
+          messaging: messaging,
+          firestore: db,
+          currentUserId: () => 'uid-1',
+          tokenRefresh: tokenRefresh.stream,
+          notificationSettings: () async => _settings(osStatus),
+        );
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        addTearDown(tokenRefresh.close);
+
+        // requestPermission mirrors the live OS state: denied at first, then
+        // authorized once the user grants it in Settings (no UI is shown when
+        // already granted).
+        when(
+          () => messaging.requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+          ),
+        ).thenAnswer((_) async => _settings(osStatus));
+        when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+        final service = container.read(provider);
+        await service.initialize();
+        expect(
+          container.read(notificationStatusProvider),
+          NotificationStatus.permissionDenied,
+        );
+        expect(
+          (await db.collection('fcm_tokens').doc('uid-1').get()).exists,
+          isFalse,
+          reason: 'no token while permission is denied',
+        );
+
+        // User grants in OS Settings and returns to the app.
+        osStatus = AuthorizationStatus.authorized;
+        service.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          container.read(notificationStatusProvider),
+          NotificationStatus.enabled,
+        );
+        expect(
+          (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['token'],
+          'token-1',
+          reason: 'resume recovery must actually save a token',
+        );
+      },
+    );
+  });
 }
 
 Provider<NotificationService> _serviceProvider({
@@ -352,6 +531,7 @@ Provider<NotificationService> _serviceProvider({
   LocalNotifier? localNotifier,
   void Function(String location)? onNavigate,
   Future<RemoteMessage?> Function()? initialMessage,
+  Future<NotificationSettings> Function()? notificationSettings,
 }) {
   return Provider((ref) {
     final service = NotificationService(
@@ -369,6 +549,7 @@ Provider<NotificationService> _serviceProvider({
       // Default: no cold-start message. Avoids hitting the unstubbed mock's
       // getInitialMessage in tests that don't exercise cold-start routing.
       initialMessage: initialMessage ?? () async => null,
+      notificationSettings: notificationSettings,
     );
     ref.onDispose(() => unawaited(service.dispose()));
     return service;

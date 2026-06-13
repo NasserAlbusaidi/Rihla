@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_email_link_bootstrap_provider.dart';
+import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/recovery_outcome_notice_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
@@ -37,5 +39,45 @@ final appBootstrapProvider = Provider<void>((ref) {
       unawaited(syncNotifications());
     },
     fireImmediately: true,
+  );
+
+  // #480: re-register the FCM token when an anonymous session links a durable
+  // credential IN PLACE (same uid) — Settings "Link Google", the home backup
+  // nudge, or email-link completion. Those paths neither flip
+  // `pushNotificationsEnabled` (so the listener above never re-fires) nor
+  // restart the app (so no cold boot re-runs bootstrap), and only the
+  // join/create gate re-saved the token. Without this, a push-enabled user who
+  // upgrades by any other path keeps a confident-ON toggle that delivers
+  // nothing — `_saveToken` skips while anonymous (#441) and nothing re-invokes
+  // it after the link. A uid SWAP (recovery restore) is intentionally excluded:
+  // that path restarts and re-runs this provider on its own.
+  ref.listen<AsyncValue<User?>>(authUserChangesProvider, (previous, next) {
+    final before = previous?.valueOrNull;
+    final after = next.valueOrNull;
+    final upgradedInPlace = before != null &&
+        before.isAnonymous &&
+        after != null &&
+        !after.isAnonymous &&
+        before.uid == after.uid;
+    if (!upgradedInPlace) return;
+    if (ref.read(settingsProvider).pushNotificationsEnabled) {
+      unawaited(ref.read(notificationServiceProvider).initialize());
+    }
+  });
+
+  // #483: re-save the token's stored `locale` when the app language changes, so
+  // server-rendered push copy (localized from `fcm_tokens/{uid}.locale`) follows
+  // the switch instead of staying frozen at the language present when the token
+  // was first written. `refreshTokenLocale` no-ops while push is off /
+  // uninitialized and stays a silent skip for anonymous shells, so this only
+  // writes for a push-enabled durable user.
+  ref.listen<String>(
+    settingsProvider.select((value) => value.languageCode),
+    (previous, next) {
+      if (previous == null || previous == next) return;
+      if (ref.read(settingsProvider).pushNotificationsEnabled) {
+        unawaited(ref.read(notificationServiceProvider).refreshTokenLocale());
+      }
+    },
   );
 });
