@@ -328,6 +328,7 @@ class _JoinGroupTopBar extends StatelessWidget {
                 icon: Directionality.of(context) == TextDirection.rtl
                     ? Iconsax.arrow_right
                     : Iconsax.arrow_left,
+                tooltip: context.l10n.commonBack,
                 onTap: onClose,
               ),
             ),

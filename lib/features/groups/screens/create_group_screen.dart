@@ -329,6 +329,7 @@ class _CreateGroupTopBar extends StatelessWidget {
               child: RIconButton(
                 variant: RIconButtonVariant.ghost,
                 icon: Iconsax.close_square,
+                tooltip: context.l10n.commonClose,
                 onTap: onClose,
               ),
             ),
