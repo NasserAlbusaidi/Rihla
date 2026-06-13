@@ -10,6 +10,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/r_avatar.dart';
 
 export '../../../core/models/split_mode.dart' show SplitMode;
 
@@ -483,7 +484,9 @@ class _ModeSegmented extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
+                  padding: EdgeInsets.symmetric(
+                    vertical: context.spacing.space8,
+                  ),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: m == mode ? colors.cardSurface : Colors.transparent,
@@ -616,7 +619,7 @@ class _ParticipantRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _Avatar(name: participant.name),
+          RAvatar(name: participant.name, size: 32),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Column(
@@ -788,7 +791,10 @@ class _EqualReadout extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Container(
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: context.spacing.space4),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.space8,
+            vertical: context.spacing.space4,
+          ),
           decoration: BoxDecoration(
             border: Border.all(color: colors.rule2),
             borderRadius: BorderRadius.circular(8),
@@ -1092,34 +1098,5 @@ class _StatusPill extends StatelessWidget {
         final sign = r > Decimal.zero ? '−' : '+';
         return ('$sign${r.abs().toString()} %', colors.error as Color);
     }
-  }
-}
-
-// ───────────────────────────────────────────────────────────────── avatar
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.name});
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: colors.selectionFill,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        name.isNotEmpty ? name[0].toUpperCase() : '·',
-        style: AppTypography.sans(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: colors.primary,
-        ),
-      ),
-    );
   }
 }

@@ -258,7 +258,8 @@ class _Content extends ConsumerWidget {
           }, childCount: events.length),
         );
       },
-      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      loading: () =>
+          SliverToBoxAdapter(child: SkeletonLoader.eventCard()),
       error: (_, _) => SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
