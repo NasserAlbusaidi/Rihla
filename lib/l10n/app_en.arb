@@ -762,6 +762,14 @@
       "amount": {}
     }
   },
+  "editorCurrencyMismatch": "This expense is in {selected}, but this event mostly uses {dominant}.",
+  "@editorCurrencyMismatch": {
+    "description": "Soft, non-blocking warning shown in the add-expense form when the picked currency differs from the event's dominant (most-frequent) currency — a fat-finger guard, not a hard block (#382 PR-6). {selected} is the picked ISO code, {dominant} the event's most-used ISO code.",
+    "placeholders": {
+      "selected": {},
+      "dominant": {}
+    }
+  },
   "editorPickAtLeastTwoToSplit": "Pick at least two people to split.",
   "editorSplitEvenly": "Split evenly across {count, plural, =1{1 way} other{{count} ways}}.",
   "@editorSplitEvenly": {
@@ -890,6 +898,88 @@
     }
   },
   "settleUpEachPersonNet": "Each person's net",
+  "settleUpSettleAllWith": "Settle all with {name}",
+  "@settleUpSettleAllWith": {
+    "description": "Label on the #382 PR-5 stepped-settle card: records the user's debt with one counterparty across every currency bucket as a sequence of independent settlements. {name} is the counterparty's display name.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settleUpSettleAllWithCount": "{count, plural, =1{1 payment} other{{count} payments}}",
+  "@settleUpSettleAllWithCount": {
+    "description": "Caption under the #382 PR-5 stepped-settle card showing how many separate per-currency payments the stepped walk will record.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settleUpStepIndicator": "{current} of {total}",
+  "@settleUpStepIndicator": {
+    "description": "Overline on the record-payment sheet during a #382 PR-5 stepped multi-currency walk, e.g. '1 of 2'. {current} is the 1-based step number, {total} the bucket count.",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "settleUpSteppedRecordedAll": "{count, plural, =1{Recorded 1 payment.} other{Recorded {count} payments.}}",
+  "@settleUpSteppedRecordedAll": {
+    "description": "Single summary snackbar after a #382 PR-5 stepped multi-currency walk records EVERY per-currency payment while online. {count} is the number of payments recorded.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settleUpSteppedRecordedAllWillSync": "{count, plural, =1{Recorded 1 payment — will sync when online.} other{Recorded {count} payments — will sync when online.}}",
+  "@settleUpSteppedRecordedAllWillSync": {
+    "description": "Single summary snackbar after a #382 PR-5 stepped walk records every per-currency payment while offline (queued for replay). {count} is the number of payments recorded.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settleUpSteppedRecordedPartial": "Recorded {recorded} of {total} payments.",
+  "@settleUpSteppedRecordedPartial": {
+    "description": "Single summary snackbar after a #382 PR-5 stepped walk stops early (cancelled or failed) having recorded only some of the per-currency payments. {recorded} is how many succeeded, {total} the planned count.",
+    "placeholders": {
+      "recorded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "settleUpSteppedRecordedPartialWillSync": "Recorded {recorded} of {total} payments — will sync when online.",
+  "@settleUpSteppedRecordedPartialWillSync": {
+    "description": "Single summary snackbar after a #382 PR-5 stepped walk stops early having queued (offline) only some of the per-currency payments. {recorded} is how many were recorded, {total} the planned count.",
+    "placeholders": {
+      "recorded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "currencyExplainerTitle": "Each currency settles separately",
+  "@currencyExplainerTitle": {
+    "description": "Title of the one-time settle-up explainer (#382 PR-5) shown when a group has balances in two or more currencies, explaining why currencies never net against each other."
+  },
+  "currencyExplainerBody": "We never invent exchange rates, so OMR can't cancel out AED. You'll record one payment per currency.",
+  "@currencyExplainerBody": {
+    "description": "Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): no rates are invented, one currency can't cancel another, one payment per currency."
+  },
+  "currencyExplainerGotIt": "Got it",
+  "@currencyExplainerGotIt": {
+    "description": "Dismiss button on the one-time settle-up currencies-don't-net explainer (#382 PR-5); tapping it hides the card for good."
+  },
   "settleUpPaymentHistory": "Payment history",
   "settleUpUnknown": "Unknown",
   "settleUpPaidConnector": "paid",

@@ -388,7 +388,9 @@ class _ActivityRow extends StatelessWidget {
                     if (amount != null)
                       RAmount(
                         value: amount,
-                        currency: entry.currency,
+                        // #382 PR-4: stamped settlement currency wins; legacy
+                        // rows fall back to the entry's group currency.
+                        currency: activityAmountCurrency(log, entry.currency),
                         size: 14,
                       )
                     else

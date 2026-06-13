@@ -426,6 +426,9 @@ class _ActivityRow extends StatelessWidget {
     final colors = context.colors;
     final amountRaw = log.metadata['amount'];
     final amount = _coerceAmount(amountRaw);
+    // #382 PR-4: settlements stamped with a bucket currency render in it;
+    // legacy rows fall back to the group currency threaded in by the screen.
+    final rowCurrency = activityAmountCurrency(log, currency);
     final isSettlement = log.type == 'group_settlement';
     final description = localizedGroupActivityText(context.l10n, log);
 
@@ -474,16 +477,19 @@ class _ActivityRow extends StatelessWidget {
                   if (amount != null) ...[
                     RAmount(
                       value: amount,
-                      currency: currency,
+                      currency: rowCurrency,
                       size: 14,
-                      showCurrency: false,
+                      // Label only foreign amounts; the group's own currency
+                      // stays bare (the expense_audit_detail !sameCurrency
+                      // idiom).
+                      showCurrency: rowCurrency != currency,
                     ),
                     const SizedBox(height: 2),
                   ],
                   if (isSettlement && amount != null)
                     RAmount(
                       value: amount,
-                      currency: currency,
+                      currency: rowCurrency,
                       size: 11,
                       sign: true,
                       tone: AmountTone.sage,

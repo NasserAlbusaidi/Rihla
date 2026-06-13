@@ -17,6 +17,7 @@ import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_activity_screen.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
 
 // ---------------------------------------------------------------------------
 // Test fixture data
@@ -521,5 +522,56 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+
+  group('per-log settlement currency (#382 PR-4)', () {
+    testWidgets(
+      'prefers metadata.currency for the amount and labels a foreign one',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final prefs = await SharedPreferences.getInstance();
+        await _seedActivities(fakeDb, 'grp-1', [
+          GroupActivityLog(
+            id: 'act-usd',
+            type: 'group_settlement',
+            actorId: 'uid-alice',
+            actorName: 'Alice',
+            description: 'paid Bob',
+            metadata: const {'amount': '12.50', 'currency': 'USD'},
+            timestamp: _atMidday(0),
+          ),
+          GroupActivityLog(
+            id: 'act-legacy',
+            type: 'group_settlement',
+            actorId: 'uid-bob',
+            actorName: 'Bob',
+            description: 'paid Alice',
+            metadata: const {'amount': '7.750'},
+            timestamp: _atMidday(-1),
+          ),
+        ]);
+
+        await tester.pumpWidget(
+          _buildActivityScreen(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
+        );
+        await tester.pumpAndSettle();
+
+        final amounts = tester
+            .widgetList<RAmount>(find.byType(RAmount))
+            .toList();
+        // Two settlement rows, each a 14px main + 11px sage amount.
+        expect(amounts, hasLength(4));
+
+        final usd = amounts.where((a) => a.currency == 'USD').toList();
+        final omr = amounts.where((a) => a.currency == 'OMR').toList();
+        expect(usd, hasLength(2)); // stamped row renders at its own currency
+        expect(omr, hasLength(2)); // legacy row falls back to group currency
+
+        // Foreign currency gets labeled on the main amount; the group
+        // currency stays bare (pre-PR-4 appearance preserved).
+        expect(usd.where((a) => a.showCurrency).length, 1);
+        expect(omr.where((a) => a.showCurrency).length, 0);
+      },
+    );
   });
 }

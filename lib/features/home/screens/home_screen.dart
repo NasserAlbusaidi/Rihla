@@ -647,21 +647,28 @@ class _GroupRow extends ConsumerWidget {
     // #104 once-path otherwise. The facade slices by the current uid itself.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
     final homeBalance = balanceAsync.valueOrNull;
-    // One amount per row until #382 PR-5: the GCC-first non-zero bucket,
-    // labeled with its own currency (honest — D11). Settled ⇔ every bucket
-    // zero or the map is empty (D10), which is exactly when sel.net is zero.
-    final sel = selectNetBucket(
+    // Every non-zero bucket renders as its own line, GCC-first, each labeled
+    // with its own currency (honest — D11). Settled ⇔ every bucket zero or
+    // the map is empty (D10).
+    final lines = nonZeroNetsGccFirst(
       homeBalance?.userNet ?? const <String, Decimal>{},
-      fallbackCurrency: group.currency,
     );
     final eventCount = homeBalance?.eventCount ?? 0;
     final memberCount = group.memberIds.length;
     final subtitle = context.l10n.homeGroupSubtitle(memberCount, eventCount);
-    final balanceCaption = sel.net > Decimal.zero
+    final allPositive =
+        lines.isNotEmpty && lines.every((l) => l.net > Decimal.zero);
+    final allNegative =
+        lines.isNotEmpty && lines.every((l) => l.net < Decimal.zero);
+    // L7: tri-state caption only when all non-zero lines share one sign;
+    // mixed signs → omitted (signed, toned amounts self-explain).
+    final String? balanceCaption = lines.isEmpty
+        ? context.l10n.homeSettled
+        : allPositive
         ? context.l10n.homeTheyOweYou
-        : sel.net < Decimal.zero
+        : allNegative
         ? context.l10n.homeYouOwe
-        : context.l10n.homeSettled;
+        : null;
 
     return InkWell(
       onTap: onTap,
@@ -706,20 +713,35 @@ class _GroupRow extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    RAmount(
-                      value: sel.net,
-                      currency: sel.currency,
-                      size: 16,
-                      sign: !sel.net.isZero,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      balanceCaption,
-                      style: AppTypography.sans(
-                        fontSize: 11,
-                        color: colors.textSecondary,
+                    if (lines.isEmpty)
+                      RAmount(
+                        value: Decimal.zero,
+                        currency: group.currency,
+                        size: 16,
+                      )
+                    else
+                      for (var i = 0; i < lines.length; i++)
+                        Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            top: i == 0 ? 0 : 2,
+                          ),
+                          child: RAmount(
+                            value: lines[i].net,
+                            currency: lines[i].currency,
+                            size: lines.length == 1 ? 16 : 14,
+                            sign: true,
+                          ),
+                        ),
+                    if (balanceCaption != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        balanceCaption,
+                        style: AppTypography.sans(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],
@@ -733,8 +755,4 @@ class _GroupRow extends ConsumerWidget {
       ),
     );
   }
-}
-
-extension on Decimal {
-  bool get isZero => this == Decimal.zero;
 }

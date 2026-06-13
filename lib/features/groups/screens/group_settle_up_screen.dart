@@ -180,6 +180,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           balancesData,
                           eventNameMap,
                         ),
+                    onRecordStepped: (steps) =>
+                        _runSteppedSettle(context, group: group, steps: steps),
                   );
 
                   if (failedEventIds.isEmpty) return body;
@@ -328,7 +330,87 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     return '$name — $date';
   }
 
-  Future<void> _showRecordPaymentSheet(
+  /// Walks a stepped multi-currency settlement (#382 PR-5 D2): one record sheet
+  /// per [steps] bucket, each its own independent append-only write. Per-step
+  /// success snackbars are suppressed; ONE final summary snackbar reports the
+  /// outcome (L4). Any cancel/validation-reject/write-error STOPS the walk —
+  /// steps already recorded stay (append-only); re-entry recomputes the
+  /// remaining buckets from live streams (L3/L5). No `ledgerRevision` bump —
+  /// group settlements are live-watched (L6), unlike the event walk.
+  Future<void> _runSteppedSettle(
+    BuildContext context, {
+    required Group group,
+    required List<SettleStepRequest> steps,
+  }) async {
+    if (steps.isEmpty) return;
+    // #104/#412: capture the connectivity notifier ONCE before the loop so the
+    // per-step post-write effects survive a disposal mid-walk (the screen could
+    // rebuild between steps). The walk dies with the screen, so a captured list
+    // is never re-run after death (L5).
+    final connectivity = ref.read(connectivityProvider.notifier);
+    // Capture context-derived handles ONCE before the loop's awaits (same
+    // #104/#412 discipline): the final summary snackbar uses them after the
+    // walk without re-reading a possibly-disposed context.
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final successColor = context.colors.success;
+
+    var recorded = 0;
+    var anyQueued = false;
+    for (var i = 0; i < steps.length; i++) {
+      final step = steps[i];
+      final outcome = await _showRecordPaymentSheet(
+        context,
+        group: group,
+        settlement: step.settlement,
+        fromRawName: step.fromRawName,
+        toRawName: step.toRawName,
+        fromUserId: step.fromUserId,
+        toUserId: step.toUserId,
+        suggestedAmount: step.suggestedAmount,
+        currency: step.currency,
+        stepLabel: l10n.settleUpStepIndicator(i + 1, steps.length),
+        showSuccessSnackbar: false,
+        connectivity: connectivity,
+      );
+      if (outcome.kind != _StepOutcomeKind.recorded) break; // L3: stop the walk
+      recorded++;
+      if (outcome.ack == WriteAck.queued) anyQueued = true;
+    }
+
+    if (recorded == 0) return; // cancel at step 1 → no final snackbar
+    final allRecorded = recorded == steps.length;
+    final message = allRecorded
+        ? (anyQueued
+              ? l10n.settleUpSteppedRecordedAllWillSync(recorded)
+              : l10n.settleUpSteppedRecordedAll(recorded))
+        : (anyQueued
+              ? l10n.settleUpSteppedRecordedPartialWillSync(
+                  recorded,
+                  steps.length,
+                )
+              : l10n.settleUpSteppedRecordedPartial(recorded, steps.length));
+    if (context.mounted) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: successColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Drives one record sheet → validate → write. Returns the per-step
+  /// [_StepOutcome] so the stepped walk can decide whether to continue (L3).
+  /// On the single-tile path [stepLabel] is null and [showSuccessSnackbar] is
+  /// true — byte-identical to the pre-walk behavior. During a walk the caller
+  /// passes the captured [connectivity] notifier; the tile path leaves it null
+  /// and it is read here.
+  Future<_StepOutcome> _showRecordPaymentSheet(
     BuildContext context, {
     required Group group,
     required Map<String, dynamic> settlement,
@@ -341,6 +423,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // write must carry it (== group.currency for all prod data; a foreign
     // legacy/forged bucket is rules-refused, the correct outcome until PR-6).
     required String currency,
+    String? stepLabel,
+    bool showSuccessSnackbar = true,
+    ConnectivityNotifier? connectivity,
   }) async {
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
@@ -354,9 +439,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       toName: toDisplayName,
       suggestedAmount: suggestedAmount,
       isReceiving: isReceiving,
+      stepLabel: stepLabel,
     );
 
-    if (!context.mounted || result == null) return;
+    if (!context.mounted || result == null) {
+      return const _StepOutcome(_StepOutcomeKind.cancelled);
+    }
 
     final editedAmount =
         Decimal.tryParse(normalizeLocalizedDecimalInput(result.amount)) ??
@@ -364,31 +452,27 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final noteText = result.note.isEmpty ? null : result.note;
 
     if (editedAmount <= Decimal.zero) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.settleUpAmountGreaterThanZero),
-          ),
-        );
-      }
-      return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.settleUpAmountGreaterThanZero),
+        ),
+      );
+      return const _StepOutcome(_StepOutcomeKind.invalid);
     }
     if (editedAmount > suggestedAmount) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.l10n.settleUpAmountExceedsOutstanding(
-                AppFormatters.formatCurrency(suggestedAmount, currency),
-              ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.settleUpAmountExceedsOutstanding(
+              AppFormatters.formatCurrency(suggestedAmount, currency),
             ),
           ),
-        );
-      }
-      return;
+        ),
+      );
+      return const _StepOutcome(_StepOutcomeKind.invalid);
     }
 
-    await _recordSettlement(
+    return _recordSettlement(
       context,
       group: group,
       fromUserId: fromUserId,
@@ -398,10 +482,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       amount: editedAmount,
       note: noteText,
       currency: currency,
+      showSuccessSnackbar: showSuccessSnackbar,
+      connectivity: connectivity,
     );
   }
 
-  Future<void> _recordSettlement(
+  Future<_StepOutcome> _recordSettlement(
     BuildContext context, {
     required Group group,
     required String fromUserId,
@@ -411,6 +497,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     required Decimal amount,
     required String currency,
     String? note,
+    bool showSuccessSnackbar = true,
+    ConnectivityNotifier? connectivity,
   }) async {
     try {
       String? actorName;
@@ -434,10 +522,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         );
       }
 
-      // #412: capture before the await so post-write effects survive a
+      // #104/#412: capture before the await so post-write effects survive a
       // disposal during the (now bounded) wait. NO ledgerRevision bump here —
-      // group settlements are live-watched (groupSettlementsProvider).
-      final connectivity = ref.read(connectivityProvider.notifier);
+      // group settlements are live-watched (groupSettlementsProvider) (L6). The
+      // stepped walk passes the notifier it captured once before its loop; the
+      // single-tile path reads it here.
+      final ConnectivityNotifier connectivityNotifier =
+          connectivity ?? ref.read(connectivityProvider.notifier);
       final connectivityStatus = ref.read(connectivityProvider);
 
       // #412: never gate the UI on the raw server-ack future — offline it
@@ -460,9 +551,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       );
 
       if (outcome == WriteAck.acked) {
-        connectivity.noteLocalWrite(); // #357
+        connectivityNotifier.noteLocalWrite(); // #357
       } else {
-        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+        connectivityNotifier.noteQueuedWrite(); // #412: queued — force "will sync"
       }
 
       // #282: name the OTHER party relative to the actor. When the creditor
@@ -478,10 +569,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             actorName: actorName,
             description:
                 'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-            metadata: {'amount': amount.toString(), 'recipientId': toUserId},
+            metadata: {
+              'amount': amount.toString(),
+              'recipientId': toUserId,
+              'currency': currency,
+            },
           );
 
-      if (context.mounted) {
+      if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -497,7 +592,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           ),
         );
       }
+      return _StepOutcome(_StepOutcomeKind.recorded, ack: outcome);
     } catch (e) {
+      // L4: per-step ERROR snackbar stays loud even during a walk; the walk
+      // then stops (the caller breaks on a non-recorded outcome).
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -515,8 +613,20 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           ),
         );
       }
+      return const _StepOutcome(_StepOutcomeKind.failed);
     }
   }
+}
+
+/// Outcome of one stepped-settle step (#382 PR-5). Only [recorded] carries the
+/// queued/acked [ack]; the walk continues only on [recorded] (L3).
+enum _StepOutcomeKind { recorded, cancelled, invalid, failed }
+
+class _StepOutcome {
+  const _StepOutcome(this.kind, {this.ack});
+
+  final _StepOutcomeKind kind;
+  final WriteAck? ack;
 }
 
 class _SettlementTopBar extends StatelessWidget {

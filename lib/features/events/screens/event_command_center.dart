@@ -82,10 +82,6 @@ class EventCommandCenter extends ConsumerWidget {
             groupId: groupId,
             eventId: eventId,
             groupName: group?.name,
-            // Null while the group doc loads — bucket selection then falls
-            // back to the sole bucket (#382 PR-1), which is more honest than
-            // the old transient 'OMR' formatting for a non-OMR group.
-            currency: group?.currency,
           );
         },
       ),
@@ -101,14 +97,12 @@ class _Content extends ConsumerWidget {
     required this.groupId,
     required this.eventId,
     required this.groupName,
-    required this.currency,
   });
 
   final Event event;
   final String groupId;
   final String eventId;
   final String? groupName;
-  final String? currency;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -122,14 +116,11 @@ class _Content extends ConsumerWidget {
         ref.watch(groupMembersProvider(groupId)).valueOrNull ?? [];
 
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
-    // #382 PR-1: hero/breakdown/roster stay single-currency until PR-5 —
-    // select the group's currency bucket (sole bucket while the group doc
-    // loads). The summary strip below renders ALL per-currency totals.
+    // #382 PR-5: hero lines, breakdown rows, and roster dots walk EVERY
+    // currency bucket — currencies never net against each other, so each
+    // bucket renders its own lines and "settled" means settled in all of them.
     final buckets =
         balancesAsync.valueOrNull ?? const <String, List<UserBalance>>{};
-    final selected = selectCurrencyBucket(buckets, currency);
-    final balances = selected.balances;
-    final displayCurrency = selected.currency;
     // #289: distinguish same-named LIVE members across the hub (roster,
     // breakdown, recent rows) while still labelling departed ones.
     final participantDisplayNames = MemberNameResolver.disambiguateEventScoped(
@@ -139,19 +130,20 @@ class _Content extends ConsumerWidget {
 
     final totals = BalanceCalculator.calculateTotalExpensesByCurrency(expenses);
 
-    final UserBalance? userBalance = currentUid == null
-        ? null
-        : balances.where((b) => b.participantId == currentUid).firstOrNull;
+    final myLines = nonZeroNetsGccFirst(myNetByCurrency(buckets, currentUid));
 
     final state = _resolveState(
       hasExpenses: expenses.isNotEmpty,
-      userBalance: userBalance,
+      lines: myLines,
     );
 
-    final breakdown = (state == _HubState.youOwed || state == _HubState.youOwe)
+    final breakdown =
+        (state == _HubState.youOwed ||
+            state == _HubState.youOwe ||
+            state == _HubState.mixed)
         ? _breakdownFor(
             currentUid!,
-            balances,
+            buckets,
             participantDisplayNames,
             context.l10n.activitySomeone,
           )
@@ -177,9 +169,8 @@ class _Content extends ConsumerWidget {
           sliver: SliverToBoxAdapter(
             child: _BalanceHero(
               state: state,
-              amount: userBalance?.netBalance.abs(),
+              lines: myLines,
               breakdown: breakdown,
-              currency: displayCurrency,
               onAddExpense: () {
                 HapticService.lightClick();
                 GoRouter.of(
@@ -245,7 +236,7 @@ class _Content extends ConsumerWidget {
             child: _RosterStrip(
               event: event,
               participantDisplayNames: participantDisplayNames,
-              balances: balances,
+              buckets: buckets,
               currentUid: currentUid,
               isEmpty: state == _HubState.empty,
               onPersonTap: (uid) {
@@ -265,15 +256,23 @@ class _Content extends ConsumerWidget {
 
 // ──────────────────────────── State machine
 
-enum _HubState { empty, settled, youOwed, youOwe }
+enum _HubState { empty, settled, youOwed, youOwe, mixed }
 
+/// Settled ⇔ EVERY currency bucket nets exactly zero. Deliberate threshold
+/// change (#382 PR-5, L13): this replaces `UserBalance.isSettled`'s 0.001
+/// tolerance with the helpers' exact-zero predicate — the hub's settled gate
+/// TIGHTENS, so a sub-tolerance residual renders instead of silently reading
+/// as settled (the calculator closes remainders, so one shouldn't exist).
+/// Mixed signs across buckets have no honest single overline → [_HubState.mixed].
 _HubState _resolveState({
   required bool hasExpenses,
-  required UserBalance? userBalance,
+  required List<({String currency, Decimal net})> lines,
 }) {
   if (!hasExpenses) return _HubState.empty;
-  if (userBalance == null || userBalance.isSettled) return _HubState.settled;
-  return userBalance.isOwedMoney ? _HubState.youOwed : _HubState.youOwe;
+  if (lines.isEmpty) return _HubState.settled;
+  if (lines.every((l) => l.net > Decimal.zero)) return _HubState.youOwed;
+  if (lines.every((l) => l.net < Decimal.zero)) return _HubState.youOwe;
+  return _HubState.mixed;
 }
 
 class _BreakdownEntry {
@@ -281,45 +280,58 @@ class _BreakdownEntry {
     required this.otherUid,
     required this.otherName,
     required this.amount,
+    required this.currency,
+    required this.isOwed,
   });
 
   final String otherUid;
   final String otherName;
   final Decimal amount;
+  final String currency;
+  final bool isOwed;
 }
 
 List<_BreakdownEntry> _breakdownFor(
   String currentUid,
-  List<UserBalance> balances,
+  Map<String, List<UserBalance>> buckets,
   Map<String, String> names,
   String fallbackName,
 ) {
-  final settlements = BalanceCalculator.calculateOptimalSettlements(
-    balances: balances,
-    userNames: names,
-  );
   final entries = <_BreakdownEntry>[];
-  for (final s in settlements) {
-    final from = s['fromUserId'] as String;
-    final to = s['toUserId'] as String;
-    final amount = s['amount'] as Decimal;
-    if (to == currentUid) {
-      entries.add(
-        _BreakdownEntry(
-          otherUid: from,
-          otherName:
-              (s['fromUserName'] as String?) ?? names[from] ?? fallbackName,
-          amount: amount,
-        ),
-      );
-    } else if (from == currentUid) {
-      entries.add(
-        _BreakdownEntry(
-          otherUid: to,
-          otherName: (s['toUserName'] as String?) ?? names[to] ?? fallbackName,
-          amount: amount,
-        ),
-      );
+  // #382 PR-5: one optimizer pass per currency bucket, rows merged GCC-first —
+  // currencies never net, so each bucket suggests its own transfers.
+  for (final currency in sortedGccFirst(buckets.keys)) {
+    final settlements = BalanceCalculator.calculateOptimalSettlements(
+      balances: buckets[currency]!,
+      userNames: names,
+    );
+    for (final s in settlements) {
+      final from = s['fromUserId'] as String;
+      final to = s['toUserId'] as String;
+      final amount = s['amount'] as Decimal;
+      if (to == currentUid) {
+        entries.add(
+          _BreakdownEntry(
+            otherUid: from,
+            otherName:
+                (s['fromUserName'] as String?) ?? names[from] ?? fallbackName,
+            amount: amount,
+            currency: currency,
+            isOwed: true,
+          ),
+        );
+      } else if (from == currentUid) {
+        entries.add(
+          _BreakdownEntry(
+            otherUid: to,
+            otherName:
+                (s['toUserName'] as String?) ?? names[to] ?? fallbackName,
+            amount: amount,
+            currency: currency,
+            isOwed: false,
+          ),
+        );
+      }
     }
   }
   return entries;
@@ -330,17 +342,15 @@ List<_BreakdownEntry> _breakdownFor(
 class _BalanceHero extends StatelessWidget {
   const _BalanceHero({
     required this.state,
-    required this.amount,
+    required this.lines,
     required this.breakdown,
-    required this.currency,
     required this.onAddExpense,
     required this.onSettleWith,
   });
 
   final _HubState state;
-  final Decimal? amount;
+  final List<({String currency, Decimal net})> lines;
   final List<_BreakdownEntry> breakdown;
-  final String currency;
   final VoidCallback onAddExpense;
   final void Function(String otherUid) onSettleWith;
 
@@ -359,12 +369,13 @@ class _BalanceHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (state == _HubState.youOwed || state == _HubState.youOwe)
+          if (state == _HubState.youOwed ||
+              state == _HubState.youOwe ||
+              state == _HubState.mixed)
             _BalanceWithBreakdown(
-              isOwed: state == _HubState.youOwed,
-              amount: amount!,
+              state: state,
+              lines: lines,
               breakdown: breakdown,
-              currency: currency,
               onSettleWith: onSettleWith,
             )
           else
@@ -399,27 +410,28 @@ class _BalanceHero extends StatelessWidget {
 
 class _BalanceWithBreakdown extends StatelessWidget {
   const _BalanceWithBreakdown({
-    required this.isOwed,
-    required this.amount,
+    required this.state,
+    required this.lines,
     required this.breakdown,
-    required this.currency,
     required this.onSettleWith,
   });
 
-  final bool isOwed;
-  final Decimal amount;
+  final _HubState state;
+  final List<({String currency, Decimal net})> lines;
   final List<_BreakdownEntry> breakdown;
-  final String currency;
   final void Function(String otherUid) onSettleWith;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final accent = isOwed ? colors.success : colors.error;
+    final isOwed = state == _HubState.youOwed;
+    final isUniform = state != _HubState.mixed;
+    // L7: the tri-state overline/accent only has an honest answer when every
+    // line shares one sign; mixed → per-line tones self-explain.
+    final accent = isUniform
+        ? (isOwed ? colors.success : colors.error)
+        : null;
     final accentText = isOwed ? colors.successText : colors.errorText;
-    final overlineLabel = isOwed
-        ? context.l10n.eventYouAreOwed
-        : context.l10n.eventYouOwe;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -427,26 +439,65 @@ class _BalanceWithBreakdown extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _Overline(label: overlineLabel, color: accentText),
+            if (isUniform)
+              _Overline(
+                label: isOwed
+                    ? context.l10n.eventYouAreOwed
+                    : context.l10n.eventYouOwe,
+                color: accentText,
+              ),
             _Overline(label: context.l10n.eventYourBalance),
           ],
         ),
         SizedBox(height: context.spacing.space8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            RAmount(
-              value: amount,
-              currency: currency,
-              size: 40,
-              weight: FontWeight.w800,
-              sign: true,
-              tone: isOwed ? AmountTone.sage : AmountTone.rust,
-            ),
-            const Spacer(),
-            Container(width: 56, height: 2, color: accent),
-          ],
-        ),
+        if (lines.length == 1)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              RAmount(
+                value: lines.first.net.abs(),
+                currency: lines.first.currency,
+                size: 40,
+                weight: FontWeight.w800,
+                sign: true,
+                tone: isOwed ? AmountTone.sage : AmountTone.rust,
+              ),
+              const Spacer(),
+              if (accent != null)
+                Container(width: 56, height: 2, color: accent),
+            ],
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < lines.length; i++)
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(
+                          top: i == 0 ? 0 : 4,
+                        ),
+                        child: RAmount(
+                          value: lines[i].net,
+                          currency: lines[i].currency,
+                          size: 28,
+                          weight: FontWeight.w800,
+                          sign: true,
+                          tone: lines[i].net > Decimal.zero
+                              ? AmountTone.sage
+                              : AmountTone.rust,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (accent != null)
+                Container(width: 56, height: 2, color: accent),
+            ],
+          ),
         if (breakdown.isNotEmpty) ...[
           const SizedBox(height: 14),
           Container(
@@ -459,8 +510,6 @@ class _BalanceWithBreakdown extends StatelessWidget {
                 for (final entry in breakdown)
                   _BreakdownRow(
                     entry: entry,
-                    isOwed: isOwed,
-                    currency: currency,
                     onTap: () => onSettleWith(entry.otherUid),
                   ),
               ],
@@ -518,22 +567,15 @@ class _BalanceQuiet extends StatelessWidget {
 }
 
 class _BreakdownRow extends StatelessWidget {
-  const _BreakdownRow({
-    required this.entry,
-    required this.isOwed,
-    required this.currency,
-    required this.onTap,
-  });
+  const _BreakdownRow({required this.entry, required this.onTap});
 
   final _BreakdownEntry entry;
-  final bool isOwed;
-  final String currency;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final verb = isOwed
+    final verb = entry.isOwed
         ? context.l10n.eventBreakdownOwesYou
         : context.l10n.eventBreakdownYouOwe;
     // #289: keep the ` (#…)` discriminator alive through the first-name collapse.
@@ -572,10 +614,10 @@ class _BreakdownRow extends StatelessWidget {
               ),
               RAmount(
                 value: entry.amount,
-                currency: currency,
+                currency: entry.currency,
                 size: 14,
                 weight: FontWeight.w700,
-                tone: isOwed ? AmountTone.sage : AmountTone.rust,
+                tone: entry.isOwed ? AmountTone.sage : AmountTone.rust,
               ),
               const SizedBox(width: 2),
               Icon(
@@ -1032,7 +1074,7 @@ class _RosterStrip extends StatelessWidget {
   const _RosterStrip({
     required this.event,
     required this.participantDisplayNames,
-    required this.balances,
+    required this.buckets,
     required this.currentUid,
     required this.isEmpty,
     required this.onPersonTap,
@@ -1040,7 +1082,7 @@ class _RosterStrip extends StatelessWidget {
 
   final Event event;
   final Map<String, String> participantDisplayNames;
-  final List<UserBalance> balances;
+  final Map<String, List<UserBalance>> buckets;
   final String? currentUid;
   final bool isEmpty;
   final void Function(String uid) onPersonTap;
@@ -1049,7 +1091,6 @@ class _RosterStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final count = event.participantIds.length;
-    final balanceByUid = {for (final b in balances) b.participantId: b};
 
     final othersCount =
         currentUid != null && event.participantIds.contains(currentUid)
@@ -1098,11 +1139,16 @@ class _RosterStrip extends StatelessWidget {
               final isMe = uid == currentUid;
               final name =
                   participantDisplayNames[uid] ?? context.l10n.activitySomeone;
-              final balance = balanceByUid[uid];
+              // #382 PR-5: dot iff ANY bucket nets non-zero for this person;
+              // with several non-zero buckets the GCC-first one decides the
+              // color — deterministic, aligned with the hero's line order.
+              final lines = nonZeroNetsGccFirst(myNetByCurrency(buckets, uid));
               return _RosterPersonCard(
                 name: name,
                 isMe: isMe,
-                balance: balance,
+                dotOwed: lines.isEmpty
+                    ? null
+                    : lines.first.net > Decimal.zero,
                 showDot: !isMe && !isEmpty,
                 onTap: () => onPersonTap(uid),
               );
@@ -1118,14 +1164,17 @@ class _RosterPersonCard extends StatelessWidget {
   const _RosterPersonCard({
     required this.name,
     required this.isMe,
-    required this.balance,
+    required this.dotOwed,
     required this.showDot,
     required this.onTap,
   });
 
   final String name;
   final bool isMe;
-  final UserBalance? balance;
+
+  /// Direction of the person's GCC-first non-zero bucket: true = owed (sage),
+  /// false = owes (rust), null = settled in every bucket (no dot).
+  final bool? dotOwed;
   final bool showDot;
   final VoidCallback onTap;
 
@@ -1134,13 +1183,11 @@ class _RosterPersonCard extends StatelessWidget {
     final colors = context.colors;
     // #289: keep the ` (#…)` discriminator alive through the first-name collapse.
     final short = MemberNameResolver.compactDisambiguated(name);
-    final isOwed = balance != null && balance!.isOwedMoney;
-    final owes = balance != null && balance!.owesMoney;
-    final dotColor = isOwed
-        ? colors.success
-        : owes
-        ? colors.error
-        : null;
+    final dotColor = switch (dotOwed) {
+      true => colors.success,
+      false => colors.error,
+      null => null,
+    };
 
     return InkWell(
       onTap: onTap,

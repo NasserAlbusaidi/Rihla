@@ -20,6 +20,11 @@ class AppSettings {
   /// back up their anonymous account by linking an email. Gates that nudge to
   /// appear at most once so it stays a non-blocking prompt, never a nag (#285).
   final bool emailLinkNudgeSeen;
+
+  /// True once the user has dismissed the one-time settle-up explainer that
+  /// says each currency settles on its own (currencies never net). Gates that
+  /// inline card to appear at most once across the app's lifetime (#382 PR-5).
+  final bool currencyExplainerSeen;
   final bool weeklyDigestEnabled;
   final String deviceName;
   final bool onboardingComplete;
@@ -32,6 +37,7 @@ class AppSettings {
     this.pushNotificationsEnabled = false,
     this.notificationPromptSeen = false,
     this.emailLinkNudgeSeen = false,
+    this.currencyExplainerSeen = false,
     this.weeklyDigestEnabled = false,
     this.deviceName = '',
     this.onboardingComplete = false,
@@ -47,6 +53,7 @@ class AppSettings {
     bool? pushNotificationsEnabled,
     bool? notificationPromptSeen,
     bool? emailLinkNudgeSeen,
+    bool? currencyExplainerSeen,
     bool? weeklyDigestEnabled,
     String? deviceName,
     bool? onboardingComplete,
@@ -61,6 +68,8 @@ class AppSettings {
       notificationPromptSeen:
           notificationPromptSeen ?? this.notificationPromptSeen,
       emailLinkNudgeSeen: emailLinkNudgeSeen ?? this.emailLinkNudgeSeen,
+      currencyExplainerSeen:
+          currencyExplainerSeen ?? this.currencyExplainerSeen,
       weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
       deviceName: deviceName ?? this.deviceName,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,

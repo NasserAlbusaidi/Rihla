@@ -22,12 +22,12 @@ final appBootstrapProvider = Provider<void>((ref) {
       return;
     }
 
-    final enabled = await notificationService.initialize();
-    if (!enabled && ref.read(settingsProvider).pushNotificationsEnabled) {
-      await ref
-          .read(settingsProvider.notifier)
-          .setPushNotificationsEnabled(false);
-    }
+    // Attempt to engage the OS permission + token. The boolean result is
+    // intentionally ignored: `pushNotificationsEnabled` is the user's intent and
+    // must survive a denial (#470), while OS reality is reflected by
+    // `notificationStatusProvider` (set inside `initialize()`). Resetting the
+    // pref here overwrote the opt-in and made the Settings toggle a dead control.
+    await notificationService.initialize();
   }
 
   ref.listen<bool>(

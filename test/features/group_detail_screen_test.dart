@@ -118,6 +118,87 @@ final _balancesEmpty = (
   memberRawNames: <String, String>{},
 );
 
+/// Two-bucket GroupBalances: current user (uid-creator) nets [myOmrNet] in
+/// 'OMR' and [myUsdNet] in 'USD'; uid-member mirrors each (#382 PR-5).
+GroupBalances _twoBucketBalances({
+  required Decimal myOmrNet,
+  required Decimal myUsdNet,
+}) {
+  List<UserBalance> bucket(Decimal myNet) => [
+    UserBalance(
+      participantId: 'uid-creator',
+      displayName: 'Alice',
+      totalPaid: myNet > Decimal.zero ? myNet : Decimal.zero,
+      totalOwed: myNet < Decimal.zero ? -myNet : Decimal.zero,
+      netBalance: myNet,
+    ),
+    UserBalance(
+      participantId: 'uid-member',
+      displayName: 'Bob',
+      totalPaid: myNet < Decimal.zero ? -myNet : Decimal.zero,
+      totalOwed: myNet > Decimal.zero ? myNet : Decimal.zero,
+      netBalance: -myNet,
+    ),
+  ];
+  return (
+    balances: <String, List<UserBalance>>{
+      'OMR': bucket(myOmrNet),
+      'USD': bucket(myUsdNet),
+    },
+    totalSpent: <String, Decimal>{
+      'OMR': myOmrNet.abs(),
+      'USD': myUsdNet.abs(),
+    },
+    eventCount: 1,
+    perEventBreakdown: const <String, Map<String, Map<String, Decimal>>>{},
+    memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+    memberRawNames: <String, String>{},
+  );
+}
+
+/// Single-event group where the current user's per-event share is exactly
+/// [myShares] (currency → net) while the group-bucket balances stay 'OMR'
+/// (#382 PR-5).
+GroupBalances _eventShareBalances(Map<String, Decimal> myShares) => (
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      UserBalance(
+        participantId: 'uid-creator',
+        displayName: 'Alice',
+        totalPaid: Decimal.parse('30.000'),
+        totalOwed: Decimal.parse('15.000'),
+        netBalance: Decimal.parse('15.000'),
+      ),
+      UserBalance(
+        participantId: 'uid-member',
+        displayName: 'Bob',
+        totalPaid: Decimal.zero,
+        totalOwed: Decimal.parse('15.000'),
+        netBalance: Decimal.parse('-15.000'),
+      ),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.parse('30.000')},
+  eventCount: 1,
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+    'uid-creator': {'event-1': myShares},
+  },
+  memberNames: <String, String>{'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  memberRawNames: <String, String>{},
+);
+
+final _testEvent = Event(
+  id: 'event-1',
+  groupId: _groupId,
+  name: 'Beach Trip',
+  type: EventType.trip,
+  createdAt: DateTime(2026, 1, 10),
+  participantIds: const ['uid-creator', 'uid-member'],
+  participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  modules: const EventModules(),
+  createdBy: 'uid-creator',
+);
+
 final _testActivity = [
   GroupActivityLog(
     id: 'act-1',
@@ -142,6 +223,7 @@ Widget _wrap(
   SharedPreferences prefs, {
   required AsyncValue<GroupBalances> balancesAsync,
   List<GroupActivityLog> activities = const [],
+  List<Event> events = const [],
   String? currentUid = 'uid-creator',
 }) {
   return ProviderScope(
@@ -156,7 +238,7 @@ Widget _wrap(
       ).overrideWith((ref) => Stream.value(_testMembers)),
       groupEventsProvider(
         _groupId,
-      ).overrideWith((ref) => Stream.value(const [])),
+      ).overrideWith((ref) => Stream.value(events)),
       groupBalancesProvider(_groupId).overrideWith((ref) => balancesAsync),
       groupActivityProvider(
         _groupId,
@@ -723,5 +805,221 @@ void main() {
         expect(find.text('Retry'), findsOneWidget);
       },
     );
+  });
+
+  group('Balance card per-currency lines (#382 PR-5)', () {
+    testWidgets('zero group-bucket net does not mask a non-zero USD bucket', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(
+            _twoBucketBalances(
+              myOmrNet: Decimal.zero,
+              myUsdNet: Decimal.parse('-5.00'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('all settled'), findsNothing);
+      expect(_textContaining('USD 5.00'), findsWidgets);
+      expect(find.text('you owe'), findsOneWidget);
+    });
+
+    testWidgets(
+      'mixed-sign buckets render one line per currency with no caption',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(
+              _twoBucketBalances(
+                myOmrNet: Decimal.parse('15.000'),
+                myUsdNet: Decimal.parse('-5.00'),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(_textContaining('OMR 15.000'), findsWidgets);
+        expect(_textContaining('USD 5.00'), findsWidgets);
+        expect(find.text('they owe you'), findsNothing);
+        expect(find.text('you owe'), findsNothing);
+        expect(find.text('all settled'), findsNothing);
+      },
+    );
+
+    testWidgets('uniform-sign buckets keep the tri-state caption', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(
+            _twoBucketBalances(
+              myOmrNet: Decimal.parse('15.000'),
+              myUsdNet: Decimal.parse('5.00'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_textContaining('OMR 15.000'), findsWidgets);
+      expect(_textContaining('USD 5.00'), findsWidgets);
+      expect(find.text('they owe you'), findsOneWidget);
+    });
+  });
+
+  group('Members + event rows per-currency (#382 PR-5)', () {
+    Finder bobRow() =>
+        find.ancestor(of: find.text('Bob'), matching: find.byType(Row));
+
+    testWidgets(
+      'member row with zero group-bucket net renders the non-zero USD bucket, '
+      'not "—"',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(
+              _twoBucketBalances(
+                myOmrNet: Decimal.zero,
+                myUsdNet: Decimal.parse('-5.00'),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await _scrollUntilVisible(
+          tester,
+          find.byKey(GroupKeys.membersAndBalancesSection),
+        );
+
+        expect(find.text('—'), findsNothing);
+        expect(
+          find.descendant(of: bobRow(), matching: _textContaining('USD 5.00')),
+          findsWidgets,
+        );
+      },
+    );
+
+    testWidgets(
+      'member row with two non-zero buckets renders one coded line per '
+      'currency, GCC-first',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(
+              _twoBucketBalances(
+                myOmrNet: Decimal.parse('15.000'),
+                myUsdNet: Decimal.parse('-5.00'),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await _scrollUntilVisible(
+          tester,
+          find.byKey(GroupKeys.membersAndBalancesSection),
+        );
+
+        expect(
+          find.descendant(
+            of: bobRow(),
+            matching: _textContaining('OMR 15.000'),
+          ),
+          findsWidgets,
+        );
+        expect(
+          find.descendant(of: bobRow(), matching: _textContaining('USD 5.00')),
+          findsWidgets,
+        );
+      },
+    );
+
+    testWidgets('event row renders a share that exists only in USD', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(
+            _eventShareBalances({'USD': Decimal.parse('10.00')}),
+          ),
+          events: [_testEvent],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(_textContaining('USD 10.00'), findsOneWidget);
+      expect(find.text('your share'), findsOneWidget);
+      expect(find.text('no share'), findsNothing);
+    });
+
+    testWidgets(
+      'event row with two share buckets renders both, each with its code',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(
+              _eventShareBalances({
+                'OMR': Decimal.parse('-3.000'),
+                'USD': Decimal.parse('10.00'),
+              }),
+            ),
+            events: [_testEvent],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.text('Beach Trip'));
+        await tester.pumpAndSettle();
+
+        expect(_textContaining('OMR 3.000'), findsOneWidget);
+        expect(_textContaining('USD 10.00'), findsOneWidget);
+        expect(find.text('your share'), findsOneWidget);
+      },
+    );
+
+    testWidgets('event row with no share keeps the "—" + no-share render', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(
+            _eventShareBalances({'OMR': Decimal.zero}),
+          ),
+          events: [_testEvent],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('—'), findsOneWidget);
+      expect(find.text('no share'), findsOneWidget);
+    });
   });
 }

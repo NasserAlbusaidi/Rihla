@@ -60,9 +60,18 @@ abstract final class GroupKeys {
   static const settleUpGroupTotalLabel = Key('group_settle_up_total_label');
   static const settleUpAllSettledMessage = Key('group_settle_up_all_settled');
   static const settleUpRecordSheetTitle = Key('group_settle_up_record_title');
+  // #382 PR-5: step overline on the record-payment sheet during a stepped walk.
+  static const settleUpRecordSheetStepIndicator =
+      Key('group_settle_up_record_step_indicator');
 
   static const settleUpRecordPaymentButton =
       Key('group_settle_up_record_payment_button');
+
+  // #382 PR-5: one-time inline "each currency settles separately" explainer,
+  // shown in the settle-up body when there are ≥2 currency buckets.
+  static const currencyExplainerCard = Key('group_settle_up_currency_explainer');
+  static const currencyExplainerGotIt =
+      Key('group_settle_up_currency_explainer_got_it');
 
   // #359: share a plain-text receipt of a recorded payment.
   static const settleUpShareReceiptButton =

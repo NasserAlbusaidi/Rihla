@@ -64,6 +64,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(emailLinkNudgeSeen: seen);
   }
 
+  /// Records that the one-time settle-up "currencies don't net" explainer has
+  /// been dismissed, so it shows at most once across the app's lifetime
+  /// (#382 PR-5).
+  Future<void> setCurrencyExplainerSeen(bool seen) async {
+    await _service.saveCurrencyExplainerSeen(seen);
+    state = state.copyWith(currencyExplainerSeen: seen);
+  }
+
   Future<void> setWeeklyDigestEnabled(bool enabled) async {
     await _service.saveWeeklyDigestEnabled(enabled);
     state = state.copyWith(weeklyDigestEnabled: enabled);

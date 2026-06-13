@@ -198,4 +198,33 @@ void main() {
       );
     });
   });
+
+  group('activityAmountCurrency (#382 PR-4)', () {
+    test('prefers a supported metadata currency over the fallback', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        metadata: const {'amount': '7.75', 'currency': 'USD'},
+      );
+      expect(activityAmountCurrency(log, 'OMR'), 'USD');
+    });
+
+    test('falls back when the key is absent (legacy rows)', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        metadata: const {'amount': '7.750'},
+      );
+      expect(activityAmountCurrency(log, 'OMR'), 'OMR');
+    });
+
+    test('falls back on unsupported or non-string values '
+        '(client-forgeable map)', () {
+      for (final junk in [Object(), 'NOPE', '', 3, 'omr']) {
+        final log = _groupLog(
+          type: 'group_settlement',
+          metadata: {'amount': '1', 'currency': junk},
+        );
+        expect(activityAmountCurrency(log, 'AED'), 'AED', reason: '$junk');
+      }
+    });
+  });
 }

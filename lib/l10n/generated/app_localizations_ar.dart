@@ -866,6 +866,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String editorCurrencyMismatch(Object selected, Object dominant) {
+    return 'هذه المصروفة بعملة $selected، لكن هذه الفعالية تستخدم $dominant غالبًا.';
+  }
+
+  @override
   String get editorPickAtLeastTwoToSplit => 'اختر شخصين على الأقل للتقسيم.';
 
   @override
@@ -1145,6 +1150,81 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settleUpEachPersonNet => 'صافي كل شخص';
+
+  @override
+  String settleUpSettleAllWith(Object name) {
+    return 'تسوية الكل مع $name';
+  }
+
+  @override
+  String settleUpSettleAllWithCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count دفعة',
+      many: '$count دفعة',
+      few: '$count دفعات',
+      two: 'دفعتان',
+      one: 'دفعة واحدة',
+      zero: 'لا دفعات',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpStepIndicator(int current, int total) {
+    return '$current من $total';
+  }
+
+  @override
+  String settleUpSteppedRecordedAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'تم تسجيل $count دفعة.',
+      many: 'تم تسجيل $count دفعة.',
+      few: 'تم تسجيل $count دفعات.',
+      two: 'تم تسجيل دفعتين.',
+      one: 'تم تسجيل دفعة واحدة.',
+      zero: 'لم تُسجَّل دفعات.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedAllWillSync(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'تم تسجيل $count دفعة — ستتم المزامنة عند الاتصال.',
+      many: 'تم تسجيل $count دفعة — ستتم المزامنة عند الاتصال.',
+      few: 'تم تسجيل $count دفعات — ستتم المزامنة عند الاتصال.',
+      two: 'تم تسجيل دفعتين — ستتم المزامنة عند الاتصال.',
+      one: 'تم تسجيل دفعة واحدة — ستتم المزامنة عند الاتصال.',
+      zero: 'لم تُسجَّل دفعات — ستتم المزامنة عند الاتصال.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartial(int recorded, int total) {
+    return 'تم تسجيل $recorded من $total دفعات.';
+  }
+
+  @override
+  String settleUpSteppedRecordedPartialWillSync(int recorded, int total) {
+    return 'تم تسجيل $recorded من $total دفعات — ستتم المزامنة عند الاتصال.';
+  }
+
+  @override
+  String get currencyExplainerTitle => 'كل عملة تُسوّى على حدة';
+
+  @override
+  String get currencyExplainerBody =>
+      'لا نخترع أسعار صرف، لذا لا يمكن للريال العماني أن يلغي الدرهم الإماراتي. ستسجّل دفعة واحدة لكل عملة.';
+
+  @override
+  String get currencyExplainerGotIt => 'فهمت';
 
   @override
   String get settleUpPaymentHistory => 'سجل الدفعات';

@@ -12,6 +12,8 @@ class SettingsService {
       'settings_notification_prompt_seen';
   static const String _emailLinkNudgeSeenKey =
       'settings_email_link_nudge_seen';
+  static const String _currencyExplainerSeenKey =
+      'settings_currency_explainer_seen';
   static const String _weeklyDigestKey = 'settings_weekly_digest';
   static const String _deviceNameKey = 'settings_device_name';
   static const String _onboardingCompleteKey = 'settings_onboarding_complete';
@@ -41,6 +43,8 @@ class SettingsService {
         _prefs.getBool(_notificationPromptSeenKey) ?? false;
     final emailLinkNudgeSeen =
         _prefs.getBool(_emailLinkNudgeSeenKey) ?? false;
+    final currencyExplainerSeen =
+        _prefs.getBool(_currencyExplainerSeenKey) ?? false;
     final weeklyDigestEnabled = _prefs.getBool(_weeklyDigestKey) ?? false;
     final rawDeviceName = _prefs.getString(_deviceNameKey) ?? '';
     final deviceName = _sanitizePersistedDeviceName(rawDeviceName);
@@ -56,6 +60,7 @@ class SettingsService {
       pushNotificationsEnabled: pushNotificationsEnabled,
       notificationPromptSeen: notificationPromptSeen,
       emailLinkNudgeSeen: emailLinkNudgeSeen,
+      currencyExplainerSeen: currencyExplainerSeen,
       weeklyDigestEnabled: weeklyDigestEnabled,
       deviceName: deviceName,
       onboardingComplete: onboardingComplete,
@@ -86,6 +91,10 @@ class SettingsService {
 
   Future<void> saveEmailLinkNudgeSeen(bool seen) async {
     await _prefs.setBool(_emailLinkNudgeSeenKey, seen);
+  }
+
+  Future<void> saveCurrencyExplainerSeen(bool seen) async {
+    await _prefs.setBool(_currencyExplainerSeenKey, seen);
   }
 
   Future<void> saveWeeklyDigestEnabled(bool enabled) async {

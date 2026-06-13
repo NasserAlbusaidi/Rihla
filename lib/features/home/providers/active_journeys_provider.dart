@@ -20,8 +20,8 @@ class ActiveJourneyEntry {
     required this.startDate,
     required this.endDate,
     required this.createdAt,
-    required this.userBalance,
-    required this.currency,
+    required this.nets,
+    required this.fallbackCurrency,
   });
 
   /// Event ID — used for routing taps to the event hub.
@@ -30,10 +30,16 @@ class ActiveJourneyEntry {
   /// Group ID the event belongs to.
   final String groupId;
 
-  /// Currency of the bucket [userBalance] was selected from (#382 PR-3 —
-  /// honest label, never relabeled to the group default); falls back to
-  /// `group.currency` only when every bucket is zero.
-  final String currency;
+  /// The current user's net balance per currency for this event — one entry
+  /// per NON-ZERO bucket, GCC-first (#382 PR-5). Empty ⇔ settled everywhere.
+  /// Each net is honest to its own currency (never relabeled to the group
+  /// default).
+  final List<({String currency, Decimal net})> nets;
+
+  /// Currency for the settled zero line when [nets] is empty (= `group.currency`)
+  /// — the card otherwise has no currency source for the all-zero render
+  /// (#382 PR-5).
+  final String fallbackCurrency;
 
   /// Event name — `Event.name`.
   final String title;
@@ -53,8 +59,8 @@ class ActiveJourneyEntry {
   /// When the event was created — fallback sort key for undated events.
   final DateTime createdAt;
 
-  /// Current user's net balance for this event (positive = owed, negative = owes).
-  final Decimal userBalance;
+  /// Settled ⇔ every bucket zero (no non-zero lines).
+  bool get isSettled => nets.isEmpty;
 }
 
 /// Window for "active": ongoing right now, OR starts within the next 60 days,
@@ -164,11 +170,11 @@ final activeJourneysProvider =
         const <String, Map<String, Decimal>>{};
 
     for (final event in activeEvents) {
-      // One amount per ticket until #382 PR-5: the GCC-first non-zero bucket,
-      // labeled with its own currency (honest — D11).
-      final sel = selectNetBucket(
+      // One line per non-zero currency bucket, GCC-first, each honest to its
+      // own currency (#382 PR-5). Empty ⇔ settled — the card renders a single
+      // zero line in `fallbackCurrency` (= group.currency).
+      final nets = nonZeroNetsGccFirst(
         userEventBalances[event.id] ?? const <String, Decimal>{},
-        fallbackCurrency: group.currency,
       );
       entries.add(ActiveJourneyEntry(
         eventId: event.id,
@@ -182,8 +188,8 @@ final activeJourneysProvider =
         startDate: event.startDate,
         endDate: event.endDate,
         createdAt: event.createdAt,
-        userBalance: sel.net,
-        currency: sel.currency,
+        nets: nets,
+        fallbackCurrency: group.currency,
       ));
     }
   }

@@ -273,6 +273,82 @@ void main() {
     expect(result!.amount, '0.000');
   });
 
+  testWidgets('#382 PR-5: stepLabel renders as an overline above the title', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open'),
+                  onPressed: () => showRecordPaymentSheet(
+                    context,
+                    currency: 'OMR',
+                    fromName: 'Bob',
+                    toName: 'Alice',
+                    suggestedAmount: Decimal.parse('5.000'),
+                    stepLabel: '1 of 2',
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('open')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(GroupKeys.settleUpRecordSheetStepIndicator), findsOneWidget);
+    expect(find.text('1 of 2'), findsOneWidget);
+  });
+
+  testWidgets(
+    '#382 PR-5: no step indicator when stepLabel is absent (single-tile path)',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    key: const Key('open'),
+                    onPressed: () => showRecordPaymentSheet(
+                      context,
+                      currency: 'OMR',
+                      fromName: 'Bob',
+                      toName: 'Alice',
+                      suggestedAmount: Decimal.parse('5.000'),
+                    ),
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('open')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(GroupKeys.settleUpRecordSheetStepIndicator),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('#282: receiving framing reads as "received" and names the payer '
       'in the banner', (tester) async {
     await tester.pumpWidget(

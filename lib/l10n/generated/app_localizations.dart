@@ -1538,6 +1538,12 @@ abstract class AppLocalizations {
   /// **'{amount} each'**
   String editorEachAmount(Object amount);
 
+  /// Soft, non-blocking warning shown in the add-expense form when the picked currency differs from the event's dominant (most-frequent) currency — a fat-finger guard, not a hard block (#382 PR-6). {selected} is the picked ISO code, {dominant} the event's most-used ISO code.
+  ///
+  /// In en, this message translates to:
+  /// **'This expense is in {selected}, but this event mostly uses {dominant}.'**
+  String editorCurrencyMismatch(Object selected, Object dominant);
+
   /// No description provided for @editorPickAtLeastTwoToSplit.
   ///
   /// In en, this message translates to:
@@ -1969,6 +1975,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Each person\'s net'**
   String get settleUpEachPersonNet;
+
+  /// Label on the #382 PR-5 stepped-settle card: records the user's debt with one counterparty across every currency bucket as a sequence of independent settlements. {name} is the counterparty's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle all with {name}'**
+  String settleUpSettleAllWith(Object name);
+
+  /// Caption under the #382 PR-5 stepped-settle card showing how many separate per-currency payments the stepped walk will record.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 payment} other{{count} payments}}'**
+  String settleUpSettleAllWithCount(int count);
+
+  /// Overline on the record-payment sheet during a #382 PR-5 stepped multi-currency walk, e.g. '1 of 2'. {current} is the 1-based step number, {total} the bucket count.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String settleUpStepIndicator(int current, int total);
+
+  /// Single summary snackbar after a #382 PR-5 stepped multi-currency walk records EVERY per-currency payment while online. {count} is the number of payments recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Recorded 1 payment.} other{Recorded {count} payments.}}'**
+  String settleUpSteppedRecordedAll(int count);
+
+  /// Single summary snackbar after a #382 PR-5 stepped walk records every per-currency payment while offline (queued for replay). {count} is the number of payments recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Recorded 1 payment — will sync when online.} other{Recorded {count} payments — will sync when online.}}'**
+  String settleUpSteppedRecordedAllWillSync(int count);
+
+  /// Single summary snackbar after a #382 PR-5 stepped walk stops early (cancelled or failed) having recorded only some of the per-currency payments. {recorded} is how many succeeded, {total} the planned count.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded {recorded} of {total} payments.'**
+  String settleUpSteppedRecordedPartial(int recorded, int total);
+
+  /// Single summary snackbar after a #382 PR-5 stepped walk stops early having queued (offline) only some of the per-currency payments. {recorded} is how many were recorded, {total} the planned count.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded {recorded} of {total} payments — will sync when online.'**
+  String settleUpSteppedRecordedPartialWillSync(int recorded, int total);
+
+  /// Title of the one-time settle-up explainer (#382 PR-5) shown when a group has balances in two or more currencies, explaining why currencies never net against each other.
+  ///
+  /// In en, this message translates to:
+  /// **'Each currency settles separately'**
+  String get currencyExplainerTitle;
+
+  /// Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): no rates are invented, one currency can't cancel another, one payment per currency.
+  ///
+  /// In en, this message translates to:
+  /// **'We never invent exchange rates, so OMR can\'t cancel out AED. You\'ll record one payment per currency.'**
+  String get currencyExplainerBody;
+
+  /// Dismiss button on the one-time settle-up currencies-don't-net explainer (#382 PR-5); tapping it hides the card for good.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get currencyExplainerGotIt;
 
   /// No description provided for @settleUpPaymentHistory.
   ///

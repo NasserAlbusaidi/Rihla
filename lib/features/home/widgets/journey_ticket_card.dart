@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
@@ -112,6 +113,7 @@ class JourneyTicketCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: entry.memberNames.isEmpty
@@ -122,11 +124,33 @@ class JourneyTicketCard extends StatelessWidget {
                                 max: 3,
                               ),
                       ),
-                      RAmount(
-                        value: entry.userBalance,
-                        currency: entry.currency,
-                        size: 14,
-                        sign: true,
+                      // One line per non-zero currency bucket (#382 PR-5);
+                      // empty → today's single zero line in fallbackCurrency.
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (entry.nets.isEmpty)
+                            RAmount(
+                              value: Decimal.zero,
+                              currency: entry.fallbackCurrency,
+                              size: 14,
+                              sign: true,
+                            )
+                          else
+                            for (var i = 0; i < entry.nets.length; i++)
+                              Padding(
+                                padding: EdgeInsetsDirectional.only(
+                                  top: i == 0 ? 0 : 2,
+                                ),
+                                child: RAmount(
+                                  value: entry.nets[i].net,
+                                  currency: entry.nets[i].currency,
+                                  size: entry.nets.length == 1 ? 14 : 12,
+                                  sign: true,
+                                ),
+                              ),
+                        ],
                       ),
                     ],
                   ),
