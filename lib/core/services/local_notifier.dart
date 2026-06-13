@@ -32,12 +32,20 @@ class FlutterLocalNotifier implements LocalNotifier {
   static const channelName = 'Activity';
   static const _channelDescription = 'Settlements and group activity';
 
+  /// Branded small-icon drawable (#484). A status-bar icon is masked by its
+  /// alpha and tinted, so a full-colour launcher renders as a white square —
+  /// `ic_launcher_monochrome` is the white-on-transparent brand silhouette
+  /// (`res/drawable-*`), the same mark the backgrounded FCM path uses via the
+  /// `default_notification_icon` manifest meta-data. Bare name: the plugin
+  /// resolves it in the `drawable` resource type.
+  static const _smallIcon = 'ic_launcher_monochrome';
+
   bool _initialized = false;
 
   @override
   Future<void> initialize(void Function(String? payload) onTap) async {
     if (_initialized) return;
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings(_smallIcon);
     const initSettings = InitializationSettings(
       android: androidInit,
       iOS: DarwinInitializationSettings(),
@@ -79,6 +87,7 @@ class FlutterLocalNotifier implements LocalNotifier {
           channelDescription: _channelDescription,
           importance: Importance.high,
           priority: Priority.high,
+          icon: _smallIcon,
         ),
       ),
       payload: payload,
