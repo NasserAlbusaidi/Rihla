@@ -79,3 +79,25 @@ export function expenseBody(
     ? `أضاف ${actor} مصروفًا${tail} بقيمة ${amountText}.`
     : `${actor} added an expense${tail} (${amountText}).`;
 }
+
+export function eventTitle(locale: Locale, groupName: string): string {
+  return groupLabel(locale, groupName);
+}
+
+// #179 event-created push. The empty-name fallback is localized internally via
+// actorLabel (#483 pattern). `eventName` is user free-text in any language, so it
+// is appended after a `·` separator (never grammatically embedded) to stay correct
+// in both locales — the same convention as expenseBody's description; an empty
+// name is dropped.
+export function eventBody(
+  locale: Locale,
+  actorName: string,
+  eventName: string,
+): string {
+  const actor = actorLabel(locale, actorName);
+  const label = eventName.trim();
+  const tail = label.length > 0 ? ` · ${label}` : '';
+  return locale === 'ar'
+    ? `أنشأ ${actor} حدثًا جديدًا${tail}.`
+    : `${actor} created a new event${tail}.`;
+}
