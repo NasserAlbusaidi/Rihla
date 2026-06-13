@@ -19,6 +19,7 @@ export {
 } from './triggers/settlementNotifier';
 export { expenseAuditLogger } from './triggers/expenseAuditLogger';
 export { expenseNotifier } from './triggers/expenseNotifier';
+export { eventNotifier } from './triggers/eventNotifier';
 export {
   eventModuleBalanceAggregator,
   groupSettlementBalanceAggregator,
