@@ -21,6 +21,7 @@ import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../events/models/event_model.dart';
@@ -126,7 +127,12 @@ class _Content extends ConsumerWidget {
         slivers: [
           SliverToBoxAdapter(child: _CoverHeader(group: group)),
           SliverPadding(
-            padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, 14, context.spacing.space20, 0),
+            padding: EdgeInsetsDirectional.fromSTEB(
+              context.spacing.space20,
+              14,
+              context.spacing.space20,
+              0,
+            ),
             sliver: SliverToBoxAdapter(
               child: _BalanceCard(
                 group: group,
@@ -308,7 +314,7 @@ class _CoverHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _PaperIconButton(
+                RIconButton(
                   icon: Directionality.of(context) == TextDirection.rtl
                       ? Iconsax.arrow_right
                       : Iconsax.arrow_left,
@@ -328,7 +334,7 @@ class _CoverHeader extends StatelessWidget {
                     // #291: surface "invite a friend" on the group screen —
                     // reuses the link-bearing share message (#277) instead of
                     // burying it in Group Settings.
-                    _PaperIconButton(
+                    RIconButton(
                       key: GroupKeys.groupDetailInviteButton,
                       icon: Iconsax.user_add,
                       semanticLabel: context.l10n.groupShareInviteSemantic,
@@ -384,52 +390,6 @@ class _CoverHeader extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PaperIconButton extends StatelessWidget {
-  const _PaperIconButton({
-    super.key,
-    required this.icon,
-    required this.onTap,
-    this.semanticLabel,
-  });
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? semanticLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: Semantics(
-        button: true,
-        label: semanticLabel,
-        child: Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          child: InkResponse(
-            onTap: onTap,
-            radius: 24,
-            customBorder: const CircleBorder(),
-            child: Center(
-              child: Material(
-                color: colors.cardSurface.withValues(alpha: 0.94),
-                shape: const CircleBorder(),
-                elevation: 1,
-                child: SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: Icon(icon, size: 18, color: colors.textPrimary),
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -861,7 +821,8 @@ class _EventRow extends StatelessWidget {
                             currency: shareLines[i].currency,
                             size: 15,
                             sign: true,
-                            showCurrency: shareLines.length >= 2 ||
+                            showCurrency:
+                                shareLines.length >= 2 ||
                                 shareLines[i].currency != groupCurrency,
                           ),
                         )
@@ -946,7 +907,10 @@ class _MembersCard extends StatelessWidget {
     // the old flat balances list.
     if (data == null || data.memberNames.isEmpty) {
       return Container(
-        padding: EdgeInsets.symmetric(vertical: 18, horizontal: context.spacing.space16),
+        padding: EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: context.spacing.space16,
+        ),
         decoration: BoxDecoration(
           color: colors.cardSurface,
           borderRadius: BorderRadius.circular(spacing.radiusLarge),
@@ -985,9 +949,9 @@ class _MembersCard extends StatelessWidget {
               ),
               groupCurrency: group.currency,
               divider: i < members.length - 1,
-              onTap: () => GoRouter.of(context).push(
-                '/group/${group.id}/settle-up?memberId=${members[i].key}',
-              ),
+              onTap: () => GoRouter.of(
+                context,
+              ).push('/group/${group.id}/settle-up?memberId=${members[i].key}'),
             ),
         ],
       ),
@@ -1095,7 +1059,8 @@ class _MemberRow extends StatelessWidget {
                             currency: lines[i].currency,
                             size: 14,
                             sign: true,
-                            showCurrency: lines.length >= 2 ||
+                            showCurrency:
+                                lines.length >= 2 ||
                                 lines[i].currency != groupCurrency,
                           ),
                         ),
