@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#200 — Cross-event group settle-up: explicit + auditable · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* local overrides — layout only, no colour literals */
+  .phone.xl { height: 860px; }
+  .state-pair { display: flex; flex-direction: column; gap: 10px; }
+  .state-pair .state-label {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--ink-3); font-weight: 600;
+    padding: 2px 8px; background: var(--card-soft);
+    border: 1px solid var(--border); border-radius: var(--r-pill);
+    align-self: flex-start;
+  }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#200 · Cross-event settle-up, made explicit</h1>
+  <p>Group settle-up already aggregates every event and suggests optimised transfers — mathematically right,
+     but a transfer like <b>Ahmed → you</b> can span people who never shared the original bill, and an event
+     ledger can stay uneven after the group is settled. This issue makes the settlement <i>explicit before
+     recording</i>, <i>auditable afterwards from a persisted snapshot</i>, adds a calm scope explainer so
+     event and group ledgers are never confused, provides a first-class correction path (append-only offsetting
+     record), and detects stale outstanding amounts before the write. All three directions sit on the existing
+     <code>group_settle_up_screen.dart</code> path. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#200</span>
+    <h2 class="issue-title">money/ux: make cross-event group settle-up explicit and auditable</h2>
+    <span class="issue-meta">P2 · money · design · cluster:settlement-ux</span>
+  </div>
+  <p class="issue-desc">Each variant covers the same core jobs — a <b>pre-record confirmation</b> that
+     itemises which events feed this transfer (AC1); a <b>persisted per-event breakdown</b> read back from
+     the settlement snapshot, not recomputed (AC2); the <b>"group settled, event ledger still uneven"</b>
+     scope explainer (AC4); a <b>stale-balance revalidation</b> state that surfaces when the outstanding
+     amount changes while the sheet is open (AC6); and a <b>correction path</b> via an append-only offset
+     record (AC5). Former-member settlement behaviour (AC7) is a product/rules decision deferred to a
+     follow-up spec; the designs leave the recipient surface unchanged for that case. Variants differ in
+     <i>how the confirmation reads</i>: itemised receipt sheet (V1, pick), plain-language sentence with
+     expandable detail (V2), or inline provenance on the main screen (V3). The optimiser stays
+     <code>greedy_min_transfers</code>; nothing about anyone's net position changes — we only make it legible.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (Receipt breakdown) — money decisions earn trust when the
+     itemisation is visible at the moment of commitment, and the same receipt persists into history unchanged.
+     V1 also most naturally hosts the stale-balance review state as a second sheet phase.</p>
+
+  <div class="variant-row">
+
+    <!-- ============================ VARIANT 1 — RECEIPT BREAKDOWN (PICK) ============================ -->
+    <div class="variant pick" style="width:360px">
+      <div class="variant-label">1 · Receipt breakdown <span class="tag">confirm sheet</span></div>
+
+      <!-- State A: normal confirm -->
+      <div class="state-pair">
+        <span class="state-label">Confirm state</span>
+        <div class="phone tall">
+          <div class="phone-screen">
+            <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+            <div class="app-bar">
+              <div class="icon-btn center muted">‹</div>
+              <div class="title sans">Settle up</div>
+              <div class="icon-btn center muted"></div>
+            </div>
+
+            <!-- dimmed settle-up screen behind the confirm sheet -->
+            <div class="sheet-wrap">
+              <div class="content" style="opacity:.5">
+                <div class="serif" style="font-size:26px;color:var(--ink);line-height:1.05">2 transfers settle the group</div>
+                <div class="tiny muted" style="margin-top:6px">Optimised to minimise payments across Salalah Squad</div>
+                <div class="card raised" style="margin-top:14px">
+                  <div class="row between">
+                    <div class="row">
+                      <span class="avatar sm av-1">A</span>
+                      <span class="r-amount lg neg" style="margin:0 8px">&rarr;</span>
+                      <span class="avatar sm av-5">N</span>
+                    </div>
+                    <span class="r-amount neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="scrim"></div>
+
+              <!-- confirm bottom sheet -->
+              <div class="sheet" style="max-height:560px;overflow-y:auto">
+                <div class="sheet-handle"></div>
+                <div class="sheet-title">Confirm this payment</div>
+                <div class="sheet-sub">You're recording a group payment to Ahmed. Review what it covers.</div>
+
+                <!-- payer → recipient -->
+                <div class="card soft" style="display:flex;align-items:center;gap:12px">
+                  <span class="avatar av-5">N</span>
+                  <div class="col" style="flex:1">
+                    <div class="tiny muted">You pay</div>
+                    <div class="row-title">Ahmed Al-Balushi</div>
+                  </div>
+                  <span class="r-amount lg neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+                </div>
+
+                <!-- itemised receipt -->
+                <div class="section-header" style="margin-top:16px"><span class="label">Covers 2 events</span></div>
+                <div class="card flush" style="margin-top:8px">
+                  <div class="list-row">
+                    <span class="row-lead" style="width:8px;height:8px;border-radius:9999px;background:var(--cat1);flex:none"></span>
+                    <div class="row-body">
+                      <div class="row-title" style="font-size:14px">Salalah road trip — 12 Jul</div>
+                      <div class="row-sub">Your share of Ahmed's spending</div>
+                    </div>
+                    <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>8.<span class="dec">500</span></span>
+                  </div>
+                  <div class="list-row">
+                    <span class="row-lead" style="width:8px;height:8px;border-radius:9999px;background:var(--cat2);flex:none"></span>
+                    <div class="row-body">
+                      <div class="row-title" style="font-size:14px">Muscat dinners — 14 Jul</div>
+                      <div class="row-sub">Your share of Ahmed's spending</div>
+                    </div>
+                    <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>4.<span class="dec">000</span></span>
+                  </div>
+                  <div class="list-row" style="background:var(--card-soft)">
+                    <div class="row-body"><div class="row-title" style="font-size:13px">Total</div></div>
+                    <span class="r-amount neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+                  </div>
+                </div>
+
+                <!-- scope explainer -->
+                <div class="banner info" style="border-radius:14px;margin-top:14px;align-items:flex-start;border:1px solid var(--border)">
+                  <span style="font-size:15px">ⓘ</span>
+                  <span>This is an <b>optimised group payment</b>. It settles your net across the group — it may not mirror who originally paid each bill, and it doesn't close individual event ledgers.</span>
+                </div>
+
+                <button class="btn grad block" style="margin-top:16px">Record payment</button>
+                <button class="btn text block" style="margin-top:4px">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- State B: stale-balance detected -->
+        <span class="state-label" style="margin-top:8px">Stale balance — review again (AC6)</span>
+        <div class="phone" style="height:620px">
+          <div class="phone-screen">
+            <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+            <div class="app-bar">
+              <div class="icon-btn center muted">‹</div>
+              <div class="title sans">Settle up</div>
+              <div class="icon-btn center muted"></div>
+            </div>
+
+            <div class="sheet-wrap">
+              <div class="content" style="opacity:.4">
+                <div class="serif" style="font-size:24px;color:var(--ink);line-height:1.05">1 transfer left</div>
+              </div>
+              <div class="scrim"></div>
+
+              <div class="sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-title">Amount has changed</div>
+                <div class="sheet-sub">The outstanding balance updated while this sheet was open. Review the new amount before recording.</div>
+
+                <div class="banner" style="border-radius:12px;margin-bottom:14px;align-items:flex-start">
+                  <span style="font-size:15px">⚠</span>
+                  <div>
+                    <div style="font-weight:600;font-size:13px">Was <span class="r-amount neg" style="font-size:13px"><span class="ccy">OMR</span>12.<span class="dec">500</span></span> · now <span class="r-amount neg" style="font-size:13px"><span class="ccy">OMR</span>7.<span class="dec">250</span></span></div>
+                    <div style="margin-top:2px;font-size:12px">Sara recorded a payment while you were reviewing.</div>
+                  </div>
+                </div>
+
+                <div class="card soft" style="display:flex;align-items:center;gap:12px">
+                  <span class="avatar av-5">N</span>
+                  <div class="col" style="flex:1">
+                    <div class="tiny muted">You pay</div>
+                    <div class="row-title">Ahmed Al-Balushi</div>
+                  </div>
+                  <span class="r-amount lg neg"><span class="ccy">OMR</span>7.<span class="dec">250</span></span>
+                </div>
+
+                <button class="btn grad block" style="margin-top:16px">Confirm updated amount</button>
+                <button class="btn text block" style="margin-top:4px">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="variant-note"><b>Receipt-first confirm sheet, with stale-balance guard.</b> A
+         <code>showConfirmSettlementSheet</code> stage between <code>showRecordPaymentSheet</code> and
+         <code>_recordSettlement</code> itemises the per-event contributions from <code>buildBreakdown</code>
+         (AC1), then persists them as <code>settlementContext.eventBreakdown[]</code> on the write so history
+         reads back the same receipt, not a recompute (AC2). Immediately before writing, the service re-reads
+         the outstanding pair amount; if it changed since the sheet opened, the confirm UI flips to the
+         stale-balance review state rather than writing blindly (AC6). The scope banner distinguishes group
+         vs event closeout (AC4). Correction (AC5) lives in the history tile's expand — a "Record correction"
+         action opens a sheet pre-populated with a negative amount that creates an offsetting append-only
+         record. Strongest match for the money label: the user commits to a decomposed number they can verify.</p>
+    </div>
+
+    <!-- ============================ VARIANT 2 — PLAIN-LANGUAGE ============================ -->
+    <div class="variant">
+      <div class="variant-label">2 · Plain-language <span class="tag">sentence-first</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Settle up</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+
+          <div class="sheet-wrap">
+            <div class="content" style="opacity:.5">
+              <div class="serif" style="font-size:26px;color:var(--ink);line-height:1.05">2 transfers settle the group</div>
+              <div class="tiny muted" style="margin-top:6px">Optimised to minimise payments across Salalah Squad</div>
+            </div>
+
+            <div class="scrim"></div>
+
+            <div class="sheet" style="max-height:540px;overflow-y:auto">
+              <div class="sheet-handle"></div>
+
+              <!-- sentence hero -->
+              <div class="serif" style="font-size:24px;color:var(--ink);line-height:1.18;margin:4px 0 6px">
+                You'll pay <span style="color:var(--primary-dark);font-style:normal;font-weight:600">Ahmed Al-Balushi</span>
+                <span class="r-amount lg neg" style="font-style:normal"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>,
+                covering 2 events.
+              </div>
+              <div class="sheet-sub">Salalah road trip and Muscat dinners. Optimised group payment — not a per-bill match.</div>
+
+              <!-- expandable detail -->
+              <div class="card soft" style="padding:0;overflow:hidden;margin-top:8px">
+                <div class="list-row" style="cursor:pointer">
+                  <div class="row" style="flex:1">
+                    <span style="color:var(--ink-3);font-size:14px">▾</span>
+                    <span class="row-title" style="font-size:14px;margin-left:8px">Show the breakdown</span>
+                  </div>
+                  <span class="pill-tag">2 events</span>
+                </div>
+                <div class="divider" style="margin:0"></div>
+                <div class="list-row">
+                  <div class="row-body">
+                    <div class="row-title" style="font-size:14px">Salalah road trip</div>
+                    <div class="row-sub">12 Jul</div>
+                  </div>
+                  <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>8.<span class="dec">500</span></span>
+                </div>
+                <div class="list-row">
+                  <div class="row-body">
+                    <div class="row-title" style="font-size:14px">Muscat dinners</div>
+                    <div class="row-sub">14 Jul</div>
+                  </div>
+                  <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>4.<span class="dec">000</span></span>
+                </div>
+              </div>
+
+              <!-- scope explainer -->
+              <div class="banner info" style="border-radius:14px;margin-top:14px;align-items:flex-start;border:1px solid var(--border)">
+                <span style="font-size:15px">ⓘ</span>
+                <span>Settling the group won't necessarily even out each event's own ledger — that's expected.</span>
+              </div>
+
+              <button class="btn grad block" style="margin-top:16px">Record payment</button>
+              <button class="btn text block" style="margin-top:4px">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Sentence-first, detail on demand.</b> Leads with a single readable claim
+         ("…covering 2 events") and tucks the itemisation behind an expander — the math still persists to
+         <code>settlementContext</code> on write (AC2), it's just collapsed at confirm time. Scope banner
+         addresses AC4. Stale-balance revalidation (AC6) would interrupt with an inline warning above the
+         CTA (same pattern as V1, not shown separately). Lighter to build than V1 (one summary string + reused
+         breakdown rows) but the contributing amounts aren't on screen at the moment of commitment — weaker
+         for a money flow where the breakdown <i>is</i> the trust signal.</p>
+    </div>
+
+    <!-- ============================ VARIANT 3 — AUDIT TIMELINE ============================ -->
+    <div class="variant">
+      <div class="variant-label">3 · Audit timeline <span class="tag">full screen</span></div>
+      <div class="phone xl">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Settle up</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content tight">
+            <div class="serif" style="font-size:26px;color:var(--ink);line-height:1.05">1 transfer left</div>
+            <div class="tiny muted" style="margin-top:-6px">Optimised to minimise payments across Salalah Squad</div>
+
+            <!-- scope explainer (AC4) -->
+            <div class="banner sync" style="border-radius:14px;align-items:flex-start">
+              <span style="font-size:15px">ⓘ</span>
+              <span>This group has group-level settlements. <b>Individual event ledgers can still look uneven</b> — this screen is the complete balance.</span>
+            </div>
+
+            <!-- outstanding optimised transfer, tappable to provenance (AC1) -->
+            <div class="section-header"><span class="label">Outstanding</span></div>
+            <div class="card raised">
+              <div class="row between">
+                <div class="row">
+                  <span class="avatar sm av-1">A</span>
+                  <span class="r-amount neg" style="margin:0 8px">&rarr;</span>
+                  <span class="avatar sm av-5">N</span>
+                </div>
+                <span class="r-amount neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+              </div>
+              <div class="tiny muted" style="margin-top:10px">Ahmed Al-Balushi → you · tap for per-event provenance</div>
+              <div class="divider"></div>
+              <!-- inline breakdown snapshot (AC1 / AC2) -->
+              <div class="row between"><span class="tiny mono muted">SALALAH ROAD TRIP · 12 JUL</span>
+                <span class="r-amount neu" style="font-size:12px"><span class="ccy">OMR</span>8.<span class="dec">500</span></span></div>
+              <div class="row between" style="margin-top:6px"><span class="tiny mono muted">MUSCAT DINNERS · 14 JUL</span>
+                <span class="r-amount neu" style="font-size:12px"><span class="ccy">OMR</span>4.<span class="dec">000</span></span></div>
+              <button class="btn grad block sm" style="margin-top:12px">Record payment</button>
+            </div>
+
+            <!-- recorded history, each row carries its persisted snapshot (AC2 / AC5) -->
+            <div class="section-header"><span class="label">Recorded payments</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <span class="row-lead"><span class="avatar sm av-3">S</span></span>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:14px">Sara Al-Harthi paid you</div>
+                  <div class="row-sub mono">15 Jul · 2 events · snapshot</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount pos" style="font-size:13px"><span class="ccy">OMR</span>9.<span class="dec">000</span></span>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+              <div class="list-row">
+                <span class="row-lead"><span class="avatar sm av-4">K</span></span>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:14px">You paid Khalid Al-Rawahi</div>
+                  <div class="row-sub mono">13 Jul · 1 event · snapshot</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neg" style="font-size:13px"><span class="ccy">OMR</span>5.<span class="dec">500</span></span>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+              <!-- correction/offset record — AC5 -->
+              <div class="list-row" style="background:var(--card-soft)">
+                <span class="row-lead"><span class="avatar sm shadow">L</span></span>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:14px">Layla Al-Zadjali · correction</div>
+                  <div class="row-sub mono">16 Jul · offset · append-only</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>2.<span class="dec">000</span></span>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- correction action (AC5) -->
+            <div class="card soft" style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px;color:var(--ink-3)">⤴</span>
+              <div class="col" style="flex:1">
+                <div class="row-title" style="font-size:13px">Record a correction</div>
+                <div class="row-sub">Creates an offsetting record. Original payment is preserved.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Provenance built into the screen, not a sheet.</b> The scope explainer is pinned at
+         the top of <code>settle_up_page_body.dart</code> (AC4), the outstanding transfer shows its per-event breakdown
+         inline (AC1), and every recorded row is tappable into the persisted <code>settlementContext</code> snapshot —
+         including append-only correction offsets (AC2 / AC5). A "Record a correction" affordance makes the offset
+         path explicit without mutating the original. Stale-balance revalidation (AC6) surfaces as a banner on the
+         outstanding card before the Record button when amounts drift. Most surface-area (touches page body + history
+         tile + provenance route + correction sheet) and the moment-of-commitment review is thinner than V1, making
+         it the weakest pick for a first-time settle-up — but the strongest for repeat auditing.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

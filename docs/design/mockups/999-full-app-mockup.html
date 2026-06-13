@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rihla — Redesigned App Mockup (Grounded to UX Playbook & DESIGN.md)</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Playbook Studio Styles */
+  body {
+    background: #151412;
+    background-image: radial-gradient(circle at 50% 0%, #221f1a 0%, #0c0b09 100%);
+    color: #e3dcd0;
+    padding: var(--s24);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .studio-head {
+    max-width: 1440px;
+    width: 100%;
+    margin: 0 auto var(--s24);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    padding-bottom: var(--s16);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  
+  .studio-head h1 {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 36px;
+    margin: 0 0 var(--s4);
+  }
+  
+  .studio-head h1 span {
+    color: var(--primary);
+  }
+  
+  .studio-head p {
+    margin: 0;
+    color: var(--ink-3);
+    font-size: 14.5px;
+    max-width: 800px;
+  }
+
+  .badge-p0 {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--rust);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: var(--r-pill);
+    text-transform: uppercase;
+  }
+
+  .studio-grid {
+    display: grid;
+    grid-template-columns: 320px 385px 1fr;
+    gap: var(--s24);
+    max-width: 1440px;
+    width: 100%;
+    margin: 0 auto;
+    align-items: start;
+  }
+  
+  @media (max-width: 1150px) {
+    .studio-grid {
+      grid-template-columns: 1fr;
+      justify-items: center;
+    }
+  }
+
+  /* Left Panel: Control Deck */
+  .control-deck {
+    background: rgba(255,255,255,.015);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: var(--r-card);
+    padding: var(--s20);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s20);
+    width: 100%;
+  }
+
+  .deck-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s8);
+  }
+
+  .deck-title {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #9a9587;
+    margin-bottom: var(--s4);
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    padding-bottom: var(--s4);
+  }
+
+  .deck-btn {
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.06);
+    color: #e3dcd0;
+    padding: 10px 14px;
+    border-radius: var(--r-input);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: all .15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .deck-btn:hover {
+    background: rgba(209,123,44,.1);
+    border-color: rgba(209,123,44,.3);
+  }
+
+  .deck-btn.active {
+    background: var(--primary);
+    color: var(--on-primary);
+    border-color: transparent;
+    font-weight: 600;
+  }
+
+  .deck-btn.active::after {
+    content: '●';
+    font-size: 8px;
+  }
+
+  /* Right Panel: Playbook Alignment Inspector */
+  .inspector {
+    background: rgba(255,255,255,.015);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: var(--r-card);
+    padding: var(--s20);
+    width: 100%;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s16);
+  }
+
+  .inspector-card {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: var(--r-input);
+    padding: var(--s16);
+    border: 1px solid rgba(255,255,255,.04);
+  }
+
+  .inspector-card h3 {
+    margin: 0 0 var(--s8);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 19px;
+    color: var(--primary);
+  }
+
+  .token-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .token-table th, .token-table td {
+    padding: 6px var(--s8);
+    text-align: left;
+  }
+
+  .token-table th {
+    font-family: var(--font-mono);
+    color: #9a9587;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+
+  .token-table td {
+    border-bottom: 1px solid rgba(255,255,255,.03);
+  }
+
+  .token-table code {
+    font-family: var(--font-mono);
+    color: #efb678;
+    background: rgba(255,255,255,.03);
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+
+  .ref-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--primary);
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .ref-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Phone View Frame */
+  .phone-screen {
+    position: relative;
+    user-select: none;
+    overflow-x: hidden;
+  }
+
+  /* Header Wordmark */
+  .wordmark {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 24px;
+    position: relative;
+    color: var(--ink);
+  }
+
+  .wordmark::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 10%;
+    width: 80%;
+    height: 2px;
+    background: var(--primary);
+    border-radius: var(--r-pill);
+  }
+
+  /* 3-Tab Nav Shell (UX Playbook P0 Recommendation) */
+  .bottom-nav {
+    height: 64px;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding-bottom: 6px;
+    flex-shrink: 0;
+  }
+
+  .nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--ink-3);
+    text-decoration: none;
+    font-size: 10.5px;
+    font-weight: 500;
+    cursor: pointer;
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;
+  }
+
+  .nav-tab.active {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .nav-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* SnackBar Toast */
+  .phone-snackbar {
+    position: absolute;
+    bottom: 80px;
+    left: var(--s16);
+    right: var(--s16);
+    z-index: 999;
+    transform: translateY(150%);
+    transition: transform .25s cubic-bezier(0.1, 1, 0.1, 1);
+  }
+
+  .phone-snackbar.show {
+    transform: translateY(0);
+  }
+
+  /* GCC Payment Handoff Wizard (P0: Review -> Channel -> Action -> Confirmed) */
+  .wizard-container {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    background: var(--paper);
+    flex-direction: column;
+  }
+
+  .wizard-container.active {
+    display: flex;
+  }
+
+  .wizard-step {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .wizard-step.active {
+    display: flex;
+  }
+
+  /* Simplified / Raw Debts Toggles & Math Disclosures */
+  .debt-mode-strip {
+    display: flex;
+    background: var(--paper-deep);
+    border-radius: var(--r-input);
+    padding: 2px;
+    margin-bottom: var(--s12);
+  }
+
+  .debt-mode-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    color: var(--ink-3);
+    border-radius: calc(var(--r-input) - 2px);
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .debt-mode-btn.active {
+    background: var(--card);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: var(--shadow-raised);
+  }
+
+  .math-disclosure {
+    font-size: 12px;
+    color: var(--primary);
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: var(--s8);
+    display: inline-block;
+  }
+
+  .math-drawer {
+    display: none;
+    background: var(--card-soft);
+    border: 1px dashed var(--rule-2);
+    border-radius: var(--r-sm);
+    padding: var(--s8) var(--s12);
+    margin-top: var(--s8);
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+
+  .math-drawer.show {
+    display: block;
+  }
+
+  /* QR Scanner visual */
+  .qr-placeholder {
+    width: 140px;
+    height: 140px;
+    margin: var(--s12) auto;
+    border-radius: var(--r-sm);
+    background: repeating-conic-gradient(var(--ink) 0 25%, var(--card) 0 50%) 0 0 / 14px 14px;
+    border: 4px solid var(--card);
+    box-shadow: var(--shadow-raised);
+  }
+
+  /* Dark theme overrides inside the phone-screen if enabled */
+  .phone.dark-mode-active {
+    background: #1c1a17 !important;
+    border-color: #2e2a24 !important;
+  }
+
+  .phone.dark-mode-active .phone-screen {
+    background: #1c1a17 !important;
+    color: #e3dcd0 !important;
+    --paper: #1c1a17;
+    --paper-deep: #12100e;
+    --card: #25221d;
+    --card-soft: #2e2a24;
+    --ink: #f5f0e6;
+    --ink-2: #dfd8cb;
+    --ink-3: #ada797;
+    --ink-4: #8a8576;
+    --border: #2e2a24;
+    --rule: #2e2a24;
+    --rule-2: #3e382f;
+  }
+
+  .phone.dark-mode-active .bottom-nav {
+    background: #25221d !important;
+    border-color: #2e2a24 !important;
+  }
+</style>
+</head>
+<body>
+
+<div class="studio-head">
+  <div>
+    <h1>Rihla · <span>Redesigned App Mockup (UX Playbook)</span></h1>
+    <p>Redesigned to fulfill the 2026 UX playbook directives. Integrates the 3-tab layout, 4-step Payment Handoff flow, and side-by-side debt simplification toggles.</p>
+  </div>
+  <span class="badge-p0">P0 Alignment</span>
+</div>
+
+<div class="studio-grid">
+  
+  <!-- LEFT PANEL: CONTROL DECK -->
+  <div class="control-deck">
+    
+    <div class="deck-section">
+      <div class="deck-title">UX Playbook Screens</div>
+      <button class="deck-btn active" onclick="switchScreen('balances', this)">
+        <span>1. Balances (Home Tab)</span>
+        <span class="pill-tag sm" style="font-size:9.5px;padding:1px 5px;">P0</span>
+      </button>
+      <button class="deck-btn" onclick="switchScreen('groups', this)">
+        <span>2. Groups (Tab 2)</span>
+      </button>
+      <button class="deck-btn" onclick="switchScreen('activity', this)">
+        <span>3. Activity &amp; Invite (Tab 3)</span>
+      </button>
+      <button class="deck-btn" onclick="startSettleUpWizard('Ahmed', '12.500')">
+        <span>4. Settle Up (Handoff Wizard)</span>
+        <span class="pill-tag sm" style="font-size:9.5px;padding:1px 5px;background:var(--rust);color:#fff;border:none;">P0</span>
+      </button>
+      <button class="deck-btn" onclick="switchScreen('itemized-split', this)">
+        <span>5. Itemized Split Editor</span>
+      </button>
+      <button class="deck-btn" onclick="switchScreen('system-states', this)">
+        <span>6. Skeletons &amp; Offline</span>
+      </button>
+    </div>
+
+    <div class="deck-section">
+      <div class="deck-title">Network Simulator</div>
+      <button class="deck-btn" onclick="setNetworkState('online')">
+        <span>Set Status: Online</span>
+        <span class="pill-tag sm" style="background:var(--sage);color:#fff;border:none;">Online</span>
+      </button>
+      <button class="deck-btn" onclick="setNetworkState('syncing')">
+        <span>Set Status: Syncing</span>
+        <span class="pill-tag sm" style="background:var(--saffron-soft);color:var(--ink);border:none;">Syncing</span>
+      </button>
+      <button class="deck-btn" onclick="setNetworkState('offline')">
+        <span>Set Status: Offline</span>
+        <span class="pill-tag sm" style="background:var(--amber);color:#5a3d05;border:none;">Offline</span>
+      </button>
+    </div>
+
+    <div class="deck-section">
+      <div class="deck-title">Theme &amp; Motion Controls</div>
+      <button class="deck-btn" id="theme-toggle-btn" onclick="toggleDarkMode()">
+        <span>Toggle Dark Theme Stub</span>
+        <span id="theme-status" class="pill-tag sm">Light</span>
+      </button>
+      <button class="deck-btn" id="motion-toggle-btn" onclick="toggleReduceMotion()">
+        <span>Reduce Motion (Shimmer)</span>
+        <span id="motion-status" class="pill-tag sm">Normal</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- CENTER PANEL: DYNAMIC INTERACTIVE DEVICE -->
+  <div class="phone" id="app-device">
+    
+    <!-- Self-Managing Offline Banner at top of body -->
+    <div id="app-offline-banner" class="banner text" style="display:none;">
+      <span>⚠️</span> <span id="banner-text">Saved offline — will sync when you're back online</span>
+    </div>
+
+    <!-- SnackBar Notification layer -->
+    <div class="phone-snackbar" id="app-snackbar">
+      <div class="toast success">
+        <span id="snackbar-msg">Copied to clipboard!</span>
+      </div>
+    </div>
+
+    <!-- ==================== WIZARD: GCC PAYMENT HANDOFF (P0) ==================== -->
+    <div class="wizard-container" id="settle-up-wizard">
+      <div class="app-bar">
+        <div class="icon-btn center" onclick="cancelWizard()" style="cursor:pointer;font-size:16px;">✕</div>
+        <div class="title sans" id="wizard-title-bar">Settle Up</div>
+        <div class="icon-btn"></div>
+      </div>
+
+      <!-- Step 1: Review Screen -->
+      <div class="wizard-step active" id="wizard-step-1">
+        <div class="content tight" style="flex:1;">
+          <div class="section-header">
+            <span class="label">Step 1: Review Payment</span>
+          </div>
+
+          <div class="card center pad-lg">
+            <span class="avatar lg av-1" id="wizard-avatar" style="margin:0 auto var(--s8)">A</span>
+            <div class="serif" style="font-size:22px;">Settle up with <span id="wizard-name">Ahmed</span></div>
+            <div class="muted tiny" style="margin-top:4px;">Rihla doesn't move money — we are a ledger.</div>
+            
+            <div class="divider" style="margin:var(--s16) 0;"></div>
+            
+            <div class="field" style="text-align:start;">
+              <span class="field-label">Amount (OMR)</span>
+              <input type="text" class="input code" id="wizard-amount-input" value="12.500" style="font-size:24px;padding:8px 10px;">
+            </div>
+
+            <div class="field" style="text-align:start;margin-top:var(--s12);">
+              <span class="field-label">Optional Note</span>
+              <input type="text" class="input" placeholder="e.g. Settle up Salalah Trip">
+            </div>
+          </div>
+        </div>
+        <div style="padding:var(--s16);background:var(--card);border-top:1px solid var(--border);">
+          <button class="btn block grad" onclick="advanceWizardStep(2)">Continue to payment</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Choose Channel Screen -->
+      <div class="wizard-step" id="wizard-step-2">
+        <div class="content tight" style="flex:1;">
+          <div class="section-header">
+            <span class="label">Step 2: Choose Payment Channel</span>
+          </div>
+          
+          <div class="tiny muted" style="margin-bottom:var(--s8);">Select a GCC out-of-band money movement option:</div>
+
+          <div class="col" style="gap:10px;">
+            <!-- WhatsApp -->
+            <div class="card clickable" style="display:flex;align-items:center;justify-content:space-between;padding:12px var(--s16);cursor:pointer;" onclick="selectChannel('whatsapp')">
+              <div class="row">
+                <span style="width:34px;height:34px;border-radius:var(--r-pill);background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;">✆</span>
+                <div class="col">
+                  <span style="font-weight:600;font-size:14px;color:var(--ink);">WhatsApp Prefilled Link</span>
+                  <span class="muted tiny">Ping to coordinate transfer</span>
+                </div>
+              </div>
+              <input type="radio" name="channel-select" id="chan-whatsapp" checked>
+            </div>
+
+            <!-- IBAN Copy -->
+            <div class="card clickable" style="display:flex;align-items:center;justify-content:space-between;padding:12px var(--s16);cursor:pointer;" onclick="selectChannel('iban')">
+              <div class="row">
+                <span style="width:34px;height:34px;border-radius:var(--r-pill);background:var(--saffron-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:16px;">🏦</span>
+                <div class="col">
+                  <span style="font-weight:600;font-size:14px;color:var(--ink);">Copy Bank Muscat IBAN</span>
+                  <span class="muted tiny">OM93 0238 **** 9283</span>
+                </div>
+              </div>
+              <input type="radio" name="channel-select" id="chan-iban">
+            </div>
+
+            <!-- QR code -->
+            <div class="card clickable" style="display:flex;align-items:center;justify-content:space-between;padding:12px var(--s16);cursor:pointer;" onclick="selectChannel('qr')">
+              <div class="row">
+                <span style="width:34px;height:34px;border-radius:var(--r-pill);background:var(--paper-deep);color:var(--ink-2);display:flex;align-items:center;justify-content:center;font-size:16px;">🔳</span>
+                <div class="col">
+                  <span style="font-weight:600;font-size:14px;color:var(--ink);">Show Payment QR Code</span>
+                  <span class="muted tiny">Scan to pay from banking app</span>
+                </div>
+              </div>
+              <input type="radio" name="channel-select" id="chan-qr">
+            </div>
+
+            <!-- Cash -->
+            <div class="card clickable" style="display:flex;align-items:center;justify-content:space-between;padding:12px var(--s16);cursor:pointer;" onclick="selectChannel('cash')">
+              <div class="row">
+                <span style="width:34px;height:34px;border-radius:var(--r-pill);background:var(--card-soft);color:var(--ink-3);display:flex;align-items:center;justify-content:center;font-size:16px;">💵</span>
+                <div class="col">
+                  <span style="font-weight:600;font-size:14px;color:var(--ink);">Paid Cash / Other</span>
+                  <span class="muted tiny">Record straight to ledger</span>
+                </div>
+              </div>
+              <input type="radio" name="channel-select" id="chan-cash">
+            </div>
+          </div>
+        </div>
+        <div style="padding:var(--s16);background:var(--card);border-top:1px solid var(--border);">
+          <button class="btn block grad" onclick="advanceWizardStep(3)">Pay &amp; Record</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Action Execution Screen -->
+      <div class="wizard-step" id="wizard-step-3">
+        <div class="content tight" style="flex:1;">
+          <div class="section-header">
+            <span class="label">Step 3: Transfer Money</span>
+          </div>
+
+          <div class="card center pad-lg" id="action-whatsapp-card">
+            <span style="font-size:44px;">✆</span>
+            <div class="serif" style="font-size:22px;margin:var(--s8) 0;">WhatsApp Handoff</div>
+            <p class="muted tiny">We compiled a prefilled text with the OMR amount and banking handles. Tap launch to message Ahmed.</p>
+            <button class="btn sm" onclick="triggerToast('Launching WhatsApp...')">Launch WhatsApp</button>
+          </div>
+
+          <div class="card center pad-lg" id="action-iban-card" style="display:none;">
+            <span style="font-size:44px;">🏦</span>
+            <div class="serif" style="font-size:22px;margin:var(--s8) 0;">Copy Credentials</div>
+            <div class="card soft center" style="margin-bottom:var(--s12);font-family:var(--font-mono);font-size:13px;">
+              OM93 0238 1029 3982 9283
+            </div>
+            <button class="btn sm" onclick="copyIban('OM93 0238 1029 3982 9283')">Copy IBAN</button>
+          </div>
+
+          <div class="card center pad-lg" id="action-qr-card" style="display:none;">
+            <div class="qr-placeholder"></div>
+            <div class="serif" style="font-size:18px;">Show Payment QR</div>
+            <p class="muted tiny">Hold this phone up for Ahmed to scan, or scan it with your Omani banking portal.</p>
+          </div>
+        </div>
+        <div class="col" style="padding:var(--s16);background:var(--card);border-top:1px solid var(--border);gap:8px;">
+          <button class="btn block success" style="color:#fff;" onclick="advanceWizardStep(4)">I sent it</button>
+          <button class="btn block text" onclick="advanceWizardStep(2)">Back</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Mark As Settled (Confirmation Screen) -->
+      <div class="wizard-step" id="wizard-step-4">
+        <div class="content center" style="flex:1;justify-content:center;gap:var(--s20);">
+          <span style="font-size:64px;color:var(--sage-text)">✓</span>
+          <div class="serif" style="font-size:28px;line-height:1.2;">Settlement Recorded</div>
+          
+          <div class="card raised pad-lg" style="width:100%;text-align:start;">
+            <div class="uppercase-label" style="font-size:9px;margin-bottom:8px;">RECORDED VERB</div>
+            <p style="margin:0;font-size:14px;font-weight:600;" id="conf-verb-text">I sent Ahmed OMR 12.500 via WhatsApp</p>
+            
+            <div class="divider" style="margin:var(--s12) 0;"></div>
+            
+            <div class="between tiny muted">
+              <span>Date</span>
+              <span class="mono">Today, 5:17 PM</span>
+            </div>
+          </div>
+        </div>
+        <div class="col" style="padding:var(--s16);background:var(--card);border-top:1px solid var(--border);gap:8px;">
+          <button class="btn block grad" onclick="completeWizard()">Finish</button>
+          <button class="btn block text" style="color:var(--rust-text);" onclick="triggerUndo()">Undo (5s left)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 1: BALANCES (HOME TAB - REDESIGNED) ==================== -->
+    <div class="phone-screen" id="screen-balances" style="display: flex;">
+      <div class="app-header">
+        <div class="app-bar">
+          <div class="icon-btn center" style="display:flex;align-items:center;justify-content:center;">
+            <span class="avatar sm av-1" style="width:28px;height:28px;">N</span>
+          </div>
+          <div class="title"><span class="wordmark">Rihla</span></div>
+          <div class="icon-btn center" style="font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--ink-3)">🔔</div>
+        </div>
+      </div>
+
+      <div class="content tight" style="flex:1;">
+        <!-- P0: Headline net position card -->
+        <div class="card raised pad-lg" style="text-align:center;">
+          <div class="uppercase-label" style="margin-bottom:6px">YOUR NET POSITION</div>
+          <!-- Single clear sentence for first impression -->
+          <div class="serif" style="font-size:22px;color:var(--sage-text);margin-bottom:10px;">You are owed <span class="r-amount pos lg"><span class="ccy">OMR</span>23.<span class="dec">190</span></span></div>
+          
+          <div class="divider" style="margin:var(--s12) 0;"></div>
+          
+          <!-- Subtotals breakdown -->
+          <div class="between" style="font-size:12px;">
+            <div class="col" style="align-items:start;">
+              <span class="muted mono uppercase-label" style="font-size:8.5px;">OWED TO YOU</span>
+              <span class="r-amount pos"><span class="ccy">OMR</span>35.<span class="dec">530</span> <span style="font-size:10px;font-weight:normal;">across 3 ppl</span></span>
+            </div>
+            <div style="width:1px;height:24px;background:var(--border);"></div>
+            <div class="col" style="align-items:end;">
+              <span class="muted mono uppercase-label" style="font-size:8.5px;">YOU OWE</span>
+              <span class="r-amount neg"><span class="ccy">OMR</span>12.<span class="dec">340</span> <span style="font-size:10px;font-weight:normal;">across 1 person</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Header for Per-Person List -->
+        <div class="section-header">
+          <span class="label">PERSON-BY-PERSON BALANCES (FRIENDS)</span>
+        </div>
+
+        <!-- Person-by-Person Ledger list (Highest leverage UX fix) -->
+        <div class="card flush">
+          <!-- Person 1: Ahmed -->
+          <div class="list-row" onclick="startSettleUpWizard('Ahmed', '12.340')" style="cursor:pointer;">
+            <div class="row-lead"><span class="avatar av-3">A</span></div>
+            <div class="row-body">
+              <div class="row-title">Ahmed Al-Jabri</div>
+              <div class="row-sub">Across Salalah Squad</div>
+            </div>
+            <div class="row-trail">
+              <div class="col" style="align-items:end;">
+                <span class="r-amount neg">−<span class="ccy">OMR</span>12.<span class="dec">340</span></span>
+                <span class="tiny" style="color:var(--rust-text);font-weight:600;">Settle up ›</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Person 2: Sara -->
+          <div class="list-row">
+            <div class="row-lead"><span class="avatar av-2">S</span></div>
+            <div class="row-body">
+              <div class="row-title">Sara Al-Raisi</div>
+              <div class="row-sub">Across Salalah Squad &amp; Stay</div>
+            </div>
+            <div class="row-trail">
+              <span class="r-amount pos">+<span class="ccy">OMR</span>20.<span class="dec">030</span></span>
+            </div>
+          </div>
+
+          <!-- Person 3: Khalid -->
+          <div class="list-row">
+            <div class="row-lead"><span class="avatar av-4">K</span></div>
+            <div class="row-body">
+              <div class="row-title">Khalid Al-Rawahi</div>
+              <div class="row-sub">Across Wadi Shab Weekend</div>
+            </div>
+            <div class="row-trail">
+              <span class="r-amount pos">+<span class="ccy">OMR</span>15.<span class="dec">500</span></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Navigation Bar inside phone screen context -->
+      <div class="bottom-nav">
+        <div class="nav-tab active">
+          <span class="nav-icon">👤</span>
+          <span>Balances</span>
+        </div>
+        <div class="nav-tab" onclick="switchScreenDirect('groups')">
+          <span class="nav-icon">🧭</span>
+          <span>Groups</span>
+        </div>
+        <div class="nav-tab" onclick="switchScreenDirect('activity')">
+          <span class="nav-icon">📖</span>
+          <span>Activity</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 2: GROUPS (TAB 2) ==================== -->
+    <div class="phone-screen" id="screen-groups" style="display: none;">
+      <!-- Module Header with dark-gradient -->
+      <div class="module-header">
+        <div class="mh-top">
+          <div class="icon-btn" onclick="switchScreenDirect('balances')" style="color:var(--on-primary);font-size:18px;cursor:pointer;">‹</div>
+          <div class="spacer"></div>
+          <span class="see-all" style="color:#fff;font-size:12px;cursor:pointer;" onclick="switchScreenDirect('itemized-split')">+ Split Bill</span>
+        </div>
+        <div class="mh-title">Salalah Squad</div>
+        <div class="mh-sub">Active Ledger · default event seeded</div>
+      </div>
+
+      <div class="content tight" style="flex:1;">
+        
+        <!-- P0: Debt simplification slider toggle preview -->
+        <div class="debt-mode-strip">
+          <button class="debt-mode-btn active" id="debt-mode-sim" onclick="toggleSimplification(true)">Simplified Debts ON</button>
+          <button class="debt-mode-btn" id="debt-mode-raw" onclick="toggleSimplification(false)">Simplified OFF</button>
+        </div>
+
+        <div class="section-header">
+          <span class="label">GROUP BALANCES</span>
+        </div>
+
+        <div class="card" style="padding:var(--s12) var(--s16)">
+          <!-- Ahmed's simplified balance -->
+          <div class="between" style="padding:var(--s8) 0;border-bottom:1px solid var(--border);">
+            <div class="row">
+              <span class="avatar sm av-3">A</span>
+              <span style="font-weight:600;font-size:13.5px;">Ahmed Al-Jabri</span>
+            </div>
+            <div class="col" style="align-items:end;">
+              <span class="r-amount neg" id="ahmed-debt-val">−<span class="ccy">OMR</span>12.<span class="dec">340</span></span>
+              <!-- Show math disclosure (P0) -->
+              <span class="math-disclosure" onclick="toggleMathDisclosure('math-ahmed')">Show math</span>
+            </div>
+          </div>
+          
+          <!-- Show math expandable drawer (P0) -->
+          <div class="math-drawer" id="math-ahmed">
+            <b>Repayment Path:</b><br>
+            • Ahmed paid OMR 45.000 for Boat Tour.<br>
+            • Your share is 1/3 (OMR 15.000).<br>
+            • You paid OMR 8.000 for snacks.<br>
+            • Net Simplified Debt: OMR 12.340.
+          </div>
+
+          <!-- Sara's simplified balance -->
+          <div class="between" style="padding:var(--s8) 0;">
+            <div class="row">
+              <span class="avatar sm av-2">S</span>
+              <span style="font-weight:600;font-size:13.5px;">Sara Al-Raisi</span>
+            </div>
+            <div class="col" style="align-items:end;">
+              <span class="r-amount pos" id="sara-debt-val">+<span class="ccy">OMR</span>20.<span class="dec">030</span></span>
+              <span class="math-disclosure" onclick="toggleMathDisclosure('math-sara')">Show math</span>
+            </div>
+          </div>
+
+          <!-- Show math expandable drawer 2 -->
+          <div class="math-drawer" id="math-sara">
+            <b>Repayment Path:</b><br>
+            • You paid OMR 60.000 for Villa Rental.<br>
+            • Sara's share is 1/3 (OMR 20.000).<br>
+            • Sara paid OMR 1.200 for Coffee.<br>
+            • Net Simplified Debt: OMR 20.030.
+          </div>
+        </div>
+
+        <button class="btn block grad" onclick="startSettleUpWizard('Ahmed', '12.340')">Record Settlement</button>
+      </div>
+
+      <!-- Bottom Nav Bar -->
+      <div class="bottom-nav">
+        <div class="nav-tab" onclick="switchScreenDirect('balances')">
+          <span class="nav-icon">👤</span>
+          <span>Balances</span>
+        </div>
+        <div class="nav-tab active">
+          <span class="nav-icon">🧭</span>
+          <span>Groups</span>
+        </div>
+        <div class="nav-tab" onclick="switchScreenDirect('activity')">
+          <span class="nav-icon">📖</span>
+          <span>Activity</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 3: ACTIVITY & INVITE (TAB 3) ==================== -->
+    <div class="phone-screen" id="screen-activity" style="display: none;">
+      <div class="app-bar">
+        <div class="icon-btn center" onclick="switchScreenDirect('balances')" style="color:var(--ink-2);font-size:18px;cursor:pointer;">‹</div>
+        <div class="title sans">Activity &amp; Invites</div>
+        <div class="icon-btn"></div>
+      </div>
+
+      <div class="content tight" style="flex:1;">
+        
+        <!-- P0: Share Loop Growth Lever -->
+        <div class="card raised pad-lg center">
+          <span style="font-size:32px;">🌴</span>
+          <div class="serif" style="font-size:22px;margin:6px 0;">Invite Salalah squad</div>
+          <p class="muted tiny">Invite friends to split expenses in one click. No sign-up required to join your ledger.</p>
+          <!-- Prominent Invite CTA -->
+          <button class="btn block grad" onclick="triggerToast('Launching OS Share link: rihla.app/g/invite/token')" style="margin-top:var(--s8);">Invite via WhatsApp</button>
+        </div>
+
+        <div class="section-header">
+          <span class="label">RECENT REPLAYS</span>
+        </div>
+
+        <div class="card flush">
+          <div class="list-row">
+            <div class="row-body">
+              <div class="row-title" style="font-size:14px;">Sara Al-Raisi joined via link</div>
+              <div class="row-sub">5 hours ago</div>
+            </div>
+            <span class="pill-tag">Success</span>
+          </div>
+
+          <div class="list-row">
+            <div class="row-body">
+              <div class="row-title" style="font-size:14px;">Ahmed Al-Jabri settled OMR 12.340</div>
+              <div class="row-sub">Yesterday</div>
+            </div>
+            <span class="pill-tag">Settle</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Nav Bar -->
+      <div class="bottom-nav">
+        <div class="nav-tab" onclick="switchScreenDirect('balances')">
+          <span class="nav-icon">👤</span>
+          <span>Balances</span>
+        </div>
+        <div class="nav-tab" onclick="switchScreenDirect('groups')">
+          <span class="nav-icon">🧭</span>
+          <span>Groups</span>
+        </div>
+        <div class="nav-tab active">
+          <span class="nav-icon">📖</span>
+          <span>Activity</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 5: ITEMIZED SPLIT EDITOR ==================== -->
+    <div class="phone-screen" id="screen-itemized-split" style="display: none;">
+      <div class="app-bar">
+        <div class="icon-btn center" onclick="switchScreenDirect('groups')" style="cursor:pointer;font-size:16px;">✕</div>
+        <div class="title sans">Customize Split</div>
+        <div onclick="switchScreenDirect('groups')" style="cursor:pointer;color:var(--primary);font-weight:700;font-size:14px;padding-right:6px">Apply</div>
+      </div>
+
+      <div class="content tight" style="flex:1;">
+        <div class="chip-row">
+          <span class="chip">Equally</span>
+          <span class="chip">Exact</span>
+          <span class="chip selected">Itemized</span>
+        </div>
+
+        <div class="section-header">
+          <span class="label">ITEMS SPLIT (ITEMS -> PEOPLE)</span>
+        </div>
+
+        <div class="card" style="padding:var(--s12) var(--s16)">
+          <div class="split-row">
+            <div class="col" style="flex:1;">
+              <span style="font-weight:600;font-size:13.5px;">Wadi Shab boat fee</span>
+              <div class="chip-row" style="margin-top:6px;gap:4px;">
+                <span class="chip sm selected">Nasser</span>
+                <span class="chip sm selected">Sara</span>
+                <span class="chip sm">Ahmed</span>
+              </div>
+            </div>
+            <span class="r-amount neu" style="font-size:13.5px;"><span class="ccy">OMR</span>15.<span class="dec">000</span></span>
+          </div>
+
+          <div class="split-row">
+            <div class="col" style="flex:1;">
+              <span style="font-weight:600;font-size:13.5px;">Lunch at Wadi Shab resort</span>
+              <div class="chip-row" style="margin-top:6px;gap:4px;">
+                <span class="chip sm">Nasser</span>
+                <span class="chip sm selected">Sara</span>
+                <span class="chip sm selected">Ahmed</span>
+              </div>
+            </div>
+            <span class="r-amount neu" style="font-size:13.5px;"><span class="ccy">OMR</span>30.<span class="dec">000</span></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Reconcile Pinned Footer (P0) -->
+      <div style="background:var(--card);border-top:1px solid var(--border);padding:var(--s12) var(--s16);margin-top:auto;">
+        <div class="between" style="margin-bottom:var(--s8);">
+          <span class="uppercase-label" style="font-size:9.5px;">LIVE TOTAL</span>
+          <div class="row" style="color:var(--sage-text);font-weight:600;font-size:12px;gap:4px;">
+            <span>✓ Reconciled</span>
+            <span class="r-amount pos"><span class="ccy">OMR</span>45.<span class="dec">000</span></span>
+          </div>
+        </div>
+        <div class="between" style="font-size:12.5px;">
+          <div class="col"><span class="muted">Nasser</span><span class="r-amount neu"><span class="ccy">OMR</span>7.<span class="dec">500</span></span></div>
+          <div class="col"><span class="muted">Sara</span><span class="r-amount neu"><span class="ccy">OMR</span>22.<span class="dec">500</span></span></div>
+          <div class="col"><span class="muted">Ahmed</span><span class="r-amount neu"><span class="ccy">OMR</span>15.<span class="dec">000</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 6: SYSTEM STATES & OFFLINE ==================== -->
+    <div class="phone-screen" id="screen-system-states" style="display: none;">
+      <div class="app-bar">
+        <div class="icon-btn center" onclick="switchScreenDirect('balances')" style="cursor:pointer;font-size:18px;">‹</div>
+        <div class="title sans">Skeletons &amp; Errors</div>
+        <div class="icon-btn"></div>
+      </div>
+
+      <div class="content tight" style="flex:1;">
+        <div class="section-header">
+          <span class="label">SKELETON SHIMMER (A11Y SAFE)</span>
+        </div>
+
+        <div class="card flush" style="padding-bottom:6px;">
+          <div class="skel-row">
+            <div class="skel skel-circle" id="skel-circle-1"></div>
+            <div class="col" style="flex:1;">
+              <div class="skel skel-line" style="width:40%;" id="skel-l1"></div>
+              <div class="skel skel-line" style="width:60%;" id="skel-l2"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <span class="label">PERMISSION DENIED STATE</span>
+        </div>
+
+        <div class="card">
+          <div class="empty-state">
+            <div class="empty-icon" style="background:#fde8e8;color:var(--rust);">🔒</div>
+            <div class="empty-title">Access denied</div>
+            <div class="empty-msg">You no longer have access to this group ledger. Ahmed may have removed you.</div>
+            <button class="btn sm" onclick="switchScreenDirect('balances')">Go to my balances</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL: PLAYBOOK ALIGNMENT INSPECTOR -->
+  <div class="inspector">
+    
+    <div class="inspector-card">
+      <h3 id="inspect-title">Playbook Verification</h3>
+      <p style="font-size:13.5px;margin:0 0 var(--s12);line-height:1.5;">Mapping of current visual layout elements to corresponding Flutter code structures and optimizations detailed in the playbook.</p>
+      
+      <table class="token-table">
+        <thead>
+          <tr>
+            <th>UX Playbook Concept</th>
+            <th>Design Detail</th>
+            <th>Implementation Reference</th>
+          </tr>
+        </thead>
+        <tbody id="token-inspect-body">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="inspector-card">
+      <h3>Optimizations &amp; Gotchas</h3>
+      <div style="font-size:12.5px;line-height:1.5;display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <b>Riverpod Widget Optimization:</b><br>
+          <span style="color:var(--saffron-soft);">Always use Watch `.select` filters to narrow repaint boundaries:</span>
+          <code style="display:block;margin-top:4px;font-size:11px;">ref.watch(balanceProvider.select((b) => b.netAmount))</code>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,.05);padding-top:8px;">
+          <b>Cold-Start Boot Optimization:</b><br>
+          <span style="color:var(--saffron-soft);">Move non-critical SDK startup loads after the first paint:</span>
+          <code style="display:block;margin-top:4px;font-size:11px;">WidgetsBinding.instance.addPostFrameCallback((_) async { ... });</code>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  let isDarkMode = false;
+  let reduceMotion = false;
+  let selectedChannel = 'whatsapp';
+
+  const playbookInspectData = {
+    'balances': {
+      title: 'Balances Dashboard (Tab 1)',
+      tokens: [
+        { role: 'Headline Net position', token: 'P0: Single sentence', val: 'Instrument Serif italic' },
+        { role: 'Tonal Split', token: 'successText / errorText', val: 'Green positive / red negative' },
+        { role: 'Balances list', token: 'Net per-person across all groups', val: 'Avoids complex group math' },
+        { role: 'Bottom Tab count', token: 'Material M3 bottom bar', val: 'Strictly 3 tab stack' }
+      ]
+    },
+    'groups': {
+      title: 'Group Ledger view (Tab 2)',
+      tokens: [
+        { role: 'Simplification Slider', token: 'Opt-in preview mode', val: 'Toggles simplified vs unsimplified' },
+        { role: 'Show Math Link', token: 'Show how this was calculated', val: 'Explains underlying transaction paths' },
+        { role: 'Default event', token: 'Auto-seeded subcollection', val: 'Enables Group -> + Split flow' }
+      ]
+    },
+    'activity': {
+      title: 'Activity & Invites (Tab 3)',
+      tokens: [
+        { role: 'WhatsApp invite CTA', token: 'wa.me deep link share', val: 'Viral growth loop P0 lever' },
+        { role: 'Deferred deep links', token: 'app_links bundle', val: 'Resolves group invitations' },
+        { role: 'Activity List View', token: 'ListView.builder (itemExtent)', val: 'Virtualization, skips layout reflow' }
+      ]
+    },
+    'wizard': {
+      title: 'GCC Payment Handoff Wizard',
+      tokens: [
+        { role: 'Review Step', token: 'Settle up with [Name]', val: 'Review amount, note' },
+        { role: 'Handoff Channels', token: 'WhatsApp / IBAN / QR', val: 'GCC out-of-band transfers' },
+        { role: 'Action Step', token: 'User makes payment externally', val: 'Rihla is a ledger' },
+        { role: 'Mark as settled', token: 'Undo-capable write confirmation', val: '5-second undo toast action' }
+      ]
+    },
+    'itemized-split': {
+      title: 'Itemized Split Editor',
+      tokens: [
+        { role: 'Input Metaphor', token: 'Items -> People flow', val: 'American table-style list' },
+        { role: 'Rounded decimal precision', token: 'Decimal parsing', val: 'Prevents double floating errors' },
+        { role: 'Live Reconcile footer', token: 'Checkmark validated total', val: 'Pins actual per-person figures' }
+      ]
+    },
+    'system-states': {
+      title: 'Skeletons & Network states',
+      tokens: [
+        { role: 'A11y safe shimmer', token: 'MediaQuery.disableAnimationsOf', val: 'Static gray blocks when reduced motion ON' },
+        { role: 'Exception mapping', token: 'Catch Firestore errors', val: 'Plain language views, no Firebase codes' },
+        { role: 'Local writes syncing', token: 'Saved offline - will sync banner', val: 'Firestore caching banner' }
+      ]
+    }
+  };
+
+  function switchScreen(screenId, btnElement) {
+    const buttons = document.querySelectorAll('.control-deck .deck-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    btnElement.classList.add('active');
+
+    // Hide wizard if active
+    document.getElementById('settle-up-wizard').classList.remove('active');
+
+    const screens = document.querySelectorAll('.phone-screen');
+    screens.forEach(screen => screen.style.display = 'none');
+    document.getElementById('screen-' + screenId).style.display = 'flex';
+
+    updateInspectorData(screenId);
+  }
+
+  function switchScreenDirect(screenId) {
+    const buttons = document.querySelectorAll('.control-deck .deck-btn');
+    buttons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(screenId)) {
+        btn.classList.add('active');
+      }
+    });
+
+    document.getElementById('settle-up-wizard').classList.remove('active');
+
+    const screens = document.querySelectorAll('.phone-screen');
+    screens.forEach(screen => screen.style.display = 'none');
+    document.getElementById('screen-' + screenId).style.display = 'flex';
+
+    updateInspectorData(screenId);
+  }
+
+  function updateInspectorData(screenId) {
+    const data = playbookInspectData[screenId];
+    document.getElementById('inspect-title').innerText = data.title;
+
+    let html = '';
+    data.tokens.forEach(tk => {
+      html += `<tr>
+        <td><b>${tk.role}</b></td>
+        <td><code>${tk.token}</code></td>
+        <td><span style="font-family:var(--font-mono);font-size:11.5px;">${tk.val}</span></td>
+      </tr>`;
+    });
+    document.getElementById('token-inspect-body').innerHTML = html;
+  }
+
+  function toggleDarkMode() {
+    const device = document.getElementById('app-device');
+    const status = document.getElementById('theme-status');
+    isDarkMode = !isDarkMode;
+    if (isDarkMode) {
+      device.classList.add('dark-mode-active');
+      status.innerText = 'Dark Stub';
+      status.style.background = 'var(--primary)';
+      status.style.color = '#fff';
+    } else {
+      device.classList.remove('dark-mode-active');
+      status.innerText = 'Light';
+      status.style.background = '';
+      status.style.color = '';
+    }
+  }
+
+  function toggleReduceMotion() {
+    const status = document.getElementById('motion-status');
+    const skels = document.querySelectorAll('.skel');
+    reduceMotion = !reduceMotion;
+    if (reduceMotion) {
+      skels.forEach(skel => skel.classList.add('static'));
+      status.innerText = 'Reduced';
+      status.style.background = 'var(--rust)';
+      status.style.color = '#fff';
+    } else {
+      skels.forEach(skel => skel.classList.remove('static'));
+      status.innerText = 'Normal';
+      status.style.background = '';
+      status.style.color = '';
+    }
+  }
+
+  function setNetworkState(state) {
+    const banner = document.getElementById('app-offline-banner');
+    const text = document.getElementById('banner-text');
+    if (state === 'online') {
+      banner.style.display = 'none';
+    } else if (state === 'syncing') {
+      banner.className = 'banner sync';
+      banner.style.display = 'flex';
+      text.innerText = 'Saved offline — will sync when you\'re back online';
+    } else if (state === 'offline') {
+      banner.className = 'banner';
+      banner.style.display = 'flex';
+      text.innerText = 'No Internet Connection. View-only mode.';
+    }
+  }
+
+  function triggerToast(message) {
+    const snackbar = document.getElementById('app-snackbar');
+    const msgEl = document.getElementById('snackbar-msg');
+    msgEl.innerText = message;
+    snackbar.classList.add('show');
+    setTimeout(() => {
+      snackbar.classList.remove('show');
+    }, 2500);
+  }
+
+  function copyIban(ibanText) {
+    navigator.clipboard.writeText(ibanText).then(() => {
+      triggerToast('IBAN copied to clipboard!');
+    }).catch(() => {
+      triggerToast('IBAN copied!');
+    });
+  }
+
+  // Debt Simplification toggle logic
+  function toggleSimplification(isSimplified) {
+    const simBtn = document.getElementById('debt-mode-sim');
+    const rawBtn = document.getElementById('debt-mode-raw');
+    const ahmedVal = document.getElementById('ahmed-debt-val');
+    const saraVal = document.getElementById('sara-debt-val');
+
+    if (isSimplified) {
+      simBtn.classList.add('active');
+      rawBtn.classList.remove('active');
+      ahmedVal.innerHTML = `−<span class="ccy">OMR</span>12.<span class="dec">340</span>`;
+      saraVal.innerHTML = `+<span class="ccy">OMR</span>20.<span class="dec">030</span>`;
+    } else {
+      simBtn.classList.remove('active');
+      rawBtn.classList.add('active');
+      // Unsimplified amounts (more transaction segments)
+      ahmedVal.innerHTML = `−<span class="ccy">OMR</span>15.<span class="dec">000</span>`;
+      saraVal.innerHTML = `+<span class="ccy">OMR</span>25.<span class="dec">430</span>`;
+    }
+  }
+
+  // Show Math details drawer
+  function toggleMathDisclosure(drawerId) {
+    const drawer = document.getElementById(drawerId);
+    drawer.classList.toggle('show');
+  }
+
+  // Payment Handoff Wizard (Review -> Channel -> Action -> Confirmed)
+  let activeStep = 1;
+  function startSettleUpWizard(targetName, amount) {
+    document.getElementById('wizard-name').innerText = targetName;
+    document.getElementById('wizard-amount-input').value = amount;
+    document.getElementById('wizard-avatar').innerText = targetName.charAt(0);
+    
+    // Switch to wizard frame
+    document.getElementById('settle-up-wizard').classList.add('active');
+    
+    // Reset steps
+    activeStep = 1;
+    updateWizardUI();
+    updateInspectorData('wizard');
+  }
+
+  function cancelWizard() {
+    document.getElementById('settle-up-wizard').classList.remove('active');
+    switchScreenDirect(currentScreen);
+  }
+
+  function advanceWizardStep(stepNum) {
+    activeStep = stepNum;
+    updateWizardUI();
+  }
+
+  function selectChannel(channel) {
+    selectedChannel = channel;
+    // Check radio buttons
+    document.getElementById('chan-whatsapp').checked = (channel === 'whatsapp');
+    document.getElementById('chan-iban').checked = (channel === 'iban');
+    document.getElementById('chan-qr').checked = (channel === 'qr');
+    document.getElementById('chan-cash').checked = (channel === 'cash');
+  }
+
+  function updateWizardUI() {
+    const steps = document.querySelectorAll('.wizard-step');
+    steps.forEach(step => step.classList.remove('active'));
+    document.getElementById('wizard-step-' + activeStep).classList.add('active');
+
+    // Title bar text based on step
+    const titleBar = document.getElementById('wizard-title-bar');
+    if (activeStep === 1) titleBar.innerText = 'Settle Up';
+    if (activeStep === 2) titleBar.innerText = 'Choose Payment Mode';
+    if (activeStep === 3) titleBar.innerText = 'Transfer Funds';
+    if (activeStep === 4) titleBar.innerText = 'Confirmed';
+
+    // Update Step 3 actions card
+    if (activeStep === 3) {
+      document.getElementById('action-whatsapp-card').style.display = (selectedChannel === 'whatsapp') ? 'block' : 'none';
+      document.getElementById('action-iban-card').style.display = (selectedChannel === 'iban') ? 'block' : 'none';
+      document.getElementById('action-qr-card').style.display = (selectedChannel === 'qr') ? 'block' : 'none';
+      
+      // If cash is chosen, skip action screen directly to confirm
+      if (selectedChannel === 'cash') {
+        activeStep = 4;
+        updateWizardUI();
+      }
+    }
+
+    // Update Step 4 verb text
+    if (activeStep === 4) {
+      const targetName = document.getElementById('wizard-name').innerText;
+      const amount = document.getElementById('wizard-amount-input').value;
+      const verbText = document.getElementById('conf-verb-text');
+
+      if (selectedChannel === 'whatsapp') {
+        verbText.innerText = `I sent ${targetName} OMR ${amount} via WhatsApp`;
+      } else if (selectedChannel === 'iban') {
+        verbText.innerText = `I sent ${targetName} OMR ${amount} via Bank Transfer`;
+      } else if (selectedChannel === 'qr') {
+        verbText.innerText = `I paid ${targetName} OMR ${amount} via QR Scanner`;
+      } else {
+        verbText.innerText = `I paid ${targetName} OMR ${amount} in Cash`;
+      }
+    }
+  }
+
+  function triggerUndo() {
+    triggerToast('Settlement undone. Returning to ledger...');
+    setTimeout(() => {
+      cancelWizard();
+    }, 1000);
+  }
+
+  function completeWizard() {
+    cancelWizard();
+    triggerToast('Settlement transaction successfully recorded.');
+  }
+
+  window.onload = function() {
+    updateInspectorData('balances');
+  };
+</script>
+</body>
+</html>

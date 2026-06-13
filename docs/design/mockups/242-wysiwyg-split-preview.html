@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#242 — WYSIWYG split preview · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#242 · Real per-person split preview</h1>
+  <p>The expense editor's <b>Split between</b> card always shows the <i>equal</i> figure
+     (<code>amount ÷ count</code>) and a <code>"{amount} each"</code> chip — even when the user
+     picked <b>Shares</b>, <b>Exact</b>, or <b>Percent</b>. The split is <i>persisted</i> correctly;
+     only the preview lies. The "Before" frame shows the current broken state. Both fix variants thread
+     <code>_splitMode</code> + <code>_splitDistribution</code> into <code>_SplitPreviewCard</code>
+     and call the new public pure <code>allocateOwed()</code> extracted from <code>BalanceCalculator</code>.
+     Worked here: Shares <b>2:1</b> on <span class="r-amount" style="display:inline"><span class="ccy" style="font-size:.75em;color:var(--ink-3);margin-right:.25em">OMR</span>30<span style="opacity:.72">.000</span></span>
+     and Percent <b>60/40</b> on <span class="r-amount" style="display:inline"><span class="ccy" style="font-size:.75em;color:var(--ink-3);margin-right:.25em">OMR</span>27<span style="opacity:.72">.500</span></span>.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#242</span>
+    <h2 class="issue-title">feat(ledger): split preview shows real per-person amounts (WYSIWYG)</h2>
+    <span class="issue-meta">P3 · money · Gate-required · l10n</span>
+  </div>
+  <p class="issue-desc">The fix requires extracting a <b>public pure</b>
+     <code>allocateOwed()</code> from <code>BalanceCalculator</code> so the preview and the
+     persisted calc share one copy of the allocator (remainder → alphabetically-last recipient,
+     negative-owed guards, tolerance). Threading mode + distribution into
+     <code>_SplitPreviewCard</code> then drops the misleading <code>editorEachAmount</code> chip
+     for non-equal modes. Both variants implement the same math; they differ only on how the
+     non-uniform total is surfaced. Per-tile <code>Directionality.ltr</code> (#151) and the
+     <code>count &lt; 2</code> guard are preserved in both.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (Per-person list) — the whole bug is
+     that one blended number hides reality; the fix is to <b>stop summarising</b> and show the
+     real figures by default, not behind a tap.</p>
+
+  <div class="variant-row">
+
+    <!-- Before: current broken state -->
+    <div class="variant">
+      <div class="variant-label">Before · Broken state <span class="tag">bug</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Add expense</div>
+            <div class="icon-btn center muted">✓</div>
+          </div>
+          <div class="content tight">
+
+            <div class="card raised between">
+              <div class="col" style="gap:2px">
+                <div class="uppercase-label">Amount</div>
+                <div class="r-amount lg neu"><span class="ccy">OMR</span>30<span class="dec">.000</span></div>
+              </div>
+              <div class="row" style="gap:8px">
+                <div class="avatar sm av-1">A</div>
+                <div class="col" style="gap:1px">
+                  <div class="tiny" style="font-weight:600">Ahmed paid</div>
+                  <div class="tiny muted">Dinner · Mutrah</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">Split between</span></div>
+            <div class="chip-row">
+              <span class="chip">Equal</span>
+              <span class="chip selected">Shares</span>
+              <span class="chip">Exact</span>
+              <span class="chip">Percent</span>
+            </div>
+
+            <!-- BUG: card reads Shares mode but shows equal amounts regardless -->
+            <div class="card raised flush">
+              <!-- The false chip: "OMR 15.000 each" for a 2:1 split -->
+              <div class="list-row between" style="padding-bottom:8px">
+                <span class="uppercase-label">2 ways</span>
+                <span class="pill-tag flag">OMR 15.000 each</span>
+              </div>
+              <div class="divider" style="margin:0"></div>
+
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-1">A</div></div>
+                <div class="row-body">
+                  <div class="row-title">Ahmed</div>
+                  <div class="row-sub mono">2 shares · payer</div>
+                </div>
+                <div class="row-trail">
+                  <!-- BUG: shows equal share, ignores the 2:1 weight -->
+                  <span class="r-amount neu"><span class="ccy">OMR</span>15<span class="dec">.000</span></span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-2">S</div></div>
+                <div class="row-body">
+                  <div class="row-title">Sara</div>
+                  <div class="row-sub mono">1 share</div>
+                </div>
+                <div class="row-trail">
+                  <!-- BUG: same equal share, wrong -->
+                  <span class="r-amount neu"><span class="ccy">OMR</span>15<span class="dec">.000</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="banner info" style="border-radius:var(--r-sm);font-size:12px">
+              <span style="color:var(--rust-text);font-weight:600">Preview lies:</span>
+              <span>persisted split is 20/10 — display says 15/15</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Current broken state.</b> <code>_SplitPreviewCard</code>
+         receives no <code>_splitMode</code> / <code>_splitDistribution</code> (call site
+         <code>expense_editor_body.dart:467-474</code>). Every tile gets
+         <code>share = amount ÷ count</code> (<code>:1044-1048</code>) regardless of mode.
+         The <code>"OMR 15.000 each"</code> chip is doubly wrong: the amount is false
+         and there is no single "each" in a 2:1 split. Sum displayed: OMR 30.000 by
+         coincidence — the values are individually wrong even when they add up.</p>
+    </div>
+
+    <!-- Variant 1 · Per-person list (RECOMMENDED) -->
+    <div class="variant pick">
+      <div class="variant-label">1 · Per-person list <span class="tag">Shares 2:1</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Add expense</div>
+            <div class="icon-btn center muted">✓</div>
+          </div>
+          <div class="content tight">
+
+            <div class="card raised between">
+              <div class="col" style="gap:2px">
+                <div class="uppercase-label">Amount</div>
+                <div class="r-amount lg neu"><span class="ccy">OMR</span>30<span class="dec">.000</span></div>
+              </div>
+              <div class="row" style="gap:8px">
+                <div class="avatar sm av-1">A</div>
+                <div class="col" style="gap:1px">
+                  <div class="tiny" style="font-weight:600">Ahmed paid</div>
+                  <div class="tiny muted">Dinner · Mutrah</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">Split between</span></div>
+            <div class="chip-row">
+              <span class="chip">Equal</span>
+              <span class="chip selected">Shares</span>
+              <span class="chip">Exact</span>
+              <span class="chip">Percent</span>
+            </div>
+
+            <!-- FIX: per-person list with real allocateOwed() amounts -->
+            <div class="card raised flush">
+              <div class="list-row between" style="padding-bottom:8px">
+                <span class="uppercase-label">Custom · 2 ways</span>
+                <span class="pill-tag">WEIGHTED BY SHARES</span>
+              </div>
+              <div class="divider" style="margin:0"></div>
+
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-1">A</div></div>
+                <div class="row-body">
+                  <div class="row-title">Ahmed</div>
+                  <div class="row-sub mono">2 shares · payer</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neu"><span class="ccy">OMR</span>20<span class="dec">.000</span></span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-2">S</div></div>
+                <div class="row-body">
+                  <div class="row-title">Sara</div>
+                  <div class="row-sub mono">1 share</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neu"><span class="ccy">OMR</span>10<span class="dec">.000</span></span>
+                </div>
+              </div>
+
+              <div class="divider strong" style="margin:0"></div>
+              <div class="list-row between" style="padding-top:10px">
+                <span class="tiny muted">Sums to total</span>
+                <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>30<span class="dec">.000</span></span>
+              </div>
+            </div>
+
+            <div class="tiny muted center" style="margin-top:2px">No "OMR 15.000 each" chip — there is no single each in a 2:1 split.</div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Per-person list, no blended chip.</b> The misleading
+         <code>editorEachAmount</code> chip is hidden for non-equal modes; each row shows the
+         real <code>allocateOwed()[id]</code> with its weight (<code>2 shares</code> /
+         <code>1 share</code>), and a footer proves the sum. Implementation: thread
+         mode + distribution into <code>_SplitPreviewCard</code> and swap the horizontal
+         tile strip for a vertical list in non-equal modes
+         (<code>expense_editor_body.dart:467-474</code>). Per-tile
+         <code>Directionality.ltr</code> preserved (#151). <code>count &lt; 2</code> guard
+         unchanged. Custom-scope payer with no distribution key shown as
+         <code>OMR 0.000</code> with a muted note.</p>
+    </div>
+
+    <!-- Variant 2 · Amounts vary + expand/collapse -->
+    <div class="variant">
+      <div class="variant-label">2 · Amounts vary + breakdown <span class="tag">Percent 60/40</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Add expense</div>
+            <div class="icon-btn center muted">✓</div>
+          </div>
+          <div class="content tight">
+
+            <div class="card raised between">
+              <div class="col" style="gap:2px">
+                <div class="uppercase-label">Amount</div>
+                <div class="r-amount lg neu"><span class="ccy">OMR</span>27<span class="dec">.500</span></div>
+              </div>
+              <div class="row" style="gap:8px">
+                <div class="avatar sm av-5">L</div>
+                <div class="col" style="gap:1px">
+                  <div class="tiny" style="font-weight:600">Layla paid</div>
+                  <div class="tiny muted">Taxi · Nizwa</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">Split between</span></div>
+            <div class="chip-row">
+              <span class="chip">Equal</span>
+              <span class="chip">Shares</span>
+              <span class="chip">Exact</span>
+              <span class="chip selected">Percent</span>
+            </div>
+
+            <!-- Expanded state: "Amounts vary" chip + breakdown visible -->
+            <div class="card raised flush">
+              <div class="list-row between">
+                <div class="row" style="gap:8px">
+                  <div class="avatar-stack">
+                    <div class="avatar sm av-3">M</div>
+                    <div class="avatar sm av-4">K</div>
+                  </div>
+                  <div class="col" style="gap:2px">
+                    <div class="row-title" style="font-size:13px">Custom · 2 ways</div>
+                    <span class="pill-tag warn">AMOUNTS VARY</span>
+                  </div>
+                </div>
+                <div class="chip selected" style="padding:5px 12px;font-size:12px">Hide ▴</div>
+              </div>
+
+              <div class="divider" style="margin:0"></div>
+
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-3">M</div></div>
+                <div class="row-body">
+                  <div class="row-title">Mariam</div>
+                  <div class="row-sub mono">60%</div>
+                </div>
+                <div class="row-trail">
+                  <!-- 60% × 27.500 = 16.500 -->
+                  <span class="r-amount neu"><span class="ccy">OMR</span>16<span class="dec">.500</span></span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar sm av-4">K</div></div>
+                <div class="row-body">
+                  <div class="row-title">Khalid</div>
+                  <div class="row-sub mono">40%</div>
+                </div>
+                <div class="row-trail">
+                  <!-- 40% × 27.500 = 11.000 -->
+                  <span class="r-amount neu"><span class="ccy">OMR</span>11<span class="dec">.000</span></span>
+                </div>
+              </div>
+
+              <div class="divider strong" style="margin:0"></div>
+              <div class="list-row between" style="padding-top:10px">
+                <span class="tiny muted">Sums to total</span>
+                <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>27<span class="dec">.500</span></span>
+              </div>
+            </div>
+
+            <!-- Collapsed counterpart for contrast -->
+            <div class="tiny muted center" style="margin-top:2px">Collapsed — the chip replaces the false "each" label:</div>
+            <div class="card soft between" style="padding:12px 14px">
+              <span class="tiny" style="font-weight:700">Custom · 2 ways</span>
+              <div class="row" style="gap:8px">
+                <span class="pill-tag warn">AMOUNTS VARY</span>
+                <span class="chevron">⌄</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Compact chip that expands.</b> Replaces
+         <code>"{amount} each"</code> with a new <code>editorAmountsVary</code> l10n string
+         (en + ar ARB); tapping the row reveals the same real-amount list from
+         <code>allocateOwed()</code>. Adds an expand/collapse
+         <code>StatefulWidget</code> wrapper. Trade-off: the true figures sit one tap
+         away — which is exactly the friction #242 is trying to remove — so this is the
+         weaker default. The "Sums to total" footer is present in both expanded and
+         collapsed states to let the user verify without opening. Same
+         <code>Directionality.ltr</code> and <code>count &lt; 2</code> guard as V1.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
