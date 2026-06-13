@@ -584,6 +584,30 @@ abstract class AppLocalizations {
   /// **'Anonymous traveller'**
   String get profileAnonymousTraveller;
 
+  /// No description provided for @profileBackupStatusNotBackedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Not backed up'**
+  String get profileBackupStatusNotBackedUp;
+
+  /// No description provided for @profileBackupStatusBackedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Backed up'**
+  String get profileBackupStatusBackedUp;
+
+  /// No description provided for @profileBackupCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up this account'**
+  String get profileBackupCardTitle;
+
+  /// No description provided for @profileBackupCardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trips live only on this phone. Add an email or Google so you never lose them.'**
+  String get profileBackupCardBody;
+
   /// Placeholder shown in place of the display name when the user has not yet set a name.
   ///
   /// In en, this message translates to:

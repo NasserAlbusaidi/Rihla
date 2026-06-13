@@ -259,6 +259,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileAnonymousTraveller => 'Anonymous traveller';
 
   @override
+  String get profileBackupStatusNotBackedUp => 'Not backed up';
+
+  @override
+  String get profileBackupStatusBackedUp => 'Backed up';
+
+  @override
+  String get profileBackupCardTitle => 'Back up this account';
+
+  @override
+  String get profileBackupCardBody =>
+      'Your trips live only on this phone. Add an email or Google so you never lose them.';
+
+  @override
   String get profileSetYourName => 'Set your name';
 
   @override

@@ -9,6 +9,12 @@ PROJECT_ID="${RIHLA_FIREBASE_EMULATOR_PROJECT:-rihla-safar-test}"
 AUTH_PORT="${RIHLA_AUTH_EMULATOR_PORT:-19099}"
 FIRESTORE_PORT="${RIHLA_FIRESTORE_EMULATOR_PORT:-18080}"
 TEST_COMMAND="${RIHLA_FIREBASE_EMULATOR_TEST_COMMAND:-npx --yes node@22 node_modules/jest/bin/jest.js --runInBand}"
+# emulators:exec takes one command STRING, so positional args (e.g.
+# `npm run test:emulator -- balanceAggregator.test.ts`) must be appended
+# shell-quoted; before this they were silently dropped and the full suite ran.
+for arg in "$@"; do
+  TEST_COMMAND+=" $(printf '%q' "$arg")"
+done
 TEMP_FILES=()
 
 cleanup() {

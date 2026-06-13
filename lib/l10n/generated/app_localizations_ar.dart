@@ -259,6 +259,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileAnonymousTraveller => 'مسافر مجهول';
 
   @override
+  String get profileBackupStatusNotBackedUp => 'غير محفوظ احتياطيًا';
+
+  @override
+  String get profileBackupStatusBackedUp => 'محفوظ احتياطيًا';
+
+  @override
+  String get profileBackupCardTitle => 'احفظ هذا الحساب احتياطيًا';
+
+  @override
+  String get profileBackupCardBody =>
+      'رحلاتك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا أو حساب Google حتى لا تفقدها.';
+
+  @override
   String get profileSetYourName => 'عيّن اسمك';
 
   @override
