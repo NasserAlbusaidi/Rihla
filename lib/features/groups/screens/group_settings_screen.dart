@@ -180,16 +180,6 @@ class _DefaultsSection extends StatelessWidget {
                 key: GroupKeys.settingsCurrencyTile,
                 title: context.l10n.groupCurrency,
                 value: currency,
-                divider: true,
-              ),
-              _DefaultsRow(
-                title: context.l10n.groupDefaultSplit,
-                value: context.l10n.groupDefaultSplitEqual,
-                divider: true,
-              ),
-              _DefaultsRow(
-                title: context.l10n.groupReminders,
-                value: context.l10n.groupRemindersWeekly,
                 divider: false,
               ),
             ],
