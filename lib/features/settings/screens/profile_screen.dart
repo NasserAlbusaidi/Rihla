@@ -15,6 +15,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/notification_settings_launcher.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/split_mode_display_name.dart';
@@ -728,15 +729,19 @@ class _PreferencesCard extends ConsumerWidget {
               bg: colors.paperDeep,
             ),
             value: notificationsOn,
-            disabled: isPermissionDenied,
-            onChanged: isPermissionDenied
-                ? null
-                : (value) {
-                    HapticService.selection();
-                    ref
-                        .read(settingsProvider.notifier)
-                        .setPushNotificationsEnabled(value);
-                  },
+            permissionDenied: isPermissionDenied,
+            onChanged: (value) {
+              HapticService.selection();
+              ref
+                  .read(settingsProvider.notifier)
+                  .setPushNotificationsEnabled(value);
+            },
+            // #470: once OS permission is denied the in-app dialog can't
+            // re-request it (Android 13+), so the only recovery is OS settings.
+            onOpenSettings: () {
+              HapticService.selection();
+              ref.read(openNotificationSettingsProvider)();
+            },
           ),
           // #61: 1.0 is OMR-only. The currency picker was orphaned (it wrote
           // AppSettings.currencyCode, which no write path ever read), so it
@@ -1071,21 +1076,30 @@ class _NotificationPrefRow extends StatelessWidget {
   const _NotificationPrefRow({
     required this.leading,
     required this.value,
-    required this.disabled,
+    required this.permissionDenied,
     required this.onChanged,
+    required this.onOpenSettings,
   });
 
   final Widget leading;
   final bool value;
-  final bool disabled;
-  final ValueChanged<bool>? onChanged;
+
+  /// OS permission is denied. The control stays interactive but routes to the
+  /// OS settings page instead of toggling the pref — the toggle can't re-request
+  /// permission itself on Android 13+ (#470).
+  final bool permissionDenied;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    // Denied → every tap (row or switch) deep-links to OS settings; the switch
+    // stays visually OFF because the OS is blocking delivery.
+    final onTap = permissionDenied ? onOpenSettings : () => onChanged(!value);
     return InkWell(
       key: ProfileKeys.notificationToggleTile,
-      onTap: disabled ? null : () => onChanged?.call(!value),
+      onTap: onTap,
       child: Column(
         children: [
           Padding(
@@ -1109,7 +1123,7 @@ class _NotificationPrefRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        disabled
+                        permissionDenied
                             ? context.l10n.profileNotificationsDisabledHint
                             : context.l10n.profileNotificationsSubtitle,
                         style: AppTypography.sans(
@@ -1123,7 +1137,9 @@ class _NotificationPrefRow extends StatelessWidget {
                 Switch.adaptive(
                   key: ProfileKeys.notificationSwitch,
                   value: value,
-                  onChanged: onChanged,
+                  onChanged: permissionDenied
+                      ? (_) => onOpenSettings()
+                      : onChanged,
                   activeThumbColor: colors.primary,
                   activeTrackColor: colors.primary,
                   inactiveTrackColor: colors.cardSoft,
