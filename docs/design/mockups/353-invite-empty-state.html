@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#353 — Invite people CTA on group empty state · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#353 · Invite people on the empty group</h1>
+  <p>A freshly-created group's no-events empty state offers only <b>Create event</b>. The creator
+     just made the group to split something — they need to pull people in <i>now</i>. Add an
+     <b>Invite people</b> action that reuses the existing <code>shareText(groupShareInviteMessage)</code>
+     path. Question: which action leads? <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#353</span>
+    <h2 class="issue-title">design(groups): add “Invite people” CTA to the group no-events empty state</h2>
+    <span class="issue-meta">P2 · design · reuses #291 share</span>
+  </div>
+  <p class="issue-desc">Both variants keep the existing single primary button language; they differ only on
+     <b>which action is primary</b>. The group has a member-of-one problem until someone joins, so the
+     case for invite-first is strong — but create-first preserves the “a group needs an event to hold
+     expenses” mental model.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant B (invite-first) — nothing can be split in a group of one, so the unblocking action should lead.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant A -->
+    <div class="variant">
+      <div class="variant-label">A · Create-first <span class="tag">2 actions</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Beach House</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content">
+            <div class="empty-state">
+              <div class="empty-icon">🧾</div>
+              <div class="empty-title">No events yet</div>
+              <div class="empty-msg">Create an event to start logging expenses. Most trips only need one.</div>
+              <div class="col" style="gap:10px;width:100%;max-width:260px;margin-top:8px;">
+                <button class="btn block grad">Create event</button>
+                <button class="btn block secondary">Invite people</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Primary:</b> create event. Invite is the calmer secondary.
+         Honors the existing flow where an event must exist before expenses. Risk: the creator
+         is still alone after creating an event — nothing to split.</p>
+    </div>
+
+    <!-- Variant B -->
+    <div class="variant pick">
+      <div class="variant-label">B · Invite-first <span class="tag">2 actions</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Beach House</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content">
+            <div class="card raised" style="text-align:center">
+              <div class="uppercase-label" style="margin-bottom:8px">Invite code</div>
+              <div class="mono" style="font-size:26px;letter-spacing:6px;font-weight:600">7K4MQ9</div>
+              <div class="tiny muted" style="margin-top:6px">rihla-safar.web.app/join/7K4MQ9</div>
+            </div>
+            <div class="empty-state" style="padding-top:8px">
+              <div class="empty-icon">👋</div>
+              <div class="empty-title">Get the crew in</div>
+              <div class="empty-msg">Add people first — you can’t split a bill in a group of one.</div>
+              <div class="col" style="gap:10px;width:100%;max-width:260px;margin-top:8px;">
+                <button class="btn block grad">Invite people</button>
+                <button class="btn block secondary">Create an event</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Primary:</b> invite. Surfaces the code/link up top so it’s shareable
+         at a glance, with the same <code>shareText</code> share on tap. <b>Create event</b> stays one
+         tap away. Matches the real blocker (member-of-one) and pairs naturally with #354 WhatsApp CTA.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

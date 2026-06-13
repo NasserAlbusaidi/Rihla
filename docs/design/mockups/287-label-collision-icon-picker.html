@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#287 — "Equally"/"Equal" label collision + group-glyph picker · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Token-derived tint backgrounds for the V2 decorative glyph row.
+     color-mix keeps us within the :root token palette — no hardcoded hex outside :root. */
+  .chip-glyph-cat1 { background: color-mix(in srgb, var(--cat1) 16%, var(--paper)); color: var(--cat1); }
+  .chip-glyph-cat2 { background: color-mix(in srgb, var(--cat2) 16%, var(--paper)); color: var(--cat2); }
+  .chip-glyph-cat3 { background: color-mix(in srgb, var(--cat3) 16%, var(--paper)); color: var(--cat3); }
+  .chip-glyph-cat4 { background: color-mix(in srgb, var(--cat4) 16%, var(--paper)); color: var(--cat4); }
+  .chip-glyph-cat5 { background: color-mix(in srgb, var(--cat5) 16%, var(--paper)); color: var(--cat5); }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#287 · Two near-identical labels &amp; a glyph row that lies</h1>
+  <p>Two first-run polish fixes, batched. <b>(1)</b> The expense editor shows the split
+     <i>scope</i> as <b>"Equally"</b> (<code>editorScopeGlobal</code>) right above the split
+     <i>mode</i> as <b>"Equal"</b> (<code>splitModeEqually</code>) — two different axes
+     (<i>who</i> vs <i>how</i>) wearing near-identical words. <b>(2)</b> Create-Group renders a
+     glyph row with a selection border on the first tile but <b>no <code>onTap</code></b>
+     (<code>create_group_screen.dart:308-361</code>) — it looks like a group-icon picker and does
+     nothing. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#287</span>
+    <h2 class="issue-title">design(polish): "Equally"/"Equal" label collision + decorative glyph row looks selectable</h2>
+    <span class="issue-meta">P3 · design · two batched fixes</span>
+  </div>
+  <p class="issue-desc">The <b>label collision</b> has one correct answer — disambiguate the words so
+     the WHO axis and the HOW axis never read as the same thing — so both variants ship the same copy
+     fix. The real fork is the <b>glyph row</b>: <b>V1</b> honours the affordance it already paints
+     (wire the picker so a tap actually sets a group glyph), while <b>V2</b> retreats — strips the
+     selectable styling so the row is plainly decorative. Each phone shows both fixes together so the
+     direction is picked as one coherent first-run feel.</p>
+  <p class="issue-rec"><b>Recommendation:</b> <b>V1 — Real picker.</b> A bordered, evenly-spaced row
+     of tappable tiles is the universal "pick one" pattern; users already try to tap it. Removing the
+     border is the cheaper fix but teaches the user nothing and wastes a chance to give each group an
+     identity on the home grid.</p>
+
+  <div class="variant-row">
+
+    <!-- ============================ VARIANT 1 ============================ -->
+    <div class="variant pick">
+      <div class="variant-label">V1 · Real picker + clear labels <span class="tag">wire onTap</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <!-- Create-Group top bar: close · title · dark pill Create -->
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">✕</div>
+            <div class="title sans">New group</div>
+            <div style="flex:none">
+              <span class="btn sm" style="background:var(--ink);color:var(--paper);min-height:36px">Create</span>
+            </div>
+          </div>
+
+          <div class="content tight" style="padding-top:var(--s8)">
+            <!-- Mood block -->
+            <div>
+              <div class="serif" style="font-size:30px;line-height:1.05;color:var(--ink)">Who's coming along?</div>
+              <div class="tiny muted" style="margin-top:6px">Give the group a name and a glyph so it's easy to spot on home.</div>
+            </div>
+
+            <!-- THE FIX (2): glyph row is now a live single-select picker -->
+            <div style="margin-top:var(--s12)">
+              <div class="uppercase-label" style="margin-bottom:10px">Group glyph</div>
+              <div class="chip-row" style="gap:10px">
+                <span class="chip glyph selected" style="font-size:22px">⛺</span>
+                <span class="chip glyph" style="font-size:22px;background:var(--card-soft);border:1px solid var(--border);color:var(--ink-2)">⌂</span>
+                <span class="chip glyph" style="font-size:22px;background:var(--card-soft);border:1px solid var(--border);color:var(--ink-2)">↗</span>
+                <span class="chip glyph" style="font-size:22px;background:var(--card-soft);border:1px solid var(--border);color:var(--ink-2)">✦</span>
+                <span class="chip glyph" style="font-size:22px;background:var(--card-soft);border:1px solid var(--border);color:var(--ink-2)">◐</span>
+                <span class="chip glyph" style="font-size:22px;background:var(--card-soft);border:1px solid var(--border);color:var(--ink-2)">⌘</span>
+              </div>
+              <div class="tiny" style="color:var(--primary-dark);margin-top:8px;font-weight:600">⛺ selected · tap to change</div>
+            </div>
+
+            <!-- Name field (underlined) -->
+            <div style="margin-top:var(--s12)">
+              <div class="uppercase-label" style="margin-bottom:6px">Group name</div>
+              <div style="padding:11px 2px;border-bottom:1.5px solid var(--ink);font-size:17px;color:var(--ink)">Wadi Shab weekend</div>
+            </div>
+
+            <!-- Echo into the create preview: glyph rides the new group -->
+            <div class="card soft" style="margin-top:var(--s20);display:flex;align-items:center;gap:var(--s12)">
+              <div class="chip glyph selected" style="font-size:20px;width:40px;height:40px">⛺</div>
+              <div class="col">
+                <div class="row-title">Wadi Shab weekend</div>
+                <div class="tiny muted">This glyph shows on the home grid &amp; group header.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Glyph:</b> wire <code>_GlyphRow</code> to a <code>StatefulWidget</code>
+         + a <code>selectedGlyph</code> field, pass it through <code>createGroup(...)</code> to a new
+         <code>Group.glyph</code> string, and render it on the home ticket / group header. Selected
+         tile uses <code>.chip.glyph.selected</code> (saffron-tint + saffron border); the rest drop to
+         <code>card-soft</code> with a <code>border</code> border. <b>Labels:</b> see the editor card below —
+         the scope row reads a disambiguated word, never "Equally" next to "Equal".</p>
+    </div>
+
+    <!-- ============================ VARIANT 2 ============================ -->
+    <div class="variant">
+      <div class="variant-label">V2 · Static glyph + clear labels <span class="tag">remove styling</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">✕</div>
+            <div class="title sans">New group</div>
+            <div style="flex:none">
+              <span class="btn sm" style="background:var(--ink);color:var(--paper);min-height:36px">Create</span>
+            </div>
+          </div>
+
+          <div class="content tight" style="padding-top:var(--s8)">
+            <div>
+              <div class="serif" style="font-size:30px;line-height:1.05;color:var(--ink)">Who's coming along?</div>
+              <div class="tiny muted" style="margin-top:6px">Give the group a name. The glyphs below are just a friendly flourish.</div>
+            </div>
+
+            <!-- THE FIX (2, alt): no selection border — plainly decorative tinted tiles.
+                 Each chip uses a token-derived tint class (color-mix against --cat* vars),
+                 not hardcoded rgba() literals. -->
+            <div style="margin-top:var(--s12)">
+              <div class="uppercase-label" style="margin-bottom:10px">A little colour</div>
+              <div class="chip-row" style="gap:10px">
+                <span class="chip glyph chip-glyph-cat1" style="font-size:22px;border:none">⛺</span>
+                <span class="chip glyph chip-glyph-cat2" style="font-size:22px;border:none">⌂</span>
+                <span class="chip glyph chip-glyph-cat3" style="font-size:22px;border:none">↗</span>
+                <span class="chip glyph chip-glyph-cat4" style="font-size:22px;border:none">✦</span>
+                <span class="chip glyph chip-glyph-cat5" style="font-size:22px;border:none">◐</span>
+                <span class="chip glyph" style="font-size:22px;background:var(--card-soft);border:none;color:var(--ink-3)">⌘</span>
+              </div>
+              <div class="tiny muted" style="margin-top:8px">Decorative only — no tile is selectable.</div>
+            </div>
+
+            <div style="margin-top:var(--s12)">
+              <div class="uppercase-label" style="margin-bottom:6px">Group name</div>
+              <div style="padding:11px 2px;border-bottom:1.5px solid var(--ink);font-size:17px;color:var(--ink)">Wadi Shab weekend</div>
+            </div>
+
+            <div class="card soft" style="margin-top:var(--s20)">
+              <div class="tiny" style="color:var(--ink-2);font-weight:600;line-height:1.5">You join as the first member. Invite the rest with a code right after.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Glyph:</b> drop the index-0 selection border and any per-tile
+         <code>onTap</code> intent entirely — the <code>Wrap</code> stays a non-interactive decorative
+         strip (and gets a softer label than "Group glyph" so nobody hunts for a picker). Cheapest
+         diff, zero new schema. Cost: throws away an easy chance to give groups an identity, and a
+         tinted bordered row still <i>looks</i> tappable to many. <b>Labels:</b> same editor copy fix
+         as V1 (below).</p>
+    </div>
+
+  </div>
+
+  <!-- =================== SHARED FIX (1): label disambiguation =================== -->
+  <p class="issue-rec" style="margin-top:var(--s24)"><b>Fix (1) — identical in both variants:</b>
+     the expense editor, showing the two collision points <b>before → after</b>. This is a copy
+     correctness fix, not a competing design — so it renders as a state change across the phones, not
+     a fork.</p>
+
+  <div class="variant-row">
+
+    <!-- BEFORE -->
+    <div class="variant">
+      <div class="variant-label">Before · "Equally" above "Equal"</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:20px">✕</div>
+            <div class="title sans">Add expense</div>
+            <div style="flex:none"><span class="btn sm" style="min-height:36px">Add</span></div>
+          </div>
+          <div class="content tight">
+            <!-- Split between (scope) section -->
+            <div class="section-header"><span class="label">Split between</span><span class="see-all">Customise</span></div>
+            <div class="card raised">
+              <div class="between">
+                <div class="row">
+                  <span style="font-size:13px;font-weight:800;color:var(--ink)">Equally</span>
+                  <span class="tiny muted">· 4 ways · <span class="r-amount neu" style="font-size:12px"><span class="ccy">OMR</span>11<span class="dec">.250</span></span> each</span>
+                </div>
+                <span class="pill-tag">EVENT DEFAULT</span>
+              </div>
+              <div class="row" style="gap:8px;margin-top:12px">
+                <span class="avatar sm av-1">A</span><span class="avatar sm av-2">S</span>
+                <span class="avatar sm av-3">M</span><span class="avatar sm av-4">K</span>
+              </div>
+            </div>
+            <!-- How (mode) section -->
+            <div class="section-header"><span class="label">How</span><span class="see-all">Customise</span></div>
+            <div class="card raised">
+              <div class="row" style="gap:12px">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--saffron-tint);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:700">%</div>
+                <div class="col">
+                  <div class="row-title">Equal</div>
+                  <div class="row-sub">Split evenly across 4 ways.</div>
+                </div>
+              </div>
+            </div>
+            <div class="banner" style="border-radius:var(--r-sm);margin-top:4px">⚠ Two words, two meanings — "Equally" = who, "Equal" = how.</div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Today:</b> <code>editorScopeGlobal</code> ("Equally", the WHO) sits
+         directly above <code>splitModeEqually</code> ("Equal", the HOW). Stacked in one scroll, the
+         near-identical words read as a duplicate or a typo, not two independent axes.</p>
+    </div>
+
+    <!-- AFTER -->
+    <div class="variant pick">
+      <div class="variant-label">After · "Everyone" vs "Split equally"</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:20px">✕</div>
+            <div class="title sans">Add expense</div>
+            <div style="flex:none"><span class="btn sm" style="min-height:36px">Add</span></div>
+          </div>
+          <div class="content tight">
+            <!-- Split between (scope) — renamed value -->
+            <div class="section-header"><span class="label">Split between</span><span class="see-all">Customise</span></div>
+            <div class="card raised">
+              <div class="between">
+                <div class="row">
+                  <span style="font-size:13px;font-weight:800;color:var(--ink)">Everyone</span>
+                  <span class="tiny muted">· 4 ways · <span class="r-amount neu" style="font-size:12px"><span class="ccy">OMR</span>11<span class="dec">.250</span></span> each</span>
+                </div>
+                <span class="pill-tag">EVENT DEFAULT</span>
+              </div>
+              <div class="row" style="gap:8px;margin-top:12px">
+                <span class="avatar sm av-1">A</span><span class="avatar sm av-2">S</span>
+                <span class="avatar sm av-3">M</span><span class="avatar sm av-4">K</span>
+              </div>
+            </div>
+            <!-- How (mode) — kept, now unambiguous -->
+            <div class="section-header"><span class="label">How</span><span class="see-all">Customise</span></div>
+            <div class="card raised">
+              <div class="row" style="gap:12px">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--saffron-tint);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:700">%</div>
+                <div class="col">
+                  <div class="row-title">Split equally</div>
+                  <div class="row-sub">Each of the 4 pays the same share.</div>
+                </div>
+              </div>
+            </div>
+            <div class="banner sync" style="border-radius:var(--r-sm);margin-top:4px">✓ WHO = "Everyone" · HOW = "Split equally" — never the same word.</div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The fix:</b> rename the global scope value
+         <code>editorScopeGlobal</code> from "Equally" → <b>"Everyone"</b> (it answers <i>who</i>), and
+         expand the mode value <code>splitModeEqually</code> from "Equal" → <b>"Split equally"</b> (it
+         answers <i>how</i>). Two ARB strings + their <code>ar</code> counterparts; both flow through
+         <code>expenseScopeDisplayName</code> / <code>splitModeDisplayName</code> so every surface
+         (preview card, How card, custom-split sheet) updates from one edit. Sweep
+         <code>expense_editor_*_test.dart</code> fixtures for the old literals.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#354 — WhatsApp-direct invite CTA · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Local tokens — no new palette entries, only layout helpers */
+  .wa-draft {
+    background: var(--card);
+    border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+    box-shadow: var(--shadow-floating);
+    padding: var(--s12) var(--s20) var(--s24);
+    margin-top: auto;
+    flex: none;
+  }
+  .icon-btn-light {
+    /* icon buttons on dark module-header */
+    color: var(--on-primary);
+    font-size: 20px;
+    line-height: 1;
+    padding: 6px;
+    cursor: default;
+  }
+  .wa-avatar {
+    width: 30px; height: 30px; border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+    /* WhatsApp brand green — kept here so it's centralised, not scattered in markup */
+    background: #25D366; color: #06351b;
+  }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#354 · Invite straight to <span class="saffron">WhatsApp</span></h1>
+  <p>WhatsApp is the dominant invite channel for the GCC launch market. Today the group invite
+     button fires the generic OS share sheet via <code>shareText(groupShareInviteMessage)</code>.
+     This issue adds an optional <b>WhatsApp-direct</b> path that opens <code>wa.me/?text=…</code>
+     prefilled with the same message — reusing <code>AppLinks.inviteUrl</code>
+     (<b>rihla-safar.web.app/join/&lt;code&gt;</b>, never <code>rihla.app</code>) — and falls back to the
+     OS share sheet when WhatsApp isn't installed. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#354</span>
+    <h2 class="issue-title">design(invite): optional WhatsApp-direct (wa.me) invite CTA reusing the web.app/join link</h2>
+    <span class="issue-meta">P3 · design · reuses #291 share + AppLinks.inviteUrl</span>
+  </div>
+  <p class="issue-desc">Both variants carry the <i>identical</i> prefilled message
+     (<code>Join 'Beach House' on Rihla: …/join/7K4MQ9 or use code 7K4MQ9.</code>) and the same
+     <code>canLaunchUrl</code> fallback to the OS share sheet. They differ only on <b>where the
+     WhatsApp affordance lives</b>: a dedicated button on the group screen, or a pinned first row
+     inside the existing QR/share sheet.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant V1 (dedicated button) — one tap from the group
+     header straight into the channel people actually use, with the generic share kept beside it.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant 1 — Dedicated WhatsApp button (RECOMMENDED) -->
+    <div class="variant pick">
+      <div class="variant-label">V1 · Dedicated button <span class="tag">1 tap → WA</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <!-- Group detail hero: dark gradient module header (matches group_detail_screen) -->
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn-light">‹</div>
+              <div class="spacer"></div>
+              <div class="icon-btn-light" style="font-size:18px">⊕</div>
+              <div class="icon-btn-light" style="font-size:18px">⋯</div>
+            </div>
+            <div class="uppercase-label mh-sub" style="letter-spacing:2px;margin-bottom:4px">1 member</div>
+            <div class="mh-title serif" style="font-size:30px">Beach House</div>
+          </div>
+
+          <div class="content">
+            <div class="empty-state" style="padding-top:var(--s24)">
+              <div class="empty-icon">👋</div>
+              <div class="empty-title">Just you so far</div>
+              <div class="empty-msg">You can't split a bill in a group of one. Pull the crew in —
+                most people are a tap away on WhatsApp.</div>
+
+              <!-- Invite code / link surfaced for share-at-a-glance -->
+              <div class="card raised" style="text-align:center;width:100%;max-width:264px;margin-top:var(--s8)">
+                <div class="uppercase-label" style="margin-bottom:8px">Invite code</div>
+                <div class="mono" style="font-size:26px;letter-spacing:6px;font-weight:600">7K4MQ9</div>
+                <div class="tiny muted" style="margin-top:6px">rihla-safar.web.app/join/7K4MQ9</div>
+              </div>
+
+              <div class="col" style="gap:10px;width:100%;max-width:264px;margin-top:var(--s8)">
+                <button class="btn block whatsapp">
+                  <span style="font-size:17px">✆</span> Share via WhatsApp
+                </button>
+                <button class="btn block secondary">Other apps…</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prefilled WhatsApp draft preview (what wa.me opens to) -->
+          <div class="wa-draft">
+            <div class="row" style="gap:10px;margin-bottom:10px">
+              <div class="wa-avatar">✆</div>
+              <div class="col" style="gap:0">
+                <div class="row-title" style="font-size:14px">WhatsApp</div>
+                <div class="tiny muted">opens with this message pre-typed</div>
+              </div>
+            </div>
+            <div class="card soft" style="font-size:13px;color:var(--ink-2);line-height:1.5">
+              Join '<b>Beach House</b>' on Rihla:
+              <span class="mono" style="color:var(--primary-dark)">https://rihla-safar.web.app/join/7K4MQ9</span>
+              or use code <span class="mono" style="font-weight:600">7K4MQ9</span>.
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p class="variant-note"><b>Dedicated green <code>.btn.whatsapp</code></b> sits directly under the
+        invite code, with <b>Other apps…</b> as the calm secondary that still hits the existing
+        <code>shareText</code> sheet. Tapping it builds <code>wa.me/?text=</code> + the url-encoded
+        <code>groupShareInviteMessage</code> and opens it; if <code>canLaunchUrl</code> is false
+        (WhatsApp not installed) it silently falls back to the OS sheet — no dead-end. <b>Implementation:</b>
+        new button in <code>group_detail_screen.dart</code>'s empty/header area calling a small
+        <code>shareViaWhatsApp(context, group)</code> helper beside <code>shareText</code>.</p>
+    </div>
+
+    <!-- Variant 2 — Share sheet, WhatsApp pinned first -->
+    <div class="variant">
+      <div class="variant-label">V2 · Share-sheet WA-first <span class="tag">in QR sheet</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn-light">‹</div>
+              <div class="spacer"></div>
+              <div class="icon-btn-light" style="font-size:18px">⊕</div>
+              <div class="icon-btn-light" style="font-size:18px">⋯</div>
+            </div>
+            <div class="uppercase-label mh-sub" style="letter-spacing:2px;margin-bottom:4px">1 member</div>
+            <div class="mh-title serif" style="font-size:30px">Beach House</div>
+          </div>
+
+          <div class="content tight">
+            <div class="section-header"><span class="label">Members</span></div>
+            <div class="card flush raised">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-3">N</div></div>
+                <div class="row-body">
+                  <div class="row-title">Nasser <span class="pill-tag">you</span></div>
+                  <div class="row-sub">Group creator</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Existing QR / share sheet, now with WhatsApp pinned as row 1 -->
+          <div class="sheet-wrap">
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Invite to Beach House</div>
+              <div class="sheet-sub">Scan, or share the link below.</div>
+
+              <div class="card soft center" style="padding:var(--s16);margin-bottom:var(--s12)">
+                <div class="skel static" style="width:140px;height:140px;border-radius:var(--r-sm);margin:0 auto;background:
+                  repeating-conic-gradient(var(--ink) 0% 25%, #fff 0% 50%) 0 0 / 18px 18px"></div>
+                <div class="uppercase-label" style="margin-top:10px">Or enter code</div>
+                <div class="mono" style="font-size:20px;letter-spacing:4px;font-weight:600;margin-top:4px">7K4MQ9</div>
+                <div class="tiny muted" style="margin-top:4px">rihla-safar.web.app/join/7K4MQ9</div>
+              </div>
+
+              <!-- WhatsApp pinned FIRST -->
+              <button class="btn block whatsapp" style="margin-bottom:10px">
+                <span style="font-size:17px">✆</span> Share via WhatsApp
+              </button>
+              <div class="row" style="gap:10px">
+                <button class="btn secondary" style="flex:1;min-height:48px">⧉ Copy link</button>
+                <button class="btn secondary" style="flex:1;min-height:48px">↗ More…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>WhatsApp pinned as the first row</b> of the existing
+        <code>showGroupInviteQrSheet</code> (<code>qr_invite_sheet.dart</code>), above the current
+        Copy-link / Share pair — so the channel hint rides the sheet people already reach via the
+        header invite button. Same <code>wa.me</code> + <code>canLaunchUrl</code> fallback. Discoverable
+        only after opening the sheet, so it's a softer nudge than V1's on-screen button — but it touches
+        one widget and adds no new surface to the group screen.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

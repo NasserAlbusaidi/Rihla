@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#355 — Skeleton loaders on first paint · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#355 · <span class="saffron">Skeleton</span> loaders on first paint</h1>
+  <p>The <code>SkeletonLoader</code> factories already exist and ship on the dashboard, but ~8 Firestore-driven
+     list screens still first-paint a bare centered <b>CircularProgressIndicator</b>. Swap each for its matching
+     content-shaped skeleton so first paint shows the screen's silhouette, not a spinning void. This is a
+     <b>treatment</b>, not a design fork — the phones below are <b>before → after</b> for the two reference
+     screens (ledger and group detail). <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#355</span>
+    <h2 class="issue-title">design(loading): replace first-paint spinners with existing skeleton loaders (~8 screens)</h2>
+    <span class="issue-meta">P2 · performance · design · primitives already exist</span>
+  </div>
+  <p class="issue-desc">Pure UI swap. The current <code>_LoadingState</code> on each list screen paints a colored
+     header band + a centered spinner; the skeleton variant reuses <code>SkeletonLoader.expenseList</code>
+     (ledger) and <code>SkeletonLoader.eventCard</code> (group detail) so the placeholder mirrors the real
+     layout and the screen doesn't jump when data arrives. <b>Modal-blocking spinners stay as-is</b>
+     (sign-in, button submit) — those gate an action, not a list read.</p>
+  <p class="issue-rec"><b>Recommendation:</b> ship the <b>after</b> on every cited list screen — content-shaped
+     skeleton beats a spinner on perceived speed and removes the load → empty layout jump. No competing design;
+     the only choice is fidelity, and the named factories already encode it.</p>
+
+  <div class="variant-row">
+
+    <!-- ───────────── LEDGER — BEFORE ───────────── -->
+    <div class="variant">
+      <div class="variant-label">Ledger · before <span class="tag">spinner</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <!-- ledger's _LoadingState: flat cardSoft band where the dark event header will render -->
+          <div style="height:118px;flex:none;background:var(--card-soft);border-bottom:1px solid var(--border)"></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center">
+            <div style="width:38px;height:38px;border-radius:var(--r-pill);
+                        border:3px solid var(--saffron-soft);border-top-color:var(--primary)"></div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Today:</b> <code>_LoadingState</code> in <code>ledger_screen.dart:686</code> paints a
+         118dp <code>cardSoft</code> band then a centered <code>CircularProgressIndicator</code>. No hint of what loads,
+         and the spinner sits where rows will be — so the screen visibly reflows when the ledger arrives.</p>
+    </div>
+
+    <!-- ───────────── LEDGER — AFTER ───────────── -->
+    <div class="variant pick">
+      <div class="variant-label">Ledger · after <span class="tag">skeleton</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <!-- Real dark event header silhouette, shimmering -->
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="skel" style="width:32px;height:32px;border-radius:var(--r-pill)"></div>
+              <div style="flex:1">
+                <div class="skel" style="width:150px;height:18px;margin-bottom:8px"></div>
+                <div class="skel" style="width:90px;height:11px"></div>
+              </div>
+            </div>
+            <div class="skel" style="width:120px;height:30px;border-radius:var(--r-sm)"></div>
+          </div>
+          <!-- Roster strip placeholder -->
+          <div style="display:flex;gap:10px;padding:14px 16px 4px">
+            <div class="skel" style="width:30px;height:30px;border-radius:var(--r-pill);flex:none"></div>
+            <div class="skel" style="width:30px;height:30px;border-radius:var(--r-pill);flex:none"></div>
+            <div class="skel" style="width:30px;height:30px;border-radius:var(--r-pill);flex:none"></div>
+            <div class="skel" style="width:64px;height:30px;border-radius:var(--r-pill);flex:none"></div>
+          </div>
+          <!-- SkeletonLoader.expenseList: avatar + two lines + trailing amount -->
+          <div class="content tight" style="padding-top:8px">
+            <div class="skel-row" style="padding-left:0;padding-right:0">
+              <div class="skel skel-circle"></div>
+              <div style="flex:1">
+                <div class="skel" style="width:140px;height:14px;margin-bottom:7px"></div>
+                <div class="skel" style="width:80px;height:11px"></div>
+              </div>
+              <div class="skel" style="width:60px;height:16px"></div>
+            </div>
+            <div class="skel-row" style="padding-left:0;padding-right:0">
+              <div class="skel skel-circle"></div>
+              <div style="flex:1">
+                <div class="skel" style="width:120px;height:14px;margin-bottom:7px"></div>
+                <div class="skel" style="width:96px;height:11px"></div>
+              </div>
+              <div class="skel" style="width:54px;height:16px"></div>
+            </div>
+            <div class="skel-row" style="padding-left:0;padding-right:0">
+              <div class="skel skel-circle"></div>
+              <div style="flex:1">
+                <div class="skel" style="width:150px;height:14px;margin-bottom:7px"></div>
+                <div class="skel" style="width:72px;height:11px"></div>
+              </div>
+              <div class="skel" style="width:64px;height:16px"></div>
+            </div>
+            <div class="skel-row" style="padding-left:0;padding-right:0">
+              <div class="skel skel-circle"></div>
+              <div style="flex:1">
+                <div class="skel" style="width:130px;height:14px;margin-bottom:7px"></div>
+                <div class="skel" style="width:88px;height:11px"></div>
+              </div>
+              <div class="skel" style="width:58px;height:16px"></div>
+            </div>
+            <div class="skel-row" style="padding-left:0;padding-right:0">
+              <div class="skel skel-circle"></div>
+              <div style="flex:1">
+                <div class="skel" style="width:110px;height:14px;margin-bottom:7px"></div>
+                <div class="skel" style="width:80px;height:11px"></div>
+              </div>
+              <div class="skel" style="width:60px;height:16px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Swap to</b> <code>SkeletonLoader.expenseList</code> (avatar + title + category bars +
+         trailing amount) under the real shimmering header. The silhouette matches the loaded ledger 1:1, so rows
+         resolve in place with no reflow. <b>Recommended</b> — fidelity is free since the factory already exists;
+         this is the reference the other 7 screens copy.</p>
+    </div>
+
+    <!-- ───────────── GROUP DETAIL — BEFORE ───────────── -->
+    <div class="variant">
+      <div class="variant-label">Group detail · before <span class="tag">spinner</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <!-- group detail's _LoadingState: 168dp cardSoft band (taller cover header) -->
+          <div style="height:168px;flex:none;background:var(--card-soft);border-bottom:1px solid var(--border)"></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center">
+            <div style="width:38px;height:38px;border-radius:var(--r-pill);
+                        border:3px solid var(--saffron-soft);border-top-color:var(--primary)"></div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Today:</b> <code>_LoadingState</code> in <code>group_detail_screen.dart:998</code> is the
+         same pattern — a taller 168dp band (the cover-art header) then a centered spinner. The event list, member
+         row, and balance summary all pop in at once when the group resolves.</p>
+    </div>
+
+    <!-- ───────────── GROUP DETAIL — AFTER ───────────── -->
+    <div class="variant">
+      <div class="variant-label">Group detail · after <span class="tag">skeleton</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <!-- Cover-art header silhouette: gradient cover + floating name bar at the bottom -->
+          <div style="height:168px;flex:none;background:linear-gradient(120deg,var(--saffron-soft),var(--primary) 60%,var(--primary-dark));
+                      position:relative">
+            <div style="position:absolute;top:14px;left:12px;width:36px;height:36px;border-radius:var(--r-pill);
+                        background:rgba(255,255,255,.28)"></div>
+            <div style="position:absolute;top:14px;right:12px;width:36px;height:36px;border-radius:var(--r-pill);
+                        background:rgba(255,255,255,.28)"></div>
+            <div style="position:absolute;left:20px;bottom:16px;right:20px">
+              <div class="skel static" style="width:180px;height:26px;margin-bottom:8px;background:rgba(255,255,255,.4)"></div>
+              <div class="skel static" style="width:110px;height:13px;background:rgba(255,255,255,.32)"></div>
+            </div>
+          </div>
+          <!-- Members section label + SkeletonLoader.eventCard rows -->
+          <div class="content tight" style="padding-top:14px">
+            <div class="skel" style="width:74px;height:11px;margin:2px 0 4px"></div>
+            <div style="display:flex;gap:-10px">
+              <div class="skel" style="width:40px;height:40px;border-radius:var(--r-pill)"></div>
+              <div class="skel" style="width:40px;height:40px;border-radius:var(--r-pill);margin-left:-10px"></div>
+              <div class="skel" style="width:40px;height:40px;border-radius:var(--r-pill);margin-left:-10px"></div>
+            </div>
+            <div class="skel" style="width:88px;height:11px;margin:10px 0 0"></div>
+            <!-- eventCard: icon circle + title/subtitle bars + trailing amount block -->
+            <div class="card" style="padding:14px 16px">
+              <div class="skel-row" style="padding:0">
+                <div class="skel skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel" style="width:120px;height:16px;margin-bottom:7px"></div>
+                  <div class="skel" style="width:80px;height:12px"></div>
+                </div>
+                <div class="skel" style="width:48px;height:20px"></div>
+              </div>
+            </div>
+            <div class="card" style="padding:14px 16px">
+              <div class="skel-row" style="padding:0">
+                <div class="skel skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel" style="width:140px;height:16px;margin-bottom:7px"></div>
+                  <div class="skel" style="width:64px;height:12px"></div>
+                </div>
+                <div class="skel" style="width:48px;height:20px"></div>
+              </div>
+            </div>
+            <div class="card" style="padding:14px 16px">
+              <div class="skel-row" style="padding:0">
+                <div class="skel skel-circle"></div>
+                <div style="flex:1">
+                  <div class="skel" style="width:104px;height:16px;margin-bottom:7px"></div>
+                  <div class="skel" style="width:90px;height:12px"></div>
+                </div>
+                <div class="skel" style="width:48px;height:20px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Swap to</b> <code>SkeletonLoader.eventCard</code> under the cover header silhouette
+         (avatar stack for members + icon/title/amount cards for events). Same primitive set as the ledger swap —
+         the only change is the factory name, so all 8 sites land in one mechanical PR with no new widgets.</p>
+    </div>
+
+  </div>
+
+  <p class="issue-rec" style="margin-top:var(--s24)"><b>Out of scope (leave spinning):</b> modal-blocking spinners —
+     sign-in gate and the in-button submit spinner on <b>Add expense</b> / <b>Settle up</b>. Those block a single
+     action and have no list silhouette to mirror, so a skeleton would lie about progress. Watch the
+     <code>EmptyStateView</code> ticker in empty/error tests — they still need <code>pumpAndSettle</code>.</p>
+</div>
+</body>
+</html>

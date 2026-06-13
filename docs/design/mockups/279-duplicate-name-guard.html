@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#279 — Display-name collision guard on join · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* annotation callout — outside the phone, inside .variant */
+  .callout {
+    margin-top: var(--s8);
+    padding: 8px 12px;
+    background: var(--saffron-tint);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--saffron-soft);
+    line-height: 1.45;
+  }
+  .callout b { color: var(--primary); }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#279 · The two <span class="saffron">Ahmed</span>s problem</h1>
+  <p>In the Gulf cohort, shared names are everywhere — a group easily holds two <b>Ahmed</b>s or two
+     <b>Mama</b>s. Today <code>JoinGroupScreen</code>'s <b>Your name</b> field free-types any name that
+     passes length + control-char checks, with no collision check on the server
+     (<code>joinGroupByInviteCode.ts → normalizeDisplayName</code>). Two identical names make the roster
+     and settle-up ambiguous: who owes whom? These variants attack it at different points —
+     <b>prevention at entry</b> vs. <b>render-time disambiguation</b>. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#279</span>
+    <h2 class="issue-title">bug(data-integrity): no display-name collision guard on join — duplicate names make the ledger ambiguous</h2>
+    <span class="issue-meta">P2 · bug · data-integrity · pairs with #289 disambiguator</span>
+  </div>
+  <p class="issue-desc">Both variants want the same outcome — an unambiguous ledger — but choose
+     <b>where</b> to fix it. V1 catches the clash while the joiner is still typing and nudges a one-tap
+     distinct name (prevention at the source). V2 accepts the duplicate and disambiguates everywhere the
+     name renders (roster, settle-up). V1 keeps stored names clean for free-text writes; V2 needs no
+     server change but pushes the suffix logic into every name-rendering surface.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 1 (inline disambiguation at entry) — fix it at the source so the stored name is already distinct; render-time suffixing (V2) is the fallback for names that slipped in before the guard existed.</p>
+
+  <div class="variant-row">
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         Variant 1 — Inline disambiguation (PICK)
+         Shows the join screen AFTER the user has typed "Ahmed" — the
+         collision hint fires and offers a one-tap suggested suffix.
+    ─────────────────────────────────────────────────────────────────────── -->
+    <div class="variant pick">
+      <div class="variant-label">1 · Inline disambiguation <span class="tag">at entry · pick</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Join a Group</div>
+            <div class="icon-btn center"></div>
+          </div>
+          <div class="content">
+            <div class="col" style="gap:6px">
+              <div class="serif" style="font-size:28px;line-height:1.05;color:var(--ink)">Got an invite?</div>
+              <div class="tiny muted" style="max-width:280px">Enter the 6-character code a friend gave you. We'll drop you straight into the group.</div>
+            </div>
+
+            <!-- Your name field — collision state (typed "Ahmed", existing member clash) -->
+            <div class="field" style="margin-top:8px">
+              <div class="field-label" style="letter-spacing:.8px">Your name</div>
+              <!-- Underline text field, focused, with typed value -->
+              <div class="input" style="border:none;border-bottom:1.5px solid var(--primary);border-radius:0;background:transparent;padding:10px 0;font-size:17px;color:var(--ink)">Ahmed</div>
+
+              <!-- Collision hint — amber warning tone -->
+              <div class="row" style="align-items:flex-start;gap:8px;margin-top:10px;padding:10px 12px;background:var(--saffron-tint);border:1px solid var(--amber);border-radius:var(--r-input)">
+                <span class="pill-tag warn" style="flex:none;font-size:11px;padding:2px 7px">!</span>
+                <div class="col" style="gap:8px">
+                  <div class="tiny" style="color:var(--ink-2);font-weight:500">There's already an <b>Ahmed</b> in this group — add a last initial so people can tell you apart.</div>
+                  <div class="chip-row">
+                    <span class="chip selected">Ahmed B.</span>
+                    <span class="chip">Keep "Ahmed"</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Invite code field -->
+            <div class="field" style="margin-top:18px">
+              <div class="field-label" style="letter-spacing:.8px">Invite code</div>
+              <div class="tiny muted" style="margin:2px 0 10px">Ask a group member for their 6-character code</div>
+              <div class="input code" style="background:var(--card-soft)">7K4MQ9</div>
+            </div>
+
+            <button class="btn block grad" style="margin-top:22px">Join Group</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Design annotation — outside the phone frame -->
+      <div class="callout">
+        <b>State shown:</b> joiner typed "Ahmed"; clash detected against live member list.<br>
+        One-tap chip applies "Ahmed B." suggestion (device-name initial).<br>
+        "Keep Ahmed" allowed but persists the ambiguity — server backstop still rejects on exact-match if configured.
+      </div>
+
+      <p class="variant-note"><b>What:</b> as the joiner types, the client checks the typed name against
+         the group's live member names (already streamed for the roster) and, on a clash, shows an inline
+         amber hint under the field with a one-tap <b>Ahmed B.</b> suggestion built from the device-name initial.
+         <b>Why pick:</b> prevents the duplicate ever being written, so every downstream surface stays
+         clean with no per-screen suffix logic. <b>Implements in:</b> <code>join_group_screen.dart</code>
+         (the <code>_UnderlinedTextField</code> "Your name" block + an <code>onChanged</code> collision check
+         against the streamed member list), with a server-side reject in
+         <code>joinGroupByInviteCode.ts</code> as the hard backstop.</p>
+    </div>
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         Variant 2 — Roster auto-suffix at render
+         Shows the group detail roster + settle-up AFTER two "Ahmed"s have
+         both joined. The formatter appends "(you)" and "B." at render time.
+    ─────────────────────────────────────────────────────────────────────── -->
+    <div class="variant">
+      <div class="variant-label">2 · Roster auto-suffix <span class="tag">at render</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Beach House</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content tight">
+            <div class="section-header"><span class="label">Members · 4</span></div>
+
+            <!-- Roster: both "Ahmed"s stored as plain "Ahmed"; formatter appends suffix at render -->
+            <div class="card flush raised">
+              <div class="list-row">
+                <span class="avatar av-1 row-lead">A</span>
+                <div class="row-body">
+                  <!-- render-time: viewer sees "(you)" suffix -->
+                  <div class="row-title">Ahmed <span class="pill-tag" style="margin-inline-start:4px">(you)</span></div>
+                  <div class="row-sub">Joined 14 Mar</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neu"><span class="ccy">OMR</span>0.<span class="dec">000</span></span>
+                </div>
+              </div>
+              <div class="list-row">
+                <span class="avatar av-3 row-lead">A</span>
+                <div class="row-body">
+                  <!-- render-time: other Ahmed gets last-initial suffix "B." -->
+                  <div class="row-title">Ahmed B.</div>
+                  <div class="row-sub">Joined 16 Mar</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount pos"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+                </div>
+              </div>
+              <div class="list-row">
+                <span class="avatar av-2 row-lead">S</span>
+                <div class="row-body">
+                  <div class="row-title">Sara</div>
+                  <div class="row-sub">Joined 14 Mar</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neg"><span class="ccy">OMR</span>8.<span class="dec">250</span></span>
+                </div>
+              </div>
+              <div class="list-row">
+                <span class="avatar av-5 row-lead">M</span>
+                <div class="row-body">
+                  <div class="row-title">Mariam</div>
+                  <div class="row-sub">Joined 15 Mar</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neg"><span class="ccy">OMR</span>4.<span class="dec">250</span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Settle-up: suffixed names used so the debt is unambiguous -->
+            <div class="section-header"><span class="label">Settle up</span></div>
+            <div class="card raised">
+              <div class="row between" style="margin-bottom:10px">
+                <div class="row" style="gap:10px">
+                  <span class="avatar sm av-2">S</span>
+                  <span class="tiny" style="color:var(--ink-2)">Sara pays <b>Ahmed B.</b></span>
+                </div>
+                <span class="r-amount neg"><span class="ccy">OMR</span>8.<span class="dec">250</span></span>
+              </div>
+              <div class="divider"></div>
+              <div class="row between" style="margin-top:10px">
+                <div class="row" style="gap:10px">
+                  <span class="avatar sm av-5">M</span>
+                  <span class="tiny" style="color:var(--ink-2)">Mariam pays <b>Ahmed B.</b></span>
+                </div>
+                <span class="r-amount neg"><span class="ccy">OMR</span>4.<span class="dec">250</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Design annotation — outside the phone frame -->
+      <div class="callout">
+        <b>State shown:</b> two members both stored as "Ahmed"; formatter applies <b>(you)</b> for the viewer and <b>B.</b> (join-order initial) for the other — same suffix logic as #289.<br>
+        Stored names stay plain; every rendering surface must call the formatter or the clash resurfaces.
+      </div>
+
+      <p class="variant-note"><b>What:</b> the stored name stays a plain duplicate; a shared formatter
+         appends a disambiguator at render — <b>(you)</b> for the viewer and a last initial / join-order
+         suffix for the rest — so the roster and settle-up read unambiguously. <b>Why distinct:</b> it needs
+         no join-flow or server change and also rescues names that slipped in before any guard existed.
+         <b>Implements in:</b> a member-name formatter reused by the group detail roster
+         (<code>group_detail_screen.dart</code>) and <code>settle_up_screen.dart</code> — the same
+         disambiguator track as #289. Trade-off: every name-rendering surface must call it, or the clash
+         resurfaces in any new surface.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
