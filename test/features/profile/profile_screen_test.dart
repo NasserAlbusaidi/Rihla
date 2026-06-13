@@ -24,6 +24,7 @@ import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
 // Phase 26 mock classes
@@ -135,6 +136,53 @@ List<Override> _phase26Overrides({
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  group('profile stats async states (#488)', () {
+    Future<void> pumpStats(
+      WidgetTester tester, {
+      required AsyncValue<ProfileStats> stats,
+    }) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Sam'});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: [
+            ..._phase26Overrides(prefs: prefs),
+            profileStatsProvider.overrideWith((ref) => stats),
+            // Durable suppresses the #487 anon back-up card so the stats grid
+            // stays near the top, clear of the 800x600 fold.
+            isDurableUserProvider.overrideWithValue(true),
+            linkedEmailProvider.overrideWithValue('sam@example.com'),
+            googleAccountProvider.overrideWithValue(null),
+          ],
+        ),
+      );
+    }
+
+    testWidgets('loading shows a skeleton, not em-dashes (#488)', (
+      tester,
+    ) async {
+      await pumpStats(tester, stats: const AsyncValue.loading());
+      await _pumpWithAnimations(tester);
+
+      expect(find.byType(SkeletonLoader), findsOneWidget);
+      expect(find.text('—'), findsNothing);
+    });
+
+    testWidgets('error shows an explicit retry card, not em-dashes (#488)', (
+      tester,
+    ) async {
+      await pumpStats(
+        tester,
+        stats: AsyncValue.error(Exception('boom'), StackTrace.empty),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(ProfileKeys.statsErrorCard), findsOneWidget);
+      expect(find.text('—'), findsNothing);
+    });
   });
 
   group('identity hero backup state (#487)', () {

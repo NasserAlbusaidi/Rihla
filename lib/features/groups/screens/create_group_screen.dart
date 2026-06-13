@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/share_helper.dart';
@@ -18,6 +19,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../auth/providers/durable_credential_gate_provider.dart';
 import '../../auth/services/durable_credential_exception.dart';
 import '../../auth/services/pending_gate_intent.dart';
@@ -131,7 +133,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       ref.read(groupLoadingProvider.notifier).state = false;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.displayNameTakenInGroup(e.groupName))),
+          SnackBar(
+            content: Text(context.l10n.displayNameTakenInGroup(e.groupName)),
+          ),
         );
       }
       return;
@@ -170,7 +174,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       unawaited(Sentry.captureException(e, stackTrace: st));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n.groupCreateError(friendlyMessageFor(context, e))),
+          content: Text(
+            context.l10n.groupCreateError(friendlyMessageFor(context, e)),
+          ),
           duration: const Duration(seconds: 5),
         ),
       );
@@ -242,7 +248,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 child: SingleChildScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space24, context.spacing.space8, context.spacing.space24, context.spacing.space24),
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    context.spacing.space24,
+                    context.spacing.space8,
+                    context.spacing.space24,
+                    context.spacing.space24,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -304,7 +315,10 @@ class _CreateGroupTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: 10,
+      ),
       child: SizedBox(
         height: 44,
         child: Stack(
@@ -312,13 +326,11 @@ class _CreateGroupTopBar extends StatelessWidget {
           children: [
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: CloseButton(
-                onPressed: onClose,
-                color: colors.textPrimary,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 40),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              child: RIconButton(
+                variant: RIconButtonVariant.ghost,
+                icon: Iconsax.close_square,
+                tooltip: context.l10n.commonClose,
+                onTap: onClose,
               ),
             ),
             Text(
@@ -501,7 +513,9 @@ class _WireframeTextField extends StatelessWidget {
             helperText: helperText,
             filled: false,
             isDense: true,
-            contentPadding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+            contentPadding: EdgeInsets.symmetric(
+              vertical: context.spacing.space12,
+            ),
             border: _inputBorder(colors.ink2),
             enabledBorder: _inputBorder(colors.ink2),
             focusedBorder: _inputBorder(colors.textPrimary, width: 1.5),

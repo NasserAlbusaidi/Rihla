@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
@@ -15,6 +16,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../auth/providers/durable_credential_gate_provider.dart';
 import '../../auth/services/pending_gate_intent.dart';
 import '../keys/group_keys.dart';
@@ -128,7 +130,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       ref.read(groupLoadingProvider.notifier).state = false;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.displayNameTakenInGroup(e.groupName))),
+          SnackBar(
+            content: Text(context.l10n.displayNameTakenInGroup(e.groupName)),
+          ),
         );
       }
       return;
@@ -251,7 +255,12 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space24, context.spacing.space8, context.spacing.space24, context.spacing.space24),
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  context.spacing.space24,
+                  context.spacing.space8,
+                  context.spacing.space24,
+                  context.spacing.space24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -303,7 +312,10 @@ class _JoinGroupTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: 10,
+      ),
       child: SizedBox(
         height: 36,
         child: Stack(
@@ -311,13 +323,13 @@ class _JoinGroupTopBar extends StatelessWidget {
           children: [
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: BackButton(
-                onPressed: onClose,
-                color: colors.textPrimary,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 40),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              child: RIconButton(
+                variant: RIconButtonVariant.ghost,
+                icon: Directionality.of(context) == TextDirection.rtl
+                    ? Iconsax.arrow_right
+                    : Iconsax.arrow_left,
+                tooltip: context.l10n.commonBack,
+                onTap: onClose,
               ),
             ),
             Text(
@@ -401,7 +413,9 @@ class _UnderlinedTextField extends StatelessWidget {
             hintText: hintText,
             filled: false,
             isDense: true,
-            contentPadding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+            contentPadding: EdgeInsets.symmetric(
+              vertical: context.spacing.space12,
+            ),
             border: _underline(colors.ink2),
             enabledBorder: _underline(colors.ink2),
             focusedBorder: _underline(colors.textPrimary, width: 1.5),

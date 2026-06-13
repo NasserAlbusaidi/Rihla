@@ -468,6 +468,7 @@
     "description": "Subtitle on the Groups stat card."
   },
   "profileStatsLifetime": "lifetime",
+  "profileStatsLoadFailed": "Couldn't load your stats",
   "@profileStatsLifetime": {
     "description": "Subtitle on the Spent stat card."
   },
@@ -1072,9 +1073,6 @@
       "amount": {}
     }
   },
-  "settleUpMethodCash": "Cash",
-  "settleUpMethodBank": "Bank",
-  "settleUpMethodOther": "Other",
   "settleUpAllSettledTitle": "All settled up",
   "settleUpAllSettledMessage": "Everyone is square. No outstanding amounts.",
   "settleUpYouOwe": "You owe {name}",

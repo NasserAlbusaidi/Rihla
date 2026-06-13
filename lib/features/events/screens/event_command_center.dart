@@ -14,6 +14,7 @@ import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../groups/models/group_member_model.dart';
@@ -428,9 +429,7 @@ class _BalanceWithBreakdown extends StatelessWidget {
     final isUniform = state != _HubState.mixed;
     // L7: the tri-state overline/accent only has an honest answer when every
     // line shares one sign; mixed → per-line tones self-explain.
-    final accent = isUniform
-        ? (isOwed ? colors.success : colors.error)
-        : null;
+    final accent = isUniform ? (isOwed ? colors.success : colors.error) : null;
     final accentText = isOwed ? colors.successText : colors.errorText;
 
     return Column(
@@ -586,7 +585,10 @@ class _BreakdownRow extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.space12,
+            vertical: 10,
+          ),
           child: Row(
             children: [
               RAvatar(name: entry.otherName, size: 32),
@@ -1146,9 +1148,7 @@ class _RosterStrip extends StatelessWidget {
               return _RosterPersonCard(
                 name: name,
                 isMe: isMe,
-                dotOwed: lines.isEmpty
-                    ? null
-                    : lines.first.net > Decimal.zero,
+                dotOwed: lines.isEmpty ? null : lines.first.net > Decimal.zero,
                 showDot: !isMe && !isEmpty,
                 onTap: () => onPersonTap(uid),
               );
@@ -1315,7 +1315,7 @@ class _CoverHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _PaperIconButton(
+                RIconButton(
                   icon: Directionality.of(context) == TextDirection.rtl
                       ? Iconsax.arrow_right
                       : Iconsax.arrow_left,
@@ -1326,7 +1326,7 @@ class _CoverHeader extends StatelessWidget {
                     }
                   },
                 ),
-                _PaperIconButton(
+                RIconButton(
                   key: EventKeys.settingsButton,
                   icon: Iconsax.setting_2,
                   onTap: onSettings,
@@ -1434,32 +1434,6 @@ class _DayBadge extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w800,
           color: colors.textPrimary,
-        ),
-      ),
-    );
-  }
-}
-
-class _PaperIconButton extends StatelessWidget {
-  const _PaperIconButton({super.key, required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Material(
-      color: colors.cardSurface.withValues(alpha: 0.94),
-      shape: const CircleBorder(),
-      elevation: 1,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 22,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(icon, size: 18, color: colors.textPrimary),
         ),
       ),
     );

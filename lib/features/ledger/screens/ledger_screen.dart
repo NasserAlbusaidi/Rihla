@@ -13,6 +13,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
+import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
@@ -159,8 +160,7 @@ class _Body extends ConsumerWidget {
         <String, ({String payerName, String recipientName})>{
           for (final entry in data.settlementDisplayNames.entries)
             entry.key: (
-              payerName:
-                  entry.value.payerName ?? context.l10n.ledgerSomeone,
+              payerName: entry.value.payerName ?? context.l10n.ledgerSomeone,
               recipientName:
                   entry.value.recipientName ?? context.l10n.ledgerSomeoneLower,
             ),
@@ -191,8 +191,7 @@ class _Body extends ConsumerWidget {
         (data.balances[c] ?? const <UserBalance>[])
             .where(
               (b) =>
-                  b.participantId != currentPid &&
-                  b.netBalance != Decimal.zero,
+                  b.participantId != currentPid && b.netBalance != Decimal.zero,
             )
             .length;
 
@@ -239,9 +238,7 @@ class _Body extends ConsumerWidget {
         }
       }
     }
-    roster.sort(
-      (a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()),
-    );
+    roster.sort((a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()));
 
     final hasExpenses = expenses.isNotEmpty;
     final isSettled = hasExpenses && myLines.isEmpty;
@@ -321,8 +318,9 @@ class _Body extends ConsumerWidget {
                   kind: heroKind,
                   amount: singleLine?.net ?? Decimal.zero,
                   currency: singleLine?.currency ?? currency,
-                  peopleCount:
-                      heroLines.length == 1 ? heroLines.first.peopleCount : 0,
+                  peopleCount: heroLines.length == 1
+                      ? heroLines.first.peopleCount
+                      : 0,
                   lines: heroLines,
                 ),
               ),
@@ -405,7 +403,9 @@ class _Body extends ConsumerWidget {
                 ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: context.spacing.space24),
+                  padding: EdgeInsets.symmetric(
+                    vertical: context.spacing.space24,
+                  ),
                   child: Center(
                     child: Text(
                       isSettled
@@ -436,7 +436,6 @@ class _Body extends ConsumerWidget {
       ],
     );
   }
-
 }
 
 // ──────────────────────────── Cover header
@@ -496,7 +495,7 @@ class _CoverHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _PaperIconButton(
+                RIconButton(
                   icon: Directionality.of(context) == TextDirection.rtl
                       ? Iconsax.arrow_right
                       : Iconsax.arrow_left,
@@ -510,7 +509,7 @@ class _CoverHeader extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    _PaperIconButton(
+                    RIconButton(
                       icon: Iconsax.search_normal,
                       tooltip: context.l10n.ledgerSearchExpensesTooltip,
                       onTap: () {
@@ -519,7 +518,7 @@ class _CoverHeader extends StatelessWidget {
                       },
                     ),
                     const SizedBox(width: 6),
-                    _PaperIconButton(
+                    RIconButton(
                       key: LedgerKeys.activityButton,
                       icon: Iconsax.activity,
                       tooltip: context.l10n.ledgerActivityTooltip,
@@ -529,7 +528,7 @@ class _CoverHeader extends StatelessWidget {
                       },
                     ),
                     const SizedBox(width: 6),
-                    _PaperIconButton(
+                    RIconButton(
                       icon: Iconsax.setting_2,
                       tooltip: context.l10n.ledgerEventSettingsTooltip,
                       onTap: () {
@@ -577,39 +576,6 @@ class _CoverHeader extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _PaperIconButton extends StatelessWidget {
-  const _PaperIconButton({
-    super.key,
-    required this.icon,
-    required this.onTap,
-    this.tooltip,
-  });
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? tooltip;
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final button = Material(
-      color: colors.cardSurface.withValues(alpha: 0.94),
-      shape: const CircleBorder(),
-      elevation: 1,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 22,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(icon, size: 18, color: colors.textPrimary),
-        ),
-      ),
-    );
-    if (tooltip == null) return button;
-    return Tooltip(message: tooltip!, child: button);
   }
 }
 

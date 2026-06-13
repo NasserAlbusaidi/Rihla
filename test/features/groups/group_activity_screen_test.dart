@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -99,6 +100,22 @@ Future<void> _seedActivities(
           'metadata': a.metadata,
           'timestamp': a.timestamp.toUtc().toIso8601String(),
         });
+  }
+}
+
+/// A [GroupActivityService] whose page fetch always throws — models a
+/// network failure on load so the screen must surface a real error state
+/// rather than the misleading "No activity yet" empty state (#488).
+class _ThrowingActivityService extends GroupActivityService {
+  _ThrowingActivityService() : super.withFirestore(FakeFirebaseFirestore());
+
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) async {
+    throw Exception('simulated network failure');
   }
 }
 
@@ -240,6 +257,46 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'first-load failure shows an error+retry state, not "No activity yet" '
+      '(#488)',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupActivityServiceProvider.overrideWith(
+                (ref) => _ThrowingActivityService(),
+              ),
+              groupDetailProvider(
+                'grp-load-error',
+              ).overrideWith((ref) => Stream.value(_testGroup)),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const GroupActivityScreen(groupId: 'grp-load-error'),
+            ),
+          ),
+        );
+        await tester.pump(); // initState _loadPage runs and throws
+        await tester.pumpAndSettle();
+
+        // A real, distinct error state with a retry affordance.
+        expect(find.text('Could not load activity'), findsOneWidget);
+        expect(find.text('Reload'), findsOneWidget);
+        // The misleading "empty" copy must NOT be shown on a failed load.
+        expect(
+          find.text(
+            'Group events, payments, and member changes will appear here.',
+          ),
+          findsNothing,
+        );
+      },
+    );
 
     testWidgets('renders back button in the current top bar', (tester) async {
       final fakeDb = FakeFirebaseFirestore();

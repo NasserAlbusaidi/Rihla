@@ -782,6 +782,12 @@ abstract class AppLocalizations {
   /// **'lifetime'**
   String get profileStatsLifetime;
 
+  /// No description provided for @profileStatsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your stats'**
+  String get profileStatsLoadFailed;
+
   /// Overflow indicator on the Profile Spent stat when lifetime spend spans more than two currencies; shows how many additional currency lines are hidden. Digit-only; no FX, currencies never summed.
   ///
   /// In en, this message translates to:
@@ -2207,24 +2213,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Suggested: {amount}'**
   String settleUpSuggestedAmount(Object amount);
-
-  /// No description provided for @settleUpMethodCash.
-  ///
-  /// In en, this message translates to:
-  /// **'Cash'**
-  String get settleUpMethodCash;
-
-  /// No description provided for @settleUpMethodBank.
-  ///
-  /// In en, this message translates to:
-  /// **'Bank'**
-  String get settleUpMethodBank;
-
-  /// No description provided for @settleUpMethodOther.
-  ///
-  /// In en, this message translates to:
-  /// **'Other'**
-  String get settleUpMethodOther;
 
   /// No description provided for @settleUpAllSettledTitle.
   ///

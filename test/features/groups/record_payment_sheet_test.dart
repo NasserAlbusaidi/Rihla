@@ -120,44 +120,43 @@ void main() {
     },
   );
 
-  testWidgets(
-    '#351: banner says Rihla records but does not move money',
-    (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: Center(
-                  child: ElevatedButton(
-                    key: const Key('open'),
-                    onPressed: () => showRecordPaymentSheet(
-                      context,
-                      currency: 'OMR',
-                      fromName: 'Bob',
-                      toName: 'Alice',
-                      suggestedAmount: Decimal.parse('5.000'),
-                    ),
-                    child: const Text('open'),
+  testWidgets('#351: banner says Rihla records but does not move money', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open'),
+                  onPressed: () => showRecordPaymentSheet(
+                    context,
+                    currency: 'OMR',
+                    fromName: 'Bob',
+                    toName: 'Alice',
+                    suggestedAmount: Decimal.parse('5.000'),
                   ),
+                  child: const Text('open'),
                 ),
               ),
             ),
           ),
         ),
-      );
-      await tester.tap(find.byKey(const Key('open')));
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.tap(find.byKey(const Key('open')));
+    await tester.pumpAndSettle();
 
-      // Rihla is a ledger, not a payment processor — no funds are transferred.
-      expect(find.textContaining("doesn't move money"), findsOneWidget);
-    },
-  );
+    // Rihla is a ledger, not a payment processor — no funds are transferred.
+    expect(find.textContaining("doesn't move money"), findsOneWidget);
+  });
 
-  testWidgets('confirm returns the seeded amount, empty note, cash by default', (
+  testWidgets('confirm returns the seeded amount and empty note', (
     tester,
   ) async {
     final result = await openAndReturn(
@@ -170,7 +169,6 @@ void main() {
     expect(result, isNotNull);
     expect(result!.amount, '7.750');
     expect(result.note, '');
-    expect(result.method, PaymentMethod.cash);
   });
 
   testWidgets('Not Now dismisses the sheet and returns null', (tester) async {
@@ -208,23 +206,6 @@ void main() {
     expect(result.note, 'dinner');
   });
 
-  testWidgets('selecting a payment method flows into the result', (
-    tester,
-  ) async {
-    final result = await openAndReturn(
-      tester,
-      currency: 'OMR',
-      suggestedAmount: Decimal.parse('7.750'),
-      act: (t) async {
-        await t.tap(find.text('Bank'));
-        await t.pump();
-        await tapMarkPaid(t);
-      },
-    );
-
-    expect(result!.method, PaymentMethod.bank);
-  });
-
   testWidgets('seeds the amount at the currency decimal scale (JPY → 0dp)', (
     tester,
   ) async {
@@ -249,7 +230,10 @@ void main() {
         await t.enterText(find.byType(TextField), 'a' * 281);
         await t.pump();
         // Inline feedback instead of an opaque permission-denied.
-        expect(find.text('Keep it to 280 characters or fewer.'), findsOneWidget);
+        expect(
+          find.text('Keep it to 280 characters or fewer.'),
+          findsOneWidget,
+        );
         // The sheet still returns — it never blocks; the server enforces.
         await tapMarkPaid(t);
       },
@@ -306,7 +290,10 @@ void main() {
     await tester.tap(find.byKey(const Key('open')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(GroupKeys.settleUpRecordSheetStepIndicator), findsOneWidget);
+    expect(
+      find.byKey(GroupKeys.settleUpRecordSheetStepIndicator),
+      findsOneWidget,
+    );
     expect(find.text('1 of 2'), findsOneWidget);
   });
 
