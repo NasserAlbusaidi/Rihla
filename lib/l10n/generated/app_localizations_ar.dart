@@ -1334,15 +1334,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get settleUpMethodCash => 'نقدًا';
-
-  @override
-  String get settleUpMethodBank => 'بنك';
-
-  @override
-  String get settleUpMethodOther => 'أخرى';
-
-  @override
   String get settleUpAllSettledTitle => 'تمت التسوية بالكامل';
 
   @override

@@ -45,10 +45,7 @@ void main() {
         l10n.authRecoverPendingResendErrorCode('timeout'),
         contains('timeout'),
       );
-      expect(
-        l10n.authRecoverPendingResendCountdown(45),
-        contains('45'),
-      );
+      expect(l10n.authRecoverPendingResendCountdown(45), contains('45'));
       expect(
         l10n.groupSettleUpEventLabelFallback('abc123'),
         contains('abc123'),
@@ -66,10 +63,7 @@ void main() {
       // the AR ARB block was loaded and not silently falling back to EN).
       final en = AppLocalizationsEn();
       expect(l10n.authRecoverTitle, isNot(equals(en.authRecoverTitle)));
-      expect(
-        l10n.homeRestoreWithEmail,
-        isNot(equals(en.homeRestoreWithEmail)),
-      );
+      expect(l10n.homeRestoreWithEmail, isNot(equals(en.homeRestoreWithEmail)));
       expect(
         l10n.groupSettleUpMissingTitle,
         isNot(equals(en.groupSettleUpMissingTitle)),
@@ -322,9 +316,6 @@ final _pr2bCalls = <_L10nString>[
   (l10n) => l10n.settleUpTapToEditAmount,
   (l10n) => l10n.settleUpAmountLabel('OMR'),
   (l10n) => l10n.settleUpSuggestedAmount('1.000'),
-  (l10n) => l10n.settleUpMethodCash,
-  (l10n) => l10n.settleUpMethodBank,
-  (l10n) => l10n.settleUpMethodOther,
   (l10n) => l10n.settleUpAllSettledTitle,
   (l10n) => l10n.settleUpAllSettledMessage,
   (l10n) => l10n.settleUpYouOwe('Shadha'),
