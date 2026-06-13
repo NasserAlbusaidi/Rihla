@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#382 — Multi-Currency UI Overhaul · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* ---- hero statement (Instrument Serif voice) -------------------------- */
+  .hero { padding: var(--s20) var(--s24) var(--s8); }
+  .hero-line {
+    font-family: var(--font-serif); font-style: italic; font-size: 32px;
+    line-height: 1.12; letter-spacing: -.5px; color: var(--ink);
+  }
+  .hero-line.sm { font-size: 23px; }
+  .hero-num { font-family: var(--font-serif); font-style: italic; }
+  .hero-num.pos { color: var(--sage-text); }
+  .hero-num.neg { color: var(--rust-text); }
+  .hero-ccy { font-family: var(--font-mono); font-style: normal; font-weight: 500;
+    font-size: .40em; letter-spacing: 1px; color: var(--ink-3); vertical-align: 2px; margin-right: 2px; }
+  .hero-frac { font-size: .62em; }
+  .hero-tail { color: var(--ink-3); }
+
+  /* ---- secondary currency rail ------------------------------------------ */
+  .ccy-rail-wrap { padding: 0 var(--s24); }
+  .ccy-rail-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-4); margin: var(--s8) 0; }
+  .ccy-rail { display: flex; flex-wrap: wrap; gap: var(--s8); }
+  .ccy-chip { display: inline-flex; align-items: baseline; gap: 5px;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    padding: 5px 11px; border-radius: var(--r-pill); background: var(--card-soft); border: 1px solid var(--border); }
+  .ccy-chip .code { font-size: 10px; font-weight: 600; letter-spacing: .6px; color: var(--ink-4); }
+  .ccy-chip.pos { color: var(--sage-text); background: rgba(92,122,87,.10); border-color: rgba(92,122,87,.28); }
+  .ccy-chip.neg { color: var(--rust-text); background: rgba(168,75,51,.09); border-color: rgba(168,75,51,.26); }
+  .ccy-chip .frac { opacity: .72; }
+  .ccy-chip.pressed { background: var(--saffron-tint); border-color: var(--primary); color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(209,123,44,.18); }
+  .ccy-chip.pressed .code { color: var(--primary-dark); }
+
+  /* rail variant B — one tight tappable line */
+  .ccy-rail-line { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+    color: var(--ink-2); line-height: 1.75; }
+  .ccy-rail-line .pos { color: var(--sage-text); }
+  .ccy-rail-line .neg { color: var(--rust-text); }
+  .ccy-rail-line .dot { color: var(--ink-4); margin: 0 5px; }
+  .ccy-rail-line .code { color: var(--ink-4); font-weight: 600; }
+
+  /* ---- counterparty-first roster ---------------------------------------- */
+  .cp-row { display: flex; align-items: flex-start; gap: var(--s12); padding: var(--s12) var(--s16); }
+  .cp-name { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .cp-sub { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+  .cp-nets { display: flex; flex-wrap: wrap; gap: 5px 8px; margin-top: var(--s8); }
+  .cp-net { font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    padding: 2px 8px; border-radius: var(--r-sm); background: var(--card-soft); border: 1px solid var(--border); }
+  .cp-net .code { color: var(--ink-4); font-size: 10px; margin-right: 3px; }
+  .cp-net.pos { color: var(--sage-text); }
+  .cp-net.neg { color: var(--rust-text); }
+
+  /* ---- "before" recreation ---------------------------------------------- */
+  .old-hero-line { font-family: var(--font-serif); font-style: italic; font-size: 22px;
+    line-height: 1.16; color: var(--ink); padding: 1px var(--s24); }
+  .old-hero-line .n.pos { color: var(--sage-text); }
+  .old-hero-line .t { color: var(--ink-3); }
+  .old-roster { display: flex; gap: var(--s12); padding: var(--s12) var(--s16) var(--s4); }
+  .old-rchip { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 56px; }
+  .old-rchip .nm { font-size: 10px; color: var(--ink-3); }
+  .old-rchip .amt { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--sage-text); }
+  .home-block { padding: var(--s16) var(--s4); border-bottom: 1px solid var(--rule); }
+  .home-block:last-child { border-bottom: none; }
+  .home-block .code { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; color: var(--ink-3); }
+  .home-block .big { font-family: var(--font-serif); font-style: italic; font-size: 40px; color: var(--sage-text); line-height: 1.1; }
+  .home-block .net { font-size: 13px; color: var(--ink-3); margin: 2px 0 8px; }
+  .home-bar { height: 5px; border-radius: var(--r-pill); background: var(--sage); margin: 6px 0 8px; }
+  .home-leg { display: flex; justify-content: space-between; font-size: 11px; }
+  .home-leg .l { color: var(--ink-3); }
+  .home-leg .a { font-family: var(--font-mono); font-weight: 600; }
+
+  .cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--ink-4); padding: var(--s12) var(--s24) 2px; }
+  .annot { padding: var(--s8) var(--s24) var(--s16); font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+  .annot b { color: var(--rust-text); }
+  .annot.good b { color: var(--sage-text); }
+  .hr-soft { height:1px; background: var(--rule); margin: var(--s8) var(--s24); border:none; }
+  .promote-arrow { align-self: center; font-family: var(--font-mono); color: var(--primary);
+    font-size: 13px; font-weight: 600; text-align: center; width: 70px; }
+  .promote-arrow .big { font-size: 26px; display: block; }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#382 — Multi-currency <span class="saffron">UI overhaul</span> · v2</h1>
+  <p>Feature is correct; the <b style="color:#D9D3C5">presentation</b> renders every currency
+  as a full-weight peer, so N currencies = N× the weight. Direction (locked):
+  <b style="color:#D9D3C5">primary currency keeps the serif hero; the rest collapse to a
+  rail you can tap to promote</b>. A (chips) vs B (line) to be picked from on-device renders.
+  Data = live <span class="mono" style="color:#E0B98A">Shams</span> group.</p>
+  <p style="font-size:13px;color:#9a9587;margin-top:12px"><b style="color:#E0B98A">Locked 2026-06-13:</b>
+  primary serif hero + tap-to-promote rail · counterparty-first roster (person once, per-currency nets) ·
+  hero tail names the counterparty · rail <b>A chips</b> (2–4 ccy) / <b>B line</b> (3+) — build both, pick
+  on-device · primary = group currency (group view) / largest position (Home) · 1 currency = unchanged.
+  Display-layer only → Gate-exempt. Implement later via the #382 PR-5/PR-6 workflow (TDD → /automerge review+refute).</p>
+</div>
+
+<!-- ===================================================== COMMON CASE UNCHANGED -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">382</span>
+    <h2 class="issue-title">The common case is untouched</h2>
+    <span class="issue-meta">1 currency → no rail, no “+more”, byte-identical to today</span>
+  </div>
+  <p class="issue-desc">Most groups are single-currency. The overhaul only engages at N≥2, so
+  the 95% case keeps the exact hero it has now — this is the no-regression guarantee.</p>
+  <div class="variant-row">
+    <div class="variant">
+      <div class="variant-label">Single-currency group <span class="tag">95%</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:32</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Muscat trip</span></div>
+          <div class="cap">Your balance</div>
+          <div class="hero">
+            <div class="hero-line">You're up<br>
+              <span class="hero-num pos"><span class="hero-ccy">+OMR</span>12<span class="hero-frac">.500</span></span>
+              <span class="hero-tail">— Sara owes you.</span>
+            </div>
+          </div>
+          <div class="old-roster">
+            <div class="old-rchip"><div class="avatar sm av-1">N</div><div class="nm">You</div></div>
+            <div class="old-rchip"><div class="avatar sm av-3">S</div><div class="nm">Sara</div><div class="amt">+12.500</div></div>
+          </div>
+          <div class="annot good">No rail. No “+more”. <b>Exactly today's screen</b> — the overhaul
+            adds zero weight when there's one currency.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================== HERO: A vs B (same data) -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">382</span>
+    <h2 class="issue-title">Ledger hero — A vs B, same group</h2>
+    <span class="issue-meta">Shams · OMR 6.234 · SAR 774.50 · USD 28.25 · KWD 40.000 · JPY 625</span>
+  </div>
+  <p class="issue-desc">Both keep the serif hero for the group's own currency (OMR) and collapse
+  the rest. <b style="color:#D9D3C5">A</b> = sage/rust chips (breathe, individual tap targets).
+  <b style="color:#D9D3C5">B</b> = one dense mono line. Final pick from on-device renders.</p>
+  <p class="issue-rec">Both ship behind a flag → screenshot on the Pixel → choose.</p>
+  <div class="variant-row">
+
+    <!-- CURRENT -->
+    <div class="variant">
+      <div class="variant-label">Current <span class="tag">today</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:32</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Shams</span></div>
+          <div class="cap">Your balance</div>
+          <div class="old-hero-line">You're up <span class="n pos">+OMR&nbsp;6.234</span> <span class="t">across 1 person.</span></div>
+          <div class="old-hero-line">You're up <span class="n pos">+SAR&nbsp;774.50</span> <span class="t">across 1 person.</span></div>
+          <div class="old-hero-line">You're up <span class="n pos">+USD&nbsp;28.25</span> <span class="t">across 1 person.</span></div>
+          <div class="old-hero-line">You're up <span class="n pos">+KWD&nbsp;40.000</span> <span class="t">across 1 person.</span></div>
+          <div class="old-hero-line">You're up <span class="n pos">+JPY&nbsp;625</span> <span class="t">across 1 person.</span></div>
+          <div class="old-roster">
+            <div class="old-rchip"><div class="avatar sm av-1">N</div><div class="nm">You</div></div>
+            <div class="old-rchip"><div class="avatar sm av-2">B</div><div class="nm">Bob</div><div class="amt">+774.50</div></div>
+            <div class="old-rchip"><div class="avatar sm av-2">B</div><div class="nm">Bob</div><div class="amt">+625</div></div>
+            <div class="old-rchip"><div class="avatar sm av-2">B</div><div class="nm">Bob</div><div class="amt">+40.000</div></div>
+            <div class="old-rchip"><div class="avatar sm av-2">B</div><div class="nm">Bob</div><div class="amt">+28.25</div></div>
+          </div>
+          <div class="annot"><b>5 repeated sentences</b> + <b>Bob ×5</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A -->
+    <div class="variant pick">
+      <div class="variant-label">A · chips <span class="tag">A</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:32</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Shams</span></div>
+          <div class="cap">Your balance</div>
+          <div class="hero">
+            <div class="hero-line">You're up<br>
+              <span class="hero-num pos"><span class="hero-ccy">+OMR</span>6<span class="hero-frac">.234</span></span>
+              <span class="hero-tail">— Bob owes you.</span>
+            </div>
+          </div>
+          <div class="ccy-rail-wrap">
+            <div class="ccy-rail-label">+ 4 more currencies</div>
+            <div class="ccy-rail">
+              <span class="ccy-chip pos"><span class="code">SAR</span>+774<span class="frac">.50</span></span>
+              <span class="ccy-chip pos"><span class="code">USD</span>+28<span class="frac">.25</span></span>
+              <span class="ccy-chip pos"><span class="code">KWD</span>+40<span class="frac">.000</span></span>
+              <span class="ccy-chip pos"><span class="code">JPY</span>+625</span>
+            </div>
+          </div>
+          <hr class="hr-soft" style="margin-top:var(--s16)">
+          <div class="section-header" style="padding:var(--s8) var(--s16) 0"><span class="label">People</span></div>
+          <div class="card flush" style="margin:var(--s8) var(--s16) 0">
+            <div class="cp-row">
+              <div class="avatar av-2">B</div>
+              <div class="row-body">
+                <div class="cp-name">Bob</div>
+                <div class="cp-sub">owes you in 5 currencies</div>
+                <div class="cp-nets">
+                  <span class="cp-net pos"><span class="code">OMR</span>+6.234</span>
+                  <span class="cp-net pos"><span class="code">SAR</span>+774.50</span>
+                  <span class="cp-net pos"><span class="code">USD</span>+28.25</span>
+                  <span class="cp-net pos"><span class="code">KWD</span>+40.000</span>
+                  <span class="cp-net pos"><span class="code">JPY</span>+625</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="annot good">Serif hero (group currency) + <b>chip rail</b> + <b>Bob once</b>.</div>
+        </div>
+      </div>
+      <div class="variant-note"><b>Chips</b> breathe and give each currency its own tap target —
+        best at 2–4 currencies.</div>
+    </div>
+
+    <!-- B -->
+    <div class="variant">
+      <div class="variant-label">B · line <span class="tag">B</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:32</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Shams</span></div>
+          <div class="cap">Your balance</div>
+          <div class="hero">
+            <div class="hero-line">You're up<br>
+              <span class="hero-num pos"><span class="hero-ccy">+OMR</span>6<span class="hero-frac">.234</span></span>
+              <span class="hero-tail">— Bob owes you.</span>
+            </div>
+          </div>
+          <div class="ccy-rail-wrap">
+            <div class="ccy-rail-label">also</div>
+            <div class="ccy-rail-line">
+              <span class="pos"><span class="code">SAR</span> +774.50</span><span class="dot">·</span>
+              <span class="pos"><span class="code">USD</span> +28.25</span><span class="dot">·</span>
+              <span class="pos"><span class="code">KWD</span> +40.000</span><span class="dot">·</span>
+              <span class="pos"><span class="code">JPY</span> +625</span>
+            </div>
+          </div>
+          <hr class="hr-soft" style="margin-top:var(--s16)">
+          <div class="section-header" style="padding:var(--s8) var(--s16) 0"><span class="label">People</span></div>
+          <div class="card flush" style="margin:var(--s8) var(--s16) 0">
+            <div class="cp-row">
+              <div class="avatar av-2">B</div>
+              <div class="row-body">
+                <div class="cp-name">Bob</div>
+                <div class="cp-sub">owes you in 5 currencies</div>
+                <div class="cp-nets">
+                  <span class="cp-net pos"><span class="code">OMR</span>+6.234</span>
+                  <span class="cp-net pos"><span class="code">SAR</span>+774.50</span>
+                  <span class="cp-net pos"><span class="code">USD</span>+28.25</span>
+                  <span class="cp-net pos"><span class="code">KWD</span>+40.000</span>
+                  <span class="cp-net pos"><span class="code">JPY</span>+625</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="annot good">Same hero; rail is <b>one mono line</b> — tightest footprint.</div>
+        </div>
+      </div>
+      <div class="variant-note"><b>Line</b> is denser — best when groups routinely span 3+
+        currencies. Tap to expand to full rows.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================================================== TAP TO PROMOTE -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">382</span>
+    <h2 class="issue-title">Tap a rail currency to promote it</h2>
+    <span class="issue-meta">how you read a non-primary currency's full detail</span>
+  </div>
+  <p class="issue-desc">The rail isn't a dead-end: tapping a chip swaps it into the serif hero and
+  drops the old primary back onto the rail. So every currency is one tap from the full
+  hero treatment — no information is hidden, just ranked.</p>
+  <div class="variant-row">
+    <div class="variant">
+      <div class="variant-label">Tap “SAR” on the rail</div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:32</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Shams</span></div>
+          <div class="cap">Your balance</div>
+          <div class="hero">
+            <div class="hero-line">You're up<br>
+              <span class="hero-num pos"><span class="hero-ccy">+OMR</span>6<span class="hero-frac">.234</span></span>
+              <span class="hero-tail">— Bob owes you.</span>
+            </div>
+          </div>
+          <div class="ccy-rail-wrap">
+            <div class="ccy-rail-label">+ 4 more currencies</div>
+            <div class="ccy-rail">
+              <span class="ccy-chip pos pressed"><span class="code">SAR</span>+774<span class="frac">.50</span></span>
+              <span class="ccy-chip pos"><span class="code">USD</span>+28<span class="frac">.25</span></span>
+              <span class="ccy-chip pos"><span class="code">KWD</span>+40<span class="frac">.000</span></span>
+              <span class="ccy-chip pos"><span class="code">JPY</span>+625</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="promote-arrow"><span class="big">→</span>promote</div>
+
+    <div class="variant">
+      <div class="variant-label">SAR is now the hero</div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:32</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Shams</span></div>
+          <div class="cap">Your balance</div>
+          <div class="hero">
+            <div class="hero-line">You're up<br>
+              <span class="hero-num pos"><span class="hero-ccy">+SAR</span>774<span class="hero-frac">.50</span></span>
+              <span class="hero-tail">— Bob owes you.</span>
+            </div>
+          </div>
+          <div class="ccy-rail-wrap">
+            <div class="ccy-rail-label">+ 4 more currencies</div>
+            <div class="ccy-rail">
+              <span class="ccy-chip pos"><span class="code">OMR</span>+6<span class="frac">.234</span></span>
+              <span class="ccy-chip pos"><span class="code">USD</span>+28<span class="frac">.25</span></span>
+              <span class="ccy-chip pos"><span class="code">KWD</span>+40<span class="frac">.000</span></span>
+              <span class="ccy-chip pos"><span class="code">JPY</span>+625</span>
+            </div>
+          </div>
+          <div class="annot good">OMR dropped to the rail; SAR rises. <b>Nothing hidden — ranked.</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================== HOME + MIXED SIGN -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">382</span>
+    <h2 class="issue-title">Home, and the mixed-sign case</h2>
+    <span class="issue-meta">BalanceHeroCard · cross-group</span>
+  </div>
+  <p class="issue-desc">Home stacked a full dashboard per currency. New: one headline block for your
+  largest position + the rail. And the rail's per-sign colour solves the case the prose hero
+  handles worst — some owed to you, some you owe.</p>
+  <div class="variant-row">
+
+    <div class="variant">
+      <div class="variant-label">Home — current <span class="tag">today</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:25</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Rihla</span></div>
+          <div class="cap" style="padding-left:var(--s20)">Across all journeys</div>
+          <div class="card" style="margin:var(--s8) var(--s16) 0">
+            <div class="home-block">
+              <div class="code">SAR</div><div class="big">+774.50</div>
+              <div class="net">Net — you're owed</div><div class="home-bar"></div>
+              <div class="home-leg"><span class="l">● owed to you</span><span class="a pos">SAR 774.50</span></div>
+              <div class="home-leg"><span class="l">● you owe</span><span class="a">SAR 0.00</span></div>
+            </div>
+            <div class="home-block">
+              <div class="code">USD</div><div class="big">+28.25</div>
+              <div class="net">Net — you're owed</div><div class="home-bar"></div>
+              <div class="home-leg"><span class="l">● owed to you</span><span class="a pos">USD 28.25</span></div>
+              <div class="home-leg"><span class="l">● you owe</span><span class="a">USD 0.00</span></div>
+            </div>
+          </div>
+          <div class="annot">A full dashboard <b>per currency</b> → 5 screens of scroll.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="variant pick">
+      <div class="variant-label">Home — primary + rail <span class="tag">A</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:25</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Rihla</span></div>
+          <div class="cap" style="padding-left:var(--s20)">Across all journeys</div>
+          <div class="card pad-lg" style="margin:var(--s8) var(--s16) 0">
+            <div class="hero-line sm" style="padding:0 0 var(--s4)">You're net up</div>
+            <div class="hero-line"><span class="hero-num pos"><span class="hero-ccy">+SAR</span>774<span class="hero-frac">.50</span></span></div>
+            <div class="home-bar" style="margin:var(--s12) 0 var(--s4)"></div>
+            <div class="home-leg"><span class="l">owed to you · 1 group</span><span class="a pos">SAR 774.50</span></div>
+            <div class="ccy-rail" style="margin-top:var(--s16)">
+              <span class="ccy-chip pos"><span class="code">OMR</span>+6<span class="frac">.234</span></span>
+              <span class="ccy-chip pos"><span class="code">USD</span>+28<span class="frac">.25</span></span>
+              <span class="ccy-chip pos"><span class="code">KWD</span>+40<span class="frac">.000</span></span>
+              <span class="ccy-chip pos"><span class="code">JPY</span>+625</span>
+            </div>
+          </div>
+          <div class="section-header" style="padding:var(--s16) var(--s16) 0"><span class="label">Active journeys</span><span class="see-all">See all</span></div>
+          <div class="ticket" style="margin:var(--s8) var(--s16) 0"><div class="cover"></div>
+            <div style="padding:var(--s12) var(--s16)"><div class="row-title">Shams</div><div class="row-sub mono">5 currencies · 2 people</div></div></div>
+          <div class="annot good">Headline = <b>largest position</b>; rest on the rail. Journeys list
+            gets its space back.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <div class="variant-label">Mixed sign <span class="tag">why rail wins</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>4:25</span><span class="dots">5G ▪▪▪</span></div>
+          <div class="app-bar"><span class="title">Tokyo trip</span></div>
+          <div class="cap">Your balance</div>
+          <div class="hero">
+            <div class="hero-line">You owe<br>
+              <span class="hero-num neg"><span class="hero-ccy">−JPY</span>12,400</span>
+              <span class="hero-tail">— to Mei &amp; Sam.</span>
+            </div>
+          </div>
+          <div class="ccy-rail-wrap">
+            <div class="ccy-rail-label">also</div>
+            <div class="ccy-rail">
+              <span class="ccy-chip pos"><span class="code">USD</span>+18<span class="frac">.00</span></span>
+              <span class="ccy-chip neg"><span class="code">OMR</span>−3<span class="frac">.500</span></span>
+              <span class="ccy-chip pos"><span class="code">EUR</span>+9<span class="frac">.20</span></span>
+            </div>
+          </div>
+          <div class="annot good">Owed (sage) and owing (rust) sit side by side — the prose hero
+            can't, it'd ping-pong “You're up / You owe” line by line.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="page-head" style="margin-top:0">
+  <p style="font-size:13px"><b style="color:#D9D3C5">Touches (Flutter, display-layer only — Gate-exempt):</b>
+  <span class="mono" style="color:#B8B2A4">ledger_hero_block.dart · balance_hero_card.dart ·
+  LedgerRosterStrip · trip caption · settle_up_page_body</span>. No money-math / rules / schema.</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#359 — Shareable settlement receipt card · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#359 · Shareable settlement <span class="saffron">receipt</span></h1>
+  <p>When a payment is recorded on <b>Settle Up</b>, both sides want a keepable proof — for the WhatsApp
+     tracker that doesn't move money. The share itself is plain <b>text</b>
+     (<code>"Ahmed paid Sara OMR 5.000 · cash · Jun 7"</code>) sent through the iOS-safe
+     <code>shareText()</code> helper. The fork is the <i>in-app affordance</i> that sits beside the
+     payment-history tile (<code>settle_up_page_body.dart:382</code>). Each phone shows the success/share
+     surface plus the resulting share-text block it produces. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#359</span>
+    <h2 class="issue-title">design(settle-up): shareable settlement receipt card via shareText()</h2>
+    <span class="issue-meta">P3 · design · reuses #291/#308 shareText</span>
+  </div>
+  <p class="issue-desc">All three produce the <b>same plain-text receipt</b> — the difference is how much ceremony
+     the in-app confirmation carries. A perforated <code>.ticket</code> stub frames the payment as a physical
+     proof (on-brand journey artifact); the others are progressively plainer. None changes the money model: a
+     settlement stays an append-only row, and the share is read-only text — nothing writes on tap.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant V1 (ticket stub) — the perforated card already carries Rihla's
+     journey identity, so a recorded payment <i>feels</i> like a stub you tore off and can hand over.</p>
+
+  <div class="variant-row">
+
+    <!-- Variant 1 — Ticket stub (RECOMMENDED) -->
+    <div class="variant pick">
+      <div class="variant-label">V1 · Ticket stub <span class="tag">.ticket card</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn center" style="color:var(--on-primary)">‹</div>
+              <div class="mh-title serif" style="flex:1">Settle Up</div>
+            </div>
+            <div class="mh-sub">Beach House · 4 members</div>
+          </div>
+          <div class="content tight">
+
+            <div class="section-header"><span class="label">Payment history</span></div>
+
+            <!-- Just-recorded payment as a perforated stub -->
+            <div class="ticket">
+              <div class="cover" style="display:flex;align-items:center;justify-content:center;color:var(--on-primary)">
+                <div class="serif" style="font-size:20px">Paid in full</div>
+              </div>
+              <div class="perf"></div>
+              <div style="padding:var(--s16)">
+                <div class="row" style="gap:var(--s12)">
+                  <div class="avatar sm av-1">A</div>
+                  <div style="flex:1;min-width:0">
+                    <div class="row-title">Ahmed <span class="muted" style="font-weight:500">paid</span> Sara</div>
+                    <div class="row-sub mono">cash · Jun 7</div>
+                  </div>
+                  <div class="r-amount lg neu"><span class="ccy">OMR</span>5<span class="dec">.000</span></div>
+                </div>
+                <div class="divider"></div>
+                <button class="btn block secondary sm">Share receipt</button>
+              </div>
+            </div>
+
+            <!-- The TEXT this produces -->
+            <div class="section-header" style="margin-top:var(--s12)"><span class="label">Shares as text</span></div>
+            <div class="card soft" style="padding:var(--s12)">
+              <div class="mono tiny" style="line-height:1.7;color:var(--ink-2)">
+                ✅ Ahmed paid Sara <b>OMR&nbsp;5.000</b><br>
+                cash · Jun 7 · Beach House<br>
+                <span class="muted">— recorded in Rihla</span>
+              </div>
+            </div>
+
+            <!-- earlier rows, plain -->
+            <div class="list-row" style="padding-inline:0">
+              <div class="avatar sm av-3">M</div>
+              <div class="row-body">
+                <div class="row-title" style="font-size:13px">Mariam <span class="muted" style="font-weight:500">paid</span> Khalid</div>
+                <div class="row-sub">Jun 3</div>
+              </div>
+              <div class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>12<span class="dec">.500</span></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The just-recorded payment becomes a perforated <code>.ticket</code> stub</b> with a
+         "Paid in full" cover band and a <i>Share receipt</i> button, replacing only the top (newest) tile in
+         <code>_PaymentHistorySection</code>. On-brand: the same stub motif as journey cards, so a payment reads as
+         something you tore off. Tap calls <code>shareText(context, receipt)</code> from the button's own render box
+         (non-zero origin) — never raw <code>Share.share</code>.</p>
+    </div>
+
+    <!-- Variant 2 — Plain summary card -->
+    <div class="variant">
+      <div class="variant-label">V2 · Plain summary card <span class="tag">card row</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn center" style="color:var(--on-primary)">‹</div>
+              <div class="mh-title serif" style="flex:1">Settle Up</div>
+            </div>
+            <div class="mh-sub">Beach House · 4 members</div>
+          </div>
+          <div class="content tight">
+
+            <div class="toast success" style="align-self:flex-start;margin-bottom:var(--s4)">Settlement recorded.</div>
+
+            <div class="section-header"><span class="label">Payment history</span></div>
+
+            <div class="card raised">
+              <div class="row" style="gap:var(--s12)">
+                <div class="avatar sm" style="background:var(--sage)"><span style="color:var(--on-primary)">✓</span></div>
+                <div style="flex:1;min-width:0">
+                  <div class="row-title" style="font-size:13px">Ahmed <span class="muted" style="font-weight:500">paid</span> Sara</div>
+                  <div class="row-sub mono">cash · Jun 7</div>
+                </div>
+                <div class="r-amount neu" style="font-size:14px"><span class="ccy">OMR</span>5<span class="dec">.000</span></div>
+                <button class="chip glyph" title="Share" style="margin-inline-start:var(--s8)">⇪</button>
+              </div>
+            </div>
+
+            <div class="card soft" style="padding:var(--s12)">
+              <div class="uppercase-label" style="margin-bottom:6px">Shares as text</div>
+              <div class="mono tiny" style="line-height:1.7;color:var(--ink-2)">
+                ✅ Ahmed paid Sara <b>OMR&nbsp;5.000</b><br>
+                cash · Jun 7 · Beach House<br>
+                <span class="muted">— recorded in Rihla</span>
+              </div>
+            </div>
+
+            <div class="list-row" style="padding-inline:0">
+              <div class="avatar sm av-3">M</div>
+              <div class="row-body">
+                <div class="row-title" style="font-size:13px">Mariam <span class="muted" style="font-weight:500">paid</span> Khalid</div>
+                <div class="row-sub">Jun 3</div>
+              </div>
+              <div class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>12<span class="dec">.500</span></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Each history tile keeps its current shape</b> and just gains a small share glyph in the
+         trailing slot, with the existing <i>"Settlement recorded."</i> toast unchanged. Lowest-risk: a one-row addition
+         inside <code>_HistoryTile</code>, no new card type, every past payment becomes shareable. Plainer, but loses the
+         keepsake feel. Same <code>shareText()</code> call, anchored to the glyph's box.</p>
+    </div>
+
+    <!-- Variant 3 — Minimal text line -->
+    <div class="variant">
+      <div class="variant-label">V3 · Minimal text line <span class="tag">inline link</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn center" style="color:var(--on-primary)">‹</div>
+              <div class="mh-title serif" style="flex:1">Settle Up</div>
+            </div>
+            <div class="mh-sub">Beach House · 4 members</div>
+          </div>
+          <div class="content tight">
+
+            <div class="section-header"><span class="label">Payment history</span></div>
+
+            <div class="list-row" style="padding-inline:0">
+              <div class="avatar sm" style="background:var(--sage)"><span style="color:var(--on-primary)">✓</span></div>
+              <div class="row-body">
+                <div class="row-title" style="font-size:13px">Ahmed <span class="muted" style="font-weight:500">paid</span> Sara</div>
+                <div class="row-sub mono">cash · Jun 7 · <span style="color:var(--primary);font-weight:600">Share</span></div>
+              </div>
+              <div class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>5<span class="dec">.000</span></div>
+            </div>
+            <hr class="divider">
+            <div class="list-row" style="padding-inline:0">
+              <div class="avatar sm av-3">M</div>
+              <div class="row-body">
+                <div class="row-title" style="font-size:13px">Mariam <span class="muted" style="font-weight:500">paid</span> Khalid</div>
+                <div class="row-sub mono">card · Jun 3 · <span style="color:var(--primary);font-weight:600">Share</span></div>
+              </div>
+              <div class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>12<span class="dec">.500</span></div>
+            </div>
+
+            <div class="card soft" style="padding:var(--s12);margin-top:var(--s8)">
+              <div class="uppercase-label" style="margin-bottom:6px">Shares as text</div>
+              <div class="mono tiny" style="line-height:1.7;color:var(--ink-2)">
+                ✅ Ahmed paid Sara <b>OMR&nbsp;5.000</b><br>
+                cash · Jun 7 · Beach House<br>
+                <span class="muted">— recorded in Rihla</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>No new chrome at all</b> — a saffron inline <i>"Share"</i> link sits in each tile's
+         existing mono subtitle line. Densest and most discreet, fits the section's "low-emphasis footer" intent
+         (the code comment at <code>:380</code>), but the affordance is easy to miss and the tap target is tiny.
+         Same <code>shareText()</code> receipt; the link's <code>GestureDetector</code> render box supplies the origin.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

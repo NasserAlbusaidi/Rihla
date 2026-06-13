@@ -14,6 +14,7 @@ import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -124,6 +125,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No activity yet'), findsOneWidget);
+    });
+
+    testWidgets('shows a skeleton (not a blank screen) while loading (#488)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildTestApp(
+          const CrossGroupActivityScreen(),
+          overrides: _baseOverrides(
+            activityOverride: const AsyncValue.loading(),
+          ),
+        ),
+      );
+      // One frame only — the skeleton shimmer never settles, so pumpAndSettle
+      // would hang.
+      await tester.pump();
+
+      expect(find.byType(SkeletonLoader), findsOneWidget);
     });
 
     testWidgets('shows activity entries with group name', (tester) async {

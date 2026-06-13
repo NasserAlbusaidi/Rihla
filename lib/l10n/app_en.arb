@@ -1073,9 +1073,6 @@
       "amount": {}
     }
   },
-  "settleUpMethodCash": "Cash",
-  "settleUpMethodBank": "Bank",
-  "settleUpMethodOther": "Other",
   "settleUpAllSettledTitle": "All settled up",
   "settleUpAllSettledMessage": "Everyone is square. No outstanding amounts.",
   "settleUpYouOwe": "You owe {name}",

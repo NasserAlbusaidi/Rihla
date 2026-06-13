@@ -2214,24 +2214,6 @@ abstract class AppLocalizations {
   /// **'Suggested: {amount}'**
   String settleUpSuggestedAmount(Object amount);
 
-  /// No description provided for @settleUpMethodCash.
-  ///
-  /// In en, this message translates to:
-  /// **'Cash'**
-  String get settleUpMethodCash;
-
-  /// No description provided for @settleUpMethodBank.
-  ///
-  /// In en, this message translates to:
-  /// **'Bank'**
-  String get settleUpMethodBank;
-
-  /// No description provided for @settleUpMethodOther.
-  ///
-  /// In en, this message translates to:
-  /// **'Other'**
-  String get settleUpMethodOther;
-
   /// No description provided for @settleUpAllSettledTitle.
   ///
   /// In en, this message translates to:

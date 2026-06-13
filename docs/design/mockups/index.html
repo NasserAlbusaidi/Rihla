@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rihla — design mockups gallery</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; margin:18px 0 8px; color:#B8B2A4; font-size:12.5px; }
+  .legend .pill-tag { vertical-align:middle; }
+  .cluster { max-width:1280px; margin:0 auto 36px; }
+  .cluster-head { color:#F3EEE2; font-size:15px; font-weight:600; letter-spacing:.3px;
+    text-transform:uppercase; font-family:var(--font-mono); display:flex; align-items:center; gap:10px;
+    padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,.1); margin-bottom:18px; }
+  .cluster-head .cnt { font-family:var(--font-mono); font-size:11px; color:#1c1a17; background:var(--saffron-soft);
+    padding:2px 9px; border-radius:var(--r-pill); letter-spacing:0; }
+  .gindex-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:16px; }
+  .gcard { display:flex; flex-direction:column; gap:8px; text-decoration:none;
+    background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.09); border-radius:var(--r-card);
+    padding:16px 16px 14px; transition:transform .12s ease, border-color .12s ease, background .12s ease; }
+  .gcard:hover { transform:translateY(-2px); border-color:var(--primary); background:rgba(209,123,44,.08); }
+  .gc-top { display:flex; align-items:center; justify-content:space-between; }
+  .gc-flags { display:flex; gap:6px; }
+  .gc-title { color:#F3EEE2; font-size:15px; font-weight:600; line-height:1.35; }
+  .gc-pick { color:var(--saffron-soft); font-size:12.5px; font-family:var(--font-mono); line-height:1.4; }
+  .gc-foot { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-top:6px; }
+  .gc-open { color:var(--primary); font-size:12.5px; font-weight:600; }
+  .gc-treatment .gc-pick { color:#A9C0A2; }
+</style>
+</head>
+<body>
+
+<div class="page-head wrap">
+  <h1><span class="saffron">Rihla</span> · design mockups</h1>
+  <p>One HTML file per design-labelled issue, each with 2–3 phone-frame variants (or a before/after
+     treatment for mechanical fixes), styled on the live <code>rihla.css</code> token contract — the same
+     saffron / paper / ink, Geist · Geist&nbsp;Mono · Instrument&nbsp;Serif, and component vocabulary as the app.
+     <b>Open each, pick a direction</b>, and the choice gets posted to its GitHub issue so the design is locked
+     before any code. Every mockup already marks one variant <b>★ recommended</b> — that's the default if you
+     don't want to deliberate.</p>
+  <div class="legend">
+    <span><span class="pill-tag warn">Gate</span> touches money / routing / schema → fresh-context Gate before code</span>
+    <span><span class="pill-tag flag">Blocked</span> needs a prior decision (noted on the card)</span>
+    <span><span class="pill-tag">treatment</span> correctness/copy fix — before→after, not competing designs</span>
+  </div>
+</div>
+
+<!-- ============================ Settle-up & money flow ===================== -->
+<section class="cluster">
+  <div class="cluster-head">Settle-up &amp; money flow <span class="cnt">8</span></div>
+  <div class="gindex-grid">
+    <a class="gcard" href="200-cross-event-settle-up.html">
+      <div class="gc-top"><span class="issue-num">#200</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Cross-event group settle-up — explicit &amp; auditable</div>
+      <div class="gc-pick">★ V1 · Receipt breakdown (persisted per-event snapshot)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="202-event-closeout-recap.html">
+      <div class="gc-top"><span class="issue-num">#202</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Event closeout summary + shareable trip recap</div>
+      <div class="gc-pick">★ V3 · Hybrid — accounting first, opt-in “wrapped” share</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="204-pre-settlement-review.html">
+      <div class="gc-top"><span class="issue-num">#204</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Pre-settlement review sheet for unusual expenses</div>
+      <div class="gc-pick">★ V1 · Checklist sheet (reason pills, deep-links)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="282-creditor-records-payment.html">
+      <div class="gc-top"><span class="issue-num">#282</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Creditor records a payment received (not only the debtor)</div>
+      <div class="gc-pick">★ V1 · Symmetric “Record received” affordance</div>
+      <div class="gc-foot"><span class="muted tiny">2 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="283-settlement-correction.html">
+      <div class="gc-top"><span class="issue-num">#283</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Discoverable correction for a mistaken settlement</div>
+      <div class="gc-pick">★ V3 · Correction sheet (previews the reversing entry)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard gc-treatment" href="351-doesnt-move-money-microcopy.html">
+      <div class="gc-top"><span class="issue-num">#351</span><span class="gc-flags"><span class="pill-tag">treatment</span></span></div>
+      <div class="gc-title">“Records, doesn’t move money” microcopy + offline toast</div>
+      <div class="gc-pick">★ Mark-Paid sheet microcopy + “Saved offline — will sync”</div>
+      <div class="gc-foot"><span class="muted tiny">2 panels</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="359-settlement-receipt-card.html">
+      <div class="gc-top"><span class="issue-num">#359</span><span class="gc-flags"><span class="pill-tag">design</span></span></div>
+      <div class="gc-title">Shareable settlement receipt card via shareText()</div>
+      <div class="gc-pick">★ V1 · Ticket stub (perforated journey-artifact)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="367-payment-handoff.html">
+      <div class="gc-top"><span class="issue-num">#367</span><span class="gc-flags"><span class="pill-tag flag">Blocked</span><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Payment handoff (WhatsApp / IBAN / QR)</div>
+      <div class="gc-pick">★ V1 · Handoff sheet — needs payment-handle schema (ADR)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- ============================ Expense editor & split ===================== -->
+<section class="cluster">
+  <div class="cluster-head">Expense editor &amp; split <span class="cnt">2</span></div>
+  <div class="gindex-grid">
+    <a class="gcard" href="203-itemized-split.html">
+      <div class="gc-top"><span class="issue-num">#203</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Itemized split helper (items / fees / discounts)</div>
+      <div class="gc-pick">★ V1 · Item rows + live per-person footer</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="242-wysiwyg-split-preview.html">
+      <div class="gc-top"><span class="issue-num">#242</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">WYSIWYG split preview — real per-person amounts</div>
+      <div class="gc-pick">★ V1 · Per-person list (true allocateOwed figures)</div>
+      <div class="gc-foot"><span class="muted tiny">2 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- ============================ Groups & creation ========================= -->
+<section class="cluster">
+  <div class="cluster-head">Groups &amp; creation <span class="cnt">5</span></div>
+  <div class="gindex-grid">
+    <a class="gcard" href="368-group-detail-blend.html">
+      <div class="gc-top"><span class="issue-num">#368</span><span class="gc-flags"><span class="pill-tag">design</span></span></div>
+      <div class="gc-title">Group detail page blend — multi-currency &amp; simplified debts</div>
+      <div class="gc-pick">★ Multi-currency buckets + Stepped Settle-up sheet + Math trace</div>
+      <div class="gc-foot"><span class="muted tiny">interactive mockup</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="245-auto-seed-event-skip-hub.html">
+      <div class="gc-top"><span class="issue-num">#245</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Auto-seed default event + skip hub for single-event groups</div>
+      <div class="gc-pick">★ V1 · Collapsed → straight to ledger (Splitwise parity)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="278-add-members-by-name.html">
+      <div class="gc-top"><span class="issue-num">#278</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Add members by name at creation (shadow placeholders)</div>
+      <div class="gc-pick">★ V1 · “Who’s in?” chips field — creation surface only</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="279-duplicate-name-guard.html">
+      <div class="gc-top"><span class="issue-num">#279</span><span class="gc-flags"><span class="pill-tag flag">server</span></span></div>
+      <div class="gc-title">Display-name collision guard on join</div>
+      <div class="gc-pick">★ V1 · Inline disambiguation at entry (“add a last initial?”)</div>
+      <div class="gc-foot"><span class="muted tiny">2 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="287-label-collision-icon-picker.html">
+      <div class="gc-top"><span class="issue-num">#287</span><span class="gc-flags"><span class="pill-tag">design</span></span></div>
+      <div class="gc-title">“Equally”/“Equal” label collision + group-icon picker</div>
+      <div class="gc-pick">★ V1 · Wire the glyph row as a real icon picker + relabel</div>
+      <div class="gc-foot"><span class="muted tiny">2 fixes</span><span class="gc-open">Open →</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- ============================ Invite & join ============================= -->
+<section class="cluster">
+  <div class="cluster-head">Invite &amp; join <span class="cnt">3</span></div>
+  <div class="gindex-grid">
+    <a class="gcard" href="353-invite-empty-state.html">
+      <div class="gc-top"><span class="issue-num">#353</span><span class="gc-flags"><span class="pill-tag">exemplar</span></span></div>
+      <div class="gc-title">“Invite people” CTA on the group empty state</div>
+      <div class="gc-pick">★ B · Invite-first (you can’t split a group of one)</div>
+      <div class="gc-foot"><span class="muted tiny">2 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="354-whatsapp-invite-cta.html">
+      <div class="gc-top"><span class="issue-num">#354</span><span class="gc-flags"><span class="pill-tag">design</span></span></div>
+      <div class="gc-title">WhatsApp-direct invite CTA (wa.me)</div>
+      <div class="gc-pick">★ V1 · Dedicated button (reuses web.app/join link)</div>
+      <div class="gc-foot"><span class="muted tiny">2 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="293-join-name-prefill.html">
+      <div class="gc-top"><span class="issue-num">#293</span><span class="gc-flags"><span class="pill-tag">design</span></span></div>
+      <div class="gc-title">Join name pre-fill bleed + mistype lockout</div>
+      <div class="gc-pick">★ V1 · Blank + one-tap hint, no auto-submit</div>
+      <div class="gc-foot"><span class="muted tiny">2 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- ============================ Home & navigation ========================= -->
+<section class="cluster">
+  <div class="cluster-head">Home &amp; navigation <span class="cnt">3</span></div>
+  <div class="gindex-grid">
+    <a class="gcard" href="364-add-expense-fab-picker.html">
+      <div class="gc-top"><span class="issue-num">#364</span><span class="gc-flags"><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Persistent Add-expense FAB with group→event picker</div>
+      <div class="gc-pick">★ V2 · Quick add (last-active event, with Change)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="365-friends-view.html">
+      <div class="gc-top"><span class="issue-num">#365</span><span class="gc-flags"><span class="pill-tag flag">Blocked #261</span><span class="pill-tag warn">Gate</span></span></div>
+      <div class="gc-title">Per-person net across all groups (Splitwise “Friends”)</div>
+      <div class="gc-pick">★ V1 · Flat net list — blocked on multi-currency #261</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard gc-treatment" href="490-activity-row-unification.html">
+      <div class="gc-top"><span class="issue-num">#490</span><span class="gc-flags"><span class="pill-tag">tech-debt</span></span></div>
+      <div class="gc-title">One ActivityRow for home / cross-group / per-event / per-group feeds</div>
+      <div class="gc-pick">★ Category-icon canonical + per-feed slots (tag / amount / audit)</div>
+      <div class="gc-foot"><span class="muted tiny">before→after</span><span class="gc-open">Open →</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- ============================ Trust, privacy & notifications ============= -->
+<section class="cluster">
+  <div class="cluster-head">Trust, privacy &amp; notifications <span class="cnt">2</span></div>
+  <div class="gindex-grid">
+    <a class="gcard" href="285-anon-dataloss-nudge.html">
+      <div class="gc-top"><span class="issue-num">#285</span><span class="gc-flags"><span class="pill-tag">privacy</span></span></div>
+      <div class="gc-title">Surface anonymous data-loss risk + prompt email-link</div>
+      <div class="gc-pick">★ B · One-time bottom sheet (mirrors #288 prompt)</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard" href="352-notification-rationale.html">
+      <div class="gc-top"><span class="issue-num">#352</span><span class="gc-flags"><span class="pill-tag">design</span></span></div>
+      <div class="gc-title">Soft in-app rationale before the OS push prompt</div>
+      <div class="gc-pick">★ V1 · Illustrated rationale sheet, then OS prompt</div>
+      <div class="gc-foot"><span class="muted tiny">3 variants</span><span class="gc-open">Open →</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- ============================ Loading / empty / error / offline ========== -->
+<section class="cluster">
+  <div class="cluster-head">Loading · empty · error · offline states <span class="cnt">6</span></div>
+  <div class="gindex-grid">
+    <a class="gcard" href="358-empty-error-states.html">
+      <div class="gc-top"><span class="issue-num">#358</span><span class="gc-flags"><span class="pill-tag">design</span></span></div>
+      <div class="gc-title">Removed-from-group + clear-filters + NetworkErrorWidget</div>
+      <div class="gc-pick">★ 3a · Friendly full-bleed no-access / error page</div>
+      <div class="gc-foot"><span class="muted tiny">3 states</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard gc-treatment" href="355-skeleton-loaders.html">
+      <div class="gc-top"><span class="issue-num">#355</span><span class="gc-flags"><span class="pill-tag">treatment</span></span></div>
+      <div class="gc-title">Replace first-paint spinners with skeleton loaders</div>
+      <div class="gc-pick">★ Ledger/group skeletons (the ~8-screen swap pattern)</div>
+      <div class="gc-foot"><span class="muted tiny">before→after</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard gc-treatment" href="357-saved-will-sync.html">
+      <div class="gc-top"><span class="issue-num">#357</span><span class="gc-flags"><span class="pill-tag">treatment</span></span></div>
+      <div class="gc-title">Surface the dead “syncing” state as “Saved — will sync”</div>
+      <div class="gc-pick">★ Three-state strip (offline → syncing → online)</div>
+      <div class="gc-foot"><span class="muted tiny">states</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard gc-treatment" href="360-error-mapping-permission.html">
+      <div class="gc-top"><span class="issue-num">#360</span><span class="gc-flags"><span class="pill-tag">treatment</span></span></div>
+      <div class="gc-title">Permission-denied mislabelled as “check your connection”</div>
+      <div class="gc-pick">★ Code-aware error mapping (before→after + table)</div>
+      <div class="gc-foot"><span class="muted tiny">before→after</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard gc-treatment" href="349-reduce-motion-skeleton.html">
+      <div class="gc-top"><span class="issue-num">#349</span><span class="gc-flags"><span class="pill-tag">treatment · a11y</span></span></div>
+      <div class="gc-title">Skeleton shimmer respects reduce-motion</div>
+      <div class="gc-pick">★ Static fill when MediaQuery.disableAnimations</div>
+      <div class="gc-foot"><span class="muted tiny">before→after</span><span class="gc-open">Open →</span></div>
+    </a>
+    <a class="gcard gc-treatment" href="361-cold-start-flash.html">
+      <div class="gc-top"><span class="issue-num">#361</span><span class="gc-flags"><span class="pill-tag">treatment</span></span></div>
+      <div class="gc-title">Cold-start white-flash — match launch background to splash</div>
+      <div class="gc-pick">★ Paper launch_background (seamless native→Flutter)</div>
+      <div class="gc-foot"><span class="muted tiny">before→after</span><span class="gc-open">Open →</span></div>
+    </a>
+  </div>
+</section>
+
+<div class="wrap" style="color:#8a857a;font-size:12.5px;margin-top:8px;padding-bottom:40px">
+  28 mockups · built against <code>assets/rihla.css</code> · pick a variant per issue and I’ll post the locked
+  design spec to each GitHub issue.
+</div>
+
+</body>
+</html>

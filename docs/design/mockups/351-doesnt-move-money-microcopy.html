@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#351 — "Records, doesn't move money" microcopy + offline toast · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#351 · <span class="saffron">Records</span> the payment — it doesn't move money</h1>
+  <p>The Mark-Paid sheet logs a settlement in the ledger; no bank transfer happens. People expect
+     <b>Mark paid</b> to move real money. Make it explicit on the sheet, and split the success
+     confirmation so a queued offline write reads <i>Saved offline — will sync</i> rather than a
+     false "recorded". This is a <b>copy/states fix</b>, not a visual fork — the two phones show the
+     <b>sheet</b> and the <b>online vs offline toasts</b>, not competing designs.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#351</span>
+    <h2 class="issue-title">design(settle-up): "Rihla records, doesn't move money" microcopy + offline-saved toast</h2>
+    <span class="issue-meta">P3 · design · l10n · record_payment_sheet.dart</span>
+  </div>
+  <p class="issue-desc">The sheet already carries a saffron banner — "This records your payment to <i>Khalid</i>
+     immediately." It says <b>when</b> but not <b>what</b>: that recording ≠ transferring. Add one
+     plain line under it ("Rihla records the payment — it doesn't move money"), and branch the success
+     confirmation on connectivity so a locally-queued write is honest about not yet being synced.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Ship both states — the microcopy line <b>and</b> the
+     connectivity-branched toast. They solve the same "did money actually move?" doubt at two moments
+     (before confirm, and after).</p>
+
+  <div class="variant-row">
+
+    <!-- Phone 1 — the sheet, with the new microcopy line -->
+    <div class="variant pick">
+      <div class="variant-label">1 · Mark-Paid sheet <span class="tag">+ microcopy</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <!-- dimmed group screen behind the sheet -->
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+          <div class="content" style="opacity:.38;flex:none">
+            <div class="section-header"><span class="label">Suggested payments</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar av-2">S</span></div>
+                <div class="row-body">
+                  <div class="row-title">Sara → Khalid</div>
+                  <div class="row-sub">Tap to record</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neg"><span class="ccy">OMR</span>12<span class="dec">.500</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="spacer" style="opacity:.38"></div>
+
+          <!-- bottom sheet -->
+          <div class="scrim"></div>
+          <div class="sheet-wrap">
+            <div class="spacer"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="center" style="margin-bottom:var(--s12)">
+                <div class="empty-icon" style="width:64px;height:64px;background:var(--saffron-tint);color:var(--primary-dark);margin:0 auto var(--s12);font-size:26px">✓</div>
+                <div class="sheet-title" style="font-size:26px">Mark this paid?</div>
+                <div class="sheet-sub" style="margin:4px 0 0">Sara pays Khalid</div>
+              </div>
+
+              <!-- payee card -->
+              <div class="card raised" style="margin-bottom:var(--s12)">
+                <div class="row">
+                  <span class="avatar av-2">S</span>
+                  <div class="row-body" style="margin-inline-start:2px">
+                    <div class="row-title" style="font-size:14px">Sara pays Khalid</div>
+                    <div class="tiny" style="color:var(--primary);font-weight:500;margin-top:2px">Tap to edit amount</div>
+                  </div>
+                  <span class="r-amount pos lg"><span class="ccy">OMR</span>12<span class="dec">.500</span></span>
+                </div>
+              </div>
+
+              <!-- method chips -->
+              <div class="chip-row" style="flex-wrap:nowrap;margin-bottom:var(--s12)">
+                <span class="chip selected" style="flex:1;justify-content:center">● Cash</span>
+                <span class="chip" style="flex:1;justify-content:center">Bank transfer</span>
+                <span class="chip" style="flex:1;justify-content:center">Other</span>
+              </div>
+
+              <!-- existing saffron banner + NEW microcopy line -->
+              <div style="background:var(--saffron-tint);border-radius:12px;padding:11px 14px;margin-bottom:var(--s16)">
+                <div class="row" style="align-items:flex-start;gap:10px">
+                  <span style="color:var(--primary-dark);font-size:14px;line-height:1.3">✓</span>
+                  <div class="col" style="gap:4px">
+                    <span class="tiny" style="color:var(--primary-dark);font-weight:600">This records your payment to Khalid immediately.</span>
+                    <span class="tiny" style="color:var(--primary-dark);opacity:.85"><b>Rihla records the payment — it doesn't move money.</b></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- actions -->
+              <div class="row" style="gap:10px">
+                <button class="btn block secondary" style="flex:1">Not yet</button>
+                <button class="btn block grad" style="flex:1">✓ Mark paid</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p class="variant-note"><b>Sheet, with the new line.</b> One sentence joins the existing "records
+         immediately" banner inside the same saffron container in <code>record_payment_sheet.dart</code>
+         (the <code>settleUpRecordsImmediately</code> banner Row, ~L260). It's a new l10n key, not a tweak
+         of the existing one — keep both so "when" and "what" stay separable. <b>Recommended:</b> this is
+         the primary ask in the issue's acceptance criteria.</p>
+    </div>
+
+    <!-- Phone 2 — online vs offline success confirmation -->
+    <div class="variant">
+      <div class="variant-label">2 · Online vs offline confirm <span class="tag">toast states</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted">⇪</div>
+          </div>
+
+          <div class="content">
+            <div class="section-header"><span class="label">After "Mark paid"</span></div>
+
+            <!-- ONLINE: server-acked -->
+            <div class="card soft">
+              <div class="uppercase-label" style="margin-bottom:8px">Online · write acked</div>
+              <div class="center" style="padding:6px 0 14px">
+                <span class="toast success">Payment recorded</span>
+              </div>
+              <div class="tiny muted center">Connected — the settlement reached Firestore. The existing
+                "✓ Payment recorded" toast is correct as-is.</div>
+            </div>
+
+            <!-- OFFLINE: queued locally -->
+            <div class="card soft">
+              <div class="uppercase-label" style="margin-bottom:8px">Offline · write queued</div>
+              <div class="banner sync" style="border-radius:12px;margin:2px 0 12px">
+                <span>↻</span><span><b>Saved offline — will sync</b></span>
+              </div>
+              <div class="tiny muted center">No connection — the write sits in the Firestore SDK's offline
+                queue. The toast must not imply the server has it yet; it replays on reconnect.</div>
+            </div>
+
+            <!-- settled ledger row behind, for context -->
+            <div class="section-header"><span class="label">Ledger</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar av-2">S</span></div>
+                <div class="row-body">
+                  <div class="row-title">Sara paid Khalid</div>
+                  <div class="row-sub mono">Cash · just now</div>
+                </div>
+                <div class="row-trail">
+                  <span class="r-amount neu"><span class="ccy">OMR</span>12<span class="dec">.500</span></span>
+                  <span class="pill-tag warn">queued</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Two confirmation states, not two designs.</b> Online keeps the existing
+         <code>.toast.success</code> ("Payment recorded"). Offline swaps to the
+         <code>.banner.sync</code> "Saved offline — will sync", reusing the same connectivity signal as
+         <code>offlineBannerMessage</code> (<code>app_en.arb:4</code>). Implication: the settle-up
+         success handler branches on <code>ConnectivityNotifier</code> before showing the snackbar — the
+         write itself is unchanged (the SDK replays it). Optional per the issue, but it's the honest half.</p>
+    </div>
+
+  </div>
+
+  <!-- EN/AR copy note -->
+  <div class="card soft" style="max-width:760px;margin-top:var(--s24)">
+    <div class="uppercase-label" style="margin-bottom:10px">EN / AR copy</div>
+    <div class="col" style="gap:12px">
+      <div class="col" style="gap:3px">
+        <span class="tiny muted">New — sheet microcopy <span class="mono">settleUpDoesNotMoveMoney</span></span>
+        <span style="font-size:14px;color:var(--ink)">EN · Rihla records the payment — it doesn't move money.</span>
+        <span dir="rtl" style="font-size:15px;color:var(--ink);font-family:var(--font-arabic)">رِحلة تُسجِّل الدفعة — لا تُحوِّل أموالاً.</span>
+      </div>
+      <hr class="divider">
+      <div class="col" style="gap:3px">
+        <span class="tiny muted">New — offline confirm <span class="mono">settleUpSavedOfflineWillSync</span> (reuses offline tone)</span>
+        <span style="font-size:14px;color:var(--ink)">EN · Saved offline — will sync</span>
+        <span dir="rtl" style="font-size:15px;color:var(--ink);font-family:var(--font-arabic)">حُفِظ دون اتصال — ستتم المزامنة لاحقاً</span>
+      </div>
+      <hr class="divider">
+      <div class="col" style="gap:3px">
+        <span class="tiny muted">Unchanged — kept above the new line <span class="mono">settleUpRecordsImmediately</span></span>
+        <span style="font-size:14px;color:var(--ink-3)">EN · This records your payment to Khalid immediately.</span>
+        <span dir="rtl" style="font-size:15px;color:var(--ink-3);font-family:var(--font-arabic)">يُسجَّل دفعك إلى خالد فوراً.</span>
+      </div>
+    </div>
+    <p class="tiny muted" style="margin:14px 0 0">All three are new/edited keys across every generated ARB
+       (<code>app_en.arb</code> + <code>app_ar.arb</code>). En-dash renders fine in Geist; Arabic uses the
+       em-dash spacing convention. <code>flutter analyze</code> must stay clean after the gen run.</p>
+  </div>
+
+</div>
+</body>
+</html>

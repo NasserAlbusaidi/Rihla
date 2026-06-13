@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#360 — Settle-up error mapping mislabels permission-denied · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#360 · Settle-up errors say the wrong thing</h1>
+  <p>The settle-up catch block maps <i>every</i> failure to one string —
+     <code>settleUpRecordFailed</code> = “Couldn’t record settlement. Check your connection and try again.”
+     So a real <code>permission-denied</code> (you were removed from the group, ties to #358) reads as a
+     flaky network. And a Firestore <b>offline-queued</b> write currently lands on the silent success
+     branch — the money looks saved with no “will sync” reassurance. This is a copy/correctness fix, not a
+     visual fork: the phones below show the <b>before → after</b> states, not competing designs.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#360</span>
+    <h2 class="issue-title">fix(settle-up): error mapping mislabels permission-denied as “check your connection”</h2>
+    <span class="issue-meta">P3 · design · settle_up_screen.dart:340 · app_en.arb:816</span>
+  </div>
+  <p class="issue-desc">Branch the catch at <code>_recordSettlement</code> on the <code>FirebaseException.code</code>:
+     network codes keep the connection copy; <code>permission-denied</code> / <code>unauthenticated</code>
+     get distinct, honest messages; and an offline-queued write (success-while-disconnected) earns a
+     “saved, will sync” confirmation instead of the plain green toast. One new mapping function, three new
+     ARB strings — no layout change.</p>
+  <p class="issue-rec"><b>Recommendation:</b> <b>After (mapped)</b> — the current single-string mapping is a
+     correctness bug: it tells a removed user to “check their connection,” which they’ll do forever. The
+     mapping table below is the contract to ship.</p>
+
+  <!-- ──────────────────────────────────────────────────────────────────
+       Mapping contract: firebase code → friendly copy
+       ────────────────────────────────────────────────────────────────── -->
+  <div class="card raised" style="max-width:760px;margin-bottom:var(--s24)">
+    <div class="uppercase-label" style="margin-bottom:12px">Error mapping contract — firebase code → friendly copy</div>
+    <div class="col" style="gap:0">
+
+      <div class="row" style="padding:10px 0;border-bottom:1px solid var(--rule);gap:14px;align-items:flex-start">
+        <span class="pill-tag flag" style="flex:none;min-width:140px">permission-denied</span>
+        <div class="col" style="gap:2px">
+          <span style="font-size:13.5px;color:var(--ink);font-weight:600">You no longer have access to this group.</span>
+          <span class="tiny muted">Removed / left (#358). Offer a dismiss → pop to groups, not a retry.</span>
+        </div>
+      </div>
+
+      <div class="row" style="padding:10px 0;border-bottom:1px solid var(--rule);gap:14px;align-items:flex-start">
+        <span class="pill-tag flag" style="flex:none;min-width:140px">unauthenticated</span>
+        <div class="col" style="gap:2px">
+          <span style="font-size:13.5px;color:var(--ink);font-weight:600">Your session expired. Reopen Rihla to continue.</span>
+          <span class="tiny muted">Token lapsed mid-write — a network retry won’t fix it.</span>
+        </div>
+      </div>
+
+      <div class="row" style="padding:10px 0;border-bottom:1px solid var(--rule);gap:14px;align-items:flex-start">
+        <span class="pill-tag warn" style="flex:none;min-width:140px">unavailable</span>
+        <div class="col" style="gap:2px">
+          <span style="font-size:13.5px;color:var(--ink);font-weight:600">Couldn’t reach Rihla. Check your connection and try again.</span>
+          <span class="tiny muted">The only code that keeps today’s string — a genuine network reach failure.</span>
+        </div>
+      </div>
+
+      <div class="row" style="padding:10px 0;gap:14px;align-items:flex-start">
+        <span class="pill-tag" style="flex:none;min-width:140px">offline-queued</span>
+        <div class="col" style="gap:2px">
+          <span style="font-size:13.5px;color:var(--sage-text);font-weight:600">Saved — will sync when you’re back online.</span>
+          <span class="tiny muted">Firestore accepted the write locally; not an error. Sage toast, not green “recorded.”</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="variant-row">
+
+    <!-- ── BEFORE — every error → "check your connection" ─────────────── -->
+    <div class="variant">
+      <div class="variant-label">Before · one string for everything <span class="tag">today</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Settle Up</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content">
+
+            <div class="card raised" style="text-align:center">
+              <div class="uppercase-label" style="margin-bottom:8px">You pay Mariam</div>
+              <div class="r-amount hero neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></div>
+            </div>
+
+            <div class="section-header"><span class="label">Who · Amount</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-1">N</div></div>
+                <div class="row-body">
+                  <div class="row-title">Nasser → Mariam</div>
+                  <div class="row-sub mono">marks the bill settled</div>
+                </div>
+                <div class="row-trail"><div class="avatar sm av-3">M</div></div>
+              </div>
+            </div>
+
+            <button class="btn block grad">Record settlement</button>
+
+            <!-- The bug: permission-denied surfaced as a network problem -->
+            <div class="toast" style="background:var(--rust);width:100%;justify-content:flex-start">
+              <span style="font-size:16px">⚠</span>
+              <span>Couldn’t record settlement. Check your connection and try again.</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The bug.</b> The catch at <code>settle_up_screen.dart:340</code> is
+         <code>catch (_)</code> — it ignores the code and always shows <code>settleUpRecordFailed</code>.
+         When Mariam removed Nasser, the server returns <code>permission-denied</code>, but he’s told to
+         check his connection — so he retries forever and never learns he was removed.</p>
+    </div>
+
+    <!-- ── AFTER — permission-denied → honest copy ───────────────────── -->
+    <div class="variant pick">
+      <div class="variant-label">After · code-aware mapping <span class="tag">fix</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Settle Up</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content">
+
+            <div class="card raised" style="text-align:center">
+              <div class="uppercase-label" style="margin-bottom:8px">You pay Mariam</div>
+              <div class="r-amount hero neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></div>
+            </div>
+
+            <div class="section-header"><span class="label">Who · Amount</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-1">N</div></div>
+                <div class="row-body">
+                  <div class="row-title">Nasser → Mariam</div>
+                  <div class="row-sub mono">marks the bill settled</div>
+                </div>
+                <div class="row-trail"><div class="avatar sm av-3">M</div></div>
+              </div>
+            </div>
+
+            <button class="btn block grad">Record settlement</button>
+
+            <!-- permission-denied → honest, actionable copy -->
+            <div class="card soft" style="border-color:var(--rust);background:color-mix(in srgb, var(--rust) 8%, var(--card))">
+              <div class="row" style="gap:10px;align-items:flex-start">
+                <span style="font-size:18px;color:var(--rust-text)">🔒</span>
+                <div class="col" style="gap:4px">
+                  <div style="font-size:14px;font-weight:600;color:var(--rust-text)">You no longer have access to this group.</div>
+                  <div class="tiny muted">You may have been removed. Your past expenses stay with the group.</div>
+                  <button class="btn text" style="padding:6px 0;align-self:flex-start">Back to groups →</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The fix.</b> A small <code>mapSettlementError(code)</code> branches the catch:
+         <code>permission-denied</code> → this message (ties to #358 removed-state, offers a pop to
+         <code>/groups</code>, not a doomed retry). Implemented in <code>settle_up_screen.dart:340</code>
+         + 3 ARB keys; <code>unavailable</code> alone keeps the connection string.</p>
+    </div>
+
+    <!-- ── ALSO — offline-queued confirmation (3rd acceptance box) ───── -->
+    <div class="variant">
+      <div class="variant-label">After · offline-queued <span class="tag">+ confirm</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">▢ ✈ ▮</span></div>
+          <div class="banner sync">☁ You’re offline — changes will sync later</div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Settle Up</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content">
+
+            <div class="card raised" style="text-align:center">
+              <div class="uppercase-label" style="margin-bottom:8px">You pay Mariam</div>
+              <div class="r-amount hero neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></div>
+            </div>
+
+            <div class="section-header"><span class="label">Who · Amount</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <div class="row-lead"><div class="avatar av-1">N</div></div>
+                <div class="row-body">
+                  <div class="row-title">Nasser → Mariam</div>
+                  <div class="row-sub mono">marks the bill settled</div>
+                </div>
+                <div class="row-trail"><div class="avatar sm av-3">M</div></div>
+              </div>
+            </div>
+
+            <button class="btn block grad">Record settlement</button>
+
+            <!-- offline-queued → sage "will sync", not silent green -->
+            <div class="toast" style="background:var(--sage);width:100%;justify-content:flex-start">
+              <span style="font-size:15px">☁</span>
+              <span>Saved — will sync when you’re back online.</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The third box.</b> Firestore accepts the write locally while offline and
+         hits the <i>success</i> branch silently — the user can’t tell it’s queued. Detect the offline path
+         and swap the plain green “Settlement recorded” for this sage “will sync” toast, so settle-up money
+         never <i>looks</i> committed before it actually syncs.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

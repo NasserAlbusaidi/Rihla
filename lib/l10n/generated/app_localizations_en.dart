@@ -1289,15 +1289,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settleUpMethodCash => 'Cash';
-
-  @override
-  String get settleUpMethodBank => 'Bank';
-
-  @override
-  String get settleUpMethodOther => 'Other';
-
-  @override
   String get settleUpAllSettledTitle => 'All settled up';
 
   @override

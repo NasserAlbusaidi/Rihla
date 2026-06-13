@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#358 — Empty / error states · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#358 · <span class="saffron">Empty &amp; error states</span></h1>
+  <p>Three gaps in how Rihla recovers from emptiness and failure. (1) When Firestore denies
+     a group read — you were <b>removed</b> — there's no human-facing state; the raw
+     <code>permission-denied</code> just dead-ends (<code>group_provider.dart:250</code>).
+     (2) The category-filtered ledger empty state (<code>ledger_screen.dart:297</code>) tells you
+     "nothing here" but offers no way out. (3) The orphaned <code>NetworkErrorWidget</code>
+     (<code>error_widgets.dart:14</code>, with <code>.offline()</code>/<code>.loadingError()</code> +
+     Retry) is unused while screens hand-roll error views — adopt it. These are a
+     <b>states gallery</b>, not competing layouts — except the network error, which gets two
+     real treatments. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#358</span>
+    <h2 class="issue-title">design(empty-states): removed-from-group · clear-filters CTA · adopt NetworkErrorWidget</h2>
+    <span class="issue-meta">P2 · design · raw error hidden, logged to Sentry</span>
+  </div>
+  <p class="issue-desc">States 1–2 are single correct designs (no fork) — the removed-from-group page
+     and the clear-filters CTA. State 3 is a genuine fork: the same <code>NetworkErrorWidget</code>
+     can land as a <b>friendly full-bleed empty-state</b> or a <b>compact inline retry strip</b>,
+     depending on how much of the screen the failure owns. Both reuse the widget's <code>onRetry</code>
+     and its <code>.offline()</code> copy.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Friendly full-bleed for whole-screen failures (the
+     ledger/group can't load at all) — it reads as a designed state, not a crash. Keep the compact
+     strip for partial failures inside an otherwise-loaded screen.</p>
+
+  <div class="variant-row">
+
+    <!-- State 1 — Removed from group -->
+    <div class="variant">
+      <div class="variant-label">1 · Removed from group <span class="tag">no-access</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Group</div>
+            <div class="icon-btn center muted"> </div>
+          </div>
+          <div class="content" style="flex:1;justify-content:center">
+            <div class="empty-state">
+              <div class="empty-icon">🔒</div>
+              <div class="empty-title">No longer in this group</div>
+              <div class="empty-msg">You don't have access to this group anymore — someone may have
+                removed you, or it was deleted. Your own records aren't affected.</div>
+              <div class="col" style="gap:10px;width:100%;max-width:260px;margin-top:8px;">
+                <button class="btn block grad">Back to my groups</button>
+              </div>
+              <div class="pill-tag" style="margin-top:6px">err: permission-denied · logged</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>State:</b> Firestore denies the group read. The raw
+        <code>permission-denied</code> never reaches the user — it's swallowed and sent to Sentry; the
+        screen renders this calm no-access page instead of a spinner or red error. <b>Implementation:</b>
+        map the existing detection in <code>group_provider.dart:250</code> to an <code>EmptyStateView</code>
+        with a <code>/home</code> action (top-level route → must self-guard back).</p>
+    </div>
+
+    <!-- State 2 — Clear filters -->
+    <div class="variant">
+      <div class="variant-label">2 · Category-empty + clear <span class="tag">ledger</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn center">‹</div>
+              <div style="flex:1">
+                <div class="mh-title">Salalah Trip</div>
+                <div class="mh-sub">5 people · Ledger</div>
+              </div>
+              <div class="icon-btn center">⌕</div>
+            </div>
+          </div>
+          <div class="content tight">
+            <div class="chip-row">
+              <div class="chip">All</div>
+              <div class="chip">🍽 Food</div>
+              <div class="chip selected">🚕 Transport</div>
+              <div class="chip">🏨 Stay</div>
+              <div class="chip">🛍 Other</div>
+            </div>
+            <div class="empty-state" style="padding-top:24px">
+              <div class="empty-icon">🧾</div>
+              <div class="empty-title">Nothing in this category</div>
+              <div class="empty-msg">No <b>Transport</b> expenses yet. Try a different category, or switch
+                back to All.</div>
+              <div class="col" style="gap:10px;width:100%;max-width:240px;margin-top:8px;">
+                <button class="btn block secondary">Clear filter</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>State:</b> the ledger has expenses, but none in the active category chip.
+        Adds the missing escape hatch — <b>Clear filter</b> resets to <i>All</i> so the user isn't trapped
+        staring at an empty list. <b>Implementation:</b> pass an <code>actionLabel</code>/<code>onAction</code>
+        to the existing <code>EmptyStateView</code> at <code>ledger_screen.dart:297</code> that calls
+        <code>onCategoryFilter(null)</code>; new <code>ledgerClearFilter</code> ARB string.</p>
+    </div>
+
+    <!-- State 3A — Network error, friendly full-bleed (PICK) -->
+    <div class="variant pick">
+      <div class="variant-label">3a · Network error — friendly <span class="tag">.offline()</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●○○ ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Salalah Trip</div>
+            <div class="icon-btn center muted">⌕</div>
+          </div>
+          <div class="content" style="flex:1;justify-content:center">
+            <div class="empty-state">
+              <div class="empty-icon" style="background:var(--card-soft);color:var(--ink-3)">📶</div>
+              <div class="empty-title">You're offline</div>
+              <div class="empty-msg">Please check your internet connection and try again. We'll pick up
+                where you left off.</div>
+              <div class="col" style="gap:10px;width:100%;max-width:240px;margin-top:8px;">
+                <button class="btn block grad">↻&nbsp; Retry</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Treatment:</b> the whole screen failed to load, so the error <i>is</i> the
+        screen. Full-bleed <code>NetworkErrorWidget.offline()</code> — soft tinted glyph, serif title, one
+        primary Retry wired to <code>onRetry</code>. Reads as a designed state, not a stack trace.
+        <b>Why pick:</b> whole-screen failures deserve the calm full page; the compact strip would float in
+        a sea of empty paper.</p>
+    </div>
+
+    <!-- State 3B — Network error, compact inline strip -->
+    <div class="variant">
+      <div class="variant-label">3b · Network error — inline <span class="tag">partial</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●○○ ▾ ▮</span></div>
+          <div class="module-header">
+            <div class="mh-top">
+              <div class="icon-btn center">‹</div>
+              <div style="flex:1">
+                <div class="mh-title">Salalah Trip</div>
+                <div class="mh-sub">5 people · Ledger</div>
+              </div>
+              <div class="icon-btn center">⌕</div>
+            </div>
+          </div>
+          <div class="content tight">
+            <div class="banner sync" style="border-radius:0;margin:0 -16px;padding-left:16px;padding-right:16px">
+              ⏳ Balances may be stale — last synced 4 min ago
+            </div>
+            <div class="card raised">
+              <div class="row" style="align-items:flex-start;gap:12px">
+                <div style="font-size:20px;color:var(--amber);line-height:1.2">⚠</div>
+                <div style="flex:1">
+                  <div class="row-title">Couldn't load activity</div>
+                  <div class="row-sub">Check your connection and try again.</div>
+                </div>
+                <button class="btn text sm" style="min-height:36px;padding:6px 12px">Retry</button>
+              </div>
+            </div>
+            <div class="section-header"><span class="label">Loaded so far</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar sm av-1">A</span></div>
+                <div class="row-body">
+                  <div class="row-title">Ahmed paid · Dinner</div>
+                  <div class="row-sub mono">split 5 ways</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>18<span class="dec">.500</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-lead"><span class="avatar sm av-4">L</span></div>
+                <div class="row-body">
+                  <div class="row-title">Layla paid · Taxi</div>
+                  <div class="row-sub mono">split 5 ways</div>
+                </div>
+                <div class="row-trail"><span class="r-amount neu"><span class="ccy">OMR</span>6<span class="dec">.000</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Treatment:</b> the screen loaded but one section failed. A compact retry
+        strip (the <code>InlineErrorWidget</code> sibling of <code>NetworkErrorWidget</code>) sits where the
+        failed content would — amber glyph, one-line copy, inline <b>Retry</b> — while the rest of the ledger
+        stays usable. <b>Implementation:</b> partial-failure sites only; the full-bleed 3a is the default for
+        a whole-screen load error.</p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
