@@ -75,6 +75,13 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="rihla_activity" />
+        <!-- #484: branded white-on-transparent small-icon for OS-displayed
+             (backgrounded/terminated) FCM notifications. Absent → the OS falls
+             back to the full-colour app icon, which the status bar renders as a
+             blank white square. Mirrors the foreground icon in FlutterLocalNotifier. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_launcher_monochrome" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
