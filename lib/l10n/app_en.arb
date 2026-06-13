@@ -762,6 +762,14 @@
       "amount": {}
     }
   },
+  "editorCurrencyMismatch": "This expense is in {selected}, but this event mostly uses {dominant}.",
+  "@editorCurrencyMismatch": {
+    "description": "Soft, non-blocking warning shown in the add-expense form when the picked currency differs from the event's dominant (most-frequent) currency — a fat-finger guard, not a hard block (#382 PR-6). {selected} is the picked ISO code, {dominant} the event's most-used ISO code.",
+    "placeholders": {
+      "selected": {},
+      "dominant": {}
+    }
+  },
   "editorPickAtLeastTwoToSplit": "Pick at least two people to split.",
   "editorSplitEvenly": "Split evenly across {count, plural, =1{1 way} other{{count} ways}}.",
   "@editorSplitEvenly": {

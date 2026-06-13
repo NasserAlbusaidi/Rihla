@@ -378,4 +378,65 @@ void main() {
       expect(find.text('AMOUNT · USD'), findsOneWidget);
     },
   );
+
+  // #382 PR-6 (Task 6 — soft fat-finger warning): when the picked currency
+  // diverges from the event's DOMINANT (most-frequent) currency, an inline
+  // non-blocking warning card naming both currencies appears below the amount
+  // hero. Reactive: picking the dominant currency makes it vanish. Never in
+  // edit mode (covered in edit_expense_currency_test.dart).
+  testWidgets(
+    '#382 PR-6: event [OMR×2], pick USD → soft warning naming USD+OMR; '
+    'pick OMR back → warning gone',
+    (tester) async {
+      // Two OMR expenses → dominant = OMR. The two share a createdAt so the
+      // most-recent (smart default) is still OMR, isolating the warning to the
+      // user's manual divergent pick rather than a USD default.
+      await pumpWithHistory(
+        tester,
+        groupCurrency: 'OMR',
+        eventExpenses: [
+          seedExpense(
+            id: 'e1',
+            currency: 'OMR',
+            createdAt: DateTime(2026, 3, 20),
+          ),
+          seedExpense(
+            id: 'e2',
+            currency: 'OMR',
+            createdAt: DateTime(2026, 3, 21),
+          ),
+        ],
+      );
+
+      // Default = OMR (= dominant) → no warning yet.
+      expect(find.text('AMOUNT · OMR'), findsOneWidget);
+      expect(find.byKey(LedgerKeys.expenseCurrencyWarning), findsNothing);
+
+      // Diverge: pick USD while the event mostly uses OMR.
+      await pickCurrency(tester, 'US dollar');
+      expect(find.text('AMOUNT · USD'), findsOneWidget);
+
+      final warning = find.byKey(LedgerKeys.expenseCurrencyWarning);
+      expect(warning, findsOneWidget);
+      // The card names both the selected (USD) and the dominant (OMR) currency.
+      expect(
+        find.descendant(
+          of: warning,
+          matching: find.textContaining('USD'),
+        ),
+        findsWidgets,
+      );
+      expect(
+        find.descendant(
+          of: warning,
+          matching: find.textContaining('OMR'),
+        ),
+        findsWidgets,
+      );
+
+      // Reactive: picking the dominant currency back hides the warning.
+      await pickCurrency(tester, 'Omani rial');
+      expect(find.byKey(LedgerKeys.expenseCurrencyWarning), findsNothing);
+    },
+  );
 }

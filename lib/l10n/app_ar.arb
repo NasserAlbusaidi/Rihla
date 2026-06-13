@@ -273,6 +273,7 @@
   "editorTapCustomiseSplit": "اضغط تخصيص لاختيار من يشارك في التقسيم.",
   "editorSplitSummary": "{scope} · {count, plural, =1{طريقة واحدة} =2{طريقتان} few{{count} طرق} many{{count} طريقة} other{{count} طريقة}}",
   "editorEachAmount": "{amount} لكل شخص",
+  "editorCurrencyMismatch": "هذه المصروفة بعملة {selected}، لكن هذه الفعالية تستخدم {dominant} غالبًا.",
   "editorPickAtLeastTwoToSplit": "اختر شخصين على الأقل للتقسيم.",
   "editorSplitEvenly": "قسّم بالتساوي على {count, plural, =1{طريقة واحدة} =2{طريقتين} few{{count} طرق} many{{count} طريقة} other{{count} طريقة}}.",
   "editorWeightedByShares": "موزون حسب الحصص.",

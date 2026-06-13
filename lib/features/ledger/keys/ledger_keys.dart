@@ -17,6 +17,10 @@ abstract final class LedgerKeys {
   // Per-expense currency picker row (#382 PR-6)
   static const expenseCurrencyField = Key('ledger_expense_currency_field');
 
+  // Soft fat-finger warning when the picked currency differs from the event's
+  // dominant currency (#382 PR-6)
+  static const expenseCurrencyWarning = Key('ledger_expense_currency_warning');
+
   // Search sheet (T3.L)
   static const searchField = Key('ledger_search_field');
 

@@ -616,6 +616,18 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         currency: effectiveCurrency,
                         onTap: _openCurrencySheet,
                       ),
+                    // #382 PR-6: soft fat-finger warning — non-blocking, reactive.
+                    // Shown only when the picked currency diverges from the
+                    // event's dominant (most-frequent) one; picking the dominant
+                    // makes it vanish. Never in edit mode (currency is immutable).
+                    if (!_isEdit &&
+                        widget.dominantCurrency != null &&
+                        effectiveCurrency != widget.dominantCurrency)
+                      _CurrencyMismatchNotice(
+                        key: LedgerKeys.expenseCurrencyWarning,
+                        selected: effectiveCurrency,
+                        dominant: widget.dominantCurrency!,
+                      ),
                     _DescriptionField(controller: _noteController),
                     // #248 PR5: provenance byline — who ADDED / last EDITED this
                     // expense, distinct from who PAID (the "Paid by" card). Edit
@@ -1054,6 +1066,58 @@ class _CurrencyRow extends StatelessWidget {
               color: colors.textSecondary,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// #382 PR-6: inline, non-blocking soft warning shown in the add-expense form
+/// when the picked currency diverges from the event's dominant (most-frequent)
+/// one — a fat-finger guard. Amber soft-notice idiom (tint + icon + text); it
+/// never blocks submit and vanishes reactively when the dominant is picked.
+class _CurrencyMismatchNotice extends StatelessWidget {
+  const _CurrencyMismatchNotice({
+    super.key,
+    required this.selected,
+    required this.dominant,
+  });
+
+  final String selected;
+  final String dominant;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space24,
+        context.spacing.space8,
+        context.spacing.space24,
+        0,
+      ),
+      child: Container(
+        padding: EdgeInsets.all(context.spacing.space12),
+        decoration: BoxDecoration(
+          color: colors.warning.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.warning.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Icon(Iconsax.warning_2, size: 18, color: colors.warning),
+            SizedBox(width: context.spacing.space8),
+            Expanded(
+              child: Text(
+                context.l10n.editorCurrencyMismatch(selected, dominant),
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

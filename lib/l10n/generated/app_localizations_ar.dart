@@ -866,6 +866,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String editorCurrencyMismatch(Object selected, Object dominant) {
+    return 'هذه المصروفة بعملة $selected، لكن هذه الفعالية تستخدم $dominant غالبًا.';
+  }
+
+  @override
   String get editorPickAtLeastTwoToSplit => 'اختر شخصين على الأقل للتقسيم.';
 
   @override
