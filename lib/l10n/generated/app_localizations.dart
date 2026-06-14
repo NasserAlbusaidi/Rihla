@@ -3474,6 +3474,12 @@ abstract class AppLocalizations {
   /// **'Error: {error}'**
   String groupCreateError(Object error);
 
+  /// No description provided for @groupCreatedWillSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Group created — will sync when online.'**
+  String get groupCreatedWillSync;
+
   /// No description provided for @groupNew.
   ///
   /// In en, this message translates to:

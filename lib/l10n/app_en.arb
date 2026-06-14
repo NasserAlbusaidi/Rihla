@@ -1492,6 +1492,7 @@
       "error": {}
     }
   },
+  "groupCreatedWillSync": "Group created — will sync when online.",
   "groupNew": "New group",
   "groupCreate": "Create",
   "groupMoodTitle": "Who's coming along?",
