@@ -253,6 +253,19 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           currency: currency,
                         ),
                     onRecordStepped: _runSteppedSettle,
+                    // #283: correct a recorded payment by recording its
+                    // offsetting reverse (swap payer↔recipient, same amount +
+                    // currency) through the same event write path.
+                    onCorrect: (s) => _recordSettlement(
+                      context,
+                      fromUserId: s.recipientParticipantId ?? '',
+                      toUserId: s.payerParticipantId ?? '',
+                      fromName: s.recipientName ?? '',
+                      toName: s.payerName ?? '',
+                      amount: s.amount,
+                      currency: s.currency,
+                      note: context.l10n.settleUpCorrectionNote,
+                    ),
                   );
                 },
                 loading: SkeletonLoader.groupList,

@@ -1093,6 +1093,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t record settlement. Please try again.';
 
   @override
+  String get settleUpCorrect => 'Correct';
+
+  @override
+  String get settleUpCorrectTitle => 'Correct this payment?';
+
+  @override
+  String settleUpCorrectBody(Object amount, Object recipient, Object payer) {
+    return 'This records a reversing payment of $amount from $recipient back to $payer. The original payment stays in your history.';
+  }
+
+  @override
+  String get settleUpCorrectConfirm => 'Record correction';
+
+  @override
+  String get settleUpCorrectionNote => 'Correction of a recorded payment';
+
+  @override
   String get settleUpEveryoneEvenHeadline => 'Everyone\'s even.';
 
   @override

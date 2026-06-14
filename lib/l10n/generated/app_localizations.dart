@@ -1970,6 +1970,36 @@ abstract class AppLocalizations {
   /// **'Couldn\'t record settlement. Please try again.'**
   String get settleUpRecordFailedGeneric;
 
+  /// Tooltip/label for the affordance that corrects a recorded settlement by recording an offsetting reverse payment (#283).
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get settleUpCorrect;
+
+  /// Title of the confirmation dialog for correcting a recorded settlement (#283).
+  ///
+  /// In en, this message translates to:
+  /// **'Correct this payment?'**
+  String get settleUpCorrectTitle;
+
+  /// Body of the settlement-correction confirm dialog (#283). Describes the offsetting reverse payment (the recipient pays the payer back) and that the original is preserved (append-only). Amount is pre-formatted code-first.
+  ///
+  /// In en, this message translates to:
+  /// **'This records a reversing payment of {amount} from {recipient} back to {payer}. The original payment stays in your history.'**
+  String settleUpCorrectBody(Object amount, Object recipient, Object payer);
+
+  /// Confirm button on the settlement-correction dialog (#283).
+  ///
+  /// In en, this message translates to:
+  /// **'Record correction'**
+  String get settleUpCorrectConfirm;
+
+  /// Note stored on the offsetting settlement created when a recorded payment is corrected (#283).
+  ///
+  /// In en, this message translates to:
+  /// **'Correction of a recorded payment'**
+  String get settleUpCorrectionNote;
+
   /// No description provided for @settleUpEveryoneEvenHeadline.
   ///
   /// In en, this message translates to:

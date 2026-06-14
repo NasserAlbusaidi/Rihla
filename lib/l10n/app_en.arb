@@ -871,6 +871,31 @@
   "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",
   "settleUpRecordFailedDenied": "This settlement wasn't allowed. Please check the details and try again.",
   "settleUpRecordFailedGeneric": "Couldn't record settlement. Please try again.",
+  "settleUpCorrect": "Correct",
+  "@settleUpCorrect": {
+    "description": "Tooltip/label for the affordance that corrects a recorded settlement by recording an offsetting reverse payment (#283)."
+  },
+  "settleUpCorrectTitle": "Correct this payment?",
+  "@settleUpCorrectTitle": {
+    "description": "Title of the confirmation dialog for correcting a recorded settlement (#283)."
+  },
+  "settleUpCorrectBody": "This records a reversing payment of {amount} from {recipient} back to {payer}. The original payment stays in your history.",
+  "@settleUpCorrectBody": {
+    "description": "Body of the settlement-correction confirm dialog (#283). Describes the offsetting reverse payment (the recipient pays the payer back) and that the original is preserved (append-only). Amount is pre-formatted code-first.",
+    "placeholders": {
+      "amount": {},
+      "recipient": {},
+      "payer": {}
+    }
+  },
+  "settleUpCorrectConfirm": "Record correction",
+  "@settleUpCorrectConfirm": {
+    "description": "Confirm button on the settlement-correction dialog (#283)."
+  },
+  "settleUpCorrectionNote": "Correction of a recorded payment",
+  "@settleUpCorrectionNote": {
+    "description": "Note stored on the offsetting settlement created when a recorded payment is corrected (#283)."
+  },
   "settleUpEveryoneEvenHeadline": "Everyone's even.",
   "settleUpTransfersHeadline": "{count, plural, =1{One transfer,\neveryone's even.} other{{count} transfers,\neveryone's even.}}",
   "@settleUpTransfersHeadline": {

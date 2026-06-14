@@ -597,6 +597,67 @@ void main() {
       },
     );
 
+    testWidgets(
+      '#283: correcting a history payment records a SWAPPED offsetting settlement (no activity log)',
+      (tester) async {
+        final settlementService = _RecordingGroupSettlementService();
+        final activityService = _RecordingGroupActivityService();
+
+        // History: Bob paid Alice 7.750 (a group settlement).
+        final original = Settlement(
+          id: 'gs1',
+          tripId: _groupId,
+          payerParticipantId: 'uid-bob',
+          recipientParticipantId: 'uid-alice',
+          amount: Decimal.parse('7.750'),
+          settledAt: DateTime(2026, 4, 1),
+          payerName: 'Bob',
+          recipientName: 'Alice',
+          scope: 'group',
+          groupId: _groupId,
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            settlements: [original],
+            currentUid: 'uid-alice',
+            extraOverrides: [
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final correctButton = find.byKey(GroupKeys.settleUpCorrectButton);
+        await tester.ensureVisible(correctButton);
+        await tester.tap(correctButton);
+        await tester.pumpAndSettle();
+
+        // Confirm the correction.
+        await tester.tap(find.text('Record correction'));
+        await tester.pumpAndSettle();
+
+        // The offset reverses the original: Alice now pays Bob back 7.750.
+        expect(settlementService.addCalls, hasLength(1));
+        final offset = settlementService.addCalls.single;
+        expect(offset.payerParticipantId, 'uid-alice');
+        expect(offset.recipientParticipantId, 'uid-bob');
+        expect(offset.amount, Decimal.parse('7.750'));
+        expect(offset.createdBy, 'uid-alice');
+
+        // A correction must NOT appear in the activity feed as a fresh payment.
+        expect(
+          activityService.logCalls.where((c) => c.type == 'group_settlement'),
+          isEmpty,
+        );
+      },
+    );
+
     testWidgets('GROUP TOTAL PENDING shows 7.750 OMR', (tester) async {
       await tester.pumpWidget(
         _wrap(
