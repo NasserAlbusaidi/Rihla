@@ -1901,6 +1901,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر إنشاء الفعالية. تحقق من اتصالك وحاول مرة أخرى.';
 
   @override
+  String get eventCreatedWillSync =>
+      'تم حفظ الفعالية — ستتم المزامنة عند الاتصال.';
+
+  @override
   String get eventParticipants => 'المشاركون';
 
   @override

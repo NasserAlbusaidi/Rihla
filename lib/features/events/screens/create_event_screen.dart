@@ -6,9 +6,12 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/app_messenger.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/error_message_translator.dart';
+import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -127,12 +130,18 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       return;
     }
 
+    final connectivity = ref.read(connectivityProvider.notifier);
+    final connectivityStatus = ref.read(connectivityProvider);
     ref.read(eventLoadingProvider.notifier).state = true;
 
     try {
-      final event = await ref
+      // #412/#516: the write future acks only when the SERVER confirms — offline
+      // it stays pending until reconnect. Stage the write (local cache + queued
+      // replay) and race the ack, instead of awaiting it raw (which stranded the
+      // "Creating…" spinner forever offline).
+      final staged = ref
           .read(eventServiceProvider)
-          .createEvent(
+          .stageEvent(
             groupId: widget.groupId,
             name: _nameController.text.trim(),
             type: widget.eventType,
@@ -144,12 +153,21 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             // Pass Custom-type module overrides; null for preset types (D-14)
             modules: widget.eventType == EventType.custom ? _modules : null,
           );
+      final outcome = await awaitServerAck(
+        staged.ack,
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
       if (!mounted) return;
-      ref.read(eventLoadingProvider.notifier).state = false;
+      final event = staged.event;
+
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite(); // #357: stale-offline correction (no-op online)
+      } else {
+        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+      }
 
       // Log event_created activity (D-14) — fire-and-forget, no await
       try {
-        final actorId = uid;
         final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
             ? ref.read(settingsProvider).deviceName
             : 'Someone';
@@ -158,7 +176,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             .logGroupEvent(
               groupId: widget.groupId,
               type: 'event_created',
-              actorId: actorId,
+              actorId: uid,
               actorName: actorName,
               description: 'created ${event.name}',
               metadata: {'eventId': event.id, 'eventName': event.name},
@@ -167,18 +185,31 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         // Activity logging failure must never crash the creation flow.
       }
 
+      if (outcome == WriteAck.queued) {
+        // The queued "will sync" feedback uses the GLOBAL messenger: the
+        // context.go below replaces this screen, tearing down its local
+        // ScaffoldMessenger before a local snackbar could ever be seen (#516).
+        appMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.eventCreatedWillSync),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+
       // context.go replaces the entire creation stack, navigating to the new
       // event hub. Back button returns to group detail, not the form (D-06/Pitfall 2).
       context.go('/group/${widget.groupId}/event/${event.id}');
     } catch (e) {
       if (!mounted) return;
-      ref.read(eventLoadingProvider.notifier).state = false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.eventCreateFailed),
           duration: const Duration(seconds: 5),
         ),
       );
+    } finally {
+      if (mounted) ref.read(eventLoadingProvider.notifier).state = false;
     }
   }
 

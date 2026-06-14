@@ -3150,6 +3150,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t create event. Check your connection and try again.'**
   String get eventCreateFailed;
 
+  /// No description provided for @eventCreatedWillSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Event saved — will sync when online.'**
+  String get eventCreatedWillSync;
+
   /// No description provided for @eventParticipants.
   ///
   /// In en, this message translates to:

@@ -69,17 +69,16 @@ class EventService extends FirestoreRepository {
         .map((doc) => doc.exists ? Event.fromDoc(doc) : null);
   }
 
-  /// Create a new event in Firestore.
+  /// Stages a new event: applies the write to the local Firestore cache and
+  /// returns the locally-built [Event] IMMEDIATELY, plus the server-ack future
+  /// (#412). The ack resolves only when the server confirms — offline it stays
+  /// pending until reconnect while the SDK queues the replay, so UI callers race
+  /// it (`awaitServerAck`) instead of awaiting it raw (which strands the
+  /// "Creating…" spinner forever offline — #516).
   ///
-  /// Steps:
-  /// 1. Generate a UUID for the eventId.
-  /// 2. Write event document to `groups/{groupId}/events/{eventId}`.
-  ///
-  /// Per Pitfall 3: createdAt uses a client-generated ISO 8601 string,
-  /// not FieldValue.serverTimestamp(), so it is immediately readable.
-  ///
-  /// Returns the created [Event] with all fields populated.
-  Future<Event> createEvent({
+  /// Per Pitfall 3: createdAt uses a client-generated UTC timestamp, not
+  /// FieldValue.serverTimestamp(), so it is immediately readable.
+  ({Event event, Future<void> ack}) stageEvent({
     required String groupId,
     required String name,
     required EventType type,
@@ -89,7 +88,7 @@ class EventService extends FirestoreRepository {
     DateTime? startDate,
     DateTime? endDate,
     EventModules? modules,
-  }) async {
+  }) {
     const uuid = Uuid();
     final eventId = uuid.v4();
     final now = DateTime.now().toUtc();
@@ -111,22 +110,53 @@ class EventService extends FirestoreRepository {
       createdAt: now,
     );
 
-    // Write to Firestore
+    final ack = db
+        .collection('groups')
+        .doc(groupId)
+        .collection('events')
+        .doc(eventId)
+        .set(event.toFirestoreMap());
+
+    return (event: event, ack: ack);
+  }
+
+  /// Create a new event in Firestore and return it once the SERVER has
+  /// acknowledged the write.
+  ///
+  /// Offline, that ack only arrives on reconnect — UI flows that must not block
+  /// on it use [stageEvent] instead (#412/#516). Retained for tests/scripts and
+  /// any caller that genuinely wants to await server confirmation.
+  Future<Event> createEvent({
+    required String groupId,
+    required String name,
+    required EventType type,
+    required List<String> participantIds,
+    required Map<String, String> participantNames,
+    required String createdBy,
+    DateTime? startDate,
+    DateTime? endDate,
+    EventModules? modules,
+  }) async {
+    final staged = stageEvent(
+      groupId: groupId,
+      name: name,
+      type: type,
+      participantIds: participantIds,
+      participantNames: participantNames,
+      createdBy: createdBy,
+      startDate: startDate,
+      endDate: endDate,
+      modules: modules,
+    );
     try {
-      await db
-          .collection('groups')
-          .doc(groupId)
-          .collection('events')
-          .doc(eventId)
-          .set(event.toFirestoreMap());
+      await staged.ack;
     } on FirebaseException catch (e) {
       if (kDebugMode) {
         debugPrint('EventService.createEvent failed: ${e.code} ${e.message}');
       }
       rethrow;
     }
-
-    return event;
+    return staged.event;
   }
 
   /// Soft-delete an event (sets isDeleted=true).
