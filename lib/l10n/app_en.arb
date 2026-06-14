@@ -896,6 +896,47 @@
   "@settleUpCorrectionNote": {
     "description": "Note stored on the offsetting settlement created when a recorded payment is corrected (#283)."
   },
+  "preSettleReviewTitle": "Before you settle",
+  "@preSettleReviewTitle": {
+    "description": "Title of the pre-settlement review sheet shown before event settle-up when review-worthy expenses exist (#204). Neutral, not accusatory."
+  },
+  "preSettleReviewExactCount": "{count, plural, =1{1 exact split} other{{count} exact splits}}",
+  "@preSettleReviewExactCount": {
+    "description": "Count summary line for exact-split expenses in the pre-settlement review sheet (#204).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "preSettleReviewCustomCount": "{count, plural, =1{1 custom participant split} other{{count} custom participant splits}}",
+  "@preSettleReviewCustomCount": {
+    "description": "Count summary line for custom-participant-split expenses in the pre-settlement review sheet (#204).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "preSettleReviewPersonalCount": "{count, plural, =1{1 personal expense} other{{count} personal expenses}}",
+  "@preSettleReviewPersonalCount": {
+    "description": "Count summary line for personal-only expenses in the pre-settlement review sheet (#204).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "preSettleReviewLargeCount": "{count, plural, =1{1 large expense} other{{count} large expenses}}",
+  "@preSettleReviewLargeCount": {
+    "description": "Count summary line for unusually-large expenses in the pre-settlement review sheet (#204).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "preSettleReviewReasonExact": "Exact split",
+  "@preSettleReviewReasonExact": {"description": "Per-item reason chip: the expense uses an exact split (#204)."},
+  "preSettleReviewReasonCustom": "Custom participants",
+  "@preSettleReviewReasonCustom": {"description": "Per-item reason chip: the expense splits across a custom participant set (#204)."},
+  "preSettleReviewReasonPersonal": "Personal",
+  "@preSettleReviewReasonPersonal": {"description": "Per-item reason chip: the expense is personal-only (#204)."},
+  "preSettleReviewReasonLarge": "Large amount",
+  "@preSettleReviewReasonLarge": {"description": "Per-item reason chip: the expense is unusually large for the event (#204)."},
+  "preSettleReviewMore": "+{count} more",
+  "@preSettleReviewMore": {
+    "description": "Trailing line when more review-worthy expenses exist than the sheet lists (#204).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "preSettleReviewReview": "Review expenses",
+  "@preSettleReviewReview": {"description": "Action that closes the sheet and opens the ledger to review expenses (#204)."},
+  "preSettleReviewContinue": "Continue to settle",
+  "@preSettleReviewContinue": {"description": "Action that dismisses the non-blocking pre-settlement review sheet and proceeds (#204)."},
   "settleUpEveryoneEvenHeadline": "Everyone's even.",
   "settleUpTransfersHeadline": "{count, plural, =1{One transfer,\neveryone's even.} other{{count} transfers,\neveryone's even.}}",
   "@settleUpTransfersHeadline": {

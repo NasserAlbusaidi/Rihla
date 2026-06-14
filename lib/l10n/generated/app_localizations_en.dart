@@ -1110,6 +1110,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpCorrectionNote => 'Correction of a recorded payment';
 
   @override
+  String get preSettleReviewTitle => 'Before you settle';
+
+  @override
+  String preSettleReviewExactCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count exact splits',
+      one: '1 exact split',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String preSettleReviewCustomCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count custom participant splits',
+      one: '1 custom participant split',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String preSettleReviewPersonalCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count personal expenses',
+      one: '1 personal expense',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String preSettleReviewLargeCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count large expenses',
+      one: '1 large expense',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get preSettleReviewReasonExact => 'Exact split';
+
+  @override
+  String get preSettleReviewReasonCustom => 'Custom participants';
+
+  @override
+  String get preSettleReviewReasonPersonal => 'Personal';
+
+  @override
+  String get preSettleReviewReasonLarge => 'Large amount';
+
+  @override
+  String preSettleReviewMore(int count) {
+    return '+$count more';
+  }
+
+  @override
+  String get preSettleReviewReview => 'Review expenses';
+
+  @override
+  String get preSettleReviewContinue => 'Continue to settle';
+
+  @override
   String get settleUpEveryoneEvenHeadline => 'Everyone\'s even.';
 
   @override

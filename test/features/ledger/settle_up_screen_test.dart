@@ -22,9 +22,11 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
+import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
+import 'package:safar/features/ledger/widgets/pre_settlement_review_sheet.dart';
 import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -196,6 +198,46 @@ void main() {
 
     expect(find.text('Home'), findsOneWidget);
   });
+
+  testWidgets(
+    '#204: pre-settlement review sheet appears on entry with a review-worthy expense',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          expensesStream: Stream.value([
+            Expense(
+              id: 'e1',
+              tripId: eventId,
+              payerParticipantId: 'alice',
+              amount: Decimal.parse('20.000'),
+              description: 'Dinner',
+              scope: ExpenseScope.global,
+              splitMode: SplitMode.exact,
+              createdAt: DateTime(2026, 5, 16),
+              createdBy: 'alice',
+            ),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
+      expect(find.text('Before you settle'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#204: no review sheet when all expenses are ordinary equal splits',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      await tester.pumpWidget(buildScreen(fakeDb)); // default: 1 global equal
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
+    },
+  );
 
   testWidgets('shows loading state while expenses are loading', (tester) async {
     final fakeDb = FakeFirebaseFirestore();

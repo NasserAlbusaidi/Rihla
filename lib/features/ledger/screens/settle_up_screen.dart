@@ -27,6 +27,8 @@ import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../providers/expense_provider.dart';
+import '../services/pre_settlement_review.dart';
+import '../widgets/pre_settlement_review_sheet.dart';
 
 /// Event-scoped Settle Up screen.
 ///
@@ -53,6 +55,35 @@ class SettleUpScreen extends ConsumerStatefulWidget {
 
 class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   final Map<int, GlobalKey> _tileKeys = {};
+
+  /// #204: the pre-settlement review sheet fires once per screen entry. Guarded
+  /// so the data callback (which reruns on every rebuild / stream tick) can't
+  /// re-present it.
+  bool _reviewSheetShown = false;
+
+  /// #204: on first entry, if the event has review-worthy expenses (exact /
+  /// custom-participant / personal / unusually-large), surface the non-blocking
+  /// review sheet before the user settles. Detection is pure + display-only; the
+  /// sheet never blocks settlement.
+  void _maybeShowReviewSheet(BuildContext context, List<Expense> expenses) {
+    if (_reviewSheetShown) return;
+    final flags = detectReviewWorthyExpenses(expenses);
+    if (flags.isEmpty) return;
+    _reviewSheetShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showPreSettlementReviewSheet(
+        context,
+        flags: flags,
+        onTapExpense: (e) => context.push(
+          '/group/${widget.groupId}/event/${widget.eventId}/ledger/edit/${e.id}',
+        ),
+        onReviewAll: () => context.push(
+          '/group/${widget.groupId}/event/${widget.eventId}/ledger',
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +186,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               child: expensesAsync.when(
                 data: (expenses) {
                   final settlements = settlementsAsync.valueOrNull ?? const [];
+                  _maybeShowReviewSheet(context, expenses); // #204
 
                   // #249: fold departed-member split recipients into the
                   // balance universe so settle-up suggestions conserve. The
