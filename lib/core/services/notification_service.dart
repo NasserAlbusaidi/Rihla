@@ -282,14 +282,22 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  /// Deep-links a notification to the relevant group landing. Only `settlement`
-  /// and `member_join` types with a non-empty `groupId` route; anything else is
-  /// ignored (forward-compatible with future types).
+  /// Deep-links a notification to the relevant landing. Only `settlement` and
+  /// `member_join` types with a non-empty `groupId` route; anything else is
+  /// ignored (forward-compatible with future types). An *event* settlement
+  /// carries a non-empty `eventId` (`eventSettlementNotifier`) and lands on that
+  /// event's ledger where the entry lives; a *group* settlement omits it
+  /// (`groupSettlementNotifier` sends no `eventId`) and lands on the group hub.
   void _routeFromData(Map<String, dynamic> data) {
     final type = data['type'];
     if (type != 'settlement' && type != 'member_join') return;
     final groupId = data['groupId'];
     if (groupId is! String || groupId.isEmpty) return;
+    final eventId = data['eventId'];
+    if (type == 'settlement' && eventId is String && eventId.isNotEmpty) {
+      _navigate('/group/$groupId/event/$eventId/ledger');
+      return;
+    }
     _navigate('/group/$groupId');
   }
 
