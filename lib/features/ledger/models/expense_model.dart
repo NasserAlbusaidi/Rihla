@@ -166,7 +166,15 @@ class Expense {
   /// with BalanceCalculator and UI code that passes `trip.id`.
   /// Money is stored as integer fils via [MoneySerializer].
   factory Expense.fromFirestore(Map<String, dynamic> data) {
-    final currency = data['currency'] as String? ?? 'OMR';
+    // Unknown/garbage currency (a forged/legacy doc the deployed rules now
+    // reject on write) must not throw in MoneySerializer and error the whole
+    // ledger + home-balance stream for every member. Fall back to OMR,
+    // mirroring the settlement read fence (#193/#220) and BalanceCalculator
+    // (#47). The single fenced local feeds the amount, the retained currency,
+    // and the exact-split values, covering every MoneySerializer throw site.
+    final rawCurrency = data['currency'] as String? ?? 'OMR';
+    final currency =
+        MoneySerializer.isSupported(rawCurrency) ? rawCurrency : 'OMR';
     final amountFils = data['amountFils'] as int? ?? 0;
 
     List<String>? customSplit;
