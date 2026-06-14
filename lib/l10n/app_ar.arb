@@ -549,6 +549,7 @@
   "eventCreating": "جارٍ الإنشاء…",
   "eventSelectAtLeastOneParticipant": "اختر مشاركًا واحدًا على الأقل.",
   "eventCreateFailed": "تعذّر إنشاء الفعالية. تحقق من اتصالك وحاول مرة أخرى.",
+  "eventCreatedWillSync": "تم حفظ الفعالية — ستتم المزامنة عند الاتصال.",
   "eventParticipants": "المشاركون",
   "eventSelectAll": "اختيار الكل",
   "eventSettingsTitle": "إعدادات الفعالية",

@@ -1852,6 +1852,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t create event. Check your connection and try again.';
 
   @override
+  String get eventCreatedWillSync => 'Event saved — will sync when online.';
+
+  @override
   String get eventParticipants => 'Participants';
 
   @override
