@@ -66,17 +66,50 @@ List<ReviewFlag> detectReviewWorthyExpenses(
   return flags;
 }
 
-/// Distinct review-worthy expenses, newest first, for the sheet's item list —
-/// deduped across reasons (an expense flagged twice appears once). Order is by
-/// descending amount so the most consequential surfaces first.
-List<Expense> distinctReviewExpenses(List<ReviewFlag> flags) {
+/// Max review rows shown PER currency (#521). A single-currency event still
+/// shows up to this many (no regression vs the old flat cap); in a mixed-currency
+/// event each currency is capped INDEPENDENTLY, so a high-value row in one
+/// currency can never be hidden behind a flood of cheaper-but-numerically-larger
+/// rows in another (e.g. JPY 1000 must not bury OMR 5.000).
+const kReviewPerCurrencyCap = 5;
+
+/// The sheet's item list: distinct review-worthy expenses bucketed by currency,
+/// each bucket capped at [perCurrencyCap], plus the count hidden by the cap (#521).
+///
+/// Raw cross-currency amount comparison is meaningless (JPY 1000 is not "bigger"
+/// than OMR 5.000), so we NEVER sort or cap across currencies. Buckets are
+/// emitted in alphabetical currency order; within a bucket — where amounts share
+/// a unit and ARE comparable — expenses sort by amount descending, then createdAt
+/// descending, then id ascending for a deterministic tiebreak.
+({List<Expense> shown, int overflow}) reviewItemList(
+  List<ReviewFlag> flags, {
+  int perCurrencyCap = kReviewPerCurrencyCap,
+}) {
   final seen = <String>{};
-  final out = <Expense>[];
+  final byCurrency = <String, List<Expense>>{};
   for (final f in flags) {
-    if (seen.add(f.expense.id)) out.add(f.expense);
+    if (seen.add(f.expense.id)) {
+      (byCurrency[f.expense.currency] ??= <Expense>[]).add(f.expense);
+    }
   }
-  out.sort((a, b) => b.amount.compareTo(a.amount));
-  return out;
+
+  final shown = <Expense>[];
+  var overflow = 0;
+  // Alphabetical currency order — never compare amounts ACROSS currencies.
+  for (final currency in byCurrency.keys.toList()..sort()) {
+    final bucket = byCurrency[currency]!
+      ..sort((a, b) {
+        // Same currency → amounts are comparable.
+        final byAmount = b.amount.compareTo(a.amount);
+        if (byAmount != 0) return byAmount;
+        final byDate = b.createdAt.compareTo(a.createdAt);
+        if (byDate != 0) return byDate;
+        return a.id.compareTo(b.id);
+      });
+    shown.addAll(bucket.take(perCurrencyCap));
+    if (bucket.length > perCurrencyCap) overflow += bucket.length - perCurrencyCap;
+  }
+  return (shown: shown, overflow: overflow);
 }
 
 /// Count of flags per reason (for the grouped summary lines). Reasons with a

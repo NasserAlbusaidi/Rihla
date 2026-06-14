@@ -13,9 +13,6 @@ abstract final class PreSettleReviewKeys {
   static const reviewButton = Key('pre_settle_review_action_review');
 }
 
-/// Max review-worthy expenses listed before collapsing to "+N more" (#204).
-const _maxItems = 5;
-
 /// Shows the non-blocking pre-settlement review sheet (#204). Surfaces the
 /// review-worthy expenses (grouped counts + the top items) before the user
 /// settles. Returns when dismissed — the caller proceeds regardless (the sheet
@@ -93,9 +90,11 @@ class _PreSettlementReviewSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final counts = reviewReasonCounts(flags);
-    final items = distinctReviewExpenses(flags);
-    final shown = items.take(_maxItems).toList();
-    final overflow = items.length - shown.length;
+    // #521: bucket by currency and cap each independently, so a high-value row
+    // in one currency is never hidden behind cheaper rows in another.
+    final result = reviewItemList(flags);
+    final shown = result.shown;
+    final overflow = result.overflow;
 
     return SafeArea(
       key: PreSettleReviewKeys.sheet,
