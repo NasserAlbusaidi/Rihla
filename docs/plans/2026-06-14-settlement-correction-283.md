@@ -44,7 +44,7 @@ Threaded through all three widgets: `SettleUpPageBody` → `_PaymentHistorySecti
 
 ## Tests (RED first)
 - **A — widget (`settle_up_page_body` test):** a history tile renders the correct affordance (`GroupKeys.settleUpCorrectButton`); tapping → confirm dialog visible; tapping Confirm → `onCorrect` called once with that `Settlement`. RED: no correct button today.
-- **B — money/direction (unit, `FakeFirebaseFirestore`):** record `P→R A` via `addSettlement`; then record the offset `R→P A`; assert `calculateBalances` nets both parties to zero for that event (proves the correction direction cancels, not doubles). RED before the handler swap logic exists / GREEN after. (Direction is the load-bearing money fact; a same-direction bug doubles debt and this test catches it.)
+- **B — money/direction (group-screen widget test):** seed `Bob→Alice A` in history; tap correct → confirm; assert the SWAPPED service call (`addGroupSettlement` with `payer=Alice, recipient=Bob`, same `amount`, `createdBy=actor`) and that NO `group_settlement` activity entry is logged. This pins direction end-to-end through the real screen wiring (stronger than a calculator-only test — the calculator's net-folding is already an oracle pinned by `balance_calculations_test.dart`; a same-direction wiring bug would assert `payer=Bob` and fail here).
 - Existing settle-up widget tests stay green (affordance is additive; `onCorrect` optional).
 
 ## Out of scope (explicit)
@@ -60,7 +60,7 @@ Threaded through all three widgets: `SettleUpPageBody` → `_PaymentHistorySecti
 - [ ] Confirm dialog describes the reverse flow ("{recipient} pays {payer} back {amount}") + that the original stays.
 - [ ] Confirming records an offsetting settlement via the screen's own `_recordSettlement` (event → `addSettlement`/`widget.eventId`; group → `addGroupSettlement`/`widget.groupId`, `logActivity: false`), swapped parties, same amount + currency, `createdBy` = current uid, correction note.
 - [ ] Group correction does NOT emit a `group_settlement` activity entry.
-- [ ] Balance nets to zero after correcting a settlement (test B).
+- [ ] Correction records the SWAPPED offsetting settlement (direction pinned end-to-end by test B), so the balance returns to its pre-mistake state.
 - [ ] Departed-party correction surfaces the existing settlement-write error snackbar (no crash, no bad data).
 - [ ] EN + AR l10n for all new strings (`settleUpCorrect`, `settleUpCorrectTitle`, `settleUpCorrectBody`, `settleUpCorrectConfirm`, `settleUpCorrectionNote`).
 - [ ] `flutter analyze` clean; settle-up + new tests green.
