@@ -1138,6 +1138,76 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpCorrectionNote => 'تصحيح لدفعة مُسجَّلة';
 
   @override
+  String get preSettleReviewTitle => 'قبل التسوية';
+
+  @override
+  String preSettleReviewExactCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عمليات تقسيم بمبالغ دقيقة',
+      one: 'تقسيم بمبالغ دقيقة واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String preSettleReviewCustomCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عمليات تقسيم بمشاركين مخصّصين',
+      one: 'تقسيم بمشاركين مخصّصين واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String preSettleReviewPersonalCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مصاريف شخصية',
+      one: 'مصروف شخصي واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String preSettleReviewLargeCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مصاريف كبيرة',
+      one: 'مصروف كبير واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get preSettleReviewReasonExact => 'تقسيم بمبالغ دقيقة';
+
+  @override
+  String get preSettleReviewReasonCustom => 'مشاركون مخصّصون';
+
+  @override
+  String get preSettleReviewReasonPersonal => 'شخصي';
+
+  @override
+  String get preSettleReviewReasonLarge => 'مبلغ كبير';
+
+  @override
+  String preSettleReviewMore(int count) {
+    return '+$count أخرى';
+  }
+
+  @override
+  String get preSettleReviewReview => 'مراجعة المصاريف';
+
+  @override
+  String get preSettleReviewContinue => 'متابعة التسوية';
+
+  @override
   String get settleUpEveryoneEvenHeadline => 'الجميع متوازن.';
 
   @override

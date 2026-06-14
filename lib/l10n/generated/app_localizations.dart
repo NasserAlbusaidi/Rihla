@@ -2000,6 +2000,78 @@ abstract class AppLocalizations {
   /// **'Correction of a recorded payment'**
   String get settleUpCorrectionNote;
 
+  /// Title of the pre-settlement review sheet shown before event settle-up when review-worthy expenses exist (#204). Neutral, not accusatory.
+  ///
+  /// In en, this message translates to:
+  /// **'Before you settle'**
+  String get preSettleReviewTitle;
+
+  /// Count summary line for exact-split expenses in the pre-settlement review sheet (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 exact split} other{{count} exact splits}}'**
+  String preSettleReviewExactCount(int count);
+
+  /// Count summary line for custom-participant-split expenses in the pre-settlement review sheet (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 custom participant split} other{{count} custom participant splits}}'**
+  String preSettleReviewCustomCount(int count);
+
+  /// Count summary line for personal-only expenses in the pre-settlement review sheet (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 personal expense} other{{count} personal expenses}}'**
+  String preSettleReviewPersonalCount(int count);
+
+  /// Count summary line for unusually-large expenses in the pre-settlement review sheet (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 large expense} other{{count} large expenses}}'**
+  String preSettleReviewLargeCount(int count);
+
+  /// Per-item reason chip: the expense uses an exact split (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Exact split'**
+  String get preSettleReviewReasonExact;
+
+  /// Per-item reason chip: the expense splits across a custom participant set (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Custom participants'**
+  String get preSettleReviewReasonCustom;
+
+  /// Per-item reason chip: the expense is personal-only (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get preSettleReviewReasonPersonal;
+
+  /// Per-item reason chip: the expense is unusually large for the event (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Large amount'**
+  String get preSettleReviewReasonLarge;
+
+  /// Trailing line when more review-worthy expenses exist than the sheet lists (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String preSettleReviewMore(int count);
+
+  /// Action that closes the sheet and opens the ledger to review expenses (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Review expenses'**
+  String get preSettleReviewReview;
+
+  /// Action that dismisses the non-blocking pre-settlement review sheet and proceeds (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to settle'**
+  String get preSettleReviewContinue;
+
   /// No description provided for @settleUpEveryoneEvenHeadline.
   ///
   /// In en, this message translates to:
