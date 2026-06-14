@@ -168,6 +168,13 @@ class SettleUpPageBody extends StatelessWidget {
   /// the only path).
   final void Function(List<SettleStepRequest> steps)? onRecordStepped;
 
+  /// Optional "correct this payment" driver (#283). When non-null, each recorded
+  /// payment in the history exposes an affordance that — after a confirmation
+  /// dialog — hands the original [Settlement] back so the screen can record an
+  /// offsetting reverse settlement (append-only; the original row stays). Null
+  /// hides the affordance.
+  final void Function(Settlement settlement)? onCorrect;
+
   const SettleUpPageBody({
     super.key,
     required this.subjectName,
@@ -180,6 +187,7 @@ class SettleUpPageBody extends StatelessWidget {
     this.buildBreakdown,
     this.preSelectedMemberId,
     this.onRecordStepped,
+    this.onCorrect,
   });
 
   @override
@@ -280,6 +288,7 @@ class SettleUpPageBody extends StatelessWidget {
               settlements: history,
               displayNames: displayNames,
               subjectName: subjectName,
+              onCorrect: onCorrect,
             ),
           ],
         ],
@@ -617,6 +626,7 @@ class _PaymentHistorySection extends StatelessWidget {
     required this.settlements,
     required this.displayNames,
     required this.subjectName,
+    this.onCorrect,
   });
 
   final List<Settlement> settlements;
@@ -624,6 +634,9 @@ class _PaymentHistorySection extends StatelessWidget {
 
   /// Group/event name folded into the shareable receipt (#359).
   final String subjectName;
+
+  /// #283: hands a recorded payment back for an offsetting correction.
+  final void Function(Settlement settlement)? onCorrect;
 
   @override
   Widget build(BuildContext context) {
@@ -638,6 +651,7 @@ class _PaymentHistorySection extends StatelessWidget {
             displayNames: displayNames,
             subjectName: subjectName,
             index: i,
+            onCorrect: onCorrect,
           ),
       ],
     );
@@ -650,12 +664,53 @@ class _HistoryTile extends StatelessWidget {
     required this.displayNames,
     required this.subjectName,
     required this.index,
+    this.onCorrect,
   });
 
   final Settlement settlement;
   final Map<String, String> displayNames;
   final String subjectName;
   final int index;
+
+  /// #283: when non-null AND both party ids are present, this tile shows a
+  /// "correct this payment" affordance that records an offsetting reverse
+  /// settlement after a confirmation dialog.
+  final void Function(Settlement settlement)? onCorrect;
+
+  /// Confirms then hands the original [settlement] to [onCorrect]. The dialog
+  /// describes the REVERSE flow (the recipient pays the payer back) and reuses
+  /// the tile's already-resolved [payerName]/[recipientName] locals.
+  Future<void> _confirmAndCorrect(
+    BuildContext context,
+    String payerName,
+    String recipientName,
+  ) async {
+    final l10n = context.l10n;
+    final amountStr = AppFormatters.formatCurrency(
+      settlement.amount,
+      settlement.currency,
+    );
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.settleUpCorrectTitle),
+        content: Text(
+          l10n.settleUpCorrectBody(amountStr, recipientName, payerName),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.settleUpCorrectConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) onCorrect!(settlement);
+  }
 
   /// Composes the plain-text receipt shared via [shareText] (#359). Built only
   /// from persisted fields — payer/recipient, amount, date, group/event name,
@@ -778,6 +833,34 @@ class _HistoryTile extends StatelessWidget {
                   color: context.colors.textPrimary,
                 ),
               ),
+              // #283: correct a recorded payment by recording an offsetting
+              // reverse settlement (append-only). Shown only when a correction
+              // driver is wired AND both party ids are present (the offset needs
+              // both to target). Keyed on the newest tile for a stable test hook.
+              if (onCorrect != null &&
+                  payerId != null &&
+                  payerId.isNotEmpty &&
+                  recipientId != null &&
+                  recipientId.isNotEmpty) ...[
+                SizedBox(width: spacing.space4),
+                IconButton(
+                  key: index == 0 ? GroupKeys.settleUpCorrectButton : null,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                  tooltip: context.l10n.settleUpCorrect,
+                  icon: Icon(
+                    Iconsax.undo,
+                    size: 16,
+                    color: context.colors.textSecondary,
+                  ),
+                  onPressed: () =>
+                      _confirmAndCorrect(context, payerName, recipientName),
+                ),
+              ],
               SizedBox(width: spacing.space4),
               // #359: share a plain-text receipt of this recorded payment. The
               // Builder gives shareText() the button's own render box as the

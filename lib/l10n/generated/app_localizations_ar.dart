@@ -1121,6 +1121,23 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تسجيل التسوية. يرجى المحاولة مرة أخرى.';
 
   @override
+  String get settleUpCorrect => 'تصحيح';
+
+  @override
+  String get settleUpCorrectTitle => 'تصحيح هذه الدفعة؟';
+
+  @override
+  String settleUpCorrectBody(Object amount, Object recipient, Object payer) {
+    return 'سيُسجِّل هذا دفعة عكسية بقيمة $amount من $recipient إلى $payer. تبقى الدفعة الأصلية في سجلّك.';
+  }
+
+  @override
+  String get settleUpCorrectConfirm => 'تسجيل التصحيح';
+
+  @override
+  String get settleUpCorrectionNote => 'تصحيح لدفعة مُسجَّلة';
+
+  @override
   String get settleUpEveryoneEvenHeadline => 'الجميع متوازن.';
 
   @override

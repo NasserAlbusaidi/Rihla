@@ -77,6 +77,10 @@ abstract final class GroupKeys {
   static const settleUpShareReceiptButton =
       Key('group_settle_up_share_receipt_button');
 
+  // #283: correct a recorded payment by recording an offsetting reverse payment.
+  static const settleUpCorrectButton =
+      Key('group_settle_up_correct_button');
+
   // Phase 30 — Activity screen filter chip keys (added Wave 0; used by Plan 03 implementation)
   static const activityFilterAll = Key('group_activity_filter_all');
   static const activityFilterSettlements =

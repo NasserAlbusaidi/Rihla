@@ -182,6 +182,22 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                         ),
                     onRecordStepped: (steps) =>
                         _runSteppedSettle(context, group: group, steps: steps),
+                    // #283: correct a recorded payment by recording its
+                    // offsetting reverse (swap payer↔recipient, same amount +
+                    // currency) through the group write path. logActivity:false
+                    // — a reversal must not surface as a fresh feed payment.
+                    onCorrect: (s) => _recordSettlement(
+                      context,
+                      group: group,
+                      fromUserId: s.recipientParticipantId ?? '',
+                      toUserId: s.payerParticipantId ?? '',
+                      fromName: s.recipientName ?? '',
+                      toName: s.payerName ?? '',
+                      amount: s.amount,
+                      currency: s.currency,
+                      note: context.l10n.settleUpCorrectionNote,
+                      logActivity: false,
+                    ),
                   );
 
                   if (failedEventIds.isEmpty) return body;
@@ -499,6 +515,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     String? note,
     bool showSuccessSnackbar = true,
     ConnectivityNotifier? connectivity,
+    // #283: corrections record an offsetting reverse settlement but must NOT
+    // emit a `group_settlement` activity entry — the type-rendered feed would
+    // show a reversal as a fresh payment. The correction stays auditable via
+    // settlement history + balances.
+    bool logActivity = true,
   }) async {
     try {
       String? actorName;
@@ -559,22 +580,24 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       // #282: name the OTHER party relative to the actor. When the creditor
       // (recipient) records the payment, the counterparty is the payer — not
       // `toName`, which would otherwise read "Alice settled … with Alice".
-      final counterpartyName = currentUid == toUserId ? fromName : toName;
-      ref
-          .read(groupActivityServiceProvider)
-          .logGroupEvent(
-            groupId: widget.groupId,
-            type: 'group_settlement',
-            actorId: currentUid,
-            actorName: actorName,
-            description:
-                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-            metadata: {
-              'amount': amount.toString(),
-              'recipientId': toUserId,
-              'currency': currency,
-            },
-          );
+      if (logActivity) {
+        final counterpartyName = currentUid == toUserId ? fromName : toName;
+        ref
+            .read(groupActivityServiceProvider)
+            .logGroupEvent(
+              groupId: widget.groupId,
+              type: 'group_settlement',
+              actorId: currentUid,
+              actorName: actorName,
+              description:
+                  'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+              metadata: {
+                'amount': amount.toString(),
+                'recipientId': toUserId,
+                'currency': currency,
+              },
+            );
+      }
 
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
