@@ -282,21 +282,39 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  /// Deep-links a notification to the relevant landing. Only `settlement` and
-  /// `member_join` types with a non-empty `groupId` route; anything else is
-  /// ignored (forward-compatible with future types). An *event* settlement
-  /// carries a non-empty `eventId` (`eventSettlementNotifier`) and lands on that
-  /// event's ledger where the entry lives; a *group* settlement omits it
-  /// (`groupSettlementNotifier` sends no `eventId`) and lands on the group hub.
+  /// Deep-links a notification tap to the landing where the entry lives, for the
+  /// transactional types whose triggers ship a routing payload (#179):
+  /// - `event` (event-created) → that event's hub `/group/$gid/event/$eid`
+  /// - `expense` (expense-created) and an *event* `settlement` → that event's
+  ///   ledger `/group/$gid/event/$eid/ledger`
+  /// - a *group* `settlement` (no `eventId`, `groupSettlementNotifier`) and
+  ///   `member_join` → the group hub `/group/$gid`
+  ///
+  /// `expense`/`event` always carry a non-empty `eventId` (their triggers fire
+  /// on `events/{eid}/…` paths); the `hasEvent` guard degrades any future
+  /// event-less payload to the group hub. Unknown types are ignored
+  /// (forward-compatible).
   void _routeFromData(Map<String, dynamic> data) {
     final type = data['type'];
-    if (type != 'settlement' && type != 'member_join') return;
+    if (type != 'settlement' &&
+        type != 'member_join' &&
+        type != 'expense' &&
+        type != 'event') {
+      return;
+    }
     final groupId = data['groupId'];
     if (groupId is! String || groupId.isEmpty) return;
     final eventId = data['eventId'];
-    if (type == 'settlement' && eventId is String && eventId.isNotEmpty) {
-      _navigate('/group/$groupId/event/$eventId/ledger');
-      return;
+    final hasEvent = eventId is String && eventId.isNotEmpty;
+    if (hasEvent) {
+      if (type == 'event') {
+        _navigate('/group/$groupId/event/$eventId');
+        return;
+      }
+      if (type == 'expense' || type == 'settlement') {
+        _navigate('/group/$groupId/event/$eventId/ledger');
+        return;
+      }
     }
     _navigate('/group/$groupId');
   }
