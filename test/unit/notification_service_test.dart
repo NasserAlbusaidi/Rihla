@@ -382,6 +382,28 @@ void main() {
       expect(h.nav, ['/group/g7']);
     });
 
+    test('tapping an expense notification routes to the event ledger', () async {
+      final opened = StreamController<RemoteMessage>.broadcast();
+      addTearDown(opened.close);
+      final h = await boot(opened: opened.stream);
+
+      opened.add(const RemoteMessage(data: {'type': 'expense', 'groupId': 'g7', 'eventId': 'e1'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.nav, ['/group/g7/event/e1/ledger']);
+    });
+
+    test('tapping an event-created notification routes to the event hub', () async {
+      final opened = StreamController<RemoteMessage>.broadcast();
+      addTearDown(opened.close);
+      final h = await boot(opened: opened.stream);
+
+      opened.add(const RemoteMessage(data: {'type': 'event', 'groupId': 'g7', 'eventId': 'e1'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.nav, ['/group/g7/event/e1']);
+    });
+
     test('tapping a member_join notification routes to the group', () async {
       final opened = StreamController<RemoteMessage>.broadcast();
       addTearDown(opened.close);
