@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/share_helper.dart';
+import '../../../core/utils/write_ack.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/constants/supported_currencies.dart';
@@ -141,20 +143,48 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       return;
     }
 
+    // #412/#520: a Firestore write acks only on SERVER confirmation — offline
+    // it stays pending. Capture connectivity to short-circuit the ack wait.
+    final connectivity = ref.read(connectivityProvider.notifier);
+    final connectivityStatus = ref.read(connectivityProvider);
     try {
-      final group = await ref
+      // stageGroup applies the write to the local cache and returns the local
+      // Group immediately + the server-ack future. Race the ack instead of
+      // awaiting it raw (the old createGroup().timeout(15s) falsely reported
+      // "couldn't create group" offline for a group that WAS created and will
+      // sync). stageGroup runs the auth/anonymous guards synchronously, so its
+      // DurableCredentialRequiredException is caught below — it MUST stay
+      // inside this try.
+      final staged = ref
           .read(groupServiceProvider)
-          .createGroup(
+          .stageGroup(
             name: _nameController.text.trim(),
             currency: _selectedCurrency,
-          )
-          .timeout(const Duration(seconds: 15));
+          );
+      final outcome = await awaitServerAck(
+        staged.ack,
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite(); // #357: stale-offline correction (no-op online)
+      } else {
+        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+        // Shown BEFORE awaiting the share sheet so it is visible; the sheet is
+        // a modal (not a route replacement), so the local messenger is valid.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.groupCreatedWillSync),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
       // Capture before the share sheet (which may navigate away and unmount
       // this screen) so the post-sheet prompt reads from the container ref.
       final notificationPrompt = ref.read(notificationPromptProvider);
-      await _showSharePrompt(context, group);
+      await _showSharePrompt(context, staged.group);
       // First natural moment to ask for push permission (#288) — the owner now
       // has a group to be notified about. Fires after the sheet so it doesn't
       // fight the modal.

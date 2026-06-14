@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -73,6 +74,10 @@ void main() {
         deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
         groupServiceProvider.overrideWithValue(groupService),
         notificationPromptProvider.overrideWithValue(prompt),
+        // The create path reads connectivityProvider (#520); timer-free notifier.
+        connectivityProvider.overrideWith(
+          (ref) => ConnectivityNotifier(startPeriodicChecks: false),
+        ),
       ],
       child: MaterialApp.router(
         routerConfig: router,
@@ -108,11 +113,11 @@ void main() {
   testWidgets('successful create fires the notification prompt once after the '
       'share sheet is dismissed', (tester) async {
     when(
-      () => groupService.createGroup(
+      () => groupService.stageGroup(
         name: any(named: 'name'),
         currency: any(named: 'currency'),
       ),
-    ).thenAnswer((_) async => _group());
+    ).thenReturn((group: _group(), ack: Future<void>.value()));
 
     final sp = await prefs();
     await tester
@@ -136,7 +141,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => groupService.createGroup(
+      () => groupService.stageGroup(
         name: 'Family Trip',
         currency: any(named: 'currency'),
       ),

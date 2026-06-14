@@ -2131,6 +2131,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get groupCreatedWillSync =>
+      'تم إنشاء المجموعة — ستتم المزامنة عند الاتصال.';
+
+  @override
   String get groupNew => 'مجموعة جديدة';
 
   @override

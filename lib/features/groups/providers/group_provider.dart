@@ -119,6 +119,33 @@ class GroupService extends FirestoreRepository {
     required String name,
     required String currency,
   }) async {
+    final staged = stageGroup(name: name, currency: currency);
+    await staged.ack;
+    return staged.group;
+  }
+
+  /// Stages a new group: applies the group + invite-code batch to the local
+  /// Firestore cache and returns the locally-built [Group] IMMEDIATELY, plus a
+  /// single server-ack future (#412/#520). The ack resolves only when the
+  /// server confirms — offline it stays pending until reconnect while the SDK
+  /// queues the replay, so UI callers race it (`awaitServerAck`) instead of
+  /// awaiting it raw (which falsely reports "couldn't create group" after a 15s
+  /// timeout even though the group was created locally and will sync).
+  ///
+  /// The member write is chained AFTER the group batch via `.then` — both
+  /// online and on offline replay the group doc is committed before the member
+  /// `set()` is evaluated, so the members rule (`isGroupMember` → group exists
+  /// with the creator in `memberIds`) holds. This preserves today's sequential
+  /// ordering exactly; it does NOT issue the two writes concurrently.
+  ///
+  /// Throws synchronously if the user is not authenticated, or
+  /// [DurableCredentialRequiredException] for an anonymous user (#441) — the
+  /// guards run BEFORE any write is staged so an offline-queued batch can never
+  /// replay past the gate.
+  ({Group group, Future<void> ack}) stageGroup({
+    required String name,
+    required String currency,
+  }) {
     final uid = _currentUid;
     if (uid == null) {
       throw Exception('User not authenticated');
@@ -163,29 +190,30 @@ class GroupService extends FirestoreRepository {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    await batch.commit();
-
-    // Step 2: Add creator as member AFTER group exists.
-    // The members subcollection rule requires the group doc to exist
-    // with the user in memberIds (isGroupMember check), so this must
-    // be a separate write after the group batch commits.
-    await db
-        .collection('groups')
-        .doc(groupId)
-        .collection('members')
-        .doc(memberId)
-        .set({
-          'id': memberId,
-          'userId': uid,
-          'displayName': displayName,
-          'role': 'CREATOR',
-          'joinedAt': FieldValue.serverTimestamp(),
-          'isShadow': false,
-        });
+    // Step 2: Add creator as member AFTER the group batch commits. The members
+    // subcollection rule requires the group doc to exist with the user in
+    // memberIds (isGroupMember check), so the member write is chained on the
+    // batch ack — sequential on first-write AND on offline replay. The whole
+    // chain is the single ack future the caller races.
+    final ack = batch.commit().then((_) {
+      return db
+          .collection('groups')
+          .doc(groupId)
+          .collection('members')
+          .doc(memberId)
+          .set({
+            'id': memberId,
+            'userId': uid,
+            'displayName': displayName,
+            'role': 'CREATOR',
+            'joinedAt': FieldValue.serverTimestamp(),
+            'isShadow': false,
+          });
+    });
 
     // Return a local Group object — serverTimestamp is not readable until
     // the next Firestore snapshot, so use now() as the local createdAt.
-    return Group(
+    final group = Group(
       id: groupId,
       name: name,
       inviteCode: inviteCode,
@@ -195,6 +223,7 @@ class GroupService extends FirestoreRepository {
       createdAt: now,
       updatedAt: now,
     );
+    return (group: group, ack: ack);
   }
 
   /// Join an existing group via its invite code.

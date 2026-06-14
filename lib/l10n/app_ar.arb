@@ -605,6 +605,7 @@
   "groupYourNameHint": "كما سيراك أصدقاؤك",
   "groupDifferentNameHelper": "يظهر هذا الاسم في جميع مجموعاتك — تغييره في أي مكان يغيّره في كل مكان.",
   "groupCreateError": "خطأ: {error}",
+  "groupCreatedWillSync": "تم إنشاء المجموعة — ستتم المزامنة عند الاتصال.",
   "groupNew": "مجموعة جديدة",
   "groupCreate": "إنشاء",
   "groupMoodTitle": "من سيكون معك؟",

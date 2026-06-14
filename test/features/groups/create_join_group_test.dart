@@ -9,6 +9,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/r_icon_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -168,6 +169,10 @@ void main() {
                   fakeDb,
                   currentUserId: 'uid-creator',
                 ),
+              ),
+              // #520: the create path reads connectivityProvider; timer-free.
+              connectivityProvider.overrideWith(
+                (ref) => ConnectivityNotifier(startPeriodicChecks: false),
               ),
             ],
             child: MaterialApp(

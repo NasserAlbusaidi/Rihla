@@ -2066,6 +2066,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get groupCreatedWillSync => 'Group created — will sync when online.';
+
+  @override
   String get groupNew => 'New group';
 
   @override

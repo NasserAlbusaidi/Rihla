@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/core/theme/app_theme.dart';
@@ -91,6 +92,11 @@ void main() {
         deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
         groupServiceProvider.overrideWithValue(groupService),
         notificationPromptProvider.overrideWithValue(RecordingPrompt()),
+        // The create path reads connectivityProvider (#520); use a timer-free
+        // notifier so pumpAndSettle doesn't hang/leak the 60s periodic timer.
+        connectivityProvider.overrideWith(
+          (ref) => ConnectivityNotifier(startPeriodicChecks: false),
+        ),
         durableCredentialGateProvider.overrideWith((ref) {
           gate = RecordingGate(ref, result: gateResult);
           return gate;
@@ -139,8 +145,10 @@ void main() {
       await fillAndSubmit(tester);
 
       expect(gate.ensured, 1);
+      // #520: the screen now stages via stageGroup — verifyNever must target it
+      // or this declined-gate-blocks-write guard becomes a vacuous always-pass.
       verifyNever(
-        () => groupService.createGroup(
+        () => groupService.stageGroup(
           name: any(named: 'name'),
           currency: any(named: 'currency'),
         ),
@@ -171,13 +179,13 @@ void main() {
       expect(intent.currencyCode, 'OMR');
     });
 
-    testWidgets('passed gate proceeds to createGroup', (tester) async {
+    testWidgets('passed gate proceeds to stageGroup', (tester) async {
       when(
-        () => groupService.createGroup(
+        () => groupService.stageGroup(
           name: any(named: 'name'),
           currency: any(named: 'currency'),
         ),
-      ).thenAnswer((_) async => _group());
+      ).thenReturn((group: _group(), ack: Future<void>.value()));
 
       final sp = await prefs();
       await tester.pumpWidget(
@@ -190,7 +198,7 @@ void main() {
 
       expect(gate.ensured, 1);
       verify(
-        () => groupService.createGroup(
+        () => groupService.stageGroup(
           name: 'Family Trip',
           currency: any(named: 'currency'),
         ),
@@ -201,8 +209,11 @@ void main() {
       'service-level DurableCredentialRequiredException maps to the '
       'durableCredentialRequired snackbar (defense path)',
       (tester) async {
+        // stageGroup runs the anonymous guard synchronously; thenThrow makes the
+        // mock throw on the (synchronous) call, inside the screen's try, where
+        // the on-DurableCredentialRequiredException clause catches it.
         when(
-          () => groupService.createGroup(
+          () => groupService.stageGroup(
             name: any(named: 'name'),
             currency: any(named: 'currency'),
           ),
