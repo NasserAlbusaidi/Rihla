@@ -1371,6 +1371,7 @@
   "eventCreating": "Creating…",
   "eventSelectAtLeastOneParticipant": "Select at least one participant.",
   "eventCreateFailed": "Couldn't create event. Check your connection and try again.",
+  "eventCreatedWillSync": "Event saved — will sync when online.",
   "eventParticipants": "Participants",
   "eventSelectAll": "Select All",
   "eventSettingsTitle": "Event Settings",

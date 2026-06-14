@@ -8,7 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/app_messenger.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/event_type_config.dart';
@@ -64,6 +66,19 @@ final _testMembers = [
   ),
 ];
 
+/// Throwaway Event for stubs whose ack errors before the event is read.
+final _anyEvent = Event(
+  id: 'event-x',
+  name: 'Beach Day',
+  type: EventType.trip,
+  groupId: 'group-1',
+  createdBy: 'uid-creator',
+  participantIds: const ['uid-creator', 'uid-member'],
+  participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+  modules: const EventModules(),
+  createdAt: DateTime(2026, 6, 1),
+);
+
 /// Wraps a widget in ProviderScope + MaterialApp with standard test overrides.
 Widget _wrapPicker(Widget child, SharedPreferences prefs) {
   return ProviderScope(
@@ -103,6 +118,7 @@ Widget _wrapCreateRouted({
   required EventService eventService,
   required GroupActivityService activityService,
   String? currentUserId = 'uid-creator',
+  ConnectivityStatus connectivity = ConnectivityStatus.online,
 }) {
   final router = GoRouter(
     initialLocation: '/create',
@@ -135,8 +151,20 @@ Widget _wrapCreateRouted({
         'group-1',
       ).overrideWith((ref) => Stream.value(_testGroup)),
       eventLoadingProvider.overrideWith((ref) => false),
+      // The create path reads connectivityProvider (#516). Use a timer-free
+      // notifier (startPeriodicChecks:false) or pumpAndSettle hangs on the
+      // 60s periodic timer (the documented ConnectivityNotifier trap).
+      connectivityProvider.overrideWith((ref) {
+        final notifier = ConnectivityNotifier(startPeriodicChecks: false);
+        if (connectivity == ConnectivityStatus.offline) notifier.setOffline();
+        if (connectivity == ConnectivityStatus.syncing) notifier.setSyncing();
+        return notifier;
+      }),
     ],
+    // The queued "will sync" feedback is shown via the global appMessengerKey
+    // because context.go tears down the local ScaffoldMessenger (#516).
     child: MaterialApp.router(
+      scaffoldMessengerKey: appMessengerKey,
       theme: AppTheme.lightTheme,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -556,7 +584,7 @@ void main() {
         );
 
         when(
-          () => eventService.createEvent(
+          () => eventService.stageEvent(
             groupId: 'group-1',
             name: 'Beach Day',
             type: EventType.trip,
@@ -570,7 +598,7 @@ void main() {
             endDate: null,
             modules: null,
           ),
-        ).thenAnswer((_) async => createdEvent);
+        ).thenReturn((event: createdEvent, ack: Future<void>.value()));
         when(
           () => activityService.logGroupEvent(
             groupId: any(named: 'groupId'),
@@ -597,7 +625,7 @@ void main() {
         await tester.pumpAndSettle();
 
         verify(
-          () => eventService.createEvent(
+          () => eventService.stageEvent(
             groupId: 'group-1',
             name: 'Beach Day',
             type: EventType.trip,
@@ -623,6 +651,114 @@ void main() {
           ),
         ).called(1);
         expect(find.text('EventHub:event-created'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'offline submit releases the spinner, shows will-sync, and routes to the hub (#516)',
+      (tester) async {
+        final eventService = _MockEventService();
+        final activityService = _MockGroupActivityService();
+        final createdEvent = Event(
+          id: 'event-created',
+          name: 'Beach Day',
+          type: EventType.trip,
+          groupId: 'group-1',
+          createdBy: 'uid-creator',
+          participantIds: const ['uid-creator', 'uid-member'],
+          participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+          modules: const EventModules(),
+          createdAt: DateTime(2026, 6, 1),
+        );
+
+        // Offline: the SDK applies the write to cache and returns the staged
+        // Event immediately, but the server ack never arrives until reconnect.
+        when(
+          () => eventService.stageEvent(
+            groupId: 'group-1',
+            name: 'Beach Day',
+            type: EventType.trip,
+            participantIds: const ['uid-creator', 'uid-member'],
+            participantNames: const {
+              'uid-creator': 'Alice',
+              'uid-member': 'Bob',
+            },
+            createdBy: 'uid-creator',
+            startDate: null,
+            endDate: null,
+            modules: null,
+          ),
+        ).thenReturn((event: createdEvent, ack: Completer<void>().future));
+        // Pre-fix the screen awaits createEvent, whose raw write never acks
+        // offline — the RED fails here (spinner hangs, no navigation).
+        when(
+          () => eventService.createEvent(
+            groupId: 'group-1',
+            name: 'Beach Day',
+            type: EventType.trip,
+            participantIds: const ['uid-creator', 'uid-member'],
+            participantNames: const {
+              'uid-creator': 'Alice',
+              'uid-member': 'Bob',
+            },
+            createdBy: 'uid-creator',
+            startDate: null,
+            endDate: null,
+            modules: null,
+          ),
+        ).thenAnswer((_) => Completer<Event>().future);
+        when(
+          () => activityService.logGroupEvent(
+            groupId: any(named: 'groupId'),
+            type: any(named: 'type'),
+            actorId: any(named: 'actorId'),
+            actorName: any(named: 'actorName'),
+            description: any(named: 'description'),
+            metadata: any(named: 'metadata'),
+          ),
+        ).thenReturn(null);
+
+        await tester.pumpWidget(
+          _wrapCreateRouted(
+            prefs: prefs,
+            eventService: eventService,
+            activityService: activityService,
+            connectivity: ConnectivityStatus.offline,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextFormField), 'Beach Day');
+        await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+        await tester.tap(find.byKey(EventKeys.createEventButton));
+        await tester.pumpAndSettle();
+
+        // Spinner released + routed to the event hub without waiting on the ack.
+        expect(find.text('EventHub:event-created'), findsOneWidget);
+
+        // Connectivity flipped to "syncing" (Saved — will sync).
+        final container = ProviderScope.containerOf(
+          tester.element(find.text('EventHub:event-created')),
+        );
+        expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
+
+        // The will-sync feedback survived the navigation (global messenger).
+        expect(
+          find.text('Event saved — will sync when online.'),
+          findsOneWidget,
+        );
+
+        // The queued event was logged optimistically.
+        verify(
+          () => activityService.logGroupEvent(
+            groupId: 'group-1',
+            type: 'event_created',
+            actorId: 'uid-creator',
+            actorName: 'Test User',
+            description: 'created Beach Day',
+            metadata: {'eventId': 'event-created', 'eventName': 'Beach Day'},
+          ),
+        ).called(1);
       },
     );
 
@@ -663,7 +799,7 @@ void main() {
       final eventService = _MockEventService();
       final activityService = _MockGroupActivityService();
       when(
-        () => eventService.createEvent(
+        () => eventService.stageEvent(
           groupId: 'group-1',
           name: 'Beach Day',
           type: EventType.trip,
@@ -674,7 +810,10 @@ void main() {
           endDate: null,
           modules: null,
         ),
-      ).thenThrow(StateError('network down'));
+      ).thenAnswer(
+        (_) =>
+            (event: _anyEvent, ack: Future<void>.error(StateError('network down'))),
+      );
 
       await tester.pumpWidget(
         _wrapCreateRouted(
