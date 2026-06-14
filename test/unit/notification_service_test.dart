@@ -360,12 +360,23 @@ void main() {
       expect(h.notifier.shown, isEmpty);
     });
 
-    test('tapping a backgrounded notification routes to the group (settlement)', () async {
+    test('tapping an event-settlement notification routes to the event ledger', () async {
       final opened = StreamController<RemoteMessage>.broadcast();
       addTearDown(opened.close);
       final h = await boot(opened: opened.stream);
 
       opened.add(const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g7', 'eventId': 'e1'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.nav, ['/group/g7/event/e1/ledger']);
+    });
+
+    test('tapping a group-settlement notification (no eventId) routes to the group', () async {
+      final opened = StreamController<RemoteMessage>.broadcast();
+      addTearDown(opened.close);
+      final h = await boot(opened: opened.stream);
+
+      opened.add(const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g7'}));
       await Future<void>.delayed(Duration.zero);
 
       expect(h.nav, ['/group/g7']);
