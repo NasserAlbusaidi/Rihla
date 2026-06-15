@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_parse.dart';
+
 /// Immutable model representing a member of a group.
 ///
 /// Roles are strings ('CREATOR' or 'MEMBER') — not enum — for
@@ -28,17 +30,30 @@ class GroupMember {
   });
 
   /// Create GroupMember from a Firestore members subcollection document.
+  ///
+  /// TOTAL-PARSE (#532), with ONE deliberate hard field: `userId`. The balance
+  /// oracle keys the #249 split-recipient fold on `allMemberIds`
+  /// (`expense_provider.dart`), and the server builds that set gated only on
+  /// `typeof data.userId === 'string'` (`groupNetBalance.ts`) — never touching
+  /// `displayName`/`role`/`joinedAt`/`isTombstone`. So those four are salvaged
+  /// non-throwingly (`is String`, `== true`, tolerant date) — a member with a
+  /// valid `userId` is NEVER dropped, keeping client/server `allMemberIds` in
+  /// lockstep — while `userId` stays a hard cast: a doc without a String userId
+  /// throws → the per-doc skip-net drops it, exactly as the server excludes it.
+  /// `isTombstone: data['isTombstone'] == true` mirrors the server's
+  /// `data.isTombstone !== true` for every value (so `liveMemberIds` agrees).
   factory GroupMember.fromDoc(DocumentSnapshot doc, String groupId) {
     final data = doc.data() as Map<String, dynamic>;
     return GroupMember(
       id: doc.id,
       groupId: groupId,
       userId: data['userId'] as String,
-      displayName: data['displayName'] as String,
-      role: data['role'] as String,
-      isShadow: data['isShadow'] as bool? ?? false,
-      isTombstone: data['isTombstone'] as bool? ?? false,
-      joinedAt: (data['joinedAt'] as Timestamp).toDate(),
+      displayName:
+          data['displayName'] is String ? data['displayName'] as String : '',
+      role: data['role'] is String ? data['role'] as String : 'MEMBER',
+      isShadow: data['isShadow'] == true,
+      isTombstone: data['isTombstone'] == true,
+      joinedAt: dateOrNow(data['joinedAt']),
     );
   }
 

@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_parse.dart';
+
 /// Immutable model representing a persistent group in Rihla.
 ///
 /// Groups are the top-level construct that persist across events.
@@ -40,23 +42,28 @@ class Group {
   /// Create Group from a Firestore document snapshot.
   ///
   /// memberIds is stored as an array field (not a map) per D-14.
+  ///
+  /// TOTAL-PARSE (#532): every field is salvaged from a present-but-wrong-type
+  /// value instead of hard-cast, so one malformed group doc can never throw a
+  /// `CastError` that blanks the whole `watchUserGroups` list. (Groups are not
+  /// a balance-oracle input, so this layer is display-robustness; the per-doc
+  /// skip-net in `group_provider.dart` is the final catch for a null `data()`.)
   factory Group.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Group(
       id: doc.id,
-      name: data['name'] as String,
-      inviteCode: data['inviteCode'] as String,
-      createdBy: data['createdBy'] as String,
-      memberIds: List<String>.from(data['memberIds'] as List),
-      currency: data['currency'] as String? ?? 'OMR',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: data['updatedAt'] != null
-          ? (data['updatedAt'] as Timestamp).toDate()
-          : null,
-      isDeleted: data['isDeleted'] as bool? ?? false,
-      deletedAt: data['deletedAt'] != null
-          ? (data['deletedAt'] as Timestamp).toDate()
-          : null,
+      name: data['name'] is String ? data['name'] as String : '',
+      inviteCode:
+          data['inviteCode'] is String ? data['inviteCode'] as String : '',
+      createdBy: data['createdBy'] is String ? data['createdBy'] as String : '',
+      memberIds: data['memberIds'] is List
+          ? (data['memberIds'] as List).whereType<String>().toList()
+          : const <String>[],
+      currency: data['currency'] is String ? data['currency'] as String : 'OMR',
+      createdAt: dateOrNow(data['createdAt']),
+      updatedAt: dateOrNull(data['updatedAt']),
+      isDeleted: data['isDeleted'] == true,
+      deletedAt: dateOrNull(data['deletedAt']),
     );
   }
 
