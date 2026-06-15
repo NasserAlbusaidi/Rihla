@@ -26,6 +26,40 @@ void main() {
     test('drops grouping separators when a dot decimal is present', () {
       expect(normalizeLocalizedDecimalInput('1,234.50'), '1234.50');
     });
+
+    // #523: a 0-decimal currency (JPY) has no fraction. The decimal separator
+    // must never leave a stuck trailing '.' (that swallows the next digit), and
+    // any fraction digits are truncated — NOT concatenated into the integer
+    // part (a bare no-op separator would turn a pasted '100.5' into '1005', a
+    // 10x money error).
+    group('0-decimal currency (JPY, decimalDigits: 0)', () {
+      test('a trailing separator is dropped, not left as "100."', () {
+        expect(normalizeLocalizedDecimalInput('100.', decimalDigits: 0), '100');
+      });
+
+      test('a fraction is truncated to the integer part (not concatenated)', () {
+        expect(normalizeLocalizedDecimalInput('100.5', decimalDigits: 0), '100');
+        expect(
+          normalizeLocalizedDecimalInput('100.567', decimalDigits: 0),
+          '100',
+        );
+      });
+
+      test('integer-only input is unchanged', () {
+        expect(normalizeLocalizedDecimalInput('100', decimalDigits: 0), '100');
+      });
+
+      test('Arabic and comma separators are also no-fraction', () {
+        expect(normalizeLocalizedDecimalInput('١٢٣٫٤', decimalDigits: 0), '123');
+        expect(normalizeLocalizedDecimalInput('100,5', decimalDigits: 0), '100');
+      });
+    });
+
+    test('non-zero decimalDigits and null are unaffected (no regression)', () {
+      expect(normalizeLocalizedDecimalInput('100.5', decimalDigits: 2), '100.5');
+      expect(normalizeLocalizedDecimalInput('100.5'), '100.5');
+      expect(normalizeLocalizedDecimalInput('100.'), '100.');
+    });
   });
 
   group('LocalizedDecimalTextInputFormatter', () {
