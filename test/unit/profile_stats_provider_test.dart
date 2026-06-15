@@ -98,23 +98,26 @@ void main() {
           makeEvent('e6', 'g2'),
         ];
 
-        final g1Balances = AsyncValue<GroupBalances>.data((
+        // #517: profileStatsProvider now reads the ONE-SHOT groupBalancesOnceProvider
+        // (no per-event live listeners), which wraps the same GroupBalances in a
+        // GroupBalancesOnce. The currency-bucket assertions are unchanged.
+        final GroupBalances g1Balances = (
           balances: <String, List<UserBalance>>{},
           totalSpent: {'OMR': Decimal.parse('10.000')},
           eventCount: 3,
-          perEventBreakdown: {},
+          perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
           memberNames: {'uid0': 'Alice'},
           memberRawNames: <String, String>{},
-        ));
+        );
 
-        final g2Balances = AsyncValue<GroupBalances>.data((
+        final GroupBalances g2Balances = (
           balances: <String, List<UserBalance>>{},
           totalSpent: {'OMR': Decimal.parse('10.000')},
           eventCount: 3,
-          perEventBreakdown: {},
+          perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
           memberNames: {'uid0': 'Alice'},
           memberRawNames: <String, String>{},
-        ));
+        );
 
         final container = ProviderContainer(
           overrides: [
@@ -127,18 +130,26 @@ void main() {
             groupEventsProvider(
               'g2',
             ).overrideWith((ref) => Stream.value(g2Events)),
-            groupBalancesProvider('g1').overrideWith((ref) => g1Balances),
-            groupBalancesProvider('g2').overrideWith((ref) => g2Balances),
+            groupBalancesOnceProvider('g1').overrideWith(
+              (ref) async => (balances: g1Balances, failedEventIds: <String>{}),
+            ),
+            groupBalancesOnceProvider('g2').overrideWith(
+              (ref) async => (balances: g2Balances, failedEventIds: <String>{}),
+            ),
           ],
         );
         addTearDown(container.dispose);
 
-        // Subscribe to start computation, then await the upstream StreamProviders
-        container.read(profileStatsProvider);
+        // Pin the chain (the autoDispose once-path disposes between microtasks
+        // without a listener), then drain so the async overrides resolve.
+        final sub = container.listen(profileStatsProvider, (_, _) {});
+        addTearDown(sub.close);
         await container.read(userGroupsProvider.future);
         await container.read(groupEventsProvider('g1').future);
         await container.read(groupEventsProvider('g2').future);
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        for (var i = 0; i < 12; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
 
         final stats = container.read(profileStatsProvider);
         expect(stats.hasValue, isTrue);
@@ -178,15 +189,14 @@ void main() {
 
         // #382 PR-1: the spend currency now lives IN the record (the
         // totalSpent bucket key) — the provider merges by it, not group.currency.
-        AsyncValue<GroupBalances> balances(Decimal spent, String currency) =>
-            AsyncValue<GroupBalances>.data((
+        GroupBalances balances(Decimal spent, String currency) => (
               balances: <String, List<UserBalance>>{},
               totalSpent: {currency: spent},
               eventCount: 0,
-              perEventBreakdown: {},
+              perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
               memberNames: {'uid0': 'Alice'},
               memberRawNames: <String, String>{},
-            ));
+            );
 
         final container = ProviderContainer(
           overrides: [
@@ -195,19 +205,28 @@ void main() {
             ),
             groupEventsProvider('g1').overrideWith((ref) => Stream.value([])),
             groupEventsProvider('g2').overrideWith((ref) => Stream.value([])),
-            groupBalancesProvider(
-              'g1',
-            ).overrideWith((ref) => balances(Decimal.parse('10.000'), 'OMR')),
-            groupBalancesProvider(
-              'g2',
-            ).overrideWith((ref) => balances(Decimal.parse('10.00'), 'USD')),
+            groupBalancesOnceProvider('g1').overrideWith(
+              (ref) async => (
+                balances: balances(Decimal.parse('10.000'), 'OMR'),
+                failedEventIds: <String>{},
+              ),
+            ),
+            groupBalancesOnceProvider('g2').overrideWith(
+              (ref) async => (
+                balances: balances(Decimal.parse('10.00'), 'USD'),
+                failedEventIds: <String>{},
+              ),
+            ),
           ],
         );
         addTearDown(container.dispose);
 
-        container.read(profileStatsProvider);
+        final sub = container.listen(profileStatsProvider, (_, _) {});
+        addTearDown(sub.close);
         await container.read(userGroupsProvider.future);
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        for (var i = 0; i < 12; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
 
         final value = container.read(profileStatsProvider).requireValue;
 

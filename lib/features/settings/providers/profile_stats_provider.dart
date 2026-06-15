@@ -14,7 +14,7 @@ typedef CurrencySpend = ({String currency, Decimal amount});
 /// Aggregated profile statistics derived from existing providers.
 ///
 /// All values are derived from [userGroupsProvider], [groupEventsProvider],
-/// and [groupBalancesProvider] — no new Firestore queries.
+/// and [groupBalancesOnceProvider] — no new Firestore queries.
 ///
 /// [spentByCurrency] is bucketed per currency (#378) — one entry per currency
 /// the user has nonzero lifetime spend in, sorted GCC-first (same rank rule as
@@ -82,23 +82,29 @@ final profileStatsProvider = Provider<AsyncValue<ProfileStats>>((ref) {
   // summed across currencies (#378).
   var eventCount = 0;
   final spentMap = <String, Decimal>{};
-  var anyLoading = false;
+  var anyEventsLoading = false;
+  var anyBalanceLoading = false;
 
   for (final group in groups) {
     // Watch events for this group to get an accurate event count
     final eventsAsync = ref.watch(groupEventsProvider(group.id));
     if (eventsAsync.isLoading && !eventsAsync.hasValue) {
-      anyLoading = true;
+      anyEventsLoading = true;
     } else {
       eventCount += (eventsAsync.valueOrNull ?? []).length;
     }
 
-    // Watch group balances for total spending
-    final balancesAsync = ref.watch(groupBalancesProvider(group.id));
+    // Watch group balances for total spending via the ONE-SHOT path (#517):
+    // the live [groupBalancesProvider] holds a per-event `.snapshots()` listener
+    // for every event of every group, and the always-mounted Profile tab would
+    // leak them O(G×E) for the whole session (the #104 leak, reopened). The
+    // one-shot variant reads per-event money with `.get()` — zero live leaf
+    // listeners — and computes the same `totalSpent` via [computeGroupBalances].
+    final balancesAsync = ref.watch(groupBalancesOnceProvider(group.id));
     if (balancesAsync.isLoading && !balancesAsync.hasValue) {
-      anyLoading = true;
+      anyBalanceLoading = true;
     } else {
-      final balances = balancesAsync.valueOrNull;
+      final balances = balancesAsync.valueOrNull?.balances;
       if (balances != null) {
         // #382 PR-1: merge by the BUCKET currency (the honest key — equal to
         // group.currency for all prod data under the uniformity rules). Never
@@ -112,8 +118,16 @@ final profileStatsProvider = Provider<AsyncValue<ProfileStats>>((ref) {
     }
   }
 
-  // If anything is still loading and we have no real data yet, stay loading
-  if (anyLoading && eventCount == 0 && spentMap.isEmpty) {
+  // Stay on the loading skeleton rather than emit a partial frame that flashes
+  // a false value (#517 Gate P2): the one-shot balance path emits loading-FIRST
+  // (unlike the old synchronous live provider, which resolved spend in the same
+  // pass as the counts), so a balance still mid-flight with NO spend known yet
+  // must not render the hard "0.000" Spent tile. Once ANY real spend lands a
+  // growing partial is fine. Symmetric guard keeps the skeleton while the event
+  // count is still unknown. A resolved genuinely-zero group (empty spend, no
+  // loading) falls through to data and renders its honest 0.000.
+  if ((anyBalanceLoading && spentMap.isEmpty) ||
+      (anyEventsLoading && eventCount == 0)) {
     return const AsyncValue.loading();
   }
 
