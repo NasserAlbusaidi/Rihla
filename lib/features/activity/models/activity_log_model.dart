@@ -9,7 +9,6 @@ class ActivityLog {
   final Map<String, dynamic> metadata;
   final DateTime createdAt;
   final String? actorName;
-  final String? actorAvatar;
 
   const ActivityLog({
     required this.id,
@@ -22,7 +21,6 @@ class ActivityLog {
     this.metadata = const {},
     required this.createdAt,
     this.actorName,
-    this.actorAvatar,
   });
 
   factory ActivityLog.fromJson(Map<String, dynamic> json) {
@@ -51,7 +49,6 @@ class ActivityLog {
       metadata: json['metadata'] as Map<String, dynamic>? ?? {},
       createdAt: DateTime.parse(json['created_at'] as String),
       actorName: actorDisplayName,
-      actorAvatar: json['actor']?['avatar_url'] as String?,
     );
   }
 
@@ -75,7 +72,6 @@ class ActivityLog {
       metadata: (data['metadata'] as Map<String, dynamic>?) ?? const {},
       createdAt: DateTime.parse(data['createdAt'] as String),
       actorName: data['actorName'] as String?,
-      actorAvatar: data['actorAvatar'] as String?,
     );
   }
 

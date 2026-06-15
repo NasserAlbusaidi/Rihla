@@ -23,7 +23,6 @@ void main() {
       expect(log.metadata, isEmpty);
       expect(log.createdAt.toUtc(), DateTime.utc(2026, 3, 1, 12));
       expect(log.actorName, isNull);
-      expect(log.actorAvatar, isNull);
     });
 
     test('parses all optional fields when present', () {
@@ -39,7 +38,6 @@ void main() {
         'created_at': '2026-03-01T12:00:00Z',
         'actor': {
           'display_name': 'Alice',
-          'avatar_url': 'https://x/y.png',
         },
       });
 
@@ -47,7 +45,6 @@ void main() {
       expect(log.targetParticipantId, 'uid-2');
       expect(log.metadata, {'amount': '12.50'});
       expect(log.actorName, 'Alice');
-      expect(log.actorAvatar, 'https://x/y.png');
     });
 
     test('replaces "Someone paid" with actor display name', () {
@@ -155,7 +152,6 @@ void main() {
         'metadata': {'k': 'v'},
         'createdAt': '2026-03-01T00:00:00Z',
         'actorName': 'Alice',
-        'actorAvatar': 'https://x/y.png',
       });
 
       expect(log.id, 'a1');
@@ -166,7 +162,6 @@ void main() {
       expect(log.logText, 'updated');
       expect(log.metadata, {'k': 'v'});
       expect(log.actorName, 'Alice');
-      expect(log.actorAvatar, 'https://x/y.png');
     });
 
     test('fromFirestore defaults metadata to empty map when missing', () {
