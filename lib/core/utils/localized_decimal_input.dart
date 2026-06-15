@@ -28,6 +28,16 @@ String normalizeLocalizedDecimalInput(String value, {int? decimalDigits}) {
         char == '.' || char == '\u066B' || (!hasDotDecimal && char == ',');
     if (!isDecimalSeparator || hasDecimal) continue;
 
+    // A 0-decimal currency (e.g. JPY) has no fraction: mark the decimal seen so
+    // any following digits are dropped by the fractionDigits guard above, but
+    // never emit the '.' — otherwise the field sticks at "100." and swallows the
+    // next keystroke. Truncating (not no-op'ing) the separator also prevents a
+    // pasted "100.5" from concatenating into "1005", a 10x money error (#523).
+    if (decimalDigits != null && decimalDigits <= 0) {
+      hasDecimal = true;
+      continue;
+    }
+
     if (buffer.isEmpty) buffer.write('0');
     buffer.write('.');
     hasDecimal = true;
