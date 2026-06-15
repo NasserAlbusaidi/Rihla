@@ -11,6 +11,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/firestore_repository.dart';
+import '../../../core/utils/safe_deserialize.dart';
 import '../../auth/services/durable_credential_exception.dart';
 import '../models/group_balance_aggregate_model.dart';
 import '../models/group_member_model.dart';
@@ -428,10 +429,13 @@ class GroupService extends FirestoreRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map(Group.fromDoc)
-              .where((group) => !group.isDeleted)
-              .toList(),
+          // #532: decode per-doc so one malformed group can't blank the whole
+          // list; the isDeleted filter stays AFTER the (total-parse) decode.
+          (snapshot) => decodeDocsSkippingMalformed(
+            snapshot.docs,
+            Group.fromDoc,
+            context: 'watchUserGroups',
+          ).where((group) => !group.isDeleted).toList(),
         );
   }
 
@@ -444,9 +448,15 @@ class GroupService extends FirestoreRepository {
         .orderBy('joinedAt')
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => GroupMember.fromDoc(doc, groupId))
-              .toList(),
+          // #532: decode per-doc so one malformed member can't blank the
+          // roster. The factory is total-parse except `userId` (the oracle
+          // gate), so this only drops a no-userId member — which the server
+          // excludes too, keeping allMemberIds in lockstep.
+          (snapshot) => decodeDocsSkippingMalformed(
+            snapshot.docs,
+            (doc) => GroupMember.fromDoc(doc, groupId),
+            context: 'watchMembers',
+          ),
         );
   }
 
