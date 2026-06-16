@@ -28,3 +28,4 @@ export {
 } from './triggers/balanceAggregator';
 export { deletionReaper } from './scheduled/deletionReaper';
 export { balanceReconciler } from './scheduled/balanceReconciler';
+export { deleteGroupLockReaper } from './scheduled/deleteGroupLockReaper';
