@@ -179,14 +179,13 @@ async function clearDeleteGroupLockForFailure(
     lockedAtMs: number | null;
     lockedBy: string | null;
   },
-  error: unknown,
 ): Promise<void> {
-  const canClearObservedLock = isHttpsErrorCode(error, 'failed-precondition');
-  if (
-    (!lock.createdLock && !canClearObservedLock)
-    || lock.lockedAtMs == null
-    || lock.lockedBy == null
-  ) {
+  // #529: only the invocation that CREATED the lock may clear it on failure. A
+  // concurrent observer (createdLock:false) never clears — clearing a peer's
+  // live lock re-opens client writes against a group mid-finalize (quiesce
+  // violation). Stale locks from a dead/abandoned invocation are reclaimed by
+  // deleteGroupLockReaper (#519), not by an in-band observer.
+  if (!lock.createdLock || lock.lockedAtMs == null || lock.lockedBy == null) {
     return;
   }
   const lockedAtMs = lock.lockedAtMs;
@@ -208,15 +207,6 @@ async function clearDeleteGroupLockForFailure(
       deleteLockedBy: FieldValue.delete(),
     });
   });
-}
-
-function isHttpsErrorCode(error: unknown, code: string): boolean {
-  return (
-    error != null
-    && typeof error === 'object'
-    && 'code' in error
-    && (error as { code?: unknown }).code === code
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -335,7 +325,7 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
       };
     } catch (error) {
       if (!finalizeStarted) {
-        await clearDeleteGroupLockForFailure(groupRef, lock, error);
+        await clearDeleteGroupLockForFailure(groupRef, lock);
       }
       throw error;
     }
