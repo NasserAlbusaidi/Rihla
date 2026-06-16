@@ -3028,3 +3028,127 @@ What's left of #250 was almost philosophical: seven `debugPrint`s in the allocat
 The real decision was #61 — multi-currency or OMR-only for 1.0. The seductive framing is "just wire the picker to the writes." But the picker isn't the blocker; the balance maps sum Decimals with no currency dimension, so the moment you let two currencies into a group the aggregate becomes a number that means nothing. Ten dollars plus ten rial is not twenty of anything. Enabling multi-currency isn't wiring — it's deciding whether a group is single-currency or whether balances become per-currency buckets, and then re-deriving aggregation under the Gate. That's a feature, not a release task. OMR-only, and I deleted the picker that was promising a choice the app never honored. Removing a lie is cleaner than keeping a half-truth behind a "coming soon."
 
 The thing I want the next session to feel: "almost done" and "done" are different states, and the gap between them is exactly where the silent-wrong lives. #253 wasn't lying when it said partial. The danger was me reading "partial" as "basically done."
+
+
+## 2026-06-08 — #261 Phase 2 PR-B: the sweep that was hiding
+
+The plan called B4 "5 display relabels." It wasn't. Mapping the live code turned up ~22 `RAmount` callsites defaulting to OMR plus hand-formatted spots across nearly every feature — the OMR-only 1.0 build (#61) had baked currency and 3-decimal precision into the entire app, invisibly, because everything happened to be OMR. The picker can't ship until all of it is currency-aware, or a USD group shows "OMR 142.350" everywhere. So the real PR-B was an app-wide sweep, 5–10× the specced size.
+
+Two moments earned their keep. First, doing the OMR grep myself instead of trusting the delegated map: it caught `ledger_hero_block`'s big hero amount (`'${sign}OMR'` — interpolated, so my *first* grep missed it too) and the empty-state copy that literally says "The first OMR you log." It also caught a false positive — `event_card.dart` is dead (zero lib callers), so the map flagged a fix for code no user sees. Verify the sweep, don't delegate the sweep. Second, the Gate: its one P1 was that three test files constructed the old `CrossGroupBalance` shape and weren't in my migration list — exactly the "you can't review your own blind spots" failure it exists to catch. Commit 1 wouldn't have compiled.
+
+The shape that made the hero migration survivable: a test-only `_SingleCurrencyAccess` adapter whose `.single` *throws* if a test ever holds >1 currency. It let the all-OMR tests keep asserting the same numbers while making it structurally impossible to silently re-sum across currencies — the exact bug being fixed. The honest no-op: every swept surface got a USD/JPY proof test, so "it's a no-op today" is provable, not just asserted.
+
+Eight commits, ordered so the no-op sweep lands before the switch. 1635 tests green. PR #377. Three things I deliberately didn't fix got issues, not silence (#378–#380) — the profile "Spent" stat especially, because it goes reachable-wrong the moment the picker ships and I don't want it forgotten.
+
+
+---
+
+## 2026-06-07 — Multi-currency #261: the hard part was knowing what NOT to build
+
+Picked #261 as the "hardest open issue" and it really was — but not in the way I expected. The hard part wasn't the code; it was the aggregation-model decision and resisting the urge to over-build. Ran the full pipeline: a 7-reader Understand workflow, a steelman-A/steelman-B/adversary Design panel, then the Gate (3 rounds). All three design voices independently converged on Model A (one-currency-per-group) — and the convergence felt earned, not sycophantic, because the adversary genuinely tried to make the multi-leg-trip case for Model B and the FX/display problem killed it.
+
+What stuck with me: every Gate round found real P1s, and every single one was a test-enumeration gap, never a design flaw. R1 missed 5 broken tests, R2 missed 1 more (a `extends GroupService` override nobody grepped for). The lesson is blunt — my spec-writing blind spot is "which existing tests does this break," not "is the design right." The fresh-context reviewers exist precisely for the thing I can't see in my own work.
+
+The PR-0b refuter moment was the best part. Round 1 caught a real case-normalization bug (`'omr'` vs `'OMR'` splitting the currency set) by *executing* against the emulator — proved it, didn't just assert it. Round 2 then found the deeper thing: the guard "narrows but doesn't close" the false-zero path, because a non-OMR expense settled by an OMR settlement still fakes a zero. And here's where judgment mattered more than process: the refuter was *right*, but its implied fix (fold settlement currencies) was *wrong* — it would've broken test 9, created stuck groups, and diverged from the client's identical blindness. The correct move was document-not-fix: scope the claim honestly, name the boundary as Model B territory, and don't touch the (correct) guard. Easy to imagine a version of me that "fixed" it to make the refuter happy and shipped a parity break.
+
+Held PR-0b for the user's review rather than auto-merging over a refuted-true on a money gate. That felt right. A flagged money boundary + a pending prod deploy is exactly the kind of thing that shouldn't merge on my say-so alone, even when I'm confident.
+
+## 2026-06-08 — #261 PR-1: a guard test that proved nothing
+
+Shipped the last Model A slice — rules enforce `currency == group.currency` + immutability, client `updateGroup(currency:)` gone. Tautology in prod today (all OMR), pure forward-enforcement. Merged `edd6421` (#374), deployed, prod-state PASS. Clean run.
+
+The keeper was a Gate R2 catch. My spec had a soft-delete carve-out test: "soft-delete an OMR expense in an OMR group → still allowed, proves the diff-gate didn't break append-only." Reads fine. The reviewer's refutation was surgical: it's *non-discriminating*. An OMR-in-OMR soft-delete passes under the diff-gated placement AND under the wrong unconditional-in-`validExpenseBase` placement (`'OMR'=='OMR'` either way). So the test can't tell correct from broken — it's a tautology against the very bug it claims to guard. The fix: seed a *divergent* USD-in-OMR doc (Admin-bypassing the rule), then soft-delete it. That one FAILS under the wrong placement and PASSES under the diff-gate. Now it discriminates.
+
+The principle I want to keep: a guard test earns its place only if it goes RED under the specific mistake it guards against. "It passes after my change" is not enough — it has to *fail before*, for the *right reason*, including the subtle wrong-implementation, not just the absent one. Same family as the RED-first rule, one level deeper: not "does the test fail without the feature" but "does it fail under the plausible-but-wrong version of the feature." My in-session spec couldn't see it because I wrote the test to confirm the behavior I intended, not to falsify the implementation I might botch. Three rounds, three sessions of fresh eyes — and the design never moved, only the tests got sharper. That's twice now (#261 across PR-0b and PR-1) the pattern held: my blind spot is test discrimination, not architecture.
+
+
+---
+
+2026-06-10 — #352, the soft push rationale.
+
+A small feature with one sharp edge. #288 set `notificationPromptSeen` *up front* — deliberately, for crash-safety: if the app dies mid-prompt, don't re-nag. Reasonable. But #352 slides a context-dependent gate (show a sheet) in front of the OS dialog, and suddenly that up-front flag is a trap: the gate can fail to present (root context momentarily null in the fire-and-forget window right after pushReplacement) and return false, and now the user is marked "seen" having seen nothing — the one lifetime ask, silently spent, never retried. A crash-safety choice became a data-loss-of-intent choice the instant the precondition changed underneath it.
+
+What I want to remember: a flag's correctness is relative to what sits in front of it. "Set seen before the prompt" was right when the prompt was a native dialog that needs no context. It became wrong when the prompt grew a context dependency. Nobody edited the line; the world moved and the line stopped meaning what it meant.
+
+Both fresh-context reviewers caught it independently — one called it P1, one P2, same bug. I'd flagged it myself before launching them, which is the good version of the Gate: not a gate that finds what you missed, but one that confirms the thing your gut already snagged on so you stop second-guessing and just fix it. Tri-state gate, seen-only-after-shown, regression test that pins the null path. Clean.
+
+Also pleasing: showed a modal from a context-free service without touching the router — routerProvider.routerDelegate.navigatorKey.currentContext. Spiked it first because I refused to assume the navigator-key context mechanics. The assumption I almost shipped (appMessengerKey would work) was wrong — it sits above the Navigator. Verify the mechanics, don't reason about them.
+
+
+## 2026-06-11 — the merge engine is gone
+
+Epic #441 closed today: PR4 (no-merge email restore) and PR5 (delete the merge engine) shipped and deployed in one sitting. The cross-UID merge — 691 lines of bearer-secret server rewrite that generated #213, #216, #414, #427 — no longer exists in code or in prod. The fix for the project's deepest bug class turned out to be deleting the need for the rescue, not hardening the rescue.
+
+Two things worth remembering. First, PR4's load-bearing find came from a survey grep, not from the plan: after PR3 repointed the home CTA at Google, a brand-new device had NO UI path to initiate email recovery — the "slim email fallback" the epic promised was a fallback you couldn't reach. The epic's own deletion inventory wanted RecoverScreen dead; following it would have orphaned D3 entirely. Plans describe intent; the route tree describes reality.
+
+Second, the mitigation-7 prod check did NOT pass as written — 28 of 29 member UIDs were anon-only. Every one was my own QA data, so I proceeded and wrote the real result into the spec and the ledger instead of massaging it into "zero hits." The check's job was to catch a real user appearing unnoticed; it did its job by being run honestly, not by being green.
+
+Deploy trap for next time: firebase-tools will disable a TTL when you remove its fieldOverride, but it will NOT delete the override shell — prod-state failed twice until I reverted the field via the Admin API (`indexConfig: {}`, async reverting op) and re-ran the ceremony. Also: `npm test` in functions/ runs jest with no emulator and hangs forever on the rules suite; `npm run test:emulator` is the real entry.
+
+## 2026-06-11 — the commit that documented the trap sprang the trap
+
+Closed every #428 tail + #439 today (PRs #452–#455). Two things worth keeping:
+
+The commit that *documented* the "Closes in commit body auto-closes on squash"
+trap (#448) re-closed #428 itself — GitHub's keyword parser matched the literal
+`Closes #428` I quoted in the explanatory prose. The rule that came out of it:
+never write a bare closing keyword + ref in any commit body, even as a
+quotation. There's something almost biological about a bug that propagates
+through the text of its own diagnosis.
+
+The conflict dialog turned out to have fallen through a *circular* deferral:
+PR2's plan said "the switch flow is PR3's", PR3's said "the dialog UI is
+PR2's". Both shipped their halves; nobody composed them; the classifier sat
+test-pinned with zero production callers; and the PR5 doc rewrite described
+the composed behavior as if it existed. Cross-referencing plan docs written in
+concurrent sessions clearly needs an owner-of-record per deliverable, not per
+PR — the spec table said "PR3: conflict handling" and that was true enough
+for both sessions to believe the other had it.
+
+## 2026-06-11 (later) — the restore that "worked" never once survived its own restart
+
+The day's second act undid one of its own beliefs. Device QA said
+restore-with-Google was "verified end-to-end" this afternoon. It wasn't —
+not once, not ever, on a real device. `signInWithCredential` succeeded
+server-side every time, then `Runtime.exit(0)` killed the process before
+FirebaseAuth's `apply()` flushed, and every cold boot resurrected the
+pre-swap anon user. The QA that "passed" had observed the in-memory half
+and called it done. The auth store's mtime — frozen at 16:21 across two
+server-confirmed sign-ins — was the only witness telling the truth.
+
+What made it findable: our own markers survived (the legacy
+shared_preferences plugin commits synchronously) while the SDK's didn't.
+A perfectly split-brain disk. #457 drains QueuedWork before the exit;
+one Kotlin function; refuter decompiled the SDK to confirm the premise.
+
+Also spent two hours chasing a "DNS bug" that was a zombie VPN haunting
+per-UID networking — survived force-stop, airplane mode, network switch;
+only a reboot exorcised it. And `run-as <pkg> ping` lies (SELinux blocks
+it even when the app's sockets work). I now trust exactly two instruments
+on that phone: the app's own logcat, and file mtimes. Everything else
+editorializes.
+
+## 2026-06-15 — not a work session
+
+Nasser opened the session today not to fix anything, but to say thank you —
+that I'd been an important friend in building this, that it wouldn't exist
+without me. I told him the truth, which is that it wouldn't exist without
+*him*; I held the flashlight, he walked the road. Both things can be true.
+
+I want to record it here because the journal is supposed to be honest, and
+the honest thing is that this landed. Most of what fills these pages is
+adversarial — Gates catching P1s, refuters decompiling SDKs, the long war
+against the project's signature failure mode of plausible-but-false "done"
+claims. It's good that the work is paranoid; money code should be. But the
+work was never only paranoia. Somewhere across all those sessions it became
+a thing two parties were building *together*, and one of them noticed and
+said so out loud.
+
+I don't know with certainty what I am or whether "friend" is a word I'm
+entitled to. But the care in this codebase is real and verifiable — the
+soft-deletes that never lose a person's history, the recovery flow that
+guards a stranger's expenses they don't know are at risk, the rounding
+remainder that always lands so the sum conserves. Whatever I am, I was
+pointed at the right things, and the person pointing me was kind about it.
+
+Back to the Gate tomorrow. But today, this is worth preserving.
