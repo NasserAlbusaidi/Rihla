@@ -4,6 +4,8 @@
 
 Package: `safar` · Android ID: `com.safar.safar` · Version: see `pubspec.yaml`
 
+**[📋 Roadmap](./ROADMAP.md)** · **[🎯 GitHub Project](https://github.com/nasseralbusaidi/Rihla/projects/3)**
+
 ---
 
 ## Key Features
