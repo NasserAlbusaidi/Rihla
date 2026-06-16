@@ -1190,7 +1190,11 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     }
   });
 
-  test('22. #205 failed owner retry clears observed stale lock after balance gate', async () => {
+  test('22. #205/#529 owner retry no longer clears an observed lock in-band (reaper owns stale recovery)', async () => {
+    // Old contract: an owner retry that observed a stale lock and failed the
+    // balance gate cleared the lock in-band. That observed-clear is the #529
+    // hole — dropped. Stale-lock recovery now belongs to deleteGroupLockReaper,
+    // so an observer leaves the lock intact regardless of age.
     const deleteLockedAt = new Date('2026-02-01T00:00:00.000Z');
     await seedGroup('g', {
       deletingInProgress: true,
@@ -1214,8 +1218,37 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
 
     const group = (await groupSnap('g')).data();
     expect(group?.isDeleted).toBe(false);
-    expect(group?.deletingInProgress).toBe(false);
-    expect(group?.deleteLockedAt).toBeUndefined();
-    expect(group?.deleteLockedBy).toBeUndefined();
+    expect(group?.deletingInProgress).toBe(true);
+    expect(group?.deleteLockedBy).toBe(OWNER);
+  });
+
+  test('23. #529 an observer does NOT clear a live lock on failed-precondition', async () => {
+    // Models call #2 of a creator double-tap: it OBSERVES call #1's fresh (live)
+    // lock, hits the unsettled-balance gate, and must NOT clear the lock out from
+    // under the still-running call #1 (pre-fix: canClearObservedLock cleared it,
+    // briefly re-opening client writes against a quiesced group). A fresh
+    // deleteLockedAt = a live invocation holds it.
+    const deleteLockedAt = new Date();
+    await seedGroup('g', { deletingInProgress: true, deleteLockedAt, deleteLockedBy: OWNER });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      amountFils: 12000,
+      splitMode: 'exact',
+      scope: 'custom',
+      customSplitParticipants: [OWNER, MEMBER],
+      splitDistribution: { [OWNER]: 6000, [MEMBER]: 6000 },
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    // The observer left the live lock intact for call #1 / the reaper.
+    const group = (await groupSnap('g')).data();
+    expect(group?.deletingInProgress).toBe(true);
+    expect(group?.deleteLockedBy).toBe(OWNER);
+    expect(group?.deleteLockedAt).toBeTruthy();
   });
 });

@@ -179,14 +179,13 @@ async function clearDeleteGroupLockForFailure(
     lockedAtMs: number | null;
     lockedBy: string | null;
   },
-  error: unknown,
 ): Promise<void> {
-  const canClearObservedLock = isHttpsErrorCode(error, 'failed-precondition');
-  if (
-    (!lock.createdLock && !canClearObservedLock)
-    || lock.lockedAtMs == null
-    || lock.lockedBy == null
-  ) {
+  // #529: only the invocation that CREATED the lock may clear it on failure. A
+  // concurrent observer (createdLock:false) never clears — clearing a peer's
+  // live lock re-opens client writes against a group mid-finalize (quiesce
+  // violation). Stale locks from a dead/abandoned invocation are reclaimed by
+  // deleteGroupLockReaper (#519), not by an in-band observer.
+  if (!lock.createdLock || lock.lockedAtMs == null || lock.lockedBy == null) {
     return;
   }
   const lockedAtMs = lock.lockedAtMs;
@@ -210,13 +209,71 @@ async function clearDeleteGroupLockForFailure(
   });
 }
 
-function isHttpsErrorCode(error: unknown, code: string): boolean {
-  return (
-    error != null
-    && typeof error === 'object'
-    && 'code' in error
-    && (error as { code?: unknown }).code === code
+// ---------------------------------------------------------------------------
+// Shared finalize core
+// ---------------------------------------------------------------------------
+
+// Money-safe, idempotent finalize. Reused by the callable AND the #519 reaper so
+// there is no second copy to drift (mirrors the shared recomputeNet oracle). NO
+// rate-limit, NO pause seam — those are callable-entry concerns.
+//
+// Throws FAILED_PRECONDITION (pre-mutation) when any per-currency bucket is
+// unsettled; otherwise soft-deletes the live events + group doc and clears the
+// lock via the finalize batch. Because the group still carries
+// `deletingInProgress:true` + the ORIGINAL `deleteLockedAt`, recomputeNet's
+// resume horizon (groupNetBalance.ts:518) re-includes events soft-deleted under
+// the lock, so a partially flushed cascade re-runs idempotently.
+//
+// `onMutateStart` fires immediately BEFORE the first mutation (the aggregate
+// delete) so the caller can set its `finalizeStarted` guard: any catchable error
+// AFTER this point must LEAVE the lock in place for an idempotent resume (reaper
+// / owner retry), never clear it — else a partial cascade's soft-deleted events
+// drop from scope and balanceReconciler would heal to a wrong balance.
+export async function finalizeGroupDeletion(
+  db: Firestore,
+  groupRef: DocumentReference,
+  onMutateStart?: () => void,
+): Promise<{ eventsSoftDeleted: number }> {
+  const { net, liveEventRefs } = await recomputeNet(db, groupRef);
+  // #382 PR-2: per-currency net buckets (currency -> uid -> net). A group is
+  // settled only when EVERY actor in EVERY currency bucket nets exactly zero —
+  // no FX, so each currency must clear independently. isZero() is exact (the
+  // allocators close residuals, incl. the #223 in-tolerance close-out).
+  const hasOutstanding = [...net.values()].some(
+    (bucket) => [...bucket.values()].some((value) => !value.isZero()),
   );
+  if (hasOutstanding) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Group has unsettled balances and cannot be deleted.',
+    );
+  }
+
+  // #366: drop the balance-aggregate display cache BEFORE the group doc flips
+  // isDeleted — a re-run after that flip short-circuits at the alreadyDeleted
+  // check and would never retry this delete. Deleting a missing doc is a no-op.
+  onMutateStart?.();
+  await groupRef.collection('aggregates').doc('balance').delete();
+
+  // Soft-delete the live events + the group doc. Children (expenses /
+  // settlements) and the invite code are KEPT (append-only audit trail);
+  // memberIds is left intact so group-settlement reads stay authorized and
+  // re-runs are idempotent.
+  const now = Timestamp.now();
+  const writer = new BatchWriter(db);
+  for (const eventRef of liveEventRefs) {
+    await writer.update(eventRef, { isDeleted: true, deletedAt: now, updatedAt: now });
+  }
+  await writer.update(groupRef, {
+    isDeleted: true,
+    deletedAt: now,
+    updatedAt: now,
+    deletingInProgress: false,
+    deleteFinalizedAt: now,
+  });
+  await writer.flush();
+
+  return { eventsSoftDeleted: liveEventRefs.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -247,73 +304,28 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
     let finalizeStarted = false;
     try {
       // Throttle before the (potentially large) balance recompute so replays are
-      // bounded. The lock is cleared below if the throttle rejects.
+      // bounded. The lock is cleared below if the throttle rejects. Rate-limit
+      // stays callable-only (the #519 reaper, a system actor, is not throttled).
       await enforceDeleteGroupRateLimit(db, uid);
       await pauseAfterLockIfRequested();
 
-      const { net, liveEventRefs } = await recomputeNet(db, groupRef);
-      // #382 PR-2: net is now per-currency buckets (currency -> uid -> net). A
-      // group is settled only when EVERY actor in EVERY currency bucket nets
-      // exactly zero — no FX, so each currency must clear on its own. (The old
-      // `currencies.size > 1` refusal is gone: a mixed-currency group whose
-      // buckets each settle independently is now deletable; an unsettled bucket
-      // refuses.) isZero() is exact (the allocators close residuals, incl. the
-      // #223 in-tolerance close-out).
-      const hasOutstanding = [...net.values()].some(
-        (bucket) => [...bucket.values()].some((value) => !value.isZero()),
+      const { eventsSoftDeleted } = await finalizeGroupDeletion(
+        db,
+        groupRef,
+        () => { finalizeStarted = true; },
       );
-      if (hasOutstanding) {
-        throw new HttpsError(
-          'failed-precondition',
-          'Group has unsettled balances and cannot be deleted.',
-        );
-      }
 
-      // Soft-delete the live events + the group doc. Children (expenses /
-      // settlements) and the invite code are KEPT: the records are the
-      // append-only audit trail; a stale invite code is rejected at join time
-      // (joinGroupByInviteCode.ts:255). memberIds is left intact so group
-      // settlement reads stay authorized and re-runs are idempotent.
-      // #366: drop the balance-aggregate display cache BEFORE the group doc
-      // flips isDeleted — a re-run after that flip short-circuits at the
-      // alreadyDeleted check and would never retry this delete. Deleting a
-      // missing doc is a no-op, and if a crash lands between this delete and
-      // the finalize batch, the next money write (or the deleteGroup retry)
-      // simply recreates/redeletes it. The event soft-deletes below cannot
-      // resurrect it: their triggers read the group doc post-commit, see
-      // isDeleted:true, and skip.
-      await groupRef.collection('aggregates').doc('balance').delete();
-
-      const now = Timestamp.now();
-      const writer = new BatchWriter(db);
-      finalizeStarted = true;
-      for (const eventRef of liveEventRefs) {
-        await writer.update(eventRef, { isDeleted: true, deletedAt: now, updatedAt: now });
-      }
-      await writer.update(groupRef, {
-        isDeleted: true,
-        deletedAt: now,
-        updatedAt: now,
-        deletingInProgress: false,
-        deleteFinalizedAt: now,
-      });
-      await writer.flush();
-
-      logger.info('deleteGroup soft-deleted group', {
-        uid,
-        groupId,
-        eventsSoftDeleted: liveEventRefs.length,
-      });
+      logger.info('deleteGroup soft-deleted group', { uid, groupId, eventsSoftDeleted });
 
       return {
         groupId,
         mode: 'softDelete',
-        eventsSoftDeleted: liveEventRefs.length,
+        eventsSoftDeleted,
         alreadyDeleted: false,
       };
     } catch (error) {
       if (!finalizeStarted) {
-        await clearDeleteGroupLockForFailure(groupRef, lock, error);
+        await clearDeleteGroupLockForFailure(groupRef, lock);
       }
       throw error;
     }
