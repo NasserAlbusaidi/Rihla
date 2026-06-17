@@ -332,6 +332,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteGuestSessionConfirm => 'Delete guest data';
 
   @override
+  String get durableShellDeleteTitle => 'Delete account?';
+
+  @override
+  String get durableShellDeleteContent =>
+      'A saved account is set up on this device. Deleting now removes only this guest session — your saved account and its data stay. To delete your saved account, sign in to it first using the account options on this screen.';
+
+  @override
+  String get durableShellDeleteSignIn => 'Sign in to my account';
+
+  @override
+  String get durableShellDeleteGuest => 'Delete just this guest session';
+
+  @override
+  String get durableShellDeleteCancel => 'Cancel';
+
+  @override
   String get deleteAccountRetryTitle => 'Deletion didn\'t finish';
 
   @override

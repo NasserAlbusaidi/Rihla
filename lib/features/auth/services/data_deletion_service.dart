@@ -10,6 +10,7 @@ import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cache_isolation_controller_provider.dart';
+import 'durable_account_marker.dart';
 
 typedef DeleteAccountCallable = Future<void> Function();
 
@@ -74,6 +75,12 @@ class DataDeletionService {
     // cold boot re-mints a fresh anon and the barrier clears the deleted UID's
     // cache regardless (the new UID also differs from the last-active marker).
     FirebaseConfig.log('Deletion: server cascade completed');
+    // #469: the durable account is gone — clear the device marker BEFORE the
+    // restart (and before engageIsolation, outside the teardown try whose
+    // signOut() could throw and skip it) so the next fresh-anon session is not
+    // falsely blocked from deleting. Awaited so it flushes before the process
+    // exits via restart().
+    await clearDurableAccountEstablished(_prefs);
     _cacheIsolationController.engageIsolation();
     try {
       await markFirestorePersistenceDirty(_prefs);

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/providers/durable_account_marker_provider.dart';
 import '../../features/auth/providers/recovery_outcome_notice_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
@@ -14,6 +15,10 @@ final appBootstrapProvider = Provider<void>((ref) {
   ref.watch(authEmailLinkBootstrapProvider);
   // #439: surface the previous process's recovery outcome (one-shot marker).
   ref.watch(recoveryOutcomeNoticeProvider);
+  // #469: mark the device "durable account established" whenever a non-anon
+  // session is observed, so an anon-shell delete can be gated against silently
+  // leaving the durable account intact.
+  ref.watch(durableAccountMarkerProvider);
 
   Future<void> syncNotifications() async {
     final settings = ref.read(settingsProvider);

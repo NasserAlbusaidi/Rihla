@@ -332,6 +332,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get deleteGuestSessionConfirm => 'حذف بيانات الضيف';
 
   @override
+  String get durableShellDeleteTitle => 'حذف الحساب؟';
+
+  @override
+  String get durableShellDeleteContent =>
+      'هناك حساب محفوظ على هذا الجهاز. الحذف الآن يزيل جلسة الضيف هذه فقط — يبقى حسابك المحفوظ وبياناته. لحذف حسابك المحفوظ، سجّل الدخول إليه أولاً باستخدام خيارات الحساب في هذه الشاشة.';
+
+  @override
+  String get durableShellDeleteSignIn => 'تسجيل الدخول إلى حسابي';
+
+  @override
+  String get durableShellDeleteGuest => 'حذف جلسة الضيف فقط';
+
+  @override
+  String get durableShellDeleteCancel => 'إلغاء';
+
+  @override
   String get deleteAccountRetryTitle => 'لم يكتمل الحذف';
 
   @override

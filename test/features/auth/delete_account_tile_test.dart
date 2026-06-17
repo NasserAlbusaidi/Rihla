@@ -45,8 +45,12 @@ Future<Widget> _wrap({
   required _MockDeletionService service,
   required String? email,
   bool anonymous = false,
+  bool durableMarker = false,
 }) async {
-  SharedPreferences.setMockInitialValues({'settings_device_name': 'Test User'});
+  SharedPreferences.setMockInitialValues({
+    'settings_device_name': 'Test User',
+    if (durableMarker) 'auth.durableAccountEstablished': true,
+  });
   final prefs = await SharedPreferences.getInstance();
   final user = anonymous
       ? _anonUser()
@@ -160,6 +164,82 @@ void main() {
     expect(find.text('Delete guest data'), findsNothing);
     expect(find.text('Delete this guest session?'), findsNothing);
   });
+
+  // #469 prevention: an anon shell WITH a durable account established on this
+  // device must NOT be able to delete (which would silently leave the durable
+  // account + data under a different uid). It gets the informed-escape block.
+  testWidgets(
+    'anon shell + durable marker shows the block dialog and does NOT delete '
+    'on Sign in / Cancel (#469 prevention)',
+    (tester) async {
+      await tester.pumpWidget(
+        await _wrap(
+          service: service,
+          email: null,
+          anonymous: true,
+          durableMarker: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openDialog(tester);
+
+      // The informed-escape block, NOT the plain #546 guest dialog.
+      expect(find.byKey(const Key('durableShellDelete.signIn')), findsOneWidget);
+      expect(find.text('Delete this guest session?'), findsNothing);
+
+      // Primary "Sign in to my account" → no deletion.
+      await tester.tap(find.byKey(const Key('durableShellDelete.signIn')));
+      await tester.pumpAndSettle();
+      verifyNever(() => service.deleteAccount());
+
+      // Re-open and Cancel → still no deletion.
+      await _openDialog(tester);
+      await tester.tap(find.byKey(const Key('durableShellDelete.cancel')));
+      await tester.pumpAndSettle();
+      verifyNever(() => service.deleteAccount());
+    },
+  );
+
+  testWidgets(
+    'anon shell + durable marker: "Delete just this guest session" DOES delete '
+    '(#469 informed escape)',
+    (tester) async {
+      when(
+        () => service.deleteAccount(),
+      ).thenAnswer((_) async => DeletionResult.ok);
+
+      await tester.pumpWidget(
+        await _wrap(
+          service: service,
+          email: null,
+          anonymous: true,
+          durableMarker: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openDialog(tester);
+
+      await tester.tap(find.byKey(const Key('durableShellDelete.deleteGuest')));
+      await tester.pumpAndSettle();
+
+      verify(() => service.deleteAccount()).called(1);
+    },
+  );
+
+  // No marker → the block does not apply; the existing #546 guest path stands.
+  testWidgets(
+    'anon shell WITHOUT durable marker keeps the #546 guest dialog (no block)',
+    (tester) async {
+      await tester.pumpWidget(
+        await _wrap(service: service, email: null, anonymous: true),
+      );
+      await tester.pumpAndSettle();
+      await _openDialog(tester);
+
+      expect(find.text('Delete this guest session?'), findsOneWidget);
+      expect(find.byKey(const Key('durableShellDelete.signIn')), findsNothing);
+    },
+  );
 
   testWidgets('cancel does not call deleteAccount', (tester) async {
     await tester.pumpWidget(await _wrap(service: service, email: null));

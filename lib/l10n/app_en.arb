@@ -429,6 +429,26 @@
   "@deleteGuestSessionConfirm": {
     "description": "Destructive confirm button on the DeleteAccountDialog for an anonymous guest session (#469)."
   },
+  "durableShellDeleteTitle": "Delete account?",
+  "@durableShellDeleteTitle": {
+    "description": "Title of the DurableShellDeleteDialog shown when an anonymous session tries to delete but a durable account was established on this device (#469 prevention)."
+  },
+  "durableShellDeleteContent": "A saved account is set up on this device. Deleting now removes only this guest session — your saved account and its data stay. To delete your saved account, sign in to it first using the account options on this screen.",
+  "@durableShellDeleteContent": {
+    "description": "Body copy of the DurableShellDeleteDialog explaining the anon-shell delete would not remove the durable account (#469 prevention)."
+  },
+  "durableShellDeleteSignIn": "Sign in to my account",
+  "@durableShellDeleteSignIn": {
+    "description": "Primary button on the DurableShellDeleteDialog that dismisses so the user can sign in to their durable account first (#469 prevention)."
+  },
+  "durableShellDeleteGuest": "Delete just this guest session",
+  "@durableShellDeleteGuest": {
+    "description": "Secondary destructive button on the DurableShellDeleteDialog that proceeds with deleting only the guest shell (#469 prevention)."
+  },
+  "durableShellDeleteCancel": "Cancel",
+  "@durableShellDeleteCancel": {
+    "description": "Cancel button on the DurableShellDeleteDialog (#469 prevention)."
+  },
   "deleteAccountRetryTitle": "Deletion didn't finish",
   "@deleteAccountRetryTitle": {
     "description": "Title of the dialog shown when account deletion partially completed and can be retried."

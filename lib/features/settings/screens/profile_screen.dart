@@ -29,9 +29,11 @@ import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/data_deletion_service.dart';
+import '../../auth/services/durable_account_marker.dart';
 import '../../auth/widgets/delete_account_dialog.dart';
 import '../../auth/widgets/delete_account_retry_dialog.dart';
 import '../../auth/widgets/durable_credential_sheet.dart';
+import '../../auth/widgets/durable_shell_delete_dialog.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
 import '../../groups/providers/group_provider.dart';
@@ -1061,6 +1063,19 @@ class _AccountCard extends ConsumerWidget {
     // the confirm dialog honest about that.
     final isAnonymous =
         ref.read(authUserChangesProvider).valueOrNull?.isAnonymous ?? false;
+    // #469 prevention: if a durable account was established on this device but
+    // the live session is an anon shell, deleting now would silently leave that
+    // account + its data intact under a different uid. Steer to sign-in first,
+    // with an explicit informed escape — never call deleteAccount on the shell
+    // unless the user picks "delete just this guest session".
+    if (isAnonymous &&
+        durableAccountEstablished(ref.read(sharedPreferencesProvider))) {
+      final choice = await DurableShellDeleteDialog.show(context);
+      if (choice == DurableShellDeleteChoice.deleteGuest && context.mounted) {
+        await _runDeletion(context, ref);
+      }
+      return;
+    }
     final confirmed =
         await DeleteAccountDialog.show(context, isAnonymous: isAnonymous);
     if (confirmed != true || !context.mounted) return;
