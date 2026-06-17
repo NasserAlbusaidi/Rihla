@@ -4841,6 +4841,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'\"{name}\" is already used in this group.'**
   String createGroupShadowNameTaken(Object name);
+
+  /// Title of the #278 PR9 claim picker shown on the join screen when the entered invite code has unclaimed placeholder ('shadow') members.
+  ///
+  /// In en, this message translates to:
+  /// **'Is one of these you?'**
+  String get groupClaimPickerTitle;
+
+  /// Subtitle under the #278 PR9 claim picker explaining that tapping a name claims that placeholder member's expenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone added these names before you joined. Claim your spot to inherit your share.'**
+  String get groupClaimPickerSubtitle;
+
+  /// Action on the #278 PR9 claim picker to skip claiming and join as a brand-new member instead.
+  ///
+  /// In en, this message translates to:
+  /// **'No, I\'m new'**
+  String get groupClaimImNew;
+
+  /// Title of the #278 PR9 hard permanent-confirmation sheet; {name} is the placeholder member's name being claimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim {name}\'s spot?'**
+  String groupClaimConfirmTitle(Object name);
+
+  /// The irreversible-by-design warning body (#278 PR9 D3) on the claim confirmation sheet; {name} is the placeholder member's name.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently merges {name}\'s expenses into your account. It can\'t be undone, and the group creator must approve.'**
+  String groupClaimConfirmWarning(Object name);
+
+  /// Affirmative destructive button on the #278 PR9 permanent-confirmation sheet (requires an explicit tap); {name} is the placeholder member's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, claim {name}\'s spot'**
+  String groupClaimConfirmCta(Object name);
+
+  /// Title of the #278 PR9 waiting state after a claim request is sent, before the creator approves.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for approval'**
+  String get groupClaimWaitingTitle;
+
+  /// Body of the #278 PR9 waiting state; {name} is the claimed placeholder member's name.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent your request to the group creator. You\'ll join {name}\'s spot once they approve.'**
+  String groupClaimWaitingBody(Object name);
+
+  /// Button on the #278 PR9 waiting state to re-poll whether the creator has approved the claim.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get groupClaimCheckAgain;
+
+  /// Snackbar on the #278 PR9 waiting state when a re-check finds the claim is still pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Still waiting for the creator to approve.'**
+  String get groupClaimStillPending;
+
+  /// Shown on the #278 PR9 waiting state when the creator declined the claim request.
+  ///
+  /// In en, this message translates to:
+  /// **'The creator declined your claim. You can join as a new member instead.'**
+  String get groupClaimDeclinedBody;
+
+  /// Error on the #278 PR9 join screen when a brand-new join name collides with an existing (possibly shadow) member — the user should claim it via the picker or pick another name.
+  ///
+  /// In en, this message translates to:
+  /// **'That name belongs to someone added earlier. Claim it above, or pick a different name.'**
+  String get groupClaimNameTakenClaimInstead;
+
+  /// Header of the #278 PR9 creator-only section in group settings listing pending placeholder-claim requests.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim requests'**
+  String get groupClaimRequestsTitle;
+
+  /// One pending claim-request row in the #278 PR9 creator section; {requester} is the asking person's name, {shadow} the placeholder member's name.
+  ///
+  /// In en, this message translates to:
+  /// **'{requester} wants to claim {shadow}\'s spot'**
+  String groupClaimRequestRow(Object requester, Object shadow);
+
+  /// Button to approve a #278 PR9 claim request (runs the merge that gives the requester the placeholder's balance).
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get groupClaimApprove;
+
+  /// Button to decline a #278 PR9 claim request.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get groupClaimDecline;
+
+  /// Success snackbar after a #278 PR9 claim is approved; {requester} is the new member's name, {shadow} the placeholder's name.
+  ///
+  /// In en, this message translates to:
+  /// **'{requester} now holds {shadow}\'s spot.'**
+  String groupClaimApproved(Object requester, Object shadow);
+
+  /// Snackbar after the creator declines a #278 PR9 claim request.
+  ///
+  /// In en, this message translates to:
+  /// **'Request declined.'**
+  String get groupClaimRequestDeclined;
+
+  /// Snackbar when a #278 PR9 claim approval fails with a retryable (internal) error; the creator can try approving again.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t complete the claim. Try again.'**
+  String get groupClaimApproveError;
+
+  /// Quiet empty-state for the #278 PR9 creator claim-requests section when there are none.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending claim requests.'**
+  String get groupClaimNoRequests;
 }
 
 class _AppLocalizationsDelegate

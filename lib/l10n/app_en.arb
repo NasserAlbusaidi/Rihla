@@ -2074,5 +2074,105 @@
     "placeholders": {
       "name": {}
     }
+  },
+  "groupClaimPickerTitle": "Is one of these you?",
+  "@groupClaimPickerTitle": {
+    "description": "Title of the #278 PR9 claim picker shown on the join screen when the entered invite code has unclaimed placeholder ('shadow') members."
+  },
+  "groupClaimPickerSubtitle": "Someone added these names before you joined. Claim your spot to inherit your share.",
+  "@groupClaimPickerSubtitle": {
+    "description": "Subtitle under the #278 PR9 claim picker explaining that tapping a name claims that placeholder member's expenses."
+  },
+  "groupClaimImNew": "No, I'm new",
+  "@groupClaimImNew": {
+    "description": "Action on the #278 PR9 claim picker to skip claiming and join as a brand-new member instead."
+  },
+  "groupClaimConfirmTitle": "Claim {name}'s spot?",
+  "@groupClaimConfirmTitle": {
+    "description": "Title of the #278 PR9 hard permanent-confirmation sheet; {name} is the placeholder member's name being claimed.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "groupClaimConfirmWarning": "This permanently merges {name}'s expenses into your account. It can't be undone, and the group creator must approve.",
+  "@groupClaimConfirmWarning": {
+    "description": "The irreversible-by-design warning body (#278 PR9 D3) on the claim confirmation sheet; {name} is the placeholder member's name.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "groupClaimConfirmCta": "Yes, claim {name}'s spot",
+  "@groupClaimConfirmCta": {
+    "description": "Affirmative destructive button on the #278 PR9 permanent-confirmation sheet (requires an explicit tap); {name} is the placeholder member's name.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "groupClaimWaitingTitle": "Waiting for approval",
+  "@groupClaimWaitingTitle": {
+    "description": "Title of the #278 PR9 waiting state after a claim request is sent, before the creator approves."
+  },
+  "groupClaimWaitingBody": "We sent your request to the group creator. You'll join {name}'s spot once they approve.",
+  "@groupClaimWaitingBody": {
+    "description": "Body of the #278 PR9 waiting state; {name} is the claimed placeholder member's name.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "groupClaimCheckAgain": "Check again",
+  "@groupClaimCheckAgain": {
+    "description": "Button on the #278 PR9 waiting state to re-poll whether the creator has approved the claim."
+  },
+  "groupClaimStillPending": "Still waiting for the creator to approve.",
+  "@groupClaimStillPending": {
+    "description": "Snackbar on the #278 PR9 waiting state when a re-check finds the claim is still pending."
+  },
+  "groupClaimDeclinedBody": "The creator declined your claim. You can join as a new member instead.",
+  "@groupClaimDeclinedBody": {
+    "description": "Shown on the #278 PR9 waiting state when the creator declined the claim request."
+  },
+  "groupClaimNameTakenClaimInstead": "That name belongs to someone added earlier. Claim it above, or pick a different name.",
+  "@groupClaimNameTakenClaimInstead": {
+    "description": "Error on the #278 PR9 join screen when a brand-new join name collides with an existing (possibly shadow) member — the user should claim it via the picker or pick another name."
+  },
+  "groupClaimRequestsTitle": "Claim requests",
+  "@groupClaimRequestsTitle": {
+    "description": "Header of the #278 PR9 creator-only section in group settings listing pending placeholder-claim requests."
+  },
+  "groupClaimRequestRow": "{requester} wants to claim {shadow}'s spot",
+  "@groupClaimRequestRow": {
+    "description": "One pending claim-request row in the #278 PR9 creator section; {requester} is the asking person's name, {shadow} the placeholder member's name.",
+    "placeholders": {
+      "requester": {},
+      "shadow": {}
+    }
+  },
+  "groupClaimApprove": "Approve",
+  "@groupClaimApprove": {
+    "description": "Button to approve a #278 PR9 claim request (runs the merge that gives the requester the placeholder's balance)."
+  },
+  "groupClaimDecline": "Decline",
+  "@groupClaimDecline": {
+    "description": "Button to decline a #278 PR9 claim request."
+  },
+  "groupClaimApproved": "{requester} now holds {shadow}'s spot.",
+  "@groupClaimApproved": {
+    "description": "Success snackbar after a #278 PR9 claim is approved; {requester} is the new member's name, {shadow} the placeholder's name.",
+    "placeholders": {
+      "requester": {},
+      "shadow": {}
+    }
+  },
+  "groupClaimRequestDeclined": "Request declined.",
+  "@groupClaimRequestDeclined": {
+    "description": "Snackbar after the creator declines a #278 PR9 claim request."
+  },
+  "groupClaimApproveError": "Couldn't complete the claim. Try again.",
+  "@groupClaimApproveError": {
+    "description": "Snackbar when a #278 PR9 claim approval fails with a retryable (internal) error; the creator can try approving again."
+  },
+  "groupClaimNoRequests": "No pending claim requests.",
+  "@groupClaimNoRequests": {
+    "description": "Quiet empty-state for the #278 PR9 creator claim-requests section when there are none."
   }
 }
