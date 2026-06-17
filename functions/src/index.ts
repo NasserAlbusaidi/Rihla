@@ -13,6 +13,7 @@ export { requestClaimShadow } from './callables/requestClaimShadow';
 export { decideClaimRequest } from './callables/decideClaimRequest';
 export { listMyClaimRequests } from './callables/listMyClaimRequests';
 export { listGroupClaimRequests } from './callables/listGroupClaimRequests';
+export { listUnclaimedShadows } from './callables/listUnclaimedShadows';
 export {
   eventWriteRateMonitor,
   groupSettlementWriteRateMonitor,
