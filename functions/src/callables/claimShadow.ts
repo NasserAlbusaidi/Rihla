@@ -12,7 +12,13 @@ import type Decimal from 'decimal.js';
 import '../admin';
 import { BatchWriter } from './shared/batchWriter';
 import { replaceUid, renameMapKey, mergeUidMapKey } from './shared/mapReKey';
-import { recomputeNet, Money } from './groupNetBalance';
+import {
+  recomputeNet,
+  computeNetFromSnapshot,
+  loadGroupBalanceSnapshot,
+  Money,
+  type GroupBalanceSnapshot,
+} from './groupNetBalance';
 
 // #278 claim/merge (PR7). The Admin-SDK uuid→uid re-key that lets a real joiner
 // CLAIM a placeholder ("shadow") member: the shadow's uuid identity is re-keyed
@@ -25,20 +31,31 @@ import { recomputeNet, Money } from './groupNetBalance';
 // Two-phase, idempotent, convergent (deleteAccount precedent): Phase B batched
 // child-doc re-keys, Phase C transactional identity retirement with memberIds
 // rewritten LAST (so a torn cascade stays query-visible under the shadow id and
-// converges on retry). D8 (enforced here, #557): the claimer must be INVISIBLE to
-// the group before the claim — neither a member NOR already in its financial
-// universe (priorNet key-set), since the equal-split divisor is driven by the
-// per-event participantIds universe, a DIFFERENT set from memberIds (a departed
-// member is ∉ memberIds yet ∈ participantIds). A claim adopts a placeholder for a
-// NEW identity; merging an existing identity dedups participantIds and moves the
-// divisor, breaking additive parity, so it is REFUSED up-front before any
-// irreversible write. splitDistribution still re-keys via mergeUidMapKey, which
-// SUMS if a key ever collides (mapReKey.test.ts) — defensive only; the up-front
-// guard makes a claim-time collision unreachable on every path. D7: KEY-ONLY —
-// the claimed doc KEEPS the creator-typed shadow name, so NO denormalized name
-// value is ever rewritten. D9: a POST-commit recomputeNet parity assert
-// (priorShadow + priorClaimer per currency) is the backstop for a forged-doc
-// divergence with a NEW claimer and refuses to finalize.
+// converges on retry).
+//
+// CORRECTNESS MODEL (the divisor-shift class defeated 3 single-agent guards):
+// a clean claim is a PURE RELABEL — the claimer occupies NO divisor-driving slot,
+// so re-keying shadow→claimer cannot dedup an equal-split divisor (participantIds
+// or customSplitParticipants 3→2) nor flip the claimer's liveness-gated universe
+// membership. Pure-relabel is a STRUCTURAL property, checked PRE-COMMIT and
+// COMPLETELY by a 3-term footprint pre-scan (Part 2) — claimer ∈ members ∪
+// priorNet-by-presence ∪ any live event's participantIds/customSplit/
+// splitDistribution-keys. That set is EXACTLY the identity-field set the oracle
+// reads (groupNetBalance.ts computeNetFromSnapshot — the two move in lock-step;
+// see the ⚠️ there). A net-comparison gate CANNOT express it cleanly: the
+// alphabetically-last-absorbs-remainder rule means a legitimate brand-new claim
+// can legally relocate a remainder subunit to a third party (correct money
+// movement), which any additive net diff would false-reject — so the OLD
+// claimer-only `postNet[claimer] == priorShadow + priorClaimer` assert was itself
+// buggy. The backstop (Part 3) is instead an EXACT simNet == actualNet check: we
+// SIMULATE the re-key in memory over the loaded snapshot (computeNetFromSnapshot),
+// commit, then recompute and assert value-equality. simNet already bakes in the
+// remainder-hop, so a mismatch means a concurrent write landed between snapshot
+// and commit (TOCTOU) → loud P0 + `internal` (idempotent-retryable). D7: KEY-ONLY
+// — the claimed doc KEEPS the creator-typed shadow name, so NO denormalized name
+// value is ever rewritten. D8: no real-identity merge (the pre-scan refuses it).
+// splitDistribution re-keys via mergeUidMapKey (SUM-on-collision, mapReKey.test.ts)
+// — defensive only; the pre-scan makes a live claim-time collision unreachable.
 
 export interface ClaimShadowInput {
   groupId: string;
@@ -110,9 +127,35 @@ function expenseRekey(
   return updates;
 }
 
-// Event- AND group-scope settlements: id swaps only. payerName/recipientName are
-// NOT rewritten (D7 — the denormalized name stays the shadow's = the claimer's
-// adopted name). Admin update bypasses the append-only `allow update: if false`.
+// Pure event-/group-scope settlement re-key: id swaps only. payerName/
+// recipientName are NOT rewritten (D7 — the denormalized name stays the shadow's
+// = the claimer's adopted name). Returns the changed field map (a PARTIAL — only
+// the swapped keys) or null. SHARED by the in-memory simulation and the
+// committing rekeySettlements so they re-key identically (sim-fidelity).
+function settlementRekey(
+  data: DocumentData,
+  shadowId: string,
+  claimerUid: string,
+): DocumentData | null {
+  const updates: DocumentData = {};
+  let touched = false;
+  if (data.payerParticipantId === shadowId) {
+    updates.payerParticipantId = claimerUid;
+    touched = true;
+  }
+  if (data.recipientParticipantId === shadowId) {
+    updates.recipientParticipantId = claimerUid;
+    touched = true;
+  }
+  if (data.createdBy === shadowId) {
+    updates.createdBy = claimerUid; // defensive
+    touched = true;
+  }
+  return touched ? updates : null;
+}
+
+// Commit the settlement re-key across a collection (event- or group-scope). Admin
+// update bypasses the append-only `allow update: if false`.
 async function rekeySettlements(
   writer: BatchWriter,
   collection: CollectionReference,
@@ -121,22 +164,8 @@ async function rekeySettlements(
 ): Promise<void> {
   const snap = await collection.get();
   for (const doc of snap.docs) {
-    const data = doc.data();
-    const updates: DocumentData = {};
-    let touched = false;
-    if (data.payerParticipantId === shadowId) {
-      updates.payerParticipantId = claimerUid;
-      touched = true;
-    }
-    if (data.recipientParticipantId === shadowId) {
-      updates.recipientParticipantId = claimerUid;
-      touched = true;
-    }
-    if (data.createdBy === shadowId) {
-      updates.createdBy = claimerUid; // defensive
-      touched = true;
-    }
-    if (touched) await writer.update(doc.ref, updates);
+    const updates = settlementRekey(doc.data(), shadowId, claimerUid);
+    if (updates) await writer.update(doc.ref, updates);
   }
 }
 
@@ -165,46 +194,148 @@ async function rekeyActivityLogs(
   }
 }
 
-// B4 (D9): re-run the oracle after the cascade commits and assert, per currency,
-// post[claimer] == priorShadow + priorClaimer AND the shadow is gone. On
-// mismatch the claim is NOT finalized — a loud P0 + an `internal` error (the
-// operation is idempotent so a retry converges; a forged-doc divergence stays
-// loud rather than silently corrupting the net).
-async function verifyParity(
+type Net = Map<string, Map<string, Decimal>>;
+
+// Part 2, term 3: does the claimer occupy a divisor-driving slot the oracle DROPS
+// from priorNet when out-of-universe? Any LIVE event's participantIds (always
+// also a priorNet zero-row → redundant with term 2, kept so the guard is
+// self-contained), OR a LIVE expense's customSplitParticipants (custom scope) /
+// splitDistribution keys (non-equally mode). Gated on isDeleted === false EXACTLY
+// as the oracle (computeNetFromSnapshot) scopes its reads — the claim path
+// forbids a delete lock, so this equals the oracle's event/expense scope. The
+// custom/weighted split fields are point-in-time, NOT standing (F1: an admin can
+// shrink participantIds with no child re-validation → customSplit/
+// splitDistribution ⊋ participantIds, an out-of-universe key the oracle drops).
+function claimerInLiveEventSlot(
+  snapshot: GroupBalanceSnapshot,
+  claimerUid: string,
+): boolean {
+  for (const ev of snapshot.events) {
+    if (ev.data.isDeleted !== false) continue;
+    if (asStringArray(ev.data.participantIds).includes(claimerUid)) return true;
+    for (const e of ev.expenses) {
+      if (e.isDeleted !== false) continue;
+      if (e.scope === 'custom' && asStringArray(e.customSplitParticipants).includes(claimerUid)) {
+        return true;
+      }
+      const nonEqually =
+        e.splitMode === 'shares' || e.splitMode === 'exact' || e.splitMode === 'percent';
+      const dist = e.splitDistribution;
+      if (
+        nonEqually
+        && dist != null
+        && typeof dist === 'object'
+        && !Array.isArray(dist)
+        && Object.prototype.hasOwnProperty.call(dist, claimerUid)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Part 3 pre-commit: build the simulated post-claim snapshot by re-keying EXACTLY
+// the oracle-read identity fields on copies. The event participantIds re-key
+// mirrors Phase B's inline replaceUid (the single most divisor-driving field —
+// omit it and the shadow stays in the sim's universe while the commit moved it →
+// simNet diverges from actualNet on every legitimate claim). expense/settlement
+// re-keys are spread-merged PARTIALS (expenseRekey/settlementRekey return only
+// the changed keys, or null — treating a partial as the whole doc would zero
+// amountFils/scope/currency). The member set drops the shadow and appends ONE
+// LIVE claimer (no isTombstone → the oracle treats it as live, matching Phase C);
+// term 1's member-doc arm guarantees no pre-existing claimer doc on an accepted
+// path, so this mirrors Phase C exactly. Oracle-inert fields (participantNames,
+// createdBy, activity logs, the claimRekeyAt/updatedAt sentinels) are not read by
+// computeNetFromSnapshot, so leaving them un-re-keyed is safe.
+function simulateClaim(
+  snapshot: GroupBalanceSnapshot,
+  shadowId: string,
+  claimerUid: string,
+): GroupBalanceSnapshot {
+  const events = snapshot.events.map((ev) => ({
+    ...ev,
+    data: {
+      ...ev.data,
+      participantIds: replaceUid(asStringArray(ev.data.participantIds), shadowId, claimerUid).values,
+    },
+    expenses: ev.expenses.map((e) => ({ ...e, ...(expenseRekey(e, shadowId, claimerUid) ?? {}) })),
+    settlements: ev.settlements.map((s) => ({ ...s, ...(settlementRekey(s, shadowId, claimerUid) ?? {}) })),
+  }));
+  const groupSettlements = snapshot.groupSettlements.map((s) => ({
+    ...s,
+    ...(settlementRekey(s, shadowId, claimerUid) ?? {}),
+  }));
+  const members = snapshot.members
+    .filter((m) => m.data.userId !== shadowId)
+    .concat([{ docId: claimerUid, data: { userId: claimerUid, isShadow: false } }]);
+  const groupData = {
+    ...snapshot.groupData,
+    memberIds: replaceUid(asStringArray(snapshot.groupData.memberIds), shadowId, claimerUid).values,
+  };
+  return { groupExists: snapshot.groupExists, groupData, members, events, groupSettlements };
+}
+
+// True if `uid` is a key in ANY currency bucket of `net` (a balance position,
+// even a zero-row).
+function netHasUid(net: Net, uid: string): boolean {
+  return [...net.values()].some((bucket) => bucket.has(uid));
+}
+
+// Value-equality of two nets over the UNION of currencies and, per currency, the
+// UNION of uids (so a uid present in one but absent from the other — exactly the
+// TOCTOU the backstop guards — is compared, not skipped; mirror HEAD's union
+// iteration). Decimals are compared by VALUE (.minus().isZero()), NEVER `===`
+// (two Money objects are never reference-equal). Returns a mismatch description,
+// or null when equal — NO tolerance / NO remainder fuzz (simNet already bakes in
+// the legitimate remainder-hop).
+function netMismatch(expected: Net, actual: Net): string | null {
+  const zero = new Money(0);
+  const currencies = new Set<string>([...expected.keys(), ...actual.keys()]);
+  for (const currency of currencies) {
+    const eBucket = expected.get(currency);
+    const aBucket = actual.get(currency);
+    const uids = new Set<string>([...(eBucket?.keys() ?? []), ...(aBucket?.keys() ?? [])]);
+    for (const uid of uids) {
+      const e = eBucket?.get(uid) ?? zero;
+      const a = aBucket?.get(uid) ?? zero;
+      if (!e.minus(a).isZero()) {
+        return `${currency}/${uid}: sim=${e.toString()} actual=${a.toString()}`;
+      }
+    }
+  }
+  return null;
+}
+
+// Part 3 post-commit backstop (replaces the buggy claimer-only additive assert):
+// recompute the live net and assert it EXACTLY equals the pre-commit simulation
+// AND the shadow is gone. simNet already bakes in the legitimate remainder-hop,
+// so absent a concurrent write actualNet == simNet by construction (both are
+// computeNetFromSnapshot over the same relabeled docs). A mismatch ⇒ a write
+// landed between the snapshot read and the commit (TOCTOU) → loud P0 + `internal`
+// (idempotent so the next attempt re-snapshots).
+async function assertExactParity(
   db: Firestore,
   groupRef: DocumentReference,
-  priorNet: Map<string, Map<string, Decimal>>,
+  simNet: Net,
   shadowId: string,
   claimerUid: string,
 ): Promise<void> {
-  const { net: postNet } = await recomputeNet(db, groupRef);
-  const zero = new Money(0);
-  const currencies = new Set<string>([...priorNet.keys(), ...postNet.keys()]);
-  for (const currency of currencies) {
-    const priorShadow = priorNet.get(currency)?.get(shadowId) ?? zero;
-    const priorClaimer = priorNet.get(currency)?.get(claimerUid) ?? zero;
-    const expected = priorShadow.plus(priorClaimer);
-    const actual = postNet.get(currency)?.get(claimerUid) ?? zero;
-    const shadowPost = postNet.get(currency)?.get(shadowId);
-    const claimerOk = actual.minus(expected).isZero();
-    const shadowGone = shadowPost == null || shadowPost.isZero();
-    if (!claimerOk || !shadowGone) {
-      logger.error('claimShadow B4 parity MISMATCH — claim NOT finalized', {
-        groupId: groupRef.id,
-        shadowId,
-        claimerUid,
-        currency,
-        priorShadow: priorShadow.toString(),
-        priorClaimer: priorClaimer.toString(),
-        expectedClaimer: expected.toString(),
-        actualClaimer: actual.toString(),
-        shadowPost: shadowPost?.toString() ?? 'absent',
-      });
-      throw new HttpsError(
-        'internal',
-        'Claim produced an inconsistent balance and was not finalized.',
-      );
-    }
+  const { net: actualNet } = await recomputeNet(db, groupRef);
+  const mismatch = netMismatch(simNet, actualNet);
+  const shadowSurvived = netHasUid(actualNet, shadowId);
+  if (mismatch != null || shadowSurvived) {
+    logger.error('claimShadow parity MISMATCH (TOCTOU?) — claim NOT finalized', {
+      groupId: groupRef.id,
+      shadowId,
+      claimerUid,
+      mismatch: mismatch ?? 'none',
+      shadowSurvived,
+    });
+    throw new HttpsError(
+      'internal',
+      'Claim produced an inconsistent balance and was not finalized.',
+    );
   }
 }
 
@@ -218,59 +349,73 @@ export async function claimShadowEngine(
 ): Promise<ClaimShadowOutput> {
   const groupId = groupRef.id;
 
-  // ---- Phase A: eligibility (fast pre-check; Phase C re-checks in a tx) ----
-  const groupSnap = await groupRef.get();
-  if (!groupSnap.exists) throw new HttpsError('not-found', 'Group not found.');
-  const groupData = groupSnap.data() ?? {};
+  // ---- Phase A: eligibility, over a full balance snapshot loaded ONCE. The same
+  // snapshot feeds priorNet, the 3-term pre-scan, AND the in-memory simulation, so
+  // there is NO second-read seam between them (Phase C re-checks in a tx). ----
+  const snapshot = await loadGroupBalanceSnapshot(db, groupRef);
+  if (!snapshot.groupExists) throw new HttpsError('not-found', 'Group not found.');
+  const groupData = snapshot.groupData;
   if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
     throw new HttpsError('not-found', 'Group not found.');
   }
 
-  // Match the shadow by the userId FIELD (uuid-keyed; #294 trap).
-  const shadowDocs = await groupRef
-    .collection('members')
-    .where('userId', '==', shadowMemberId)
-    .get();
-  if (shadowDocs.empty) {
+  // Match the shadow by the userId FIELD (uuid-keyed; #294 trap), from the
+  // snapshot's already-loaded members.
+  const shadowMembers = snapshot.members.filter((m) => m.data.userId === shadowMemberId);
+  if (shadowMembers.length === 0) {
     // The placeholder doc is gone — a prior claim retired it (or it never
-    // existed). Idempotent no-op (D9 convergence): nothing to re-key.
+    // existed). Idempotent no-op (convergence): nothing to re-key. This check runs
+    // BEFORE the pre-scan, so a re-claim by an already-member claimer (test 6/16)
+    // returns alreadyClaimed rather than failed-precondition.
     return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true };
   }
-  if (shadowDocs.docs[0].data().isShadow !== true) {
+  // Claimable predicate: a LIVE placeholder. A tombstoned shadow (Part 4) is NOT
+  // claimable — no honest path tombstones a shadow (it has no auth account to call
+  // deleteAccount), so {isShadow:true, isTombstone:true} is forged/defensive.
+  const shadowData = shadowMembers[0].data;
+  if (shadowData.isShadow !== true || shadowData.isTombstone === true) {
     throw new HttpsError('failed-precondition', 'Only a placeholder member can be claimed.');
   }
 
-  // ---- B4 capture: prior nets BEFORE any writes (D9; FULL recomputeNet so
-  // group-scope settlements are included — never reconstruct from per-event) ----
-  const { net: priorNet } = await recomputeNet(db, groupRef);
+  // ---- Prior net BEFORE any writes, from the snapshot (FULL recompute so
+  // group-scope settlements are included — never reconstruct from per-event). ----
+  const { net: priorNet } = computeNetFromSnapshot(snapshot);
 
-  // D8 precondition, enforced IN the engine (#557): a claim adopts a placeholder
-  // for a NEW identity, so the claimer must be INVISIBLE to this group before the
-  // claim — neither a member nor already in its financial universe. Merging an
-  // existing identity is out of scope and, under a universe-derived (equal) split,
-  // dedups participantIds and MOVES the divisor, breaking additive parity
-  // (priorShadow + priorClaimer); the B4 assert is POST-commit with no rollback,
-  // so without this guard a divergent merge finalizes and then throws `internal`,
-  // and the idempotent retry (shadow already gone) blesses it un-verified. Reject
-  // up-front, before any irreversible write.
-  //
-  // Gate on the financial UNIVERSE, not memberIds: the equal-split divisor is
-  // driven by the per-event participantIds universe (groupNetBalance.ts:613
-  // `new Set(participantIds)` → :419 `[...universe]`), a DIFFERENT set from
-  // memberIds — leaveGroup/removeMember drop a uid from memberIds but NEVER prune
-  // event participantIds, so a departed-but-still-participant claimer is
-  // ∉ memberIds yet ∈ universe (#557 round-2). priorNet's key-set IS that
-  // universe (`finalizeNet` seeds every `seenUid` ⊇ every event universe ∪
-  // settlement parties), so a claimer appearing in any currency bucket is already
-  // financially present. memberIds is also checked, to catch a footprint-less
-  // member with no event/settlement entry. PR8's approve flow guarantees a
-  // pre-join non-member claimer; the engine self-protects regardless of caller.
-  const claimerInUniverse = [...priorNet.values()].some((bucket) => bucket.has(claimerUid));
-  if (asStringArray(groupData.memberIds).includes(claimerUid) || claimerInUniverse) {
+  // ---- Part 2: complete divisor-driving footprint pre-scan (PRECISE,
+  // pre-commit, NO writes on reject). A clean claim is a PURE RELABEL — the
+  // claimer occupies no divisor-driving slot, so re-keying shadow→claimer cannot
+  // dedup an equal-split divisor nor flip the claimer's liveness-gated universe
+  // membership. Reject if the claimer is financially visible by ANY of 3 terms —
+  // EXACTLY the identity-field set the oracle reads (lock-step with
+  // computeNetFromSnapshot). This admits exactly pure-relabel claims (a brand-new
+  // invisible claimer passes; the legitimate remainder-hop is allowed because it
+  // is not a collision) and rejects exactly the divisor-collapse class
+  // (rounds 1/2/3 + FLAW A). PR8's approve flow guarantees a pre-join non-member
+  // claimer; the engine self-protects regardless of caller.
+  const claimerIsMember =
+    asStringArray(groupData.memberIds).includes(claimerUid)
+    || snapshot.members.some((m) => m.data.userId === claimerUid); // term 1 (#53 array-vs-doc)
+  const claimerInPriorNet = netHasUid(priorNet, claimerUid); // term 2 — presence incl. netted-to-0 (F4)
+  const claimerInSlot = claimerInLiveEventSlot(snapshot, claimerUid); // term 3 — dropped divisor key (F3)
+  if (claimerIsMember || claimerInPriorNet || claimerInSlot) {
     throw new HttpsError(
       'failed-precondition',
       'The claimer is already a member or participant of this group.',
     );
+  }
+
+  // ---- Part 3 pre-commit: SIMULATE the re-key over the snapshot, capturing the
+  // expected post-claim net. Sanity: the shadow MUST be gone from simNet (else the
+  // simulation itself is buggy — caught before any write). ----
+  const { net: simNet } =
+    computeNetFromSnapshot(simulateClaim(snapshot, shadowMemberId, claimerUid));
+  if (netHasUid(simNet, shadowMemberId)) {
+    logger.error('claimShadow simulation retained the shadow — aborted pre-commit', {
+      groupId,
+      shadowMemberId,
+      claimerUid,
+    });
+    throw new HttpsError('internal', 'Claim simulation was inconsistent and was not attempted.');
   }
 
   // ---- Phase B: idempotent batched child re-keys ----
@@ -321,7 +466,11 @@ export async function claimShadowEngine(
     const membersTxSnap = await tx.get(groupRef.collection('members'));
     const members = membersTxSnap.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
     const shadowTx = members.filter((m) => m.data.userId === shadowMemberId);
-    if (shadowTx.length === 0 || shadowTx[0].data.isShadow !== true) return false;
+    if (
+      shadowTx.length === 0
+      || shadowTx[0].data.isShadow !== true
+      || shadowTx[0].data.isTombstone === true
+    ) return false;
     // TOCTOU re-check of the D8 guard: the claimer must not have joined as a real
     // member between Phase A and this tx (PR8 serializes; defense-in-depth). Abort
     // the identity swap loudly rather than commit a divergent merge. memberIds
@@ -370,8 +519,8 @@ export async function claimShadowEngine(
     return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true };
   }
 
-  // ---- B4 verify: POST-commit parity (D9) ----
-  await verifyParity(db, groupRef, priorNet, shadowMemberId, claimerUid);
+  // ---- Part 3 post-commit: exact simNet == actualNet (TOCTOU backstop). ----
+  await assertExactParity(db, groupRef, simNet, shadowMemberId, claimerUid);
 
   logger.info('claimShadow re-keyed', { groupId, shadowMemberId, claimerUid });
   return { groupId, shadowMemberId, claimerUid, alreadyClaimed: false };

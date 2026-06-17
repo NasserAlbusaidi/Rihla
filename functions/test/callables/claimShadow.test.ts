@@ -30,6 +30,7 @@ const OWNER = 'owner';
 const CLAIMER = 'claimer';
 const OUTSIDER = 'outsider';
 const MEMBER2 = 'member2';
+const THIRD = 'third';
 const SHADOW = 'shadow-7f3a9c';
 
 type Auth = { uid: string; token: { firebase: { sign_in_provider: string } } };
@@ -727,5 +728,182 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
     const after = await nets('g');
     expect(omr(after, CLAIMER)).toBe('-4.000');
     expect(omr(after, SHADOW)).toBe('-4.000');
+  });
+
+  test('24. ★[round-3] claimer ∈ customSplitParticipants but ∉ memberIds and ∉ priorNet (honest admin-shrink) → reject up-front, nothing mutated', async () => {
+    // F1/F3: validEventAdminUpdate (firestore.rules) lets an admin SHRINK
+    // participantIds with no superset guard and no child re-validation, so an
+    // honest sequence (expense created with X in customSplitParticipants while
+    // X ∈ participantIds → admin removes X) yields customSplitParticipants ⊋
+    // participantIds. The oracle DROPS an out-of-universe custom recipient
+    // (member-gate + the .has() owed-fold gate, groupNetBalance.ts), so CLAIMER is
+    // ∉ priorNet AND ∉ memberIds — HEAD's (priorNet ∪ memberIds) guard MISSES it.
+    // Re-keying shadow→claimer dedups the custom divisor (3→2) and silently shifts
+    // OWNER; the claimer-only additive verifyParity passes 0==0 (both dropped) and
+    // BLESSES the corruption. Term 3 (claimer ∈ any live event's
+    // customSplitParticipants) rejects up-front before any write.
+    await seedGroup('g', [OWNER, SHADOW]); // CLAIMER is NOT a member
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    // Admin-shrunk: only OWNER remains a participant; the custom split still names
+    // the (now-departed) CLAIMER and the SHADOW.
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000,
+      scope: 'custom',
+      customSplitParticipants: [OWNER, CLAIMER, SHADOW],
+      splitMode: 'equally',
+    });
+
+    // CLAIMER is invisible to priorNet (dropped — out of universe).
+    const before = await nets('g');
+    expect(omr(before, OWNER)).toBe('8.000'); // 12 paid − 4 owed (only OWNER in universe)
+    expect(omr(before, CLAIMER)).toBe('absent');
+
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    // No writes: split + memberIds + shadow doc intact, OWNER not shifted.
+    expect((await expenseDoc('groups/g/events/e1/expenses/x1')).customSplitParticipants)
+      .toEqual([OWNER, CLAIMER, SHADOW]);
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
+    expect(await memberDoc('g', SHADOW)).toBeDefined();
+    expect(await memberDocCount('g')).toBe(2);
+    expect(omr(await nets('g'), OWNER)).toBe('8.000');
+  });
+
+  test('25. ★[FLAW A] claimer is a netted-to-ZERO stranded settlement party (∉ memberIds, ∉ participantIds, ∈ priorNet as 0) → reject up-front (presence retained)', async () => {
+    // F4: the claimer's liveness flips non-member→live during a claim. A
+    // settlement keyed to the claimer in an event where the claimer is NOT a
+    // participant (stranded — a participant at settle-time, then admin-shrunk out)
+    // is folded into that event's equal-split universe BEFORE the claim but
+    // DROPPED after (claimer now live). A THIRD party silently shifts while the
+    // claimer's own total stays exactly additive → a claimer-only parity assert
+    // PASSES the corruption. The fix RETAINS HEAD's presence check (term 2, by
+    // PRESENCE incl. a netted-to-zero party) — a "drop the heuristic" redesign
+    // would commit THIRD's silent corruption.
+    await seedGroup('g', [OWNER, THIRD, SHADOW]); // CLAIMER NOT a member
+    await seedMember('g', OWNER);
+    await seedMember('g', THIRD);
+    await seedShadow('g', SHADOW, 'Ali');
+    // Event E: CLAIMER stranded (∉ participantIds, but the settlement names it).
+    await seedEvent('g', 'E', [OWNER, THIRD], { [OWNER]: 'Owner', [THIRD]: 'Third' });
+    await seedExpense('groups/g/events/E/expenses/x1', { payerParticipantId: OWNER, amountFils: 9000 });
+    await seedEventSettlement('groups/g/events/E/settlements/s1', {
+      payerParticipantId: CLAIMER,
+      recipientParticipantId: THIRD,
+      payerName: 'Claimer',
+      recipientName: 'Third',
+      amountFils: 3000,
+    });
+    // Event F: the shadow is a debtor (a real shadow position to claim).
+    await seedEvent('g', 'F', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await seedExpense('groups/g/events/F/expenses/x2', { payerParticipantId: OWNER, amountFils: 8000 });
+
+    const before = await nets('g');
+    expect(omr(before, CLAIMER)).toBe('0.000'); // folded into E as 0 (paid 0, +3 settle, −3 owed)
+
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, THIRD, SHADOW]);
+    expect(await memberDoc('g', SHADOW)).toBeDefined();
+    expect((await getFirestore().doc('groups/g/events/E/settlements/s1').get()).data()!.payerParticipantId).toBe(CLAIMER);
+  });
+
+  test('26. ★[FLAW B] brand-new claimer, NON-divisible equal split (remainder hops a third party) → claim SUCCEEDS (no false-reject); sim-fidelity guard', async () => {
+    // F5: allocateEqual's alphabetically-LAST recipient absorbs the remainder. A
+    // brand-new claimer (∉ every slot) that is NOT alphabetically-last relocates
+    // the remainder subunit to a different recipient when the shadow WAS last —
+    // CORRECT money movement (sum stays 0). HEAD's claimer-only additive assert
+    // (postNet[claimer] == priorShadow + priorClaimer) sees the claimer off by 1
+    // subunit and throws `internal` post-commit (FLAW B). The exact
+    // simNet == actualNet backstop ALLOWS it (a relabel is not a collision).
+    // Ordering: SHADOW='shadow-7f3a9c' is last pre-claim; CLAIMER='claimer' sorts
+    // FIRST → post-claim the last recipient is 'owner' (the remainder relocates to
+    // a third party). If the sim OMITS the participantIds re-key, simNet keeps the
+    // shadow last → simNet ≠ actualNet → this test goes RED (the sim-fidelity guard).
+    await seedGroup('g', [OWNER, MEMBER2, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER2);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, MEMBER2, SHADOW], {
+      [OWNER]: 'Owner', [MEMBER2]: 'M', [SHADOW]: 'Ali',
+    });
+    // 10.000 OMR / 3 = 3.333 r0.001 — the remainder lands on the sorted-last id.
+    await seedExpense('groups/g/events/e1/expenses/x1', { payerParticipantId: OWNER, amountFils: 10000 });
+
+    const before = await nets('g');
+    expect(omr(before, SHADOW)).toBe('-3.334'); // shadow sorted-last → absorbs the remainder
+    expect(omr(before, OWNER)).toBe('6.667');
+    expect(omr(before, MEMBER2)).toBe('-3.333');
+
+    const res = (await call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER })) as {
+      alreadyClaimed: boolean;
+    };
+    expect(res.alreadyClaimed).toBe(false);
+
+    const net = await nets('g');
+    expect(omr(net, SHADOW)).toBe('absent');
+    expect(omr(net, CLAIMER)).toBe('-3.333'); // claimer sorts FIRST → not the remainder absorber
+    expect(omr(net, OWNER)).toBe('6.666'); // remainder relocated to owner (sorted-last post-claim)
+    expect(omr(net, MEMBER2)).toBe('-3.333');
+  });
+
+  test('26b. ★[FLAW B] brand-new claimer, EXACT split with in-tolerance residual (residual hops via allocateExact last-absorbs) → claim SUCCEEDS', async () => {
+    // Same FLAW-B class on the allocateExact residual close-out path: an
+    // in-tolerance residual closes onto the alphabetically-last recipient that can
+    // absorb it. Pre-claim SHADOW is last; post-claim OWNER is last → the residual
+    // relocates. expenseRekey re-keys splitDistribution (shadow→claimer); the sim
+    // and the commit share it, so simNet == actualNet holds.
+    await seedGroup('g', [OWNER, MEMBER2, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER2);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, MEMBER2, SHADOW], {
+      [OWNER]: 'Owner', [MEMBER2]: 'M', [SHADOW]: 'Ali',
+    });
+    // exact {3.333, 3.333, 3.333} sums to 9.999 vs amount 10.000 → residual 0.001
+    // (in-tolerance) closes onto the alphabetically-last absorber.
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 10000,
+      splitMode: 'exact',
+      splitDistribution: { [OWNER]: 3333, [MEMBER2]: 3333, [SHADOW]: 3333 },
+    });
+
+    const before = await nets('g');
+    expect(omr(before, SHADOW)).toBe('-3.334');
+    expect(omr(before, OWNER)).toBe('6.667');
+
+    await call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER });
+
+    const net = await nets('g');
+    expect(omr(net, SHADOW)).toBe('absent');
+    expect(omr(net, CLAIMER)).toBe('-3.333');
+    expect(omr(net, OWNER)).toBe('6.666');
+    expect(omr(net, MEMBER2)).toBe('-3.333');
+  });
+
+  test('27. tombstoned shadow ({isShadow:true, isTombstone:true}) is NOT claimable → failed-precondition, no writes', async () => {
+    // Part 4: HEAD eligibility checks isShadow !== true only; a forged
+    // {isShadow:true, isTombstone:true} doc would be claimable. Add isTombstone
+    // !== true to the claimable predicate (Phase A + Phase C tx). No honest path
+    // tombstones a shadow (it has no auth account to call deleteAccount).
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali', { isTombstone: true });
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
+    expect(await memberDoc('g', SHADOW)).toBeDefined();
+    expect(await memberDocCount('g')).toBe(2);
   });
 });
