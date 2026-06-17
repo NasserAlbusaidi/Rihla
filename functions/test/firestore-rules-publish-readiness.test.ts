@@ -451,6 +451,24 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  // #278 claim/merge (PR8): claimRequests is fully callable-mediated
+  // (`allow read, write: if false`). Unlike the other group subcollections it is
+  // NOT member-gated — even `owner` (a member AND the creator of g1) must be
+  // denied both read and write. A client read would need a non-member carve-out
+  // (the requester is pre-join, D8); a client write would forge an approval.
+  test('#278 claim requests are not readable or writable by clients (even a member/creator)', async () => {
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/claimRequests/owner__shadow').get());
+    await assertFails(owner.collection('groups/g1/claimRequests').get());
+    await assertFails(owner.doc('groups/g1/claimRequests/owner__shadow').set({
+      requesterUid: 'owner',
+      requesterDisplayName: 'Owner',
+      shadowMemberId: 'shadow',
+      shadowDisplayName: 'Ali',
+      status: 'pending',
+    }));
+  });
+
   // #190: group deletion is server-authoritative (deleteGroup callable, Admin
   // SDK). The direct client delete path is locked (`allow delete: if false;`)
   // so the balance-zero gate + soft-delete cascade cannot be bypassed by a
