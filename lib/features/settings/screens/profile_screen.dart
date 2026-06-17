@@ -1056,7 +1056,13 @@ class _AccountCard extends ConsumerWidget {
   const _AccountCard();
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    final confirmed = await DeleteAccountDialog.show(context);
+    // #469: an anonymous shell delete only removes this guest session, not any
+    // durable Google/email account (which lives under a different UID). Make
+    // the confirm dialog honest about that.
+    final isAnonymous =
+        ref.read(authUserChangesProvider).valueOrNull?.isAnonymous ?? false;
+    final confirmed =
+        await DeleteAccountDialog.show(context, isAnonymous: isAnonymous);
     if (confirmed != true || !context.mounted) return;
     await _runDeletion(context, ref);
   }

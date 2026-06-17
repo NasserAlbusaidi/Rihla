@@ -322,6 +322,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAccountConfirm => 'Delete account';
 
   @override
+  String get deleteGuestSessionTitle => 'Delete this guest session?';
+
+  @override
+  String get deleteGuestSessionContent =>
+      'This deletes only this guest session on this device. Any Google or email account you\'ve linked is separate and is NOT deleted unless you sign in to it first. There\'s no undo.';
+
+  @override
+  String get deleteGuestSessionConfirm => 'Delete guest data';
+
+  @override
   String get deleteAccountRetryTitle => 'Deletion didn\'t finish';
 
   @override

@@ -9,13 +9,21 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 /// Account-recovery spec §6.2 + Play policy. Deletion is destructive and
 /// irreversible — the dialog spells that out plainly before the user can
 /// confirm.
+///
+/// #469: when the live session is an anonymous shell ([isAnonymous]) the
+/// deletion only removes that guest session — any Google/email account the user
+/// linked lives under a *different* UID and is untouched unless they sign in to
+/// it first. The copy is identity-honest about that so a "deleted" durable
+/// account can't silently survive a delete the user believed was final.
 class DeleteAccountDialog extends StatelessWidget {
-  const DeleteAccountDialog({super.key});
+  const DeleteAccountDialog({super.key, this.isAnonymous = false});
 
-  static Future<bool?> show(BuildContext context) {
+  final bool isAnonymous;
+
+  static Future<bool?> show(BuildContext context, {bool isAnonymous = false}) {
     return showDialog<bool>(
       context: context,
-      builder: (_) => const DeleteAccountDialog(),
+      builder: (_) => DeleteAccountDialog(isAnonymous: isAnonymous),
     );
   }
 
@@ -23,11 +31,17 @@ class DeleteAccountDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final l10n = context.l10n;
+    final title =
+        isAnonymous ? l10n.deleteGuestSessionTitle : l10n.deleteAccountTitle;
+    final content =
+        isAnonymous ? l10n.deleteGuestSessionContent : l10n.deleteAccountContent;
+    final confirmLabel =
+        isAnonymous ? l10n.deleteGuestSessionConfirm : l10n.deleteAccountConfirm;
     return AlertDialog(
       backgroundColor: colors.cardSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.spacing.radiusCard)),
       title: Text(
-        l10n.deleteAccountTitle,
+        title,
         style: AppTypography.sans(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -35,7 +49,7 @@ class DeleteAccountDialog extends StatelessWidget {
         ),
       ),
       content: Text(
-        l10n.deleteAccountContent,
+        content,
         style: AppTypography.sans(
           fontSize: 14,
           color: colors.textSecondary,
@@ -52,7 +66,7 @@ class DeleteAccountDialog extends StatelessWidget {
           key: const Key('deleteAccount.confirm'),
           style: FilledButton.styleFrom(backgroundColor: colors.error),
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.deleteAccountConfirm),
+          child: Text(confirmLabel),
         ),
       ],
     );

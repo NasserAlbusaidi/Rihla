@@ -322,6 +322,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get deleteAccountConfirm => 'حذف الحساب';
 
   @override
+  String get deleteGuestSessionTitle => 'حذف جلسة الضيف هذه؟';
+
+  @override
+  String get deleteGuestSessionContent =>
+      'سيؤدي هذا إلى حذف جلسة الضيف على هذا الجهاز فقط. أي حساب Google أو بريد إلكتروني ربطته يبقى منفصلًا ولن يُحذف ما لم تسجّل الدخول إليه أولًا. لا يمكن التراجع.';
+
+  @override
+  String get deleteGuestSessionConfirm => 'حذف بيانات الضيف';
+
+  @override
   String get deleteAccountRetryTitle => 'لم يكتمل الحذف';
 
   @override

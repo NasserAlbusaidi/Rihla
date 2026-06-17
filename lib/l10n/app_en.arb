@@ -417,6 +417,18 @@
   "@deleteAccountConfirm": {
     "description": "Destructive confirm button on the DeleteAccountDialog."
   },
+  "deleteGuestSessionTitle": "Delete this guest session?",
+  "@deleteGuestSessionTitle": {
+    "description": "Title of the DeleteAccountDialog when the live session is an anonymous guest shell (#469)."
+  },
+  "deleteGuestSessionContent": "This deletes only this guest session on this device. Any Google or email account you've linked is separate and is NOT deleted unless you sign in to it first. There's no undo.",
+  "@deleteGuestSessionContent": {
+    "description": "Body copy of the DeleteAccountDialog for an anonymous session, clarifying a linked durable account is not affected (#469)."
+  },
+  "deleteGuestSessionConfirm": "Delete guest data",
+  "@deleteGuestSessionConfirm": {
+    "description": "Destructive confirm button on the DeleteAccountDialog for an anonymous guest session (#469)."
+  },
   "deleteAccountRetryTitle": "Deletion didn't finish",
   "@deleteAccountRetryTitle": {
     "description": "Title of the dialog shown when account deletion partially completed and can be retried."
