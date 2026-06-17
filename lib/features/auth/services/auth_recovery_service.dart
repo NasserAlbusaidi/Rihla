@@ -205,7 +205,7 @@ class AuthRecoveryService {
     // bootstrap caller treats FirebaseAuthException as a failed link).
     try {
       await result.user?.getIdToken(true);
-    } catch (e) {
+    } catch (_) {
       FirebaseConfig.log('Recovery: post-link token refresh failed (non-fatal)');
     }
     FirebaseConfig.log('Recovery: linked email to uid ${result.user?.uid}');
