@@ -126,6 +126,11 @@
   "deleteGuestSessionTitle": "حذف جلسة الضيف هذه؟",
   "deleteGuestSessionContent": "سيؤدي هذا إلى حذف جلسة الضيف على هذا الجهاز فقط. أي حساب Google أو بريد إلكتروني ربطته يبقى منفصلًا ولن يُحذف ما لم تسجّل الدخول إليه أولًا. لا يمكن التراجع.",
   "deleteGuestSessionConfirm": "حذف بيانات الضيف",
+  "durableShellDeleteTitle": "حذف الحساب؟",
+  "durableShellDeleteContent": "هناك حساب محفوظ على هذا الجهاز. الحذف الآن يزيل جلسة الضيف هذه فقط — يبقى حسابك المحفوظ وبياناته. لحذف حسابك المحفوظ، سجّل الدخول إليه أولاً باستخدام خيارات الحساب في هذه الشاشة.",
+  "durableShellDeleteSignIn": "تسجيل الدخول إلى حسابي",
+  "durableShellDeleteGuest": "حذف جلسة الضيف فقط",
+  "durableShellDeleteCancel": "إلغاء",
   "deleteAccountRetryTitle": "لم يكتمل الحذف",
   "deleteAccountRetryContent": "تمت إزالة بعض بيانات حسابك، لكن لم يكتمل الحذف. لا يزال حسابك مُسجَّل الدخول. ستؤدي إعادة المحاولة إلى إكماله.",
 

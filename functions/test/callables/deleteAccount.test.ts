@@ -446,6 +446,38 @@ describe('deleteAccount', () => {
     expect((await db.doc(`joinAttempts/${deletedUid}`).get()).exists).toBe(false);
   });
 
+  // #469: deleting a DURABLE account that owns data must remove the Auth user
+  // (so reconnecting yields a fresh empty account) AND scrub its data. The #469
+  // bug was the client targeting an anon shell; this locks the server half so a
+  // regression where the durable Auth user survives a delete is caught.
+  // deleteUser removes the entire Auth user including all providerData; a
+  // password provider suffices to lock "the durable user is fully removed" (a
+  // google.com federated provider would need importUsers, out of scope here).
+  test('deleting a durable account that owns a group removes the Auth user and scrubs the group (#469)', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('grp469', [deletedUid]);
+    await seedMember('grp469', deletedUid);
+
+    const result = await wrapped({
+      data: {},
+      auth: { uid: deletedUid },
+    } as any);
+
+    expect(result).toMatchObject({ authUserDeleted: true });
+
+    // The durable Auth user is gone — a reconnect would mint a new uid.
+    await expect(getAuth().getUser(deletedUid)).rejects.toMatchObject({
+      code: 'auth/user-not-found',
+    });
+
+    // The solo-owned group is soft-deleted and the member doc removed.
+    const group = await db.doc('groups/grp469').get();
+    expect(group.data()?.isDeleted).toBe(true);
+    expect((await db.doc(`groups/grp469/members/${deletedUid}`).get()).exists)
+      .toBe(false);
+  });
+
   // #73: per-UID invocation rate limit (compensating control for soft App Check).
   test('rejects with resource-exhausted once the per-UID limit is reached', async () => {
     const db = getFirestore();

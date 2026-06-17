@@ -722,6 +722,36 @@ abstract class AppLocalizations {
   /// **'Delete guest data'**
   String get deleteGuestSessionConfirm;
 
+  /// Title of the DurableShellDeleteDialog shown when an anonymous session tries to delete but a durable account was established on this device (#469 prevention).
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account?'**
+  String get durableShellDeleteTitle;
+
+  /// Body copy of the DurableShellDeleteDialog explaining the anon-shell delete would not remove the durable account (#469 prevention).
+  ///
+  /// In en, this message translates to:
+  /// **'A saved account is set up on this device. Deleting now removes only this guest session — your saved account and its data stay. To delete your saved account, sign in to it first using the account options on this screen.'**
+  String get durableShellDeleteContent;
+
+  /// Primary button on the DurableShellDeleteDialog that dismisses so the user can sign in to their durable account first (#469 prevention).
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to my account'**
+  String get durableShellDeleteSignIn;
+
+  /// Secondary destructive button on the DurableShellDeleteDialog that proceeds with deleting only the guest shell (#469 prevention).
+  ///
+  /// In en, this message translates to:
+  /// **'Delete just this guest session'**
+  String get durableShellDeleteGuest;
+
+  /// Cancel button on the DurableShellDeleteDialog (#469 prevention).
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get durableShellDeleteCancel;
+
   /// Title of the dialog shown when account deletion partially completed and can be retried.
   ///
   /// In en, this message translates to:

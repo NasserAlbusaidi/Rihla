@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
 import 'package:safar/features/auth/services/data_deletion_service.dart';
+import 'package:safar/features/auth/services/durable_account_marker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
@@ -156,6 +157,36 @@ void main() {
     );
 
     expect(await service.deleteAccount(), DeletionResult.partial);
+  });
+
+  // #469: a successful deletion removes the durable-account marker so the next
+  // fresh-anon session is not falsely blocked from deleting.
+  test('successful deletion clears the durable-account marker (#469)', () async {
+    await prefs.setBool(kDurableAccountEstablishedKey, true);
+    final events = <String>[];
+    when(() => auth.currentUser).thenReturn(user);
+    when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+    final service = build(
+      events: events,
+      deleteAccountCallable: () async => events.add('callable'),
+    );
+
+    expect(await service.deleteAccount(), DeletionResult.ok);
+    expect(durableAccountEstablished(prefs), isFalse);
+  });
+
+  // A failed (non-convergent) deletion must NOT clear the marker — the durable
+  // account still exists, so the gate must keep protecting it.
+  test('failed deletion leaves the durable-account marker intact (#469)', () async {
+    await prefs.setBool(kDurableAccountEstablishedKey, true);
+    when(() => auth.currentUser).thenReturn(user);
+    final service = build(
+      events: <String>[],
+      deleteAccountCallable: () async => throw StateError('boom'),
+    );
+
+    expect(await service.deleteAccount(), DeletionResult.error);
+    expect(durableAccountEstablished(prefs), isTrue);
   });
 
   // A non-`internal` FunctionsException (rate limit, auth, bad input) is NOT a
