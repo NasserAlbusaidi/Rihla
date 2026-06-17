@@ -4206,6 +4206,30 @@ abstract class AppLocalizations {
   /// **'Manage'**
   String get groupManage;
 
+  /// Pill on a member tile (#278) for a placeholder ('shadow') member added by name who hasn't joined via invite code yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not joined yet'**
+  String get groupShadowNotJoinedBadge;
+
+  /// Title of the #278 in-group sheet where the creator adds a placeholder member by name.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a person'**
+  String get groupAddPersonTitle;
+
+  /// Subtitle under the #278 add-a-person sheet title explaining the placeholder is filled in when the real person joins.
+  ///
+  /// In en, this message translates to:
+  /// **'Add someone by name now; they can join later with the invite code.'**
+  String get groupAddPersonSubtitle;
+
+  /// Submit button in the #278 add-a-person sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get groupAddPersonAction;
+
   /// No description provided for @groupRemoveMemberTooltip.
   ///
   /// In en, this message translates to:

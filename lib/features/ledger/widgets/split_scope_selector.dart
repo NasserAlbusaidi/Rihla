@@ -11,13 +11,21 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 
-/// Derive participants directly from event data (logistics provider removed in Phase 39).
-List<Participant> _eventParticipants(Event event) {
+/// Derive participants directly from event data (logistics provider removed in
+/// Phase 39). [shadowUserIds] marks placeholder ("shadow") members — added by
+/// name but not yet joined (#278) — so the picker can label them. The flag
+/// lives on `GroupMember.isShadow`; rows are keyed by event-participant id,
+/// which equals the member `userId`, so the lookup matches on that.
+List<Participant> _eventParticipants(
+  Event event, {
+  Set<String> shadowUserIds = const {},
+}) {
   return event.participantIds.map((id) {
     return Participant(
       id: id,
@@ -25,8 +33,20 @@ List<Participant> _eventParticipants(Event event) {
       role: ParticipantRole.member,
       joinedAt: event.createdAt,
       displayName: event.participantNames[id],
+      isShadow: shadowUserIds.contains(id),
     );
   }).toList();
+}
+
+/// Shadow `userId`s for [groupId] from the live member roster. Empty while the
+/// roster is loading or unavailable (e.g. no Firebase app in tests) — shadow
+/// labelling is purely additive, so an empty set just renders no markers.
+Set<String> _shadowUserIds(WidgetRef ref, String groupId) {
+  final members = ref.watch(groupMembersProvider(groupId)).valueOrNull ?? const [];
+  return {
+    for (final m in members)
+      if (m.isShadow) m.userId,
+  };
 }
 
 /// Scope selector (global/custom/personal) with custom participant picker and
@@ -187,7 +207,11 @@ class _CustomParticipantSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final participants = _eventParticipants(event);
+    // #278: mark placeholder ("shadow") members not yet joined.
+    final participants = _eventParticipants(
+      event,
+      shadowUserIds: _shadowUserIds(ref, event.groupId),
+    );
     final participantsAsync = AsyncValue.data(participants);
     // #289: distinguish two same-named members exactly where money is split.
     final displayNames = MemberNameResolver.disambiguateEventParticipants(
@@ -365,7 +389,11 @@ class _PayerSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final participants = _eventParticipants(event);
+    // #278: mark placeholder ("shadow") members not yet joined.
+    final participants = _eventParticipants(
+      event,
+      shadowUserIds: _shadowUserIds(ref, event.groupId),
+    );
     // #289: distinguish two same-named members in the "who paid" picker.
     final displayNames = MemberNameResolver.disambiguateEventParticipants(
       event,
@@ -427,6 +455,7 @@ class _PayerSelector extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           isMe ? context.l10n.editorParticipantMe(name) : name,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontWeight: isMe
                                 ? FontWeight.bold
@@ -434,6 +463,17 @@ class _PayerSelector extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      // #278: flag a placeholder member who hasn't joined yet.
+                      if (p.isShadow) ...[
+                        SizedBox(width: context.spacing.space8),
+                        Text(
+                          context.l10n.editorShadowProfile,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.colors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 );

@@ -10,13 +10,18 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-GroupMember _buildMember({required String id, required String name}) {
+GroupMember _buildMember({
+  required String id,
+  required String name,
+  bool isShadow = false,
+}) {
   return GroupMember(
     id: id,
     groupId: 'g1',
     userId: id,
     displayName: name,
     role: 'MEMBER',
+    isShadow: isShadow,
     joinedAt: DateTime(2026, 1, 1),
   );
 }
@@ -116,6 +121,29 @@ void main() {
           .widgetList<Checkbox>(find.byType(Checkbox))
           .first;
       expect(selectAll.value, isTrue);
+    });
+
+    testWidgets('shows the shadow marker for a not-yet-joined member (#278)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          EventParticipantsCard(
+            members: [
+              _buildMember(id: 'p1', name: 'Alice'),
+              _buildMember(id: 'p2', name: 'Ghost', isShadow: true),
+            ],
+            selectedIds: const {},
+            onSelectAllChanged: (_) {},
+            onToggle: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.text('Alice'), findsOneWidget);
+      expect(find.text('Ghost'), findsOneWidget);
+      // Exactly one shadow member → exactly one marker.
+      expect(find.text('Shadow Profile'), findsOneWidget);
     });
 
     testWidgets('calls onSelectAllChanged when Select All tapped', (
