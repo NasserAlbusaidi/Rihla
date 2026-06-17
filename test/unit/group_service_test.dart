@@ -37,6 +37,49 @@ void main() {
         },
       );
 
+      test(
+        'creator member doc is keyed by uid (id == uid), not a random uuid '
+        '(#524 — one member doc per uid)',
+        () async {
+          SharedPreferences.setMockInitialValues({'device_name': 'Nasser'});
+          final prefs = await SharedPreferences.getInstance();
+          final fakeDb = FakeFirebaseFirestore();
+          const uid = 'creator-uid-524';
+
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: uid,
+                ),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final service = container.read(groupServiceProvider);
+          final staged =
+              service.stageGroup(name: 'Jebel Shams', currency: 'OMR');
+          await staged.ack;
+
+          final members = await fakeDb
+              .collection('groups')
+              .doc(staged.group.id)
+              .collection('members')
+              .get();
+
+          expect(members.docs.length, 1);
+          final memberDoc = members.docs.single;
+          expect(memberDoc.id, uid, reason: 'doc id must equal the uid');
+          expect(memberDoc.data()['id'], uid);
+          expect(memberDoc.data()['userId'], uid);
+          expect(memberDoc.data()['role'], 'CREATOR');
+        },
+      );
+
       test('groupServiceProvider is accessible from container', () async {
         SharedPreferences.setMockInitialValues({'device_name': 'Ali'});
         final prefs = await SharedPreferences.getInstance();
