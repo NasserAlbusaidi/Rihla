@@ -122,6 +122,7 @@ class _ShadowMemberChipsFieldState extends State<ShadowMemberChipsField> {
               minHeight: 0,
             ),
             hintText: context.l10n.createGroupAddNameHint,
+            // textMuted-decorative-justified: placeholder hint copy, not content.
             hintStyle: AppTypography.sans(fontSize: 17, color: colors.textMuted),
             contentPadding: EdgeInsets.symmetric(
               vertical: context.spacing.space12,
