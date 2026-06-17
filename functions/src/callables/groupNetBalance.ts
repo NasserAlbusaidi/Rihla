@@ -509,23 +509,84 @@ function bucketizeDrill(
   return new Map([['OMR', zeros]]);
 }
 
-export async function recomputeNet(
+// Plain-object snapshot of every Firestore doc the oracle reads, so the pure
+// computeNetFromSnapshot can run over it with ZERO I/O. This is what lets
+// claimShadow SIMULATE a uuid→uid re-key in memory (apply the relabel to deep
+// copies of these arrays, recompute the net) and assert it against the
+// post-commit recompute (#278 PR7). Behavior-preserving split of recomputeNet —
+// the same move that extracted foldEventNet (#366) and this whole module from
+// deleteGroup (#190). `ref` is threaded so liveEventRefs survives.
+export interface GroupBalanceSnapshot {
+  groupExists: boolean;
+  groupData: DocumentData;
+  members: { docId: string; data: DocumentData }[];
+  events: {
+    id: string;
+    ref: DocumentReference;
+    data: DocumentData;
+    expenses: DocumentData[];
+    settlements: DocumentData[];
+  }[];
+  groupSettlements: DocumentData[];
+}
+
+// All Firestore reads, no compute. Fetches children for EVERY event (the
+// soft-deleted / out-of-scope event filter is pure and lives in
+// computeNetFromSnapshot), so a resumed #205 deleteGroup lock window never
+// misses a child. Returns raw `.data()` — the per-doc isLiveDoc filter is the
+// compute's job.
+export async function loadGroupBalanceSnapshot(
   db: Firestore,
   groupRef: DocumentReference,
-): Promise<RecomputeResult> {
+): Promise<GroupBalanceSnapshot> {
   const groupSnap = await groupRef.get();
-  const groupData = groupSnap.data() ?? {};
+  const membersSnap = await groupRef.collection('members').get();
+  const eventsSnap = await groupRef.collection('events').get();
+  const events = await Promise.all(
+    eventsSnap.docs.map(async (eventDoc) => {
+      const [expensesSnap, settlementsSnap] = await Promise.all([
+        eventDoc.ref.collection('expenses').get(),
+        eventDoc.ref.collection('settlements').get(),
+      ]);
+      return {
+        id: eventDoc.id,
+        ref: eventDoc.ref,
+        data: eventDoc.data(),
+        expenses: expensesSnap.docs.map((d) => d.data()),
+        settlements: settlementsSnap.docs.map((d) => d.data()),
+      };
+    }),
+  );
+  const groupSettlementsSnap = await groupRef.collection('settlements').get();
+  return {
+    groupExists: groupSnap.exists,
+    groupData: groupSnap.data() ?? {},
+    members: membersSnap.docs.map((doc) => ({ docId: doc.id, data: doc.data() })),
+    events,
+    groupSettlements: groupSettlementsSnap.docs.map((d) => d.data()),
+  };
+}
+
+// Pure net recompute over a snapshot — no I/O.
+//
+// ⚠️ The per-event universe construction below moves in LOCK-STEP with
+// claimShadow.ts's Part-2 footprint pre-scan: every identity-bearing input here
+// (participantIds, the financial payer/settlement set, the member-gated
+// split-recipient keys) is a divisor-driving slot the pre-scan must reject the
+// claimer from. Adding a NEW identity-bearing universe input here REQUIRES a new
+// pre-scan term there, or the claimShadow divisor-collapse class reopens (#278).
+export function computeNetFromSnapshot(snapshot: GroupBalanceSnapshot): RecomputeResult {
+  const { groupData, members, events, groupSettlements } = snapshot;
   const includeSoftDeletedSinceMs =
     groupData.deletingInProgress === true ? timestampMillis(groupData.deleteLockedAt) : null;
 
   // liveMemberIds: a member is live unless explicitly tombstoned.
   // allMemberIds: every member doc (live OR tombstoned) — used to member-gate
   // the #249 split-recipient fold so a forged non-member key is never credited.
-  const membersSnap = await groupRef.collection('members').get();
   const liveMemberIds = new Set<string>();
   const allMemberIds = new Set<string>();
-  for (const member of membersSnap.docs) {
-    const data = member.data();
+  for (const member of members) {
+    const data = member.data;
     if (typeof data.userId === 'string') {
       allMemberIds.add(data.userId);
       if (data.isTombstone !== true) liveMemberIds.add(data.userId);
@@ -554,20 +615,15 @@ export async function recomputeNet(
   // Exception: when resuming a #205 deleteGroup lock, include events already
   // soft-deleted after the lock was acquired so a partially flushed cascade can
   // be retried idempotently.
-  const eventsSnap = await groupRef.collection('events').get();
-  const liveEventDocs = eventsSnap.docs.filter((doc) =>
-    isEventInDeleteBalanceScope(doc.data(), includeSoftDeletedSinceMs));
+  const liveEvents = events.filter((ev) =>
+    isEventInDeleteBalanceScope(ev.data, includeSoftDeletedSinceMs));
 
-  for (const eventDoc of liveEventDocs) {
-    const eventData = eventDoc.data();
+  for (const ev of liveEvents) {
+    const eventData = ev.data;
     const participantIds = stringArray(eventData.participantIds);
 
-    const [expensesSnap, settlementsSnap] = await Promise.all([
-      eventDoc.ref.collection('expenses').get(),
-      eventDoc.ref.collection('settlements').get(),
-    ]);
-    const expenses = expensesSnap.docs.map((d) => d.data()).filter(isLiveDoc);
-    const settlements = settlementsSnap.docs.map((d) => d.data()).filter(isLiveDoc);
+    const expenses = ev.expenses.filter(isLiveDoc);
+    const settlements = ev.settlements.filter(isLiveDoc);
 
     // Per-event universe = participantIds ∪ former financial actors. Mirrors
     // eventBalanceUniverse() in
@@ -634,7 +690,7 @@ export async function recomputeNet(
     const drillUniverse = new Set<string>(participantIds);
     if (drillUniverse.size > 0) {
       perEventNet.set(
-        eventDoc.id,
+        ev.id,
         bucketizeDrill(
           foldEventNet(expenses, settlements, drillUniverse),
           drillUniverse,
@@ -646,9 +702,7 @@ export async function recomputeNet(
   // Group-scope settlements fold into net globally (not bounded to any event
   // universe), each into its OWN per-doc currency bucket. Mirror the client
   // groupAdjByCurrency fold (group_balance_provider.dart:353-378).
-  const groupSettlementsSnap = await groupRef.collection('settlements').get();
-  for (const doc of groupSettlementsSnap.docs) {
-    const s = doc.data();
+  for (const s of groupSettlements) {
     if (!isLiveDoc(s)) continue;
     const currency = currencyOf(s.currency);
     const amount = fromSubunits(amountFilsOf(s), currency);
@@ -666,8 +720,17 @@ export async function recomputeNet(
 
   return {
     net: finalizeNet(netByCurrency, seenUids),
-    liveEventRefs: liveEventDocs.map((doc) => doc.ref),
+    liveEventRefs: liveEvents.map((ev) => ev.ref),
     perEventNet,
-    eventCount: liveEventDocs.length,
+    eventCount: liveEvents.length,
   };
+}
+
+// Public entry point — exact HEAD signature preserved (5 callers + the Dart
+// parity tests pin it). Loads the snapshot, then runs the pure compute.
+export async function recomputeNet(
+  db: Firestore,
+  groupRef: DocumentReference,
+): Promise<RecomputeResult> {
+  return computeNetFromSnapshot(await loadGroupBalanceSnapshot(db, groupRef));
 }

@@ -71,3 +71,45 @@ export function mergeUidMapKey(
   }
   return { value: next, changed: true };
 }
+
+// Re-keys an array, replacing `uid` with `replacement` and DEDUPING (so when the
+// replacement is already present the array doesn't grow a duplicate). Used for
+// `participantIds` / `customSplitParticipants`. Extracted verbatim from
+// deleteAccount.ts (#278) so deleteAccount AND claimShadow share one re-keyer.
+export function replaceUid(values: string[], uid: string, replacement: string): {
+  values: string[];
+  changed: boolean;
+} {
+  let changed = false;
+  const next: string[] = [];
+  for (const value of values) {
+    const swapped = value === uid ? replacement : value;
+    if (swapped !== value) changed = true;
+    if (!next.includes(swapped)) next.push(swapped);
+  }
+  return { values: next, changed };
+}
+
+// Re-keys a map, renaming the `uid` key to `replacement` and OVERWRITING the
+// replacement's value with `replacementValue` on collision. The OVERWRITE
+// sibling of mergeUidMapKey (SUM): safe for display-string maps like
+// `participantNames` where the value is a name (no arithmetic). FORBIDDEN for
+// `splitDistribution` — an overwrite there silently deletes money; use
+// mergeUidMapKey. Extracted verbatim from deleteAccount.ts (#278).
+export function renameMapKey(
+  value: unknown,
+  uid: string,
+  replacement: string,
+  replacementValue: unknown,
+): { value: Record<string, unknown>; changed: boolean } | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const next: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+  if (!Object.prototype.hasOwnProperty.call(next, uid)) {
+    return { value: next, changed: false };
+  }
+  next[replacement] = replacementValue;
+  delete next[uid];
+  return { value: next, changed: true };
+}
