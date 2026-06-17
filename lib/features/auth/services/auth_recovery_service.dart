@@ -197,6 +197,17 @@ class AuthRecoveryService {
     final result = await user.linkWithCredential(credential);
     await clearPendingEmail();
     await clearInFlightOp();
+    // The cached ID token still carries sign_in_provider=anonymous right after
+    // linkWithCredential; the next rules-gated durable write (group/inviteCode
+    // create) would PERMISSION_DENIED until the SDK lazily refreshes (#522).
+    // Force-refresh now — but best-effort: the link already succeeded, so a
+    // transient refresh failure must not surface as a link failure (the
+    // bootstrap caller treats FirebaseAuthException as a failed link).
+    try {
+      await result.user?.getIdToken(true);
+    } catch (e) {
+      FirebaseConfig.log('Recovery: post-link token refresh failed (non-fatal)');
+    }
     FirebaseConfig.log('Recovery: linked email to uid ${result.user?.uid}');
     return result;
   }
