@@ -487,7 +487,7 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect(omr(await nets('g'), CLAIMER)).toBe('-6.000');
   });
 
-  test('D12. crash-retry convergence: engine already re-keyed but status stuck pending → re-approve → claimed, no double-merge', async () => {
+  test('D12. crash-retry: engine already re-keyed but status stuck pending → re-approve DECLINES (membership + balance intact, money never doubled)', async () => {
     await seedGroup('g', [OWNER, SHADOW]);
     await seedMember('g', OWNER);
     await seedShadow('g', SHADOW, 'Ali');
@@ -501,14 +501,16 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect((await reqDoc('g', rid))?.status).toBe('pending');
     expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER]);
 
-    const res = (await decide({ groupId: 'g', requestId: rid, approve: true })) as {
-      status: string;
-      alreadyClaimed: boolean;
-    };
-    expect(res.status).toBe('claimed');
-    expect(res.alreadyClaimed).toBe(true);
-    expect((await reqDoc('g', rid))?.status).toBe('claimed');
-    expect(omr(await nets('g'), CLAIMER)).toBe('-6.000'); // NOT doubled
+    // Re-approve: the shadow is GONE → alreadyClaimed:true → DECLINE (this approval
+    // claimed nothing THIS time; status:'claimed' is reserved for a fresh re-key).
+    // CLAIMER stays a correct member with the balance from the crashed run — only
+    // the advisory label lags (a self-correcting false-negative; money is correct).
+    await expect(decide({ groupId: 'g', requestId: rid, approve: true })).rejects.toMatchObject({
+      code: 'failed-precondition',
+    });
+    expect((await reqDoc('g', rid))?.status).toBe('declined');
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER]); // membership intact
+    expect(omr(await nets('g'), CLAIMER)).toBe('-6.000'); // balance intact, NOT doubled
     expect(await memberDocCount('g')).toBe(2);
   });
 
@@ -539,6 +541,34 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER]); // OUTSIDER not added
     expect(await memberDoc('g', OUTSIDER)).toBeUndefined();
     expect(omr(await nets('g'), CLAIMER)).toBe('-6.000'); // winner's balance intact, not doubled
+  });
+
+  test('D14. multi-shadow sibling (automerge-refute R2): claiming a DIFFERENT shadow must NOT let a stale request phantom-claim one a third party took', async () => {
+    // The refute repro on the identity axis: requester CLAIMER holds pending
+    // requests for two shadows (s1, s2). OUTSIDER claims s1; CLAIMER claims s2 and
+    // becomes a member. Approving CLAIMER's stale s1 request finds s1 GONE →
+    // alreadyClaimed:true. CLAIMER ∈ memberIds (via s2), so a memberIds-only guard
+    // would phantom-mark s1 'claimed'. The fix (status:'claimed' only on a fresh
+    // re-key) DECLINES it — CLAIMER inherited nothing from s1.
+    await seedGroup('g', [OWNER, 's1', 's2']);
+    await seedMember('g', OWNER);
+    await seedShadow('g', 's1', 'Ali');
+    await seedShadow('g', 's2', 'Sara');
+    const ridClaimerS1 = await seedPendingRequest('g', CLAIMER, 's1', 'Ali');
+    const ridClaimerS2 = await seedPendingRequest('g', CLAIMER, 's2', 'Sara');
+    const ridOutsiderS1 = await seedPendingRequest('g', OUTSIDER, 's1', 'Ali');
+
+    await decide({ groupId: 'g', requestId: ridOutsiderS1, approve: true }); // OUTSIDER claims s1
+    await decide({ groupId: 'g', requestId: ridClaimerS2, approve: true }); // CLAIMER claims s2 → member
+    expect([...((await groupDoc('g')).memberIds as string[])].sort()).toEqual(
+      [CLAIMER, OUTSIDER, OWNER].sort(),
+    );
+
+    // CLAIMER's stale s1 request: s1 was taken by OUTSIDER → DECLINE, not claim.
+    await expect(decide({ groupId: 'g', requestId: ridClaimerS1, approve: true })).rejects.toMatchObject({
+      code: 'failed-precondition',
+    });
+    expect((await reqDoc('g', ridClaimerS1))?.status).toBe('declined'); // NOT 'claimed'
   });
 });
 

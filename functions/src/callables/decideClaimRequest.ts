@@ -116,39 +116,37 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
       decision.requesterUid,
     );
 
-    // alreadyClaimed:true means the shadow is GONE — but the engine is
-    // identity-blind to WHO retired it. Two distinct requesters can each hold a
-    // pending request for the SAME shadow (a duplicate-name group), so approving
-    // requester B (who inherits it) and THEN approving requester A's still-pending
-    // request yields alreadyClaimed:true for A even though A claimed NOTHING.
-    // Marking A 'claimed' would be a phantom success. So when the shadow was
-    // already gone, confirm THIS requester actually holds the membership the
-    // claim promised; if not, they lost the race → decline (not claimed). The
-    // same-requester crash-retry (the legitimate alreadyClaimed path) passes this
-    // check because that requester IS in memberIds. A fresh re-key
-    // (alreadyClaimed:false) always lands the requester in memberIds, so no extra
-    // read is paid on the hot path.
+    // status:'claimed' is written ONLY when the engine actually re-keyed THIS
+    // approval — i.e. alreadyClaimed === false, which holds iff the shadow EXISTED
+    // and this requester just inherited it (engine Phase C added requesterUid to
+    // memberIds + parity passed). alreadyClaimed === true means the shadow was
+    // ALREADY GONE, and the engine is IDENTITY-BLIND to who retired it: it cannot
+    // mean THIS requester succeeded. Two requesters can each hold a pending request
+    // for one shadow (a duplicate-name group); a requester can hold a stale request
+    // for a shadow a third party took, or for one they didn't claim while joining
+    // by a different path. In every such case this approval claimed nothing, so it
+    // must DECLINE — never phantom-mark 'claimed' (that would tell a non-inheritor
+    // their claim succeeded). The one inverse cost: a crash between a successful
+    // re-key and this status write leaves the request 'pending'; a re-approve then
+    // DECLINES it even though that requester did inherit the shadow in the crashed
+    // run — but their membership + balance are already correct, so only the
+    // advisory label lags (a self-correcting false-negative; money is never wrong).
     if (result.alreadyClaimed) {
-      const afterMemberIds = (await groupRef.get()).data()?.memberIds;
-      const requesterIsMember =
-        Array.isArray(afterMemberIds) && afterMemberIds.includes(decision.requesterUid);
-      if (!requesterIsMember) {
-        await requestRef.update({
-          status: 'declined',
-          decidedBy: uid,
-          decidedAt: FieldValue.serverTimestamp(),
-        });
-        logger.warn('claim approval lost the race (shadow claimed by another) — declined', {
-          uid,
-          groupId,
-          requestId,
-          requesterUid: decision.requesterUid,
-        });
-        throw new HttpsError(
-          'failed-precondition',
-          'This member has already been claimed by someone else.',
-        );
-      }
+      await requestRef.update({
+        status: 'declined',
+        decidedBy: uid,
+        decidedAt: FieldValue.serverTimestamp(),
+      });
+      logger.warn('claim approval found the shadow already gone — declined', {
+        uid,
+        groupId,
+        requestId,
+        requesterUid: decision.requesterUid,
+      });
+      throw new HttpsError(
+        'failed-precondition',
+        'This member has already been claimed.',
+      );
     }
 
     await requestRef.update({
@@ -157,12 +155,7 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
       decidedAt: FieldValue.serverTimestamp(),
     });
 
-    logger.info('claim request approved', {
-      uid,
-      groupId,
-      requestId,
-      alreadyClaimed: result.alreadyClaimed,
-    });
-    return { requestId, status: 'claimed', alreadyClaimed: result.alreadyClaimed };
+    logger.info('claim request approved', { uid, groupId, requestId });
+    return { requestId, status: 'claimed', alreadyClaimed: false };
   },
 );
