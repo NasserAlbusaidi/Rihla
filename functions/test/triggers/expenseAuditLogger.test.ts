@@ -1,5 +1,5 @@
 import functionsTest from 'firebase-functions-test';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { clearFirestore } from '../fixtures';
 import { expenseAuditLogger, classify } from '../../src/triggers/expenseAuditLogger';
 
@@ -112,6 +112,35 @@ describe('expenseAuditLogger', () => {
     const got = await logs();
     expect(got.size).toBe(1);
     expect(got.docs[0].data().eventType).toBe('DELETE');
+  });
+
+  test('#278 [P2]: a claim re-key write (claimRekeyAt newly stamped) is SKIPPED — no phantom audit row', async () => {
+    const rekeyAt = Timestamp.fromMillis(1_700_000_000_000);
+    // The claimShadow engine stamps a fresh claimRekeyAt while it re-keys
+    // CONTENT_KEYS (payerParticipantId/splitDistribution). Without the skip,
+    // every re-keyed expense would log a phantom UPDATE misattributed to the
+    // shadow's createdBy — spamming the feed for a multi-expense claim.
+    await fire(
+      snap(expData()),
+      snap(expData({ payerParticipantId: 'claimer', claimRekeyAt: rekeyAt })),
+      'evt-rekey-1',
+    );
+    expect((await logs()).size).toBe(0);
+  });
+
+  test('#278 [P2]: the skip is SCOPED to the marker — a later real edit (claimRekeyAt unchanged) still logs', async () => {
+    const rekeyAt = Timestamp.fromMillis(1_700_000_000_000);
+    await seedMember('claimer', 'Ali', 'claimer');
+    // claimRekeyAt lingers on the doc after the claim; a subsequent genuine edit
+    // does NOT change it, so the skip does NOT fire and the edit logs normally.
+    await fire(
+      snap(expData({ payerParticipantId: 'claimer', claimRekeyAt: rekeyAt, lastEditedBy: 'claimer' })),
+      snap(expData({ payerParticipantId: 'claimer', amountFils: 9000, claimRekeyAt: rekeyAt, lastEditedBy: 'claimer' })),
+      'evt-postrekey-edit-1',
+    );
+    const got = await logs();
+    expect(got.size).toBe(1);
+    expect(got.docs[0].data().eventType).toBe('UPDATE');
   });
 
   test('no content change writes nothing (D2 SKIP)', async () => {
