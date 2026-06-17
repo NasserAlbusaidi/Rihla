@@ -379,13 +379,16 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
     expect(ex.claimRekeyAt).toBeDefined(); // re-keyed expense carries the audit-skip sentinel ([P2])
   });
 
-  test('11. ★D2 SUM (DEFENSE-IN-DEPTH, forged/Admin seed — not a live happy-path): exact split, claimer already a member → owed SUMS', async () => {
-    // Under D8 the claimer is NOT a member at claim time, so an honest shared
-    // slice is unreachable (CREATE rule forbids a split key outside participants
-    // + non-membership). This seeds the colliding state via the Admin SDK to
-    // model the ONLY same-group collision path: a legacy/forged doc. Uses an
-    // EXACT split (not equally) so the fixed slices SUM without a head-count
-    // change — proving money is summed, not lost.
+  test('11. claimer already a live member (exact split, forged/Admin collision seed) → reject up-front (failed-precondition), no SUM, nothing mutated', async () => {
+    // D8 (enforced in the engine, #557): a claim adopts a placeholder for a NEW
+    // identity, so the claimer must NOT already be a member. The honest CREATE
+    // rule forbids a split key outside participants + non-membership, so a shared
+    // slice is unreachable on the happy path; this seeds the colliding state via
+    // the Admin SDK to model the ONLY same-group collision path (a legacy/forged
+    // doc). SUM-on-collision is now a `mergeUidMapKey` helper concern only
+    // (mapReKey.test.ts) — at the CLAIM level a claimer-already-member collision
+    // is refused loudly, never auto-merged (an equal split would silently move
+    // the divisor; see test 20).
     await seedGroup('g', [OWNER, CLAIMER, SHADOW]);
     await seedMember('g', OWNER);
     await seedMember('g', CLAIMER, { displayName: 'Khalid' });
@@ -402,25 +405,22 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
       splitDistribution: { [OWNER]: 4000, [CLAIMER]: 4000, [SHADOW]: 4000 },
     });
 
-    const before = await nets('g');
-    expect(omr(before, CLAIMER)).toBe('-4.000');
-    expect(omr(before, SHADOW)).toBe('-4.000');
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
 
-    await call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER });
-
-    const net = await nets('g');
-    expect(omr(net, CLAIMER)).toBe('-8.000'); // SUMMED (4+4), not overwritten
-    expect(omr(net, OWNER)).toBe('8.000');
-    expect(omr(net, SHADOW)).toBe('absent');
-    // splitDistribution SUMMED at the key level
+    // No writes: split untouched, shadow doc + memberIds intact.
     expect((await expenseDoc('groups/g/events/e1/expenses/x1')).splitDistribution).toEqual({
       [OWNER]: 4000,
-      [CLAIMER]: 8000,
+      [CLAIMER]: 4000,
+      [SHADOW]: 4000,
     });
-    expect(await memberDocCount('g')).toBe(2); // owner + claimer (shadow deleted, claimer overwritten)
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER, SHADOW]);
+    expect(await memberDoc('g', SHADOW)).toBeDefined();
+    expect(await memberDocCount('g')).toBe(3);
   });
 
-  test('12. ★D2 SUM compose (forged/Admin seed): shadow is a payer AND claimer has a slice → payer swap + SUM compose, no double-count', async () => {
+  test('12. claimer already a live member (shadow is a payer AND claimer has a slice, forged seed) → reject up-front, payer NOT swapped', async () => {
     await seedGroup('g', [OWNER, CLAIMER, SHADOW]);
     await seedMember('g', OWNER);
     await seedMember('g', CLAIMER, { displayName: 'Khalid' });
@@ -445,18 +445,14 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
       splitDistribution: { [OWNER]: 4000, [CLAIMER]: 4000, [SHADOW]: 4000 },
     });
 
-    const before = await nets('g');
-    expect(omr(before, OWNER)).toBe('5.000');
-    expect(omr(before, CLAIMER)).toBe('-7.000');
-    expect(omr(before, SHADOW)).toBe('2.000');
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
 
-    await call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER });
-
-    const net = await nets('g');
-    expect(omr(net, OWNER)).toBe('5.000');
-    expect(omr(net, CLAIMER)).toBe('-5.000'); // parity: prior shadow(+2) + claimer(−7) = −5
-    expect(omr(net, SHADOW)).toBe('absent');
-    expect((await expenseDoc('groups/g/events/e1/expenses/a')).payerParticipantId).toBe(CLAIMER);
+    // No writes: payer scalar + memberIds intact.
+    expect((await expenseDoc('groups/g/events/e1/expenses/a')).payerParticipantId).toBe(SHADOW);
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER, SHADOW]);
+    expect(await memberDocCount('g')).toBe(3);
   });
 
   test('13. shadow CASH-SETTLED (debt + offsetting event settlement) → CLAIMER nets 0', async () => {
@@ -580,16 +576,17 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
     expect((await getFirestore().doc('groups/g/events/e1/activity_logs/a1').get()).data()!.actorId).toBe(CLAIMER);
   });
 
-  test('19. ★[P1] dropped-slice hazard (forged: shadow ∈ splitDistribution but ∉ participantIds, on D2 path) → DETECT + refuse to finalize (internal)', async () => {
+  test('19. claimer already a live member (forged: shadow ∈ splitDistribution but ∉ participantIds) → reject up-front (failed-precondition), not a post-commit detect', async () => {
+    // Was a [P1] post-commit parity DETECT (threw `internal` AFTER the merge was
+    // irreversibly committed). With the claimer-already-member guard (#557) the
+    // forged divergence is refused BEFORE any write — no finalize-then-throw, and
+    // the idempotent retry can no longer bless it un-verified. (A forged
+    // shadow∈split/∉participants paired with a NEW, non-member claimer would still
+    // be caught post-commit by verifyParity; that narrow residual is a follow-up.)
     await seedGroup('g', [OWNER, CLAIMER, SHADOW]);
     await seedMember('g', OWNER);
     await seedMember('g', CLAIMER, { displayName: 'Khalid' });
     await seedShadow('g', SHADOW, 'Ali');
-    // SHADOW is NOT a participant of this event, yet appears in splitDistribution
-    // (forged/Admin doc — the CREATE rule forbids this for a client). Pre-claim
-    // the oracle DROPS shadow's slice (live member ∉ participants ⇒ not in
-    // universe); post-claim it merges into CLAIMER (a participant) and counts →
-    // a net divergence the post-commit parity assert must catch.
     await seedEvent('g', 'e1', [OWNER, CLAIMER], { [OWNER]: 'Owner', [CLAIMER]: 'Khalid' });
     await seedExpense('groups/g/events/e1/expenses/x1', {
       payerParticipantId: OWNER,
@@ -600,7 +597,53 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
 
     await expect(
       call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
-    ).rejects.toMatchObject({ code: 'internal' });
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER, SHADOW]);
+    expect(await memberDocCount('g')).toBe(3);
+  });
+
+  test('20. ★[P1] claimer already a live member + EQUAL split → reject up-front (failed-precondition), nothing mutated (no finalize-then-throw)', async () => {
+    // The reported P1. Under an EQUAL split the owed amount is universe-derived,
+    // so re-keying a shadow onto an EXISTING member dedups participantIds (3→2)
+    // and moves the divisor (12/3 → 12/2). The post-commit parity assert then
+    // false-fails (expected −8 = priorShadow −4 + priorClaimer −4; actual −6)
+    // AFTER the merge is irreversibly committed, and the idempotent retry
+    // (shadow already gone) returns alreadyClaimed without re-verifying — the
+    // system reports `internal` for a finalized operation. D8 guarantees the
+    // claimer is a NEW non-member; the engine enforces that precondition itself,
+    // so the divisor never moves and nothing is committed.
+    await seedGroup('g', [OWNER, CLAIMER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedMember('g', CLAIMER, { displayName: 'Khalid' });
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, CLAIMER, SHADOW], {
+      [OWNER]: 'Owner',
+      [CLAIMER]: 'Khalid',
+      [SHADOW]: 'Ali',
+    });
+    // default seedExpense = equally, splitDistribution {} (universe-derived)
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000,
+    });
+
+    const before = await nets('g');
+    expect(omr(before, CLAIMER)).toBe('-4.000');
+    expect(omr(before, SHADOW)).toBe('-4.000');
+
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    // Nothing finalized: memberIds, member docs, event + nets all untouched.
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER, SHADOW]);
+    expect(await memberDoc('g', SHADOW)).toBeDefined();
+    expect(await memberDocCount('g')).toBe(3);
+    const ev = (await getFirestore().doc('groups/g/events/e1').get()).data()!;
+    expect(ev.participantIds).toEqual([OWNER, CLAIMER, SHADOW]);
+    const after = await nets('g');
+    expect(omr(after, CLAIMER)).toBe('-4.000');
+    expect(omr(after, SHADOW)).toBe('-4.000');
   });
 
   test('21. ★[P2] balance aggregate converges: post-claim aggregate doc shows CLAIMER net, shadow absent', async () => {

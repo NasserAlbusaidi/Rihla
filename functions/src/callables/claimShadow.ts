@@ -25,11 +25,17 @@ import { recomputeNet, Money } from './groupNetBalance';
 // Two-phase, idempotent, convergent (deleteAccount precedent): Phase B batched
 // child-doc re-keys, Phase C transactional identity retirement with memberIds
 // rewritten LAST (so a torn cascade stays query-visible under the shadow id and
-// converges on retry). D2: splitDistribution SUMS on collision (mergeUidMapKey,
-// never overwrite — money loss). D7: KEY-ONLY — the claimed doc KEEPS the
-// creator-typed shadow name, so NO denormalized name value is ever rewritten.
-// D9: a POST-commit recomputeNet parity assert (priorShadow + priorClaimer per
-// currency) catches a forged-doc divergence and refuses to finalize.
+// converges on retry). D8 (enforced here, #557): the claimer must NOT already be
+// a live member — a claim adopts a placeholder for a NEW identity. Merging two
+// existing members dedups participantIds and moves a universe-derived (equal)
+// split's divisor, breaking additive parity, so it is REFUSED up-front before any
+// irreversible write. splitDistribution still re-keys via mergeUidMapKey, which
+// SUMS if a key ever collides (mapReKey.test.ts) — defensive only; the up-front
+// guard makes a claim-time collision unreachable on every path. D7: KEY-ONLY —
+// the claimed doc KEEPS the creator-typed shadow name, so NO denormalized name
+// value is ever rewritten. D9: a POST-commit recomputeNet parity assert
+// (priorShadow + priorClaimer per currency) is the backstop for a forged-doc
+// divergence with a NEW claimer and refuses to finalize.
 
 export interface ClaimShadowInput {
   groupId: string;
@@ -231,6 +237,22 @@ export async function claimShadowEngine(
     throw new HttpsError('failed-precondition', 'Only a placeholder member can be claimed.');
   }
 
+  // D8 precondition, enforced IN the engine (#557): a claim adopts a placeholder
+  // for a NEW identity, so the claimer must NOT already be a live member. Merging
+  // two existing members is out of scope and, under a universe-derived (equal)
+  // split, dedups participantIds and moves the divisor — breaking additive parity
+  // (priorShadow + priorClaimer). The B4 assert is POST-commit with no rollback,
+  // so without this guard a divergent merge finalizes and then throws `internal`,
+  // and the idempotent retry (shadow already gone) blesses it un-verified. Reject
+  // up-front, before any irreversible write. PR8's approve flow already guarantees
+  // this (the claimer is a pre-join non-member); the engine self-protects too.
+  if (asStringArray(groupData.memberIds).includes(claimerUid)) {
+    throw new HttpsError(
+      'failed-precondition',
+      'The claimer is already a member of this group.',
+    );
+  }
+
   // ---- B4 capture: prior nets BEFORE any writes (D9; FULL recomputeNet so
   // group-scope settlements are included — never reconstruct from per-event) ----
   const { net: priorNet } = await recomputeNet(db, groupRef);
@@ -284,6 +306,17 @@ export async function claimShadowEngine(
     const members = membersTxSnap.docs.map((doc) => ({ id: doc.id, data: doc.data() }));
     const shadowTx = members.filter((m) => m.data.userId === shadowMemberId);
     if (shadowTx.length === 0 || shadowTx[0].data.isShadow !== true) return false;
+    // TOCTOU re-check of the D8 guard: the claimer must not have joined as a real
+    // member between Phase A and this tx (PR8 serializes; defense-in-depth). Abort
+    // the identity swap loudly rather than commit a divergent merge. memberIds
+    // gains claimerUid only in this tx's own update below, so a normal flow never
+    // trips this.
+    if (currentMemberIds.includes(claimerUid)) {
+      throw new HttpsError(
+        'failed-precondition',
+        'The claimer is already a member of this group.',
+      );
+    }
     const sData = shadowTx[0].data;
 
     const groupUpdate: DocumentData = {
