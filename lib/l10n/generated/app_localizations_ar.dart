@@ -2881,4 +2881,18 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get durableCredentialRequired => 'اربط حساب Google للمتابعة.';
+
+  @override
+  String get createGroupWhoElse => 'من سيشارك؟';
+
+  @override
+  String get createGroupAddNameHint => 'اكتب اسمًا…';
+
+  @override
+  String get createGroupShadowOfflineHint => 'اتصل بالإنترنت لإضافة الأسماء';
+
+  @override
+  String createGroupShadowNameTaken(Object name) {
+    return '‏\"$name\" مستخدم بالفعل في هذه المجموعة.';
+  }
 }
