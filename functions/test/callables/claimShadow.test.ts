@@ -686,4 +686,46 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
     expect(omr(net, SHADOW)).toBe('absent');
     expect((await getFirestore().doc('groups/g/settlements/s1').get()).data()!.payerParticipantId).toBe(CLAIMER);
   });
+
+  test('23. ★[P1 round-2] claimer is a DEPARTED member (∉ memberIds) but still ∈ event participantIds + EQUAL split → reject up-front (failed-precondition), nothing mutated', async () => {
+    // The refute-found gap in a memberIds-only guard: the equal-split divisor is
+    // derived from the per-event participantIds UNIVERSE (groupNetBalance.ts:613
+    // `new Set(participantIds)` → :419/:421 `allocateEqual([...universe])`), NOT
+    // memberIds. leaveGroup.ts:19 / removeMember.ts:30 drop a uid from memberIds
+    // but NEVER prune event participantIds, so a departed member is ∉ memberIds
+    // yet ∈ participantIds — re-keying the shadow onto them still dedups
+    // participantIds (3→2) and moves the divisor (12/3→12/2), re-triggering the
+    // post-commit `internal` throw a memberIds guard would miss. The guard must
+    // reject on the financial UNIVERSE (priorNet key-set), not memberIds.
+    await seedGroup('g', [OWNER, SHADOW]); // CLAIMER has LEFT — not in memberIds
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    // CLAIMER still a participant of the event (leave doesn't prune participantIds).
+    await seedEvent('g', 'e1', [OWNER, CLAIMER, SHADOW], {
+      [OWNER]: 'Owner',
+      [CLAIMER]: 'Khalid',
+      [SHADOW]: 'Ali',
+    });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000, // equally (universe-derived divisor)
+    });
+
+    const before = await nets('g');
+    expect(omr(before, CLAIMER)).toBe('-4.000'); // counted in the divisor despite ∉ memberIds
+    expect(omr(before, SHADOW)).toBe('-4.000');
+
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    // Nothing finalized — no divisor shift, no finalize-then-throw.
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
+    expect(await memberDoc('g', SHADOW)).toBeDefined();
+    const ev = (await getFirestore().doc('groups/g/events/e1').get()).data()!;
+    expect(ev.participantIds).toEqual([OWNER, CLAIMER, SHADOW]);
+    const after = await nets('g');
+    expect(omr(after, CLAIMER)).toBe('-4.000');
+    expect(omr(after, SHADOW)).toBe('-4.000');
+  });
 });

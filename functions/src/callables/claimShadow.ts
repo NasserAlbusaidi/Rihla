@@ -25,10 +25,13 @@ import { recomputeNet, Money } from './groupNetBalance';
 // Two-phase, idempotent, convergent (deleteAccount precedent): Phase B batched
 // child-doc re-keys, Phase C transactional identity retirement with memberIds
 // rewritten LAST (so a torn cascade stays query-visible under the shadow id and
-// converges on retry). D8 (enforced here, #557): the claimer must NOT already be
-// a live member — a claim adopts a placeholder for a NEW identity. Merging two
-// existing members dedups participantIds and moves a universe-derived (equal)
-// split's divisor, breaking additive parity, so it is REFUSED up-front before any
+// converges on retry). D8 (enforced here, #557): the claimer must be INVISIBLE to
+// the group before the claim — neither a member NOR already in its financial
+// universe (priorNet key-set), since the equal-split divisor is driven by the
+// per-event participantIds universe, a DIFFERENT set from memberIds (a departed
+// member is ∉ memberIds yet ∈ participantIds). A claim adopts a placeholder for a
+// NEW identity; merging an existing identity dedups participantIds and moves the
+// divisor, breaking additive parity, so it is REFUSED up-front before any
 // irreversible write. splitDistribution still re-keys via mergeUidMapKey, which
 // SUMS if a key ever collides (mapReKey.test.ts) — defensive only; the up-front
 // guard makes a claim-time collision unreachable on every path. D7: KEY-ONLY —
@@ -237,25 +240,38 @@ export async function claimShadowEngine(
     throw new HttpsError('failed-precondition', 'Only a placeholder member can be claimed.');
   }
 
-  // D8 precondition, enforced IN the engine (#557): a claim adopts a placeholder
-  // for a NEW identity, so the claimer must NOT already be a live member. Merging
-  // two existing members is out of scope and, under a universe-derived (equal)
-  // split, dedups participantIds and moves the divisor — breaking additive parity
-  // (priorShadow + priorClaimer). The B4 assert is POST-commit with no rollback,
-  // so without this guard a divergent merge finalizes and then throws `internal`,
-  // and the idempotent retry (shadow already gone) blesses it un-verified. Reject
-  // up-front, before any irreversible write. PR8's approve flow already guarantees
-  // this (the claimer is a pre-join non-member); the engine self-protects too.
-  if (asStringArray(groupData.memberIds).includes(claimerUid)) {
-    throw new HttpsError(
-      'failed-precondition',
-      'The claimer is already a member of this group.',
-    );
-  }
-
   // ---- B4 capture: prior nets BEFORE any writes (D9; FULL recomputeNet so
   // group-scope settlements are included — never reconstruct from per-event) ----
   const { net: priorNet } = await recomputeNet(db, groupRef);
+
+  // D8 precondition, enforced IN the engine (#557): a claim adopts a placeholder
+  // for a NEW identity, so the claimer must be INVISIBLE to this group before the
+  // claim — neither a member nor already in its financial universe. Merging an
+  // existing identity is out of scope and, under a universe-derived (equal) split,
+  // dedups participantIds and MOVES the divisor, breaking additive parity
+  // (priorShadow + priorClaimer); the B4 assert is POST-commit with no rollback,
+  // so without this guard a divergent merge finalizes and then throws `internal`,
+  // and the idempotent retry (shadow already gone) blesses it un-verified. Reject
+  // up-front, before any irreversible write.
+  //
+  // Gate on the financial UNIVERSE, not memberIds: the equal-split divisor is
+  // driven by the per-event participantIds universe (groupNetBalance.ts:613
+  // `new Set(participantIds)` → :419 `[...universe]`), a DIFFERENT set from
+  // memberIds — leaveGroup/removeMember drop a uid from memberIds but NEVER prune
+  // event participantIds, so a departed-but-still-participant claimer is
+  // ∉ memberIds yet ∈ universe (#557 round-2). priorNet's key-set IS that
+  // universe (`finalizeNet` seeds every `seenUid` ⊇ every event universe ∪
+  // settlement parties), so a claimer appearing in any currency bucket is already
+  // financially present. memberIds is also checked, to catch a footprint-less
+  // member with no event/settlement entry. PR8's approve flow guarantees a
+  // pre-join non-member claimer; the engine self-protects regardless of caller.
+  const claimerInUniverse = [...priorNet.values()].some((bucket) => bucket.has(claimerUid));
+  if (asStringArray(groupData.memberIds).includes(claimerUid) || claimerInUniverse) {
+    throw new HttpsError(
+      'failed-precondition',
+      'The claimer is already a member or participant of this group.',
+    );
+  }
 
   // ---- Phase B: idempotent batched child re-keys ----
   const writer = new BatchWriter(db);
@@ -310,11 +326,13 @@ export async function claimShadowEngine(
     // member between Phase A and this tx (PR8 serializes; defense-in-depth). Abort
     // the identity swap loudly rather than commit a divergent merge. memberIds
     // gains claimerUid only in this tx's own update below, so a normal flow never
-    // trips this.
+    // trips this. (The rarer race — the claimer added to an event's participantIds
+    // mid-claim — is left to the POST-commit B4 verifyParity backstop; re-folding
+    // the universe inside the tx would exceed its read budget.)
     if (currentMemberIds.includes(claimerUid)) {
       throw new HttpsError(
         'failed-precondition',
-        'The claimer is already a member of this group.',
+        'The claimer is already a member or participant of this group.',
       );
     }
     const sData = shadowTx[0].data;
