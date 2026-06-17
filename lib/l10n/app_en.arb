@@ -1708,6 +1708,22 @@
     }
   },
   "groupManage": "Manage",
+  "groupShadowNotJoinedBadge": "Not joined yet",
+  "@groupShadowNotJoinedBadge": {
+    "description": "Pill on a member tile (#278) for a placeholder ('shadow') member added by name who hasn't joined via invite code yet."
+  },
+  "groupAddPersonTitle": "Add a person",
+  "@groupAddPersonTitle": {
+    "description": "Title of the #278 in-group sheet where the creator adds a placeholder member by name."
+  },
+  "groupAddPersonSubtitle": "Add someone by name now; they can join later with the invite code.",
+  "@groupAddPersonSubtitle": {
+    "description": "Subtitle under the #278 add-a-person sheet title explaining the placeholder is filled in when the real person joins."
+  },
+  "groupAddPersonAction": "Add",
+  "@groupAddPersonAction": {
+    "description": "Submit button in the #278 add-a-person sheet."
+  },
   "groupRemoveMemberTooltip": "Remove {name} from group",
   "@groupRemoveMemberTooltip": {
     "placeholders": {

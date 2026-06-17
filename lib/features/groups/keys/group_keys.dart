@@ -125,6 +125,13 @@ abstract final class GroupKeys {
   static const membersSection = Key('group_members_section');
   static const creatorBadge = Key('group_member_creator_badge');
 
+  // #278 PR3: in-group add-a-shadow + "Not joined yet" pill.
+  static const addPersonAction = Key('group_members_add_person_action');
+  static const addPersonInput = Key('group_members_add_person_input');
+  static const addPersonSubmit = Key('group_members_add_person_submit');
+  static Key shadowBadge(String memberId) =>
+      Key('group_member_shadow_badge_$memberId');
+
   // GroupDangerSection
   static const dangerSection = Key('group_danger_section');
   static const leaveGroupTile = Key('group_leave_tile');

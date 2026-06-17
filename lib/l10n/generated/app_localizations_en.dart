@@ -2477,6 +2477,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupManage => 'Manage';
 
   @override
+  String get groupShadowNotJoinedBadge => 'Not joined yet';
+
+  @override
+  String get groupAddPersonTitle => 'Add a person';
+
+  @override
+  String get groupAddPersonSubtitle =>
+      'Add someone by name now; they can join later with the invite code.';
+
+  @override
+  String get groupAddPersonAction => 'Add';
+
+  @override
   String groupRemoveMemberTooltip(Object name) {
     return 'Remove $name from group';
   }
