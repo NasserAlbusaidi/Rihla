@@ -19,31 +19,34 @@ import { clearFirestore } from '../fixtures';
 // kind: functions-jest (Firestore emulator + firebase-functions-test, Java 21)
 // runCommand: `cd functions && RIHLA_FIREBASE_EMULATOR_TEST_COMMAND="npx --yes node@22 node_modules/jest/bin/jest.js --runInBand test/callables/claimShadow.test.ts" npm run test:emulator`
 
-import { claimShadow } from '../../src/callables/claimShadow';
+import { claimShadowEngine } from '../../src/callables/claimShadow';
 import { recomputeNet } from '../../src/callables/groupNetBalance';
 import { refreshGroupBalanceAggregate } from '../../src/triggers/balanceAggregator';
 
+// #278 PR8 re-home: the raw `claimShadow` onCall wrapper was de-exported (the
+// engine is now reachable ONLY via an approved decideClaimRequest). The
+// wrapper-only guards (missing-auth / anon / invalid-arg / non-creator) moved to
+// claimRequest.test.ts; this suite exercises the ENGINE directly — its signature
+// has no auth/no validId, so it is called as a plain async function.
 const testEnv = functionsTest({ projectId: 'rihla-safar-test' });
-const wrapped = testEnv.wrap(claimShadow);
 
 const OWNER = 'owner';
 const CLAIMER = 'claimer';
-const OUTSIDER = 'outsider';
 const MEMBER2 = 'member2';
 const THIRD = 'third';
 const SHADOW = 'shadow-7f3a9c';
 
-type Auth = { uid: string; token: { firebase: { sign_in_provider: string } } };
-function authOf(uid: string, provider = 'password'): Auth {
-  return { uid, token: { firebase: { sign_in_provider: provider } } };
-}
-// Caller is the AUTHORIZER (PR7 = group creator); claimerUid is the target
-// identity that inherits the shadow. PR8 routes this through creator-approval.
+// claimerUid is the target identity that inherits the shadow; in prod it is the
+// requester's auth.uid read from the approved claim request doc (PR8).
 function call(
-  data: { groupId?: string; shadowMemberId?: string; claimerUid?: string },
-  auth: Auth | undefined = authOf(OWNER),
+  data: { groupId: string; shadowMemberId: string; claimerUid: string },
 ): Promise<unknown> {
-  return wrapped({ data, auth } as never);
+  return claimShadowEngine(
+    getFirestore(),
+    getFirestore().doc(`groups/${data.groupId}`),
+    data.shadowMemberId,
+    data.claimerUid,
+  );
 }
 
 async function seedGroup(
@@ -228,39 +231,7 @@ afterAll(async () => {
   testEnv.cleanup();
 });
 
-describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
-  test('1. missing auth → unauthenticated', async () => {
-    // Call wrapped directly: passing explicit `undefined` to call()'s defaulted
-    // auth param would use the default (the JS default-parameter trap).
-    await expect(
-      wrapped({
-        data: { groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER },
-        auth: undefined,
-      } as never),
-    ).rejects.toMatchObject({ code: 'unauthenticated' });
-  });
-
-  test('2. anonymous caller → permission-denied; no writes', async () => {
-    await seedGroup('g', [OWNER, SHADOW]);
-    await seedMember('g', OWNER);
-    await seedShadow('g', SHADOW);
-    await expect(
-      call(
-        { groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER },
-        authOf(OWNER, 'anonymous'),
-      ),
-    ).rejects.toMatchObject({ code: 'permission-denied' });
-    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
-  });
-
-  test('3. invalid groupId / shadowMemberId / claimerUid → invalid-argument', async () => {
-    await expect(call({ groupId: '', shadowMemberId: SHADOW, claimerUid: CLAIMER })).rejects.toMatchObject({ code: 'invalid-argument' });
-    await expect(call({ groupId: 'a/b', shadowMemberId: SHADOW, claimerUid: CLAIMER })).rejects.toMatchObject({ code: 'invalid-argument' });
-    await expect(call({ groupId: 'g', shadowMemberId: '', claimerUid: CLAIMER })).rejects.toMatchObject({ code: 'invalid-argument' });
-    await expect(call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: '' })).rejects.toMatchObject({ code: 'invalid-argument' });
-    await expect(call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: 'a/b' })).rejects.toMatchObject({ code: 'invalid-argument' });
-  });
-
+describe('claimShadowEngine — uuid→uid re-key (#278 PR7; auth re-homed to claimRequest.test.ts in PR8)', () => {
   test('4. missing / soft-deleted / deletingInProgress group → not-found', async () => {
     await expect(call({ groupId: 'nope', shadowMemberId: SHADOW, claimerUid: CLAIMER })).rejects.toMatchObject({ code: 'not-found' });
     await seedGroup('g1', [OWNER, SHADOW], { isDeleted: true });
@@ -294,20 +265,6 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
     expect(res.alreadyClaimed).toBe(true);
     expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER]);
     expect(await memberDocCount('g')).toBe(2);
-  });
-
-  test('7. caller is not the group creator (non-creator member or outsider) → permission-denied', async () => {
-    await seedGroup('g', [OWNER, MEMBER2, SHADOW]);
-    await seedMember('g', OWNER);
-    await seedMember('g', MEMBER2);
-    await seedShadow('g', SHADOW);
-    await expect(
-      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }, authOf(MEMBER2)),
-    ).rejects.toMatchObject({ code: 'permission-denied' });
-    await expect(
-      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }, authOf(OUTSIDER)),
-    ).rejects.toMatchObject({ code: 'permission-denied' });
-    expect((await groupDoc('g')).memberIds).toEqual([OWNER, MEMBER2, SHADOW]);
   });
 
   test('8. HAPPY zero-balance shadow → memberIds swap, member doc copy+delete, net all zero', async () => {
