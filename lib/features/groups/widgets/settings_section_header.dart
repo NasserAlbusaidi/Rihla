@@ -9,12 +9,14 @@ class SettingsSectionHeader extends StatelessWidget {
     required this.title,
     this.actionLabel,
     this.onActionTap,
+    this.actionKey,
     this.color,
   });
 
   final String title;
   final String? actionLabel;
   final VoidCallback? onActionTap;
+  final Key? actionKey;
   final Color? color;
 
   @override
@@ -36,6 +38,7 @@ class SettingsSectionHeader extends StatelessWidget {
         const Spacer(),
         if (actionLabel != null)
           GestureDetector(
+            key: actionKey,
             onTap: onActionTap,
             behavior: HitTestBehavior.opaque,
             child: Text(

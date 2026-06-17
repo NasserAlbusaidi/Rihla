@@ -14,6 +14,7 @@ import '../keys/group_keys.dart';
 import '../models/group_member_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
+import 'add_shadow_member_sheet.dart';
 import 'settings_section_header.dart';
 
 /// Members section widget for GroupSettingsScreen.
@@ -44,7 +45,12 @@ class GroupMembersSection extends ConsumerWidget {
       children: [
         SettingsSectionHeader(
           title: context.l10n.groupMembers,
-          actionLabel: context.l10n.groupManage,
+          // #278 PR3: only the creator can add placeholder members by name.
+          actionLabel: isCurrentUserCreator ? context.l10n.groupManage : null,
+          actionKey: GroupKeys.addPersonAction,
+          onActionTap: isCurrentUserCreator
+              ? () => AddShadowMemberSheet.show(context, groupId: groupId)
+              : null,
         ),
         const SizedBox(height: 6),
         Container(
@@ -104,6 +110,10 @@ class GroupMembersSection extends ConsumerWidget {
               ),
             ),
           ),
+          if (member.isShadow) ...[
+            _buildShadowBadge(context, member),
+            SizedBox(width: context.spacing.space8),
+          ],
           _buildRoleLabel(context, member),
           if (canRemove)
             IconButton(
@@ -138,6 +148,27 @@ class GroupMembersSection extends ConsumerWidget {
       style: AppTypography.sans(
         fontSize: 12,
         color: context.colors.textSecondary,
+      ),
+    );
+  }
+
+  /// #278 PR3: "Not joined yet" pill on a placeholder (shadow) member tile.
+  Widget _buildShadowBadge(BuildContext context, GroupMember member) {
+    return Container(
+      key: GroupKeys.shadowBadge(member.id),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 3, 8, 3),
+      decoration: BoxDecoration(
+        color: context.colors.cardSoft,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: context.colors.rule2),
+      ),
+      child: Text(
+        context.l10n.groupShadowNotJoinedBadge,
+        style: AppTypography.sans(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: context.colors.textSecondary,
+        ),
       ),
     );
   }

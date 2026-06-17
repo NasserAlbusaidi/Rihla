@@ -2543,6 +2543,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupManage => 'إدارة';
 
   @override
+  String get groupShadowNotJoinedBadge => 'لم ينضم بعد';
+
+  @override
+  String get groupAddPersonTitle => 'إضافة شخص';
+
+  @override
+  String get groupAddPersonSubtitle =>
+      'أضف شخصًا بالاسم الآن، ويمكنه الانضمام لاحقًا باستخدام رمز الدعوة.';
+
+  @override
+  String get groupAddPersonAction => 'إضافة';
+
+  @override
   String groupRemoveMemberTooltip(Object name) {
     return 'إزالة $name من المجموعة';
   }
