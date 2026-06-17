@@ -154,12 +154,13 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-14, `6ad69418`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-17, `80932c51`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-14 deploy ceremony the `backend-deployed` tag is `6ad69418` and
+    2026-06-17 deploy ceremony the `backend-deployed` tag is `80932c51` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Latest
-    delta: #179 (#503, #509) `expenseNotifier` + `eventNotifier` push triggers
-    CREATED (17 → 19 functions).
+    delta: #519 + #529 (#543) deleteGroup lock lifecycle — new
+    `deleteGroupLockReaper` scheduled fn CREATED (19 → 20 functions) + #544
+    `form-data`/`protobufjs` audit pins (deps-only).
     `docs/DEPLOY-LEDGER.md` is the authoritative per-deploy history; shipped
     across the 2026-06-07…12 deploys:
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
@@ -247,6 +248,16 @@ starts a new run.
       as null → once-path fallback. Functions-only; 17 functions unchanged.
       #382 epic stays open (PR-4 activity-log currency / PR-5 stepped settle /
       PR-6 rules relaxation remain).
+    - **#519 + #529** (`80932c51`, #543) — deleteGroup lock lifecycle. #529 drops
+      `canClearObservedLock` so an invocation clears only the lock it created — a
+      concurrent caller can no longer wipe a peer's live lock. #519 adds the new
+      hourly `deleteGroupLockReaper` scheduled fn (19 → **20 functions**) that
+      resumes the shared `finalizeGroupDeletion` core for stale
+      `deletingInProgress` locks; money-safe because it never bumps
+      `deleteLockedAt` (the balance gate runs before any mutation). Bundled #544
+      (`caa23852`): `form-data 2.5.6` + `protobufjs 7.6.4` audit pins (deps-only,
+      fixes the readiness `npm audit` gate). Functions-only; rules/indexes
+      unchanged.
     - This clears the prior pending-deploy debt; the pinned checkbox above stays
       OPEN until the full *release* ceremony (a recorded prod-state PASS vs the
       release SHA), which is a higher bar than this backend deploy.
