@@ -733,6 +733,46 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  test('#524 a member cannot forge a duplicate member doc under a non-uid id', async () => {
+    // `member` is in memberIds and already has members/member. Before the fix
+    // they could create unlimited extra docs under fresh client-chosen ids with
+    // their own userId (roster/identity pollution). The rule now binds the doc
+    // id to auth.uid, so a non-uid-keyed create is denied.
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/members/forged-1').set({
+      id: 'forged-1',
+      userId: 'member',
+      displayName: 'Member',
+      role: 'MEMBER',
+      joinedAt: new Date(),
+      isShadow: false,
+    }));
+  });
+
+  test('#524 a member in memberIds can still create their own uid-keyed member doc', async () => {
+    // The legit createGroup creator self-add path: a uid in memberIds with no
+    // member doc yet creates members/{uid} (id == uid == auth.uid). Must remain
+    // allowed — the fix must not over-block the single legitimate self-create.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const snap = await db.doc('groups/g1').get();
+      const ids = (snap.data() as { memberIds: string[] }).memberIds;
+      await db.doc('groups/g1').update({
+        memberIds: [...ids, 'newcomer'],
+        updatedAt: new Date(),
+      });
+    });
+    const newcomer = testEnv.authenticatedContext('newcomer').firestore();
+    await assertSucceeds(newcomer.doc('groups/g1/members/newcomer').set({
+      id: 'newcomer',
+      userId: 'newcomer',
+      displayName: 'Newcomer',
+      role: 'MEMBER',
+      joinedAt: new Date(),
+      isShadow: false,
+    }));
+  });
+
   test('member cannot take ownership, but creator can update metadata', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(member.doc('groups/g1').update({
