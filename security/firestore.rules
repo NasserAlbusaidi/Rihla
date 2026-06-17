@@ -773,6 +773,13 @@ service cloud.firestore {
               'isShadow'
             ])
             && request.resource.data.id == memberId
+            // #524: bind the member doc id to the uid so client-side member
+            // creation is one deterministic doc per uid (members/{uid}). With
+            // id == memberId above, this forces memberId == uid, blocking a
+            // member from forging unlimited extra docs under fresh client-chosen
+            // ids. Joiners (joinGroupByInviteCode, Admin SDK) already key by
+            // uid; createGroup now does too (group_provider.dart).
+            && request.resource.data.id == request.auth.uid
             && request.resource.data.userId == request.auth.uid
             && isValidDisplayName(request.resource.data.displayName)
             && request.resource.data.role in ['CREATOR', 'MEMBER']

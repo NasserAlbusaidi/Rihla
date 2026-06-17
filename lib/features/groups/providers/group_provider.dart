@@ -162,7 +162,11 @@ class GroupService extends FirestoreRepository {
 
     const uuid = Uuid();
     final groupId = uuid.v4();
-    final memberId = uuid.v4();
+    // #524: key the creator's member doc by uid (one member doc per uid),
+    // matching joiners (joinGroupByInviteCode → members/{uid}). The members
+    // rule now requires the doc id == auth.uid, which bounds client-side member
+    // creation to a single deterministic doc and blocks forged duplicates.
+    final memberId = uid;
     final inviteCode = _generateInviteCode();
     final now = DateTime.now();
 

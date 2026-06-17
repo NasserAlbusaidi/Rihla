@@ -60,6 +60,7 @@ void main() {
     when(() => anonUser.uid).thenReturn('anon-uid-123');
     when(() => anonUser.email).thenReturn(null);
     when(() => anonUser.isAnonymous).thenReturn(true);
+    when(() => anonUser.getIdToken(any())).thenAnswer((_) async => 'token');
     defaultFirestore = _MockFirestore();
     when(defaultFirestore.waitForPendingWrites).thenAnswer((_) async {});
   });
@@ -201,6 +202,44 @@ void main() {
         throwsStateError,
       );
     });
+
+    test(
+      'force-refreshes the ID token after linking so the next durable-gated '
+      'write sees a non-anonymous token (#522)',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => anonUser.linkWithCredential(any()),
+        ).thenAnswer((_) async => credential);
+        when(() => credential.user).thenReturn(anonUser);
+        final service = buildService();
+        await service.setPendingEmail('foo@example.com');
+
+        await service.completeEmailLink(link);
+
+        verify(() => anonUser.getIdToken(true)).called(1);
+      },
+    );
+
+    test(
+      'a force-refresh failure does not fail an already-successful link (#522)',
+      () async {
+        final credential = _MockUserCredential();
+        when(
+          () => anonUser.linkWithCredential(any()),
+        ).thenAnswer((_) async => credential);
+        when(() => credential.user).thenReturn(anonUser);
+        when(() => anonUser.getIdToken(any()))
+            .thenThrow(FirebaseAuthException(code: 'network-request-failed'));
+        final service = buildService();
+        await service.setPendingEmail('foo@example.com');
+
+        final result = await service.completeEmailLink(link);
+
+        expect(result, same(credential));
+        expect(service.readPendingEmail(), isNull);
+      },
+    );
 
     test(
       'leaves pending email intact when linkWithCredential throws',
