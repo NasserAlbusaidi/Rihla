@@ -5,13 +5,14 @@ import {
   FieldValue,
   Firestore,
   Timestamp,
-  WriteBatch,
   getFirestore,
 } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import { createHash } from 'crypto';
 import '../admin';
+import { BatchWriter } from './shared/batchWriter';
+import { replaceUid, renameMapKey } from './shared/mapReKey';
 
 // Server-side account deletion cascade. Each group is scrubbed in two phases:
 // (B) idempotent child-doc scrubs (events/expenses/settlements/activity) staged
@@ -22,14 +23,6 @@ import '../admin';
 // Future upload flows should add receipt Storage object deletion here.
 const deletedMemberName = 'Deleted member';
 const deletedUserSentinel = 'deleted-user';
-const defaultBatchLimit = 450;
-
-// #46: test seam — lower via DELETE_ACCOUNT_BATCH_LIMIT to force a mid-group
-// auto-flush with a handful of docs instead of 450+. Read at construction (not
-// module load) so a test can set it before invoking the callable.
-function resolveBatchLimit(): number {
-  return Number(process.env.DELETE_ACCOUNT_BATCH_LIMIT) || defaultBatchLimit;
-}
 
 // #73: per-UID invocation rate limit (compensating control for soft App Check).
 const DELETION_ATTEMPT_LIMIT = 5;
@@ -73,46 +66,6 @@ interface GroupCascadeResult {
   // True when the group was already scrubbed / no longer contains the uid /
   // vanished — a benign no-op, NOT a cascadeFailed.
   skipped: boolean;
-}
-
-class BatchWriter {
-  private batch: WriteBatch;
-  private writes = 0;
-  private readonly limit: number;
-
-  constructor(private readonly db: Firestore) {
-    this.batch = db.batch();
-    this.limit = resolveBatchLimit();
-  }
-
-  async set(ref: DocumentReference, data: DocumentData): Promise<void> {
-    this.batch.set(ref, data);
-    await this.afterWrite();
-  }
-
-  async update(ref: DocumentReference, data: DocumentData): Promise<void> {
-    this.batch.update(ref, data);
-    await this.afterWrite();
-  }
-
-  async delete(ref: DocumentReference): Promise<void> {
-    this.batch.delete(ref);
-    await this.afterWrite();
-  }
-
-  async flush(): Promise<void> {
-    if (this.writes === 0) return;
-    await this.batch.commit();
-    this.batch = this.db.batch();
-    this.writes = 0;
-  }
-
-  private async afterWrite(): Promise<void> {
-    this.writes += 1;
-    if (this.writes >= this.limit) {
-      await this.flush();
-    }
-  }
 }
 
 function assertNoInput(data: unknown): void {
@@ -209,20 +162,6 @@ function timestampMillis(value: unknown): number {
   return Number.MAX_SAFE_INTEGER;
 }
 
-function replaceUid(values: string[], uid: string, tombstoneId: string): {
-  values: string[];
-  changed: boolean;
-} {
-  let changed = false;
-  const next: string[] = [];
-  for (const value of values) {
-    const replacement = value === uid ? tombstoneId : value;
-    if (replacement !== value) changed = true;
-    if (!next.includes(replacement)) next.push(replacement);
-  }
-  return { values: next, changed };
-}
-
 function rewriteString(value: unknown, originalName: string | undefined): unknown {
   if (typeof value !== 'string' || !originalName || originalName.length === 0) {
     return value;
@@ -251,24 +190,6 @@ function rewriteMetadata(value: unknown, uid: string, tombstoneId: string, origi
 
 function hasChanged(before: unknown, after: unknown): boolean {
   return JSON.stringify(before) !== JSON.stringify(after);
-}
-
-function renameMapKey(
-  value: unknown,
-  uid: string,
-  tombstoneId: string,
-  tombstoneValue: unknown,
-): { value: Record<string, unknown>; changed: boolean } | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-  const next: Record<string, unknown> = { ...(value as Record<string, unknown>) };
-  if (!Object.prototype.hasOwnProperty.call(next, uid)) {
-    return { value: next, changed: false };
-  }
-  next[tombstoneId] = tombstoneValue;
-  delete next[uid];
-  return { value: next, changed: true };
 }
 
 function findOriginalName(memberData: DocumentData | undefined): string | undefined {
