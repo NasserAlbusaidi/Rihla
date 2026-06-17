@@ -20,6 +20,7 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../groups/widgets/currency_picker_sheet.dart';
 import '../../trip/providers/trip_provider.dart';
@@ -504,6 +505,15 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     final displayNames = MemberNameResolver.disambiguateEventParticipants(
       event,
     );
+    // #278: flag placeholder ("shadow") members who haven't joined yet. The
+    // flag lives on GroupMember.isShadow; rows key by event-participant id,
+    // which equals the member userId. Empty when the roster is unavailable.
+    final members =
+        ref.read(groupMembersProvider(event.groupId)).valueOrNull ?? const [];
+    final shadowUserIds = {
+      for (final m in members)
+        if (m.isShadow) m.userId,
+    };
     final participants = [
       for (final id in ids)
         SplitParticipant(
@@ -513,6 +523,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
               event.participantNames[id] ??
               context.l10n.editorMemberFallback,
           role: id == _selectedPayerId ? context.l10n.editorPaidRole : null,
+          isShadow: shadowUserIds.contains(id),
         ),
     ];
 

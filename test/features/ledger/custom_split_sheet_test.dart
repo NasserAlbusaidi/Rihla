@@ -310,6 +310,46 @@ void main() {
     });
   });
 
+  group('CustomSplitSheet — shadow members (#278)', () {
+    testWidgets('a shadow participant shows the not-joined-yet marker', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => showCustomSplitSheet(
+                    context,
+                    title: 'Dinner',
+                    total: Decimal.parse('30.000'),
+                    currency: 'OMR',
+                    participants: const [
+                      SplitParticipant(id: 'a', name: 'Alex'),
+                      SplitParticipant(id: 'b', name: 'Bo', isShadow: true),
+                    ],
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      // The shadow member is marked; the real member is not.
+      expect(find.text('Alex'), findsOneWidget);
+      expect(find.text('Bo'), findsOneWidget);
+      expect(find.text('Shadow Profile'), findsOneWidget);
+    });
+  });
+
   group('CustomSplitSheet — initial values', () {
     testWidgets('opens in the requested mode with prefilled shares', (
       tester,
