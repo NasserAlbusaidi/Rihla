@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../groups/models/group_member_model.dart';
+import '../../groups/services/member_name_resolver.dart';
 import '../keys/event_keys.dart';
 
 /// Card widget for picking event participants.
@@ -33,6 +34,17 @@ class EventParticipantsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // #196/#289: distinguish two same-named members in the participant picker
+    // (render-only; selection still keys by userId). Former members keep their
+    // suffix. The card has no Event, so resolve group-scoped over the roster.
+    final displayNames = MemberNameResolver.disambiguate({
+      for (final m in members)
+        m.userId: MemberDisplay(
+          rawName: m.displayName,
+          isFormer: m.isTombstone,
+        ),
+    });
+
     return Container(
       margin: EdgeInsets.only(bottom: context.spacing.space12),
       padding: EdgeInsets.all(context.spacing.space16),
@@ -80,7 +92,8 @@ class EventParticipantsCard extends StatelessWidget {
           const Divider(height: 8),
           ...members.map(
             (member) => _ParticipantRow(
-              member: member,
+              displayName: displayNames[member.userId] ?? member.displayName,
+              isShadow: member.isShadow,
               isSelected: selectedIds.contains(member.userId),
               onToggle: (_) => onToggle(member.userId),
             ),
@@ -99,12 +112,17 @@ class EventParticipantsCard extends StatelessWidget {
 ///
 /// Moved from [CreateEventScreen] (Phase 36 ARCH-01 decomposition).
 class _ParticipantRow extends StatelessWidget {
-  final GroupMember member;
+  /// #196/#289 disambiguated render name (selection keys by userId, unaffected).
+  final String displayName;
+
+  /// #278: a placeholder member added by name but not yet joined.
+  final bool isShadow;
   final bool isSelected;
   final ValueChanged<bool> onToggle;
 
   const _ParticipantRow({
-    required this.member,
+    required this.displayName,
+    required this.isShadow,
     required this.isSelected,
     required this.onToggle,
   });
@@ -112,7 +130,7 @@ class _ParticipantRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: member.displayName,
+      label: displayName,
       checked: isSelected,
       child: GestureDetector(
         onTap: () => onToggle(!isSelected),
@@ -137,9 +155,22 @@ class _ParticipantRow extends StatelessWidget {
               ),
               SizedBox(width: context.spacing.space12),
               Expanded(
-                child: Text(
-                  member.displayName,
-                  style: Theme.of(context).textTheme.titleSmall,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      displayName,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    if (isShadow)
+                      Text(
+                        context.l10n.editorShadowProfile,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.colors.textSecondary,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               Checkbox(
