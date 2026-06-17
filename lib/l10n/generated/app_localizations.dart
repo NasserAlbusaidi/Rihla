@@ -4793,6 +4793,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Link a Google account to continue.'**
   String get durableCredentialRequired;
+
+  /// Label for the optional #278 chips field on the create-group screen — add placeholder ('shadow') members by name now, or invite them later.
+  ///
+  /// In en, this message translates to:
+  /// **'Who\'s in?'**
+  String get createGroupWhoElse;
+
+  /// Hint inside the #278 add-by-name input; submitting a name turns it into a removable shadow chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a name…'**
+  String get createGroupAddNameHint;
+
+  /// Shown under the #278 chips field while offline — adding placeholder members needs the addShadowMember callable, which has no offline replay. The group still creates with just the creator.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to add names'**
+  String get createGroupShadowOfflineHint;
+
+  /// Snackbar when a seeded placeholder name (#278) collides with an existing member; the group is already created and the other names still proceed.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" is already used in this group.'**
+  String createGroupShadowNameTaken(Object name);
 }
 
 class _AppLocalizationsDelegate

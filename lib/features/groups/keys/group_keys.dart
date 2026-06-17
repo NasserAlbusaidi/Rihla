@@ -32,6 +32,13 @@ abstract final class GroupKeys {
   static const joinCodeInput = Key('group_join_code_input');
   static const deviceNameInput = Key('group_device_name_input');
 
+  // #278: add placeholder ("shadow") members by name at create time.
+  static const shadowMemberInput = Key('group_create_shadow_member_input');
+  static Key shadowMemberChip(String name) =>
+      Key('group_create_shadow_chip_$name');
+  static Key shadowMemberRemove(String name) =>
+      Key('group_create_shadow_remove_$name');
+
   // Label / empty state keys
   static const noGroupsEmpty = Key('group_no_groups_empty');
   static const noEventsEmpty = Key('group_no_events_empty');

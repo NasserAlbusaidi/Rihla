@@ -2039,5 +2039,24 @@
   "durableCredentialRequired": "Link a Google account to continue.",
   "@durableCredentialRequired": {
     "description": "Snackbar shown when a create/join is refused because the user is still anonymous (#441) — the defense path when the gate sheet was bypassed, and the mapping for the server-side permission-denied reject."
+  },
+  "createGroupWhoElse": "Who's in?",
+  "@createGroupWhoElse": {
+    "description": "Label for the optional #278 chips field on the create-group screen — add placeholder ('shadow') members by name now, or invite them later."
+  },
+  "createGroupAddNameHint": "Type a name…",
+  "@createGroupAddNameHint": {
+    "description": "Hint inside the #278 add-by-name input; submitting a name turns it into a removable shadow chip."
+  },
+  "createGroupShadowOfflineHint": "Connect to add names",
+  "@createGroupShadowOfflineHint": {
+    "description": "Shown under the #278 chips field while offline — adding placeholder members needs the addShadowMember callable, which has no offline replay. The group still creates with just the creator."
+  },
+  "createGroupShadowNameTaken": "\"{name}\" is already used in this group.",
+  "@createGroupShadowNameTaken": {
+    "description": "Snackbar when a seeded placeholder name (#278) collides with an existing member; the group is already created and the other names still proceed.",
+    "placeholders": {
+      "name": {}
+    }
   }
 }

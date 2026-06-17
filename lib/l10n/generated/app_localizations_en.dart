@@ -2814,4 +2814,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get durableCredentialRequired => 'Link a Google account to continue.';
+
+  @override
+  String get createGroupWhoElse => 'Who\'s in?';
+
+  @override
+  String get createGroupAddNameHint => 'Type a name…';
+
+  @override
+  String get createGroupShadowOfflineHint => 'Connect to add names';
+
+  @override
+  String createGroupShadowNameTaken(Object name) {
+    return '\"$name\" is already used in this group.';
+  }
 }
