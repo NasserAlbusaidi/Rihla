@@ -704,6 +704,24 @@ abstract class AppLocalizations {
   /// **'Delete account'**
   String get deleteAccountConfirm;
 
+  /// Title of the DeleteAccountDialog when the live session is an anonymous guest shell (#469).
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this guest session?'**
+  String get deleteGuestSessionTitle;
+
+  /// Body copy of the DeleteAccountDialog for an anonymous session, clarifying a linked durable account is not affected (#469).
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes only this guest session on this device. Any Google or email account you\'ve linked is separate and is NOT deleted unless you sign in to it first. There\'s no undo.'**
+  String get deleteGuestSessionContent;
+
+  /// Destructive confirm button on the DeleteAccountDialog for an anonymous guest session (#469).
+  ///
+  /// In en, this message translates to:
+  /// **'Delete guest data'**
+  String get deleteGuestSessionConfirm;
+
   /// Title of the dialog shown when account deletion partially completed and can be retried.
   ///
   /// In en, this message translates to:

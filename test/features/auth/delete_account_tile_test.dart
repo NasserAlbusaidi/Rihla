@@ -29,13 +29,28 @@ firebase_auth.User _userWithEmail(String? email) {
   return u;
 }
 
+/// A real anonymous shell session (non-null user, [isAnonymous] true), as
+/// opposed to `email: null` which models a *null* user. #469: the Delete
+/// confirm dialog must be identity-honest for this case.
+firebase_auth.User _anonUser() {
+  final u = _MockUser();
+  when(() => u.uid).thenReturn('anon-uid');
+  when(() => u.email).thenReturn(null);
+  when(() => u.isAnonymous).thenReturn(true);
+  when(() => u.providerData).thenReturn(const []);
+  return u;
+}
+
 Future<Widget> _wrap({
   required _MockDeletionService service,
   required String? email,
+  bool anonymous = false,
 }) async {
   SharedPreferences.setMockInitialValues({'settings_device_name': 'Test User'});
   final prefs = await SharedPreferences.getInstance();
-  final user = email == null ? null : _userWithEmail(email);
+  final user = anonymous
+      ? _anonUser()
+      : (email == null ? null : _userWithEmail(email));
 
   return ProviderScope(
     overrides: [
@@ -97,6 +112,53 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(ProfileKeys.deleteAccountTile), findsOneWidget);
+  });
+
+  // #469: an anonymous shell session is decoupled from any durable
+  // Google/email account (which lives under a different UID). The confirm
+  // dialog must say it deletes only this guest session, not "your account".
+  testWidgets('anonymous session shows the guest-honest delete dialog', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      await _wrap(service: service, email: null, anonymous: true),
+    );
+    await tester.pumpAndSettle();
+    await _openDialog(tester);
+
+    expect(find.text('Delete this guest session?'), findsOneWidget);
+    expect(find.textContaining('only this guest session'), findsOneWidget);
+    expect(find.text('Delete guest data'), findsOneWidget);
+    // The durable-account copy must NOT appear for an anon shell.
+    expect(find.text('Delete your account?'), findsNothing);
+  });
+
+  testWidgets('durable (linked) session shows the account delete dialog', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      await _wrap(service: service, email: 'foo@example.com'),
+    );
+    await tester.pumpAndSettle();
+    await _openDialog(tester);
+
+    expect(find.text('Delete your account?'), findsOneWidget);
+    expect(
+      find.textContaining('permanently deletes your Rihla account'),
+      findsOneWidget,
+    );
+    // The guest-session copy must NOT appear for a durable account. (The
+    // confirm label "Delete account" collides with the tile label, so assert
+    // via the dialog's confirm-button key instead.)
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('deleteAccount.confirm')),
+        matching: find.text('Delete account'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Delete guest data'), findsNothing);
+    expect(find.text('Delete this guest session?'), findsNothing);
   });
 
   testWidgets('cancel does not call deleteAccount', (tester) async {
