@@ -4,9 +4,8 @@ import {
   DocumentReference,
   FieldValue,
   Firestore,
-  getFirestore,
 } from 'firebase-admin/firestore';
-import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import type Decimal from 'decimal.js';
 import '../admin';
@@ -57,12 +56,6 @@ import {
 // splitDistribution re-keys via mergeUidMapKey (SUM-on-collision, mapReKey.test.ts)
 // — defensive only; the pre-scan makes a live claim-time collision unreachable.
 
-export interface ClaimShadowInput {
-  groupId: string;
-  shadowMemberId: string;
-  claimerUid: string;
-}
-
 export interface ClaimShadowOutput {
   groupId: string;
   shadowMemberId: string;
@@ -76,13 +69,6 @@ export interface ClaimShadowOutput {
 // write it. Inert to balances + display (absent from EXPENSE_BALANCE_KEYS /
 // CONTENT_KEYS); the field persists harmlessly after the claim.
 const CLAIM_REKEY_FIELD = 'claimRekeyAt';
-
-function validId(value: unknown, label: string): string {
-  if (typeof value !== 'string' || value.length === 0 || value.includes('/')) {
-    throw new HttpsError('invalid-argument', `${label} must be a valid id.`);
-  }
-  return value;
-}
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
@@ -339,8 +325,14 @@ async function assertExactParity(
   }
 }
 
-// The engine. PR8 calls this directly from an approved decideClaimRequest; PR7's
-// onCall wrapper gates it on the group creator (the D1 trust anchor).
+// The engine. Reachable ONLY via an approved decideClaimRequest (#278 PR8): the
+// raw onCall wrapper was de-exported so a re-key cannot be triggered except by the
+// group creator approving a pending claim request. decideClaimRequest calls this
+// in-process under the creator-auth context with the claimerUid read from the
+// persisted request doc (the requester's auth.uid) — the creator never supplies a
+// claimerUid. The engine is fully self-protecting (eligibility + 3-term D8
+// pre-scan + Phase-C TOCTOU re-check + post-commit simNet==actualNet parity), so
+// it does not trust its caller's gate.
 export async function claimShadowEngine(
   db: Firestore,
   groupRef: DocumentReference,
@@ -525,40 +517,3 @@ export async function claimShadowEngine(
   logger.info('claimShadow re-keyed', { groupId, shadowMemberId, claimerUid });
   return { groupId, shadowMemberId, claimerUid, alreadyClaimed: false };
 }
-
-export const claimShadow = onCall<ClaimShadowInput, Promise<ClaimShadowOutput>>(
-  { enforceAppCheck: true },
-  async (request: CallableRequest<ClaimShadowInput>) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Sign-in required.');
-    }
-    // D6: a durable account is required (the claimer adopts a real identity).
-    if (request.auth.token?.firebase?.sign_in_provider === 'anonymous') {
-      throw new HttpsError(
-        'permission-denied',
-        'A linked (non-anonymous) account is required to claim a member.',
-      );
-    }
-    const groupId = validId(request.data?.groupId, 'groupId');
-    const shadowMemberId = validId(request.data?.shadowMemberId, 'shadowMemberId');
-    const claimerUid = validId(request.data?.claimerUid, 'claimerUid');
-
-    const db = getFirestore();
-    const groupRef = db.doc(`groups/${groupId}`);
-    const groupSnap = await groupRef.get();
-    if (!groupSnap.exists) throw new HttpsError('not-found', 'Group not found.');
-    const groupData = groupSnap.data() ?? {};
-    if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
-      throw new HttpsError('not-found', 'Group not found.');
-    }
-    // D1 trust anchor (removeMember.ts precedent): only the group creator may
-    // trigger a re-key. PR8 wraps this with the request/approve flow and
-    // de-exports this raw callable so the engine is reachable ONLY via an
-    // approved decideClaimRequest.
-    if (groupData.createdBy !== request.auth.uid) {
-      throw new HttpsError('permission-denied', 'Only the group creator can approve a claim.');
-    }
-
-    return claimShadowEngine(db, groupRef, shadowMemberId, claimerUid);
-  },
-);

@@ -11,6 +11,7 @@ import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https
 import { logger } from 'firebase-functions/v2';
 import '../admin';
 import { notifyMemberJoin } from '../notifications/memberJoinNotifier';
+import { normalizeInviteCode } from './shared/inviteCode';
 
 export interface JoinGroupByInviteCodeInput {
   inviteCode: string;
@@ -55,17 +56,6 @@ const DISPLAY_NAME_MAX_LENGTH = 32;
 // firestore.rules. The control chars are the validation target, not a mistake.
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARACTER_PATTERN = /[\x00-\x1F\x7F]/u;
-
-function normalizeInviteCode(inviteCode: unknown): string {
-  if (typeof inviteCode !== 'string') {
-    throw new HttpsError('invalid-argument', 'inviteCode must be a string.');
-  }
-  const normalized = inviteCode.trim().toUpperCase();
-  if (!/^[A-Z0-9]{6}$/.test(normalized)) {
-    throw new HttpsError('invalid-argument', 'Invalid invite code.');
-  }
-  return normalized;
-}
 
 function normalizeDisplayName(displayName: unknown): string {
   if (displayName == null) return 'Anonymous';

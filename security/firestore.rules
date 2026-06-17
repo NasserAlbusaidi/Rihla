@@ -945,6 +945,17 @@ service cloud.firestore {
       match /_writeCounters/{uid} {
         allow read, write: if false;
       }
+
+      // #278 claim/merge: a claim request is fully callable-mediated. The
+      // requester (pre-join, NOT a member — D8) opens it via requestClaimShadow
+      // and polls via listMyClaimRequests; the creator polls via
+      // listGroupClaimRequests and decides via decideClaimRequest — all Admin SDK
+      // (which bypasses rules). NO client read or write: a client read would need
+      // a non-member carve-out fighting the member-gated convention, and a client
+      // write would let a stranger forge an approval/claim.
+      match /claimRequests/{requestId} {
+        allow read, write: if false;
+      }
     }
   }
 }

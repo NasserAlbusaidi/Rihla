@@ -9,7 +9,10 @@ export { deleteGroup } from './callables/deleteGroup';
 export { leaveGroup } from './callables/leaveGroup';
 export { removeMember } from './callables/removeMember';
 export { addShadowMember } from './callables/addShadowMember';
-export { claimShadow } from './callables/claimShadow';
+export { requestClaimShadow } from './callables/requestClaimShadow';
+export { decideClaimRequest } from './callables/decideClaimRequest';
+export { listMyClaimRequests } from './callables/listMyClaimRequests';
+export { listGroupClaimRequests } from './callables/listGroupClaimRequests';
 export {
   eventWriteRateMonitor,
   groupSettlementWriteRateMonitor,
