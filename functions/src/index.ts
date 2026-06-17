@@ -8,6 +8,7 @@ export { deleteAccount } from './callables/deleteAccount';
 export { deleteGroup } from './callables/deleteGroup';
 export { leaveGroup } from './callables/leaveGroup';
 export { removeMember } from './callables/removeMember';
+export { addShadowMember } from './callables/addShadowMember';
 export {
   eventWriteRateMonitor,
   groupSettlementWriteRateMonitor,
