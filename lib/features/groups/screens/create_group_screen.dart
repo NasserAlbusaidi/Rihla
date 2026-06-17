@@ -30,6 +30,7 @@ import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 import '../widgets/currency_picker_sheet.dart';
 import '../widgets/invite_code_display.dart';
+import '../widgets/shadow_member_chips_field.dart';
 
 /// Screen for creating a new group.
 ///
@@ -55,6 +56,11 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   /// #261: the group's currency, chosen at create time and immutable after
   /// (Model A). Local state only — NOT persisted to AppSettings.
   String _selectedCurrency = 'OMR';
+
+  /// #278: placeholder ("shadow") member names seeded at create time. Local UI
+  /// state until Create, then fanned out to the addShadowMember callable once
+  /// the group doc is acked. Entry-ordered; de-duplicated case-insensitively.
+  final List<String> _shadowNames = [];
 
   @override
   void initState() {
@@ -92,6 +98,22 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     _nameController.dispose();
     _displayNameController.dispose();
     super.dispose();
+  }
+
+  /// #278: add a placeholder name, de-duplicated case-insensitively against the
+  /// creator's own name and existing chips (the server enforces the real guard;
+  /// this keeps the local list clean).
+  void _addShadowName(String name) {
+    final key = name.trim().toLowerCase();
+    if (key.isEmpty) return;
+    final selfName = _displayNameController.text.trim().toLowerCase();
+    if (key == selfName) return;
+    if (_shadowNames.any((n) => n.toLowerCase() == key)) return;
+    setState(() => _shadowNames.add(name));
+  }
+
+  void _removeShadowName(String name) {
+    setState(() => _shadowNames.remove(name));
   }
 
   Future<void> _pickCurrency() async {
@@ -169,6 +191,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       ref.read(groupLoadingProvider.notifier).state = false;
       if (outcome == WriteAck.acked) {
         connectivity.noteLocalWrite(); // #357: stale-offline correction (no-op online)
+        // #278: the group doc is acked, so its id exists server-side — fan out
+        // one addShadowMember callable per seeded name. Runs only on a real
+        // server ack (the callable has no offline replay); offline the chips
+        // field is disabled so _shadowNames is empty regardless.
+        await _seedShadowMembers(staged.group.id);
+        if (!mounted) return;
       } else {
         connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
         // Shown BEFORE awaiting the share sheet so it is visible; the sheet is
@@ -208,6 +236,39 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
             context.l10n.groupCreateError(friendlyMessageFor(context, e)),
           ),
           duration: const Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  /// #278: seed each entered placeholder name via the addShadowMember callable.
+  /// The group already exists, so a per-chip failure never aborts the others —
+  /// `already-exists` names are collected and surfaced together; any other
+  /// failure is swallowed quietly (the creator can re-add from the group later).
+  Future<void> _seedShadowMembers(String groupId) async {
+    if (_shadowNames.isEmpty) return;
+    final service = ref.read(groupServiceProvider);
+    final taken = <String>[];
+    for (final name in List<String>.from(_shadowNames)) {
+      try {
+        await service.addShadowMember(groupId: groupId, displayName: name);
+      } on ShadowMemberNameTakenException {
+        taken.add(name);
+      } catch (e, st) {
+        unawaited(Sentry.captureException(e, stackTrace: st));
+      }
+    }
+    if (!mounted || taken.isEmpty) return;
+    // Plain (no-action) snackbar per taken name, so it auto-dismisses without
+    // the Flutter ≥3.41 persist trap (#411). floating is set explicitly so dark
+    // mode doesn't render it full-width (darkTheme has no snackBarTheme).
+    final messenger = ScaffoldMessenger.of(context);
+    for (final name in taken) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.createGroupShadowNameTaken(name)),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
         ),
       );
     }
@@ -310,6 +371,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                         textCapitalization: TextCapitalization.words,
                         validator: (value) =>
                             validateDisplayNameLocalized(context, value),
+                      ),
+                      const SizedBox(height: 18),
+                      ShadowMemberChipsField(
+                        names: _shadowNames,
+                        enabled:
+                            ref.watch(connectivityProvider) ==
+                            ConnectivityStatus.online,
+                        onAdd: _addShadowName,
+                        onRemove: _removeShadowName,
                       ),
                       const SizedBox(height: 18),
                       _CurrencyField(

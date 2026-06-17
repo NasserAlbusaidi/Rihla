@@ -18,6 +18,25 @@ import '../models/group_member_model.dart';
 import '../models/group_model.dart';
 
 // ---------------------------------------------------------------------------
+// Exceptions
+// ---------------------------------------------------------------------------
+
+/// Thrown by [GroupService.addShadowMember] (#278) when the placeholder name
+/// collides — case-insensitive, trimmed — with an existing real or shadow
+/// member. Maps the callable's `already-exists` code. The create flow surfaces
+/// the taken [name] per-chip; the group itself is already created, and the
+/// remaining names still proceed.
+class ShadowMemberNameTakenException implements Exception {
+  const ShadowMemberNameTakenException(this.name);
+
+  /// The placeholder name that was rejected (for the UI message).
+  final String name;
+
+  @override
+  String toString() => 'ShadowMemberNameTakenException(name: $name)';
+}
+
+// ---------------------------------------------------------------------------
 // State providers
 // ---------------------------------------------------------------------------
 
@@ -46,12 +65,18 @@ class GroupService extends FirestoreRepository {
     required String displayName,
   })?
   _joinGroupCallableOverride;
+  final Future<String> Function({
+    required String groupId,
+    required String displayName,
+  })?
+  _addShadowMemberCallableOverride;
 
   /// Production constructor — uses [FirebaseConfig.firestore] via base class.
   GroupService(this._ref)
     : _currentUserIdOverride = null,
       _isAnonymousOverride = null,
       _joinGroupCallableOverride = null,
+      _addShadowMemberCallableOverride = null,
       super();
 
   /// Test constructor — injects a [FakeFirebaseFirestore] for unit testing.
@@ -66,9 +91,15 @@ class GroupService extends FirestoreRepository {
       required String displayName,
     })?
     joinGroupCallableOverride,
+    Future<String> Function({
+      required String groupId,
+      required String displayName,
+    })?
+    addShadowMemberCallableOverride,
   }) : _currentUserIdOverride = currentUserId,
        _isAnonymousOverride = isAnonymous,
        _joinGroupCallableOverride = joinGroupCallableOverride,
+       _addShadowMemberCallableOverride = addShadowMemberCallableOverride,
        super.withFirestore(firestoreDb);
 
   String? get _currentUid =>
@@ -331,6 +362,50 @@ class GroupService extends FirestoreRepository {
       throw Exception('Could not join group. Try again.');
     }
     return snapshot;
+  }
+
+  /// Seed a placeholder ("shadow") member by name (#278).
+  ///
+  /// Routes through the creator-only `addShadowMember` Cloud callable, which
+  /// validates the name, enforces the case-insensitive no-collision rule across
+  /// real + shadow members and the 50-member cap, then writes one
+  /// `isShadow: true` member doc and returns its `memberId`. The callable is
+  /// online-only (no offline replay), so callers gate on connectivity.
+  ///
+  /// Throws [ShadowMemberNameTakenException] on `already-exists` so the caller
+  /// can surface the specific taken name per-chip; any other failure throws a
+  /// generic [Exception] with a user-facing message.
+  Future<String> addShadowMember({
+    required String groupId,
+    required String displayName,
+  }) async {
+    try {
+      final override = _addShadowMemberCallableOverride;
+      if (override != null) {
+        return await override(groupId: groupId, displayName: displayName);
+      }
+
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('addShadowMember')
+          .call({'groupId': groupId, 'displayName': displayName});
+      return result.data['memberId'] as String;
+    } on FirebaseFunctionsException catch (error) {
+      if (error.code == 'already-exists') {
+        throw ShadowMemberNameTakenException(displayName);
+      }
+      throw Exception(_addShadowMemberErrorMessage(error.code));
+    }
+  }
+
+  String _addShadowMemberErrorMessage(String code) {
+    return switch (code) {
+      'unauthenticated' => 'Please sign in and try again.',
+      'permission-denied' => 'Only the group creator can add names.',
+      'invalid-argument' => 'That name is not valid.',
+      'not-found' => 'That group no longer exists.',
+      'failed-precondition' => 'This group cannot take more names right now.',
+      _ => 'Could not add that name. Try again.',
+    };
   }
 
   /// Update group metadata (name only).

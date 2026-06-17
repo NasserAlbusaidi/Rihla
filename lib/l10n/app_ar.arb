@@ -832,5 +832,9 @@
   "durableGateSwitch": "تبديل الحساب",
   "durableGateUseDifferent": "استخدام حساب مختلف",
   "durableGateError": "تعذّر ربط حسابك. حاول مرة أخرى.",
-  "durableCredentialRequired": "اربط حساب Google للمتابعة."
+  "durableCredentialRequired": "اربط حساب Google للمتابعة.",
+  "createGroupWhoElse": "من سيشارك؟",
+  "createGroupAddNameHint": "اكتب اسمًا…",
+  "createGroupShadowOfflineHint": "اتصل بالإنترنت لإضافة الأسماء",
+  "createGroupShadowNameTaken": "‏\"{name}\" مستخدم بالفعل في هذه المجموعة."
 }
