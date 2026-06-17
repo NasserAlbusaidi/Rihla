@@ -62,13 +62,22 @@ Future<SplitResult?> showCustomSplitSheet(
 }
 
 class SplitParticipant {
-  const SplitParticipant({required this.id, required this.name, this.role});
+  const SplitParticipant({
+    required this.id,
+    required this.name,
+    this.role,
+    this.isShadow = false,
+  });
 
   final String id;
   final String name;
 
   /// Optional small caption shown next to the name (e.g. "You", "Paid").
   final String? role;
+
+  /// True for a placeholder ("shadow") member added by name but not yet
+  /// joined (#278) — surfaced with a "not joined yet" marker. Display only.
+  final bool isShadow;
 }
 
 class CustomSplitSheet extends StatefulWidget {
@@ -650,6 +659,18 @@ class _ParticipantRow extends StatelessWidget {
                     ],
                   ],
                 ),
+                // #278: flag a placeholder member who hasn't joined yet.
+                if (participant.isShadow)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      context.l10n.editorShadowProfile,
+                      style: AppTypography.sans(
+                        fontSize: 11,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
                 if (mode == SplitMode.equally || mode == SplitMode.shares)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
