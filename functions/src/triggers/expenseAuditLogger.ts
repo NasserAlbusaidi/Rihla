@@ -157,6 +157,14 @@ export const expenseAuditLogger = onDocumentWritten(
 
     const { gid, eid, expenseId } = event.params;
     const afterData = after as DocumentData; // type !== null ⇒ after exists
+    // #278 [P2]: suppress a claimShadow re-key write. The claim engine stamps a
+    // fresh claimRekeyAt while swapping CONTENT_KEYS (payerParticipantId/
+    // splitDistribution/customSplitParticipants), so without this skip every
+    // re-keyed expense would log a phantom UPDATE misattributed to the shadow's
+    // createdBy. deepEqual (NOT !==) so serverTimestamp's distinct-but-equal
+    // deserialized Timestamp objects compare correctly: a later GENUINE edit
+    // leaves claimRekeyAt unchanged and still logs.
+    if (!deepEqual(afterData.claimRekeyAt, before?.claimRekeyAt)) return;
     const actorUid = asString(afterData.lastEditedBy) || asString(afterData.createdBy);
     const actorName = await resolveActorName(gid, actorUid);
 

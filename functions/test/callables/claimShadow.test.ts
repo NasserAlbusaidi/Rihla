@@ -1,5 +1,5 @@
 import functionsTest from 'firebase-functions-test';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 
@@ -193,13 +193,6 @@ const groupDoc = async (groupId: string) =>
   (await getFirestore().doc(`groups/${groupId}`).get()).data() ?? {};
 const memberDoc = async (groupId: string, docId: string) =>
   (await getFirestore().doc(`groups/${groupId}/members/${docId}`).get()).data();
-async function membersByUserId(groupId: string, userId: string) {
-  const s = await getFirestore()
-    .collection(`groups/${groupId}/members`)
-    .where('userId', '==', userId)
-    .get();
-  return s.docs.map((d) => d.data());
-}
 async function memberDocCount(groupId: string): Promise<number> {
   return (await getFirestore().collection(`groups/${groupId}/members`).get()).size;
 }
@@ -236,8 +229,13 @@ afterAll(async () => {
 
 describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
   test('1. missing auth → unauthenticated', async () => {
+    // Call wrapped directly: passing explicit `undefined` to call()'s defaulted
+    // auth param would use the default (the JS default-parameter trap).
     await expect(
-      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }, undefined),
+      wrapped({
+        data: { groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER },
+        auth: undefined,
+      } as never),
     ).rejects.toMatchObject({ code: 'unauthenticated' });
   });
 
@@ -361,8 +359,6 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
     expect(omr(net, CLAIMER)).toBe('-6.000'); // B4 parity: 0 + (−6.000)
     expect(omr(net, OWNER)).toBe('6.000');
     expect(omr(net, SHADOW)).toBe('absent');
-    // re-keyed expense carries the audit-skip sentinel ([P2])
-    expect((await expenseDoc('groups/g/events/e1/expenses/x1')).claimRekeyAt).toBeDefined();
   });
 
   test('10. HAPPY shadow as PAYER → CLAIMER inherits +6.000 (payer scalar re-keyed)', async () => {
@@ -378,7 +374,9 @@ describe('claimShadow callable — uuid→uid re-key engine (#278 PR7)', () => {
     expect(omr(net, CLAIMER)).toBe('6.000');
     expect(omr(net, OWNER)).toBe('-6.000');
     expect(omr(net, SHADOW)).toBe('absent');
-    expect((await expenseDoc('groups/g/events/e1/expenses/x1')).payerParticipantId).toBe(CLAIMER);
+    const ex = await expenseDoc('groups/g/events/e1/expenses/x1');
+    expect(ex.payerParticipantId).toBe(CLAIMER);
+    expect(ex.claimRekeyAt).toBeDefined(); // re-keyed expense carries the audit-skip sentinel ([P2])
   });
 
   test('11. ★D2 SUM (DEFENSE-IN-DEPTH, forged/Admin seed — not a live happy-path): exact split, claimer already a member → owed SUMS', async () => {
