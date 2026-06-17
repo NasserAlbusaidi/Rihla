@@ -511,6 +511,35 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect(omr(await nets('g'), CLAIMER)).toBe('-6.000'); // NOT doubled
     expect(await memberDocCount('g')).toBe(2);
   });
+
+  test('D13. two requesters for ONE shadow: approving the LOSER after the winner claimed → failed-precondition, loser declined, NO phantom claim', async () => {
+    // Refute-found gap: two distinct durable users can each hold a pending request
+    // for the same shadow (requestClaimShadow keys by requesterUid__shadowMemberId,
+    // no one-pending-per-shadow guard — a duplicate-name group is legitimate). The
+    // engine returns alreadyClaimed:true whenever the shadow is GONE, identity-blind
+    // to who retired it — so approving the loser must NOT be flipped to 'claimed'
+    // (that requester inherited nothing). It must lose the race gracefully.
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await seedExpense('groups/g/events/e1/expenses/x1', { payerParticipantId: OWNER, amountFils: 12000 });
+    const ridWinner = await seedPendingRequest('g', CLAIMER, SHADOW, 'Ali');
+    const ridLoser = await seedPendingRequest('g', OUTSIDER, SHADOW, 'Ali');
+
+    // Creator approves the winner → CLAIMER inherits the shadow.
+    await decide({ groupId: 'g', requestId: ridWinner, approve: true });
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER]);
+
+    // Creator then approves the loser → shadow gone → must reject, not phantom-claim.
+    await expect(decide({ groupId: 'g', requestId: ridLoser, approve: true })).rejects.toMatchObject({
+      code: 'failed-precondition',
+    });
+    expect((await reqDoc('g', ridLoser))?.status).toBe('declined'); // NOT 'claimed'
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER]); // OUTSIDER not added
+    expect(await memberDoc('g', OUTSIDER)).toBeUndefined();
+    expect(omr(await nets('g'), CLAIMER)).toBe('-6.000'); // winner's balance intact, not doubled
+  });
 });
 
 describe('list claim requests (#278 PR8)', () => {

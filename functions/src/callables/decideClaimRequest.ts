@@ -116,6 +116,41 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
       decision.requesterUid,
     );
 
+    // alreadyClaimed:true means the shadow is GONE — but the engine is
+    // identity-blind to WHO retired it. Two distinct requesters can each hold a
+    // pending request for the SAME shadow (a duplicate-name group), so approving
+    // requester B (who inherits it) and THEN approving requester A's still-pending
+    // request yields alreadyClaimed:true for A even though A claimed NOTHING.
+    // Marking A 'claimed' would be a phantom success. So when the shadow was
+    // already gone, confirm THIS requester actually holds the membership the
+    // claim promised; if not, they lost the race → decline (not claimed). The
+    // same-requester crash-retry (the legitimate alreadyClaimed path) passes this
+    // check because that requester IS in memberIds. A fresh re-key
+    // (alreadyClaimed:false) always lands the requester in memberIds, so no extra
+    // read is paid on the hot path.
+    if (result.alreadyClaimed) {
+      const afterMemberIds = (await groupRef.get()).data()?.memberIds;
+      const requesterIsMember =
+        Array.isArray(afterMemberIds) && afterMemberIds.includes(decision.requesterUid);
+      if (!requesterIsMember) {
+        await requestRef.update({
+          status: 'declined',
+          decidedBy: uid,
+          decidedAt: FieldValue.serverTimestamp(),
+        });
+        logger.warn('claim approval lost the race (shadow claimed by another) — declined', {
+          uid,
+          groupId,
+          requestId,
+          requesterUid: decision.requesterUid,
+        });
+        throw new HttpsError(
+          'failed-precondition',
+          'This member has already been claimed by someone else.',
+        );
+      }
+    }
+
     await requestRef.update({
       status: 'claimed',
       decidedBy: uid,
