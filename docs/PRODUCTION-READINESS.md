@@ -154,13 +154,16 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-17, `54fd786a`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-18, `3eaa7fd2`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-17 deploy ceremony the `backend-deployed` tag is `54fd786a` and
+    2026-06-18 deploy ceremony the `backend-deployed` tag is `3eaa7fd2` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Latest
-    delta: #550 (`addShadowMember` callable — creator adds placeholder members
-    by name, #278 PR1) CREATED (20 → 21 functions) + #549 (anon-shell delete
-    fix) + #548 (member-doc id-bind rules, #524) — the held batch shipped together.
+    delta: #278 claim/merge backend (PR6 #556 `mergeUidMapKey` SUM helper · PR7
+    #557 `claimShadow` re-key engine + shared `batchWriter`/`mapReKey`/`recomputeNet`
+    extraction · PR8 #559 the 4 request/approve callables + `claimRequests` rules
+    block + raw `claimShadow` de-exported · PR9 #561 `listUnclaimedShadows`
+    discovery) — 5 new callables CREATED (21 → 26 functions; `claimShadow` is
+    engine-only, never deployed). Epic #278 CLOSED.
     `docs/DEPLOY-LEDGER.md` is the authoritative per-deploy history; shipped
     across the 2026-06-07…12 deploys:
     - **#270** (`cc8c84e`) — server allocators (`groupNetBalance.ts`
