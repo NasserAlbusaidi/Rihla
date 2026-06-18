@@ -101,3 +101,30 @@ export function eventBody(
     ? `أنشأ ${actor} حدثًا جديدًا${tail}.`
     : `${actor} created a new event${tail}.`;
 }
+
+export function claimRequestTitle(locale: Locale, groupName: string): string {
+  return groupLabel(locale, groupName);
+}
+
+// #560 — push the group creator when someone REQUESTS to claim a placeholder
+// ("shadow") member (requestClaimShadow). Both names are stored on the
+// claimRequests doc with non-empty defaults ('Anonymous' / 'Member'), but we
+// still localize the empty fallbacks (#483 pattern): an empty requester →
+// actorLabel ('Someone' / 'شخص ما'); an empty shadow → a localized stand-in noun
+// so we never splice a dangling possessive ("claim 's spot").
+export function claimRequestBody(
+  locale: Locale,
+  requesterName: string,
+  shadowName: string,
+): string {
+  const requester = actorLabel(locale, requesterName);
+  const shadow = shadowName.trim();
+  if (shadow.length === 0) {
+    return locale === 'ar'
+      ? `يريد ${requester} أخذ مكان أحد الأعضاء.`
+      : `${requester} wants to claim a member's spot.`;
+  }
+  return locale === 'ar'
+    ? `يريد ${requester} أخذ مكان ${shadow}.`
+    : `${requester} wants to claim ${shadow}'s spot.`;
+}

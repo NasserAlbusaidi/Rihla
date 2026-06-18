@@ -4,6 +4,8 @@ import {
   settlementBody,
   memberJoinTitle,
   memberJoinBody,
+  claimRequestTitle,
+  claimRequestBody,
 } from '../../src/notifications/strings';
 
 describe('normalizeLocale', () => {
@@ -41,6 +43,40 @@ describe('notification copy', () => {
     expect(memberJoinTitle('en', 'Trip')).toBe('Trip');
     expect(memberJoinBody('en', 'Sara')).toContain('Sara');
     expect(memberJoinBody('ar', 'سارة')).toContain('سارة');
+  });
+
+  test('claim-request copy interpolates requester + shadow names in both locales', () => {
+    expect(claimRequestTitle('en', 'Trip')).toBe('Trip');
+    expect(claimRequestTitle('ar', 'رحلة')).toBe('رحلة');
+
+    const en = claimRequestBody('en', 'Sam', 'Dad');
+    expect(en).toContain('Sam');
+    expect(en).toContain('Dad');
+
+    const ar = claimRequestBody('ar', 'سام', 'بابا');
+    expect(ar).toContain('سام');
+    expect(ar).toContain('بابا');
+    expect(ar).toContain('يريد'); // "wants" — proves Arabic, not English
+  });
+
+  test('claim-request empty requester name falls back to a localized default (#483)', () => {
+    expect(claimRequestBody('en', '   ', 'Dad')).toContain('Someone');
+    expect(claimRequestBody('ar', '', 'بابا')).toContain('شخص ما');
+    expect(claimRequestBody('ar', '   ', 'بابا')).not.toContain('Someone');
+  });
+
+  test('claim-request empty shadow name avoids a dangling possessive', () => {
+    // An empty owner must not splice into "claim 's spot"; a localized stand-in
+    // noun ("a member") takes its place.
+    const en = claimRequestBody('en', 'Sam', '   ');
+    expect(en).toContain('Sam');
+    expect(en).toContain('a member');
+    expect(en).not.toContain("claim 's"); // no dangling possessive
+    expect(en).not.toContain('  '); // no double space from an empty splice
+
+    const ar = claimRequestBody('ar', 'سام', '');
+    expect(ar).toContain('سام');
+    expect(ar).not.toContain('a member'); // Arabic, not the English stand-in
   });
 
   test('empty groupName falls back to a localized default', () => {
