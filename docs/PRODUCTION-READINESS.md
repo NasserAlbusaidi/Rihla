@@ -154,11 +154,14 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-18, `3eaa7fd2`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-18, `390c45e2`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-18 deploy ceremony the `backend-deployed` tag is `3eaa7fd2` and
+    2026-06-18 deploy ceremony the `backend-deployed` tag is `390c45e2` and
     `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Latest
-    delta: #278 claim/merge backend (PR6 #556 `mergeUidMapKey` SUM helper · PR7
+    delta: **#560 (#563)** — new `claimRequestNotifier` FCM `onDocumentWritten`
+    trigger pushing the group creator when a placeholder-claim request arrives
+    (26 → **27 functions**; the #278 PR9 discoverability tail). Prior delta: #278
+    claim/merge backend (PR6 #556 `mergeUidMapKey` SUM helper · PR7
     #557 `claimShadow` re-key engine + shared `batchWriter`/`mapReKey`/`recomputeNet`
     extraction · PR8 #559 the 4 request/approve callables + `claimRequests` rules
     block + raw `claimShadow` de-exported · PR9 #561 `listUnclaimedShadows`
