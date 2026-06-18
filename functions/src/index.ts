@@ -26,6 +26,7 @@ export {
 export { expenseAuditLogger } from './triggers/expenseAuditLogger';
 export { expenseNotifier } from './triggers/expenseNotifier';
 export { eventNotifier } from './triggers/eventNotifier';
+export { claimRequestNotifier } from './triggers/claimRequestNotifier';
 export {
   eventModuleBalanceAggregator,
   groupSettlementBalanceAggregator,
