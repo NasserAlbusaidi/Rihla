@@ -2048,6 +2048,12 @@ abstract class AppLocalizations {
   /// **'Correction of a recorded payment'**
   String get settleUpCorrectionNote;
 
+  /// Short label shown above a reversing settlement row in Payment history so a correction reads as a correction, not a duplicate payment (#567).
+  ///
+  /// In en, this message translates to:
+  /// **'Correction'**
+  String get settleUpCorrectionTag;
+
   /// Title of the pre-settlement review sheet shown before event settle-up when review-worthy expenses exist (#204). Neutral, not accusatory.
   ///
   /// In en, this message translates to:

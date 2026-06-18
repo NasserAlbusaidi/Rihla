@@ -1136,6 +1136,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpCorrectionNote => 'Correction of a recorded payment';
 
   @override
+  String get settleUpCorrectionTag => 'Correction';
+
+  @override
   String get preSettleReviewTitle => 'Before you settle';
 
   @override
