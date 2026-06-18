@@ -2908,4 +2908,79 @@ class AppLocalizationsAr extends AppLocalizations {
   String createGroupShadowNameTaken(Object name) {
     return '‏\"$name\" مستخدم بالفعل في هذه المجموعة.';
   }
+
+  @override
+  String get groupClaimPickerTitle => 'هل أنت أحد هؤلاء؟';
+
+  @override
+  String get groupClaimPickerSubtitle =>
+      'أضاف أحدهم هذه الأسماء قبل انضمامك. طالِب بمكانك لترث نصيبك.';
+
+  @override
+  String get groupClaimImNew => 'لا، أنا جديد';
+
+  @override
+  String groupClaimConfirmTitle(Object name) {
+    return 'المطالبة بمكان $name؟';
+  }
+
+  @override
+  String groupClaimConfirmWarning(Object name) {
+    return 'سيؤدي هذا إلى دمج مصاريف $name في حسابك نهائيًا. لا يمكن التراجع عنه، ويجب أن يوافق منشئ المجموعة.';
+  }
+
+  @override
+  String groupClaimConfirmCta(Object name) {
+    return 'نعم، طالِب بمكان $name';
+  }
+
+  @override
+  String get groupClaimWaitingTitle => 'في انتظار الموافقة';
+
+  @override
+  String groupClaimWaitingBody(Object name) {
+    return 'أرسلنا طلبك إلى منشئ المجموعة. ستنضم إلى مكان $name بمجرد موافقته.';
+  }
+
+  @override
+  String get groupClaimCheckAgain => 'تحقّق مرة أخرى';
+
+  @override
+  String get groupClaimStillPending => 'لا يزال في انتظار موافقة المنشئ.';
+
+  @override
+  String get groupClaimDeclinedBody =>
+      'رفض المنشئ طلبك. يمكنك الانضمام كعضو جديد بدلاً من ذلك.';
+
+  @override
+  String get groupClaimNameTakenClaimInstead =>
+      'هذا الاسم يخص شخصًا أُضيف سابقًا. طالِب به أعلاه، أو اختر اسمًا مختلفًا.';
+
+  @override
+  String get groupClaimRequestsTitle => 'طلبات المطالبة';
+
+  @override
+  String groupClaimRequestRow(Object requester, Object shadow) {
+    return 'يريد $requester المطالبة بمكان $shadow';
+  }
+
+  @override
+  String get groupClaimApprove => 'موافقة';
+
+  @override
+  String get groupClaimDecline => 'رفض';
+
+  @override
+  String groupClaimApproved(Object requester, Object shadow) {
+    return 'يحمل $requester الآن مكان $shadow.';
+  }
+
+  @override
+  String get groupClaimRequestDeclined => 'تم رفض الطلب.';
+
+  @override
+  String get groupClaimApproveError => 'تعذّر إكمال المطالبة. حاول مرة أخرى.';
+
+  @override
+  String get groupClaimNoRequests => 'لا توجد طلبات مطالبة معلّقة.';
 }

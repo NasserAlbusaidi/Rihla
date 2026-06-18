@@ -2841,4 +2841,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String createGroupShadowNameTaken(Object name) {
     return '\"$name\" is already used in this group.';
   }
+
+  @override
+  String get groupClaimPickerTitle => 'Is one of these you?';
+
+  @override
+  String get groupClaimPickerSubtitle =>
+      'Someone added these names before you joined. Claim your spot to inherit your share.';
+
+  @override
+  String get groupClaimImNew => 'No, I\'m new';
+
+  @override
+  String groupClaimConfirmTitle(Object name) {
+    return 'Claim $name\'s spot?';
+  }
+
+  @override
+  String groupClaimConfirmWarning(Object name) {
+    return 'This permanently merges $name\'s expenses into your account. It can\'t be undone, and the group creator must approve.';
+  }
+
+  @override
+  String groupClaimConfirmCta(Object name) {
+    return 'Yes, claim $name\'s spot';
+  }
+
+  @override
+  String get groupClaimWaitingTitle => 'Waiting for approval';
+
+  @override
+  String groupClaimWaitingBody(Object name) {
+    return 'We sent your request to the group creator. You\'ll join $name\'s spot once they approve.';
+  }
+
+  @override
+  String get groupClaimCheckAgain => 'Check again';
+
+  @override
+  String get groupClaimStillPending =>
+      'Still waiting for the creator to approve.';
+
+  @override
+  String get groupClaimDeclinedBody =>
+      'The creator declined your claim. You can join as a new member instead.';
+
+  @override
+  String get groupClaimNameTakenClaimInstead =>
+      'That name belongs to someone added earlier. Claim it above, or pick a different name.';
+
+  @override
+  String get groupClaimRequestsTitle => 'Claim requests';
+
+  @override
+  String groupClaimRequestRow(Object requester, Object shadow) {
+    return '$requester wants to claim $shadow\'s spot';
+  }
+
+  @override
+  String get groupClaimApprove => 'Approve';
+
+  @override
+  String get groupClaimDecline => 'Decline';
+
+  @override
+  String groupClaimApproved(Object requester, Object shadow) {
+    return '$requester now holds $shadow\'s spot.';
+  }
+
+  @override
+  String get groupClaimRequestDeclined => 'Request declined.';
+
+  @override
+  String get groupClaimApproveError =>
+      'Couldn\'t complete the claim. Try again.';
+
+  @override
+  String get groupClaimNoRequests => 'No pending claim requests.';
 }

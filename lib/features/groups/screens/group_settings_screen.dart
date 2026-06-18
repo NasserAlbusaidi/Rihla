@@ -12,6 +12,7 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
+import '../widgets/claim_requests_section.dart';
 import '../widgets/group_danger_section.dart';
 import '../widgets/group_info_section.dart';
 import '../widgets/group_members_section.dart';
@@ -69,6 +70,12 @@ class GroupSettingsScreen extends ConsumerWidget {
                           isCurrentUserCreator: isCreator,
                         ).animate().fadeIn(delay: 160.ms).slideY(begin: 0.08),
                         const SizedBox(height: 10),
+                        // #278 PR9: pending placeholder-claim requests (creator
+                        // only; hidden when empty).
+                        ClaimRequestsSection(
+                          groupId: groupId,
+                          isCreator: isCreator,
+                        ),
                         _DefaultsSection(
                           currency: group.currency,
                         ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08),
