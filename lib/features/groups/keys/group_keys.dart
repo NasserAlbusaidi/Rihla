@@ -145,4 +145,22 @@ abstract final class GroupKeys {
   static Key memberTile(String memberId) => Key('group_member_tile_$memberId');
   static Key removeMemberButton(String memberId) =>
       Key('group_member_remove_$memberId');
+
+  // #278 PR9: claim a placeholder ("shadow") member on join.
+  static const claimPicker = Key('group_join_claim_picker');
+  static Key claimShadowTile(String shadowMemberId) =>
+      Key('group_join_claim_shadow_$shadowMemberId');
+  static const claimImNewButton = Key('group_join_claim_im_new');
+  static const claimConfirmSheet = Key('group_join_claim_confirm_sheet');
+  static const claimConfirmButton = Key('group_join_claim_confirm_button');
+  static const claimConfirmCancel = Key('group_join_claim_confirm_cancel');
+  static const claimWaiting = Key('group_join_claim_waiting');
+  static const claimCheckAgainButton = Key('group_join_claim_check_again');
+
+  // #278 PR9: creator approve/decline of pending claim requests (group settings).
+  static const claimRequestsSection = Key('group_settings_claim_requests');
+  static Key claimApprove(String requestId) =>
+      Key('group_claim_approve_$requestId');
+  static Key claimDecline(String requestId) =>
+      Key('group_claim_decline_$requestId');
 }

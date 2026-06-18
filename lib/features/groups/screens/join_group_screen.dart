@@ -9,6 +9,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_prompt.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -20,8 +21,15 @@ import '../../../shared/widgets/r_icon_button.dart';
 import '../../auth/providers/durable_credential_gate_provider.dart';
 import '../../auth/services/pending_gate_intent.dart';
 import '../keys/group_keys.dart';
+import '../models/claim_models.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
+import '../widgets/claim_join_views.dart';
+
+/// #278 PR9 — the join screen's three steps. `form` is the code+name entry;
+/// after a valid code reveals unclaimed shadows it switches to `picker`; after a
+/// claim request is sent it switches to `waiting`.
+enum _JoinStep { form, picker, waiting }
 
 /// Screen for joining a group via a 6-character invite code.
 ///
@@ -44,6 +52,14 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   final _codeController = TextEditingController();
   final _nameController = TextEditingController();
   bool _didInitName = false;
+
+  // #278 PR9 — claim flow state.
+  _JoinStep _step = _JoinStep.form;
+  bool _claimBusy = false;
+  List<UnclaimedShadow> _shadows = const [];
+  String _waitShadowName = '';
+  String _waitShadowMemberId = '';
+  String _waitGroupId = '';
 
   @override
   void initState() {
@@ -88,9 +104,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     super.dispose();
   }
 
-  Future<void> _joinGroup() async {
-    final isLoading = ref.read(groupLoadingProvider);
-    if (isLoading) return;
+  Future<void> _onSubmit() async {
+    if (ref.read(groupLoadingProvider) || _claimBusy) return;
 
     final trimmedName = _nameController.text.trim();
     final nameError = validateDisplayNameLocalized(
@@ -105,9 +120,10 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     }
 
     // #441: first valuable write — an anonymous user must link Google first.
-    // Single chokepoint for all three entries (button, 6th-char auto-submit,
-    // deep-link prefill → manual submit). The intent carries the typed form
-    // across the gate-conflict discard-shell restart (#428).
+    // Single chokepoint for all entries (button, 6th-char auto-submit, deep-link
+    // prefill). The claim path also needs a durable account (D6), so the gate
+    // stays here, ahead of discovery. The intent carries the typed form across
+    // the gate-conflict discard-shell restart (#428).
     final gateOk = await ref
         .read(durableCredentialGateProvider)
         .ensure(
@@ -119,9 +135,39 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
         );
     if (!gateOk || !mounted) return;
 
+    // #278 PR9: pre-join discovery. Best-effort — any failure (anon, offline,
+    // bad code, no-Firebase-in-test) falls through to the normal join, which
+    // surfaces the real error. A non-empty list reveals the claim picker.
+    setState(() => _claimBusy = true);
+    List<UnclaimedShadow> shadows = const [];
+    try {
+      shadows = await ref
+          .read(firebaseFunctionsServiceProvider)
+          .listUnclaimedShadows(inviteCode: _codeController.text.trim());
+    } catch (_) {
+      shadows = const [];
+    }
+    if (!mounted) return;
+    if (shadows.isNotEmpty) {
+      setState(() {
+        _claimBusy = false;
+        _shadows = shadows;
+        _step = _JoinStep.picker;
+      });
+      return;
+    }
+    setState(() => _claimBusy = false);
+    await _doJoin(preferClaimHint: false);
+  }
+
+  /// Execute a plain join (the durable gate + name validation already ran in
+  /// [_onSubmit]). Used by the no-shadow path and the "I'm new" fallback.
+  Future<void> _doJoin({required bool preferClaimHint}) async {
+    if (ref.read(groupLoadingProvider)) return;
     ref.read(groupLoadingProvider.notifier).state = true;
     ref.read(groupErrorProvider.notifier).state = null;
 
+    final trimmedName = _nameController.text.trim();
     try {
       await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
     } on DisplayNameTakenException catch (e) {
@@ -143,50 +189,140 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
           .read(groupServiceProvider)
           .joinGroup(inviteCode: _codeController.text.trim());
       ref.read(groupLoadingProvider.notifier).state = false;
-
-      // Log member_joined activity (D-14) — fire-and-forget, no await
-      try {
-        final actorId = FirebaseConfig.currentUser?.uid ?? '';
-        final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
-            ? ref.read(settingsProvider).deviceName
-            : 'Someone';
-        ref
-            .read(groupActivityServiceProvider)
-            .logGroupEvent(
-              groupId: group.id,
-              type: 'member_joined',
-              actorId: actorId,
-              actorName: actorName,
-              description: 'joined the group',
-              metadata: {'groupId': group.id},
-            );
-      } catch (_) {
-        // Activity logging failure must never crash the join flow.
-      }
-
+      _logJoined(group.id);
       HapticService.success(); // D-02: double-tap "done" feel
-
-      // First natural moment to ask for push permission (#288) — the joiner now
-      // has a stake in a group. Fire-and-forget; the coordinator holds the
-      // container ref, so it survives this screen's navigation.
+      // First natural moment to ask for push permission (#288).
       unawaited(ref.read(notificationPromptProvider).maybePrompt());
-
       if (mounted) {
         context.pushReplacement('/group/${group.id}');
       }
     } catch (e) {
       ref.read(groupLoadingProvider.notifier).state = false;
       ref.read(groupErrorProvider.notifier).state = e.toString();
-      if (mounted) {
-        final message = _errorMessage(e.toString());
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+      if (!mounted) return;
+      // #278 PR9: an "I'm new" name that collides with a shadow gets the
+      // actionable claim-instead hint and returns to the picker.
+      final isCollision = e.toString().contains('already taken in this group');
+      final message = (preferClaimHint && isCollision)
+          ? context.l10n.groupClaimNameTakenClaimInstead
+          : _errorMessage(e.toString());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+      );
+      if (preferClaimHint && isCollision && _shadows.isNotEmpty) {
+        setState(() => _step = _JoinStep.picker);
       }
     }
+  }
+
+  void _logJoined(String groupId) {
+    // Log member_joined activity (D-14) — fire-and-forget; failure must never
+    // crash the join flow (FirebaseConfig.currentUser throws without Firebase).
+    try {
+      final actorId = FirebaseConfig.currentUser?.uid ?? '';
+      final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+          ? ref.read(settingsProvider).deviceName
+          : 'Someone';
+      ref
+          .read(groupActivityServiceProvider)
+          .logGroupEvent(
+            groupId: groupId,
+            type: 'member_joined',
+            actorId: actorId,
+            actorName: actorName,
+            description: 'joined the group',
+            metadata: {'groupId': groupId},
+          );
+    } catch (_) {
+      // Activity logging failure must never crash the join flow.
+    }
+  }
+
+  /// #278 PR9: the user picked a shadow — show the hard permanent confirmation
+  /// (D3); only an affirmative tap opens the claim request.
+  Future<void> _onPickShadow(UnclaimedShadow shadow) async {
+    if (_claimBusy) return;
+    final confirmed = await showClaimConfirmSheet(
+      context,
+      name: shadow.displayName,
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _claimBusy = true);
+    try {
+      final res = await ref
+          .read(firebaseFunctionsServiceProvider)
+          .requestClaimShadow(
+            inviteCode: _codeController.text.trim(),
+            shadowMemberId: shadow.shadowMemberId,
+            displayName: _nameController.text.trim(),
+          );
+      if (!mounted) return;
+      setState(() {
+        _claimBusy = false;
+        _waitShadowName = shadow.displayName;
+        _waitShadowMemberId = shadow.shadowMemberId;
+        _waitGroupId = res.groupId;
+        _step = _JoinStep.waiting;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _claimBusy = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(e.toString()))));
+    }
+  }
+
+  /// "No, I'm new" — fall back to a normal join with the typed name.
+  Future<void> _onImNew() => _doJoin(preferClaimHint: true);
+
+  /// Re-poll whether the creator approved the pending claim (manual — P9-2).
+  Future<void> _onCheckStatus() async {
+    if (_claimBusy) return;
+    setState(() => _claimBusy = true);
+    List<MyClaimRequest> requests = const [];
+    try {
+      requests = await ref
+          .read(firebaseFunctionsServiceProvider)
+          .listMyClaimRequests(inviteCode: _codeController.text.trim());
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _claimBusy = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(e.toString()))));
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _claimBusy = false);
+
+    var status = 'pending';
+    for (final r in requests) {
+      if (r.shadowMemberId == _waitShadowMemberId) status = r.status;
+    }
+    if (status == 'claimed') {
+      // The engine made the requester a member; navigate into the group.
+      context.pushReplacement('/group/$_waitGroupId');
+    } else if (status == 'declined') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.groupClaimDeclinedBody)),
+      );
+      setState(() => _step = _JoinStep.form);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.groupClaimStillPending)),
+      );
+    }
+  }
+
+  /// Step-aware back: a picker/waiting step returns to the form; the form closes.
+  void _onBack() {
+    if (_step != _JoinStep.form) {
+      setState(() => _step = _JoinStep.form);
+      return;
+    }
+    _close();
   }
 
   String _errorMessage(String error) {
@@ -240,17 +376,13 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       _didInitName = true;
     }
 
-    final canJoin =
-        _codeController.text.length == 6 &&
-        _nameController.text.trim().isNotEmpty;
-
     return Scaffold(
       key: GroupKeys.joinScreen,
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
         child: Column(
           children: [
-            _JoinGroupTopBar(onClose: _close),
+            _JoinGroupTopBar(onClose: _onBack),
             Expanded(
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
@@ -261,44 +393,64 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                   context.spacing.space24,
                   context.spacing.space24,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _JoinMoodBlock(),
-                    const SizedBox(height: 26),
-                    _UnderlinedTextField(
-                      label: context.l10n.groupYourName,
-                      controller: _nameController,
-                      hintText: context.l10n.groupJoinNameHint,
-                      textCapitalization: TextCapitalization.words,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 22),
-                    _InviteCodeField(
-                      controller: _codeController,
-                      onChanged: (value) {
-                        setState(() {});
-                        if (value.length == 6) _joinGroup();
-                      },
-                    ),
-                    const SizedBox(height: 26),
-                    const _JoinHintCard(),
-                    const SizedBox(height: 28),
-                    LoadingButton(
-                      key: GroupKeys.joinGroupButton,
-                      isLoading: isLoading,
-                      onPressed: canJoin ? _joinGroup : null,
-                      label: isLoading
-                          ? context.l10n.groupJoining
-                          : context.l10n.groupJoinCta,
-                    ),
-                  ],
-                ),
+                child: switch (_step) {
+                  _JoinStep.picker => ClaimPickerView(
+                    shadows: _shadows,
+                    busy: _claimBusy,
+                    onPick: _onPickShadow,
+                    onImNew: _onImNew,
+                  ),
+                  _JoinStep.waiting => ClaimWaitingView(
+                    shadowName: _waitShadowName,
+                    busy: _claimBusy,
+                    onCheckAgain: _onCheckStatus,
+                  ),
+                  _JoinStep.form => _buildForm(isLoading),
+                },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildForm(bool isLoading) {
+    final canJoin =
+        _codeController.text.length == 6 &&
+        _nameController.text.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _JoinMoodBlock(),
+        const SizedBox(height: 26),
+        _UnderlinedTextField(
+          label: context.l10n.groupYourName,
+          controller: _nameController,
+          hintText: context.l10n.groupJoinNameHint,
+          textCapitalization: TextCapitalization.words,
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 22),
+        _InviteCodeField(
+          controller: _codeController,
+          onChanged: (value) {
+            setState(() {});
+            if (value.length == 6) _onSubmit();
+          },
+        ),
+        const SizedBox(height: 26),
+        const _JoinHintCard(),
+        const SizedBox(height: 28),
+        LoadingButton(
+          key: GroupKeys.joinGroupButton,
+          isLoading: isLoading || _claimBusy,
+          onPressed: (canJoin && !_claimBusy) ? _onSubmit : null,
+          label: isLoading
+              ? context.l10n.groupJoining
+              : context.l10n.groupJoinCta,
+        ),
+      ],
     );
   }
 }
