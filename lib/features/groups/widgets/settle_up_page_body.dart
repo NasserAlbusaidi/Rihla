@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -658,6 +659,21 @@ class _PaymentHistorySection extends StatelessWidget {
   }
 }
 
+/// The app-authored correction-note sentinel
+/// ([AppLocalizations.settleUpCorrectionNote]) in EVERY supported locale. A
+/// reversing settlement (#283) carries this note in the CORRECTOR's locale, so
+/// recognizing it on read must not assume the viewer's locale matches. Computed
+/// once. (#567)
+final Set<String> _correctionNoteSentinels = {
+  for (final locale in AppLocalizations.supportedLocales)
+    lookupAppLocalizations(locale).settleUpCorrectionNote,
+};
+
+/// True when [note] marks a #283 reversing correction — so Payment history can
+/// render it as a correction rather than another (duplicate-looking) payment.
+bool _isCorrectionNote(String? note) =>
+    note != null && _correctionNoteSentinels.contains(note);
+
 class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
     required this.settlement,
@@ -755,6 +771,12 @@ class _HistoryTile extends StatelessWidget {
     final dateStr = DateFormat.MMMd(
       Localizations.localeOf(context).toLanguageTag(),
     ).format(settlement.settledAt);
+    // #567: a reversing correction must read as a correction, not as another
+    // payment. Mark it with a reversal icon + label instead of the green tick.
+    final isCorrection = _isCorrectionNote(settlement.note);
+    final accent = isCorrection
+        ? context.colors.textSecondary
+        : context.colors.success;
 
     return Container(
           margin: EdgeInsets.only(bottom: spacing.space8),
@@ -774,13 +796,13 @@ class _HistoryTile extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: context.colors.success.withValues(alpha: 0.12),
+                  color: accent.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Iconsax.tick_circle,
+                  isCorrection ? Iconsax.undo : Iconsax.tick_circle,
                   size: 16,
-                  color: context.colors.success,
+                  color: accent,
                 ),
               ),
               SizedBox(width: spacing.space12),
@@ -788,6 +810,18 @@ class _HistoryTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (isCorrection) ...[
+                      Text(
+                        context.l10n.settleUpCorrectionTag,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: context.colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                    ],
                     RichText(
                       overflow: TextOverflow.ellipsis,
                       text: TextSpan(

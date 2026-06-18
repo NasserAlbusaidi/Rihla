@@ -1164,6 +1164,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpCorrectionNote => 'تصحيح لدفعة مُسجَّلة';
 
   @override
+  String get settleUpCorrectionTag => 'تصحيح';
+
+  @override
   String get preSettleReviewTitle => 'قبل التسوية';
 
   @override

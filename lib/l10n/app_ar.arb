@@ -357,6 +357,7 @@
   "settleUpCorrectBody": "سيُسجِّل هذا دفعة عكسية بقيمة {amount} من {recipient} إلى {payer}. تبقى الدفعة الأصلية في سجلّك.",
   "settleUpCorrectConfirm": "تسجيل التصحيح",
   "settleUpCorrectionNote": "تصحيح لدفعة مُسجَّلة",
+  "settleUpCorrectionTag": "تصحيح",
   "preSettleReviewTitle": "قبل التسوية",
   "preSettleReviewExactCount": "{count, plural, =1{تقسيم بمبالغ دقيقة واحد} other{{count} عمليات تقسيم بمبالغ دقيقة}}",
   "preSettleReviewCustomCount": "{count, plural, =1{تقسيم بمشاركين مخصّصين واحد} other{{count} عمليات تقسيم بمشاركين مخصّصين}}",

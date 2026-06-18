@@ -30,6 +30,7 @@ Widget _host(Widget body) {
 
 SettleUpPageBody _bodyWithHistory({
   void Function(Settlement settlement)? onCorrect,
+  List<Settlement>? settlements,
 }) {
   return SettleUpPageBody(
     subjectName: 'Beach House',
@@ -56,18 +57,21 @@ SettleUpPageBody _bodyWithHistory({
       ),
     ],
     rawNames: const {'uid-ahmed': 'Ahmed', 'uid-sara': 'Sara'},
-    settlementsAsync: AsyncValue.data([
-      Settlement(
-        id: 's1',
-        tripId: 'event-1',
-        payerParticipantId: 'uid-ahmed',
-        recipientParticipantId: 'uid-sara',
-        amount: Decimal.parse('5.000'),
-        settledAt: DateTime(2026, 6, 7),
-        payerName: 'Ahmed',
-        recipientName: 'Sara',
-      ),
-    ]),
+    settlementsAsync: AsyncValue.data(
+      settlements ??
+          [
+            Settlement(
+              id: 's1',
+              tripId: 'event-1',
+              payerParticipantId: 'uid-ahmed',
+              recipientParticipantId: 'uid-sara',
+              amount: Decimal.parse('5.000'),
+              settledAt: DateTime(2026, 6, 7),
+              payerName: 'Ahmed',
+              recipientName: 'Sara',
+            ),
+          ],
+    ),
     currentUid: 'uid-ahmed',
     tileKeys: const {},
     onRecord:
@@ -138,4 +142,57 @@ void main() {
 
     expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
   });
+
+  // #567: a reversing correction must read as a CORRECTION in Payment history,
+  // not as another (duplicate) payment. The row carries the persisted
+  // `settleUpCorrectionNote` sentinel; the tile surfaces it as a "Correction"
+  // label + reversal icon. A plain payment row stays unlabelled.
+  testWidgets(
+    'a correction row is labelled "Correction"; a plain payment is not',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          _bodyWithHistory(
+            settlements: [
+              // Plain payment — Ahmed paid Sara (a normal note).
+              Settlement(
+                id: 'orig',
+                tripId: 'event-1',
+                payerParticipantId: 'uid-ahmed',
+                recipientParticipantId: 'uid-sara',
+                amount: Decimal.parse('5.000'),
+                settledAt: DateTime(2026, 6, 7),
+                payerName: 'Ahmed',
+                recipientName: 'Sara',
+                note: 'dinner',
+                scope: 'group',
+              ),
+              // Reversal — recorded via #283 (the offsetting correction).
+              Settlement(
+                id: 'corr',
+                tripId: 'event-1',
+                payerParticipantId: 'uid-sara',
+                recipientParticipantId: 'uid-ahmed',
+                amount: Decimal.parse('5.000'),
+                settledAt: DateTime(2026, 6, 8),
+                payerName: 'Sara',
+                recipientName: 'Ahmed',
+                note: 'Correction of a recorded payment',
+                scope: 'group',
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Exactly the reversal row carries the label (the plain payment does not).
+      expect(find.text('Correction'), findsOneWidget);
+      // Both directions still render as receipts (append-only — original stays).
+      expect(
+        find.textContaining('Ahmed', findRichText: true),
+        findsWidgets,
+      );
+    },
+  );
 }
