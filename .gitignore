@@ -55,6 +55,11 @@ app.*.map.json
 # isolated emulator ports; config.qa.json sets USE_FIREBASE_EMULATOR). Local-only.
 /firebase.qa.json
 
+# Temp emulator config from tool/run_firebase_emulator_tests.sh
+# (mktemp .firebase-release-emulators.XXXXXX at repo root; cleaned on exit, but a
+# crash/interrupt can leave one behind — keep it out of `git add -A`).
+/.firebase-release-emulators.*
+
 # Firebase config files
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
