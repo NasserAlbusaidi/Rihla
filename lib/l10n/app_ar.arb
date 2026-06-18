@@ -856,6 +856,8 @@
   "groupClaimNameTakenClaimInstead": "هذا الاسم يخص شخصًا أُضيف سابقًا. طالِب به أعلاه، أو اختر اسمًا مختلفًا.",
   "groupClaimRequestsTitle": "طلبات المطالبة",
   "groupClaimRequestRow": "يريد {requester} المطالبة بمكان {shadow}",
+  "groupClaimMergeConsequence": "بالموافقة تُدمج مصروفات {shadow} في {requester}. لا يمكن التراجع عن ذلك.",
+  "groupClaimPendingBadge": "معلّق",
   "groupClaimApprove": "موافقة",
   "groupClaimDecline": "رفض",
   "groupClaimApproved": "يحمل {requester} الآن مكان {shadow}.",

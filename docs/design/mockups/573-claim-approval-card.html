@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#573 — Polish the creator-side "Claim requests" / Approve card · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#573 · Polish the <span class="saffron">"Claim requests"</span> approval card</h1>
+  <p>When a joiner claims a placeholder (shadow) spot, the group <b>creator</b> sees a "Claim requests"
+     card in Settings and taps <b>Approve</b> — which <b>permanently re-keys the shadow → the joiner
+     inherits its balance</b> (#278 PR8/PR9). The mechanics are correct and shipped. QA §A6 flagged the
+     <i>surface</i>: it reads as a raw functional affordance — a faceless sentence + two buttons — not a
+     finished screen, and it never communicates the irreversible money consequence the joiner already saw.
+     <b>Design-polish only, no behavior change.</b> <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#573</span>
+    <h2 class="issue-title">design(groups): polish the creator-side "Claim requests" / Approve card (#278 A6)</h2>
+    <span class="issue-meta">P3 · design · widget: ClaimRequestsSection · GroupSettingsScreen</span>
+  </div>
+  <p class="issue-desc">All variants live inside <code>claim_requests_section.dart</code> and change
+     <b>nothing</b> about <code>decideClaimRequest</code>. They reuse the existing people-row vocabulary
+     (<code>RAvatar</code>, the dashed shadow avatar, <code>pill-tag</code>, the raised card) so the card
+     stops looking bolted-on. The shared goals: give the requester a <b>face</b>, make the
+     <b>shadow → joiner merge</b> legible at a glance, signal these rows are <b>pending decisions</b>, and
+     state the <b>irreversible balance inheritance</b> in copy (mirroring the joiner-side warning).</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant 2 (identity-merge card) — the dual-avatar
+     "Basma → Sara's spot" visual plus the one-line consequence is what turns a functional affordance into
+     a deliberate, money-aware surface. Claim requests are rare (1–2 at a time), so the extra height is
+     affordable and the explicitness is worth it for an <i>irreversible</i> action.</p>
+
+  <div class="variant-row">
+
+    <!-- ============================= BEFORE ============================= -->
+    <div class="variant">
+      <div class="variant-label">Today · faceless sentence + buttons</div>
+      <div class="phone" style="height:620px">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">‹</div>
+            <div class="title sans">Group settings</div>
+            <div style="width:40px"></div>
+          </div>
+          <div class="content tight" style="padding-top:8px">
+            <div class="section-header"><span class="label">CLAIM REQUESTS</span></div>
+            <div class="card raised" style="padding:0 16px">
+              <div style="padding:12px 0">
+                <div class="sans" style="font-size:14px;font-weight:600;color:var(--ink)">Basma wants to claim Sara's spot</div>
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+                  <span class="btn text" style="min-height:36px;padding:8px 12px">Decline</span>
+                  <span class="btn sm grad">Approve</span>
+                </div>
+              </div>
+            </div>
+            <div class="tiny muted" style="margin-top:4px">No avatar, no merge visual, no "pending" signal,
+              no hint that Approve is irreversible.</div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The gripe (QA §A6):</b> reads as a debug affordance. The requester is
+        faceless, the relationship to the shadow is buried in a sentence, the consequence (an
+        <i>irreversible</i> balance merge) is invisible, and the card doesn't match the member list right
+        above it.</p>
+    </div>
+
+    <!-- ============================= Variant 1 ============================= -->
+    <div class="variant">
+      <div class="variant-label">V1 · Calm roster row</div>
+      <div class="phone" style="height:620px">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">‹</div>
+            <div class="title sans">Group settings</div>
+            <div style="width:40px"></div>
+          </div>
+          <div class="content tight" style="padding-top:8px">
+            <div class="section-header"><span class="label">CLAIM REQUESTS · 1</span></div>
+            <div class="card flush raised">
+              <div class="list-row">
+                <span class="avatar av-2 row-lead">B</span>
+                <div class="row-body">
+                  <div class="row-title">Basma wants Sara's spot</div>
+                  <div class="row-sub">Inherits Sara's balance · can't be undone</div>
+                </div>
+                <div class="row-trail"><span class="pill-tag warn">Pending</span></div>
+              </div>
+              <div class="list-row" style="padding-top:0;justify-content:flex-end;gap:8px">
+                <span class="btn text" style="min-height:40px">Decline</span>
+                <span class="btn sm grad">Approve</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> the claim becomes a member-style <code>list-row</code> — requester
+        avatar, title + a consequence sub-line, a <code>Pending</code> pill — with the Decline/Approve pair
+        on a second flush row. <b>Why distinct:</b> zero new vocabulary; it reads exactly like the Members
+        card above it, so it stops looking bolted-on. <b>Implies:</b> smallest diff — wrap the existing row
+        in the list-row layout + add <code>RAvatar</code> and the pill.</p>
+    </div>
+
+    <!-- ============================= Variant 2 (PICK) ============================= -->
+    <div class="variant pick">
+      <div class="variant-label">V2 · Identity-merge card</div>
+      <div class="phone" style="height:620px">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">‹</div>
+            <div class="title sans">Group settings</div>
+            <div style="width:40px"></div>
+          </div>
+          <div class="content tight" style="padding-top:8px">
+            <div class="section-header"><span class="label">CLAIM REQUESTS · 1</span></div>
+            <div class="card raised pad-lg">
+              <!-- dual-avatar merge visual on its own line -->
+              <div class="row" style="gap:10px;align-items:center">
+                <span class="avatar av-2">B</span>
+                <span class="muted" style="font-size:18px;font-weight:600">&rarr;</span>
+                <span class="avatar shadow">S</span>
+                <div style="flex:1"></div>
+                <span class="pill-tag warn">Pending</span>
+              </div>
+              <div style="margin-top:10px">
+                <div class="row-title" style="font-size:16px">Basma &rarr; Sara's spot</div>
+                <div class="row-sub">Basma asked to take over this placeholder</div>
+              </div>
+              <!-- consequence -->
+              <div class="card soft" style="padding:10px 12px;margin-top:12px">
+                <div class="tiny muted">Approving merges <b>Sara's</b> expenses into <b>Basma</b> — Basma
+                  inherits the balance. <b>This can't be undone.</b></div>
+              </div>
+              <!-- actions -->
+              <div class="row" style="gap:10px;margin-top:12px">
+                <span class="btn secondary block" style="flex:1">Decline</span>
+                <span class="btn grad block" style="flex:1">Approve</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> the merge is the hero — requester avatar
+        <b>&rarr;</b> dashed shadow avatar, a "Basma &rarr; Sara's spot" headline, a soft consequence card
+        echoing the joiner-side warning, then a balanced Decline/Approve pair. <b>Why distinct:</b> it makes
+        the <i>irreversible money move</i> legible before the creator taps — matching the gravity of the
+        action. <b>Implies:</b> one new dashed-avatar (reuse <code>RAvatar</code>'s shadow style) + a soft
+        sub-card; still no behavior change.</p>
+    </div>
+
+    <!-- ============================= Variant 3 ============================= -->
+    <div class="variant">
+      <div class="variant-label">V3 · Compact pending row</div>
+      <div class="phone" style="height:620px">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted" style="font-size:22px">‹</div>
+            <div class="title sans">Group settings</div>
+            <div style="width:40px"></div>
+          </div>
+          <div class="content tight" style="padding-top:8px">
+            <div class="section-header"><span class="label">CLAIM REQUESTS · 2</span></div>
+            <div class="card flush raised">
+              <div class="list-row" style="flex-wrap:wrap;row-gap:10px">
+                <span class="avatar sm av-2 row-lead">B</span>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:14px">Basma &rarr; Sara's spot</div>
+                  <div class="row-sub">merges balances · permanent</div>
+                </div>
+                <div class="row-trail" style="gap:6px">
+                  <span class="btn text" style="min-height:36px;padding:6px 8px">Decline</span>
+                  <span class="btn sm grad">Approve</span>
+                </div>
+              </div>
+              <div class="list-row" style="flex-wrap:wrap;row-gap:10px">
+                <span class="avatar sm av-4 row-lead">K</span>
+                <div class="row-body">
+                  <div class="row-title" style="font-size:14px">Khalid &rarr; Omar's spot</div>
+                  <div class="row-sub">merges balances · permanent</div>
+                </div>
+                <div class="row-trail" style="gap:6px">
+                  <span class="btn text" style="min-height:36px;padding:6px 8px">Decline</span>
+                  <span class="btn sm grad">Approve</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> one tight row per request — small avatar, "X &rarr; Y's spot"
+        title, a terse "merges balances · permanent" sub-line, and inline Decline/Approve in the trail.
+        <b>Why distinct:</b> scales cleanly when several requests stack; lowest vertical footprint.
+        <b>Trade-off:</b> the consequence is compressed to four words — least explicit of the three for an
+        irreversible action.</p>
+    </div>
+
+  </div>
+
+  <p class="variant-note" style="max-width:900px;margin-top:18px">
+    <b>Scope note (Gate):</b> this is <b>display-only</b>. None of the variants touch
+    <code>decideClaimRequest</code>, the claim engine, balances, or rules — the re-key/merge logic
+    (#278 PR8/PR9) is unchanged and already shipped. So #573 is <b>Gate-exempt</b> (a one-widget visual
+    diff). The only new strings are an optional consequence sub-line (V1/V2) — added to the ARB, EN + AR.
+  </p>
+</div>
+</body>
+</html>

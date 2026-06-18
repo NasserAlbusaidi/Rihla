@@ -2902,6 +2902,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String groupClaimMergeConsequence(Object shadow, Object requester) {
+    return 'Approving merges $shadow\'s expenses into $requester. This can\'t be undone.';
+  }
+
+  @override
+  String get groupClaimPendingBadge => 'Pending';
+
+  @override
   String get groupClaimApprove => 'Approve';
 
   @override
