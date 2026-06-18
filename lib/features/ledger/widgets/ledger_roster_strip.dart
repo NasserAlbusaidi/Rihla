@@ -280,13 +280,21 @@ class _Chip extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(context.spacing.radiusPill),
       ),
-      child: Text(
-        '$prefix$abs',
-        style: AppTypography.mono(
-          fontSize: 9.5,
-          color: fg,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
+      // #569: never wrap a long signed-balance string to a second line (it blew
+      // the strip's fixed 102px band by ~3px on large / 3-decimal multi-currency
+      // balances). Shrink-to-fit keeps every digit visible instead of clipping.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          '$prefix$abs',
+          maxLines: 1,
+          softWrap: false,
+          style: AppTypography.mono(
+            fontSize: 9.5,
+            color: fg,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
         ),
       ),
     );
