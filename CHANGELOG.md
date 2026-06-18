@@ -4,6 +4,60 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-06-18
+
+Shadow-members & claim/merge release. Adds placeholder ("shadow") members so a
+group isn't a group-of-one before friends install the app, lets a joiner claim a
+shadow's spot and inherit its balance (creator-approved), extends multi-currency
+to mixed-currency groups, and ships settlement corrections plus a wave of
+offline-staging, loading-state, and notification fixes. Backend deployed to the
+production Firebase project.
+
+### Added
+- **Shadow members & claim/merge (#278).** Add members by name at create or in
+  group settings — placeholders hold their share until a real person joins. A
+  joiner who enters the invite code can **claim** an unclaimed shadow; the group
+  creator approves, and the joiner inherits that shadow's balance instead of
+  starting from zero. Includes the creator-side claim-approval card (#573) and a
+  push notification to the creator when a claim request arrives (#560).
+- **Settlement corrections (#283).** Fix a mistaken settlement with an offsetting
+  reverse entry; corrections are labelled distinctly in payment history (#567).
+- **Pre-settlement review sheet (#204).** Flags unusual expenses before you
+  settle up, per-currency.
+- **Notification deep-links (#179).** Expense-, event-, and settlement-created
+  pushes now open the exact entry; added expense- and event-created notifiers.
+
+### Changed
+- **Mixed-currency groups (#382).** Balances bucket per currency, so a group can
+  hold expenses in more than one currency without nonsensical cross-currency sums.
+- **UI consolidation & loading states (#488/#490).** Shared `RAvatar` /
+  `RIconButton`, skeleton loaders and real error states across activity, profile,
+  events, and group screens; removed inert Defaults rows and the discarded
+  payment-method picker.
+- **Identity-honest delete dialog (#469).** Deleting an anonymous session no
+  longer reads as deleting a durable linked account.
+
+### Fixed
+- **Offline staging.** `createGroup` (#520) and `createEvent` (#516) stage and
+  race the server ack, so offline no longer shows a false error or hangs the
+  spinner.
+- **Home balance hero (#570).** A single unreadable group degrades to a per-group
+  partial instead of blanking the whole hero.
+- **Group detail (#574).** Bounded retry rides out the transient permission-denied
+  on a freshly-created group's subcollection listeners.
+- **Roster strip (#569).** Long multi-currency balance chips shrink instead of
+  overflowing.
+- **Ledger robustness.** 0-decimal currency input keeps its separator (#523);
+  one bad-currency or malformed doc can't error the whole ledger/list (#537/#532).
+- **Recovery & notifications.** Force-refresh the ID token after the email link
+  (#522); re-register the FCM token on an in-place anon→durable link (#480);
+  localize push copy (#483); the toggle no longer reads a confident ON in
+  silent-failure states (#482).
+- **Security & data integrity.** Member doc id bound to uid to block forged
+  duplicate member docs (#548); an anon-shell delete can no longer silently spare
+  a durable account (#549); `deleteGroup` lock lifecycle hardened with a
+  stale-lock reaper (#519/#529).
+
 ## [1.5.0] — 2026-06-11
 
 Account-recovery release. Replaces the cross-UID merge engine with durable
