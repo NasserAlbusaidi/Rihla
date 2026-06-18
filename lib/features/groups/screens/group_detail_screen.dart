@@ -100,20 +100,91 @@ class GroupDetailScreen extends ConsumerWidget {
 
 // ──────────────────────────── Content
 
-class _Content extends ConsumerWidget {
+class _Content extends ConsumerStatefulWidget {
   const _Content({required this.group});
 
   final Group group;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Content> createState() => _ContentState();
+}
+
+class _ContentState extends ConsumerState<_Content> {
+  // #574: a freshly-created group transiently denies its members/events
+  // subcollection listens for ~1s (server consistency lag after create). A
+  // Firestore listen that hits permission-denied is TERMINATED — it won't
+  // recover on its own — so re-subscribe a bounded number of times, showing a
+  // skeleton meanwhile, instead of flashing a hard "couldn't load" error. A
+  // genuine, persistent denial still surfaces after the bound (no infinite
+  // skeleton); non-permission errors are never retried.
+  static const _maxStagingRetries = 3;
+  static const _stagingRetryDelay = Duration(milliseconds: 800);
+  int _stagingRetries = 0;
+  Timer? _retryTimer;
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleStagingRetry() {
+    if (_retryTimer?.isActive ?? false) return;
+    final groupId = widget.group.id;
+    _retryTimer = Timer(_stagingRetryDelay, () {
+      if (!mounted) return;
+      setState(() => _stagingRetries++);
+      // Re-subscribe the terminated listens; balances recomputes from them.
+      ref.invalidate(groupBalancesProvider(groupId));
+      ref.invalidate(groupMembersProvider(groupId));
+      ref.invalidate(groupEventsProvider(groupId));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final group = widget.group;
     final eventsAsync = ref.watch(groupEventsProvider(group.id));
     final balancesAsync = ref.watch(groupBalancesProvider(group.id));
+    // Watch members directly: groupBalancesProvider SWALLOWS a members error into
+    // empty data (group_balance_provider.dart:136-140), so a members-only denial
+    // is invisible to balancesAsync — observe it here to retry it AND to surface
+    // its terminal error (else _MembersCard hangs on "Loading members…").
+    final membersAsync = ref.watch(groupMembersProvider(group.id));
     final currentUid = ref.watch(currentUserIdProvider);
     final balances = balancesAsync.valueOrNull;
     final balanceLines = nonZeroNetsGccFirst(
       myNetByCurrency(balances?.balances ?? const {}, currentUid),
     );
+
+    // #574: bounded retry while a freshly-created group's subcollection listens
+    // transiently deny (permission-denied). The members/events listens are
+    // INDEPENDENT and the server can grant them at different times, so all three
+    // are observed. Render a skeleton during the window; surface the real error
+    // only once the retry budget is spent.
+    final deniedEvents = eventsAsync.hasError &&
+        !eventsAsync.hasValue &&
+        _isPermissionDenied(eventsAsync.error!);
+    final deniedBalances = balancesAsync.hasError &&
+        !balancesAsync.hasValue &&
+        _isPermissionDenied(balancesAsync.error!);
+    final deniedMembers = membersAsync.hasError &&
+        !membersAsync.hasValue &&
+        _isPermissionDenied(membersAsync.error!);
+    final anyDenied = deniedEvents || deniedBalances || deniedMembers;
+    final staging = anyDenied && _stagingRetries < _maxStagingRetries;
+    if (staging) {
+      _scheduleStagingRetry();
+    } else if (!anyDenied && (eventsAsync.hasValue || balancesAsync.hasValue)) {
+      // Reset the budget ONLY when fully recovered. While any source is still
+      // denied after the budget is spent, leave retries pinned so the state stays
+      // terminal instead of looping reset → re-retry forever.
+      _stagingRetries = 0;
+    }
+
+    // A members read that failed (even one balancesAsync swallowed into empty
+    // data) must show the real error after the bound, never an endless spinner.
+    final membersHasError = membersAsync.hasError && !membersAsync.hasValue;
 
     return RefreshIndicator(
       color: context.colors.primary,
@@ -170,6 +241,7 @@ class _Content extends ConsumerWidget {
               currentUid: currentUid,
               groupId: group.id,
               currency: group.currency,
+              forceLoading: staging,
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
@@ -187,6 +259,8 @@ class _Content extends ConsumerWidget {
                 group: group,
                 balancesAsync: balancesAsync,
                 currentUid: currentUid,
+                forceLoading: staging,
+                membersHasError: membersHasError,
               ),
             ),
           ),
@@ -203,7 +277,13 @@ class _Content extends ConsumerWidget {
     required String? currentUid,
     required String groupId,
     required String currency,
+    bool forceLoading = false,
   }) {
+    if (forceLoading) {
+      // #574: staging-window retry in progress — show the loading skeleton, not
+      // the transient permission-denied error.
+      return SliverToBoxAdapter(child: SkeletonLoader.eventCard());
+    }
     return eventsAsync.when(
       data: (events) {
         if (events.isEmpty) {
@@ -227,11 +307,11 @@ class _Content extends ConsumerWidget {
                   shareText(
                     context,
                     context.l10n.groupShareInviteMessage(
-                      group.name,
-                      AppLinks.inviteUrl(group.inviteCode).toString(),
-                      group.inviteCode,
+                      widget.group.name,
+                      AppLinks.inviteUrl(widget.group.inviteCode).toString(),
+                      widget.group.inviteCode,
                     ),
-                    subject: context.l10n.groupShareSubject(group.name),
+                    subject: context.l10n.groupShareSubject(widget.group.name),
                   );
                 },
               ),
@@ -890,11 +970,22 @@ class _MembersCard extends StatelessWidget {
     required this.group,
     required this.balancesAsync,
     required this.currentUid,
+    this.forceLoading = false,
+    this.membersHasError = false,
   });
 
   final Group group;
   final AsyncValue<GroupBalances> balancesAsync;
   final String? currentUid;
+
+  /// #574: true while the group-detail staging-window retry is in progress —
+  /// render a skeleton, never the transient "couldn't load members" error.
+  final bool forceLoading;
+
+  /// #574: true when the members read itself failed — `balancesAsync` swallows a
+  /// members error into empty data, so the card needs this to show the real
+  /// error instead of an endless "Loading members…".
+  final bool membersHasError;
 
   @override
   Widget build(BuildContext context) {
@@ -906,7 +997,7 @@ class _MembersCard extends StatelessWidget {
     // is the row source — the bucket map is empty for a zero-money group, but
     // the members card must still list everyone. Same key set and order as
     // the old flat balances list.
-    if (data == null || data.memberNames.isEmpty) {
+    if (forceLoading || data == null || data.memberNames.isEmpty) {
       return Container(
         padding: EdgeInsets.symmetric(
           vertical: 18,
@@ -917,12 +1008,17 @@ class _MembersCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(spacing.radiusLarge),
           boxShadow: context.shadows.raised,
         ),
-        child: Text(
-          balancesAsync.hasError
-              ? context.l10n.groupMembersLoadFailed
-              : context.l10n.groupMembersLoading,
-          style: AppTypography.sans(fontSize: 13, color: colors.textSecondary),
-        ),
+        child: forceLoading
+            ? SkeletonLoader.groupList(count: 3)
+            : Text(
+                (balancesAsync.hasError || membersHasError)
+                    ? context.l10n.groupMembersLoadFailed
+                    : context.l10n.groupMembersLoading,
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                ),
+              ),
       );
     }
 
