@@ -2151,6 +2151,18 @@
       "shadow": {}
     }
   },
+  "groupClaimMergeConsequence": "Approving merges {shadow}'s expenses into {requester}. This can't be undone.",
+  "@groupClaimMergeConsequence": {
+    "description": "Consequence line on the #278 A6 claim-approval card spelling out the irreversible balance merge; {shadow} is the placeholder's name, {requester} the joining person's name.",
+    "placeholders": {
+      "shadow": {},
+      "requester": {}
+    }
+  },
+  "groupClaimPendingBadge": "Pending",
+  "@groupClaimPendingBadge": {
+    "description": "Small pill badge on a #278 A6 claim-request card marking the request as awaiting the creator's decision."
+  },
   "groupClaimApprove": "Approve",
   "@groupClaimApprove": {
     "description": "Button to approve a #278 PR9 claim request (runs the merge that gives the requester the placeholder's balance)."

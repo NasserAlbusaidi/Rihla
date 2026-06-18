@@ -4932,6 +4932,18 @@ abstract class AppLocalizations {
   /// **'{requester} wants to claim {shadow}\'s spot'**
   String groupClaimRequestRow(Object requester, Object shadow);
 
+  /// Consequence line on the #278 A6 claim-approval card spelling out the irreversible balance merge; {shadow} is the placeholder's name, {requester} the joining person's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Approving merges {shadow}\'s expenses into {requester}. This can\'t be undone.'**
+  String groupClaimMergeConsequence(Object shadow, Object requester);
+
+  /// Small pill badge on a #278 A6 claim-request card marking the request as awaiting the creator's decision.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get groupClaimPendingBadge;
+
   /// Button to approve a #278 PR9 claim request (runs the merge that gives the requester the placeholder's balance).
   ///
   /// In en, this message translates to:

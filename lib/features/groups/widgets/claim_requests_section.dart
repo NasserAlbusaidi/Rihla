@@ -1,11 +1,14 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../shared/widgets/directional_icon.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../keys/group_keys.dart';
 import '../models/claim_models.dart';
 import '../providers/claim_provider.dart';
@@ -43,26 +46,10 @@ class ClaimRequestsSection extends ConsumerWidget {
             children: [
               SettingsSectionHeader(title: context.l10n.groupClaimRequestsTitle),
               const SizedBox(height: 6),
-              Container(
-                decoration: BoxDecoration(
-                  color: context.colors.cardSurface,
-                  borderRadius:
-                      BorderRadius.circular(context.spacing.radiusLarge),
-                  boxShadow: context.shadows.raised,
-                ),
-                padding:
-                    EdgeInsets.symmetric(horizontal: context.spacing.space16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var i = 0; i < pending.length; i++) ...[
-                      if (i > 0)
-                        Container(height: 0.5, color: context.colors.rule),
-                      _ClaimRequestRow(groupId: groupId, request: pending[i]),
-                    ],
-                  ],
-                ),
-              ),
+              for (var i = 0; i < pending.length; i++) ...[
+                if (i > 0) SizedBox(height: context.spacing.space8),
+                _ClaimRequestRow(groupId: groupId, request: pending[i]),
+              ],
             ],
           ),
         );
@@ -85,10 +72,16 @@ class _ClaimRequestRow extends ConsumerStatefulWidget {
 
 class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
   bool _busy = false;
+  // Which button the creator pressed — drives the inline spinner so feedback
+  // lands on the tapped control, not both.
+  bool _approving = false;
 
   Future<void> _decide(bool approve) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _approving = approve;
+    });
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
     final req = widget.request;
@@ -136,41 +129,140 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
   @override
   Widget build(BuildContext context) {
     final req = widget.request;
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+    final colors = context.colors;
+    final spacing = context.spacing;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.cardSurface,
+        borderRadius: BorderRadius.circular(spacing.radiusLarge),
+        boxShadow: context.shadows.raised,
+      ),
+      padding: EdgeInsets.all(spacing.space16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Identity-merge visual: the joiner takes over the placeholder's spot.
+          Row(
+            children: [
+              RAvatar(size: 34, name: req.requesterDisplayName),
+              SizedBox(width: spacing.space8),
+              DirectionalIcon(
+                Iconsax.arrow_right_3,
+                size: 18,
+                color: colors.textSecondary,
+              ),
+              SizedBox(width: spacing.space8),
+              RAvatar(size: 34, name: req.shadowDisplayName),
+              const Spacer(),
+              _PendingBadge(label: context.l10n.groupClaimPendingBadge),
+            ],
+          ),
+          SizedBox(height: spacing.space12),
           Text(
             context.l10n.groupClaimRequestRow(
               req.requesterDisplayName,
               req.shadowDisplayName,
             ),
             style: AppTypography.sans(
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: context.colors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
-          SizedBox(height: context.spacing.space8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                key: GroupKeys.claimDecline(req.requestId),
-                onPressed: _busy ? null : () => _decide(false),
-                child: Text(context.l10n.groupClaimDecline),
+          SizedBox(height: spacing.space8),
+          // Spell out the irreversible balance merge before the creator acts —
+          // mirrors the warning the joiner saw on the claim-confirm sheet.
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.space12,
+              vertical: spacing.space8,
+            ),
+            decoration: BoxDecoration(
+              color: colors.cardSoft,
+              borderRadius: BorderRadius.circular(spacing.radiusMedium),
+            ),
+            child: Text(
+              context.l10n.groupClaimMergeConsequence(
+                req.shadowDisplayName,
+                req.requesterDisplayName,
               ),
-              SizedBox(width: context.spacing.space8),
-              FilledButton(
-                key: GroupKeys.claimApprove(req.requestId),
-                onPressed: _busy ? null : () => _decide(true),
-                child: Text(context.l10n.groupClaimApprove),
+              style: AppTypography.sans(
+                fontSize: 12.5,
+                color: colors.textSecondary,
+                height: 1.35,
+              ),
+            ),
+          ),
+          SizedBox(height: spacing.space12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  key: GroupKeys.claimDecline(req.requestId),
+                  onPressed: _busy ? null : () => _decide(false),
+                  child: _busy && !_approving
+                      ? const _ButtonSpinner()
+                      : Text(context.l10n.groupClaimDecline),
+                ),
+              ),
+              SizedBox(width: spacing.space8),
+              Expanded(
+                child: FilledButton(
+                  key: GroupKeys.claimApprove(req.requestId),
+                  onPressed: _busy ? null : () => _decide(true),
+                  child: _busy && _approving
+                      ? const _ButtonSpinner()
+                      : Text(context.l10n.groupClaimApprove),
+                ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Neutral "Pending" pill — matches the member list's "Not joined yet" shadow
+/// badge so the claim card reads as part of the same surface.
+class _PendingBadge extends StatelessWidget {
+  const _PendingBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 3, 8, 3),
+      decoration: BoxDecoration(
+        color: context.colors.cardSoft,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: context.colors.rule2),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.sans(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: context.colors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+/// Small inline spinner sized to sit inside a button without resizing it.
+class _ButtonSpinner extends StatelessWidget {
+  const _ButtonSpinner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 16,
+      width: 16,
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 }

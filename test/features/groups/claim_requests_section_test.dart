@@ -69,10 +69,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(GroupKeys.claimRequestsSection), findsOneWidget);
-    expect(find.textContaining('Khalid'), findsOneWidget);
-    expect(find.textContaining('Ali'), findsOneWidget);
+    // Both names render — in the headline and again in the merge-consequence
+    // line (#573 design polish), so each appears more than once.
+    expect(find.textContaining('Khalid'), findsWidgets);
+    expect(find.textContaining('Ali'), findsWidgets);
     expect(find.byKey(GroupKeys.claimApprove('rid')), findsOneWidget);
     expect(find.byKey(GroupKeys.claimDecline('rid')), findsOneWidget);
+    // #573 polish surfaces: a "Pending" badge and the irreversible-merge notice.
+    expect(find.text('Pending'), findsOneWidget);
+    expect(find.textContaining("can't be undone"), findsOneWidget);
   });
 
   testWidgets('C3: creator + no pending hides the section', (tester) async {

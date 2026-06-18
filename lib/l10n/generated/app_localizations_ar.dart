@@ -2968,6 +2968,14 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String groupClaimMergeConsequence(Object shadow, Object requester) {
+    return 'بالموافقة تُدمج مصروفات $shadow في $requester. لا يمكن التراجع عن ذلك.';
+  }
+
+  @override
+  String get groupClaimPendingBadge => 'معلّق';
+
+  @override
   String get groupClaimApprove => 'موافقة';
 
   @override
