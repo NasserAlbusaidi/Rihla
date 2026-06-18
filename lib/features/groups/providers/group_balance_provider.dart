@@ -910,12 +910,16 @@ final homeGroupBalanceProvider =
 
 /// Cross-group fold over [homeGroupBalanceProvider] for [BalanceHeroCard].
 ///
-/// Mirrors the awaited-all semantics the hero has always had: LOADING until
-/// EVERY group resolves (a still-loading group must show the skeleton, never
-/// a false all-settled zero), ERROR if any group's source hard-errors
-/// (loud-safe → error card), and per-currency buckets via the same
+/// LOADING until EVERY group resolves (a still-loading group must show the
+/// skeleton, never a false all-settled zero). Per-currency buckets via the same
 /// [_accumulateBucket]/[_sortedCurrencyBuckets] fold (#261 — no cross-currency
 /// summing, ever).
+///
+/// #570: a single unreadable group is DROPPED, not fatal — the fold sums the
+/// readable groups and flags `partial` so the hero shows the surviving total
+/// plus the "may be incomplete" notice, mirroring the #244 per-event OR-drop.
+/// ERROR is reserved for the total blackout (EVERY group hard-errors), where a
+/// zero "all settled" hero would be a lie.
 final crossGroupHomeBalanceProvider =
     Provider<AsyncValue<CrossGroupBalanceOnce>>((ref) {
   final uid = ref.watch(currentUserIdProvider);
@@ -942,13 +946,20 @@ final crossGroupHomeBalanceProvider =
   final byCurrencyMap =
       <String, ({Decimal net, Decimal owedToUser, Decimal userOwes})>{};
   var partial = false;
+  // #570: a single unreadable group must not blank the WHOLE hero. Mirror the
+  // #244 per-event OR-drop at the group level — drop the unreadable group, flag
+  // partial, sum the survivors. Capture the first error for the all-fail guard.
+  var dropped = 0;
+  Object? firstError;
+  StackTrace? firstStack;
   for (final group in groups) {
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
     if (balanceAsync.hasError && !balanceAsync.hasValue) {
-      return AsyncValue.error(
-        balanceAsync.error!,
-        balanceAsync.stackTrace!,
-      );
+      partial = true;
+      dropped++;
+      firstError ??= balanceAsync.error;
+      firstStack ??= balanceAsync.stackTrace;
+      continue;
     }
     if (balanceAsync.isLoading && !balanceAsync.hasValue) {
       return const AsyncValue.loading();
@@ -960,6 +971,12 @@ final crossGroupHomeBalanceProvider =
     for (final entry in balance.userNet.entries) {
       _accumulateBucket(byCurrencyMap, entry.key, entry.value);
     }
+  }
+
+  // Total blackout: every group was unreadable. A zero "all settled, may be
+  // incomplete" hero would be a false negative — stay loud-safe (error card).
+  if (groups.isNotEmpty && dropped == groups.length) {
+    return AsyncValue.error(firstError!, firstStack ?? StackTrace.current);
   }
 
   return AsyncValue.data((
