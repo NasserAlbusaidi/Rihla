@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -10,6 +11,10 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 /// #261 PR-B — the cross-group hero buckets per currency (there is no FX, so
 /// amounts in different currencies are NEVER summed). These tests exercise the
 /// currency axis directly; the all-OMR behaviour is the single-bucket case.
+///
+/// Migrated from [crossGroupBalanceProvider] to [crossGroupHomeBalanceProvider]
+/// (#466). Data is injected via [groupBalancesOnceProvider] (the offline path
+/// that [homeGroupBalanceProvider] and [crossGroupHomeBalanceProvider] use).
 void main() {
   const uid = 'uid-user';
 
@@ -23,49 +28,69 @@ void main() {
     createdAt: DateTime(2025, 1, 1),
   );
 
-  // #382 PR-1: the currency now lives IN the balance record (the bucket
-  // key) — the provider derives byCurrency from it, not from group.currency.
-  GroupBalances balancesWithNet(Decimal net, String currency) => (
-    balances: {
-      currency: [
-        UserBalance(
-          participantId: uid,
-          displayName: 'User',
-          totalPaid: Decimal.zero,
-          totalOwed: Decimal.zero,
-          netBalance: net,
-        ),
-      ],
-    },
-    totalSpent: <String, Decimal>{},
-    eventCount: 0,
-    perEventBreakdown: const {},
-    memberNames: const {},
-    memberRawNames: <String, String>{},
+  // #382 PR-1: the currency lives IN the balance record (the bucket key) —
+  // homeGroupBalanceProvider derives byCurrency from it, not from group.currency.
+  GroupBalancesOnce balancesOnceWithNet(Decimal net, String currency) => (
+    balances: (
+      balances: {
+        currency: [
+          UserBalance(
+            participantId: uid,
+            displayName: 'User',
+            totalPaid: Decimal.zero,
+            totalOwed: Decimal.zero,
+            netBalance: net,
+          ),
+        ],
+      },
+      totalSpent: <String, Decimal>{},
+      eventCount: 0,
+      perEventBreakdown: const {},
+      memberNames: const {},
+      memberRawNames: <String, String>{},
+    ),
+    failedEventIds: const <String>{},
   );
 
-  /// groupId -> (currency, net). Builds the container + pumps the live provider.
+  /// groupId -> (currency, net). Builds the container + pumps crossGroupHomeBalanceProvider.
   Future<CrossGroupBalance> compute(
     List<({String id, String currency, Decimal net})> groups,
   ) async {
     final container = ProviderContainer(
       overrides: [
         currentUserIdProvider.overrideWith((_) => uid),
+        // Force offline so homeGroupBalanceProvider uses the once-path.
+        connectivityProvider.overrideWith(
+          (_) => ConnectivityNotifier(startPeriodicChecks: false)..setOffline(),
+        ),
         userGroupsProvider.overrideWith(
-          (_) => Stream.value([for (final g in groups) group(g.id, g.currency)]),
+          (_) =>
+              Stream.value([for (final g in groups) group(g.id, g.currency)]),
         ),
         for (final g in groups)
-          groupBalancesProvider(
-            g.id,
-          ).overrideWith((_) => AsyncValue.data(balancesWithNet(g.net, g.currency))),
+          groupBalancesOnceProvider(g.id).overrideWith(
+            (_) => Future.value(balancesOnceWithNet(g.net, g.currency)),
+          ),
       ],
     );
     addTearDown(container.dispose);
-    container.listen(crossGroupBalanceProvider, (_, _) {}, fireImmediately: true);
-    for (var i = 0; i < 10; i++) {
+    // Pin the provider so autoDispose sources don't evict between microtasks.
+    final sub = container.listen(
+      crossGroupHomeBalanceProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
+    for (var i = 0; i < 12; i++) {
       await Future<void>.delayed(Duration.zero);
     }
-    return container.read(crossGroupBalanceProvider).valueOrNull!;
+    final once = container.read(crossGroupHomeBalanceProvider).valueOrNull;
+    sub.close();
+    return once?.balance ??
+        const (
+          byCurrency: <CurrencyBalance>[],
+          groupCount: 0,
+          isLoading: false,
+        );
   }
 
   Decimal d(String s) => Decimal.parse(s);

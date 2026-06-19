@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,10 +69,15 @@ Group _group(String currency) => Group(
   createdAt: DateTime(2026, 1, 1),
 );
 
+/// Wrap a [CrossGroupBalance] into the once-wrapper used by
+/// [crossGroupHomeBalanceProvider], assuming a non-partial (all reads OK) result.
+CrossGroupBalanceOnce _once(CrossGroupBalance balance) =>
+    (balance: balance, partial: false);
+
 void main() {
   // [groups] feeds ONLY [userGroupsProvider] (→ settledDisplayCurrencyProvider for
-  // the all-settled currency, #70). The balance still comes from the per-test
-  // crossGroupBalanceProvider override (bridged into the once-provider below).
+  // the all-settled currency, #70). The balance comes from the per-test
+  // crossGroupHomeBalanceProvider override.
   Widget buildTestWidget({
     required Widget child,
     required List<Override> overrides,
@@ -85,18 +88,6 @@ void main() {
         currentUserIdProvider.overrideWithValue('test-user-id'),
         userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
         ...overrides,
-        // #104: BalanceHeroCard now reads the one-shot variant. Bridge it to the
-        // per-test crossGroupBalanceProvider override; loading stays loading.
-        // #244: the once-provider now yields CrossGroupBalanceOnce — wrap the
-        // bridged value as a non-partial result (these tests exercise the
-        // number, not the partial affordance).
-        crossGroupHomeBalanceProvider.overrideWith(
-          (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
-                data: (d) =>
-                    AsyncValue.data((balance: d, partial: false)),
-                orElse: () => const AsyncValue<CrossGroupBalanceOnce>.loading(),
-              ),
-        ),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
@@ -118,8 +109,8 @@ void main() {
         buildTestWidget(
           child: const BalanceHeroCard(),
           overrides: [
-            crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data(_omr('-5.500', groupCount: 2)),
+            crossGroupHomeBalanceProvider.overrideWith(
+              (ref) => AsyncValue.data(_once(_omr('-5.500', groupCount: 2))),
             ),
           ],
         ),
@@ -137,8 +128,8 @@ void main() {
         buildTestWidget(
           child: const BalanceHeroCard(),
           overrides: [
-            crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data(_omr('3.250', groupCount: 1)),
+            crossGroupHomeBalanceProvider.overrideWith(
+              (ref) => AsyncValue.data(_once(_omr('3.250', groupCount: 1))),
             ),
           ],
         ),
@@ -159,8 +150,8 @@ void main() {
             child: const BalanceHeroCard(),
             groups: [_group('OMR')],
             overrides: [
-              crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data(_omr('0', groupCount: 3)),
+              crossGroupHomeBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data(_once(_omr('0', groupCount: 3))),
               ),
             ],
           ),
@@ -183,8 +174,8 @@ void main() {
             child: const BalanceHeroCard(),
             groups: [_group('USD')],
             overrides: [
-              crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
+              crossGroupHomeBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data(_once(_omr('0', groupCount: 1))),
               ),
             ],
           ),
@@ -207,8 +198,8 @@ void main() {
             child: const BalanceHeroCard(),
             groups: [_group('OMR'), _group('USD')],
             overrides: [
-              crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data(_omr('0', groupCount: 2)),
+              crossGroupHomeBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data(_once(_omr('0', groupCount: 2))),
               ),
             ],
           ),
@@ -237,25 +228,27 @@ void main() {
           buildTestWidget(
             child: const BalanceHeroCard(),
             overrides: [
-              crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data((
-                  byCurrency: [
-                    (
-                      currency: 'OMR',
-                      net: Decimal.parse('12.345'),
-                      owedToUser: Decimal.parse('12.345'),
-                      userOwes: Decimal.zero,
-                    ),
-                    (
-                      currency: 'USD',
-                      net: Decimal.parse('8.25'),
-                      owedToUser: Decimal.parse('8.25'),
-                      userOwes: Decimal.zero,
-                    ),
-                  ],
-                  groupCount: 2,
-                  isLoading: false,
-                )),
+              crossGroupHomeBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data(
+                  _once((
+                    byCurrency: [
+                      (
+                        currency: 'OMR',
+                        net: Decimal.parse('12.345'),
+                        owedToUser: Decimal.parse('12.345'),
+                        userOwes: Decimal.zero,
+                      ),
+                      (
+                        currency: 'USD',
+                        net: Decimal.parse('8.25'),
+                        owedToUser: Decimal.parse('8.25'),
+                        userOwes: Decimal.zero,
+                      ),
+                    ],
+                    groupCount: 2,
+                    isLoading: false,
+                  )),
+                ),
               ),
             ],
           ),
@@ -291,7 +284,7 @@ void main() {
         buildTestWidget(
           child: const BalanceHeroCard(),
           overrides: [
-            crossGroupBalanceProvider.overrideWith(
+            crossGroupHomeBalanceProvider.overrideWith(
               (ref) => const AsyncValue.loading(),
             ),
           ],
@@ -307,8 +300,8 @@ void main() {
         buildTestWidget(
           child: const BalanceHeroCard(),
           overrides: [
-            crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data(_omr('0', groupCount: 0)),
+            crossGroupHomeBalanceProvider.overrideWith(
+              (ref) => AsyncValue.data(_once(_omr('0', groupCount: 0))),
             ),
           ],
         ),
@@ -325,9 +318,9 @@ void main() {
           buildTestWidget(
             child: const BalanceHeroCard(),
             overrides: [
-              crossGroupBalanceProvider.overrideWith(
+              crossGroupHomeBalanceProvider.overrideWith(
                 (ref) => AsyncValue.data(
-                  _omrSplit('5.000', '12.000', '7.000', groupCount: 2),
+                  _once(_omrSplit('5.000', '12.000', '7.000', groupCount: 2)),
                 ),
               ),
             ],
