@@ -28,6 +28,7 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/create_group_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 
 class _MockGroupService extends Mock implements GroupService {}
 
@@ -152,6 +153,23 @@ void main() {
       // Pre-fix, the timeout sets groupErrorProvider here → RED.
       await tester.pump(const Duration(seconds: 16));
       expect(container.read(groupErrorProvider), isNull);
+    },
+  );
+
+  testWidgets(
+    '#533 OfflineBanner is visible when composing the form offline',
+    (tester) async {
+      // The banner must be visible before the user submits — just being offline
+      // while composing the form is enough. No stub needed since we never submit.
+      final sp = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wrap(sp));
+      // One frame — NOT pumpAndSettle (ConnectivityNotifier Timer trap).
+      await tester.pump();
+
+      // Pre-fix: no OfflineBanner in the Scaffold body → findsNothing → RED.
+      // Post-fix: the banner is mounted and the offline connectivity makes it
+      // render the strip → findsOneWidget → GREEN.
+      expect(find.byType(OfflineBanner), findsOneWidget);
     },
   );
 }
