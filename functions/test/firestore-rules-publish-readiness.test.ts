@@ -409,6 +409,27 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
+  test('display-name length counts UTF-16 code units, not code points (#527 refuted)', async () => {
+    // Verified against the Firestore rules emulator (2026-06-19): isValidDisplayName
+    // gates on `s.size() <= 32`, and string.size() counts UTF-16 code units, NOT
+    // Unicode code points. A 2-unit astral emoji (U+1F389) costs 2 toward the cap:
+    // 16 emoji = 32 units (accepted); 17 emoji = 34 units (rejected).
+    //
+    // This REFUTES #527's premise that size() is code-point-based. The client
+    // validator (lib/core/utils/name_validators.dart) uses Dart String.length,
+    // which ALSO counts UTF-16 units — so client and server already agree.
+    // Switching the client to runes.length (code points) would make it ACCEPT
+    // names the server REJECTS (permission-denied on 17+ astral chars). Do not
+    // "align" the two to code points; they are already aligned on UTF-16 units.
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertSucceeds(owner.doc('groups/g-emoji-16').set(
+      validGroup('g-emoji-16', { name: '\u{1F389}'.repeat(16), inviteCode: 'EMOJI16' }),
+    ));
+    await assertFails(owner.doc('groups/g-emoji-17').set(
+      validGroup('g-emoji-17', { name: '\u{1F389}'.repeat(17), inviteCode: 'EMOJI17' }),
+    ));
+  });
+
   test('group update rejects whitespace-only display name', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
 
