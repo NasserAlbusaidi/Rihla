@@ -153,4 +153,25 @@ void main() {
       expect(missing, isNull);
     },
   );
+
+  test(
+    'groupDetailProvider yields null for a soft-deleted group doc (#518: detail fence)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      await _seedGroup(
+        db,
+        id: 'deleted-group',
+        createdAt: DateTime.utc(2026, 1, 1),
+        isDeleted: true,
+      );
+      final container = _container(db);
+
+      final result = await container.read(
+        groupDetailProvider('deleted-group').future,
+      );
+
+      expect(result, isNull,
+          reason: 'soft-deleted group must yield null from detail stream');
+    },
+  );
 }
