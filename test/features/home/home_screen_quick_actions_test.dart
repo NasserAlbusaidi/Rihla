@@ -30,11 +30,14 @@ Group _makeGroup(String id, String name) => Group(
 
 List<Override> _baseOverrides(List<Group> groups) => [
   userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-  crossGroupBalanceProvider.overrideWith(
+  crossGroupHomeBalanceProvider.overrideWith(
     (ref) => AsyncValue.data((
-      byCurrency: const <CurrencyBalance>[],
-      groupCount: groups.length,
-      isLoading: false,
+      balance: (
+        byCurrency: const <CurrencyBalance>[],
+        groupCount: groups.length,
+        isLoading: false,
+      ),
+      partial: false,
     )),
   ),
   crossGroupActivityProvider.overrideWith((ref) => const AsyncValue.data([])),
