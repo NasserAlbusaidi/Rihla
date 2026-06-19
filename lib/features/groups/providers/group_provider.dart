@@ -561,7 +561,14 @@ class GroupService extends FirestoreRepository {
         .collection('groups')
         .doc(groupId)
         .snapshots()
-        .map((doc) => doc.exists ? Group.fromDoc(doc) : null);
+        .map((doc) {
+          if (!doc.exists) return null;
+          final group = Group.fromDoc(doc);
+          // #518: fence out soft-deleted docs — a single-doc snapshot always
+          // EXISTS, so isDeleted must be checked in-memory (no server-side
+          // .where filter on a .doc().snapshots() stream).
+          return group.isDeleted ? null : group;
+        });
   }
 }
 

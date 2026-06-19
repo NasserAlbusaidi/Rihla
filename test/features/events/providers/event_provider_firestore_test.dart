@@ -131,5 +131,29 @@ void main() {
       expect(existing?.name, 'Beach Day');
       expect(missing, isNull);
     });
+
+    test(
+      'yields null for a soft-deleted event doc (#518: detail fence)',
+      () async {
+        final db = FakeFirebaseFirestore();
+        await _seedEvent(
+          db,
+          id: 'deleted-event',
+          name: 'Deleted Event',
+          createdAt: '2026-03-01T00:00:00Z',
+          isDeleted: true,
+        );
+        final container = _container(db);
+
+        final result = await container.read(
+          eventDetailProvider(
+            (groupId: _groupId, eventId: 'deleted-event'),
+          ).future,
+        );
+
+        expect(result, isNull,
+            reason: 'soft-deleted event must yield null from detail stream');
+      },
+    );
   });
 }

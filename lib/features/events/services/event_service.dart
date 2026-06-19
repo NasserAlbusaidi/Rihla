@@ -73,7 +73,14 @@ class EventService extends FirestoreRepository {
         .collection('events')
         .doc(eventId)
         .snapshots()
-        .map((doc) => doc.exists ? Event.fromDoc(doc) : null);
+        .map((doc) {
+          if (!doc.exists) return null;
+          final event = Event.fromDoc(doc);
+          // #518: fence out soft-deleted docs — a single-doc snapshot always
+          // EXISTS, so isDeleted must be checked in-memory (no server-side
+          // .where filter on a .doc().snapshots() stream).
+          return event.isDeleted ? null : event;
+        });
   }
 
   /// Stages a new event: applies the write to the local Firestore cache and
