@@ -105,24 +105,60 @@ describe('claimRequestNotifier', () => {
     expect(sendEach.mock.calls[0][0][0].token).toBe('tok-creator');
   });
 
-  test('pending→claimed (creator approved) does NOT notify', async () => {
-    await seedGroup('g1', 'Trip', 'creator');
+  test('pending→claimed notifies the REQUESTER (not the creator) (#565)', async () => {
+    await seedGroup('g1', 'Salalah Trip', 'creator');
+    await seedToken('R'); // the requester
     await seedToken('creator');
-    const sendEach = mockSendEach(0);
+    const sendEach = mockSendEach(1);
 
     await fire(snap(pending()), snap(pending({ status: 'claimed' })));
+
+    const messages = sendEach.mock.calls[0][0];
+    expect(messages).toHaveLength(1);
+    expect(messages[0].token).toBe('tok-R'); // requester, NOT creator
+    expect(messages[0].data).toEqual({ type: 'claim_decided', groupId: 'g1' });
+    expect(messages[0].notification.title).toBe('Salalah Trip');
+    expect(messages[0].notification.body).toContain('Dad'); // shadow whose spot
+    expect(messages[0].notification.body).toContain('approved');
+  });
+
+  test('pending→declined notifies the REQUESTER with decline copy (#565)', async () => {
+    await seedGroup('g1', 'Trip', 'creator');
+    await seedToken('R');
+    const sendEach = mockSendEach(1);
+
+    await fire(snap(pending()), snap(pending({ status: 'declined' })));
+
+    const messages = sendEach.mock.calls[0][0];
+    expect(messages).toHaveLength(1);
+    expect(messages[0].token).toBe('tok-R');
+    expect(messages[0].data).toEqual({ type: 'claim_decided', groupId: 'g1' });
+    expect(messages[0].notification.body).toContain('Dad');
+    expect(messages[0].notification.body).toContain('declined');
+  });
+
+  test('decide with an empty requesterUid does not notify (#565)', async () => {
+    await seedGroup('g1', 'Trip', 'creator');
+    const sendEach = mockSendEach(0);
+
+    await fire(
+      snap(pending({ requesterUid: '' })),
+      snap(pending({ requesterUid: '', status: 'claimed' })),
+    );
 
     expect(sendEach).not.toHaveBeenCalled();
   });
 
-  test('pending→declined (creator declined) does NOT notify', async () => {
+  test('Arabic requester gets the Arabic decide body (#565)', async () => {
     await seedGroup('g1', 'Trip', 'creator');
-    await seedToken('creator');
-    const sendEach = mockSendEach(0);
+    await seedToken('R', 'ar');
+    const sendEach = mockSendEach(1);
 
-    await fire(snap(pending()), snap(pending({ status: 'declined' })));
+    await fire(snap(pending()), snap(pending({ status: 'claimed' })));
 
-    expect(sendEach).not.toHaveBeenCalled();
+    const body = sendEach.mock.calls[0][0][0].notification.body;
+    expect(body).toContain('Dad');
+    expect(body).toContain('الموافقة'); // "approval" — proves Arabic copy
   });
 
   test('pending→pending no-op rewrite does NOT notify', async () => {
