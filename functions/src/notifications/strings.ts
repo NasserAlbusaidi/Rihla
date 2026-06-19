@@ -128,3 +128,39 @@ export function claimRequestBody(
     ? `يريد ${requester} أخذ مكان ${shadow}.`
     : `${requester} wants to claim ${shadow}'s spot.`;
 }
+
+export type ClaimDecision = 'claimed' | 'declined';
+
+export function claimDecideTitle(locale: Locale, groupName: string): string {
+  return groupLabel(locale, groupName);
+}
+
+// #565 — notify the REQUESTER when the creator decides their claim
+// (pending→claimed | pending→declined). Same empty-shadow fallback discipline as
+// claimRequestBody (#483 pattern): when the shadow name is empty we localize a
+// whole stand-in sentence rather than splicing a dangling possessive.
+export function claimDecideBody(
+  locale: Locale,
+  decision: ClaimDecision,
+  shadowName: string,
+): string {
+  const shadow = shadowName.trim();
+  if (decision === 'claimed') {
+    if (shadow.length === 0) {
+      return locale === 'ar'
+        ? 'تمت الموافقة على طلب العضوية الخاص بك.'
+        : 'Your member claim was approved.';
+    }
+    return locale === 'ar'
+      ? `تمت الموافقة على طلبك لأخذ مكان ${shadow}.`
+      : `Your claim for ${shadow}'s spot was approved.`;
+  }
+  if (shadow.length === 0) {
+    return locale === 'ar'
+      ? 'تم رفض طلب العضوية الخاص بك.'
+      : 'Your member claim was declined.';
+  }
+  return locale === 'ar'
+    ? `تم رفض طلبك لأخذ مكان ${shadow}.`
+    : `Your claim for ${shadow}'s spot was declined.`;
+}
