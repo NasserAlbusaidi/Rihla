@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
+import '../../../core/utils/safe_deserialize.dart';
 import '../models/event_model.dart';
 
 /// Service for Event CRUD operations against Firestore.
@@ -40,7 +41,13 @@ class EventService extends FirestoreRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snap) {
-          final events = snap.docs.map(Event.fromDoc).toList();
+          // #532: decode per-doc so one malformed event can't error the whole
+          // stream — mirrors the Group/Member path in group_provider.dart.
+          final events = decodeDocsSkippingMalformed(
+            snap.docs,
+            Event.fromDoc,
+            context: 'watchGroupEvents',
+          );
           events.sort((a, b) {
             if (a.startDate == null && b.startDate == null) {
               return b.createdAt.compareTo(a.createdAt);
