@@ -7,7 +7,7 @@
 
 ### providers/
 - **group_provider.dart**: Group CRUD and list state
-- **group_balance_provider.dart**: Computed group-level and cross-group balances. `crossGroupBalanceProvider`, `groupBalancesProvider`
+- **group_balance_provider.dart**: Computed group-level and cross-group balances. `groupBalancesProvider`, `crossGroupHomeBalanceProvider`
 
 ### services/
 - **group_activity_service.dart**: Group activity log operations

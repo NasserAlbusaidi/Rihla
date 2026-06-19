@@ -18,8 +18,8 @@ typedef CurrencySpend = ({String currency, Decimal amount});
 ///
 /// [spentByCurrency] is bucketed per currency (#378) — one entry per currency
 /// the user has nonzero lifetime spend in, sorted GCC-first (same rank rule as
-/// [crossGroupBalanceProvider]'s `byCurrency`). Replaces the old currency-blind
-/// `totalSpent` scalar, which summed e.g. 10 USD + 10 OMR into a nonsense "20".
+/// [crossGroupHomeBalanceProvider]'s `byCurrency`). Replaces the old
+/// currency-blind `totalSpent` scalar, which summed 10 USD + 10 OMR into "20".
 typedef ProfileStats = ({
   int groupCount,
   int eventCount,
@@ -51,7 +51,7 @@ List<CurrencySpend> _sortedSpendBuckets(Map<String, Decimal> spentMap) {
 ///
 /// Uses [Provider] (not [StreamProvider]) so that [ref.watch] calls inside
 /// a loop over a variable-length groups list work correctly — same pattern
-/// as [groupBalancesProvider] and [crossGroupBalanceProvider].
+/// as [groupBalancesProvider] and [crossGroupHomeBalanceProvider].
 ///
 /// Returns:
 /// - [AsyncValue.loading] while [userGroupsProvider] has no value, or while

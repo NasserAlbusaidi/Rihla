@@ -73,11 +73,14 @@ List<Override> _baseOverrides({
 }) => [
   crossGroupActivityProvider.overrideWith((ref) => activityOverride),
   userGroupsProvider.overrideWith((ref) => Stream.value([])),
-  crossGroupBalanceProvider.overrideWith(
+  crossGroupHomeBalanceProvider.overrideWith(
     (ref) => const AsyncValue.data((
-      byCurrency: <CurrencyBalance>[],
-      groupCount: 0,
-      isLoading: false,
+      balance: (
+        byCurrency: <CurrencyBalance>[],
+        groupCount: 0,
+        isLoading: false,
+      ),
+      partial: false,
     )),
   ),
   groupBalancesProvider.overrideWith(

@@ -28,11 +28,14 @@ class _MockUserCredential extends Mock implements UserCredential {}
 /// the restore CTA renders in the empty state.
 List<Override> _emptyOverrides() => [
   userGroupsProvider.overrideWith((ref) => Stream.value([])),
-  crossGroupBalanceProvider.overrideWith(
+  crossGroupHomeBalanceProvider.overrideWith(
     (ref) => const AsyncValue.data((
-      byCurrency: <CurrencyBalance>[],
-      groupCount: 0,
-      isLoading: false,
+      balance: (
+        byCurrency: <CurrencyBalance>[],
+        groupCount: 0,
+        isLoading: false,
+      ),
+      partial: false,
     )),
   ),
   crossGroupActivityProvider.overrideWith((ref) => const AsyncValue.data([])),
