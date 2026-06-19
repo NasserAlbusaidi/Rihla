@@ -33,7 +33,7 @@ extension _SingleCurrencyAccess on CrossGroupBalance {
 // `.get()` (getExpenses/getSettlements), NOT via live `.snapshots()` listeners
 // (watchExpenses/watchSettlements). These counting fakes let us assert exactly
 // that: the one-shot path uses getX and holds ZERO live leaf listeners, while
-// the live `crossGroupBalanceProvider` (kept for in-group screens) still opens
+// the live `groupBalancesProvider` (used for in-group screens) still opens
 // them — proving the regression assertion discriminates.
 // ---------------------------------------------------------------------------
 
@@ -228,7 +228,7 @@ void main() {
     );
 
     test(
-      'CONTRAST: the live crossGroupBalanceProvider DOES open leaf listeners '
+      'CONTRAST: the live groupBalancesProvider DOES open leaf listeners '
       '(proves the regression assertion discriminates)',
       () async {
         final expFake = _CountingExpenseService({
@@ -240,8 +240,11 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        // Keep the live provider subscribed (mirrors the always-mounted home).
-        container.listen(crossGroupBalanceProvider, (_, _) {},
+        // Keep the live in-group provider subscribed (mirrors an always-mounted
+        // group screen). This is the path that opens per-event snapshot listeners
+        // — the exact leak #104 is about. groupBalancesProvider is a
+        // StreamProvider.family that calls watchExpenses/watchSettlements.
+        container.listen(groupBalancesProvider(gid), (_, _) {},
             fireImmediately: true);
         for (var i = 0; i < 10; i++) {
           await Future<void>.delayed(Duration.zero);

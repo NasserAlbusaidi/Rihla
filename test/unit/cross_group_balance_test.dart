@@ -4,6 +4,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -39,15 +40,18 @@ Group _makeGroup({required String id, required String name}) {
   );
 }
 
-/// Build a minimal [GroupBalances] record for testing.
-GroupBalances _makeGroupBalances({required List<UserBalance> balances}) {
+/// Build a minimal [GroupBalancesOnce] record for testing.
+GroupBalancesOnce _makeGroupBalancesOnce({required List<UserBalance> balances}) {
   return (
-    balances: {'OMR': balances},
-    totalSpent: {'OMR': Decimal.zero},
-    eventCount: 0,
-    perEventBreakdown: const {},
-    memberNames: const {},
-    memberRawNames: <String, String>{},
+    balances: (
+      balances: {'OMR': balances},
+      totalSpent: {'OMR': Decimal.zero},
+      eventCount: 0,
+      perEventBreakdown: const {},
+      memberNames: const {},
+      memberRawNames: <String, String>{},
+    ),
+    failedEventIds: const <String>{},
   );
 }
 
@@ -65,19 +69,55 @@ UserBalance _makeUserBalance({
   );
 }
 
-/// Pump the provider container until the synchronous Provider body re-evaluates.
+/// Pump the provider container until the async once-providers settle.
 Future<void> _pump(ProviderContainer container) async {
-  for (var i = 0; i < 10; i++) {
+  for (var i = 0; i < 12; i++) {
     await Future<void>.delayed(Duration.zero);
   }
 }
 
+/// Read [crossGroupHomeBalanceProvider] after settling. Returns the
+/// [CrossGroupBalance] nested inside the once-wrapper.
+Future<CrossGroupBalance> _readBalance(ProviderContainer container) async {
+  // Pin the provider so autoDispose sources don't evict between microtasks.
+  final sub = container.listen(crossGroupHomeBalanceProvider, (_, _) {},
+      fireImmediately: true);
+  await _pump(container);
+  final once = container.read(crossGroupHomeBalanceProvider).valueOrNull;
+  sub.close();
+  return once?.balance ??
+      const (
+        byCurrency: <CurrencyBalance>[],
+        groupCount: 0,
+        isLoading: false,
+      );
+}
+
 void main() {
   // ---------------------------------------------------------------------------
-  // crossGroupBalanceProvider
+  // crossGroupHomeBalanceProvider (migrated from crossGroupBalanceProvider #466)
   // ---------------------------------------------------------------------------
-  group('crossGroupBalanceProvider', () {
+  group('crossGroupHomeBalanceProvider', () {
     const uid = 'uid-user';
+
+    // Override helpers: offline so the aggregate path is bypassed, driving the
+    // one-shot path through groupBalancesOnceProvider (injectable per group).
+    List<Override> baseOverrides(
+      List<Group> groups,
+      Map<String, GroupBalancesOnce> onceSeed,
+    ) => [
+      currentUserIdProvider.overrideWith((_) => uid),
+      connectivityProvider.overrideWith(
+        (_) => ConnectivityNotifier(
+          connectivityProbe: () async => false,
+          startPeriodicChecks: false,
+        )..setOffline(),
+      ),
+      userGroupsProvider.overrideWith((_) => Stream.value(groups)),
+      for (final entry in onceSeed.entries)
+        groupBalancesOnceProvider(entry.key)
+            .overrideWith((_) => Future.value(entry.value)),
+    ];
 
     test('returns AsyncValue.loading when userGroupsProvider is loading', () {
       // A stream that never emits — provider must return loading.
@@ -85,39 +125,33 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          userGroupsProvider.overrideWith((_) => controller.stream),
           currentUserIdProvider.overrideWith((_) => uid),
+          connectivityProvider.overrideWith(
+            (_) => ConnectivityNotifier(
+              connectivityProbe: () async => false,
+              startPeriodicChecks: false,
+            )..setOffline(),
+          ),
+          userGroupsProvider.overrideWith((_) => controller.stream),
         ],
       );
       addTearDown(container.dispose);
       addTearDown(controller.close);
 
-      final result = container.read(crossGroupBalanceProvider);
+      final result = container.read(crossGroupHomeBalanceProvider);
       // Before stream emits, userGroupsProvider is loading
-      expect(result, isA<AsyncLoading<CrossGroupBalance>>());
+      expect(result, isA<AsyncLoading<CrossGroupBalanceOnce>>());
     });
 
     test('returns net=0 and groupCount=0 for empty groups list', () async {
       final container = ProviderContainer(
-        overrides: [
-          userGroupsProvider.overrideWith((_) => Stream.value([])),
-          currentUserIdProvider.overrideWith((_) => uid),
-        ],
+        overrides: baseOverrides([], {}),
       );
       addTearDown(container.dispose);
 
-      container.listen(
-        crossGroupBalanceProvider,
-        (_, _) {},
-        fireImmediately: true,
-      );
-      await _pump(container);
-
-      final result = container.read(crossGroupBalanceProvider);
-      expect(result, isA<AsyncData<CrossGroupBalance>>());
-      final data = result.valueOrNull!;
-      expect(data.net, equals(Decimal.zero));
-      expect(data.groupCount, equals(0));
+      final balance = await _readBalance(container);
+      expect(balance.net, equals(Decimal.zero));
+      expect(balance.groupCount, equals(0));
     });
 
     test(
@@ -127,7 +161,7 @@ void main() {
         final group2 = _makeGroup(id: 'g2', name: 'Group 2');
 
         // uid-user has net +10 in g1 and +20 in g2 => total +30
-        final balances1 = _makeGroupBalances(
+        final once1 = _makeGroupBalancesOnce(
           balances: [
             _makeUserBalance(
               participantId: uid,
@@ -135,7 +169,7 @@ void main() {
             ),
           ],
         );
-        final balances2 = _makeGroupBalances(
+        final once2 = _makeGroupBalancesOnce(
           balances: [
             _makeUserBalance(
               participantId: uid,
@@ -144,36 +178,15 @@ void main() {
           ],
         );
 
-        // Override groupBalancesProvider with actual balance data
-        final container2 = ProviderContainer(
-          overrides: [
-            userGroupsProvider.overrideWith(
-              (_) => Stream.value([group1, group2]),
-            ),
-            currentUserIdProvider.overrideWith((_) => uid),
-            groupBalancesProvider(
-              'g1',
-            ).overrideWith((_) => AsyncValue.data(balances1)),
-            groupBalancesProvider(
-              'g2',
-            ).overrideWith((_) => AsyncValue.data(balances2)),
-          ],
+        final container = ProviderContainer(
+          overrides: baseOverrides([group1, group2], {'g1': once1, 'g2': once2}),
         );
-        addTearDown(container2.dispose);
+        addTearDown(container.dispose);
 
-        container2.listen(
-          crossGroupBalanceProvider,
-          (_, _) {},
-          fireImmediately: true,
-        );
-        await _pump(container2);
-
-        final result = container2.read(crossGroupBalanceProvider);
-        expect(result, isA<AsyncData<CrossGroupBalance>>());
-        final data = result.valueOrNull!;
+        final balance = await _readBalance(container);
         // uid-user net: +10 + +20 = +30
-        expect(data.net, equals(Decimal.parse('30.000')));
-        expect(data.groupCount, equals(2));
+        expect(balance.net, equals(Decimal.parse('30.000')));
+        expect(balance.groupCount, equals(2));
       },
     );
 
@@ -184,7 +197,7 @@ void main() {
         final group2 = _makeGroup(id: 'g2', name: 'Group 2');
 
         // uid-user has +15 in g1 and -5 in g2 => total +10
-        final balances1 = _makeGroupBalances(
+        final once1 = _makeGroupBalancesOnce(
           balances: [
             _makeUserBalance(
               participantId: uid,
@@ -192,7 +205,7 @@ void main() {
             ),
           ],
         );
-        final balances2 = _makeGroupBalances(
+        final once2 = _makeGroupBalancesOnce(
           balances: [
             _makeUserBalance(
               participantId: uid,
@@ -202,33 +215,13 @@ void main() {
         );
 
         final container = ProviderContainer(
-          overrides: [
-            userGroupsProvider.overrideWith(
-              (_) => Stream.value([group1, group2]),
-            ),
-            currentUserIdProvider.overrideWith((_) => uid),
-            groupBalancesProvider(
-              'g1',
-            ).overrideWith((_) => AsyncValue.data(balances1)),
-            groupBalancesProvider(
-              'g2',
-            ).overrideWith((_) => AsyncValue.data(balances2)),
-          ],
+          overrides: baseOverrides([group1, group2], {'g1': once1, 'g2': once2}),
         );
         addTearDown(container.dispose);
 
-        container.listen(
-          crossGroupBalanceProvider,
-          (_, _) {},
-          fireImmediately: true,
-        );
-        await _pump(container);
-
-        final result = container.read(crossGroupBalanceProvider);
-        expect(result, isA<AsyncData<CrossGroupBalance>>());
-        final data = result.valueOrNull!;
+        final balance = await _readBalance(container);
         // +15 + (-5) = +10
-        expect(data.net, equals(Decimal.parse('10.000')));
+        expect(balance.net, equals(Decimal.parse('10.000')));
       },
     );
 
@@ -237,8 +230,8 @@ void main() {
       () async {
         final group1 = _makeGroup(id: 'g1', name: 'Group 1');
 
-        // groupBalancesProvider returns balances for OTHER users, not uid-user
-        final balancesNoUser = _makeGroupBalances(
+        // groupBalancesOnceProvider returns balances for OTHER users, not uid-user
+        final onceNoUser = _makeGroupBalancesOnce(
           balances: [
             _makeUserBalance(
               participantId: 'other-uid',
@@ -248,146 +241,157 @@ void main() {
         );
 
         final container = ProviderContainer(
-          overrides: [
-            userGroupsProvider.overrideWith((_) => Stream.value([group1])),
-            currentUserIdProvider.overrideWith((_) => uid),
-            groupBalancesProvider(
-              'g1',
-            ).overrideWith((_) => AsyncValue.data(balancesNoUser)),
-          ],
+          overrides: baseOverrides([group1], {'g1': onceNoUser}),
         );
         addTearDown(container.dispose);
 
-        container.listen(
-          crossGroupBalanceProvider,
-          (_, _) {},
-          fireImmediately: true,
-        );
-        await _pump(container);
-
-        final result = container.read(crossGroupBalanceProvider);
-        expect(result, isA<AsyncData<CrossGroupBalance>>());
-        final data = result.valueOrNull!;
+        final balance = await _readBalance(container);
         // No entry for uid-user => net = 0
-        expect(data.net, equals(Decimal.zero));
+        expect(balance.net, equals(Decimal.zero));
       },
     );
   });
 
   // ---------------------------------------------------------------------------
-  // crossGroupBalanceProvider — owed/owes split (#110)
+  // crossGroupHomeBalanceProvider — owed/owes split (#110)
   //
   // The split is folded into the same fan-out that sums `net`. Invariant:
   // net == owedToUser - userOwes (exact partition of each group's netBalance).
   // ---------------------------------------------------------------------------
-  group('crossGroupBalanceProvider owed/owes split (#110)', () {
+  group('crossGroupHomeBalanceProvider owed/owes split (#110)', () {
     const uid = 'uid-user';
 
-    ProviderContainer containerFor(Map<String, AsyncValue<GroupBalances>> gb) {
-      final groups = gb.keys
+    ProviderContainer containerFor(Map<String, Decimal> groupNets) {
+      final groups = groupNets.keys
           .map((id) => _makeGroup(id: id, name: 'Group $id'))
           .toList();
       return ProviderContainer(
         overrides: [
-          userGroupsProvider.overrideWith((_) => Stream.value(groups)),
           currentUserIdProvider.overrideWith((_) => uid),
-          for (final entry in gb.entries)
-            groupBalancesProvider(entry.key).overrideWith((_) => entry.value),
+          connectivityProvider.overrideWith(
+            (_) => ConnectivityNotifier(
+              connectivityProbe: () async => false,
+              startPeriodicChecks: false,
+            )..setOffline(),
+          ),
+          userGroupsProvider.overrideWith((_) => Stream.value(groups)),
+          for (final entry in groupNets.entries)
+            groupBalancesOnceProvider(entry.key).overrideWith(
+              (_) => Future.value(
+                _makeGroupBalancesOnce(
+                  balances: [
+                    _makeUserBalance(participantId: uid, netBalance: entry.value),
+                  ],
+                ),
+              ),
+            ),
         ],
       );
     }
 
-    AsyncValue<GroupBalances> dataOf(Decimal net) => AsyncValue.data(
-      _makeGroupBalances(
-        balances: [_makeUserBalance(participantId: uid, netBalance: net)],
-      ),
-    );
-
     test('all-positive groups => owedToUser sums, userOwes zero', () async {
       final container = containerFor({
-        'g1': dataOf(Decimal.parse('10.000')),
-        'g2': dataOf(Decimal.parse('20.000')),
+        'g1': Decimal.parse('10.000'),
+        'g2': Decimal.parse('20.000'),
       });
       addTearDown(container.dispose);
-      container.listen(
-        crossGroupBalanceProvider,
-        (_, _) {},
-        fireImmediately: true,
-      );
-      await _pump(container);
 
-      final data = container.read(crossGroupBalanceProvider).valueOrNull!;
-      expect(data.owedToUser, equals(Decimal.parse('30.000')));
-      expect(data.userOwes, equals(Decimal.zero));
-      expect(data.net, equals(data.owedToUser - data.userOwes));
+      final balance = await _readBalance(container);
+      expect(balance.owedToUser, equals(Decimal.parse('30.000')));
+      expect(balance.userOwes, equals(Decimal.zero));
+      expect(balance.net, equals(balance.owedToUser - balance.userOwes));
     });
 
     test(
       'all-negative groups => userOwes sums |net|, owedToUser zero',
       () async {
         final container = containerFor({
-          'g1': dataOf(Decimal.parse('-10.000')),
-          'g2': dataOf(Decimal.parse('-5.000')),
+          'g1': Decimal.parse('-10.000'),
+          'g2': Decimal.parse('-5.000'),
         });
         addTearDown(container.dispose);
-        container.listen(
-          crossGroupBalanceProvider,
-          (_, _) {},
-          fireImmediately: true,
-        );
-        await _pump(container);
 
-        final data = container.read(crossGroupBalanceProvider).valueOrNull!;
-        expect(data.owedToUser, equals(Decimal.zero));
-        expect(data.userOwes, equals(Decimal.parse('15.000')));
-        expect(data.net, equals(data.owedToUser - data.userOwes));
+        final balance = await _readBalance(container);
+        expect(balance.owedToUser, equals(Decimal.zero));
+        expect(balance.userOwes, equals(Decimal.parse('15.000')));
+        expect(balance.net, equals(balance.owedToUser - balance.userOwes));
       },
     );
 
     test('mixed groups => split partitions net (invariant holds)', () async {
       final container = containerFor({
-        'g1': dataOf(Decimal.parse('15.000')),
-        'g2': dataOf(Decimal.parse('-5.000')),
+        'g1': Decimal.parse('15.000'),
+        'g2': Decimal.parse('-5.000'),
       });
       addTearDown(container.dispose);
-      container.listen(
-        crossGroupBalanceProvider,
-        (_, _) {},
-        fireImmediately: true,
-      );
-      await _pump(container);
 
-      final data = container.read(crossGroupBalanceProvider).valueOrNull!;
-      expect(data.owedToUser, equals(Decimal.parse('15.000')));
-      expect(data.userOwes, equals(Decimal.parse('5.000')));
-      expect(data.net, equals(Decimal.parse('10.000')));
-      expect(data.net, equals(data.owedToUser - data.userOwes));
+      final balance = await _readBalance(container);
+      expect(balance.owedToUser, equals(Decimal.parse('15.000')));
+      expect(balance.userOwes, equals(Decimal.parse('5.000')));
+      expect(balance.net, equals(Decimal.parse('10.000')));
+      expect(balance.net, equals(balance.owedToUser - balance.userOwes));
     });
 
     test(
-      'partial-loading with net==0 still reports the accumulated split',
+      'partial-loading: two resolved groups produce correct split while a '
+      'third group is still loading',
       () async {
-        // g1 +5, g2 -5 (net cancels to 0), g3 still loading. The
-        // `anyLoading && net == 0` branch must return owed=5/owes=5, NOT zeros
-        // — otherwise the split bar collapses to the empty/gray state.
-        final container = containerFor({
-          'g1': dataOf(Decimal.parse('5.000')),
-          'g2': dataOf(Decimal.parse('-5.000')),
-          'g3': const AsyncValue.loading(),
-        });
-        addTearDown(container.dispose);
-        container.listen(
-          crossGroupBalanceProvider,
-          (_, _) {},
-          fireImmediately: true,
+        // g1 +5, g2 -5 (net cancels to 0), g3 still loading (never-completing
+        // future). The provider must stay LOADING when any group is unresolved.
+        final groups = [
+          _makeGroup(id: 'g1', name: 'Group 1'),
+          _makeGroup(id: 'g2', name: 'Group 2'),
+          _makeGroup(id: 'g3', name: 'Group 3'),
+        ];
+        final container = ProviderContainer(
+          overrides: [
+            currentUserIdProvider.overrideWith((_) => uid),
+            connectivityProvider.overrideWith(
+              (_) => ConnectivityNotifier(
+                connectivityProbe: () async => false,
+                startPeriodicChecks: false,
+              )..setOffline(),
+            ),
+            userGroupsProvider.overrideWith((_) => Stream.value(groups)),
+            groupBalancesOnceProvider('g1').overrideWith(
+              (_) => Future.value(
+                _makeGroupBalancesOnce(
+                  balances: [
+                    _makeUserBalance(
+                      participantId: uid,
+                      netBalance: Decimal.parse('5.000'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            groupBalancesOnceProvider('g2').overrideWith(
+              (_) => Future.value(
+                _makeGroupBalancesOnce(
+                  balances: [
+                    _makeUserBalance(
+                      participantId: uid,
+                      netBalance: Decimal.parse('-5.000'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // g3: a never-completing future — homeGroupBalanceProvider stays loading.
+            groupBalancesOnceProvider('g3').overrideWith(
+              (_) => Completer<GroupBalancesOnce>().future,
+            ),
+          ],
         );
+        addTearDown(container.dispose);
+
+        container.listen(crossGroupHomeBalanceProvider, (_, _) {},
+            fireImmediately: true);
         await _pump(container);
 
-        final data = container.read(crossGroupBalanceProvider).valueOrNull!;
-        expect(data.net, equals(Decimal.zero));
-        expect(data.isLoading, isTrue);
-        expect(data.owedToUser, equals(Decimal.parse('5.000')));
-        expect(data.userOwes, equals(Decimal.parse('5.000')));
+        // crossGroupHomeBalanceProvider must stay loading while g3 is unresolved.
+        final result = container.read(crossGroupHomeBalanceProvider);
+        expect(result, isA<AsyncLoading<CrossGroupBalanceOnce>>());
       },
     );
   });
