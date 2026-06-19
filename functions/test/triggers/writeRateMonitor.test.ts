@@ -70,18 +70,32 @@ describe('writeRateMonitor', () => {
     expect((c?.expiresAt as Timestamp).toMillis()).toBe(start + 60_000 + 60_000);
   });
 
-  test('event settlement (createdBy) and activity_log (actorId) both count to the right uid', async () => {
+  test('event settlement is counted but event activity_logs are NOT (server-written, #526)', async () => {
     await wrapEvent(eventCreate(
       { createdBy: 'payer', amountFils: 500 },
       { gid: 'g1', eid: 'e1', module: 'settlements', docId: 's1' },
     ));
+    // Post-#248 the event activity_logs subcollection is written ONLY by the
+    // server expenseAuditLogger (stamped with the expense creator's uid). Counting
+    // it double-counts the actor per expense and halves the threshold, so it must
+    // NOT advance any counter.
     await wrapEvent(eventCreate(
       { actorId: 'logger-uid', logText: 'did a thing' },
       { gid: 'g1', eid: 'e1', module: 'activity_logs', docId: 'a1' },
     ));
 
     expect((await counter('g1', 'payer'))?.count).toBe(1);
-    expect((await counter('g1', 'logger-uid'))?.count).toBe(1);
+    expect(await counter('g1', 'logger-uid')).toBeUndefined();
+  });
+
+  test('an event activity_logs create produces no counter at all (#526)', async () => {
+    await wrapEvent(eventCreate(
+      { actorId: 'logger-uid', logText: 'audit entry' },
+      { gid: 'g1', eid: 'e1', module: 'activity_logs', docId: 'a1' },
+    ));
+
+    const counters = await getFirestore().collection('groups/g1/_writeCounters').listDocuments();
+    expect(counters).toHaveLength(0);
   });
 
   test('group-level settlement (T2) and activity (T3) are counted', async () => {
