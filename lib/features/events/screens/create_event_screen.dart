@@ -14,6 +14,7 @@ import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/module_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../groups/models/group_member_model.dart';
@@ -256,6 +257,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             useDarkTheme: true,
             title: widget.eventType.localizedLabel(context.l10n),
           ),
+          const OfflineBanner(),
           Expanded(
             child: membersAsync.when(
               // #488: layout-matched skeleton + a real error state, not a bare
