@@ -3,30 +3,43 @@ import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions/v2';
 import '../admin';
 import { sendToUids } from '../notifications/fcmSender';
-import { claimRequestTitle, claimRequestBody } from '../notifications/strings';
+import {
+  claimRequestTitle,
+  claimRequestBody,
+  claimDecideTitle,
+  claimDecideBody,
+} from '../notifications/strings';
 
-// #560 — buzz the group CREATOR when a claim request arrives, so approval isn't
-// gated on the creator manually polling Group Settings. A real person requests to
-// claim a placeholder ("shadow") member via requestClaimShadow, which writes a
-// groups/{gid}/claimRequests/{id} doc with status:'pending'.
+// Claim-request notifier — fires in BOTH directions of the claim handshake:
+//
+// #560 — buzz the group CREATOR when a claim request ARRIVES at pending, so
+// approval isn't gated on the creator manually polling Group Settings. A real
+// person requests to claim a placeholder ("shadow") member via requestClaimShadow,
+// which writes a groups/{gid}/claimRequests/{id} doc with status:'pending'.
+//
+// #565 — buzz the REQUESTER when the creator DECIDES (pending→claimed |
+// pending→declined), so the joiner isn't left polling for an answer.
 //
 // onDocumentWritten (NOT ...Created): claimRequests is MUTABLE, unlike the
 // append-only settlement/event docs the sibling notifiers watch. requestClaimShadow
 // uses a deterministic id `${uid}__${shadowMemberId}` + `.set()`, so a
 // creator-DECLINED request that is re-requested is an UPDATE (declined→pending),
-// which onDocumentCreated would miss — defeating the discoverability goal. The
-// guard fires on exactly "a request just became pending":
-//     before.status !== 'pending' && after.status === 'pending'
-// → NOTIFY on create (∅→pending) and re-open (declined→pending); SKIP every
-// decideClaimRequest transition (pending→claimed | pending→declined, incl. the
-// already-claimed decline), the no-op pending→pending re-write, and any delete
-// (after absent). A claimed doc can never reopen — requestClaimShadow throws
-// before .set() if status==='claimed'.
+// which onDocumentCreated would miss — defeating the discoverability goal.
+//
+// Two branches, mutually exclusive:
+//   A (creator)   before.status !== 'pending' && after.status === 'pending'
+//                 → NOTIFY creator. Fires on create (∅→pending) and re-open
+//                   (declined→pending).
+//   B (requester) before.status === 'pending' && after ∈ {claimed, declined}
+//                 → NOTIFY requester with the decision copy.
+// Everything else — the no-op pending→pending re-write, any delete (after absent),
+// and re-writes that touch neither edge — returns. A claimed doc can never reopen
+// (requestClaimShadow throws before .set() if status==='claimed').
 //
 // Read-only: reads the request doc + the group doc (createdBy + name) and sends;
-// it NEVER mutates a domain doc. createdBy is an auth uid (the creator trust
-// anchor in decideClaimRequest), so it maps directly to fcm_tokens/{uid}; an
-// anonymous creator with no token doc is silently skipped by sendToUids.
+// it NEVER mutates a domain doc. createdBy / requesterUid are auth uids, so each
+// maps directly to fcm_tokens/{uid}; a recipient with no token doc is silently
+// skipped by sendToUids.
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -52,30 +65,54 @@ export const claimRequestNotifier = onDocumentWritten(
     const before = change?.before.exists ? change.before.data() : undefined;
     const after = change?.after.exists ? change.after.data() : undefined;
 
-    // Fire only when a request ARRIVES at pending (create or declined→re-open);
-    // skip decide transitions, no-op re-writes, and deletes.
-    if (after?.status !== 'pending') return;
-    if (before?.status === 'pending') return;
-
     const gid = event.params.gid;
-    const requesterUid = asString(after.requesterUid);
-    const { createdBy, name } = await resolveGroup(gid);
+    const afterStatus = asString(after?.status);
+    const beforeWasPending = before?.status === 'pending';
 
-    // The creator can never be the requester (requestClaimShadow rejects existing
-    // members; the creator is always a member), but self-skip defensively —
-    // mirrors the `uid !== createdBy` filter in the other notifiers.
-    if (createdBy.length === 0 || createdBy === requesterUid) return;
+    // Branch A (#560) — request ARRIVES at pending (create or declined→re-open):
+    // notify the CREATOR.
+    if (afterStatus === 'pending' && !beforeWasPending) {
+      const requesterUid = asString(after?.requesterUid);
+      const { createdBy, name } = await resolveGroup(gid);
 
-    const requesterName = asString(after.requesterDisplayName);
-    const shadowName = asString(after.shadowDisplayName);
+      // The creator can never be the requester (requestClaimShadow rejects existing
+      // members; the creator is always a member), but self-skip defensively —
+      // mirrors the `uid !== createdBy` filter in the other notifiers.
+      if (createdBy.length === 0 || createdBy === requesterUid) return;
 
-    await sendToUids(
-      [createdBy],
-      (locale) => ({
-        title: claimRequestTitle(locale, name),
-        body: claimRequestBody(locale, requesterName, shadowName),
-      }),
-      { type: 'claim_request', groupId: gid },
-    );
+      const requesterName = asString(after?.requesterDisplayName);
+      const shadowName = asString(after?.shadowDisplayName);
+
+      await sendToUids(
+        [createdBy],
+        (locale) => ({
+          title: claimRequestTitle(locale, name),
+          body: claimRequestBody(locale, requesterName, shadowName),
+        }),
+        { type: 'claim_request', groupId: gid },
+      );
+      return;
+    }
+
+    // Branch B (#565) — creator DECIDES a pending request: notify the REQUESTER.
+    if (beforeWasPending && (afterStatus === 'claimed' || afterStatus === 'declined')) {
+      const requesterUid = asString(after?.requesterUid);
+      if (requesterUid.length === 0) return;
+
+      const { name } = await resolveGroup(gid);
+      const shadowName = asString(after?.shadowDisplayName);
+
+      await sendToUids(
+        [requesterUid],
+        (locale) => ({
+          title: claimDecideTitle(locale, name),
+          body: claimDecideBody(locale, afterStatus, shadowName),
+        }),
+        { type: 'claim_decided', groupId: gid },
+      );
+      return;
+    }
+
+    // Everything else (no-op pending→pending, deletes, unrelated re-writes): skip.
   },
 );

@@ -6,6 +6,8 @@ import {
   memberJoinBody,
   claimRequestTitle,
   claimRequestBody,
+  claimDecideTitle,
+  claimDecideBody,
 } from '../../src/notifications/strings';
 
 describe('normalizeLocale', () => {
@@ -77,6 +79,39 @@ describe('notification copy', () => {
     const ar = claimRequestBody('ar', 'سام', '');
     expect(ar).toContain('سام');
     expect(ar).not.toContain('a member'); // Arabic, not the English stand-in
+  });
+
+  test('claim-decide copy reflects the decision + shadow name in both locales (#565)', () => {
+    expect(claimDecideTitle('en', 'Trip')).toBe('Trip');
+    expect(claimDecideTitle('ar', 'رحلة')).toBe('رحلة');
+
+    const approvedEn = claimDecideBody('en', 'claimed', 'Dad');
+    expect(approvedEn).toContain('Dad');
+    expect(approvedEn).toContain('approved');
+
+    const declinedEn = claimDecideBody('en', 'declined', 'Dad');
+    expect(declinedEn).toContain('Dad');
+    expect(declinedEn).toContain('declined');
+
+    const approvedAr = claimDecideBody('ar', 'claimed', 'بابا');
+    expect(approvedAr).toContain('بابا');
+    expect(approvedAr).toContain('الموافقة'); // "approval" — proves Arabic
+    expect(approvedAr).not.toContain('approved');
+
+    const declinedAr = claimDecideBody('ar', 'declined', 'بابا');
+    expect(declinedAr).toContain('بابا');
+    expect(declinedAr).toContain('رفض'); // "declined" — proves Arabic
+  });
+
+  test('claim-decide empty shadow name uses a localized stand-in, no dangling possessive (#565)', () => {
+    const approvedEn = claimDecideBody('en', 'claimed', '   ');
+    expect(approvedEn).toContain('approved');
+    expect(approvedEn).not.toContain("'s spot"); // no dangling possessive
+    expect(approvedEn).not.toContain('  '); // no double space from an empty splice
+
+    const declinedAr = claimDecideBody('ar', 'declined', '');
+    expect(declinedAr).toContain('رفض');
+    expect(declinedAr).not.toContain('member'); // Arabic, not the English stand-in
   });
 
   test('empty groupName falls back to a localized default', () => {
