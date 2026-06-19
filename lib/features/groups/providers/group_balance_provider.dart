@@ -610,84 +610,6 @@ List<CurrencyBalance> _sortedCurrencyBuckets(
   return list;
 }
 
-// ---------------------------------------------------------------------------
-// crossGroupBalanceProvider
-// ---------------------------------------------------------------------------
-
-/// Aggregates the current user's personal net balance across ALL groups.
-///
-/// Uses `Provider` (NOT `Provider.family` or `StreamProvider`) because there
-/// is only one current user. Reads UID from [currentUserIdProvider] (injectable
-/// for tests).
-///
-/// Pattern: identical to [groupBalancesProvider] — `ref.watch` in a loop over
-/// variable-length groups list, which is safe in Provider bodies
-/// (RESEARCH Pitfall 2).
-///
-/// Returns:
-/// - [AsyncValue.loading] while [userGroupsProvider] has no value
-/// - [AsyncValue.error] if [userGroupsProvider] errors
-/// - [AsyncValue.data] with [CrossGroupBalance] containing net sum, group
-///   count, and loading flag
-final crossGroupBalanceProvider = Provider<AsyncValue<CrossGroupBalance>>((
-  ref,
-) {
-  final uid = ref.watch(currentUserIdProvider);
-  if (uid == null) {
-    return const AsyncValue.data((
-      byCurrency: <CurrencyBalance>[],
-      groupCount: 0,
-      isLoading: false,
-    ));
-  }
-
-  final groupsAsync = ref.watch(userGroupsProvider);
-  if (groupsAsync.isLoading && !groupsAsync.hasValue) {
-    return const AsyncValue.loading();
-  }
-  if (groupsAsync.hasError) {
-    return AsyncValue.error(groupsAsync.error!, groupsAsync.stackTrace!);
-  }
-  final groups = groupsAsync.valueOrNull ?? [];
-  if (groups.isEmpty) {
-    return const AsyncValue.data((
-      byCurrency: <CurrencyBalance>[],
-      groupCount: 0,
-      isLoading: false,
-    ));
-  }
-
-  final byCurrencyMap =
-      <String, ({Decimal net, Decimal owedToUser, Decimal userOwes})>{};
-  var anyLoading = false;
-
-  for (final group in groups) {
-    final balancesAsync = ref.watch(groupBalancesProvider(group.id));
-    if (balancesAsync.isLoading && !balancesAsync.hasValue) {
-      anyLoading = true;
-      continue;
-    }
-    final balances = balancesAsync.valueOrNull;
-    if (balances == null) continue;
-    // #382 PR-1: fold per BUCKET currency (the honest key), not group.currency.
-    // Identical for prod data (uniformity rules ⇒ singleton {group.currency}).
-    for (final entry in balances.balances.entries) {
-      final userNet = entry.value
-              .where((b) => b.participantId == uid)
-              .firstOrNull
-              ?.netBalance ??
-          Decimal.zero;
-      _accumulateBucket(byCurrencyMap, entry.key, userNet);
-    }
-  }
-
-  return AsyncValue.data((
-    byCurrency: _sortedCurrencyBuckets(byCurrencyMap),
-    groupCount: groups.length,
-    isLoading: anyLoading,
-  ));
-});
-
 /// Fold one group's per-user [groupNet] (settlement-folded scalar) into the
 /// per-currency accumulator keyed by the group's [currency]. Sign-splits the
 /// net into the owed/owes components the hero renders.
@@ -966,8 +888,8 @@ final crossGroupHomeBalanceProvider =
     }
     final balance = balanceAsync.requireValue;
     partial = partial || balance.partial;
-    // #382 PR-3 (D12): fold per BUCKET currency (the honest key), mirroring
-    // crossGroupBalanceProvider — group.currency plays no part in the fold.
+    // #382 PR-3 (D12): fold per BUCKET currency (the honest key);
+    // group.currency plays no part in the fold.
     for (final entry in balance.userNet.entries) {
       _accumulateBucket(byCurrencyMap, entry.key, entry.value);
     }

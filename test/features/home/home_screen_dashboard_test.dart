@@ -145,18 +145,10 @@ Widget _buildTestApp(
       // #428: the backup nudge now gates on durability, not linked email.
       isDurableUserProvider.overrideWithValue(true),
       ...overrides,
-      // #104: the home dashboard now reads the one-shot balance variants.
-      // Bridge them to whatever the live providers were overridden to, so the
-      // existing per-test data/loading overrides keep driving the UI. A
-      // never-completing future preserves the loading-state assertions.
-      // #244: once-providers now yield wrapper records; bridge as non-partial.
-      crossGroupHomeBalanceProvider.overrideWith(
-        (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
-              data: (d) => AsyncValue.data((balance: d, partial: false)),
-              orElse: () =>
-                  const AsyncValue<CrossGroupBalanceOnce>.loading(),
-            ),
-      ),
+      // #104/#466: home reads the once-balance variants directly.
+      // crossGroupHomeBalanceProvider is now overridden per-test; bridge the
+      // groupBalancesOnceProvider for the per-group row balance.
+      // A never-completing future preserves the loading-state assertions.
       groupBalancesOnceProvider.overrideWith(
         (ref, gid) => ref.watch(groupBalancesProvider(gid)).maybeWhen(
               data: (d) => (balances: d, failedEventIds: const <String>{}),
@@ -218,8 +210,11 @@ GroupBalances _testGroupBalances({Decimal? net}) => (
 
 List<Override> _loadedOverrides() => [
   userGroupsProvider.overrideWith((ref) => Stream.value(_testGroups)),
-  crossGroupBalanceProvider.overrideWith(
-    (ref) => AsyncValue.data(_omr('-5.500', groupCount: 2)),
+  crossGroupHomeBalanceProvider.overrideWith(
+    (ref) => AsyncValue.data((
+      balance: _omr('-5.500', groupCount: 2),
+      partial: false,
+    )),
   ),
   crossGroupActivityProvider.overrideWith(
     (ref) => AsyncValue.data([
@@ -328,8 +323,11 @@ void main() {
   group('HomeScreen dashboard - empty state', () {
     List<Override> emptyOverrides() => [
       userGroupsProvider.overrideWith((ref) => Stream.value([])),
-      crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data(_omr('0', groupCount: 0)),
+      crossGroupHomeBalanceProvider.overrideWith(
+        (ref) => AsyncValue.data((
+          balance: _omr('0', groupCount: 0),
+          partial: false,
+        )),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
@@ -379,8 +377,11 @@ void main() {
       userGroupsProvider.overrideWith(
         (ref) => Stream.error(Exception('Network error')),
       ),
-      crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data(_omr('0', groupCount: 0)),
+      crossGroupHomeBalanceProvider.overrideWith(
+        (ref) => AsyncValue.data((
+          balance: _omr('0', groupCount: 0),
+          partial: false,
+        )),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
@@ -424,8 +425,11 @@ void main() {
   group('HomeScreen dashboard - bottom navigation', () {
     List<Override> navOverrides() => [
       userGroupsProvider.overrideWith((ref) => Stream.value([_group1])),
-      crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
+      crossGroupHomeBalanceProvider.overrideWith(
+        (ref) => AsyncValue.data((
+          balance: _omr('0', groupCount: 1),
+          partial: false,
+        )),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
@@ -498,8 +502,11 @@ void main() {
             prefs: prefs,
             overrides: [
               userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-              crossGroupBalanceProvider.overrideWith(
-                (ref) => AsyncValue.data(_omr('-5.500', groupCount: 1)),
+              crossGroupHomeBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data((
+                  balance: _omr('-5.500', groupCount: 1),
+                  partial: false,
+                )),
               ),
               crossGroupActivityProvider.overrideWith(
                 (ref) => const AsyncValue.data([]),
@@ -533,8 +540,11 @@ void main() {
           prefs: prefs,
           overrides: [
             userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
-            crossGroupBalanceProvider.overrideWith(
-              (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
+            crossGroupHomeBalanceProvider.overrideWith(
+              (ref) => AsyncValue.data((
+                balance: _omr('0', groupCount: 1),
+                partial: false,
+              )),
             ),
             crossGroupActivityProvider.overrideWith(
               (ref) => const AsyncValue.data([]),
@@ -589,8 +599,11 @@ void main() {
       userGroupsProvider.overrideWith(
         (ref) => Stream.value([_makeGroup('g1', 'Desert Crew')]),
       ),
-      crossGroupBalanceProvider.overrideWith(
-        (ref) => AsyncValue.data(_omr('0', groupCount: 1)),
+      crossGroupHomeBalanceProvider.overrideWith(
+        (ref) => AsyncValue.data((
+          balance: _omr('0', groupCount: 1),
+          partial: false,
+        )),
       ),
       crossGroupActivityProvider.overrideWith(
         (ref) => const AsyncValue.data([]),
