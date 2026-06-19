@@ -23,27 +23,22 @@ void main() {
         overrides: [
           currentUserIdProvider.overrideWithValue('test-user-id'),
           userGroupsProvider.overrideWith((ref) => Stream.value([])),
-          crossGroupBalanceProvider.overrideWith(
-            (ref) => AsyncValue.data((
-              byCurrency: [
-                (
-                  currency: 'OMR',
-                  net: Decimal.parse('12.500'),
-                  owedToUser: Decimal.parse('12.500'),
-                  userOwes: Decimal.zero,
-                ),
-              ],
-              groupCount: 2,
-              isLoading: false,
-            )),
-          ),
           crossGroupHomeBalanceProvider.overrideWith(
-            (ref) => ref.watch(crossGroupBalanceProvider).maybeWhen(
-                  data: (d) =>
-                      AsyncValue.data((balance: d, partial: false)),
-                  orElse: () =>
-                      const AsyncValue<CrossGroupBalanceOnce>.loading(),
-                ),
+            (ref) => AsyncValue.data((
+              balance: (
+                byCurrency: [
+                  (
+                    currency: 'OMR',
+                    net: Decimal.parse('12.500'),
+                    owedToUser: Decimal.parse('12.500'),
+                    userOwes: Decimal.zero,
+                  ),
+                ],
+                groupCount: 2,
+                isLoading: false,
+              ),
+              partial: false,
+            )),
           ),
         ],
         child: MaterialApp(
