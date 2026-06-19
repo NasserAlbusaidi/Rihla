@@ -4,13 +4,19 @@ import { logger } from 'firebase-functions/v2';
 import '../admin';
 
 // #198: DETECTION-ONLY per-UID write-rate monitor.
-// Expense/settlement/activity creates are CLIENT-DIRECT (Firestore offline
+// Event expense/settlement creates are CLIENT-DIRECT (Firestore offline
 // persistence + replay — see CLAUDE.md; routing them through a callable/queue is
 // forbidden), so a trigger fires AFTER the write commits and CANNOT reject it. This
 // monitor only FLAGS bursts (a `logger.warn` + a `lastFlaggedAt` marker) for ops
 // visibility; it never deletes or mutates the financial doc. Auto-deleting an
 // over-threshold money write on a false positive would be money-wrong.
 // Spec + threat model: docs/plans/2026-06-04-198-write-rate-detection.md.
+//
+// #526: the EVENT activity_logs subcollection is NOT counted — post-#248 it is
+// written SERVER-SIDE by the expenseAuditLogger trigger (stamped with the expense
+// creator's uid), so counting it would double-count the actor on every expense and
+// effectively halve the threshold. Only the client-direct event paths
+// (expenses / settlements) are counted here.
 
 const WRITE_RATE_WINDOW_MS = 60_000;
 const WINDOW_BUFFER_MS = 60_000;
@@ -22,12 +28,15 @@ function resolveWriteRateLimit(): number {
 }
 
 // T1's `{module}` wildcard matches ANY direct sub-collection of an event, so filter
-// to the three we count. A future sub-collection silently won't be monitored.
-const COUNTED_EVENT_MODULES = new Set(['expenses', 'settlements', 'activity_logs']);
+// to the client-direct paths we count. activity_logs is intentionally excluded
+// (#526 — server-written by expenseAuditLogger, see header). A future
+// sub-collection silently won't be monitored.
+const COUNTED_EVENT_MODULES = new Set(['expenses', 'settlements']);
 
-// Expenses/settlements stamp `createdBy`; activity_logs/activity stamp `actorId`.
-// No doc carries both, so the order is unambiguous. Rules pin the field == auth.uid
-// on client writes, so it reliably identifies the writer.
+// Expenses/settlements stamp `createdBy`; group-level `activity` stamps `actorId`.
+// No counted doc carries both, so the order is unambiguous. Rules pin the field ==
+// auth.uid on client writes, so it reliably identifies the writer. (The `actorId`
+// branch serves T3's group-level activity; event activity_logs are not counted.)
 function resolveActorUid(data: DocumentData): string | null {
   const createdBy = data.createdBy;
   if (typeof createdBy === 'string' && createdBy.length > 0) return createdBy;
@@ -99,8 +108,8 @@ async function countCreate(
   await recordWrite(gid, uid);
 }
 
-// T1 — event sub-collections (expenses / settlements / activity_logs) in one
-// trigger via the `{module}` wildcard-collection segment.
+// T1 — counted event sub-collections (expenses / settlements) in one trigger via
+// the `{module}` wildcard-collection segment; activity_logs is filtered out (#526).
 export const eventWriteRateMonitor = onDocumentCreated(
   'groups/{gid}/events/{eid}/{module}/{docId}',
   (event) => {
