@@ -1,5 +1,5 @@
 import functionsTest from 'firebase-functions-test';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 
@@ -87,6 +87,7 @@ async function seedExpense(groupId: string, amountFils: number): Promise<void> {
 describe('runBalanceReconciliation (#366)', () => {
   beforeEach(async () => {
     delete process.env.BALANCE_RECONCILER_BATCH;
+    delete process.env.BALANCE_RECONCILER_MAX;
     await clearFirestore();
   });
 
@@ -96,6 +97,7 @@ describe('runBalanceReconciliation (#366)', () => {
 
   afterAll(async () => {
     delete process.env.BALANCE_RECONCILER_BATCH;
+    delete process.env.BALANCE_RECONCILER_MAX;
     await clearFirestore();
     testEnv.cleanup();
   });
@@ -208,8 +210,62 @@ describe('runBalanceReconciliation (#366)', () => {
     expect((await db.doc('groups/g-dead/aggregates/balance').get()).exists).toBe(false);
   });
 
-  it('warns about possible truncation when the batch cap is hit', async () => {
+  it('backfills a legacy group that has no isDeleted field (#525)', async () => {
+    const db = getFirestore();
+    // A pre-#190 group predates the isDeleted field. A `where('isDeleted','==',
+    // false)` equality query silently excludes it, so it would never be
+    // backfilled/drift-healed. Field-absent must fall through and BE processed.
+    await seedGroup('g-legacy');
+    await seedExpense('g-legacy', 10000);
+    await db.doc('groups/g-legacy').update({ isDeleted: FieldValue.delete() });
+
+    const summary = await runBalanceReconciliation(db);
+
+    expect(summary.scanned).toBe(1);
+    expect((await db.doc('groups/g-legacy/aggregates/balance').get()).exists).toBe(true);
+  });
+
+  it('paginates across pages — a small page size still sweeps every live group (#525)', async () => {
+    // Page size 1 forces multiple pages. Pagination (not a single .limit() page)
+    // must reach BOTH groups, with no truncation warn — proving the sweep is no
+    // longer capped at one fixed page.
     process.env.BALANCE_RECONCILER_BATCH = '1';
+    const db = getFirestore();
+    await seedGroup('g-1');
+    await seedGroup('g-2');
+    const warn = jest.spyOn(logger, 'warn');
+
+    const summary = await runBalanceReconciliation(db);
+
+    expect(summary.scanned).toBe(2);
+    expect(warn).not.toHaveBeenCalledWith(
+      'balanceReconciler: max-groups cap hit — some live groups were not reconciled this run',
+      expect.anything(),
+    );
+  });
+
+  it('a soft-deleted group does not starve a live group sorting behind it (#525)', async () => {
+    // The regression the gate caught: with a single fixed `.limit(pageSize)` read,
+    // a retained soft-deleted doc consumes a slot and permanently starves a live
+    // group sorting behind it. Ids order as a-dead < b-live < c-live, so page
+    // size 2 = [a-dead, b-live] and c-live would never be fetched. Pagination
+    // reaches every live group regardless of how many dead docs precede them.
+    process.env.BALANCE_RECONCILER_BATCH = '2';
+    const db = getFirestore();
+    await seedGroup('a-dead', { isDeleted: true });
+    await seedGroup('b-live');
+    await seedGroup('c-live');
+
+    const summary = await runBalanceReconciliation(db);
+
+    expect(summary.scanned).toBe(2); // both live groups; the dead one is skipped
+    expect(
+      (await db.doc('groups/c-live/aggregates/balance').get()).exists,
+    ).toBe(true);
+  });
+
+  it('warns loudly when the max-groups safety cap is hit (#525)', async () => {
+    process.env.BALANCE_RECONCILER_MAX = '1';
     const db = getFirestore();
     await seedGroup('g-1');
     await seedGroup('g-2');
@@ -219,8 +275,8 @@ describe('runBalanceReconciliation (#366)', () => {
 
     expect(summary.scanned).toBe(1);
     expect(warn).toHaveBeenCalledWith(
-      'balanceReconciler: batch cap hit — some groups may not have been reconciled',
-      expect.objectContaining({ batch: 1 }),
+      'balanceReconciler: max-groups cap hit — some live groups were not reconciled this run',
+      expect.objectContaining({ maxGroups: 1 }),
     );
   });
 
