@@ -28,6 +28,7 @@ import '../../auth/services/pending_gate_intent.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../widgets/currency_picker_sheet.dart';
 import '../widgets/invite_code_display.dart';
 import '../widgets/shadow_member_chips_field.dart';
@@ -335,6 +336,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 onClose: _close,
                 onCreate: _createGroup,
               ),
+              const OfflineBanner(),
               Expanded(
                 child: SingleChildScrollView(
                   keyboardDismissBehavior:

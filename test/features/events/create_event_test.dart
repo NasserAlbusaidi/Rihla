@@ -25,6 +25,7 @@ import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/empty_state_view.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 class _MockEventService extends Mock implements EventService {}
@@ -792,6 +793,31 @@ void main() {
       verifyZeroInteractions(eventService);
       verifyZeroInteractions(activityService);
     });
+
+    testWidgets(
+      '#533 OfflineBanner is visible when composing the form offline',
+      (tester) async {
+        final eventService = _MockEventService();
+        final activityService = _MockGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrapCreateRouted(
+            prefs: prefs,
+            eventService: eventService,
+            activityService: activityService,
+            connectivity: ConnectivityStatus.offline,
+          ),
+        );
+        // _wrapCreateRouted uses ConnectivityNotifier(startPeriodicChecks:false)
+        // so pumpAndSettle is safe — there is no long-running periodic timer.
+        await tester.pumpAndSettle();
+
+        // Pre-fix: no OfflineBanner in the Scaffold body → findsNothing → RED.
+        // Post-fix: the banner is mounted and the offline connectivity makes it
+        // render the strip → findsOneWidget → GREEN.
+        expect(find.byType(OfflineBanner), findsOneWidget);
+      },
+    );
 
     testWidgets('submit failure shows create-event error snack bar', (
       tester,
