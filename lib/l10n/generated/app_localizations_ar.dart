@@ -1407,6 +1407,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpMarkThisReceivedTitle => 'تحديده كمُستلَم؟';
 
   @override
+  String get settleUpRecordThisTitle => 'تسجيل هذه الدفعة؟';
+
+  @override
   String settleUpMarkThisPaidBody(Object fromName, Object toName) {
     return 'سنغلق الرصيد بين $fromName و$toName.';
   }
@@ -1425,6 +1428,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String settleUpRecordsForOthersImmediately(Object fromName, Object toName) {
+    return 'تُسجَّل دفعة $fromName إلى $toName فوراً.';
+  }
+
+  @override
   String get settleUpDoesntMoveMoney =>
       'رِحلة تُسجِّل الدفعة فقط — لا تُحوِّل الأموال.';
 
@@ -1436,6 +1444,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settleUpMarkReceived => 'تحديد كمُستلَم';
+
+  @override
+  String get settleUpRecordPayment => 'تسجيل';
 
   @override
   String settleUpPays(Object fromName, Object toName) {

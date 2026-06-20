@@ -11,6 +11,21 @@ import '../../../core/utils/localized_name_validators.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../keys/group_keys.dart';
 
+/// Who the current user is relative to the transfer being recorded — drives the
+/// sheet copy only (the persisted settlement is identical in every case:
+/// fromName=payer → toName=recipient). (#282, #595)
+enum RecordPaymentPerspective {
+  /// Current user is the payer (debtor) confirming a payment they made.
+  paying,
+
+  /// Current user is the recipient (creditor) logging a payment they received.
+  receiving,
+
+  /// Current user is neither party — an organizer/member recording a payment
+  /// between two other people on the group's behalf (#595).
+  recording,
+}
+
 /// Bottom-sheet "Mark paid" confirmation aligned with Hi_Sheet_MarkPaid
 /// (tier 6 · sheets & pickers).
 ///
@@ -24,10 +39,10 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
   required String fromName,
   required String toName,
   required Decimal suggestedAmount,
-  // #282: true when the current user is the creditor logging a payment they
-  // *received* (rather than the debtor confirming one they made). The write is
-  // identical (fromName=payer → toName=recipient); only the copy reframes.
-  bool isReceiving = false,
+  // #282/#595: framing only — the write is identical (fromName=payer →
+  // toName=recipient); only the copy reframes per the writer's relationship to
+  // the transfer.
+  RecordPaymentPerspective perspective = RecordPaymentPerspective.paying,
   // #382 PR-5: pre-formatted "k of N" overline shown above the title during a
   // stepped multi-currency walk; null on the single-tile path.
   String? stepLabel,
@@ -44,7 +59,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
       fromName: fromName,
       toName: toName,
       suggestedAmount: suggestedAmount,
-      isReceiving: isReceiving,
+      perspective: perspective,
       stepLabel: stepLabel,
     ),
   );
@@ -56,7 +71,7 @@ class _MarkPaidSheet extends StatefulWidget {
     required this.fromName,
     required this.toName,
     required this.suggestedAmount,
-    this.isReceiving = false,
+    this.perspective = RecordPaymentPerspective.paying,
     this.stepLabel,
   });
 
@@ -64,7 +79,7 @@ class _MarkPaidSheet extends StatefulWidget {
   final String fromName;
   final String toName;
   final Decimal suggestedAmount;
-  final bool isReceiving;
+  final RecordPaymentPerspective perspective;
   final String? stepLabel;
 
   @override
@@ -98,6 +113,45 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
 
   // Recompute the inline note error as the user types (#220).
   void _onNoteChanged() => setState(() {});
+
+  // #282/#595: title / banner / button copy reframe per the writer's
+  // relationship to the transfer. The persisted settlement is identical in
+  // every case (fromName=payer → toName=recipient).
+  String _titleText(BuildContext context) {
+    switch (widget.perspective) {
+      case RecordPaymentPerspective.receiving:
+        return context.l10n.settleUpMarkThisReceivedTitle;
+      case RecordPaymentPerspective.recording:
+        return context.l10n.settleUpRecordThisTitle;
+      case RecordPaymentPerspective.paying:
+        return context.l10n.settleUpMarkThisPaidTitle;
+    }
+  }
+
+  String _bannerText(BuildContext context) {
+    switch (widget.perspective) {
+      case RecordPaymentPerspective.receiving:
+        return context.l10n.settleUpRecordsReceivedImmediately(widget.fromName);
+      case RecordPaymentPerspective.recording:
+        return context.l10n.settleUpRecordsForOthersImmediately(
+          widget.fromName,
+          widget.toName,
+        );
+      case RecordPaymentPerspective.paying:
+        return context.l10n.settleUpRecordsImmediately(widget.toName);
+    }
+  }
+
+  String _buttonLabel(BuildContext context) {
+    switch (widget.perspective) {
+      case RecordPaymentPerspective.receiving:
+        return context.l10n.settleUpMarkReceived;
+      case RecordPaymentPerspective.recording:
+        return context.l10n.settleUpRecordPayment;
+      case RecordPaymentPerspective.paying:
+        return context.l10n.settleUpMarkPaid;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,9 +216,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      widget.isReceiving
-                          ? context.l10n.settleUpMarkThisReceivedTitle
-                          : context.l10n.settleUpMarkThisPaidTitle,
+                      _titleText(context),
                       textAlign: TextAlign.center,
                       key: GroupKeys.settleUpRecordSheetTitle,
                       style: AppTypography.display(
@@ -268,14 +320,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.isReceiving
-                                  ? context.l10n
-                                        .settleUpRecordsReceivedImmediately(
-                                          widget.fromName,
-                                        )
-                                  : context.l10n.settleUpRecordsImmediately(
-                                      widget.toName,
-                                    ),
+                              _bannerText(context),
                               style: AppTypography.sans(
                                 fontSize: 12,
                                 color: colors.primaryDark,
@@ -351,9 +396,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                           },
                           icon: const Icon(Icons.check_rounded, size: 16),
                           label: Text(
-                            widget.isReceiving
-                                ? context.l10n.settleUpMarkReceived
-                                : context.l10n.settleUpMarkPaid,
+                            _buttonLabel(context),
                             style: AppTypography.sans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,

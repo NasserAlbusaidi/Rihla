@@ -138,6 +138,17 @@ class SettleUpPageBody extends StatelessWidget {
   /// Pre-selected member to highlight (deep-link).
   final String? preSelectedMemberId;
 
+  /// Whether the current viewer is *write-eligible* for settlements in this
+  /// scope (#595). The server gates settlement create on the WRITER, not the
+  /// transfer parties: the event path needs `isEventParticipant` (writer ∈
+  /// `event.participantIds`), the group path only `isGroupMember`. Since a group
+  /// member who is NOT an event participant can still READ (and reach) an event's
+  /// settle-up, the event screen passes `false` for them so they don't get a
+  /// Record button that the server would `permission-denied`. The group screen
+  /// passes `true` (every viewer is already a member). When `false`, no per-tile
+  /// Record button and no stepped card render.
+  final bool canRecord;
+
   /// [currency] is the BUCKET currency the suggestion was computed in — the
   /// settlement write must carry it (#382 PR-1).
   final void Function({
@@ -185,6 +196,7 @@ class SettleUpPageBody extends StatelessWidget {
     required this.currentUid,
     required this.tileKeys,
     required this.onRecord,
+    this.canRecord = true,
     this.buildBreakdown,
     this.preSelectedMemberId,
     this.onRecordStepped,
@@ -199,7 +211,7 @@ class SettleUpPageBody extends StatelessWidget {
     );
     final history = settlementsAsync.valueOrNull ?? const <Settlement>[];
     final allSettled = totalTransfers == 0 && history.isEmpty;
-    final steppedPairs = onRecordStepped == null
+    final steppedPairs = (onRecordStepped == null || !canRecord)
         ? const <
             ({String otherUid, String otherName, List<SettleStepRequest> steps})
           >[]
@@ -332,11 +344,16 @@ class SettleUpPageBody extends StatelessWidget {
           isCreditor: isCreditor,
           isHighlighted: isHighlighted,
           tileKey: tileKey,
-          // #282: the debtor records a payment made; the creditor records a
-          // payment received. Both write the same direction (payer=debtor,
-          // recipient=creditor) — only the framing differs. A pure third party
-          // (neither side) still gets no record affordance.
-          onRecord: (isYourAction || isCreditor)
+          // #282/#595: the debtor records a payment made, the creditor a payment
+          // received, and any other write-eligible viewer records on the group's
+          // behalf (an organizer settling between two others). All three write the
+          // same direction (payer=debtor, recipient=creditor) — only the framing
+          // (#595 RecordPaymentPerspective) differs. The server gates create on
+          // the WRITER (no payer==auth pin), so the affordance is unconditional
+          // for write-eligible viewers but suppressed when [canRecord] is false
+          // (an event non-participant viewing an event ledger — they'd be
+          // permission-denied).
+          onRecord: canRecord
               ? () {
                   assert(
                     rawNames.containsKey(fromUserId),

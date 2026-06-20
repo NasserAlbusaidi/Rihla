@@ -1127,6 +1127,10 @@
   },
   "settleUpMarkThisPaidTitle": "Mark this paid?",
   "settleUpMarkThisReceivedTitle": "Mark this received?",
+  "settleUpRecordThisTitle": "Record this payment?",
+  "@settleUpRecordThisTitle": {
+    "description": "Record-payment sheet title for the third-party variant (#595): the current user is neither the payer nor the recipient — they're recording a payment between two other people on the group's behalf."
+  },
   "settleUpMarkThisPaidBody": "We'll close out the balance between {fromName} and {toName}.",
   "@settleUpMarkThisPaidBody": {
     "placeholders": {
@@ -1149,6 +1153,14 @@
       "name": {}
     }
   },
+  "settleUpRecordsForOthersImmediately": "This records {fromName}'s payment to {toName} immediately.",
+  "@settleUpRecordsForOthersImmediately": {
+    "description": "Third-party variant of settleUpRecordsImmediately (#595): the current user is neither party, so the banner names BOTH the payer ({fromName}) and recipient ({toName}) — never 'your'/'you'. Same immediacy caveat as the debtor copy (#281).",
+    "placeholders": {
+      "fromName": {},
+      "toName": {}
+    }
+  },
   "settleUpDoesntMoveMoney": "Rihla records the payment — it doesn't move money.",
   "@settleUpDoesntMoveMoney": {
     "description": "Microcopy on the Mark-Paid/Mark-Received sheet (#351). Rihla is a ledger, not a payment processor; this sets the expectation that recording a settlement does not transfer any funds."
@@ -1156,6 +1168,10 @@
   "settleUpNotYet": "Not yet",
   "settleUpMarkPaid": "Mark paid",
   "settleUpMarkReceived": "Mark received",
+  "settleUpRecordPayment": "Record",
+  "@settleUpRecordPayment": {
+    "description": "Record-payment button label for the third-party variant (#595): a member recording a payment between two other people. Neutral — neither 'Mark paid' nor 'Mark received'."
+  },
   "settleUpPays": "{fromName} pays {toName}",
   "@settleUpPays": {
     "placeholders": {
