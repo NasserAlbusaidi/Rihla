@@ -62,7 +62,8 @@
   "qrHandleCopied": "تم نسخ المعرّف",
 
   "profileSectionPreferences": "التفضيلات",
-  "profileSectionAccount": "الحساب",
+  "profileSectionBackupRecovery": "النسخ الاحتياطي والاسترداد",
+  "profileSectionDanger": "منطقة الخطر",
   "profileSectionAbout": "حول التطبيق",
   "profileSectionDisplay": "العرض",
   "profileSectionJourney": "رحلتك",

@@ -265,4 +265,63 @@ void main() {
       expect(find.byKey(ProfileKeys.profileRestoreGoogleTile), findsNothing);
     });
   });
+
+  // #487 bullet 3: the account section was one flat list that mixed the
+  // credential/recovery rows with the irreversible Delete. It now splits into
+  // a "Backup & recovery" block and an isolated "Danger" block.
+  group('danger zone isolation (#487 bullet 3)', () {
+    testWidgets(
+        'recovery rows sit under BACKUP & RECOVERY; delete lives alone in a '
+        'separate DANGER block', (tester) async {
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _anonUser()),
+      );
+      await tester.pumpAndSettle();
+
+      // The single "ACCOUNT" header is replaced by two labelled blocks.
+      expect(find.text(l10n.profileSectionBackupRecovery), findsOneWidget);
+      expect(find.text(l10n.profileSectionDanger), findsOneWidget);
+
+      // Delete is isolated inside the danger card…
+      expect(
+        find.descendant(
+          of: find.byKey(ProfileKeys.dangerZoneCard),
+          matching: find.byKey(ProfileKeys.deleteAccountTile),
+        ),
+        findsOneWidget,
+      );
+      // …and the recovery/link rows do NOT leak into the danger card.
+      expect(
+        find.descendant(
+          of: find.byKey(ProfileKeys.dangerZoneCard),
+          matching: find.byKey(ProfileKeys.profileRestoreEmailTile),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(ProfileKeys.dangerZoneCard),
+          matching: find.byKey(ProfileKeys.googleLinkTile),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('durable user also gets the isolated DANGER block',
+        (tester) async {
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _emailUser('foo@example.com')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.profileSectionDanger), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(ProfileKeys.dangerZoneCard),
+          matching: find.byKey(ProfileKeys.deleteAccountTile),
+        ),
+        findsOneWidget,
+      );
+    });
+  });
 }

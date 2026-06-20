@@ -656,4 +656,51 @@ void main() {
           isEmpty);
     });
   });
+
+  group('BalanceCalculator terminating sub-subunit equal split (#596)', () {
+    // 2.900 OMR / 8 = 0.3625 terminates below baisa precision. Pre-#596 the
+    // client _allocateEqual kept the raw half-baisa (0.3625) for every head:
+    //  - diverged from the server quantize (0.362 ×7, last 0.366), breaking the
+    //    cross-impl oracle parity;
+    //  - left netBalance non-whole-subunit (e.g. 7.1335), which mis-fired the
+    //    settle-up cap and split the home(#366 aggregate) vs settle-up(client)
+    //    display. Conservation-only checks pass with half-baisa shares
+    //    (0.3625 × 8 == 2.900), which is why this slipped through.
+    const eight = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+    List<UserBalance> balancesFor() => BalanceCalculator.calculateBalances(
+          expenses: [
+            expense(amount: '2.900', payerId: 'a', splitMode: SplitMode.equally),
+          ],
+          participants: [for (final id in eight) participant(id)],
+        )['OMR']!;
+
+    test('per-head owed is whole-baisa, matching the server (0.362 ×7, '
+        'last 0.366)', () {
+      final balances = balancesFor();
+      for (final id in const ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+        expect(owedFor(balances, id), Decimal.parse('0.362'));
+      }
+      expect(owedFor(balances, 'h'), Decimal.parse('0.366'));
+    });
+
+    test('every net is a whole number of baisa (no half-baisa residue)', () {
+      for (final b in balancesFor()) {
+        final subunits = b.netBalance * Decimal.fromInt(1000);
+        expect(
+          subunits.isInteger,
+          isTrue,
+          reason: '${b.participantId} net ${b.netBalance} is not whole-baisa',
+        );
+      }
+    });
+
+    test('conservation holds (sum owed == 2.900, sum net == 0)', () {
+      final balances = balancesFor();
+      expect(balances.fold(Decimal.zero, (s, b) => s + b.totalOwed),
+          Decimal.parse('2.900'));
+      expect(balances.fold(Decimal.zero, (s, b) => s + b.netBalance),
+          Decimal.zero);
+    });
+  });
 }
