@@ -327,6 +327,38 @@ void main() {
     },
   );
 
+  // #528 — an amount whose integer subunits would exceed Number.MAX_SAFE_INTEGER
+  // (2^53-1) must be blocked at submit. Above it the Dart int64 amountFils reads
+  // back as a divergent JS number server-side, breaking balance-oracle parity.
+  testWidgets(
+    '#528: an amount over the safe-subunit cap blocks save with a warning',
+    (tester) async {
+      // A 14-digit amount renders very wide in the amount hero; widen the test
+      // surface so layout completes and the submit-time guard (the unit under
+      // test) actually runs, instead of failing on a hero RenderFlex overflow.
+      tester.view.physicalSize = const Size(2400, 1800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final payload = await editAmountAndSave(
+        tester,
+        initial: expenseWithSplit(
+          mode: SplitMode.shares,
+          distribution: {
+            'uid-yasmin': Decimal.fromInt(1),
+            'uid-layla': Decimal.fromInt(1),
+          },
+        ),
+        // OMR 1e13 × 1000 scale = 1e16 subunits > 2^53-1.
+        newAmount: '10000000000000',
+      );
+
+      expect(payload, isNull, reason: 'over-cap amount must not persist');
+      expect(find.textContaining('too large'), findsOneWidget);
+    },
+  );
+
   testWidgets(
     'single-person custom split keeps the non-equal split gate disabled (#247)',
     (tester) async {

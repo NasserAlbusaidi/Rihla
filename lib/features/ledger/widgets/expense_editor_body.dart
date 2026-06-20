@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/currency_display_name.dart';
@@ -268,6 +269,16 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
     if (amount <= Decimal.zero) {
       _showSnack(context.l10n.editorAmountGreaterThanZero);
+      return;
+    }
+
+    // #528: reject an amount whose integer subunits would exceed
+    // Number.MAX_SAFE_INTEGER. Above it the persisted Dart int64 reads back as a
+    // divergent JS number server-side, breaking balance-oracle parity. Checked
+    // against effectiveCurrency (the actual write currency — widget.currency is
+    // stale in add-mode after the picker).
+    if (!MoneySerializer.fitsSafeSubunits(amount, effectiveCurrency)) {
+      _showSnack(context.l10n.editorAmountTooLarge);
       return;
     }
 

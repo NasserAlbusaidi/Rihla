@@ -146,5 +146,53 @@ void main() {
         expect(MoneySerializer.isSupported('XYZ'), isFalse);
       });
     });
+
+    // #528: amountFils must stay <= Number.MAX_SAFE_INTEGER (2^53-1). Above it, a
+    // Dart int64 read back as a JS number server-side diverges, breaking the
+    // oracle's byte-for-byte parity. fitsSafeSubunits is the client-side guard;
+    // computed on BigInt so an over-cap amount can't wrap during the check.
+    group('fitsSafeSubunits (#528 upper bound)', () {
+      const cap = 9007199254740991; // 2^53 - 1
+
+      test('maxSafeSubunits is Number.MAX_SAFE_INTEGER', () {
+        expect(MoneySerializer.maxSafeSubunits, equals(cap));
+      });
+
+      // (label, amount, currency, fits) — clean / at-cap / one-over, per scale,
+      // plus the currency-scale axis: the SAME major amount over-caps in a
+      // high-scale currency (OMR ×1000) but fits in a low-scale one (JPY ×1).
+      final cases = <List<dynamic>>[
+        // clean, normal amounts
+        ['OMR 10.500 clean', '10.500', 'OMR', true],
+        ['USD 9.99 clean', '9.99', 'USD', true],
+        ['JPY 1000 clean', '1000', 'JPY', true],
+        // at the cap exactly (amount * scale == 2^53-1)
+        ['OMR at cap', '9007199254740.991', 'OMR', true],
+        ['USD at cap', '90071992547409.91', 'USD', true],
+        ['JPY at cap', '9007199254740991', 'JPY', true],
+        // one subunit over the cap (== 2^53)
+        ['OMR one over', '9007199254740.992', 'OMR', false],
+        ['USD one over', '90071992547409.92', 'USD', false],
+        ['JPY one over', '9007199254740992', 'JPY', false],
+        // currency-scale axis: 1e13 major units
+        ['OMR 1e13 over (×1000=1e16)', '10000000000000', 'OMR', false],
+        ['JPY 1e13 fits (×1=1e13)', '10000000000000', 'JPY', true],
+      ];
+
+      for (final c in cases) {
+        final label = c[0] as String;
+        final amount = Decimal.parse(c[1] as String);
+        final currency = c[2] as String;
+        final fits = c[3] as bool;
+        test(label, () {
+          expect(MoneySerializer.fitsSafeSubunits(amount, currency), fits);
+        });
+      }
+
+      test('case-insensitive currency', () {
+        final overOmr = Decimal.parse('9007199254740.992');
+        expect(MoneySerializer.fitsSafeSubunits(overOmr, 'omr'), isFalse);
+      });
+    });
   });
 }
