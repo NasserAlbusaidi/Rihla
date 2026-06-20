@@ -353,6 +353,7 @@
   "settleUpCouldNotLoadBalances": "تعذّر تحميل الأرصدة.",
   "settleUpIncompleteBalanceWarning": "قد يكون هذا الرصيد غير مكتمل — تعذّر تحميل بيانات بعض الفعاليات.",
   "settleUpAmountGreaterThanZero": "يجب أن يكون المبلغ أكبر من صفر",
+  "settleUpEnterValidAmount": "الرجاء إدخال مبلغ صالح",
   "settleUpAmountExceedsOutstanding": "لا يمكن أن يتجاوز المبلغ الرصيد المستحق {amount}",
   "settleUpRecorded": "تم تسجيل التسوية.",
   "settleUpCorrect": "تصحيح",

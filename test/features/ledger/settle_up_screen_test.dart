@@ -683,6 +683,45 @@ void main() {
     );
   });
 
+  testWidgets('#530: ambiguous European amount is rejected, not silently '
+      'coerced to the suggested amount', (tester) async {
+    final fakeDb = FakeFirebaseFirestore();
+
+    await tester.pumpWidget(buildScreen(fakeDb));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(GroupKeys.settleUpRecordPaymentButton),
+    );
+    await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tap to edit amount'));
+    await tester.pumpAndSettle();
+    // Pasted European grouping (dot thousands + comma decimal). The old code
+    // truncated this to 1.23; the regression here is the SILENT fallback to the
+    // suggested amount once the normalizer refuses to guess.
+    await tester.enterText(find.byType(TextFormField), '1.234,56');
+    await tester.ensureVisible(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Please enter a valid amount'), findsOneWidget);
+
+    final snap = await fakeDb
+        .collection('groups')
+        .doc(groupId)
+        .collection('events')
+        .doc(eventId)
+        .collection('settlements')
+        .get();
+    expect(
+      snap.docs,
+      isEmpty,
+      reason: 'a rejected amount must not write a settlement',
+    );
+  });
+
   testWidgets('unknown write failure shows the generic message, not network (#360)', (
     tester,
   ) async {

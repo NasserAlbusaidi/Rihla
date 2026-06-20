@@ -2000,6 +2000,12 @@ abstract class AppLocalizations {
   /// **'Amount must be greater than zero'**
   String get settleUpAmountGreaterThanZero;
 
+  /// No description provided for @settleUpEnterValidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid amount'**
+  String get settleUpEnterValidAmount;
+
   /// No description provided for @settleUpAmountExceedsOutstanding.
   ///
   /// In en, this message translates to:

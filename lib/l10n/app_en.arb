@@ -898,6 +898,7 @@
   "settleUpCouldNotLoadBalances": "Couldn't load balances.",
   "settleUpIncompleteBalanceWarning": "This balance may be incomplete — some event data couldn't be loaded.",
   "settleUpAmountGreaterThanZero": "Amount must be greater than zero",
+  "settleUpEnterValidAmount": "Please enter a valid amount",
   "settleUpAmountExceedsOutstanding": "Amount cannot exceed the outstanding balance of {amount}",
   "@settleUpAmountExceedsOutstanding": {
     "placeholders": {

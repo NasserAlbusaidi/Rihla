@@ -1132,6 +1132,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpAmountGreaterThanZero => 'يجب أن يكون المبلغ أكبر من صفر';
 
   @override
+  String get settleUpEnterValidAmount => 'الرجاء إدخال مبلغ صالح';
+
+  @override
   String settleUpAmountExceedsOutstanding(Object amount) {
     return 'لا يمكن أن يتجاوز المبلغ الرصيد المستحق $amount';
   }
