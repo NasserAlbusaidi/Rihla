@@ -75,6 +75,10 @@ abstract final class GroupKeys {
   static const settleUpRecordSheetStepIndicator =
       Key('group_settle_up_record_step_indicator');
 
+  // #587: live "still owes N after this" hint shown on a partial payment.
+  static const settleUpRemainingAfter =
+      Key('group_settle_up_remaining_after');
+
   static const settleUpRecordPaymentButton =
       Key('group_settle_up_record_payment_button');
 

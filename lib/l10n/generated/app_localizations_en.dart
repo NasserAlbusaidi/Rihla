@@ -1104,6 +1104,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Amount must be greater than zero';
 
   @override
+  String get settleUpEnterValidAmount => 'Please enter a valid amount';
+
+  @override
   String settleUpAmountExceedsOutstanding(Object amount) {
     return 'Amount cannot exceed the outstanding balance of $amount';
   }
@@ -1367,6 +1370,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String settleUpMarkThisPaidBody(Object fromName, Object toName) {
     return 'We\'ll close out the balance between $fromName and $toName.';
+  }
+
+  @override
+  String get settleUpRecordPartialTitle => 'Record a partial payment?';
+
+  @override
+  String settleUpRecordPartialBody(Object fromName, Object toName) {
+    return 'This is a partial payment — the balance between $fromName and $toName stays open.';
+  }
+
+  @override
+  String settleUpRemainingAfter(Object fromName, Object toName, Object amount) {
+    return '$fromName will still owe $toName $amount after this.';
   }
 
   @override

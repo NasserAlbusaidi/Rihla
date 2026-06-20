@@ -1132,6 +1132,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpAmountGreaterThanZero => 'يجب أن يكون المبلغ أكبر من صفر';
 
   @override
+  String get settleUpEnterValidAmount => 'الرجاء إدخال مبلغ صالح';
+
+  @override
   String settleUpAmountExceedsOutstanding(Object amount) {
     return 'لا يمكن أن يتجاوز المبلغ الرصيد المستحق $amount';
   }
@@ -1415,6 +1418,19 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String settleUpMarkThisPaidBody(Object fromName, Object toName) {
     return 'سنغلق الرصيد بين $fromName و$toName.';
+  }
+
+  @override
+  String get settleUpRecordPartialTitle => 'تسجيل دفعة جزئية؟';
+
+  @override
+  String settleUpRecordPartialBody(Object fromName, Object toName) {
+    return 'هذه دفعة جزئية — يبقى الرصيد بين $fromName و$toName مفتوحاً.';
+  }
+
+  @override
+  String settleUpRemainingAfter(Object fromName, Object toName, Object amount) {
+    return 'سيظل $fromName مديناً لـ$toName بمبلغ $amount بعد ذلك.';
   }
 
   @override

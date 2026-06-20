@@ -1056,6 +1056,42 @@ void main() {
       expect(activityService.logCalls, isEmpty);
     });
 
+    testWidgets('#530: ambiguous European amount is rejected, not silently '
+        'coerced to the suggested amount', (tester) async {
+      final settlementService = _RecordingGroupSettlementService();
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          currentUid: 'uid-bob',
+          extraOverrides: [
+            groupSettlementServiceProvider.overrideWithValue(settlementService),
+            groupActivityServiceProvider.overrideWithValue(activityService),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tap to edit amount'));
+      await tester.pumpAndSettle();
+      // Pasted European grouping (dot thousands + comma decimal). The regression
+      // guarded here is the SILENT fallback to the suggested amount once the
+      // normalizer refuses to guess — it must reject, not record 7.750.
+      await tester.enterText(find.byType(TextFormField), '1.234,56');
+      await tester.ensureVisible(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Please enter a valid amount'), findsOneWidget);
+      expect(settlementService.addCalls, isEmpty);
+      expect(activityService.logCalls, isEmpty);
+    });
+
     testWidgets('unknown service failure shows the generic message, not network (#360)', (
       tester,
     ) async {

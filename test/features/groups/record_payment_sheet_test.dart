@@ -78,6 +78,55 @@ void main() {
     await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
   }
 
+  // Opens the sheet without requiring it to resolve — for asserting the
+  // displayed copy while it is still open (#587).
+  Future<void> pumpSheet(
+    WidgetTester tester, {
+    required String currency,
+    required Decimal suggestedAmount,
+    String fromName = 'Bob',
+    String toName = 'Alice',
+    RecordPaymentPerspective perspective = RecordPaymentPerspective.paying,
+  }) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const Key('open'),
+                  onPressed: () => showRecordPaymentSheet(
+                    context,
+                    currency: currency,
+                    fromName: fromName,
+                    toName: toName,
+                    suggestedAmount: suggestedAmount,
+                    perspective: perspective,
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('open')));
+    await tester.pumpAndSettle();
+  }
+
+  // Reveals the amount editor and records a partial amount, then settles a frame.
+  Future<void> editAmount(WidgetTester tester, String amount) async {
+    await tester.tap(find.text('Tap to edit amount'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), amount);
+    await tester.pump();
+  }
+
   testWidgets(
     'banner states recording is immediate, not a notify/confirm promise (#281)',
     (tester) async {
@@ -422,6 +471,89 @@ void main() {
       // Banner names BOTH parties — no first/second-person ("your"/"you").
       expect(
         find.text("This records Bob's payment to Alice immediately."),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    '#587: a partial amount (below outstanding) flips the title/body to partial '
+    'copy and shows a live remaining-after line',
+    (tester) async {
+      await pumpSheet(
+        tester,
+        currency: 'OMR',
+        suggestedAmount: Decimal.parse('100.000'),
+      );
+      // Record 40 of the 100 outstanding.
+      await editAmount(tester, '40.000');
+
+      expect(find.text('Record a partial payment?'), findsOneWidget);
+      expect(find.text('Mark this paid?'), findsNothing);
+      // A partial must NOT claim the balance is closed out.
+      expect(find.textContaining('close out'), findsNothing);
+      // Remaining-after: 100 − 40 = 60, correct currency + decimals.
+      expect(
+        find.text('Bob will still owe Alice OMR 60.000 after this.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    '#587: the default full amount keeps the close-out copy and shows no '
+    'remaining-after line',
+    (tester) async {
+      await pumpSheet(
+        tester,
+        currency: 'OMR',
+        suggestedAmount: Decimal.parse('100.000'),
+      );
+      // No edit → amount == outstanding → full settlement.
+      expect(find.text('Mark this paid?'), findsOneWidget);
+      expect(find.text('Record a partial payment?'), findsNothing);
+      expect(find.textContaining('close out the balance'), findsOneWidget);
+      expect(find.textContaining('will still owe'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#587: remaining-after respects 0-decimal currencies (JPY×1, no tail)',
+    (tester) async {
+      await pumpSheet(
+        tester,
+        currency: 'JPY',
+        suggestedAmount: Decimal.parse('1000'),
+      );
+      await editAmount(tester, '400');
+
+      // 1000 − 400 = 600, no spurious decimal tail.
+      expect(
+        find.text('Bob will still owe Alice JPY 600 after this.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    '#587: a partial keeps the neutral title across perspectives while the '
+    'banner stays perspective-aware (receiving)',
+    (tester) async {
+      await pumpSheet(
+        tester,
+        currency: 'OMR',
+        suggestedAmount: Decimal.parse('100.000'),
+        // Current user is Alice (the creditor) logging a partial she received.
+        perspective: RecordPaymentPerspective.receiving,
+      );
+      await editAmount(tester, '40.000');
+
+      // Partial copy is perspective-neutral (not "Mark this received?").
+      expect(find.text('Record a partial payment?'), findsOneWidget);
+      expect(find.text('Mark this received?'), findsNothing);
+      // The perspective-aware banner is untouched — it still carries who-paid.
+      expect(
+        find.text("This records Bob's payment to you immediately."),
         findsOneWidget,
       );
     },

@@ -473,9 +473,19 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       return const _StepOutcome(_StepOutcomeKind.cancelled);
     }
 
-    final editedAmount =
-        Decimal.tryParse(normalizeLocalizedDecimalInput(result.amount)) ??
-        suggestedAmount;
+    final parsedAmount = Decimal.tryParse(
+      normalizeLocalizedDecimalInput(result.amount),
+    );
+    // An empty field means "settle the full suggested amount". A NON-empty but
+    // unparseable value (e.g. ambiguous European 1.234,56 — #530) must be
+    // rejected, never silently coerced into the suggested amount.
+    if (parsedAmount == null && result.amount.trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.settleUpEnterValidAmount)),
+      );
+      return const _StepOutcome(_StepOutcomeKind.invalid);
+    }
+    final editedAmount = parsedAmount ?? suggestedAmount;
     final noteText = result.note.isEmpty ? null : result.note;
 
     if (editedAmount <= Decimal.zero) {
