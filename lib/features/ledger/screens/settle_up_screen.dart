@@ -257,6 +257,18 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                       ),
                   ];
 
+                  // #595/#598: write-eligibility gates BOTH the forward Record
+                  // button and the #283 "correct this payment" offset. The event
+                  // settlement create/offset rule pins the WRITER to
+                  // event.participantIds (isEventParticipant); a group member who
+                  // can read this event but isn't a participant would be
+                  // permission-denied on EITHER write, so both affordances are
+                  // suppressed for them. The group screen has no such pin (every
+                  // viewer is a member → passes true / wires both).
+                  final canRecord =
+                      currentUid != null &&
+                      event.participantIds.contains(currentUid);
+
                   return SettleUpPageBody(
                     subjectName: event.name,
                     buckets: buckets,
@@ -264,14 +276,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
-                    // #595: the event settlement-create rule pins the WRITER to
-                    // event.participantIds (isEventParticipant). A group member
-                    // who can read this event but isn't a participant must not
-                    // see a Record button (it would server-reject). Group-level
-                    // settlements have no such pin (group screen passes true).
-                    canRecord:
-                        currentUid != null &&
-                        event.participantIds.contains(currentUid),
+                    canRecord: canRecord,
                     preSelectedMemberId: widget.preSelectedMemberId,
                     onRecord:
                         ({
@@ -293,19 +298,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           currency: currency,
                         ),
                     onRecordStepped: _runSteppedSettle,
-                    // #283: correct a recorded payment by recording its
+                    // #283/#598: correct a recorded payment by recording its
                     // offsetting reverse (swap payer↔recipient, same amount +
-                    // currency) through the same event write path.
-                    onCorrect: (s) => _recordSettlement(
-                      context,
-                      fromUserId: s.recipientParticipantId ?? '',
-                      toUserId: s.payerParticipantId ?? '',
-                      fromName: s.recipientName ?? '',
-                      toName: s.payerName ?? '',
-                      amount: s.amount,
-                      currency: s.currency,
-                      note: context.l10n.settleUpCorrectionNote,
-                    ),
+                    // currency) through the same event write path — gated by the
+                    // same write-eligibility as the forward Record, since a
+                    // non-participant's offsetting write would server-reject too.
+                    onCorrect: canRecord
+                        ? (s) => _recordSettlement(
+                            context,
+                            fromUserId: s.recipientParticipantId ?? '',
+                            toUserId: s.payerParticipantId ?? '',
+                            fromName: s.recipientName ?? '',
+                            toName: s.payerName ?? '',
+                            amount: s.amount,
+                            currency: s.currency,
+                            note: context.l10n.settleUpCorrectionNote,
+                          )
+                        : null,
                   );
                 },
                 loading: SkeletonLoader.groupList,
