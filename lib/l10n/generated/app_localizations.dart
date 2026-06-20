@@ -2322,6 +2322,24 @@ abstract class AppLocalizations {
   /// **'We\'ll close out the balance between {fromName} and {toName}.'**
   String settleUpMarkThisPaidBody(Object fromName, Object toName);
 
+  /// Record-payment sheet title when the edited amount is below the full outstanding balance — a partial payment (#587). Perspective-neutral; the banner carries who-paid-whom.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a partial payment?'**
+  String get settleUpRecordPartialTitle;
+
+  /// Record-payment sheet body shown on a partial payment (edited < outstanding) (#587). Symmetric naming so it never debtor-frames the creditor's view.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a partial payment — the balance between {fromName} and {toName} stays open.'**
+  String settleUpRecordPartialBody(Object fromName, Object toName);
+
+  /// Live hint under the amount on a partial payment: what remains outstanding (outstanding − edited) after this settlement is recorded (#587).
+  ///
+  /// In en, this message translates to:
+  /// **'{fromName} will still owe {toName} {amount} after this.'**
+  String settleUpRemainingAfter(Object fromName, Object toName, Object amount);
+
   /// No description provided for @settleUpNoteHint.
   ///
   /// In en, this message translates to:

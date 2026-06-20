@@ -99,12 +99,16 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
         AppFormatters.currencyConfig[widget.currency]?.decimals ?? 2,
       ),
     );
+    // #587: recompute the partial/full copy + remaining-after hint as the
+    // amount changes.
+    _amountController.addListener(_onAmountChanged);
     _noteController = TextEditingController();
     _noteController.addListener(_onNoteChanged);
   }
 
   @override
   void dispose() {
+    _amountController.removeListener(_onAmountChanged);
     _noteController.removeListener(_onNoteChanged);
     _amountController.dispose();
     _noteController.dispose();
@@ -114,10 +118,16 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
   // Recompute the inline note error as the user types (#220).
   void _onNoteChanged() => setState(() {});
 
+  // #587: recompute partial/full copy as the amount is edited.
+  void _onAmountChanged() => setState(() {});
+
   // #282/#595: title / banner / button copy reframe per the writer's
   // relationship to the transfer. The persisted settlement is identical in
   // every case (fromName=payer → toName=recipient).
-  String _titleText(BuildContext context) {
+  String _titleText(BuildContext context, bool isPartial) {
+    // #587: a partial payment uses a single neutral title across all
+    // perspectives — the banner still carries who-paid-whom framing.
+    if (isPartial) return context.l10n.settleUpRecordPartialTitle;
     switch (widget.perspective) {
       case RecordPaymentPerspective.receiving:
         return context.l10n.settleUpMarkThisReceivedTitle;
@@ -161,6 +171,22 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
       colors.success.withValues(alpha: 0.18),
       colors.cardSurface,
     );
+
+    // #587: detect a partial payment (edited strictly below the outstanding the
+    // sheet presents) using the SAME parse the callers use, so the copy can
+    // never disagree with the amount that gets recorded. Empty / zero / garbage
+    // / full / over-pay all fall to full copy — matching the caller's
+    // `?? suggestedAmount` fallback and the over-pay cap.
+    final edited = Decimal.tryParse(
+      normalizeLocalizedDecimalInput(_amountController.text),
+    );
+    final remaining =
+        (edited != null &&
+            edited > Decimal.zero &&
+            edited < widget.suggestedAmount)
+        ? widget.suggestedAmount - edited
+        : null;
+    final isPartial = remaining != null;
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -216,7 +242,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      _titleText(context),
+                      _titleText(context, isPartial),
                       textAlign: TextAlign.center,
                       key: GroupKeys.settleUpRecordSheetTitle,
                       style: AppTypography.display(
@@ -227,10 +253,15 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      context.l10n.settleUpMarkThisPaidBody(
-                        widget.fromName,
-                        widget.toName,
-                      ),
+                      isPartial
+                          ? context.l10n.settleUpRecordPartialBody(
+                              widget.fromName,
+                              widget.toName,
+                            )
+                          : context.l10n.settleUpMarkThisPaidBody(
+                              widget.fromName,
+                              widget.toName,
+                            ),
                       textAlign: TextAlign.center,
                       style: AppTypography.sans(
                         fontSize: 13,
@@ -255,6 +286,34 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                       setState(() => _showAmountEditor = !_showAmountEditor),
                 ),
               ),
+              // #587: live remaining-after hint on a partial — what stays owed
+              // once this smaller settlement is recorded (outstanding − edited,
+              // same currency, per-currency decimals incl. JPY×1).
+              if (remaining != null) ...[
+                SizedBox(height: spacing.space8),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: spacing.space24),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      context.l10n.settleUpRemainingAfter(
+                        widget.fromName,
+                        widget.toName,
+                        AppFormatters.formatCurrency(
+                          remaining,
+                          widget.currency,
+                        ),
+                      ),
+                      key: GroupKeys.settleUpRemainingAfter,
+                      style: AppTypography.sans(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               SizedBox(height: spacing.space12),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
