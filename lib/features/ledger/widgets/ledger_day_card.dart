@@ -8,6 +8,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
+import '../providers/expense_provider.dart';
 import '../utils/ledger_categories.dart';
 import '../utils/ledger_timeline.dart';
 
@@ -319,8 +320,34 @@ class _ExpenseRow extends StatelessWidget {
     if (participantCount == 0 || currentParticipantId == null) {
       return Decimal.zero;
     }
-    if (_isNonEqualSplit(expense)) return Decimal.zero;
     final isPayer = expense.payerParticipantId == currentParticipantId;
+
+    // Non-equal splits (shares/exact/percent): reuse the single source of
+    // owed-allocation math (#242) so the row's signed sub-line matches the
+    // editor preview and the persisted balance byte-for-byte (#591), instead
+    // of the old #125 omission. `allocateExpenseOwed` returns GROSS owed per id;
+    // reconstruct the signed, current-user-relative figure the row renders with
+    // `sign: true` — the payer sees `amount - mine` (what others owe them), a
+    // participant sees `-mine`. This generalizes the equal-split tail below.
+    if (_isNonEqualSplit(expense)) {
+      final owed = BalanceCalculator.allocateExpenseOwed(
+        amount: expense.amount,
+        splitMode: expense.splitMode,
+        splitDistribution: expense.splitDistribution,
+        scope: expense.scope,
+        customSplitParticipants: expense.customSplitParticipants,
+        payerId: expense.payerParticipantId,
+        // Unused on the distribution branch: `allocateExpenseOwed`'s non-equal
+        // gate is identical to `_isNonEqualSplit`, so it always allocates over
+        // `splitDistribution` keys here and never reads `participantIds`.
+        participantIds: const <String>[],
+        currency: expense.currency,
+        onFallback: null, // display path — no Sentry telemetry
+      );
+      final mine = owed[currentParticipantId] ?? Decimal.zero;
+      return (isPayer ? expense.amount : Decimal.zero) - mine;
+    }
+
     final splitIds = _effectiveSplitIds(expense);
     final isInSplit = splitIds?.contains(currentParticipantId) ?? true;
     final splitCount = splitIds?.length ?? participantCount;
