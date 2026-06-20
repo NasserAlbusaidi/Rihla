@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_parse.dart';
+
 /// Enum representing the five supported event types.
 ///
 /// Each type carries a string value used for Firestore serialization.
@@ -96,6 +98,10 @@ class Event {
 
   /// Deserializes an Event from a Firestore document snapshot.
   ///
+  /// TOTAL-PARSE (#532): every field is salvaged from a present-but-wrong-type
+  /// value instead of hard-casting, so one malformed event doc can never throw
+  /// a CastError that errors the whole [watchGroupEvents] stream.
+  ///
   /// Handles multiple [createdAt] formats per Pitfall 3 in RESEARCH.md:
   /// - Firestore Timestamp (from server-written docs)
   /// - ISO 8601 String (from client-generated timestamps)
@@ -103,57 +109,36 @@ class Event {
   factory Event.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
-    // Parse createdAt: handle Timestamp, String, or null fallback
-    final DateTime createdAt;
-    final rawCreatedAt = data['createdAt'];
-    if (rawCreatedAt is Timestamp) {
-      createdAt = rawCreatedAt.toDate();
-    } else if (rawCreatedAt is String) {
-      createdAt = DateTime.parse(rawCreatedAt);
-    } else {
-      createdAt = DateTime.now();
-    }
-
-    // Parse nullable date fields from Firestore Timestamps
-    final DateTime? startDate =
-        data['startDate'] != null
-            ? (data['startDate'] as Timestamp).toDate()
-            : null;
-    final DateTime? endDate =
-        data['endDate'] != null
-            ? (data['endDate'] as Timestamp).toDate()
-            : null;
-    final DateTime? deletedAt =
-        data['deletedAt'] != null
-            ? (data['deletedAt'] as Timestamp).toDate()
-            : null;
-    final DateTime? updatedAt =
-        data['updatedAt'] != null
-            ? (data['updatedAt'] as Timestamp).toDate()
-            : null;
-
     return Event(
       id: doc.id,
-      name: data['name'] as String,
-      type: EventType.fromString(data['type'] as String? ?? 'custom'),
-      groupId: data['groupId'] as String,
-      createdBy: data['createdBy'] as String,
-      participantIds: List<String>.from(
-        data['participantIds'] as List? ?? [],
+      name: data['name'] is String ? data['name'] as String : '',
+      type: EventType.fromString(
+        data['type'] is String ? data['type'] as String : 'custom',
       ),
-      participantNames: Map<String, String>.from(
-        data['participantNames'] as Map? ?? {},
-      ),
-      modules: EventModules.fromMap(
-        data['modules'] as Map<String, dynamic>? ?? {},
-      ),
-      startDate: startDate,
-      endDate: endDate,
-      isDeleted: data['isDeleted'] as bool? ?? false,
-      deletedAt: deletedAt,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      description: data['description'] as String?,
+      groupId: data['groupId'] is String ? data['groupId'] as String : '',
+      createdBy: data['createdBy'] is String ? data['createdBy'] as String : '',
+      participantIds: data['participantIds'] is List
+          ? (data['participantIds'] as List).whereType<String>().toList()
+          : const <String>[],
+      participantNames: data['participantNames'] is Map
+          ? Map<String, String>.from(
+              (data['participantNames'] as Map).map(
+                (k, v) => MapEntry(k.toString(), v?.toString() ?? ''),
+              ),
+            )
+          : const <String, String>{},
+      modules: data['modules'] is Map<String, dynamic>
+          ? EventModules.fromMap(data['modules'] as Map<String, dynamic>)
+          : const EventModules(),
+      startDate: dateOrNull(data['startDate']),
+      endDate: dateOrNull(data['endDate']),
+      isDeleted: data['isDeleted'] == true,
+      deletedAt: dateOrNull(data['deletedAt']),
+      createdAt: dateOrNow(data['createdAt']),
+      updatedAt: dateOrNull(data['updatedAt']),
+      description: data['description'] is String
+          ? data['description'] as String
+          : null,
     );
   }
 
