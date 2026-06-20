@@ -679,7 +679,11 @@ class _GroupRow extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                GroupGlyph(name: group.name),
+                GroupGlyph(
+                  name: group.name,
+                  glyph: group.glyph,
+                  inkIndex: group.inkIndex,
+                ),
                 SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Column(

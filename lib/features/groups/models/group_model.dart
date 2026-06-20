@@ -26,6 +26,14 @@ class Group {
   final bool isDeleted;
   final DateTime? deletedAt;
 
+  /// #287/trip-stamps: chosen symbol id (one of the 12 allow-listed ids) or
+  /// null → render the name monogram. INBOUND display only.
+  final String? glyph;
+
+  /// #287/trip-stamps: chosen ink index 0..5 into the 6-ink palette, or null →
+  /// derive a stable ink from the name hash. INBOUND only; never persisted as a fallback.
+  final int? inkIndex;
+
   const Group({
     required this.id,
     required this.name,
@@ -37,6 +45,8 @@ class Group {
     this.updatedAt,
     this.isDeleted = false,
     this.deletedAt,
+    this.glyph,
+    this.inkIndex,
   });
 
   /// Create Group from a Firestore document snapshot.
@@ -64,10 +74,14 @@ class Group {
       updatedAt: dateOrNull(data['updatedAt']),
       isDeleted: data['isDeleted'] == true,
       deletedAt: dateOrNull(data['deletedAt']),
+      glyph: data['glyph'] is String ? data['glyph'] as String : null,
+      inkIndex: data['inkIndex'] is int ? data['inkIndex'] as int : null,
     );
   }
 
   /// Create Group from a SQLite row map.
+  /// trip-stamps glyph/inkIndex intentionally omitted: dead SQLite path (#50);
+  /// groups (de)serialize via fromDoc + the inline create map.
   factory Group.fromMap(Map<String, dynamic> map) {
     return Group(
       id: map['id'] as String,
@@ -89,6 +103,8 @@ class Group {
   }
 
   /// Convert Group to a SQLite row map for insert/replace.
+  /// trip-stamps glyph/inkIndex intentionally omitted: dead SQLite path (#50);
+  /// groups (de)serialize via fromDoc + the inline create map.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -117,6 +133,8 @@ class Group {
     DateTime? updatedAt,
     bool? isDeleted,
     DateTime? deletedAt,
+    String? glyph,
+    int? inkIndex,
   }) {
     return Group(
       id: id ?? this.id,
@@ -129,6 +147,8 @@ class Group {
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
+      glyph: glyph ?? this.glyph,
+      inkIndex: inkIndex ?? this.inkIndex,
     );
   }
 

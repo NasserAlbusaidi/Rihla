@@ -2,53 +2,88 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../groups/widgets/group_stamp_icon.dart';
 
-/// Square marker tile used as the leading element on a group row.
+/// Square trip-stamp tile used as the leading element on a group row.
 ///
-/// Color is derived from the group's name hash, picking one of six muted
-/// journal-stamp pairs. The first character of the name is rendered in
-/// italic Instrument Serif over the matching soft background.
+/// The tile's ink is one of six muted category colors, chosen by the group's
+/// persisted [inkIndex] when set, otherwise derived (render-only) from the
+/// name hash. The child is the chosen [glyph] symbol when it is a known id,
+/// otherwise the first character of the name as a monogram — both tinted in the
+/// same ink over a soft ink-tinted background.
 class GroupGlyph extends StatelessWidget {
-  const GroupGlyph({super.key, required this.name, this.size = 40});
+  const GroupGlyph({
+    super.key,
+    required this.name,
+    this.glyph,
+    this.inkIndex,
+    this.size = 40,
+  });
 
-  /// Display name — first character becomes the glyph.
+  /// Display name — first character becomes the monogram when no symbol shows.
   final String name;
 
-  /// Diameter (square).
+  /// Optional persisted glyph id (one of [kGroupGlyphIds]). Unknown/null →
+  /// monogram fallback.
+  final String? glyph;
+
+  /// Optional persisted ink index 0..5. Null OR out of range → name-hash
+  /// fallback (never persisted).
+  final int? inkIndex;
+
+  /// Side length (square tile).
   final double size;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final palette = [
-      _Pair(colors.saffronSoft, colors.primaryDark),
-      _Pair(colors.cardSoft, colors.success),
-      _Pair(colors.cardSoft, colors.cat2),
-      _Pair(colors.paperDeep, colors.cat3),
-      _Pair(colors.cardSoft, colors.cat5),
-      _Pair(colors.cardSoft, colors.cat6),
+    final inks = <Color>[
+      colors.cat1,
+      colors.cat2,
+      colors.cat3,
+      colors.cat4,
+      colors.cat5,
+      colors.cat6,
     ];
-    final pair = palette[_hash(name) % palette.length];
-    final char = name.trim().isEmpty
-        ? '·'
-        : name.trim().characters.first.toUpperCase();
+    // inkIndex is total-parsed from Firestore (any int, no clamp) — an
+    // out-of-range value must defer to the derived ink, never throw a
+    // RangeError and blank the always-mounted group row (#532). Symmetric with
+    // an unknown glyph degrading to the monogram.
+    final fallback = _hash(name) % inks.length;
+    final chosen = inkIndex;
+    final idx = (chosen != null && chosen >= 0 && chosen < inks.length)
+        ? chosen
+        : fallback;
+    final ink = inks[idx];
+    final bg = Color.alphaBlend(
+      ink.withValues(alpha: 0.13),
+      colors.scaffoldBackground,
+    );
+
+    final glyphId = glyph;
+    final Widget child = (glyphId != null && isKnownGlyph(glyphId))
+        ? GroupStampIcon(glyph: glyphId, ink: ink, size: size * 0.56)
+        : Text(
+            name.trim().isEmpty
+                ? '·'
+                : name.trim().characters.first.toUpperCase(),
+            style: AppTypography.display(
+              fontSize: size * 0.56,
+              color: ink,
+              height: 1.0,
+            ),
+          );
 
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: pair.bg,
-        borderRadius: BorderRadius.circular(12),
+        color: bg,
+        borderRadius: BorderRadius.circular(size * 0.30),
+        border: Border.all(color: ink.withValues(alpha: 0.28)),
       ),
       alignment: Alignment.center,
-      child: Text(
-        char,
-        style: AppTypography.display(
-          fontSize: size * 0.55,
-          color: pair.fg,
-          height: 1.0,
-        ),
-      ),
+      child: child,
     );
   }
 
@@ -59,10 +94,13 @@ class GroupGlyph extends StatelessWidget {
     }
     return h;
   }
-}
 
-class _Pair {
-  const _Pair(this.bg, this.fg);
-  final Color bg;
-  final Color fg;
+  @visibleForTesting
+  static int debugHash(String name) => _hash(name);
+
+  @visibleForTesting
+  static int debugResolvedInkIndex(String name, int? inkIndex) =>
+      (inkIndex != null && inkIndex >= 0 && inkIndex < 6)
+      ? inkIndex
+      : _hash(name) % 6;
 }
