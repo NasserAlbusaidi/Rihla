@@ -206,9 +206,13 @@
   "@profileSectionPreferences": {
     "description": "Section header above the Preferences card on the Profile screen. English stays uppercase (typographic flourish + mono letterSpacing); Arabic renders natural-case."
   },
-  "profileSectionAccount": "ACCOUNT",
-  "@profileSectionAccount": {
-    "description": "Section header above the Account card on the Profile screen. English stays uppercase; Arabic renders natural-case."
+  "profileSectionBackupRecovery": "BACKUP & RECOVERY",
+  "@profileSectionBackupRecovery": {
+    "description": "Section header above the account credential/recovery card on the Profile screen (#487 bullet 3). English stays uppercase; Arabic renders natural-case."
+  },
+  "profileSectionDanger": "DANGER",
+  "@profileSectionDanger": {
+    "description": "Section header above the danger-zone card (delete account) on the Profile screen (#487 bullet 3). English stays uppercase; Arabic renders natural-case."
   },
   "profileSectionAbout": "ABOUT",
   "@profileSectionAbout": {

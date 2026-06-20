@@ -119,10 +119,17 @@ class ProfileScreen extends ConsumerWidget {
                       child: const ProfileDisplaySection(),
                     ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                     const SizedBox(height: 18),
-                    _SectionLabel(label: l10n.profileSectionAccount),
+                    _SectionLabel(label: l10n.profileSectionBackupRecovery),
                     SizedBox(height: context.spacing.space8),
                     const _AccountCard().animate().fadeIn(
                       delay: 320.ms,
+                      duration: 400.ms,
+                    ),
+                    const SizedBox(height: 18),
+                    _SectionLabel(label: l10n.profileSectionDanger),
+                    SizedBox(height: context.spacing.space8),
+                    const _DangerZoneCard().animate().fadeIn(
+                      delay: 340.ms,
                       duration: 400.ms,
                     ),
                     const SizedBox(height: 18),
@@ -1057,60 +1064,6 @@ class _AboutCard extends ConsumerWidget {
 class _AccountCard extends ConsumerWidget {
   const _AccountCard();
 
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    // #469: an anonymous shell delete only removes this guest session, not any
-    // durable Google/email account (which lives under a different UID). Make
-    // the confirm dialog honest about that.
-    final isAnonymous =
-        ref.read(authUserChangesProvider).valueOrNull?.isAnonymous ?? false;
-    // #469 prevention: if a durable account was established on this device but
-    // the live session is an anon shell, deleting now would silently leave that
-    // account + its data intact under a different uid. Steer to sign-in first,
-    // with an explicit informed escape — never call deleteAccount on the shell
-    // unless the user picks "delete just this guest session".
-    if (isAnonymous &&
-        durableAccountEstablished(ref.read(sharedPreferencesProvider))) {
-      final choice = await DurableShellDeleteDialog.show(context);
-      if (choice == DurableShellDeleteChoice.deleteGuest && context.mounted) {
-        await _runDeletion(context, ref);
-      }
-      return;
-    }
-    final confirmed =
-        await DeleteAccountDialog.show(context, isAnonymous: isAnonymous);
-    if (confirmed != true || !context.mounted) return;
-    await _runDeletion(context, ref);
-  }
-
-  /// Runs the deletion and reacts to the outcome. A [DeletionResult.partial]
-  /// (server scrubbed some data but threw before finishing; convergent on
-  /// retry) re-prompts with a durable retry dialog and recurses on confirm, so
-  /// the user always has a guaranteed path to finish a torn deletion (#77).
-  Future<void> _runDeletion(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l10n = context.l10n;
-    final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
-    if (!context.mounted) return;
-    switch (result) {
-      case DeletionResult.ok:
-        messenger.showSnackBar(SnackBar(content: Text(l10n.profileDeletionOk)));
-        context.go(AppRoutes.home);
-      case DeletionResult.noUser:
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.profileDeletionNoUser)),
-        );
-      case DeletionResult.error:
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.profileDeletionError)),
-        );
-      case DeletionResult.partial:
-        final retry = await DeleteAccountRetryDialog.show(context);
-        if (retry == true && context.mounted) {
-          await _runDeletion(context, ref);
-        }
-    }
-  }
-
   Future<void> _signOut(
     BuildContext context,
     WidgetRef ref,
@@ -1146,10 +1099,13 @@ class _AccountCard extends ConsumerWidget {
     final showRestore = isAnonymous &&
         (ref.watch(userGroupsProvider).valueOrNull?.isEmpty ?? false);
 
+    // #487 bullet 3: only the backup & recovery rows live here now; the
+    // irreversible Delete moved to its own _DangerZoneCard below. The trailing
+    // hairline is stripped because the last visible row varies by account state.
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: _RowsCard(
-        rows: [
+        rows: _stripLastDivider([
           if (googleAccount != null)
             _PrefRow(
               tileKey: ProfileKeys.googleAccountTile,
@@ -1252,6 +1208,82 @@ class _AccountCard extends ConsumerWidget {
               divider: true,
             ),
           ],
+        ]),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────── Danger zone (delete) — #487 bullet 3
+
+/// Delete account, isolated in its own labelled "Danger" block so the single
+/// irreversible action never sits inline with the benign credential/recovery
+/// rows (#487 bullet 3 — restore/recovery grouped above, delete fenced here).
+class _DangerZoneCard extends ConsumerWidget {
+  const _DangerZoneCard();
+
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    // #469: an anonymous shell delete only removes this guest session, not any
+    // durable Google/email account (which lives under a different UID). Make
+    // the confirm dialog honest about that.
+    final isAnonymous =
+        ref.read(authUserChangesProvider).valueOrNull?.isAnonymous ?? false;
+    // #469 prevention: if a durable account was established on this device but
+    // the live session is an anon shell, deleting now would silently leave that
+    // account + its data intact under a different uid. Steer to sign-in first,
+    // with an explicit informed escape — never call deleteAccount on the shell
+    // unless the user picks "delete just this guest session".
+    if (isAnonymous &&
+        durableAccountEstablished(ref.read(sharedPreferencesProvider))) {
+      final choice = await DurableShellDeleteDialog.show(context);
+      if (choice == DurableShellDeleteChoice.deleteGuest && context.mounted) {
+        await _runDeletion(context, ref);
+      }
+      return;
+    }
+    final confirmed =
+        await DeleteAccountDialog.show(context, isAnonymous: isAnonymous);
+    if (confirmed != true || !context.mounted) return;
+    await _runDeletion(context, ref);
+  }
+
+  /// Runs the deletion and reacts to the outcome. A [DeletionResult.partial]
+  /// (server scrubbed some data but threw before finishing; convergent on
+  /// retry) re-prompts with a durable retry dialog and recurses on confirm, so
+  /// the user always has a guaranteed path to finish a torn deletion (#77).
+  Future<void> _runDeletion(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
+    if (!context.mounted) return;
+    switch (result) {
+      case DeletionResult.ok:
+        messenger.showSnackBar(SnackBar(content: Text(l10n.profileDeletionOk)));
+        context.go(AppRoutes.home);
+      case DeletionResult.noUser:
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.profileDeletionNoUser)),
+        );
+      case DeletionResult.error:
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.profileDeletionError)),
+        );
+      case DeletionResult.partial:
+        final retry = await DeleteAccountRetryDialog.show(context);
+        if (retry == true && context.mounted) {
+          await _runDeletion(context, ref);
+        }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
+      child: _RowsCard(
+        key: ProfileKeys.dangerZoneCard,
+        rows: [
           _PrefRow(
             tileKey: ProfileKeys.deleteAccountTile,
             leading: _PrefIcon(icon: Iconsax.trash, bg: colors.cardSoft),
@@ -1306,7 +1338,7 @@ class _VersionStamp extends ConsumerWidget {
 // ──────────────────────────── Rows + supporting
 
 class _RowsCard extends StatelessWidget {
-  const _RowsCard({required this.rows});
+  const _RowsCard({required this.rows, super.key});
   final List<Widget> rows;
 
   @override
@@ -1322,6 +1354,17 @@ class _RowsCard extends StatelessWidget {
       child: Column(children: rows),
     );
   }
+}
+
+/// Returns [rows] with the last row's bottom divider removed, so an account
+/// card never ends on a stray hairline no matter which conditional row is last
+/// (#487 bullet 3 — the trailing row varies with account state).
+List<Widget> _stripLastDivider(List<_PrefRow> rows) {
+  if (rows.isEmpty) return rows;
+  return [
+    ...rows.sublist(0, rows.length - 1),
+    rows.last.copyWith(divider: false),
+  ];
 }
 
 class _NotificationPrefRow extends StatelessWidget {
@@ -1445,6 +1488,16 @@ class _PrefRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool divider;
   final Key? tileKey;
+
+  _PrefRow copyWith({bool? divider}) => _PrefRow(
+    leading: leading,
+    label: label,
+    trailingText: trailingText,
+    trailing: trailing,
+    onTap: onTap,
+    divider: divider ?? this.divider,
+    tileKey: tileKey,
+  );
 
   @override
   Widget build(BuildContext context) {
