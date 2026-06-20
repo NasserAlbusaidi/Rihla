@@ -154,13 +154,23 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-18, `390c45e2`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-20, `327d6284`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-18 deploy ceremony the `backend-deployed` tag is `390c45e2` and
-    `tool/pending_deploy.sh rihla-safar` exits 0 (prod matches `main`). Latest
-    delta: **#560 (#563)** — new `claimRequestNotifier` FCM `onDocumentWritten`
-    trigger pushing the group creator when a placeholder-claim request arrives
-    (26 → **27 functions**; the #278 PR9 discoverability tail). Prior delta: #278
+    2026-06-20 deploy ceremony the `backend-deployed` tag is `327d6284`; prod
+    matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
+    flags only the later **test-only** `cd33b5ad`/#586 — a `functions/test/…`-only
+    change with no deployable delta, a known false-positive, not ghost-debt).
+    Latest delta: **#528 (#588)** — `firestore.rules` `positiveInt` caps
+    `amountFils ≤ 2^53−1` (`Number.MAX_SAFE_INTEGER`; backstops the int64↔JS-number
+    divergence, client `MoneySerializer.fitsSafeSubunits` guards the normal path) ·
+    **#525 (#582)** `balanceReconciler` cursor-paginates ALL live groups (was
+    skipping legacy field-absent ones) · **#526 (#583)** `writeRateMonitor` stops
+    double-counting expenses · **#565 (#585)** `claimRequestNotifier` also notifies
+    the **requester** on the creator's decide (rules + functions; **27 functions
+    unchanged**). Prior delta: **#560 (#563)** — new `claimRequestNotifier` FCM
+    `onDocumentWritten` trigger pushing the group creator when a placeholder-claim
+    request arrives (26 → **27 functions**; the #278 PR9 discoverability tail).
+    Prior delta: #278
     claim/merge backend (PR6 #556 `mergeUidMapKey` SUM helper · PR7
     #557 `claimShadow` re-key engine + shared `batchWriter`/`mapReKey`/`recomputeNet`
     extraction · PR8 #559 the 4 request/approve callables + `claimRequests` rules

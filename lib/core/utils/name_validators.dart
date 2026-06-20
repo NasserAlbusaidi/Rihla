@@ -5,6 +5,14 @@
 /// characters (U+0000–U+001F or U+007F). Validating client-side gives the
 /// user a friendly inline error instead of an opaque `permission-denied`
 /// when the rules reject the write.
+///
+/// Length is counted in UTF-16 code units on BOTH sides: Dart `String.length`
+/// here, and Firestore rules `string.size()` — which is UTF-16-based, NOT
+/// code-point-based (verified against the rules emulator; #527 was filed on the
+/// opposite assumption and refuted, pinned by
+/// `functions/test/firestore-rules-publish-readiness.test.ts`). The two are
+/// therefore already aligned; switching either to code points (`runes.length`)
+/// would let the client accept astral-char names the server rejects. Don't.
 library;
 
 const int kDisplayNameMaxLength = 32;
@@ -38,6 +46,8 @@ DisplayNameValidationError? displayNameValidationError(String? input) {
   if (trimmed.isEmpty) {
     return DisplayNameValidationError.empty;
   }
+  // UTF-16 code units — matches the server's `string.size()` (#527). Don't switch
+  // to runes.length; the client would then accept names the rules reject.
   if (trimmed.length > kDisplayNameMaxLength) {
     return DisplayNameValidationError.tooLong;
   }
@@ -92,6 +102,7 @@ enum FreeTextValidationError {
 /// (empty becomes `null`), so the trimmed string is what the server validates.
 FreeTextValidationError? freeTextValidationError(String? input) {
   final value = (input ?? '').trim();
+  // UTF-16 code units — matches the server's `string.size()` (#527). See note above.
   if (value.length > kFreeTextMaxLength) {
     return FreeTextValidationError.tooLong;
   }
