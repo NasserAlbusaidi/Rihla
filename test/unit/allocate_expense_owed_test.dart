@@ -154,6 +154,50 @@ void main() {
       // 100 / 3 = 33 each, last absorbs +1.
       expect(owed, {'a': d('33'), 'b': d('33'), 'c': d('34')});
     });
+
+    test(
+        'OMR 2.900 / 8 terminating sub-baisa → whole-baisa shares, server '
+        'quantize parity (#596)', () {
+      // 2.900 / 8 = 0.3625 is a FINITE rational, so toDecimal's
+      // scaleOnInfinitePrecision never engages. Pre-#596 the client kept the raw
+      // half-baisa (every head 0.3625), diverging from the server allocateEqual
+      // (groupNetBalance.ts:152 `quantize` ROUND_DOWN): 7 owe 0.362, the
+      // alphabetically-last absorbs the 0.004 remainder → 0.366.
+      final owed = allocate(
+        amount: '2.900',
+        splitMode: SplitMode.equally,
+        participantIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+      );
+      for (final id in const ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+        expect(owed[id], d('0.362'), reason: '$id owes whole-baisa 0.362');
+      }
+      expect(owed['h'], d('0.366'), reason: 'last absorbs the 0.004 remainder');
+      expect(
+        owed.values.every((v) => v != d('0.3625')),
+        isTrue,
+        reason: 'no half-baisa share may survive quantization',
+      );
+      expect(owed.values.fold(Decimal.zero, (s, v) => s + v), d('2.900'));
+    });
+
+    test(
+        'USD 0.10 / 8 terminating sub-cent → whole-cent shares '
+        '(currency-general, #596)', () {
+      // 0.10 / 8 = 0.0125 terminates below cent precision → quantize to 0.01
+      // each (scale 100), last absorbs the 0.02 remainder → 0.03. Proves the fix
+      // is not OMR-special.
+      final owed = allocate(
+        amount: '0.10',
+        splitMode: SplitMode.equally,
+        participantIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+        currency: 'USD',
+      );
+      for (final id in const ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+        expect(owed[id], d('0.01'));
+      }
+      expect(owed['h'], d('0.03'));
+      expect(owed.values.fold(Decimal.zero, (s, v) => s + v), d('0.10'));
+    });
   });
 
   group('allocateExpenseOwed — fallback (warning/error) + telemetry decoupling',

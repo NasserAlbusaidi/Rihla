@@ -377,6 +377,63 @@ void main() {
     );
 
     test(
+      'case 4b: terminating sub-subunit equal split quantizes to whole subunits '
+      '— EXACT per-head distribution, not just conservation (#596)',
+      () {
+        // 2.900 OMR global-equal over 8 → 2.900 / 8 = 0.3625, a FINITE rational.
+        // The server allocateEqual (groupNetBalance.ts:152 `quantize`,
+        // ROUND_DOWN) bills 7 heads 0.362 and the alphabetically-last 0.366
+        // (absorbing the 0.004 remainder). The client MUST reproduce this
+        // byte-for-byte. Pre-#596 the client kept the raw 0.3625 for every head:
+        // conservation still held (0.3625 × 8 == 2.900) so the existing oracle
+        // cases — which only assert nets that happen to be whole — never caught
+        // it. This case pins the EXACT per-head share (the axis the bug slipped
+        // through) and that every net is a whole number of baisa.
+        const eight = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        final balances = BalanceCalculator.calculateBalances(
+          participants: [for (final id in eight) participant(id)],
+          expenses: [
+            expense(
+              amount: '2.900',
+              payerId: 'a',
+              splitMode: null, // no distribution → equal-split branch
+              scope: ExpenseScope.global,
+            ),
+          ],
+        )['OMR']!;
+
+        Decimal owedFor(String id) =>
+            balances.singleWhere((b) => b.participantId == id).totalOwed;
+
+        for (final id in const ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+          expect(
+            owedFor(id),
+            Decimal.parse('0.362'),
+            reason: '$id must owe the server-quantized 0.362, not 0.3625',
+          );
+        }
+        expect(
+          owedFor('h'),
+          Decimal.parse('0.366'),
+          reason: 'alphabetically-last absorbs the 0.004 remainder',
+        );
+        // No half-baisa residue may survive on any net.
+        for (final b in balances) {
+          expect(
+            (b.netBalance * Decimal.fromInt(1000)).isInteger,
+            isTrue,
+            reason: '${b.participantId} net ${b.netBalance} is not whole-baisa',
+          );
+        }
+        // Conservation (the check that ALSO passed pre-fix — kept as a fence).
+        expect(
+          balances.fold(Decimal.zero, (s, b) => s + b.netBalance),
+          Decimal.zero,
+        );
+      },
+    );
+
+    test(
       'case 5: a two-currency event buckets independently — OMR settled, USD '
       'outstanding (the #382 PR-2 per-bucket gate must refuse) (#382)',
       () {
