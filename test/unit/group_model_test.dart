@@ -122,6 +122,75 @@ void main() {
       });
     });
 
+    group('glyph / inkIndex (trip-stamps)', () {
+      test('fromDoc reads camelCase glyph + inkIndex', () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.doc('groups/g1');
+        await ref.set({
+          'name': 'Road Crew',
+          'inviteCode': 'ABC123',
+          'createdBy': 'uid-001',
+          'memberIds': const ['uid-001'],
+          'currency': 'OMR',
+          'createdAt': Timestamp.fromDate(DateTime(2026, 3, 1, 12, 0, 0)),
+          'glyph': 'tent',
+          'inkIndex': 3,
+        });
+
+        final g = Group.fromDoc(await ref.get());
+
+        expect(g.glyph, equals('tent'));
+        expect(g.inkIndex, equals(3));
+      });
+
+      test('fromDoc with both fields absent (legacy group) → both null',
+          () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.doc('groups/g-legacy');
+        await ref.set({
+          'name': 'Old Crew',
+          'inviteCode': 'OLD999',
+          'createdBy': 'uid-001',
+          'memberIds': const ['uid-001'],
+          'currency': 'OMR',
+          'createdAt': Timestamp.fromDate(DateTime(2026, 3, 1, 12, 0, 0)),
+        });
+
+        final g = Group.fromDoc(await ref.get());
+
+        expect(g.glyph, isNull);
+        expect(g.inkIndex, isNull);
+      });
+
+      test('fromDoc salvages wrong-typed glyph + inkIndex to null (total-parse)',
+          () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.doc('groups/g-bad');
+        await ref.set({
+          'name': 'Bad Crew',
+          'inviteCode': 'BAD000',
+          'createdBy': 'uid-001',
+          'memberIds': const ['uid-001'],
+          'currency': 'OMR',
+          'createdAt': Timestamp.fromDate(DateTime(2026, 3, 1, 12, 0, 0)),
+          'glyph': 42,
+          'inkIndex': 'x',
+        });
+
+        final g = Group.fromDoc(await ref.get());
+
+        expect(g.glyph, isNull);
+        expect(g.inkIndex, isNull);
+      });
+
+      test('copyWith updates glyph + inkIndex', () {
+        final updated = baseGroup.copyWith(glyph: 'palm', inkIndex: 1);
+
+        expect(updated.glyph, equals('palm'));
+        expect(updated.inkIndex, equals(1));
+      });
+    });
+
     test('equality is id-based', () {
       final copy = baseGroup.copyWith(name: 'Different Name');
       expect(copy, equals(baseGroup));
