@@ -392,11 +392,17 @@ abstract class AppLocalizations {
   /// **'PREFERENCES'**
   String get profileSectionPreferences;
 
-  /// Section header above the Account card on the Profile screen. English stays uppercase; Arabic renders natural-case.
+  /// Section header above the account credential/recovery card on the Profile screen (#487 bullet 3). English stays uppercase; Arabic renders natural-case.
   ///
   /// In en, this message translates to:
-  /// **'ACCOUNT'**
-  String get profileSectionAccount;
+  /// **'BACKUP & RECOVERY'**
+  String get profileSectionBackupRecovery;
+
+  /// Section header above the danger-zone card (delete account) on the Profile screen (#487 bullet 3). English stays uppercase; Arabic renders natural-case.
+  ///
+  /// In en, this message translates to:
+  /// **'DANGER'**
+  String get profileSectionDanger;
 
   /// Section header above the About card on the Profile screen, also reused by ProfileAboutSection widget. English stays uppercase; Arabic renders natural-case.
   ///
