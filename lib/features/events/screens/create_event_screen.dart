@@ -9,7 +9,9 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/app_messenger.dart';
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -27,12 +29,12 @@ import '../providers/event_provider.dart';
 import '../utils/event_display.dart';
 import '../widgets/event_details_card.dart';
 import '../widgets/event_participants_card.dart';
-import '../widgets/event_type_badge.dart';
 
-/// Event creation form — Step 2 of the event creation flow.
+/// Event creation form — a single screen (the standalone type-picker was folded
+/// in as a chip row, #489).
 ///
-/// Orchestrates form state and submission. Visual sections are delegated to:
-/// - [EventTypeBadge] — type pill
+/// Orchestrates form state and submission. Visual sections:
+/// - `_TypeChipRow` — the event type selector (replaces the old picker screen)
 /// - [EventDetailsCard] — name field + date pickers
 /// - [EventParticipantsCard] — participant picker
 ///
@@ -42,12 +44,12 @@ import '../widgets/event_type_badge.dart';
 /// Per D-02, D-03, D-04 and UI-SPEC CreateEventScreen component.
 class CreateEventScreen extends ConsumerStatefulWidget {
   final String groupId;
-  final EventType eventType;
+  final EventType initialEventType;
 
   const CreateEventScreen({
     super.key,
     required this.groupId,
-    required this.eventType,
+    required this.initialEventType,
   });
 
   @override
@@ -64,7 +66,14 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   /// Whether participants have been pre-populated from the provider.
   bool _participantsInitialized = false;
 
-  /// Module config — initialized from [EventModules.forType] for this type.
+  /// The currently-selected event type — mutable via the type chip-row (#489).
+  /// Seeded from [CreateEventScreen.initialEventType], coercing the only
+  /// non-selectable value (custom) to the default so a cold deep link to
+  /// `/create-event/custom` still lands on a valid, visibly-selected chip.
+  late EventType _selectedType;
+
+  /// Module config — kept in sync with [_selectedType]. Inert since Phase 39
+  /// ([EventModules.forType] always yields ledger-only); retained for parity.
   late EventModules _modules;
 
   DateTime? _startDate;
@@ -73,7 +82,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   @override
   void initState() {
     super.initState();
-    _modules = EventModules.forType(widget.eventType);
+    _selectedType = widget.initialEventType == EventType.custom
+        ? EventType.trip
+        : widget.initialEventType;
+    _modules = EventModules.forType(_selectedType);
   }
 
   @override
@@ -145,14 +157,14 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           .stageEvent(
             groupId: widget.groupId,
             name: _nameController.text.trim(),
-            type: widget.eventType,
+            type: _selectedType,
             participantIds: List.unmodifiable(_selectedParticipantIds.toList()),
             participantNames: participantNames,
             createdBy: uid,
             startDate: _startDate,
             endDate: _endDate,
             // Pass Custom-type module overrides; null for preset types (D-14)
-            modules: widget.eventType == EventType.custom ? _modules : null,
+            modules: _selectedType == EventType.custom ? _modules : null,
           );
       final outcome = await awaitServerAck(
         staged.ack,
@@ -244,9 +256,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final typeConfig = EventTypeConfig.forType(widget.eventType);
     final isLoading = ref.watch(eventLoadingProvider);
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
+    final groupName =
+        ref.watch(groupDetailProvider(widget.groupId)).valueOrNull?.name;
 
     return Scaffold(
       key: EventKeys.createEventScreen,
@@ -255,7 +268,8 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         children: [
           ModuleHeader(
             useDarkTheme: true,
-            title: widget.eventType.localizedLabel(context.l10n),
+            title: context.l10n.eventNew,
+            subtitle: groupName,
           ),
           const OfflineBanner(),
           Expanded(
@@ -290,7 +304,16 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   context,
                 ).disableAnimations;
 
-                final badge = EventTypeBadge(typeConfig: typeConfig);
+                final chipRow = _TypeChipRow(
+                  selectedType: _selectedType,
+                  onSelect: (type) {
+                    HapticService.selection();
+                    setState(() {
+                      _selectedType = type;
+                      _modules = EventModules.forType(type);
+                    });
+                  },
+                );
 
                 final detailsCard = EventDetailsCard(
                   nameController: _nameController,
@@ -329,11 +352,11 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Event type badge — subtle animation
+                        // Event type chip-row — subtle animation
                         if (disableAnimations)
-                          badge
+                          chipRow
                         else
-                          badge
+                          chipRow
                               .animate()
                               .fadeIn(delay: 60.ms)
                               .slideY(begin: 0.05),
@@ -375,6 +398,101 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Horizontal, scrollable row of selectable event-type chips (#489) — replaces
+/// the standalone type-picker screen. Custom is excluded (see
+/// [EventTypeConfig.selectableTypes]). Scrolls so 4 chips / long Arabic labels
+/// never overflow.
+class _TypeChipRow extends StatelessWidget {
+  const _TypeChipRow({required this.selectedType, required this.onSelect});
+
+  final EventType selectedType;
+  final ValueChanged<EventType> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final types = EventTypeConfig.selectableTypes;
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.space12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final config in types)
+              Padding(
+                padding: EdgeInsetsDirectional.only(end: context.spacing.space8),
+                child: _TypeChip(
+                  config: config,
+                  selected: config.type == selectedType,
+                  onTap: () => onSelect(config.type),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A single pill chip: icon + localized label. Selected → saffron-tint fill +
+/// saffron border (the design-system Chip convention). Tappable; carries the
+/// `eventTypeCard` key + a `selected` semantics flag for tests.
+class _TypeChip extends StatelessWidget {
+  const _TypeChip({
+    required this.config,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final EventTypeConfig config;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accent = selected ? colors.primary : colors.textSecondary;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: config.type.localizedLabel(context.l10n),
+      child: GestureDetector(
+        key: EventKeys.eventTypeCard(config.label),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsetsDirectional.symmetric(
+            horizontal: context.spacing.space16,
+            vertical: context.spacing.space12,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? colors.saffronTint : colors.cardSurface,
+            borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+            border: Border.all(
+              color: selected ? colors.primary : colors.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(config.icon, size: 16, color: accent),
+              SizedBox(width: context.spacing.space8),
+              Text(
+                config.type.localizedLabel(context.l10n),
+                style: AppTypography.sans(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

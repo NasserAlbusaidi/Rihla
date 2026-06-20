@@ -1920,17 +1920,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get eventTypeCustomDescription => 'ابدأ بإعداد فعالية مرن';
 
   @override
-  String get eventPickerTitle => 'أي نوع من\nالرحلات هذه؟';
-
-  @override
-  String get eventPickerSubtitle => 'سنضبط إعدادات مناسبة للفئات والتقسيم.';
-
-  @override
-  String eventContinueWith(Object type) {
-    return 'متابعة مع $type';
-  }
-
-  @override
   String get eventNew => 'فعالية جديدة';
 
   @override
