@@ -162,6 +162,12 @@ class _Content extends ConsumerWidget {
                 context,
               ).push('/group/$groupId/event/$eventId/settings');
             },
+            // Recap entry only once there's something to wrap up (#202 Slice 1).
+            onRecap: expenses.isEmpty
+                ? null
+                : () => GoRouter.of(
+                    context,
+                  ).push('/group/$groupId/event/$eventId/recap'),
           ),
         ),
         const SliverToBoxAdapter(child: OfflineBanner()),
@@ -1270,11 +1276,15 @@ class _CoverHeader extends StatelessWidget {
     required this.event,
     required this.groupName,
     required this.onSettings,
+    this.onRecap,
   });
 
   final Event event;
   final String? groupName;
   final VoidCallback onSettings;
+
+  /// Recap entry (#202 Slice 1). Null ⇒ hidden (no expenses to wrap up yet).
+  final VoidCallback? onRecap;
 
   @override
   Widget build(BuildContext context) {
@@ -1326,10 +1336,26 @@ class _CoverHeader extends StatelessWidget {
                     }
                   },
                 ),
-                RIconButton(
-                  key: EventKeys.settingsButton,
-                  icon: Iconsax.setting_2,
-                  onTap: onSettings,
+                Row(
+                  children: [
+                    if (onRecap != null) ...[
+                      RIconButton(
+                        key: EventKeys.recapButton,
+                        icon: Iconsax.cup,
+                        tooltip: context.l10n.recapButtonTooltip,
+                        onTap: () {
+                          HapticService.lightClick();
+                          onRecap!();
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    RIconButton(
+                      key: EventKeys.settingsButton,
+                      icon: Iconsax.setting_2,
+                      onTap: onSettings,
+                    ),
+                  ],
                 ),
               ],
             ),

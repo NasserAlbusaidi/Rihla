@@ -2000,6 +2000,12 @@ abstract class AppLocalizations {
   /// **'Amount must be greater than zero'**
   String get settleUpAmountGreaterThanZero;
 
+  /// No description provided for @settleUpEnterValidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid amount'**
+  String get settleUpEnterValidAmount;
+
   /// No description provided for @settleUpAmountExceedsOutstanding.
   ///
   /// In en, this message translates to:
@@ -5045,6 +5051,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No pending claim requests.'**
   String get groupClaimNoRequests;
+
+  /// Tooltip/label for the event recap entry button (#202 Slice 1).
+  ///
+  /// In en, this message translates to:
+  /// **'Trip recap'**
+  String get recapButtonTooltip;
+
+  /// Subtitle under the recap title showing participant and expense counts (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'{people} people · {expenses} expenses'**
+  String recapPeopleExpenses(int people, int expenses);
+
+  /// Section label for total event spend in the recap (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'Total spent'**
+  String get recapTotalSpent;
+
+  /// Section label for the current user's money summary in the recap (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get recapYouTitle;
+
+  /// Row label: amount the current user paid into event expenses (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'You paid'**
+  String get recapYouPaid;
+
+  /// Row label: the current user's owed share of event expenses (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'Your share'**
+  String get recapYourShare;
+
+  /// Row label: the current user's net settlements; positive = given, negative = received (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'Settlements'**
+  String get recapSettlements;
+
+  /// Row label: the current user's net balance for the event (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'Net'**
+  String get recapNet;
+
+  /// Empty-state title when an event has no expenses to recap (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to wrap up yet'**
+  String get recapEmptyTitle;
+
+  /// Empty-state body when an event has no expenses to recap (#202).
+  ///
+  /// In en, this message translates to:
+  /// **'Add an expense to see this event\'s recap.'**
+  String get recapEmptyMessage;
 }
 
 class _AppLocalizationsDelegate

@@ -353,6 +353,7 @@
   "settleUpCouldNotLoadBalances": "تعذّر تحميل الأرصدة.",
   "settleUpIncompleteBalanceWarning": "قد يكون هذا الرصيد غير مكتمل — تعذّر تحميل بيانات بعض الفعاليات.",
   "settleUpAmountGreaterThanZero": "يجب أن يكون المبلغ أكبر من صفر",
+  "settleUpEnterValidAmount": "الرجاء إدخال مبلغ صالح",
   "settleUpAmountExceedsOutstanding": "لا يمكن أن يتجاوز المبلغ الرصيد المستحق {amount}",
   "settleUpRecorded": "تم تسجيل التسوية.",
   "settleUpCorrect": "تصحيح",
@@ -874,5 +875,15 @@
   "groupClaimApproved": "يحمل {requester} الآن مكان {shadow}.",
   "groupClaimRequestDeclined": "تم رفض الطلب.",
   "groupClaimApproveError": "تعذّر إكمال المطالبة. حاول مرة أخرى.",
-  "groupClaimNoRequests": "لا توجد طلبات مطالبة معلّقة."
+  "groupClaimNoRequests": "لا توجد طلبات مطالبة معلّقة.",
+  "recapButtonTooltip": "ملخّص الرحلة",
+  "recapPeopleExpenses": "{people} أشخاص · {expenses} مصروفات",
+  "recapTotalSpent": "إجمالي الإنفاق",
+  "recapYouTitle": "أنت",
+  "recapYouPaid": "دفعت",
+  "recapYourShare": "حصتك",
+  "recapSettlements": "التسويات",
+  "recapNet": "الصافي",
+  "recapEmptyTitle": "لا شيء لتلخيصه بعد",
+  "recapEmptyMessage": "أضِف مصروفًا لرؤية ملخّص هذا الحدث."
 }

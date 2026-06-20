@@ -1132,6 +1132,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpAmountGreaterThanZero => 'يجب أن يكون المبلغ أكبر من صفر';
 
   @override
+  String get settleUpEnterValidAmount => 'الرجاء إدخال مبلغ صالح';
+
+  @override
   String settleUpAmountExceedsOutstanding(Object amount) {
     return 'لا يمكن أن يتجاوز المبلغ الرصيد المستحق $amount';
   }
@@ -3033,4 +3036,36 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupClaimNoRequests => 'لا توجد طلبات مطالبة معلّقة.';
+
+  @override
+  String get recapButtonTooltip => 'ملخّص الرحلة';
+
+  @override
+  String recapPeopleExpenses(int people, int expenses) {
+    return '$people أشخاص · $expenses مصروفات';
+  }
+
+  @override
+  String get recapTotalSpent => 'إجمالي الإنفاق';
+
+  @override
+  String get recapYouTitle => 'أنت';
+
+  @override
+  String get recapYouPaid => 'دفعت';
+
+  @override
+  String get recapYourShare => 'حصتك';
+
+  @override
+  String get recapSettlements => 'التسويات';
+
+  @override
+  String get recapNet => 'الصافي';
+
+  @override
+  String get recapEmptyTitle => 'لا شيء لتلخيصه بعد';
+
+  @override
+  String get recapEmptyMessage => 'أضِف مصروفًا لرؤية ملخّص هذا الحدث.';
 }

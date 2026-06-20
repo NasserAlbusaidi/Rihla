@@ -898,6 +898,7 @@
   "settleUpCouldNotLoadBalances": "Couldn't load balances.",
   "settleUpIncompleteBalanceWarning": "This balance may be incomplete — some event data couldn't be loaded.",
   "settleUpAmountGreaterThanZero": "Amount must be greater than zero",
+  "settleUpEnterValidAmount": "Please enter a valid amount",
   "settleUpAmountExceedsOutstanding": "Amount cannot exceed the outstanding balance of {amount}",
   "@settleUpAmountExceedsOutstanding": {
     "placeholders": {
@@ -2235,5 +2236,49 @@
   "groupClaimNoRequests": "No pending claim requests.",
   "@groupClaimNoRequests": {
     "description": "Quiet empty-state for the #278 PR9 creator claim-requests section when there are none."
+  },
+  "recapButtonTooltip": "Trip recap",
+  "@recapButtonTooltip": {
+    "description": "Tooltip/label for the event recap entry button (#202 Slice 1)."
+  },
+  "recapPeopleExpenses": "{people} people · {expenses} expenses",
+  "@recapPeopleExpenses": {
+    "description": "Subtitle under the recap title showing participant and expense counts (#202).",
+    "placeholders": {
+      "people": { "type": "int" },
+      "expenses": { "type": "int" }
+    }
+  },
+  "recapTotalSpent": "Total spent",
+  "@recapTotalSpent": {
+    "description": "Section label for total event spend in the recap (#202)."
+  },
+  "recapYouTitle": "You",
+  "@recapYouTitle": {
+    "description": "Section label for the current user's money summary in the recap (#202)."
+  },
+  "recapYouPaid": "You paid",
+  "@recapYouPaid": {
+    "description": "Row label: amount the current user paid into event expenses (#202)."
+  },
+  "recapYourShare": "Your share",
+  "@recapYourShare": {
+    "description": "Row label: the current user's owed share of event expenses (#202)."
+  },
+  "recapSettlements": "Settlements",
+  "@recapSettlements": {
+    "description": "Row label: the current user's net settlements; positive = given, negative = received (#202)."
+  },
+  "recapNet": "Net",
+  "@recapNet": {
+    "description": "Row label: the current user's net balance for the event (#202)."
+  },
+  "recapEmptyTitle": "Nothing to wrap up yet",
+  "@recapEmptyTitle": {
+    "description": "Empty-state title when an event has no expenses to recap (#202)."
+  },
+  "recapEmptyMessage": "Add an expense to see this event's recap.",
+  "@recapEmptyMessage": {
+    "description": "Empty-state body when an event has no expenses to recap (#202)."
   }
 }

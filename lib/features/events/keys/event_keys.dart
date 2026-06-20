@@ -33,4 +33,9 @@ abstract final class EventKeys {
   static const deleteEventDialog = Key('event_delete_dialog');
   static const deleteEventConfirmButton = Key('event_delete_confirm_button');
   static const settingsButton = Key('event_settings_button');
+
+  // Recap screen (#202 Slice 1)
+  static const recapScreen = Key('event_recap_screen');
+  static const recapBackButton = Key('event_recap_back_button');
+  static const recapButton = Key('event_recap_button');
 }
