@@ -321,32 +321,9 @@ class _ParticipantTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = displayName.isNotEmpty
-        ? displayName[0].toUpperCase()
-        : context.l10n.editorUnknownParticipant[0].toUpperCase();
     return ListTile(
       contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.space8),
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? context.colors.primary.withValues(alpha: 0.2)
-              : context.colors.cardSurface,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Center(
-          child: Text(
-            initial,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isSelected
-                  ? context.colors.primary
-                  : context.colors.textSecondary,
-            ),
-          ),
-        ),
-      ),
+      leading: RAvatar(name: displayName, size: 36),
       title: Text(
         displayName,
         style: TextStyle(

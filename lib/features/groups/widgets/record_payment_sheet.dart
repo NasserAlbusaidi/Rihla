@@ -9,6 +9,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../keys/group_keys.dart';
 
 /// Who the current user is relative to the transfer being recorded — drives the
@@ -517,23 +518,7 @@ class _PayeeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: colors.selectionFill,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  fromName.isNotEmpty ? fromName[0].toUpperCase() : '·',
-                  style: AppTypography.sans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: colors.primary,
-                  ),
-                ),
-              ),
+              RAvatar(name: fromName, size: 42),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
