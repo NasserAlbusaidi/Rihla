@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/events/models/event_model.dart';
 import '../../features/events/screens/create_event_screen.dart';
 import '../../features/events/screens/event_command_center.dart';
+import '../../features/events/screens/event_recap_screen.dart';
 import '../../features/events/screens/event_settings_screen.dart';
 import '../../features/events/screens/event_type_picker_screen.dart';
 import '../../features/groups/screens/create_group_screen.dart';
@@ -59,6 +60,7 @@ class AppRoutes {
       '/group/:gid/event/:eid/ledger/settle-up';
   static const String eventActivity = '/group/:gid/event/:eid/activity';
   static const String eventSettings = '/group/:gid/event/:eid/settings';
+  static const String eventRecap = '/group/:gid/event/:eid/recap';
   // Cross-group activity (Phase 23)
   static const String activity = '/activity';
 }
@@ -388,6 +390,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
                   child: EventSettingsScreen(
+                    groupId: state.pathParameters['gid']!,
+                    eventId: state.pathParameters['eid']!,
+                  ),
+                  transitionsBuilder: _sharedAxisTransition,
+                ),
+              ),
+
+              // Event recap / closeout (#202 Slice 1)
+              GoRoute(
+                path: 'recap',
+                pageBuilder: (context, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: EventRecapScreen(
                     groupId: state.pathParameters['gid']!,
                     eventId: state.pathParameters['eid']!,
                   ),
