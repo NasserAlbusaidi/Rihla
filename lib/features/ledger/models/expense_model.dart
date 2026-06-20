@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 
 import '../../../core/models/split_mode.dart';
 import '../../../core/services/money_serializer.dart';
+import 'split_explanation.dart';
 
 /// Expense scope determines who shares the cost
 enum ExpenseScope {
@@ -34,6 +35,13 @@ class Expense {
   customSplitParticipants; // Participant IDs for custom scope
   final SplitMode? splitMode;
   final Map<String, Decimal>? splitDistribution;
+
+  /// Opaque display-only metadata for an itemized split (#203). Reconstructs
+  /// the itemized editor on reopen; NEVER feeds balance math (truth is
+  /// [splitDistribution], persisted as `SplitMode.exact`). Null for every
+  /// non-itemized expense — and [toFirestore] OMITS the key when null (a null
+  /// value fails the `is map` rules bound).
+  final SplitExplanation? splitExplanation;
   final String? receiptUrl; // URL to receipt image in storage
   final DateTime createdAt;
   final String? categoryId;
@@ -77,6 +85,7 @@ class Expense {
     this.customSplitParticipants,
     this.splitMode,
     this.splitDistribution,
+    this.splitExplanation,
     this.receiptUrl,
     required this.createdAt,
     this.categoryId,
@@ -202,6 +211,11 @@ class Expense {
         splitMode,
         currency,
       ),
+      splitExplanation: data['splitExplanation'] != null
+          ? SplitExplanation.fromMap(
+              Map<String, dynamic>.from(data['splitExplanation'] as Map),
+            )
+          : null,
       receiptUrl: data['receiptUrl'] as String?,
       createdAt: DateTime.parse(data['createdAt'] as String),
       categoryId: data['categoryId'] as String?,
@@ -237,6 +251,10 @@ class Expense {
         'splitMode': splitMode!.storageKey,
         'splitDistribution': _splitDistributionToPersisted(),
       },
+      // #203 — write only when present: a null value fails the `is map` rules
+      // bound (splitExplanationBounded). Top-level field, NOT nested in the
+      // splitMode gate (which is omitted for an `equally` split).
+      if (splitExplanation != null) 'splitExplanation': splitExplanation!.toMap(),
       'receiptUrl': receiptUrl,
       'createdAt': createdAt.toIso8601String(),
       'categoryId': categoryId,
@@ -268,6 +286,7 @@ class Expense {
     List<String>? customSplitParticipants,
     SplitMode? splitMode,
     Map<String, Decimal>? splitDistribution,
+    SplitExplanation? splitExplanation,
     String? receiptUrl,
     DateTime? createdAt,
     String? categoryId,
@@ -297,6 +316,11 @@ class Expense {
       splitDistribution: clearSplit
           ? null
           : splitDistribution ?? this.splitDistribution,
+      // clearSplit reverts to a plain equal split, so it also drops itemized
+      // metadata — never leave orphaned splitExplanation on a non-exact expense.
+      splitExplanation: clearSplit
+          ? null
+          : splitExplanation ?? this.splitExplanation,
       receiptUrl: receiptUrl ?? this.receiptUrl,
       createdAt: createdAt ?? this.createdAt,
       categoryId: categoryId ?? this.categoryId,
