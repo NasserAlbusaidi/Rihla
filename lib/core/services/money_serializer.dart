@@ -18,11 +18,32 @@ class MoneySerializer {
     'QAR': 100,
   };
 
+  /// Largest `amountFils` that survives the Dart-int64 → JS-number round trip
+  /// (`Number.MAX_SAFE_INTEGER`, 2^53 - 1). Above this, a value stored as a Dart
+  /// int64 reads back as a different JS `number` on the server, breaking the
+  /// balance oracle's byte-for-byte parity. Mirrored by the `positiveInt` cap in
+  /// `security/firestore.rules` (#528).
+  static const int maxSafeSubunits = 9007199254740991;
+
   /// Convert a Decimal amount to integer subunits for Firestore storage.
   /// e.g. OMR 10.500 -> 10500, USD 9.99 -> 999
   static int toSubunits(Decimal amount, String currency) {
     final scale = _scale(currency);
     return (amount * Decimal.fromInt(scale)).toBigInt().toInt();
+  }
+
+  /// True if [amount] in [currency] serializes to an `amountFils` within the
+  /// safe-integer range (`|subunits| <= maxSafeSubunits`). The write boundary
+  /// guard for #528 — callers reject before persisting so an over-cap amount
+  /// never reaches Firestore.
+  ///
+  /// Computed on the `BigInt` BEFORE any `.toInt()` so an over-cap amount cannot
+  /// wrap to a small int mid-check (which is exactly the corruption being
+  /// guarded against). Throws [ArgumentError] on an unsupported currency,
+  /// consistent with [toSubunits].
+  static bool fitsSafeSubunits(Decimal amount, String currency) {
+    final raw = (amount * Decimal.fromInt(_scale(currency))).toBigInt();
+    return raw.abs() <= BigInt.from(maxSafeSubunits);
   }
 
   /// Convert integer subunits from Firestore to a Decimal amount.

@@ -1057,6 +1057,28 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  // #528: positiveInt caps amountFils at Number.MAX_SAFE_INTEGER (2^53-1). The
+  // safe-max boundary stays ACCEPTED — this pins the cap is not set too low,
+  // which would reject legitimate (if absurd) large amounts.
+  //
+  // The > cap REJECT path is NOT exercisable from this JS harness: @firebase/
+  // firestore serializes any number above 2^53-1 as a doubleValue (already
+  // rejected by `value is int`, one clause earlier) and refuses BigInt writes
+  // outright (verified empirically 2026-06-19). Only a Dart int64 or Admin SDK
+  // can persist a genuine integerValue above the cap — the exact forged-write
+  // the rules clause backstops, but which this client SDK cannot emit. The
+  // client-side guard (MoneySerializer.fitsSafeSubunits) carries the tested
+  // money-safety weight; this clause is defense-in-depth.
+  test('#528 amountFils at the safe-integer cap (2^53-1) is accepted', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expCap').set(
+      validExpense({ id: 'expCap', amountFils: 9007199254740991 }),
+    ));
+    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setCap').set(
+      validSettlement({ id: 'setCap', amountFils: 9007199254740991 }),
+    ));
+  });
+
   test('expenses require valid participant and positive amount', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertSucceeds(member.doc('groups/g1/events/e1/expenses/exp1').set(validExpense()));

@@ -268,6 +268,7 @@
   "editorDescriptionHint": "ما الغرض منه؟",
   "editorPleaseEnterValidAmount": "أدخل مبلغًا صالحًا",
   "editorAmountGreaterThanZero": "يجب أن يكون المبلغ أكبر من صفر",
+  "editorAmountTooLarge": "المبلغ كبير جدًا.",
   "editorExactSplitOutOfSync": "لم تعد المبالغ المحددة تساوي الإجمالي. أعد فتح التقسيم لتحديثها.",
   "editorCouldNotIdentifyParticipant": "تعذّر تحديد سجل مشاركتك.",
   "editorFailedToAddExpense": "تعذّرت إضافة المصروف: {error}",

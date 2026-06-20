@@ -78,7 +78,12 @@ service cloud.firestore {
     }
 
     function positiveInt(value) {
-      return value is int && value > 0;
+      // #528: cap at Number.MAX_SAFE_INTEGER (2^53-1). Above it, an amountFils
+      // stored as a Dart int64 reads back as a divergent JS number server-side,
+      // breaking the balance oracle's byte-for-byte parity. Backstops a forged
+      // Dart/Admin write; the app's MoneySerializer.fitsSafeSubunits guards the
+      // normal client path. Mirrored by that constant.
+      return value is int && value > 0 && value <= 9007199254740991;
     }
 
     // Settlement predicates shared by event-scope and group-scope settlements
