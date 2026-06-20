@@ -1508,6 +1508,12 @@ abstract class AppLocalizations {
   /// **'Amount must be greater than zero'**
   String get editorAmountGreaterThanZero;
 
+  /// No description provided for @editorAmountTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount is too large.'**
+  String get editorAmountTooLarge;
+
   /// No description provided for @editorExactSplitOutOfSync.
   ///
   /// In en, this message translates to:
