@@ -278,22 +278,8 @@ void main() {
     }
     await _settle(tester, timeout: const Duration(seconds: 12));
 
-    await _waitFor(
-      tester,
-      label: 'event_type_picker_screen',
-      predicate: () =>
-          find.byKey(EventKeys.eventTypePickerScreen).evaluate().isNotEmpty,
-      timeout: const Duration(seconds: 30),
-    );
-    _log('CHECKPOINT: event type picker open (ar)');
-    expect(find.text(ar.eventPickerTitle), findsOneWidget);
-
-    final eventContinueButton = find.byKey(EventKeys.createEventButton);
-    await tester.ensureVisible(eventContinueButton);
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.tap(eventContinueButton);
-    await _settle(tester, timeout: const Duration(seconds: 12));
-
+    // #489: the type-picker is folded into the form — tapping "new event"
+    // lands directly on CreateEventScreen (type is a chip-row, Trip pre-selected).
     await _waitFor(
       tester,
       label: 'create_event_screen',
