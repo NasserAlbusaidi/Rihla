@@ -2971,4 +2971,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupClaimNoRequests => 'No pending claim requests.';
+
+  @override
+  String get recapButtonTooltip => 'Trip recap';
+
+  @override
+  String recapPeopleExpenses(int people, int expenses) {
+    return '$people people · $expenses expenses';
+  }
+
+  @override
+  String get recapTotalSpent => 'Total spent';
+
+  @override
+  String get recapYouTitle => 'You';
+
+  @override
+  String get recapYouPaid => 'You paid';
+
+  @override
+  String get recapYourShare => 'Your share';
+
+  @override
+  String get recapSettlements => 'Settlements';
+
+  @override
+  String get recapNet => 'Net';
+
+  @override
+  String get recapEmptyTitle => 'Nothing to wrap up yet';
+
+  @override
+  String get recapEmptyMessage => 'Add an expense to see this event\'s recap.';
 }
