@@ -426,6 +426,81 @@ void main() {
   );
 
   testWidgets(
+    '#598: a non-participant viewer sees NO "correct this payment" button on a '
+    'recorded-payment row (the offsetting write would also permission-deny), '
+    'while the row itself still renders',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // A payment is already on record (bob → alice). Carol can READ this event
+      // (group-member read) but isn't in event.participantIds, so an offsetting
+      // correction (#283) would be permission-denied — exactly like a forward
+      // Record. The correction affordance must be suppressed for her too;
+      // #595 only gated the forward path, leaving this asymmetry.
+      final recorded = Settlement(
+        id: 'settlement-1',
+        tripId: eventId,
+        payerParticipantId: 'bob',
+        recipientParticipantId: 'alice',
+        payerName: 'Bob',
+        recipientName: 'Alice',
+        amount: Decimal.parse('10.000'),
+        currency: 'OMR',
+        createdBy: 'bob',
+        settledAt: DateTime(2026, 5, 17),
+      );
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'carol',
+          settlementsStream: Stream.value([recorded]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The history row renders — its always-on share button proves it…
+      expect(find.byKey(GroupKeys.settleUpShareReceiptButton), findsOneWidget);
+      // …but the correction affordance is gone for a non-participant.
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#598: an event participant still sees the "correct this payment" button '
+    '(the gate is selective, not a blanket removal)',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      final recorded = Settlement(
+        id: 'settlement-1',
+        tripId: eventId,
+        payerParticipantId: 'bob',
+        recipientParticipantId: 'alice',
+        payerName: 'Bob',
+        recipientName: 'Alice',
+        amount: Decimal.parse('10.000'),
+        currency: 'OMR',
+        createdBy: 'bob',
+        settledAt: DateTime(2026, 5, 17),
+      );
+
+      // Bob is in event.participantIds → write-eligible → the correction
+      // affordance stays wired for him.
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'bob',
+          settlementsStream: Stream.value([recorded]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     '#357: an offline settlement flips connectivity to syncing '
     '("Saved — will sync")',
     (tester) async {
