@@ -223,12 +223,11 @@ class _ContentState extends ConsumerState<_Content> {
           ),
           SliverToBoxAdapter(child: SizedBox(height: context.spacing.space20)),
           SliverToBoxAdapter(
+            // #486: single "New event" entry. The hero CTA owns it; this header
+            // no longer duplicates the action ~40px away.
             child: SectionHeader(
               key: GroupKeys.eventsSection,
               title: context.l10n.groupEvents,
-              actionLabel: context.l10n.eventNew,
-              onActionTap: () =>
-                  GoRouter.of(context).push('/group/${group.id}/create-event'),
             ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: context.spacing.space8)),
@@ -248,7 +247,7 @@ class _ContentState extends ConsumerState<_Content> {
           SliverToBoxAdapter(
             child: SectionHeader(
               key: GroupKeys.membersAndBalancesSection,
-              title: context.l10n.groupMembers,
+              title: context.l10n.groupPeople,
             ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: context.spacing.space8)),
@@ -1022,7 +1021,15 @@ class _MembersCard extends StatelessWidget {
       );
     }
 
-    final members = data.memberNames.entries.toList();
+    // #486: the hero owns the current user's net — list everyone ELSE here,
+    // then a collapsed "You · shown above" row last that does NOT restate the
+    // figure. (currentUid null / absent from the roster → no self-row, all
+    // render as others.)
+    final allMembers = data.memberNames.entries.toList();
+    final others = allMembers.where((e) => e.key != currentUid).toList();
+    final selfMatches = allMembers.where((e) => e.key == currentUid).toList();
+    final self = selfMatches.isEmpty ? null : selfMatches.first;
+    final rowCount = others.length + (self == null ? 0 : 1);
     return Container(
       decoration: BoxDecoration(
         color: colors.cardSurface,
@@ -1032,23 +1039,34 @@ class _MembersCard extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
       child: Column(
         children: [
-          for (var i = 0; i < members.length; i++)
+          for (var i = 0; i < others.length; i++)
             _MemberRow(
-              name: members[i].value,
+              name: others[i].value,
               role: _roleFor(
                 context: context,
-                participantId: members[i].key,
+                participantId: others[i].key,
                 creatorId: group.createdBy,
                 currentUid: currentUid,
               ),
               lines: nonZeroNetsGccFirst(
-                myNetByCurrency(data.balances, members[i].key),
+                myNetByCurrency(data.balances, others[i].key),
               ),
               groupCurrency: group.currency,
-              divider: i < members.length - 1,
+              divider: i < rowCount - 1,
               onTap: () => GoRouter.of(
                 context,
-              ).push('/group/${group.id}/settle-up?memberId=${members[i].key}'),
+              ).push('/group/${group.id}/settle-up?memberId=${others[i].key}'),
+            ),
+          if (self != null)
+            _MemberRow(
+              key: GroupKeys.selfMemberRow,
+              name: self.value,
+              role: context.l10n.groupRoleYou,
+              lines: const [],
+              groupCurrency: group.currency,
+              divider: false,
+              shownAbove: true,
+              onTap: null,
             ),
         ],
       ),
@@ -1071,12 +1089,14 @@ class _MembersCard extends StatelessWidget {
 
 class _MemberRow extends StatelessWidget {
   const _MemberRow({
+    super.key,
     required this.name,
     required this.role,
     required this.lines,
     required this.groupCurrency,
     required this.divider,
     required this.onTap,
+    this.shownAbove = false,
   });
 
   final String name;
@@ -1084,7 +1104,12 @@ class _MemberRow extends StatelessWidget {
   final List<({String currency, Decimal net})> lines;
   final String groupCurrency;
   final bool divider;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+
+  /// #486: the current user's collapsed self-row — name + "(You)" but a muted
+  /// "shown above" in place of a money figure (the hero owns their net), and
+  /// no tap target (you can't settle up with yourself).
+  final bool shownAbove;
 
   @override
   Widget build(BuildContext context) {
@@ -1130,7 +1155,15 @@ class _MemberRow extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: context.spacing.space8),
-                if (lines.isEmpty)
+                if (shownAbove)
+                  Text(
+                    context.l10n.groupBalanceShownAbove,
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      color: colors.textSecondary,
+                    ),
+                  )
+                else if (lines.isEmpty)
                   Text(
                     '—',
                     style: AppTypography.sans(

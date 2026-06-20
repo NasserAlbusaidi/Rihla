@@ -3792,6 +3792,12 @@ abstract class AppLocalizations {
   /// **'Members'**
   String get groupMembers;
 
+  /// No description provided for @groupPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get groupPeople;
+
   /// No description provided for @groupNoEventsTitle.
   ///
   /// In en, this message translates to:
@@ -3923,6 +3929,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Creator'**
   String get groupRoleCreator;
+
+  /// No description provided for @groupBalanceShownAbove.
+  ///
+  /// In en, this message translates to:
+  /// **'shown above'**
+  String get groupBalanceShownAbove;
 
   /// No description provided for @groupLoadFailedTitle.
   ///

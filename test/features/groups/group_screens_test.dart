@@ -271,7 +271,7 @@ void main() {
             find.byKey(GroupKeys.membersAndBalancesSection),
             findsOneWidget,
           );
-          expect(find.text('MEMBERS'), findsOneWidget);
+          expect(find.text('PEOPLE'), findsOneWidget);
           expect(find.text('Alice'), findsWidgets);
           expect(find.text('Bob'), findsOneWidget);
         },
@@ -357,7 +357,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(FloatingActionButton), findsNothing);
-        expect(find.text('New event'), findsWidgets);
+        expect(find.text('New event'), findsOneWidget);
         expect(find.text('Create Event'), findsOneWidget);
       });
     });

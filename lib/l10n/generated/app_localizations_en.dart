@@ -2240,6 +2240,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupMembers => 'Members';
 
   @override
+  String get groupPeople => 'People';
+
+  @override
   String get groupNoEventsTitle => 'No events yet';
 
   @override
@@ -2315,6 +2318,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupRoleCreator => 'Creator';
+
+  @override
+  String get groupBalanceShownAbove => 'shown above';
 
   @override
   String get groupLoadFailedTitle => 'Could not load group';

@@ -158,11 +158,15 @@ void main() {
   }
 
   group('GroupDetailScreen navigation', () {
-    testWidgets('events header action routes to create-event', (tester) async {
+    testWidgets('hero New event CTA routes to create-event (single entry)', (
+      tester,
+    ) async {
       await pumpGroupDetail(tester);
 
-      final cta = find.text('New event').first;
-      await tester.tap(cta);
+      // #486: exactly one "New event" entry — the hero CTA. The events section
+      // header no longer duplicates the action.
+      expect(find.text('New event'), findsOneWidget);
+      await tester.tap(find.text('New event'));
       await tester.pumpAndSettle();
 
       expect(find.text('CreateEvent:$groupId'), findsOneWidget);

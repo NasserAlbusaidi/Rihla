@@ -2305,6 +2305,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupMembers => 'الأعضاء';
 
   @override
+  String get groupPeople => 'الأشخاص';
+
+  @override
   String get groupNoEventsTitle => 'لا توجد فعاليات بعد';
 
   @override
@@ -2383,6 +2386,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupRoleCreator => 'المنشئ';
+
+  @override
+  String get groupBalanceShownAbove => 'موضّح أعلاه';
 
   @override
   String get groupLoadFailedTitle => 'تعذّر تحميل المجموعة';
