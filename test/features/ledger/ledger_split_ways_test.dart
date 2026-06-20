@@ -106,8 +106,18 @@ void main() {
     expect(find.byType(RAmount), findsOneWidget);
   });
 
+  /// A signed share line is `RAmount(sign: true, value: ...)`; the gross total
+  /// is `RAmount(sign: false)`. Match on both so the finder is unambiguous.
+  Finder signedShare(Decimal value) => find.byWidgetPredicate(
+    (w) => w is RAmount && w.sign && w.value == value,
+  );
+
+  // #591: the ledger row now reuses BalanceCalculator.allocateExpenseOwed for
+  // non-equal splits (shares/exact/percent) — reconstructing the signed,
+  // current-user-relative figure — instead of the #125 omission. The persisted
+  // balance and the row sub-line are byte-for-byte the same number (WYSIWYG).
   testWidgets(
-    'global non-equal (percent) split shows no misleading equal share',
+    'global percent split shows the real signed per-person share (#591)',
     (tester) async {
       final percent = Expense(
         id: 'e1',
@@ -127,9 +137,66 @@ void main() {
 
       await pumpRow(tester, percent, viewerId: 'alice');
 
-      // The row cannot reproduce BalanceCalculator's weighted allocation, so it
-      // must omit the per-head share rather than show a wrong equal figure.
-      expect(find.byType(RAmount), findsOneWidget);
+      // alice owes 30% of 12.000 = 3.600; she is not the payer -> -3.600.
+      expect(find.byType(RAmount), findsNWidgets(2));
+      expect(signedShare(Decimal.parse('-3.600')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shares 2:1 split: participant sees real -owed, payer sees real +net (#591)',
+    (tester) async {
+      Expense shares({required String payer}) => Expense(
+        id: 'e1',
+        tripId: 'event-1',
+        payerParticipantId: payer,
+        amount: Decimal.parse('12.000'),
+        scope: ExpenseScope.global,
+        customSplitParticipants: const [],
+        splitMode: SplitMode.shares,
+        splitDistribution: {
+          'orphan': Decimal.parse('2'),
+          'alice': Decimal.parse('1'),
+        },
+        createdAt: DateTime(2026, 5, 17),
+      );
+
+      // Participant alice: 1/3 of 12.000 = 4.000 owed, not payer -> -4.000.
+      await pumpRow(tester, shares(payer: 'orphan'), viewerId: 'alice');
+      expect(find.byType(RAmount), findsNWidgets(2));
+      expect(signedShare(Decimal.parse('-4.000')), findsOneWidget);
+
+      // Payer orphan: owes own 2/3 = 8.000; others owe them 12.000 - 8.000 = +4.000.
+      await pumpRow(tester, shares(payer: 'orphan'), viewerId: 'orphan');
+      expect(find.byType(RAmount), findsNWidgets(2));
+      expect(signedShare(Decimal.parse('4.000')), findsOneWidget);
+    },
+  );
+
+  // Orthogonal axis (different split mode): exact amounts, not weights.
+  testWidgets(
+    'exact split shows the real signed per-person share (#591)',
+    (tester) async {
+      final exact = Expense(
+        id: 'e1',
+        tripId: 'event-1',
+        payerParticipantId: 'orphan',
+        amount: Decimal.parse('12.000'),
+        scope: ExpenseScope.global,
+        customSplitParticipants: const [],
+        splitMode: SplitMode.exact,
+        splitDistribution: {
+          'orphan': Decimal.parse('8.000'),
+          'alice': Decimal.parse('4.000'),
+        },
+        createdAt: DateTime(2026, 5, 17),
+      );
+
+      await pumpRow(tester, exact, viewerId: 'alice');
+
+      // alice's exact owed is 4.000; not the payer -> -4.000.
+      expect(find.byType(RAmount), findsNWidgets(2));
+      expect(signedShare(Decimal.parse('-4.000')), findsOneWidget);
     },
   );
 
