@@ -294,6 +294,7 @@
   "editorWeightedByShares": "موزون حسب الحصص.",
   "editorPerPersonAmounts": "مبالغ لكل شخص.",
   "editorPerPersonPercents": "نِسب لكل شخص.",
+  "editorAmountsVary": "تختلف المبالغ لكل شخص.",
   "editorEvent": "الفعالية",
   "editorDate": "التاريخ",
   "editorDeleteThisExpense": "حذف هذا المصروف",

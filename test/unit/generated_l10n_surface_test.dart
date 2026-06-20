@@ -217,6 +217,7 @@ final _pr2bCalls = <_L10nString>[
   (l10n) => l10n.editorSplitSummary('Everyone', 2),
   (l10n) => l10n.editorSplitSummary('Everyone', 3),
   (l10n) => l10n.editorEachAmount('1.000'),
+  (l10n) => l10n.editorAmountsVary,
   (l10n) => l10n.editorPickAtLeastTwoToSplit,
   (l10n) => l10n.editorSplitEvenly(1),
   (l10n) => l10n.editorSplitEvenly(2),
