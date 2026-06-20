@@ -497,6 +497,19 @@ service cloud.firestore {
               || d.splitDistribution.values().join(',').matches('^[0-9,]+$');
           }
 
+          // #203 - splitExplanation is OPAQUE display-only metadata (balance
+          // truth stays in splitDistribution; the server never reads it). Guard
+          // type + a generous top-level entry-count cap only; value content is
+          // intentionally unvalidated. NOTE: map.size() counts entry COUNT, not
+          // value weight — the 1MB Firestore doc limit is the hard payload
+          // backstop. Kept in the create/update WRAPPERS (not validExpenseBase)
+          // so a legacy/forged oversized doc stays soft-deletable (the #192/#194
+          // pattern). Wired unconditionally on create, diff-gated on update.
+          function splitExplanationBounded(d) {
+            return !d.keys().hasAny(['splitExplanation'])
+              || (d.splitExplanation is map && d.splitExplanation.size() <= 64);
+          }
+
           // #194 - free-text fields present on every expense create map
           // (expense_service.dart writes all of them). Bounds + charset; the
           // base keeps nullableString for the type guarantee.
@@ -544,7 +557,8 @@ service cloud.firestore {
               'isDeleted',
               'deletedAt',
               'createdAt',
-              'lastEditedBy'
+              'lastEditedBy',
+              'splitExplanation'
             ])
             && data.id == docId
             && data.eventId == eventId
@@ -573,6 +587,7 @@ service cloud.firestore {
               && eventAllowsClientWrites(groupId, eventId)
               && validExpenseBase(request.resource.data, true)
               && splitValuesNonNegative(request.resource.data)
+              && splitExplanationBounded(request.resource.data)
               && validExpenseFreeText(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
               // #248: when present, lastEditedBy must be the caller (unforgeable
@@ -642,11 +657,14 @@ service cloud.firestore {
                   'note',
                   'isDeleted',
                   'deletedAt',
-                  'lastEditedBy'
+                  'lastEditedBy',
+                  'splitExplanation'
                 ])
               && validExpenseBase(request.resource.data, affectsExpenseAllocation())
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
                 || splitValuesNonNegative(request.resource.data))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitExplanation'])
+                || splitExplanationBounded(request.resource.data))
               // #382 PR-6: per-expense currency. An expense's currency need only be
               // a SUPPORTED code (validExpenseBase validCurrency floor at :563), no
               // longer one that equals group.currency — the old diff-gated

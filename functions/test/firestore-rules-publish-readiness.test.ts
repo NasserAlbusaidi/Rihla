@@ -1146,6 +1146,51 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  test('#203 splitExplanation accepted as opaque display-only map (create)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expSE').set(
+      validExpense({
+        id: 'expSE',
+        splitMode: 'exact',
+        splitDistribution: { owner: 500, member: 500 },
+        splitExplanation: {
+          type: 'itemized',
+          version: 1,
+          items: [
+            { label: 'Latte', amountFils: 500, quantity: 1, participantIds: ['owner'], allocation: 'equal' },
+            { label: 'Mocha', amountFils: 500, quantity: 1, participantIds: ['member'], allocation: 'equal' },
+          ],
+        },
+      }),
+    ));
+  });
+
+  test('#203 splitExplanation accepted on update (proves the SECOND/affectedKeys allowlist)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const ref = member.doc('groups/g1/events/e1/expenses/expSEUpd');
+    await assertSucceeds(ref.set(validExpense({ id: 'expSEUpd' })));
+    await assertSucceeds(ref.update({
+      splitExplanation: { type: 'itemized', version: 1, items: [] },
+      lastEditedBy: 'member', // #248 PR4: self-attribution mandatory
+    }));
+  });
+
+  test('#203 splitExplanation rejected when not a map (pins `is map`)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expSEBad').set(
+      validExpense({ id: 'expSEBad', splitExplanation: 'not-a-map' }),
+    ));
+  });
+
+  test('#203 splitExplanation rejected with >64 top-level keys (entry-count cap, NOT array length — Firestore 1MB doc limit bounds payload)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const big: Record<string, number> = {};
+    for (let i = 0; i < 65; i++) big[`k${i}`] = i;
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expSEBig').set(
+      validExpense({ id: 'expSEBig', splitExplanation: big }),
+    ));
+  });
+
   test('#191 stale splitDistribution after participant removal can still be archived', async () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
     const ref = owner.doc('groups/g1/events/e1/expenses/expStale');
