@@ -1104,6 +1104,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Amount must be greater than zero';
 
   @override
+  String get settleUpEnterValidAmount => 'Please enter a valid amount';
+
+  @override
   String settleUpAmountExceedsOutstanding(Object amount) {
     return 'Amount cannot exceed the outstanding balance of $amount';
   }

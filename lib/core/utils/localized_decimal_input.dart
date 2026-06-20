@@ -6,7 +6,27 @@ import 'package:flutter/services.dart';
 /// Arabic keyboards commonly emit Arabic-Indic digits and the Arabic decimal
 /// separator. We store and parse monetary amounts in ASCII form, so input is
 /// normalized at the boundary instead of making every parse site locale-aware.
+///
+/// #530: an ambiguous European-format amount (dot grouping + comma decimal, e.g.
+/// pasted `1.234,56`) must NOT be silently normalized \u2014 the dot would win as the
+/// decimal and truncate `1234.56` to `1.23`, a ~1000\u00D7 money error with no error
+/// shown. Owner decision (2026-06-19): reject, do not truncate. When both a
+/// dot-family char (`.`/`\u066B`) and a comma are present AND the comma is the LAST
+/// separator (European decimal), the raw `value` is returned UNCHANGED so it
+/// fails `Decimal.parse`/`tryParse` and the caller surfaces a validation error.
+/// US grouping (comma thousands, dot decimal last \u2014 e.g. `1,234.50`) is NOT
+/// ambiguous and stays supported.
 String normalizeLocalizedDecimalInput(String value, {int? decimalDigits}) {
+  // Ambiguity guard (#530): comma is the last separator while a dot-family char
+  // also appears \u2192 European decimal we refuse to guess. Returned raw to reject.
+  final lastDot = value.lastIndexOf('.') > value.lastIndexOf('\u066B')
+      ? value.lastIndexOf('.')
+      : value.lastIndexOf('\u066B');
+  final lastComma = value.lastIndexOf(',');
+  if (lastComma >= 0 && lastDot >= 0 && lastComma > lastDot) {
+    return value;
+  }
+
   final hasDotDecimal = value.contains('.') || value.contains('\u066B');
   final buffer = StringBuffer();
   var hasDecimal = false;
