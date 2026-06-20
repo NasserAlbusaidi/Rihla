@@ -2304,6 +2304,12 @@ abstract class AppLocalizations {
   /// **'Mark this received?'**
   String get settleUpMarkThisReceivedTitle;
 
+  /// Record-payment sheet title for the third-party variant (#595): the current user is neither the payer nor the recipient — they're recording a payment between two other people on the group's behalf.
+  ///
+  /// In en, this message translates to:
+  /// **'Record this payment?'**
+  String get settleUpRecordThisTitle;
+
   /// No description provided for @settleUpMarkThisPaidBody.
   ///
   /// In en, this message translates to:
@@ -2328,6 +2334,12 @@ abstract class AppLocalizations {
   /// **'This records {name}\'s payment to you immediately.'**
   String settleUpRecordsReceivedImmediately(Object name);
 
+  /// Third-party variant of settleUpRecordsImmediately (#595): the current user is neither party, so the banner names BOTH the payer ({fromName}) and recipient ({toName}) — never 'your'/'you'. Same immediacy caveat as the debtor copy (#281).
+  ///
+  /// In en, this message translates to:
+  /// **'This records {fromName}\'s payment to {toName} immediately.'**
+  String settleUpRecordsForOthersImmediately(Object fromName, Object toName);
+
   /// Microcopy on the Mark-Paid/Mark-Received sheet (#351). Rihla is a ledger, not a payment processor; this sets the expectation that recording a settlement does not transfer any funds.
   ///
   /// In en, this message translates to:
@@ -2351,6 +2363,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mark received'**
   String get settleUpMarkReceived;
+
+  /// Record-payment button label for the third-party variant (#595): a member recording a payment between two other people. Neutral — neither 'Mark paid' nor 'Mark received'.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get settleUpRecordPayment;
 
   /// No description provided for @settleUpPays.
   ///

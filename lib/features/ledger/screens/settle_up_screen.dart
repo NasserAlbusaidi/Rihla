@@ -264,6 +264,14 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
+                    // #595: the event settlement-create rule pins the WRITER to
+                    // event.participantIds (isEventParticipant). A group member
+                    // who can read this event but isn't a participant must not
+                    // see a Record button (it would server-reject). Group-level
+                    // settlements have no such pin (group screen passes true).
+                    canRecord:
+                        currentUid != null &&
+                        event.participantIds.contains(currentUid),
                     preSelectedMemberId: widget.preSelectedMemberId,
                     onRecord:
                         ({
@@ -432,8 +440,15 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
     final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
-    // #282: the recipient (creditor) is recording a payment received.
-    final isReceiving = ref.read(currentUserIdProvider) == toUserId;
+    // #282/#595: frame by the writer's relationship to this transfer — payer
+    // ("paid"), recipient ("received"), or neither (a member recording on the
+    // group's behalf). A null uid (shouldn't reach here) falls to neutral.
+    final currentUid = ref.read(currentUserIdProvider);
+    final perspective = currentUid == fromUserId
+        ? RecordPaymentPerspective.paying
+        : currentUid == toUserId
+        ? RecordPaymentPerspective.receiving
+        : RecordPaymentPerspective.recording;
 
     final result = await showRecordPaymentSheet(
       context,
@@ -441,7 +456,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       fromName: fromDisplayName,
       toName: toDisplayName,
       suggestedAmount: suggestedAmount,
-      isReceiving: isReceiving,
+      perspective: perspective,
       stepLabel: stepLabel,
     );
 

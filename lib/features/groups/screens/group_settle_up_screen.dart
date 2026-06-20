@@ -151,6 +151,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
                     tileKeys: _tileKeys,
+                    // #595: group settlement-create only requires isGroupMember,
+                    // and every viewer of this screen is already a member (read
+                    // is member-gated) — so any member may record any transfer.
+                    canRecord: true,
                     preSelectedMemberId: widget.preSelectedMemberId,
                     onRecord:
                         ({
@@ -446,15 +450,22 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
     final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
-    // #282: the recipient (creditor) is recording a payment received.
-    final isReceiving = ref.read(currentUserIdProvider) == toUserId;
+    // #282/#595: frame by the writer's relationship to this transfer — payer
+    // ("paid"), recipient ("received"), or neither (a member recording on the
+    // group's behalf). A null uid (shouldn't reach here) falls to neutral.
+    final currentUid = ref.read(currentUserIdProvider);
+    final perspective = currentUid == fromUserId
+        ? RecordPaymentPerspective.paying
+        : currentUid == toUserId
+        ? RecordPaymentPerspective.receiving
+        : RecordPaymentPerspective.recording;
     final result = await showRecordPaymentSheet(
       context,
       currency: currency,
       fromName: fromDisplayName,
       toName: toDisplayName,
       suggestedAmount: suggestedAmount,
-      isReceiving: isReceiving,
+      perspective: perspective,
       stepLabel: stepLabel,
     );
 

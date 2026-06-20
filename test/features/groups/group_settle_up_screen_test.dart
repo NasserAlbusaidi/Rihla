@@ -560,6 +560,32 @@ void main() {
     });
 
     testWidgets(
+      '#595: a third party (neither payer nor recipient) sees a neutral '
+      '"Record" button',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            // Carol is neither the debtor (Bob) nor the creditor (Alice) of the
+            // bob→alice transfer — an organizer recording on the group's behalf.
+            currentUid: 'uid-carol',
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(GroupKeys.settleUpRecordPaymentButton),
+          findsOneWidget,
+        );
+        // Neutral framing — neither the debtor nor the creditor label.
+        expect(find.text('Record'), findsOneWidget);
+        expect(find.text('Mark paid'), findsNothing);
+        expect(find.text('Mark received'), findsNothing);
+      },
+    );
+
+    testWidgets(
       '#282: creditor recording keeps payer=debtor, recipient=creditor',
       (tester) async {
         final settlementService = _RecordingGroupSettlementService();
