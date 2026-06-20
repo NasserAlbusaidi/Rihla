@@ -29,6 +29,7 @@ import '../keys/ledger_keys.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../providers/category_provider.dart';
+import '../providers/expense_provider.dart';
 import '../utils/expense_provenance.dart';
 import '../utils/localized_category_name.dart';
 import 'custom_split_sheet.dart';
@@ -700,6 +701,8 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                           scope: _scope,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
                           customSplitParticipants: _customSplitParticipants,
+                          splitMode: _splitMode,
+                          splitDistribution: _splitDistribution,
                         ),
                       ),
                       _Section(
@@ -1446,6 +1449,8 @@ class _SplitPreviewCard extends StatelessWidget {
     required this.scope,
     required this.payerId,
     required this.customSplitParticipants,
+    required this.splitMode,
+    required this.splitDistribution,
   });
 
   final Event event;
@@ -1454,6 +1459,17 @@ class _SplitPreviewCard extends StatelessWidget {
   final ExpenseScope scope;
   final String? payerId;
   final Set<String> customSplitParticipants;
+  final SplitMode splitMode;
+  final Map<String, Decimal>? splitDistribution;
+
+  /// True for shares/exact/percent splits with a distribution — the per-tile
+  /// amounts vary, so the preview must allocate them via [BalanceCalculator]
+  /// rather than show the equal figure (#242). Mirrors the calculateBalances
+  /// gate and `ledger_day_card._isNonEqualSplit`.
+  bool get _isNonEqual =>
+      splitMode != SplitMode.equally &&
+      splitDistribution != null &&
+      splitDistribution!.isNotEmpty;
 
   List<String> get _splitParticipantIds {
     switch (scope) {
@@ -1487,6 +1503,23 @@ class _SplitPreviewCard extends StatelessWidget {
         : (amount / Decimal.fromInt(count)).toDecimal(
             scaleOnInfinitePrecision: 3,
           );
+    // #242 WYSIWYG: for shares/exact/percent, show each person's REAL owed
+    // amount by allocating through the same pure helper calculateBalances uses,
+    // so the preview equals what gets persisted. `onFallback: null` keeps a
+    // transient/forged split silent (no Sentry). Equal splits keep `each`.
+    final owed = _isNonEqual
+        ? BalanceCalculator.allocateExpenseOwed(
+            amount: amount,
+            splitMode: splitMode,
+            splitDistribution: splitDistribution,
+            scope: scope,
+            customSplitParticipants: customSplitParticipants.toList(),
+            payerId: payerId ?? '',
+            participantIds: event.participantIds,
+            currency: currency,
+            onFallback: null,
+          )
+        : null;
     final colors = context.colors;
     final l10n = context.l10n;
 
@@ -1524,9 +1557,12 @@ class _SplitPreviewCard extends StatelessWidget {
                       ),
                       if (count >= 2)
                         Text(
-                          l10n.editorEachAmount(
-                            AppFormatters.formatCurrency(each, currency),
-                          ),
+                          // Non-equal splits have no single "each" figure.
+                          owed != null
+                              ? l10n.editorAmountsVary
+                              : l10n.editorEachAmount(
+                                  AppFormatters.formatCurrency(each, currency),
+                                ),
                           style: AppTypography.sans(
                             fontSize: 12,
                             color: colors.textSecondary,
@@ -1583,7 +1619,10 @@ class _SplitPreviewCard extends StatelessWidget {
                     return _ParticipantSplitTile(
                       name: name,
                       firstName: firstName,
-                      share: each,
+                      // Real per-person owed for non-equal modes (#242); the
+                      // `?? 0` is defensive — distribution.keys always covers
+                      // the participant set in the happy path.
+                      share: owed != null ? (owed[id] ?? Decimal.zero) : each,
                       currency: currency,
                       isPayer: id == payerId,
                     );

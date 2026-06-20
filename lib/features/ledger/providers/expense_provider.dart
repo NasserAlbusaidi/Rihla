@@ -355,82 +355,30 @@ class BalanceCalculator {
         paidMap[payerId] = paidMap[payerId]! + expense.amount;
       }
 
-      final distribution = expense.splitDistribution;
-      final splitMode = expense.splitMode;
-      if (splitMode != null &&
-          splitMode != SplitMode.equally &&
-          distribution != null &&
-          distribution.isNotEmpty) {
-        final allocations = switch (splitMode) {
-          SplitMode.shares => _allocateShares(expense, distribution, currency),
-          SplitMode.exact => _allocateExact(expense, distribution, currency),
-          SplitMode.percent =>
-            _allocatePercent(expense, distribution, currency),
-          SplitMode.equally => <String, Decimal>{},
-        };
-
-        for (final entry in allocations.entries) {
-          if (owedMap.containsKey(entry.key)) {
-            owedMap[entry.key] = owedMap[entry.key]! + entry.value;
-          }
-        }
-        continue;
-      }
-
-      // Determine who shares this expense based on scope
-      Set<String> splitRecipients;
-
-      switch (expense.scope) {
-        case ExpenseScope.personal:
-          // Personal: only the payer owes themselves (no redistribution)
-          splitRecipients = {payerId};
-          break;
-
-        case ExpenseScope.subGroup:
-          // Legacy sub-group scope (logistics removed in Phase 39):
-          // back-compat fallback to global so existing expenses still split.
-          splitRecipients = participants.map((p) => p.id).toSet();
-          break;
-
-        case ExpenseScope.custom:
-          // Custom: only the selected participants
-          if (expense.customSplitParticipants != null &&
-              expense.customSplitParticipants!.isNotEmpty) {
-            splitRecipients = expense.customSplitParticipants!.toSet();
-          } else {
-            // Fallback to global if no participants specified
-            splitRecipients = participants.map((p) => p.id).toSet();
-          }
-          break;
-
-        case ExpenseScope.global:
-          // Global: everyone shares
-          splitRecipients = participants.map((p) => p.id).toSet();
-          break;
-      }
-
-      // Calculate per-head cost for this expense
-      final splitCount = splitRecipients.length;
-      if (splitCount == 0) continue;
-
-      final perHead = (expense.amount / Decimal.fromInt(splitCount)).toDecimal(
-        scaleOnInfinitePrecision: MoneySerializer.fractionDigits(currency),
+      // Per-expense owed allocation. The pure, side-effect-free
+      // [allocateExpenseOwed] is the single source of this math — the expense
+      // editor's split preview (#242) calls the SAME function so the displayed
+      // per-person amounts are byte-for-byte what gets accumulated here (true
+      // WYSIWYG). The static [onSplitFallback] telemetry hook is re-attached
+      // via the closure below; the preview passes `onFallback: null` to stay
+      // silent on transient/edit states.
+      final owed = allocateExpenseOwed(
+        amount: expense.amount,
+        splitMode: expense.splitMode,
+        splitDistribution: expense.splitDistribution,
+        scope: expense.scope,
+        customSplitParticipants: expense.customSplitParticipants,
+        payerId: payerId,
+        participantIds: participants.map((p) => p.id),
+        currency: currency,
+        onFallback: (reason) => onSplitFallback(reason, expense),
       );
 
-      // Remainder-safe distribution: assign truncated perHead to all
-      // recipients except the last (sorted for determinism), who absorbs
-      // the rounding remainder so sum(shares) == expense.amount exactly.
-      final remainder =
-          expense.amount - (perHead * Decimal.fromInt(splitCount));
-      final sortedRecipients = splitRecipients.toList()..sort();
-      for (int i = 0; i < sortedRecipients.length; i++) {
-        final recipientId = sortedRecipients[i];
-        if (owedMap.containsKey(recipientId)) {
-          final isLast = i == sortedRecipients.length - 1;
-          owedMap[recipientId] =
-              owedMap[recipientId]! +
-              perHead +
-              (isLast ? remainder : Decimal.zero);
+      // Accumulate, dropping owed for any key outside the seeded participant
+      // universe (the #192/#223 parity drop-guard — unchanged).
+      for (final entry in owed.entries) {
+        if (owedMap.containsKey(entry.key)) {
+          owedMap[entry.key] = owedMap[entry.key]! + entry.value;
         }
       }
     }
@@ -484,10 +432,81 @@ class BalanceCalculator {
     };
   }
 
+  /// Pure, side-effect-free owed allocation for ONE expense (#242). Returns
+  /// owed-by-participantId, byte-for-byte identical to what [calculateBalances]
+  /// accumulates for this expense BEFORE the participant-universe drop-guard.
+  /// The expense-editor split preview calls this so the displayed per-person
+  /// amounts are exactly what gets persisted.
+  ///
+  /// Two paths, mirroring [calculateBalances]:
+  ///  - **mode-allocator**: a non-equal [splitMode] with a non-empty
+  ///    [splitDistribution] allocates over the distribution keys (scope ignored).
+  ///  - **scope/equal**: otherwise (null/equally) — an equal per-head split over
+  ///    the scope-derived recipient SET (remainder → alphabetically-last id).
+  ///
+  /// [currency] is fenced internally (isSupported ? : 'OMR') so a caller can
+  /// never throw [MoneySerializer] on an unsupported code (the preview passes a
+  /// user-picked currency; [calculateBalances] already fences upstream — keep
+  /// that outer fence, it also selects the per-currency bucket). [onFallback] is
+  /// invoked when a malformed split falls back to equal — pass `null` (the
+  /// preview path) to suppress the Sentry telemetry the [calculateBalances]
+  /// closure `(r) => onSplitFallback(r, expense)` would otherwise emit.
+  static Map<String, Decimal> allocateExpenseOwed({
+    required Decimal amount,
+    required SplitMode? splitMode,
+    required Map<String, Decimal>? splitDistribution,
+    required ExpenseScope scope,
+    required List<String>? customSplitParticipants,
+    required String payerId,
+    required Iterable<String> participantIds,
+    required String currency,
+    void Function(SplitFallbackReason reason)? onFallback,
+  }) {
+    final fenced = MoneySerializer.isSupported(currency) ? currency : 'OMR';
+
+    if (splitMode != null &&
+        splitMode != SplitMode.equally &&
+        splitDistribution != null &&
+        splitDistribution.isNotEmpty) {
+      return switch (splitMode) {
+        SplitMode.shares =>
+          _allocateShares(amount, splitDistribution, fenced, onFallback),
+        SplitMode.exact =>
+          _allocateExact(amount, splitDistribution, fenced, onFallback),
+        SplitMode.percent =>
+          _allocatePercent(amount, splitDistribution, fenced, onFallback),
+        SplitMode.equally => const <String, Decimal>{}, // gated out above
+      };
+    }
+
+    // Scope/equal path. Build the recipient SET (deduped) per scope, then run
+    // the shared equal split. The `.toSet()` is load-bearing: a duplicate id in
+    // the customSplitParticipants `List` must NOT over-divide the per-head cost
+    // (parity with calculateBalances, which also `.toSet()`s — #242 Gate P2a).
+    final Set<String> recipients;
+    switch (scope) {
+      case ExpenseScope.personal:
+        recipients = {payerId};
+      case ExpenseScope.subGroup:
+        // Legacy logistics scope (Phase 39) — back-compat fallback to global.
+        recipients = participantIds.toSet();
+      case ExpenseScope.custom:
+        recipients =
+            (customSplitParticipants != null &&
+                customSplitParticipants.isNotEmpty)
+            ? customSplitParticipants.toSet()
+            : participantIds.toSet();
+      case ExpenseScope.global:
+        recipients = participantIds.toSet();
+    }
+    return _allocateEqual(amount, recipients, fenced);
+  }
+
   static Map<String, Decimal> _allocateShares(
-    Expense expense,
+    Decimal amount,
     Map<String, Decimal> distribution,
     String currency,
+    void Function(SplitFallbackReason reason)? onFallback,
   ) {
     // A negative share is never a valid weight — it would hand that recipient a
     // negative owed via _allocateWeighted, breaking the non-negative-owed
@@ -496,8 +515,8 @@ class BalanceCalculator {
     // persist one. Mirror the _allocateExact guard. Server-side value
     // validation is the complementary fix (#192).
     if (distribution.values.any((value) => value < Decimal.zero)) {
-      onSplitFallback(SplitFallbackReason.negativeShares, expense);
-      return _allocateEqual(expense.amount, distribution.keys, currency);
+      onFallback?.call(SplitFallbackReason.negativeShares);
+      return _allocateEqual(amount, distribution.keys, currency);
     }
 
     final totalShares = distribution.values.fold(
@@ -506,12 +525,12 @@ class BalanceCalculator {
     );
 
     if (totalShares <= Decimal.zero) {
-      onSplitFallback(SplitFallbackReason.invalidShares, expense);
-      return _allocateEqual(expense.amount, distribution.keys, currency);
+      onFallback?.call(SplitFallbackReason.invalidShares);
+      return _allocateEqual(amount, distribution.keys, currency);
     }
 
     return _allocateWeighted(
-      expense.amount,
+      amount,
       distribution,
       totalShares,
       currency,
@@ -519,9 +538,10 @@ class BalanceCalculator {
   }
 
   static Map<String, Decimal> _allocateExact(
-    Expense expense,
+    Decimal amount,
     Map<String, Decimal> distribution,
     String currency,
+    void Function(SplitFallbackReason reason)? onFallback,
   ) {
     // A negative exact entry is never a valid split — you cannot owe a negative
     // share. The custom split sheet strips minus signs, but firestore.rules
@@ -531,8 +551,8 @@ class BalanceCalculator {
     // it (or the residual close-out below) emit a negative owed. Server-side
     // value validation is the complementary fix tracked in #192.
     if (distribution.values.any((value) => value < Decimal.zero)) {
-      onSplitFallback(SplitFallbackReason.negativeExact, expense);
-      return _allocateEqual(expense.amount, distribution.keys, currency);
+      onFallback?.call(SplitFallbackReason.negativeExact);
+      return _allocateEqual(amount, distribution.keys, currency);
     }
 
     final total = distribution.values.fold(
@@ -540,12 +560,12 @@ class BalanceCalculator {
       (sum, value) => sum + value,
     );
 
-    if ((total - expense.amount).abs() > _splitTolerance) {
-      onSplitFallback(SplitFallbackReason.exactAmountDrift, expense);
-      return _allocateEqual(expense.amount, distribution.keys, currency);
+    if ((total - amount).abs() > _splitTolerance) {
+      onFallback?.call(SplitFallbackReason.exactAmountDrift);
+      return _allocateEqual(amount, distribution.keys, currency);
     }
 
-    final residual = expense.amount - total;
+    final residual = amount - total;
     if (residual == Decimal.zero) {
       return Map<String, Decimal>.from(distribution);
     }
@@ -575,8 +595,8 @@ class BalanceCalculator {
       // cannot represent `amount` with non-negative owed. Unreachable for an
       // in-tolerance drift on a positive amount, but treat as invalid with the
       // same posture as the out-of-tolerance guard rather than emit a negative.
-      onSplitFallback(SplitFallbackReason.exactResidualUnabsorbable, expense);
-      return _allocateEqual(expense.amount, distribution.keys, currency);
+      onFallback?.call(SplitFallbackReason.exactResidualUnabsorbable);
+      return _allocateEqual(amount, distribution.keys, currency);
     }
     return {
       for (final key in sortedKeys)
@@ -585,16 +605,17 @@ class BalanceCalculator {
   }
 
   static Map<String, Decimal> _allocatePercent(
-    Expense expense,
+    Decimal amount,
     Map<String, Decimal> distribution,
     String currency,
+    void Function(SplitFallbackReason reason)? onFallback,
   ) {
     // A negative percent is never a valid weight (see _allocateShares) — it
     // would emit a negative owed even when the entries still sum to 100. Mirror
     // the _allocateExact guard; complementary to server-side validation (#192).
     if (distribution.values.any((value) => value < Decimal.zero)) {
-      onSplitFallback(SplitFallbackReason.negativePercent, expense);
-      return _allocateEqual(expense.amount, distribution.keys, currency);
+      onFallback?.call(SplitFallbackReason.negativePercent);
+      return _allocateEqual(amount, distribution.keys, currency);
     }
 
     final totalPercent = distribution.values.fold(
@@ -603,11 +624,11 @@ class BalanceCalculator {
     );
 
     if ((totalPercent - _hundred).abs() > _splitTolerance) {
-      onSplitFallback(SplitFallbackReason.percentDrift, expense);
-      return _allocateEqual(expense.amount, distribution.keys, currency);
+      onFallback?.call(SplitFallbackReason.percentDrift);
+      return _allocateEqual(amount, distribution.keys, currency);
     }
 
-    return _allocateWeighted(expense.amount, distribution, _hundred, currency);
+    return _allocateWeighted(amount, distribution, _hundred, currency);
   }
 
   static Map<String, Decimal> _allocateWeighted(

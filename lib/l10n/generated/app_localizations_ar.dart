@@ -946,6 +946,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorPerPersonPercents => 'نِسب لكل شخص.';
 
   @override
+  String get editorAmountsVary => 'تختلف المبالغ لكل شخص.';
+
+  @override
   String get editorEvent => 'الفعالية';
 
   @override

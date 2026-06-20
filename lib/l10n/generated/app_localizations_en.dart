@@ -919,6 +919,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorPerPersonPercents => 'Per-person percents.';
 
   @override
+  String get editorAmountsVary => 'Amounts vary per person.';
+
+  @override
   String get editorEvent => 'Event';
 
   @override

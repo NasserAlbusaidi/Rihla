@@ -1664,6 +1664,12 @@ abstract class AppLocalizations {
   /// **'Per-person percents.'**
   String get editorPerPersonPercents;
 
+  /// No description provided for @editorAmountsVary.
+  ///
+  /// In en, this message translates to:
+  /// **'Amounts vary per person.'**
+  String get editorAmountsVary;
+
   /// No description provided for @editorEvent.
   ///
   /// In en, this message translates to:

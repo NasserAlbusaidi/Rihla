@@ -824,6 +824,7 @@
   "editorWeightedByShares": "Weighted by shares.",
   "editorPerPersonAmounts": "Per-person amounts.",
   "editorPerPersonPercents": "Per-person percents.",
+  "editorAmountsVary": "Amounts vary per person.",
   "editorEvent": "Event",
   "editorDate": "Date",
   "editorDeleteThisExpense": "Delete this expense",
