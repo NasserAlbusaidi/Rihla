@@ -62,13 +62,15 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
     return context.l10n.settleUpOwes(widget.fromName, widget.toName);
   }
 
-  /// #282: the creditor records a payment *received*; the debtor records a
-  /// payment *made*. The write direction is identical — only the label differs.
+  /// #282/#595: the debtor records a payment *made* ("Mark paid"), the creditor
+  /// a payment *received* ("Mark received"), and any other member records on the
+  /// group's behalf ("Record"). The write direction is identical — only the
+  /// label differs. Cases are mutually exclusive: one transfer has one payer and
+  /// one recipient, so the current user is at most one of them.
   String get _recordLabel {
-    if (widget.isCreditor && !widget.isYourAction) {
-      return context.l10n.settleUpMarkReceived;
-    }
-    return context.l10n.settleUpMarkPaid;
+    if (widget.isYourAction) return context.l10n.settleUpMarkPaid;
+    if (widget.isCreditor) return context.l10n.settleUpMarkReceived;
+    return context.l10n.settleUpRecordPayment;
   }
 
   @override

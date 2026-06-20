@@ -355,7 +355,7 @@ void main() {
                     fromName: 'Bob', // payer (debtor)
                     toName: 'Alice', // recipient (creditor) = current user
                     suggestedAmount: Decimal.parse('5.000'),
-                    isReceiving: true,
+                    perspective: RecordPaymentPerspective.receiving,
                   ),
                   child: const Text('open'),
                 ),
@@ -377,4 +377,53 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    '#595: third-party "recording" framing is neutral — names BOTH parties, '
+    'never "your"/"you"',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    key: const Key('open'),
+                    onPressed: () => showRecordPaymentSheet(
+                      context,
+                      currency: 'OMR',
+                      fromName: 'Bob', // payer (debtor)
+                      toName: 'Alice', // recipient (creditor)
+                      suggestedAmount: Decimal.parse('5.000'),
+                      // Current user is neither Bob nor Alice — an organizer
+                      // recording on the group's behalf.
+                      perspective: RecordPaymentPerspective.recording,
+                    ),
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('open')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Record this payment?'), findsOneWidget);
+      expect(find.text('Record'), findsOneWidget);
+      // Neither the debtor nor the creditor framing leaks through.
+      expect(find.text('Mark this paid?'), findsNothing);
+      expect(find.text('Mark this received?'), findsNothing);
+      // Banner names BOTH parties — no first/second-person ("your"/"you").
+      expect(
+        find.text("This records Bob's payment to Alice immediately."),
+        findsOneWidget,
+      );
+    },
+  );
 }

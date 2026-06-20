@@ -1359,6 +1359,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpMarkThisReceivedTitle => 'Mark this received?';
 
   @override
+  String get settleUpRecordThisTitle => 'Record this payment?';
+
+  @override
   String settleUpMarkThisPaidBody(Object fromName, Object toName) {
     return 'We\'ll close out the balance between $fromName and $toName.';
   }
@@ -1377,6 +1380,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpRecordsForOthersImmediately(Object fromName, Object toName) {
+    return 'This records $fromName\'s payment to $toName immediately.';
+  }
+
+  @override
   String get settleUpDoesntMoveMoney =>
       'Rihla records the payment — it doesn\'t move money.';
 
@@ -1388,6 +1396,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settleUpMarkReceived => 'Mark received';
+
+  @override
+  String get settleUpRecordPayment => 'Record';
 
   @override
   String settleUpPays(Object fromName, Object toName) {
@@ -2229,6 +2240,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupMembers => 'Members';
 
   @override
+  String get groupPeople => 'People';
+
+  @override
   String get groupNoEventsTitle => 'No events yet';
 
   @override
@@ -2304,6 +2318,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupRoleCreator => 'Creator';
+
+  @override
+  String get groupBalanceShownAbove => 'shown above';
 
   @override
   String get groupLoadFailedTitle => 'Could not load group';

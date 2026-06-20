@@ -322,6 +322,110 @@ void main() {
   });
 
   testWidgets(
+    '#595: an event PARTICIPANT who is neither payer nor recipient can record '
+    'the transfer; direction follows the transfer, createdBy follows the writer',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // Carol is an event participant (write-eligible) but has zero balance —
+      // the Dinner is split only between Alice & Bob — so the sole transfer is
+      // bob→alice and Carol is a pure third party to it (an organizer settling
+      // on the group's behalf).
+      final eventWithCarol = Event(
+        id: eventId,
+        groupId: groupId,
+        name: 'Beach Trip',
+        type: EventType.trip,
+        createdBy: 'alice',
+        participantIds: const ['alice', 'bob', 'carol'],
+        participantNames: const {
+          'alice': 'Alice',
+          'bob': 'Bob',
+          'carol': 'Carol',
+        },
+        modules: const EventModules(),
+        createdAt: DateTime(2026, 5, 16),
+      );
+      final aliceBobExpense = [
+        Expense(
+          id: 'expense-1',
+          tripId: eventId,
+          payerParticipantId: 'alice',
+          amount: Decimal.parse('20.000'),
+          description: 'Dinner',
+          scope: ExpenseScope.custom,
+          customSplitParticipants: const ['alice', 'bob'],
+          createdAt: DateTime(2026, 5, 16),
+          createdBy: 'alice',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'carol',
+          eventStream: Stream.value(eventWithCarol),
+          expensesStream: Stream.value(aliceBobExpense),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The custom-participant split is "review-worthy" (#204) → the
+      // non-blocking pre-settlement review sheet pops on entry. Dismiss it (as a
+      // real user would) so its modal barrier doesn't intercept the tile tap.
+      await tester.tap(find.byKey(PreSettleReviewKeys.continueButton));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      // Neutral third-party framing, not "you paid".
+      expect(find.text('Record this payment?'), findsOneWidget);
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      final snap = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .collection('settlements')
+          .get();
+
+      expect(snap.docs, hasLength(1));
+      // Direction follows the optimal transfer, NOT who tapped.
+      expect(snap.docs.first.data()['payerParticipantId'], equals('bob'));
+      expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
+      // createdBy is the writer (Carol) — identity is orthogonal to direction.
+      expect(snap.docs.first.data()['createdBy'], equals('carol'));
+    },
+  );
+
+  testWidgets(
+    '#595: a group member who is NOT an event participant sees NO Record button '
+    '(the event create rule would permission-deny their write)',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // Carol can READ this event (group-member read) but is not in
+      // event.participantIds (alice/bob), so isEventParticipant would reject her
+      // settlement write. The affordance must be suppressed for her.
+      await tester.pumpWidget(buildScreen(fakeDb, currentUid: 'carol'));
+      await tester.pumpAndSettle();
+
+      // The transfer tile still renders…
+      expect(find.byType(GroupSettlementTile), findsOneWidget);
+      // …but with no Record button for a non-participant viewer.
+      expect(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
     '#357: an offline settlement flips connectivity to syncing '
     '("Saved — will sync")',
     (tester) async {

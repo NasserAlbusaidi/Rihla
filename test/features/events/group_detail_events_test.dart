@@ -241,7 +241,7 @@ void main() {
       expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
     });
 
-    testWidgets('shows events section action when events exist', (
+    testWidgets('events section header has no duplicate New event action', (
       tester,
     ) async {
       final events = [
@@ -259,7 +259,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(GroupKeys.eventsSection), findsOneWidget);
-      expect(find.text('New event'), findsWidgets);
+      // #486: the only "New event" is the hero CTA — the section header action
+      // was removed to dedupe the two ~40px-apart entries.
+      expect(find.text('New event'), findsOneWidget);
       expect(find.byKey(GroupKeys.eventsCountChip), findsNothing);
     });
 
@@ -327,7 +329,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsNothing);
-      expect(find.text('New event'), findsWidgets);
+      expect(find.text('New event'), findsOneWidget);
       expect(find.text('Create Event'), findsOneWidget);
     });
 
