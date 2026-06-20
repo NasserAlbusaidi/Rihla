@@ -1373,6 +1373,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settleUpRecordPartialTitle => 'Record a partial payment?';
+
+  @override
+  String settleUpRecordPartialBody(Object fromName, Object toName) {
+    return 'This is a partial payment — the balance between $fromName and $toName stays open.';
+  }
+
+  @override
+  String settleUpRemainingAfter(Object fromName, Object toName, Object amount) {
+    return '$fromName will still owe $toName $amount after this.';
+  }
+
+  @override
   String get settleUpNoteHint => 'Add a note (optional)';
 
   @override

@@ -1421,6 +1421,19 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get settleUpRecordPartialTitle => 'تسجيل دفعة جزئية؟';
+
+  @override
+  String settleUpRecordPartialBody(Object fromName, Object toName) {
+    return 'هذه دفعة جزئية — يبقى الرصيد بين $fromName و$toName مفتوحاً.';
+  }
+
+  @override
+  String settleUpRemainingAfter(Object fromName, Object toName, Object amount) {
+    return 'سيظل $fromName مديناً لـ$toName بمبلغ $amount بعد ذلك.';
+  }
+
+  @override
   String get settleUpNoteHint => 'إضافة ملاحظة (اختياري)';
 
   @override

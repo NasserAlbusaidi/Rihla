@@ -1143,6 +1143,27 @@
       "toName": {}
     }
   },
+  "settleUpRecordPartialTitle": "Record a partial payment?",
+  "@settleUpRecordPartialTitle": {
+    "description": "Record-payment sheet title when the edited amount is below the full outstanding balance — a partial payment (#587). Perspective-neutral; the banner carries who-paid-whom."
+  },
+  "settleUpRecordPartialBody": "This is a partial payment — the balance between {fromName} and {toName} stays open.",
+  "@settleUpRecordPartialBody": {
+    "description": "Record-payment sheet body shown on a partial payment (edited < outstanding) (#587). Symmetric naming so it never debtor-frames the creditor's view.",
+    "placeholders": {
+      "fromName": {},
+      "toName": {}
+    }
+  },
+  "settleUpRemainingAfter": "{fromName} will still owe {toName} {amount} after this.",
+  "@settleUpRemainingAfter": {
+    "description": "Live hint under the amount on a partial payment: what remains outstanding (outstanding − edited) after this settlement is recorded (#587).",
+    "placeholders": {
+      "fromName": {},
+      "toName": {},
+      "amount": {}
+    }
+  },
   "settleUpNoteHint": "Add a note (optional)",
   "settleUpRecordsImmediately": "This records your payment to {name} immediately.",
   "@settleUpRecordsImmediately": {
