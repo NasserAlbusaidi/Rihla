@@ -27,11 +27,11 @@ class GroupGlyph extends StatelessWidget {
   /// monogram fallback.
   final String? glyph;
 
-  /// Optional persisted ink index [0, 6). Null → name-hash fallback (never
-  /// persisted).
+  /// Optional persisted ink index 0..5. Null OR out of range → name-hash
+  /// fallback (never persisted).
   final int? inkIndex;
 
-  /// Diameter (square).
+  /// Side length (square tile).
   final double size;
 
   @override
@@ -45,7 +45,15 @@ class GroupGlyph extends StatelessWidget {
       colors.cat5,
       colors.cat6,
     ];
-    final idx = inkIndex ?? (_hash(name) % inks.length);
+    // inkIndex is total-parsed from Firestore (any int, no clamp) — an
+    // out-of-range value must defer to the derived ink, never throw a
+    // RangeError and blank the always-mounted group row (#532). Symmetric with
+    // an unknown glyph degrading to the monogram.
+    final fallback = _hash(name) % inks.length;
+    final chosen = inkIndex;
+    final idx = (chosen != null && chosen >= 0 && chosen < inks.length)
+        ? chosen
+        : fallback;
     final ink = inks[idx];
     final bg = Color.alphaBlend(
       ink.withValues(alpha: 0.13),
@@ -92,5 +100,7 @@ class GroupGlyph extends StatelessWidget {
 
   @visibleForTesting
   static int debugResolvedInkIndex(String name, int? inkIndex) =>
-      inkIndex ?? (_hash(name) % 6);
+      (inkIndex != null && inkIndex >= 0 && inkIndex < 6)
+      ? inkIndex
+      : _hash(name) % 6;
 }
