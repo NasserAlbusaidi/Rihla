@@ -677,8 +677,17 @@ class BalanceCalculator {
     final splitCount = sortedRecipients.length;
     if (splitCount == 0) return {};
 
-    final perHead = (amount / Decimal.fromInt(splitCount)).toDecimal(
-      scaleOnInfinitePrecision: MoneySerializer.fractionDigits(currency),
+    // Quantize the per-head share to whole subunits, mirroring _allocateWeighted
+    // and the server allocateEqual (groupNetBalance.ts:152 `quantize`). The bare
+    // `scaleOnInfinitePrecision` only rounds NON-terminating divisions; a
+    // terminating sub-subunit quotient (e.g. OMR 2.900 / 8 = 0.3625) would
+    // otherwise pass through as a half-baisa share, breaking client↔server
+    // oracle parity and leaving netBalance non-whole-subunit (#596).
+    final perHead = _toCurrencyPrecision(
+      (amount / Decimal.fromInt(splitCount)).toDecimal(
+        scaleOnInfinitePrecision: 10,
+      ),
+      currency,
     );
     final remainder = amount - (perHead * Decimal.fromInt(splitCount));
 
