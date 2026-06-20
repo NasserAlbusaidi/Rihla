@@ -22,6 +22,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_detail_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
@@ -333,6 +334,106 @@ void main() {
     prefs = await SharedPreferences.getInstance();
   });
 
+  // #486 — one balance truth: the current user's net is owned by the hero and
+  // must NOT be restated in the People roster; a single "New event" entry.
+  group('#486 one balance truth', () {
+    testWidgets(
+      'current user net is owned by the hero, not restated in People roster',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            const GroupDetailScreen(groupId: _groupId),
+            prefs,
+            balancesAsync: AsyncValue.data(_balancesWithExpenses),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // The hero (top, in view before scrolling) owns the number.
+        expect(find.text('they owe you'), findsOneWidget);
+        expect(_textContaining('15.000'), findsWidgets);
+
+        await _scrollUntilVisible(
+          tester,
+          find.byKey(GroupKeys.membersAndBalancesSection),
+        );
+
+        // The self-row exists and is collapsed: no money figure, just a muted
+        // "shown above" — magnitude-independent, so Alice's +15.000 and Bob's
+        // -15.000 sharing a magnitude can't mask the assertion.
+        expect(find.byKey(GroupKeys.selfMemberRow), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(GroupKeys.selfMemberRow),
+            matching: find.byType(RAmount),
+          ),
+          findsNothing,
+        );
+        expect(find.text('shown above'), findsOneWidget);
+      },
+    );
+
+    testWidgets('other members still show their net in the People roster', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _scrollUntilVisible(
+        tester,
+        find.byKey(GroupKeys.membersAndBalancesSection),
+      );
+
+      final bobRow = find.ancestor(
+        of: find.text('Bob'),
+        matching: find.byType(Row),
+      );
+      expect(
+        find.descendant(of: bobRow, matching: find.byType(RAmount)),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('the roster section is renamed PEOPLE', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _scrollUntilVisible(
+        tester,
+        find.byKey(GroupKeys.membersAndBalancesSection),
+      );
+
+      expect(find.text('PEOPLE'), findsOneWidget);
+      expect(find.text('MEMBERS'), findsNothing);
+    });
+
+    testWidgets('only one New event entry (events header action removed)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+          events: [_testEvent],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('New event'), findsOneWidget);
+    });
+  });
+
   group('GroupDetailScreen current layout', () {
     testWidgets('shows cover header and balance card when balances load', (
       tester,
@@ -405,7 +506,7 @@ void main() {
       );
 
       expect(find.byKey(GroupKeys.membersAndBalancesSection), findsOneWidget);
-      expect(find.text('MEMBERS'), findsOneWidget);
+      expect(find.text('PEOPLE'), findsOneWidget);
 
       expect(find.text('Alice'), findsWidgets);
       expect(find.text('Bob'), findsOneWidget);
@@ -616,7 +717,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsNothing);
-      expect(find.text('New event'), findsWidgets);
+      expect(find.text('New event'), findsOneWidget);
       expect(find.text('Create Event'), findsOneWidget);
     });
 
@@ -634,7 +735,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsNothing);
-      expect(find.text('New event'), findsWidgets);
+      expect(find.text('New event'), findsOneWidget);
       expect(find.text('Create Event'), findsOneWidget);
     });
 

@@ -13,6 +13,10 @@ abstract final class GroupKeys {
   // Section keys
   static const membersAndBalancesSection =
       Key('group_members_and_balances_section');
+  // #486: the current user's collapsed "You · shown above" roster row (no
+  // figure — their net is owned by the hero). Lets tests assert the balance
+  // is not restated here without depending on amount magnitudes.
+  static const selfMemberRow = Key('group_self_member_row');
   static const inviteCodeSection = Key('group_invite_code_section');
   static const eventsSection = Key('group_events_section');
 
