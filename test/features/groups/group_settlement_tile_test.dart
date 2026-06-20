@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/r_avatar.dart';
 
 void main() {
   testWidgets(
-    'payer and payee avatars share a uniform border — no redundant ring (#147)',
+    'payer and payee both render the shared RAvatar — deterministic per-person '
+    'color, not a hand-rolled tint (#490, DEC-3)',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -28,19 +30,12 @@ void main() {
       );
       await tester.pump();
 
-      // The two avatars are the only circular Containers in the tile.
-      final ringColors = tester
-          .widgetList<Container>(find.byType(Container))
-          .map((c) => c.decoration)
-          .whereType<BoxDecoration>()
-          .where((d) => d.shape == BoxShape.circle && d.border is Border)
-          .map((d) => (d.border! as Border).top.color)
-          .toList();
-
-      expect(ringColors, hasLength(2));
-      // Payer/payee distinction is the background tint + the names row, not a
-      // differential ring — both rings are identical now.
-      expect(ringColors[0], equals(ringColors[1]));
+      // Both avatars are the shared RAvatar (name only, no hue override — DEC-3),
+      // replacing the prior hand-rolled saffron/cardSoft tint circles.
+      final avatars = tester.widgetList<RAvatar>(find.byType(RAvatar)).toList();
+      expect(avatars, hasLength(2));
+      expect(avatars.map((a) => a.name), containsAll(['Alice', 'Bob']));
+      expect(avatars.every((a) => a.hue == null), isTrue);
     },
   );
 

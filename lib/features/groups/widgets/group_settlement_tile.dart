@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/r_avatar.dart';
 
 /// A card-style settlement tile showing payer → payee, amount, and a
 /// collapsible per-event breakdown (D-04).
@@ -107,7 +108,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
               children: [
                 Row(
                   children: [
-                    _buildAvatar(widget.fromName, isPayer: true),
+                    RAvatar(name: widget.fromName, size: 36),
                     SizedBox(width: spacing.space12),
                     Expanded(
                       child: SizedBox(
@@ -161,7 +162,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                       ),
                     ),
                     SizedBox(width: spacing.space12),
-                    _buildAvatar(widget.toName, isPayer: false),
+                    RAvatar(name: widget.toName, size: 36),
                   ],
                 ),
                 SizedBox(height: spacing.space12),
@@ -301,30 +302,6 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                   ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar(String name, {required bool isPayer}) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: isPayer ? context.colors.saffronTint : context.colors.cardSoft,
-        shape: BoxShape.circle,
-        // #147: uniform border (matches _MiniAvatar). Payer/payee is carried by
-        // the background tint + the names row below — not a redundant ring color.
-        border: Border.all(color: context.colors.rule2),
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: isPayer ? context.colors.primaryDark : context.colors.ink2,
           ),
         ),
       ),
