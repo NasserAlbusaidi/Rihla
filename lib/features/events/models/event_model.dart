@@ -32,6 +32,17 @@ enum EventType {
 /// After Phase 39 strip: only [ledger] survives. Custom events can still
 /// toggle ledger off via [copyWith] per D-14. fromMap silently ignores
 /// legacy keys (gear/logistics/vault/memories) on persisted Firestore docs.
+///
+/// #246 — VESTIGIAL: `ledger` is the single surviving module since Phase 39 and
+/// is effectively always-true. NO read path filters by it — `group_balance_provider`
+/// folds every event's expenses/settlements regardless of `modules.ledger`, and
+/// `firestore.rules` validates only the SHAPE of `modules` (hasOnly['ledger']),
+/// never gates writes on its value. So the toggle is a phantom: setting it false
+/// hides nothing and blocks no money. Owner decision (2026-06-19): keep it as a
+/// vestigial field — neither delete (Event-schema churn + migration) nor enforce
+/// (a read-path + rules gate nobody needs) earns its cost. Revisit only if a
+/// genuine per-event module need reappears; until then do not wire a read path
+/// onto it without reopening #246.
 class EventModules {
   final bool ledger;
 
