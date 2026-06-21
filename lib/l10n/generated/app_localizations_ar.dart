@@ -2468,9 +2468,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupShareInviteSemantic => 'مشاركة الدعوة';
 
   @override
-  String get groupNameEmpty => 'لا يمكن أن يكون اسم المجموعة فارغًا.';
-
-  @override
   String groupUpdateNameFailed(Object error) {
     return 'تعذّر تحديث الاسم: $error';
   }

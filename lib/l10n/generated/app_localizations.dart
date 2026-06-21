@@ -4080,12 +4080,6 @@ abstract class AppLocalizations {
   /// **'Share invite'**
   String get groupShareInviteSemantic;
 
-  /// No description provided for @groupNameEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Group name can\'t be empty.'**
-  String get groupNameEmpty;
-
   /// No description provided for @groupUpdateNameFailed.
   ///
   /// In en, this message translates to:

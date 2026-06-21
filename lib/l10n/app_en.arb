@@ -1697,7 +1697,6 @@
   "groupCopyInviteCodeSemantic": "Copy invite code",
   "groupShowQrCodeSemantic": "Show QR code",
   "groupShareInviteSemantic": "Share invite",
-  "groupNameEmpty": "Group name can't be empty.",
   "groupUpdateNameFailed": "Failed to update name: {error}",
   "@groupUpdateNameFailed": {
     "placeholders": {

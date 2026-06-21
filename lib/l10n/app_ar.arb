@@ -705,7 +705,6 @@
   "groupCopyInviteCodeSemantic": "نسخ رمز الدعوة",
   "groupShowQrCodeSemantic": "عرض رمز QR",
   "groupShareInviteSemantic": "مشاركة الدعوة",
-  "groupNameEmpty": "لا يمكن أن يكون اسم المجموعة فارغًا.",
   "groupUpdateNameFailed": "تعذّر تحديث الاسم: {error}",
   "groupDangerZone": "منطقة الخطر",
   "groupDangerZoneCreatorOnly": "منطقة الخطر · للمنشئ فقط",
