@@ -150,8 +150,15 @@ class GroupService extends FirestoreRepository {
   Future<Group> createGroup({
     required String name,
     required String currency,
+    String? glyph,
+    int? inkIndex,
   }) async {
-    final staged = stageGroup(name: name, currency: currency);
+    final staged = stageGroup(
+      name: name,
+      currency: currency,
+      glyph: glyph,
+      inkIndex: inkIndex,
+    );
     await staged.ack;
     return staged.group;
   }
@@ -177,6 +184,8 @@ class GroupService extends FirestoreRepository {
   ({Group group, Future<void> ack}) stageGroup({
     required String name,
     required String currency,
+    String? glyph,
+    int? inkIndex,
   }) {
     final uid = _currentUid;
     if (uid == null) {
@@ -217,6 +226,12 @@ class GroupService extends FirestoreRepository {
       // field-absent groups remain visible.
       'isDeleted': false,
       'deletedAt': null,
+      // #287/trip-stamps: a chosen stamp is written ONLY when present. The
+      // create rule allow-lists glyph/inkIndex but REJECTS an explicit null
+      // (validGroupCreate), so a default group must omit both keys — never a
+      // derived fallback. fromDoc reads absence as null.
+      if (glyph != null) 'glyph': glyph,
+      if (inkIndex != null) 'inkIndex': inkIndex,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -258,6 +273,8 @@ class GroupService extends FirestoreRepository {
       currency: currency,
       createdAt: now,
       updatedAt: now,
+      glyph: glyph,
+      inkIndex: inkIndex,
     );
     return (group: group, ack: ack);
   }

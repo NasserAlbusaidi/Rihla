@@ -80,6 +80,163 @@ void main() {
         },
       );
 
+      group('glyph / inkIndex on create (#287 trip-stamps)', () {
+        // PR-2b Task 6: an explicit stamp pick threads through stageGroup into
+        // the create doc. The rules allow-list both keys on create AND reject an
+        // explicit null (firestore.rules validGroupCreate), so a default group
+        // MUST omit the keys entirely — the write is conditional, never a
+        // fallback. FakeFirebaseFirestore does not enforce rules, so these tests
+        // pin the omit-when-null contract directly (the prod rule path is pinned
+        // separately by firestore-rules-publish-readiness.test.ts).
+        Future<GroupService> stampService(FakeFirebaseFirestore fakeDb) async {
+          SharedPreferences.setMockInitialValues({'device_name': 'Nasser'});
+          final prefs = await SharedPreferences.getInstance();
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'creator-uid-287',
+                ),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+          return container.read(groupServiceProvider);
+        }
+
+        test(
+          'persists chosen glyph + inkIndex in the create doc and the local '
+          'Group',
+          () async {
+            final fakeDb = FakeFirebaseFirestore();
+            final service = await stampService(fakeDb);
+
+            final staged = service.stageGroup(
+              name: 'Jebel Shams',
+              currency: 'OMR',
+              glyph: 'tent',
+              inkIndex: 3,
+            );
+            await staged.ack;
+
+            final data = (await fakeDb
+                    .collection('groups')
+                    .doc(staged.group.id)
+                    .get())
+                .data()!;
+            expect(data['glyph'], 'tent');
+            expect(data['inkIndex'], 3);
+
+            // The optimistic pre-snapshot object carries the pick too, so the
+            // landing tile matches the doc before the first Firestore snapshot.
+            expect(staged.group.glyph, 'tent');
+            expect(staged.group.inkIndex, 3);
+          },
+        );
+
+        test(
+          'omits both keys entirely when no stamp is chosen (never write a '
+          'fallback — rules reject an explicit null)',
+          () async {
+            final fakeDb = FakeFirebaseFirestore();
+            final service = await stampService(fakeDb);
+
+            final staged = service.stageGroup(
+              name: 'Plain Group',
+              currency: 'OMR',
+            );
+            await staged.ack;
+
+            final data = (await fakeDb
+                    .collection('groups')
+                    .doc(staged.group.id)
+                    .get())
+                .data()!;
+            expect(
+              data.containsKey('glyph'),
+              isFalse,
+              reason: 'default group must not carry a glyph key',
+            );
+            expect(
+              data.containsKey('inkIndex'),
+              isFalse,
+              reason: 'default group must not carry an inkIndex key',
+            );
+
+            expect(staged.group.glyph, isNull);
+            expect(staged.group.inkIndex, isNull);
+          },
+        );
+
+        test('writes glyph only, leaving inkIndex absent', () async {
+          final fakeDb = FakeFirebaseFirestore();
+          final service = await stampService(fakeDb);
+
+          final staged = service.stageGroup(
+            name: 'Glyph Only',
+            currency: 'OMR',
+            glyph: 'mountain',
+          );
+          await staged.ack;
+
+          final data =
+              (await fakeDb.collection('groups').doc(staged.group.id).get())
+                  .data()!;
+          expect(data['glyph'], 'mountain');
+          expect(data.containsKey('inkIndex'), isFalse);
+          expect(staged.group.glyph, 'mountain');
+          expect(staged.group.inkIndex, isNull);
+        });
+
+        test('writes inkIndex only, leaving glyph absent', () async {
+          final fakeDb = FakeFirebaseFirestore();
+          final service = await stampService(fakeDb);
+
+          final staged = service.stageGroup(
+            name: 'Ink Only',
+            currency: 'OMR',
+            inkIndex: 5,
+          );
+          await staged.ack;
+
+          final data =
+              (await fakeDb.collection('groups').doc(staged.group.id).get())
+                  .data()!;
+          expect(data['inkIndex'], 5);
+          expect(data.containsKey('glyph'), isFalse);
+          expect(staged.group.inkIndex, 5);
+          expect(staged.group.glyph, isNull);
+        });
+
+        test(
+          'createGroup forwards glyph + inkIndex through to the create doc',
+          () async {
+            final fakeDb = FakeFirebaseFirestore();
+            final service = await stampService(fakeDb);
+
+            final group = await service.createGroup(
+              name: 'Via createGroup',
+              currency: 'OMR',
+              glyph: 'palm',
+              inkIndex: 2,
+            );
+
+            final data = (await fakeDb
+                    .collection('groups')
+                    .doc(group.id)
+                    .get())
+                .data()!;
+            expect(data['glyph'], 'palm');
+            expect(data['inkIndex'], 2);
+            expect(group.glyph, 'palm');
+            expect(group.inkIndex, 2);
+          },
+        );
+      });
+
       test('groupServiceProvider is accessible from container', () async {
         SharedPreferences.setMockInitialValues({'device_name': 'Ali'});
         final prefs = await SharedPreferences.getInstance();
