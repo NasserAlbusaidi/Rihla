@@ -11,6 +11,7 @@ import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../models/split_explanation.dart';
 
 export '../../../core/models/split_mode.dart' show SplitMode;
 
@@ -19,10 +20,20 @@ export '../../../core/models/split_mode.dart' show SplitMode;
 /// `BalanceCalculator` handles that case, so we deliberately do NOT persist a
 /// distribution map for it.
 class SplitResult {
-  const SplitResult({required this.mode, required this.distribution});
+  const SplitResult({
+    required this.mode,
+    required this.distribution,
+    this.items,
+  });
 
   final SplitMode mode;
   final Map<String, Decimal>? distribution;
+
+  /// Non-null ONLY for an itemized result (#203 S2, produced by PR2's editor).
+  /// When set, [mode] is always [SplitMode.exact] and [distribution] is
+  /// `allocateItemizedDistribution(items)`. Null for every plain mode, so the
+  /// existing four-arm paths return `items: null` and persist no metadata.
+  final List<SplitItem>? items;
 }
 
 /// Bottom-sheet split editor. Supports four modes:
