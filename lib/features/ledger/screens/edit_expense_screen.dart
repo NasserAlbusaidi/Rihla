@@ -15,6 +15,7 @@ import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
+import '../models/split_explanation.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/expense_editor_body.dart';
 
@@ -110,6 +111,16 @@ class EditExpenseScreen extends ConsumerWidget {
         );
     final goingEqual = splitChanged && payload.splitMode == SplitMode.equally;
 
+    // #203 S2: the itemized display metadata is written through its OWN param,
+    // INDEPENDENT of splitChanged — a relabel-only edit (distribution identical)
+    // must still persist the new map, and rules accept a {splitExplanation,
+    // lastEditedBy}-only update. Do NOT fold this into splitChanged: that would
+    // needlessly rewrite an identical splitDistribution on a pure relabel.
+    final explanationChanged = !_explanationEquals(
+      payload.splitExplanation,
+      original.splitExplanation,
+    );
+
     // #104/#412: capture before the await so post-write effects survive a
     // disposal during the (now bounded) wait.
     final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
@@ -140,6 +151,13 @@ class EditExpenseScreen extends ConsumerWidget {
               ? payload.splitDistribution
               : null,
           clearSplit: goingEqual,
+          // #203 S2: set the new metadata when it changed and is present;
+          // orphan-delete it when it changed to absent (no longer itemized).
+          // Untouched when unchanged, preserving the stored value.
+          splitExplanation: explanationChanged && payload.splitExplanation != null
+              ? payload.splitExplanation
+              : null,
+          clearExplanation: explanationChanged && payload.splitExplanation == null,
           categoryId: payload.categoryId != original.categoryId
               ? payload.categoryId
               : null,
@@ -179,6 +197,36 @@ class EditExpenseScreen extends ConsumerWidget {
     for (final entry in a.entries) {
       if (!b.containsKey(entry.key)) return false;
       if (b[entry.key].toString() != entry.value.toString()) return false;
+    }
+    return true;
+  }
+
+  // #203 S2: structural equality for itemized metadata — decides whether to
+  // rewrite/clear splitExplanation. SplitExplanation/SplitItem have no value
+  // ==, so compare field-by-field; participantIds is order-independent (a SET)
+  // because assignment order is not meaningful. A relabel (label differs) is a
+  // change; reordering the same assignees is not.
+  bool _explanationEquals(SplitExplanation? a, SplitExplanation? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.items.length != b.items.length) return false;
+    for (var i = 0; i < a.items.length; i++) {
+      final ia = a.items[i];
+      final ib = b.items[i];
+      if (ia.label != ib.label ||
+          ia.amountFils != ib.amountFils ||
+          ia.quantity != ib.quantity ||
+          !_setEquals(ia.participantIds.toSet(), ib.participantIds.toSet())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _setEquals(Set<String> a, Set<String> b) {
+    if (a.length != b.length) return false;
+    for (final v in a) {
+      if (!b.contains(v)) return false;
     }
     return true;
   }

@@ -72,6 +72,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             customSplitParticipants: payload.customSplitParticipants,
             splitMode: payload.splitMode,
             splitDistribution: payload.splitDistribution,
+            // #203 S2: opaque itemized metadata (null until PR2's editor authors
+            // it). Persisted alongside the exact distribution on create.
+            splitExplanation: payload.splitExplanation,
             categoryId: payload.categoryId,
             createdBy: currentUid,
           );
