@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -216,17 +217,9 @@ class EditExpenseScreen extends ConsumerWidget {
       if (ia.label != ib.label ||
           ia.amountFils != ib.amountFils ||
           ia.quantity != ib.quantity ||
-          !_setEquals(ia.participantIds.toSet(), ib.participantIds.toSet())) {
+          !setEquals(ia.participantIds.toSet(), ib.participantIds.toSet())) {
         return false;
       }
-    }
-    return true;
-  }
-
-  bool _setEquals(Set<String> a, Set<String> b) {
-    if (a.length != b.length) return false;
-    for (final v in a) {
-      if (!b.contains(v)) return false;
     }
     return true;
   }
