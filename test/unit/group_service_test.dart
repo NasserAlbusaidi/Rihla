@@ -545,6 +545,141 @@ void main() {
       // removed. Rule enforcement is covered in the functions rules suite.
     });
 
+    group('updateGroupIdentity', () {
+      // PR-3 Task A: the creator edits an existing group's identity in ONE
+      // atomic write — display name + trip-stamp (glyph + inkIndex). A null
+      // glyph/inkIndex CLEARS the field via FieldValue.delete(), so the
+      // post-write doc has the key ABSENT (byte-identical to a never-set
+      // default), which the deployed `validCreatorMetadataUpdate` rule admits.
+      // We never write an explicit null. FakeFirebaseFirestore does not enforce
+      // rules, so these tests pin the write-shape contract directly (the prod
+      // rule path is pinned separately in the functions rules suite); the
+      // FieldValueDelete mock removes the key on .update(), matching prod.
+      Future<GroupService> identityService(FakeFirebaseFirestore fakeDb) async {
+        SharedPreferences.setMockInitialValues({'device_name': 'Nasser'});
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupServiceProvider.overrideWith(
+              (ref) => GroupService.withFirestore(
+                ref,
+                fakeDb,
+                currentUserId: 'creator-uid-pr3',
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        return container.read(groupServiceProvider);
+      }
+
+      test('writes name + glyph + inkIndex in one update', () async {
+        final fakeDb = FakeFirebaseFirestore();
+        await fakeDb.collection('groups').doc('grp-id').set({
+          'id': 'grp-id',
+          'name': 'Old Name',
+          'currency': 'OMR',
+        });
+        final service = await identityService(fakeDb);
+
+        await service.updateGroupIdentity(
+          groupId: 'grp-id',
+          name: 'New Name',
+          glyph: 'wave',
+          inkIndex: 2,
+        );
+
+        final data =
+            (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+        expect(data['name'], 'New Name');
+        expect(data['glyph'], 'wave');
+        expect(data['inkIndex'], 2);
+      });
+
+      test(
+        'clearing glyph (null) deletes a previously-set glyph key',
+        () async {
+          final fakeDb = FakeFirebaseFirestore();
+          // Seed an EXISTING glyph so this is a true present -> absent
+          // transition; a delete on a never-set field proves nothing.
+          await fakeDb.collection('groups').doc('grp-id').set({
+            'id': 'grp-id',
+            'name': 'Old Name',
+            'currency': 'OMR',
+            'glyph': 'tent',
+          });
+          final service = await identityService(fakeDb);
+
+          await service.updateGroupIdentity(
+            groupId: 'grp-id',
+            name: 'X',
+            glyph: null,
+            inkIndex: 3,
+          );
+
+          final data =
+              (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+          expect(
+            data.containsKey('glyph'),
+            isFalse,
+            reason: 'a null glyph must clear the key, not write null',
+          );
+          expect(data['name'], 'X');
+          expect(data['inkIndex'], 3);
+        },
+      );
+
+      test(
+        'clearing inkIndex (null) deletes a previously-set inkIndex key',
+        () async {
+          final fakeDb = FakeFirebaseFirestore();
+          await fakeDb.collection('groups').doc('grp-id').set({
+            'id': 'grp-id',
+            'name': 'Old Name',
+            'currency': 'OMR',
+            'inkIndex': 1,
+          });
+          final service = await identityService(fakeDb);
+
+          await service.updateGroupIdentity(
+            groupId: 'grp-id',
+            name: 'Y',
+            glyph: 'sun',
+            inkIndex: null,
+          );
+
+          final data =
+              (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+          expect(
+            data.containsKey('inkIndex'),
+            isFalse,
+            reason: 'a null inkIndex must clear the key, not write null',
+          );
+          expect(data['glyph'], 'sun');
+        },
+      );
+
+      test('writes updatedAt (server timestamp resolves to a value)', () async {
+        final fakeDb = FakeFirebaseFirestore();
+        await fakeDb.collection('groups').doc('grp-id').set({
+          'id': 'grp-id',
+          'name': 'Old Name',
+          'currency': 'OMR',
+        });
+        final service = await identityService(fakeDb);
+
+        await service.updateGroupIdentity(
+          groupId: 'grp-id',
+          name: 'Z',
+        );
+
+        final data =
+            (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+        expect(data['updatedAt'], isNotNull);
+      });
+    });
+
     group('updateMemberDisplayName integration', () {
       test('updates displayName field in members subcollection', () async {
         SharedPreferences.setMockInitialValues({

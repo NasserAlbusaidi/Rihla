@@ -444,6 +444,27 @@ class GroupService extends FirestoreRepository {
     await db.collection('groups').doc(groupId).update(updateMap);
   }
 
+  /// Update a group's editable identity in ONE atomic write: display [name]
+  /// plus the trip-stamp ([glyph] + [inkIndex]). A null [glyph]/[inkIndex]
+  /// CLEARS that field via FieldValue.delete() — the post-write doc has the key
+  /// absent (byte-identical to a never-set default), which the deployed
+  /// `validCreatorMetadataUpdate` rule admits (strict absent-or-valid guard).
+  /// We never write an explicit null. Creator-only is enforced by the rule
+  /// (isCreator()), not here.
+  Future<void> updateGroupIdentity({
+    required String groupId,
+    required String name,
+    String? glyph,
+    int? inkIndex,
+  }) async {
+    await db.collection('groups').doc(groupId).update({
+      'name': name,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'glyph': glyph ?? FieldValue.delete(),
+      'inkIndex': inkIndex ?? FieldValue.delete(),
+    });
+  }
+
   /// Update a member's display name in the group (D-07).
   Future<void> updateMemberDisplayName({
     required String groupId,
