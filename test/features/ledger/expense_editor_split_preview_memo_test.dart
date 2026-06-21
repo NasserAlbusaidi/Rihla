@@ -17,15 +17,20 @@ import 'package:safar/features/ledger/widgets/expense_editor_body.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// #627 — `_SplitPreviewCard` must memoize the disambiguation name map (keyed on
-/// event identity) and the `allocateExpenseOwed` allocation (keyed on the
-/// allocation inputs), instead of recomputing both on every amount keystroke.
+/// #627 (+ follow-up) — the editor must NOT recompute the disambiguation name map
+/// on every amount keystroke. #627 memoized it inside `_SplitPreviewCard`; the
+/// follow-up HOISTS it to the parent (`_ExpenseEditorBodyState._disambiguatedNames`,
+/// keyed on event identity) and shares the single memo with the paid-by,
+/// provenance, and split-preview consumers — so it computes once per event change,
+/// not once per consumer per keystroke. `_SplitPreviewCard` still memoizes the
+/// `allocateExpenseOwed` allocation (keyed on the allocation inputs).
 ///
-/// The two invariants the memo must NOT break (display-only, but money-faithful):
-///   • owed figures always reflect the live inputs (no stale cache), and
-///   • the name map refreshes on a same-id rename (Event.== is id-only — #106).
+/// The invariants the memo must NOT break (display-only, but money-faithful):
+///   • owed figures always reflect the live inputs (no stale cache),
+///   • the name map refreshes on a same-id rename (Event.== is id-only — #106), and
+///   • the paid-by attribution shows the SAME disambiguated name as the preview.
 /// Plus the win itself: a pure amount keystroke recomputes owed but NOT the name
-/// map.
+/// map — for the whole editor, from one shared compute.
 Event eventWith({Map<String, String>? names}) => Event(
   id: 'event-1',
   name: 'Marrakech',
@@ -43,7 +48,7 @@ Event eventWith({Map<String, String>? names}) => Event(
 
 void main() {
   setUp(() {
-    debugSplitPreviewNameComputes = 0;
+    debugEditorNameMapComputes = 0;
     debugSplitPreviewOwedComputes = 0;
   });
 
@@ -182,7 +187,7 @@ void main() {
         },
       ),
     );
-    final namesAfterLoad = debugSplitPreviewNameComputes;
+    final namesAfterLoad = debugEditorNameMapComputes;
     final owedAfterLoad = debugSplitPreviewOwedComputes;
     expect(namesAfterLoad, greaterThanOrEqualTo(1));
     expect(owedAfterLoad, greaterThanOrEqualTo(1));
@@ -192,7 +197,7 @@ void main() {
 
     // The win: the name map is event-derived; the event is unchanged while
     // typing, so it must NOT be recomputed.
-    expect(debugSplitPreviewNameComputes, namesAfterLoad);
+    expect(debugEditorNameMapComputes, namesAfterLoad);
     // The amount changed → owed must reallocate (fresh, non-stale figures).
     expect(debugSplitPreviewOwedComputes, greaterThan(owedAfterLoad));
   });
@@ -211,4 +216,52 @@ void main() {
     expect(find.text('OMR 6.000'), findsWidgets); // 12.000 / 2
     expect(debugSplitPreviewOwedComputes, 0);
   });
+
+  testWidgets(
+    'one shared name map feeds the paid-by card and the preview, flat across a '
+    'keystroke (#627 follow-up)',
+    (tester) async {
+      // Two LIVE members named "Sara" collide → the #196/#289 disambiguator
+      // appends ` (#<last4-of-uid>)`. The disambiguated PAYER string is fed from
+      // the ONE parent-owned map to BOTH surfaces that render it exactly: the
+      // paid-by attribution AND the payer's split-preview tile. Asserting exactly
+      // two occurrences pins both — were _PaidByCard to revert to raw
+      // participantNames it would render a bare "Sara" and the count would drop
+      // to one (the provenance byline renders "Added by Sara (#smin)", which is
+      // not an exact match, so it never contributes to this count).
+      final twoSaras = Event(
+        id: 'event-1',
+        name: 'Marrakech',
+        type: EventType.trip,
+        groupId: 'group-1',
+        createdBy: 'uid-yasmin',
+        participantIds: const ['uid-yasmin', 'uid-layla'],
+        participantNames: const {'uid-yasmin': 'Sara', 'uid-layla': 'Sara'},
+        modules: const EventModules(),
+        startDate: DateTime(2026, 3, 21),
+        createdAt: DateTime(2026, 3, 20),
+      );
+
+      await pumpEditor(
+        tester,
+        initial: expenseWith(mode: SplitMode.equally, amount: '9.000'),
+        eventStream: Stream.value(twoSaras),
+      );
+
+      // Payer is uid-yasmin → discriminator is the last 4 chars 'smin'. Exactly
+      // two surfaces render that string: the paid-by card title and the payer's
+      // preview tile (both fed from the shared map).
+      expect(find.text('Sara (#smin)'), findsNWidgets(2));
+
+      // One compute serves every in-build consumer (paid-by + provenance +
+      // preview), not one recompute per consumer.
+      expect(debugEditorNameMapComputes, 1);
+
+      // A pure amount keystroke leaves the event instance unchanged, so the
+      // shared map must NOT be recomputed for ANY consumer.
+      await tester.enterText(find.byType(TextField).first, '12.000');
+      await tester.pumpAndSettle();
+      expect(debugEditorNameMapComputes, 1);
+    },
+  );
 }
