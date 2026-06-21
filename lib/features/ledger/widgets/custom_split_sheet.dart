@@ -33,6 +33,7 @@ class SplitResult {
     required this.mode,
     required this.distribution,
     this.items,
+    this.adjustments,
   });
 
   final SplitMode mode;
@@ -40,9 +41,15 @@ class SplitResult {
 
   /// Non-null ONLY for an itemized result (#203 S2, produced by PR2's editor).
   /// When set, [mode] is always [SplitMode.exact] and [distribution] is
-  /// `allocateItemizedDistribution(items)`. Null for every plain mode, so the
-  /// existing four-arm paths return `items: null` and persist no metadata.
+  /// `allocateItemizedDistribution(items, adjustments)`. Null for every plain
+  /// mode, so the existing four-arm paths return `items: null` and persist no
+  /// metadata.
   final List<SplitItem>? items;
+
+  /// Bill-level adjustments (#605), non-null only alongside [items] (itemized).
+  /// May be empty (itemized with no adjustments). Folded into [distribution];
+  /// ride along as display metadata in `splitExplanation.adjustments`.
+  final List<SplitAdjustment>? adjustments;
 }
 
 /// Bottom-sheet split editor. Supports four modes:
@@ -68,6 +75,7 @@ Future<SplitResult?> showCustomSplitSheet(
   SplitMode initialMode = SplitMode.equally,
   Map<String, Decimal>? initialDistribution,
   List<SplitItem>? initialItems,
+  List<SplitAdjustment>? initialAdjustments,
   bool initialItemized = false,
 }) {
   return showModalBottomSheet<SplitResult>(
@@ -85,6 +93,7 @@ Future<SplitResult?> showCustomSplitSheet(
       initialMode: initialMode,
       initialDistribution: initialDistribution,
       initialItems: initialItems,
+      initialAdjustments: initialAdjustments,
       initialItemized: initialItemized,
     ),
   );
@@ -119,6 +128,7 @@ class CustomSplitSheet extends StatefulWidget {
     this.initialMode = SplitMode.equally,
     this.initialDistribution,
     this.initialItems,
+    this.initialAdjustments,
     this.initialItemized = false,
   });
 
@@ -133,6 +143,10 @@ class CustomSplitSheet extends StatefulWidget {
   /// reopening an itemized expense. Each row's amount is shown via
   /// [MoneySerializer.fromSubunits] in [currency].
   final List<SplitItem>? initialItems;
+
+  /// Bill-level adjustments to seed (#605) — non-null only when reopening an
+  /// itemized expense that carried adjustments.
+  final List<SplitAdjustment>? initialAdjustments;
 
   /// Open directly on the Itemized tab (#203 S2). When true the sheet builds
   /// its draft rows from [initialItems] (or one empty row if null).
@@ -161,6 +175,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
   /// Itemized line-item drafts. Owned here so controllers are disposed once.
   late List<_ItemDraft> _drafts;
 
+  /// Bill-level adjustment drafts (#605). Owned here; controllers disposed once.
+  late List<_AdjustmentDraft> _adjDrafts;
+
   @override
   void initState() {
     super.initState();
@@ -170,6 +187,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     _initExact();
     _initPercent();
     _initDrafts();
+    _initAdjustmentDrafts();
   }
 
   @override
@@ -181,6 +199,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
       c.dispose();
     }
     for (final d in _drafts) {
+      d.dispose();
+    }
+    for (final d in _adjDrafts) {
       d.dispose();
     }
     super.dispose();
@@ -195,6 +216,13 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     }
   }
 
+  void _initAdjustmentDrafts() {
+    final seed = widget.initialAdjustments;
+    _adjDrafts = (widget.initialItemized && seed != null)
+        ? [for (final a in seed) _AdjustmentDraft.fromAdjustment(a, widget.currency)]
+        : <_AdjustmentDraft>[];
+  }
+
   void _addDraft() {
     setState(() => _drafts.add(_ItemDraft.empty()));
   }
@@ -204,6 +232,39 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     setState(() {
       _drafts.remove(draft);
     });
+    draft.dispose();
+  }
+
+  /// "+ Add" an adjustment: append an empty draft and open the editor on it.
+  /// On close, an unfilled draft is pruned (so it never blocks Apply or persists).
+  void _addAdjustment() {
+    final draft = _AdjustmentDraft.empty();
+    setState(() => _adjDrafts.add(draft));
+    _openAdjustmentEditor(draft);
+  }
+
+  Future<void> _openAdjustmentEditor(_AdjustmentDraft draft) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colors.scaffoldBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _AddAdjustmentSheet(draft: draft, currency: widget.currency),
+    );
+    if (!mounted) return;
+    setState(() {
+      // Blank/invalid on close ⇒ discard (also the "clear to delete" path on edit).
+      if (!_adjValid(draft)) {
+        _adjDrafts.remove(draft);
+        draft.dispose();
+      }
+    });
+  }
+
+  void _removeAdjustment(_AdjustmentDraft draft) {
+    setState(() => _adjDrafts.remove(draft));
     draft.dispose();
   }
 
@@ -307,20 +368,73 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     return sum;
   }
 
-  Decimal get _itemizedRemainder => widget.total - _itemizedSum;
+  // ───────────────────────────────────────────── bill-level adjustments (#605)
 
-  /// Per-person owed from the currently-valid drafts. Invalid drafts (no
-  /// assignee / blank amount) are excluded so the allocator never throws on a
-  /// mid-edit row; the live preview just omits their cost.
+  /// Parsed amount for an adjustment draft, or null if blank/unparseable/≤0.
+  Decimal? _adjAmount(_AdjustmentDraft d) {
+    final v = Decimal.tryParse(d.amount.text);
+    if (v == null || v <= Decimal.zero) return null;
+    return v;
+  }
+
+  bool _adjValid(_AdjustmentDraft d) => _adjAmount(d) != null;
+
+  Decimal get _adjAdditiveSum {
+    var sum = Decimal.zero;
+    for (final d in _adjDrafts) {
+      if (d.type != 'discount') sum += _adjAmount(d) ?? Decimal.zero;
+    }
+    return sum;
+  }
+
+  Decimal get _adjDiscountSum {
+    var sum = Decimal.zero;
+    for (final d in _adjDrafts) {
+      if (d.type == 'discount') sum += _adjAmount(d) ?? Decimal.zero;
+    }
+    return sum;
+  }
+
+  /// The folded subtotal the bill must reconcile to: items + additive − discount.
+  Decimal get _itemizedFoldedSum =>
+      _itemizedSum + _adjAdditiveSum - _adjDiscountSum;
+
+  Decimal get _itemizedRemainder => widget.total - _itemizedFoldedSum;
+
+  List<String> get _participantIds => [for (final p in widget.participants) p.id];
+
+  /// Per-person owed from the currently-valid drafts + adjustments. Invalid item
+  /// drafts (no assignee / blank amount) and invalid adjustment drafts are
+  /// excluded so the allocator never throws on a mid-edit row. Discounts are
+  /// dropped from the transient preview whenever they would overshoot
+  /// (`Σdiscount > Σitems + Σadditive` ⇒ Phase-3 `remaining < 0`), keeping the
+  /// INBOUND display safe while a discount is being typed; the strict throw
+  /// stays on the OUTBOUND build path (which Apply has already reconciled).
   Map<String, Decimal> get _itemizedPreview {
     final items = [
       for (final d in _drafts)
         if (_draftValid(d)) d.toItem(widget.currency),
     ];
-    if (items.isEmpty) return const {};
+    final validAdj = [for (final d in _adjDrafts) if (_adjValid(d)) d];
+    if (items.isEmpty && validAdj.isEmpty) return const {};
+
+    final additive = [
+      for (final d in validAdj)
+        if (d.type != 'discount') d.toAdjustment(widget.currency),
+    ];
+    final discounts = [
+      for (final d in validAdj)
+        if (d.type == 'discount') d.toAdjustment(widget.currency),
+    ];
+    final keepDiscounts =
+        (_itemizedSum + _adjAdditiveSum - _adjDiscountSum) >= Decimal.zero;
+    final adjustments = keepDiscounts ? [...additive, ...discounts] : additive;
+
     return BalanceCalculator.allocateItemizedDistribution(
       items: items,
       currency: widget.currency,
+      adjustments: adjustments,
+      participantIds: _participantIds,
     );
   }
 
@@ -328,6 +442,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     if (widget.participants.isEmpty) return false;
     if (_drafts.isEmpty) return false;
     if (!_drafts.every(_draftValid)) return false;
+    if (!_adjDrafts.every(_adjValid)) return false;
     return _itemizedRemainder.abs() <= _tolerance;
   }
 
@@ -395,14 +510,20 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
   /// persists AS [SplitMode.exact]; the items ride along as display metadata.
   SplitResult _buildItemizedResult() {
     final items = [for (final d in _drafts) d.toItem(widget.currency)];
+    final adjustments = [
+      for (final d in _adjDrafts) d.toAdjustment(widget.currency),
+    ];
     final dist = BalanceCalculator.allocateItemizedDistribution(
       items: items,
       currency: widget.currency,
+      adjustments: adjustments,
+      participantIds: _participantIds,
     );
     return SplitResult(
       mode: SplitMode.exact,
       distribution: dist,
       items: items,
+      adjustments: adjustments,
     );
   }
 
@@ -466,6 +587,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
                     ? _ItemizedBody(
                         key: const ValueKey('itemized'),
                         drafts: _drafts,
+                        adjDrafts: _adjDrafts,
                         participants: widget.participants,
                         currency: widget.currency,
                         preview: _itemizedPreview,
@@ -473,6 +595,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
                         onChanged: () => setState(() {}),
                         onAddItem: _addDraft,
                         onRemoveItem: _removeDraft,
+                        onAddAdjustment: _addAdjustment,
+                        onEditAdjustment: _openAdjustmentEditor,
+                        onRemoveAdjustment: _removeAdjustment,
                       )
                     : _ModeBody(
                         key: ValueKey(_mode),
@@ -498,7 +623,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
               exactRemainder: _exactRemainder,
               percentSum: _percentSum,
               percentRemainder: _percentRemainder,
-              itemizedSum: _itemizedSum,
+              itemizedSum: _itemizedFoldedSum,
               itemizedRemainder: _itemizedRemainder,
               canApply: _canApply,
             ),

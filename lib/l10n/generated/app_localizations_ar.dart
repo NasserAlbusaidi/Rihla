@@ -1136,6 +1136,51 @@ class AppLocalizationsAr extends AppLocalizations {
   String get itemizedNeedsSomeone => 'حدّد شخصًا';
 
   @override
+  String get adjustmentsHeader => 'التعديلات';
+
+  @override
+  String get adjustmentAddAction => '+ إضافة';
+
+  @override
+  String get adjustmentRemove => 'حذف التعديل';
+
+  @override
+  String get adjustmentSheetTitle => 'إضافة تعديل';
+
+  @override
+  String get adjustmentTypeLabel => 'النوع';
+
+  @override
+  String get adjustmentTypeService => 'خدمة';
+
+  @override
+  String get adjustmentTypeTax => 'ضريبة';
+
+  @override
+  String get adjustmentTypeTip => 'إكرامية';
+
+  @override
+  String get adjustmentTypeDiscount => 'خصم';
+
+  @override
+  String get adjustmentAmountLabel => 'المبلغ';
+
+  @override
+  String get adjustmentSpreadHeader => 'طريقة التوزيع';
+
+  @override
+  String get adjustmentAllocEqual => 'بالتساوي';
+
+  @override
+  String get adjustmentAllocProportional => 'حسب الأصناف';
+
+  @override
+  String get adjustmentDiscountNote => 'يُوزَّع الخصم بنسبة ما يخص كل شخص.';
+
+  @override
+  String get adjustmentDone => 'تم';
+
+  @override
   String get categoryPickerTitle => 'ما الغرض منه؟';
 
   @override

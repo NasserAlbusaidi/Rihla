@@ -1104,6 +1104,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get itemizedNeedsSomeone => 'Assign someone';
 
   @override
+  String get adjustmentsHeader => 'Adjustments';
+
+  @override
+  String get adjustmentAddAction => '+ Add';
+
+  @override
+  String get adjustmentRemove => 'Remove adjustment';
+
+  @override
+  String get adjustmentSheetTitle => 'Add adjustment';
+
+  @override
+  String get adjustmentTypeLabel => 'Type';
+
+  @override
+  String get adjustmentTypeService => 'Service';
+
+  @override
+  String get adjustmentTypeTax => 'Tax';
+
+  @override
+  String get adjustmentTypeTip => 'Tip';
+
+  @override
+  String get adjustmentTypeDiscount => 'Discount';
+
+  @override
+  String get adjustmentAmountLabel => 'Amount';
+
+  @override
+  String get adjustmentSpreadHeader => 'How to spread it';
+
+  @override
+  String get adjustmentAllocEqual => 'Split equally';
+
+  @override
+  String get adjustmentAllocProportional => 'By item share';
+
+  @override
+  String get adjustmentDiscountNote =>
+      'A discount is shared in proportion to what each person owes.';
+
+  @override
+  String get adjustmentDone => 'Done';
+
+  @override
   String get categoryPickerTitle => 'What\'s this for?';
 
   @override

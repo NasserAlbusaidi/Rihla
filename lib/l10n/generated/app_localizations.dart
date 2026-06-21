@@ -1982,6 +1982,96 @@ abstract class AppLocalizations {
   /// **'Assign someone'**
   String get itemizedNeedsSomeone;
 
+  /// No description provided for @adjustmentsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustments'**
+  String get adjustmentsHeader;
+
+  /// No description provided for @adjustmentAddAction.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add'**
+  String get adjustmentAddAction;
+
+  /// No description provided for @adjustmentRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove adjustment'**
+  String get adjustmentRemove;
+
+  /// No description provided for @adjustmentSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add adjustment'**
+  String get adjustmentSheetTitle;
+
+  /// No description provided for @adjustmentTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get adjustmentTypeLabel;
+
+  /// No description provided for @adjustmentTypeService.
+  ///
+  /// In en, this message translates to:
+  /// **'Service'**
+  String get adjustmentTypeService;
+
+  /// No description provided for @adjustmentTypeTax.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get adjustmentTypeTax;
+
+  /// No description provided for @adjustmentTypeTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get adjustmentTypeTip;
+
+  /// No description provided for @adjustmentTypeDiscount.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount'**
+  String get adjustmentTypeDiscount;
+
+  /// No description provided for @adjustmentAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get adjustmentAmountLabel;
+
+  /// No description provided for @adjustmentSpreadHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'How to spread it'**
+  String get adjustmentSpreadHeader;
+
+  /// No description provided for @adjustmentAllocEqual.
+  ///
+  /// In en, this message translates to:
+  /// **'Split equally'**
+  String get adjustmentAllocEqual;
+
+  /// No description provided for @adjustmentAllocProportional.
+  ///
+  /// In en, this message translates to:
+  /// **'By item share'**
+  String get adjustmentAllocProportional;
+
+  /// No description provided for @adjustmentDiscountNote.
+  ///
+  /// In en, this message translates to:
+  /// **'A discount is shared in proportion to what each person owes.'**
+  String get adjustmentDiscountNote;
+
+  /// No description provided for @adjustmentDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get adjustmentDone;
+
   /// No description provided for @categoryPickerTitle.
   ///
   /// In en, this message translates to:
