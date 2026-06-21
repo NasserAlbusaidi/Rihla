@@ -7,7 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/shared/widgets/cover_art.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../helpers/repaint_boundary_finder.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart'
@@ -454,6 +457,11 @@ void main() {
       expect(_textContaining('15.000'), findsWidgets);
       expect(find.text('they owe you'), findsOneWidget);
       expect(find.byKey(GroupKeys.settleUpCta), findsOneWidget);
+
+      // #626: the header cover art is wrapped in a RepaintBoundary so its
+      // procedural raster is cached (header lives in a SliverToBoxAdapter,
+      // which inserts no automatic per-child boundary).
+      expectWrappedInRepaintBoundary(find.byType(CoverArt));
     });
 
     testWidgets('direct entry back button routes home when no stack exists', (

@@ -597,10 +597,15 @@ class _JourneysStrip extends StatelessWidget {
           child: Row(
             children: [
               for (var i = 0; i < entries.length; i++) ...[
-                JourneyTicketCard(
-                  entry: entries[i],
-                  onTap: () => context.push(
-                    '/group/${entries[i].groupId}/event/${entries[i].eventId}',
+                // #626: isolate each card's procedural cover + frosted
+                // date-pill blur raster — the strip is an eager Row in a
+                // SingleChildScrollView, which adds no per-child boundary.
+                RepaintBoundary(
+                  child: JourneyTicketCard(
+                    entry: entries[i],
+                    onTap: () => context.push(
+                      '/group/${entries[i].groupId}/event/${entries[i].eventId}',
+                    ),
                   ),
                 ),
                 if (i < entries.length - 1)
