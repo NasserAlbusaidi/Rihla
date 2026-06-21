@@ -1432,14 +1432,6 @@
   "eventTypeCustomLabel": "Custom",
   "eventTypeCustomShort": "EVENT",
   "eventTypeCustomDescription": "Start from a flexible event setup",
-  "eventPickerTitle": "What kind of\njourney is this?",
-  "eventPickerSubtitle": "We'll set sensible defaults for categories and splits.",
-  "eventContinueWith": "Continue with {type}",
-  "@eventContinueWith": {
-    "placeholders": {
-      "type": {}
-    }
-  },
   "eventNew": "New event",
   "eventNameLabel": "Event Name",
   "eventNameHint": "e.g. Summer camping trip",

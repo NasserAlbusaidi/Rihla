@@ -110,4 +110,10 @@ class EventTypeConfig {
   /// Returns configs for all 5 event types in declaration order.
   static List<EventTypeConfig> get allTypes =>
       EventType.values.map((t) => _configs[t]!).toList();
+
+  /// Creatable types for the create-event chip-row — excludes [EventType.custom]
+  /// (Custom is no longer creatable; #489). Existing Custom events still render
+  /// via [forType], which retains all five configs.
+  static List<EventTypeConfig> get selectableTypes =>
+      allTypes.where((c) => c.type != EventType.custom).toList();
 }

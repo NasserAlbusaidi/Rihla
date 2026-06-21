@@ -5,8 +5,6 @@ abstract final class EventKeys {
   static const screen = Key('event_command_center_screen');
   static const dayBadge = Key('event_command_center_day_badge');
   static const createEventScreen = Key('create_event_screen');
-  static const eventTypePickerScreen = Key('event_type_picker_screen');
-  static const eventTypePickerTitle = Key('event_type_picker_title');
 
   // Module cards — unique key per card (no duplicate keys in tree)
   static const ledgerCard = Key('event_ledger_card');

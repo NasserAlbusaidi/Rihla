@@ -15,11 +15,11 @@
 - **event_display.dart**: `EventTypeDisplay` extension on `EventType` — localized label/description lookups via `AppLocalizations`.
 
 ### screens/
-- **create_event_screen.dart**, **event_type_picker_screen.dart**, **event_settings_screen.dart**
+- **create_event_screen.dart**, **event_settings_screen.dart**
 - **event_command_center.dart**: Module hub. Reachable in the router at `/group/:gid/event/:eid`, but the UI never navigates to it — event cards jump straight to `/group/:gid/event/:eid/ledger` after Phase 39 reduced events to a single visible module. Treat as dead-but-not-orphaned.
 
 ### widgets/
-- **event_info_section.dart**, **event_danger_section.dart**, **event_details_card.dart**, **event_participants_card.dart**, **event_type_badge.dart**
+- **event_info_section.dart**, **event_danger_section.dart**, **event_details_card.dart**, **event_participants_card.dart**
 
 ### keys/
 - **event_keys.dart**: Widget `Key` constants for event screens/widgets (e.g. `spendingHero`).
