@@ -214,7 +214,7 @@ class _StatusPill extends StatelessWidget {
         final formatted = AppFormatters.formatCurrency(abs, currency);
         return (
           '$sign$formatted',
-          (r > Decimal.zero ? colors.error : colors.error) as Color,
+          colors.error as Color,
         );
       case SplitMode.percent:
         if (canApply) return ('100 %', colors.success as Color);
