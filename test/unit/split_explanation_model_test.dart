@@ -33,6 +33,37 @@ void main() {
     });
   });
 
+  group('SplitAdjustment round-trip', () {
+    test('toMap/fromMap preserves type, amountFils, allocation', () {
+      const adj = SplitAdjustment(
+        type: 'tip',
+        amountFils: 1500,
+        allocation: 'proportional',
+      );
+      final restored = SplitAdjustment.fromMap(adj.toMap());
+      expect(restored.type, 'tip');
+      expect(restored.amountFils, 1500);
+      expect(restored.allocation, 'proportional');
+    });
+
+    test('fromMap is lenient — missing keys default, unknown type does not throw', () {
+      final a = SplitAdjustment.fromMap({});
+      expect(a.type, 'service');
+      expect(a.amountFils, 0);
+      expect(a.allocation, 'equal');
+
+      // A legacy/unknown token (e.g. the old 'service_charge') reads fine for
+      // DISPLAY — the lenient side never throws. The allocator is the strict side.
+      final legacy = SplitAdjustment.fromMap({
+        'type': 'service_charge',
+        'amountFils': 250,
+      });
+      expect(legacy.type, 'service_charge');
+      expect(legacy.amountFils, 250);
+      expect(legacy.allocation, 'equal');
+    });
+  });
+
   group('SplitExplanation round-trip', () {
     test('toMap/fromMap preserves type, version, items', () {
       const exp = SplitExplanation(
@@ -48,20 +79,35 @@ void main() {
       expect(restored.items.first.amountFils, 3000);
     });
 
-    test('omits adjustments key when null, round-trips it opaquely when present', () {
+    test('omits adjustments key when null or empty, round-trips typed adjustments (#605)', () {
       const noAdj = SplitExplanation(items: []);
       expect(noAdj.toMap().containsKey('adjustments'), isFalse);
+
+      // Empty list is treated like null — no key written (keeps top-level count minimal).
+      const emptyAdj = SplitExplanation(items: [], adjustments: []);
+      expect(emptyAdj.toMap().containsKey('adjustments'), isFalse);
 
       const withAdj = SplitExplanation(
         items: [],
         adjustments: [
-          {'type': 'service_charge', 'amountFils': 250, 'allocation': 'equal'},
+          SplitAdjustment(type: 'service', amountFils: 250, allocation: 'equal'),
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 100,
+            allocation: 'proportional',
+          ),
         ],
       );
       final restored = SplitExplanation.fromMap(withAdj.toMap());
       expect(restored.adjustments, isNotNull);
-      expect((restored.adjustments!.first as Map)['type'], 'service_charge');
-      expect((restored.adjustments!.first as Map)['amountFils'], 250);
+      expect(restored.adjustments!.length, 2);
+      // SplitAdjustment has no value == — compare field-by-field.
+      expect(restored.adjustments!.first.type, 'service');
+      expect(restored.adjustments!.first.amountFils, 250);
+      expect(restored.adjustments!.first.allocation, 'equal');
+      expect(restored.adjustments![1].type, 'discount');
+      expect(restored.adjustments![1].amountFils, 100);
+      expect(restored.adjustments![1].allocation, 'proportional');
     });
   });
 
