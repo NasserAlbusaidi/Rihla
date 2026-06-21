@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -12,8 +13,13 @@ import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../models/split_explanation.dart';
+import '../providers/expense_provider.dart' show BalanceCalculator;
 
 export '../../../core/models/split_mode.dart' show SplitMode;
+
+// Itemized split tab widgets + the per-row draft model (#203 S2). Kept in a
+// sibling `part` so this file holds the sheet state/logic and stays readable.
+part 'custom_split_sheet_itemized.dart';
 
 /// Result returned by [showCustomSplitSheet]. `distribution` is null when
 /// [mode] is [SplitMode.equally] — the legacy equal split path in
@@ -45,6 +51,11 @@ class SplitResult {
 ///     100 within 0.001.
 ///
 /// Returns `null` on cancel/dismiss, or a [SplitResult] when Apply is tapped.
+///
+/// [initialItemized] opens directly on the Itemized tab (#203 S2) seeded from
+/// [initialItems] — used to reconstruct an itemized split on reopen. When
+/// itemized, [initialMode]/[initialDistribution] are ignored (the tab owns its
+/// own draft state).
 Future<SplitResult?> showCustomSplitSheet(
   BuildContext context, {
   required String title,
@@ -53,6 +64,8 @@ Future<SplitResult?> showCustomSplitSheet(
   required List<SplitParticipant> participants,
   SplitMode initialMode = SplitMode.equally,
   Map<String, Decimal>? initialDistribution,
+  List<SplitItem>? initialItems,
+  bool initialItemized = false,
 }) {
   return showModalBottomSheet<SplitResult>(
     context: context,
@@ -68,6 +81,8 @@ Future<SplitResult?> showCustomSplitSheet(
       participants: participants,
       initialMode: initialMode,
       initialDistribution: initialDistribution,
+      initialItems: initialItems,
+      initialItemized: initialItemized,
     ),
   );
 }
@@ -100,6 +115,8 @@ class CustomSplitSheet extends StatefulWidget {
     required this.participants,
     this.initialMode = SplitMode.equally,
     this.initialDistribution,
+    this.initialItems,
+    this.initialItemized = false,
   });
 
   final String title;
@@ -108,6 +125,15 @@ class CustomSplitSheet extends StatefulWidget {
   final List<SplitParticipant> participants;
   final SplitMode initialMode;
   final Map<String, Decimal>? initialDistribution;
+
+  /// Line items to seed the Itemized tab with (#203 S2) — non-null only when
+  /// reopening an itemized expense. Each row's amount is shown via
+  /// [MoneySerializer.fromSubunits] in [currency].
+  final List<SplitItem>? initialItems;
+
+  /// Open directly on the Itemized tab (#203 S2). When true the sheet builds
+  /// its draft rows from [initialItems] (or one empty row if null).
+  final bool initialItemized;
 
   @override
   State<CustomSplitSheet> createState() => _CustomSplitSheetState();
@@ -119,18 +145,28 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
 
   late SplitMode _mode;
 
+  /// Itemized is NOT a [SplitMode] (#203 S2) — it persists AS exact. When true
+  /// the body renders the [_ItemizedBody] and Apply emits the allocator's exact
+  /// distribution; [_mode] still holds the last real mode for switching back.
+  late bool _itemized;
+
   // Per-mode state. Each map is keyed by participant id.
   late Map<String, int> _shares;
   late Map<String, TextEditingController> _exactCtrls;
   late Map<String, TextEditingController> _percentCtrls;
 
+  /// Itemized line-item drafts. Owned here so controllers are disposed once.
+  late List<_ItemDraft> _drafts;
+
   @override
   void initState() {
     super.initState();
     _mode = widget.initialMode;
+    _itemized = widget.initialItemized;
     _initShares();
     _initExact();
     _initPercent();
+    _initDrafts();
   }
 
   @override
@@ -141,7 +177,31 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     for (final c in _percentCtrls.values) {
       c.dispose();
     }
+    for (final d in _drafts) {
+      d.dispose();
+    }
     super.dispose();
+  }
+
+  void _initDrafts() {
+    final seed = widget.initialItems;
+    if (widget.initialItemized && seed != null && seed.isNotEmpty) {
+      _drafts = [for (final item in seed) _ItemDraft.fromItem(item, widget.currency)];
+    } else {
+      _drafts = [_ItemDraft.empty()];
+    }
+  }
+
+  void _addDraft() {
+    setState(() => _drafts.add(_ItemDraft.empty()));
+  }
+
+  void _removeDraft(_ItemDraft draft) {
+    if (_drafts.length <= 1) return;
+    setState(() {
+      _drafts.remove(draft);
+    });
+    draft.dispose();
   }
 
   void _initShares() {
@@ -222,8 +282,55 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
 
   Decimal get _percentRemainder => _hundred - _percentSum;
 
+  // ─────────────────────────────────────────────────── itemized (#203 S2)
+
+  /// Parsed amount for a draft, or null if blank/unparseable/non-positive.
+  Decimal? _draftAmount(_ItemDraft d) {
+    final v = Decimal.tryParse(d.amount.text);
+    if (v == null || v <= Decimal.zero) return null;
+    return v;
+  }
+
+  /// A draft is allocatable when it has a positive amount AND ≥1 assignee —
+  /// exactly the allocator's precondition (it throws otherwise).
+  bool _draftValid(_ItemDraft d) =>
+      _draftAmount(d) != null && d.assignees.isNotEmpty;
+
+  Decimal get _itemizedSum {
+    var sum = Decimal.zero;
+    for (final d in _drafts) {
+      sum += _draftAmount(d) ?? Decimal.zero;
+    }
+    return sum;
+  }
+
+  Decimal get _itemizedRemainder => widget.total - _itemizedSum;
+
+  /// Per-person owed from the currently-valid drafts. Invalid drafts (no
+  /// assignee / blank amount) are excluded so the allocator never throws on a
+  /// mid-edit row; the live preview just omits their cost.
+  Map<String, Decimal> get _itemizedPreview {
+    final items = [
+      for (final d in _drafts)
+        if (_draftValid(d)) d.toItem(widget.currency),
+    ];
+    if (items.isEmpty) return const {};
+    return BalanceCalculator.allocateItemizedDistribution(
+      items: items,
+      currency: widget.currency,
+    );
+  }
+
+  bool get _itemizedCanApply {
+    if (widget.participants.isEmpty) return false;
+    if (_drafts.isEmpty) return false;
+    if (!_drafts.every(_draftValid)) return false;
+    return _itemizedRemainder.abs() <= _tolerance;
+  }
+
   bool get _canApply {
     if (widget.participants.isEmpty) return false;
+    if (_itemized) return _itemizedCanApply;
     switch (_mode) {
       case SplitMode.equally:
         return true;
@@ -245,6 +352,7 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
   }
 
   SplitResult _buildResult() {
+    if (_itemized) return _buildItemizedResult();
     switch (_mode) {
       case SplitMode.equally:
         return const SplitResult(mode: SplitMode.equally, distribution: null);
@@ -277,6 +385,22 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
           },
         );
     }
+  }
+
+  /// Build the itemized result (#203 S2): every draft is valid here (Apply is
+  /// gated on [_itemizedCanApply]), so the allocator never throws. Itemized
+  /// persists AS [SplitMode.exact]; the items ride along as display metadata.
+  SplitResult _buildItemizedResult() {
+    final items = [for (final d in _drafts) d.toItem(widget.currency)];
+    final dist = BalanceCalculator.allocateItemizedDistribution(
+      items: items,
+      currency: widget.currency,
+    );
+    return SplitResult(
+      mode: SplitMode.exact,
+      distribution: dist,
+      items: items,
+    );
   }
 
   // ───────────────────────────────────────────────────── build
@@ -316,10 +440,18 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: spacing.space24),
               child: _ModeSegmented(
+                itemized: _itemized,
                 mode: _mode,
-                onChanged: (next) {
+                onMode: (next) {
                   HapticService.selection();
-                  setState(() => _mode = next);
+                  setState(() {
+                    _mode = next;
+                    _itemized = false;
+                  });
+                },
+                onItemized: () {
+                  HapticService.selection();
+                  setState(() => _itemized = true);
                 },
               ),
             ),
@@ -327,22 +459,35 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
             Flexible(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
-                child: _ModeBody(
-                  key: ValueKey(_mode),
-                  mode: _mode,
-                  participants: widget.participants,
-                  total: widget.total,
-                  currency: widget.currency,
-                  shares: _shares,
-                  exactCtrls: _exactCtrls,
-                  percentCtrls: _percentCtrls,
-                  totalShares: _totalShares,
-                  onSharesChanged: () => setState(() {}),
-                  onAmountChanged: () => setState(() {}),
-                ),
+                child: _itemized
+                    ? _ItemizedBody(
+                        key: const ValueKey('itemized'),
+                        drafts: _drafts,
+                        participants: widget.participants,
+                        currency: widget.currency,
+                        preview: _itemizedPreview,
+                        draftValid: _draftValid,
+                        onChanged: () => setState(() {}),
+                        onAddItem: _addDraft,
+                        onRemoveItem: _removeDraft,
+                      )
+                    : _ModeBody(
+                        key: ValueKey(_mode),
+                        mode: _mode,
+                        participants: widget.participants,
+                        total: widget.total,
+                        currency: widget.currency,
+                        shares: _shares,
+                        exactCtrls: _exactCtrls,
+                        percentCtrls: _percentCtrls,
+                        totalShares: _totalShares,
+                        onSharesChanged: () => setState(() {}),
+                        onAmountChanged: () => setState(() {}),
+                      ),
               ),
             ),
             _Footer(
+              itemized: _itemized,
               mode: _mode,
               total: widget.total,
               currency: widget.currency,
@@ -350,6 +495,8 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
               exactRemainder: _exactRemainder,
               percentSum: _percentSum,
               percentRemainder: _percentRemainder,
+              itemizedSum: _itemizedSum,
+              itemizedRemainder: _itemizedRemainder,
               canApply: _canApply,
             ),
             Padding(
@@ -481,10 +628,18 @@ class _Header extends StatelessWidget {
 // ───────────────────────────────────────────────────────────── segmented
 
 class _ModeSegmented extends StatelessWidget {
-  const _ModeSegmented({required this.mode, required this.onChanged});
+  const _ModeSegmented({
+    required this.itemized,
+    required this.mode,
+    required this.onMode,
+    required this.onItemized,
+  });
 
+  /// Whether the Itemized pseudo-tab is the active selection (#203 S2).
+  final bool itemized;
   final SplitMode mode;
-  final ValueChanged<SplitMode> onChanged;
+  final ValueChanged<SplitMode> onMode;
+  final VoidCallback onItemized;
 
   @override
   Widget build(BuildContext context) {
@@ -497,36 +652,66 @@ class _ModeSegmented extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // The four real modes — selected only when not in itemized mode.
           for (final m in SplitMode.values)
             Expanded(
-              child: GestureDetector(
-                onTap: () => onChanged(m),
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  padding: EdgeInsets.symmetric(
-                    vertical: context.spacing.space8,
-                  ),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: m == mode ? colors.cardSurface : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: m == mode ? context.shadows.raised : null,
-                  ),
-                  child: Text(
-                    splitModeDisplayName(m, context.l10n),
-                    style: AppTypography.sans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: m == mode
-                          ? colors.textPrimary
-                          : colors.textSecondary,
-                    ),
-                  ),
-                ),
+              child: _SegChip(
+                label: splitModeDisplayName(m, context.l10n),
+                selected: !itemized && m == mode,
+                onTap: () => onMode(m),
               ),
             ),
+          // Itemized is a 5th option that PRODUCES an exact split (#203 S2).
+          Expanded(
+            child: _SegChip(
+              label: context.l10n.editorSplitItemized,
+              selected: itemized,
+              onTap: onItemized,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SegChip extends StatelessWidget {
+  const _SegChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? colors.cardSurface : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: selected ? context.shadows.raised : null,
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: AppTypography.sans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? colors.textPrimary : colors.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -999,6 +1184,7 @@ class _NumberInput extends StatelessWidget {
 
 class _Footer extends StatelessWidget {
   const _Footer({
+    required this.itemized,
     required this.mode,
     required this.total,
     required this.currency,
@@ -1006,9 +1192,12 @@ class _Footer extends StatelessWidget {
     required this.exactRemainder,
     required this.percentSum,
     required this.percentRemainder,
+    required this.itemizedSum,
+    required this.itemizedRemainder,
     required this.canApply,
   });
 
+  final bool itemized;
   final SplitMode mode;
   final Decimal total;
   final String currency;
@@ -1016,6 +1205,8 @@ class _Footer extends StatelessWidget {
   final Decimal exactRemainder;
   final Decimal percentSum;
   final Decimal percentRemainder;
+  final Decimal itemizedSum;
+  final Decimal itemizedRemainder;
   final bool canApply;
 
   @override
@@ -1034,7 +1225,10 @@ class _Footer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            context.l10n.customSplitTotal,
+            // Itemized's footer reads "Items match total"; the modes read "TOTAL".
+            itemized
+                ? context.l10n.itemizedItemsMatchTotal
+                : context.l10n.customSplitTotal,
             style: AppTypography.mono(
               fontSize: 10,
               letterSpacing: 1.5,
@@ -1048,10 +1242,12 @@ class _Footer extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _StatusPill(
+                  itemized: itemized,
                   mode: mode,
                   canApply: canApply,
                   exactRemainder: exactRemainder,
                   percentRemainder: percentRemainder,
+                  itemizedRemainder: itemizedRemainder,
                   currency: currency,
                 ),
                 const SizedBox(width: 10),
@@ -1065,6 +1261,7 @@ class _Footer extends StatelessWidget {
   }
 
   Decimal _displaySum() {
+    if (itemized) return itemizedSum;
     switch (mode) {
       case SplitMode.equally:
       case SplitMode.shares:
@@ -1079,23 +1276,27 @@ class _Footer extends StatelessWidget {
 
 class _StatusPill extends StatelessWidget {
   const _StatusPill({
+    required this.itemized,
     required this.mode,
     required this.canApply,
     required this.exactRemainder,
     required this.percentRemainder,
+    required this.itemizedRemainder,
     required this.currency,
   });
 
+  final bool itemized;
   final SplitMode mode;
   final bool canApply;
   final Decimal exactRemainder;
   final Decimal percentRemainder;
+  final Decimal itemizedRemainder;
   final String currency;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final (text, color) = _statusFor(colors);
+    final (text, color) = _statusFor(context, colors);
     return Text(
       text,
       // #144: money status ('−OMR 2.500') stays LTR even in Arabic so the
@@ -1109,7 +1310,15 @@ class _StatusPill extends StatelessWidget {
     );
   }
 
-  (String, Color) _statusFor(dynamic colors) {
+  (String, Color) _statusFor(BuildContext context, dynamic colors) {
+    if (itemized) {
+      // Reconciled: amounts add up AND every row has an assignee (canApply).
+      if (canApply) return ('✓', colors.success as Color);
+      // Otherwise surface the remaining gap to the bill total (rust).
+      final abs = itemizedRemainder.abs();
+      final formatted = AppFormatters.formatCurrency(abs, currency);
+      return (context.l10n.itemizedAmountLeft(formatted), colors.error as Color);
+    }
     switch (mode) {
       case SplitMode.equally:
       case SplitMode.shares:

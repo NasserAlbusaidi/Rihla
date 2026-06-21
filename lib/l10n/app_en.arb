@@ -881,6 +881,40 @@
   "customSplitModeExact": "Exact",
   "customSplitModePercent": "Percent",
 
+  "editorSplitItemized": "Itemized",
+  "itemizedItemsHeader": "Items",
+  "itemizedAddItem": "+ Add item",
+  "itemizedRemoveItem": "Remove item",
+  "itemizedItemLabelHint": "Item",
+  "itemizedWhoHadThis": "Who had this?",
+  "itemizedEveryone": "Everyone",
+  "itemizedEachOwes": "Each person owes",
+  "itemizedItemsMatchTotal": "Items match total",
+  "itemizedAmountLeft": "{amount} left",
+  "@itemizedAmountLeft": {
+    "description": "Itemized split: how far the line items are from the bill total (shown until they reconcile). {amount} is a formatted currency string, e.g. 'OMR 0.400'.",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "itemizedForName": "for {name}",
+  "@itemizedForName": {
+    "description": "Itemized split: caption under a line item assigned to a single person. {name} is the assignee's display name.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "itemizedNItems": "{count, plural, =1{1 item} other{{count} items}}",
+  "@itemizedNItems": {
+    "description": "Itemized split: subtitle on the How card showing the line-item count.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "itemizedNeedsSomeone": "Assign someone",
+
   "categoryPickerTitle": "What's this for?",
   "categoryPickerCouldNotLoad": "Could not load categories.",
   "categoryPickerRestaurantsBarsCafes": "Restaurants, bars, cafes",
