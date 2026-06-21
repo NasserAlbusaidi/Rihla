@@ -1148,9 +1148,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adjustmentSheetTitle => 'إضافة تعديل';
 
   @override
-  String get adjustmentTypeLabel => 'النوع';
-
-  @override
   String get adjustmentTypeService => 'خدمة';
 
   @override

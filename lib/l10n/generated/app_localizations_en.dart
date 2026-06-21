@@ -1116,9 +1116,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adjustmentSheetTitle => 'Add adjustment';
 
   @override
-  String get adjustmentTypeLabel => 'Type';
-
-  @override
   String get adjustmentTypeService => 'Service';
 
   @override

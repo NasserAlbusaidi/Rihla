@@ -2006,12 +2006,6 @@ abstract class AppLocalizations {
   /// **'Add adjustment'**
   String get adjustmentSheetTitle;
 
-  /// No description provided for @adjustmentTypeLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Type'**
-  String get adjustmentTypeLabel;
-
   /// No description provided for @adjustmentTypeService.
   ///
   /// In en, this message translates to:
