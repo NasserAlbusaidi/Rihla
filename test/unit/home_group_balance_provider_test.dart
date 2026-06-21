@@ -410,4 +410,58 @@ void main() {
       );
     });
   });
+
+  group('homeGroupBalanceProvider connectivity churn (#623)', () {
+    test(
+        'offline→syncing does NOT re-evaluate the facade '
+        '(watch the bool, not the enum)', () async {
+      // noteLocalWrite() drives offline→syncing on every queued write. The
+      // facade only branches on `== ConnectivityStatus.online`, which is false
+      // in BOTH states, so this transition must not recompute (it would churn
+      // every home group row + the cross-group hero fold).
+      await seedAggregate();
+      final container = makeContainer(ConnectivityStatus.offline);
+      await settle(container);
+
+      var churn = 0;
+      container.listen(homeGroupBalanceProvider(gid), (_, _) => churn++);
+
+      container.read(connectivityProvider.notifier).noteLocalWrite();
+      for (var i = 0; i < 12; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(
+        container.read(connectivityProvider),
+        ConnectivityStatus.syncing,
+        reason: 'noteLocalWrite() must have moved offline→syncing',
+      );
+      expect(
+        churn,
+        0,
+        reason: 'offline→syncing keeps the once-path branch — recomputing it '
+            'churns the home balance for nothing (#623)',
+      );
+    });
+
+    test('syncing→online still re-evaluates (the online bool actually flips)',
+        () async {
+      await seedAggregate();
+      final container = makeContainer(ConnectivityStatus.syncing);
+      final before = await settle(container);
+      expect(before.fromAggregate, isFalse);
+
+      container.read(connectivityProvider.notifier).setOnline();
+      for (var i = 0; i < 12; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(
+        container.read(homeGroupBalanceProvider(gid)).requireValue.fromAggregate,
+        isTrue,
+        reason: 'a real online transition must switch to the aggregate path — '
+            'the .select must not suppress a genuine bool flip',
+      );
+    });
+  });
 }

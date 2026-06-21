@@ -788,8 +788,13 @@ final homeGroupBalanceProvider =
     ));
   }
 
-  final online =
-      ref.watch(connectivityProvider) == ConnectivityStatus.online;
+  // #623: watch the derived bool, not the whole enum. The facade only branches
+  // on `== online`, so without `.select` every offline↔syncing transition
+  // (noteLocalWrite fires one per queued write) needlessly recomputes the
+  // balance for each group and the cross-group hero fold.
+  final online = ref.watch(
+    connectivityProvider.select((s) => s == ConnectivityStatus.online),
+  );
   if (online) {
     final aggAsync = ref.watch(groupBalanceAggregateProvider(groupId));
     if (aggAsync.isLoading && !aggAsync.hasValue) {
