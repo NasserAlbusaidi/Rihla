@@ -11,6 +11,7 @@ import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/split_explanation.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
 import 'package:safar/features/ledger/widgets/expense_editor_body.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -600,5 +601,57 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Added by'), findsNothing);
+  });
+
+  // #203 S2 PR1 — the editor round-trips an itemized expense's splitExplanation
+  // through the submit payload. PR1 has no UI to author it, so the only path is
+  // edit mode reconstructing it from the initial expense. An amount-unchanged
+  // save (so the exact-split sum check passes) must hand it back intact.
+  testWidgets('#203 S2: edit mode round-trips splitExplanation into the payload',
+      (tester) async {
+    final initial = Expense(
+      id: 'expense-1',
+      tripId: 'event-1',
+      payerParticipantId: 'uid-yasmin',
+      amount: Decimal.parse('12.000'),
+      scope: ExpenseScope.global,
+      createdAt: DateTime(2026, 5, 30),
+      createdBy: 'uid-yasmin',
+      splitMode: SplitMode.exact,
+      splitDistribution: {
+        'uid-yasmin': Decimal.parse('8.000'),
+        'uid-layla': Decimal.parse('4.000'),
+      },
+      splitExplanation: const SplitExplanation(
+        items: [
+          SplitItem(
+            label: 'Tagine',
+            amountFils: 8000,
+            participantIds: ['uid-yasmin'],
+          ),
+          SplitItem(
+            label: 'Mint tea',
+            amountFils: 4000,
+            participantIds: ['uid-yasmin', 'uid-layla'],
+          ),
+        ],
+      ),
+    );
+
+    final payload = await editAmountAndSave(
+      tester,
+      initial: initial,
+      newAmount: '12', // unchanged total → exact sum check passes
+    );
+
+    expect(payload, isNotNull);
+    expect(payload!.splitMode, SplitMode.exact);
+    final explanation = payload.splitExplanation;
+    expect(explanation, isNotNull);
+    expect(explanation!.type, 'itemized');
+    expect(explanation.items.length, 2);
+    expect(explanation.items[0].label, 'Tagine');
+    expect(explanation.items[0].amountFils, 8000);
+    expect(explanation.items[1].participantIds, ['uid-yasmin', 'uid-layla']);
   });
 }

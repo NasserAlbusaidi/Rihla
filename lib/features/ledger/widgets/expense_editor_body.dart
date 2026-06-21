@@ -28,6 +28,7 @@ import '../../trip/providers/trip_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
+import '../models/split_explanation.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
 import '../utils/expense_provenance.dart';
@@ -76,6 +77,11 @@ class ExpenseEditorPayload {
   /// `amountFils` by this code, so it must reach the write.
   final String currency;
 
+  /// Itemized display metadata (#203 S2). Non-null ⇒ [splitMode] is exact and
+  /// the distribution came from `allocateItemizedDistribution`. Null for every
+  /// other mode (and always null until PR2 wires the itemized editor).
+  final SplitExplanation? splitExplanation;
+
   const ExpenseEditorPayload({
     required this.amount,
     required this.description,
@@ -86,6 +92,7 @@ class ExpenseEditorPayload {
     required this.splitMode,
     required this.splitDistribution,
     required this.currency,
+    required this.splitExplanation,
   });
 }
 
@@ -170,6 +177,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   /// handles equal splits without a distribution map.
   Map<String, Decimal>? _splitDistribution;
 
+  /// Itemized display metadata (#203 S2). Non-null only for an itemized split
+  /// (PR2 sets it from the "How" sheet); round-trips the original in edit mode.
+  /// There is no UI to set it yet, so it stays null in add mode.
+  SplitExplanation? _splitExplanation;
+
   /// Write-time split-vs-amount tolerance — mirrors custom_split_sheet._tolerance
   /// and BalanceCalculator._splitTolerance (the same 0.001 contract). (#250)
   static final Decimal _splitTolerance = Decimal.parse('0.001');
@@ -205,6 +217,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _splitDistribution = initial.splitDistribution == null
           ? null
           : Map<String, Decimal>.from(initial.splitDistribution!);
+      _splitExplanation = initial.splitExplanation;
     } else {
       _amount = '0';
       _amountController = TextEditingController(text: '0');
@@ -214,6 +227,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _customSplitParticipants = <String>{};
       _splitMode = ref.read(settingsProvider).defaultSplitMode;
       _splitDistribution = null;
+      _splitExplanation = null;
     }
     _amountFocusNode.addListener(_selectDefaultZeroOnFocus);
   }
@@ -334,6 +348,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
               ? null
               : _splitDistribution,
           currency: effectiveCurrency,
+          // #203 S2: itemized metadata only ever rides a non-equal split.
+          // An equally split can never be itemized, so drop it there.
+          splitExplanation: _splitMode == SplitMode.equally
+              ? null
+              : _splitExplanation,
         ),
       );
     } catch (e) {
