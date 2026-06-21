@@ -570,12 +570,20 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       participants: participants,
       initialMode: _splitMode,
       initialDistribution: _splitDistribution,
+      // #203 S2: reopen the itemized tab from the stored metadata.
+      initialItems: _splitExplanation?.items,
+      initialItemized: _splitExplanation != null,
     );
 
     if (result == null || !mounted) return;
     setState(() {
       _splitMode = result.mode;
       _splitDistribution = result.distribution;
+      // #203 S2: an itemized result carries its items; switching to any plain
+      // mode returns items: null, which clears the metadata here (the UI-level
+      // orphan guard — edit_expense_screen then FieldValue.deletes the field).
+      _splitExplanation =
+          result.items == null ? null : SplitExplanation(items: result.items!);
     });
   }
 
@@ -735,6 +743,8 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         child: _SplitModeCard(
                           key: const Key('split_mode_card'),
                           mode: _splitMode,
+                          isItemized: _splitExplanation != null,
+                          itemCount: _splitExplanation?.items.length ?? 0,
                           eligibleCount: _splitParticipantIds(event).length,
                         ),
                       ),
@@ -1727,18 +1737,30 @@ class _SplitModeCard extends StatelessWidget {
     super.key,
     required this.mode,
     required this.eligibleCount,
+    this.isItemized = false,
+    this.itemCount = 0,
   });
 
   final SplitMode mode;
   final int eligibleCount;
+
+  /// #203 S2: when true this split is itemized (persisted AS exact). The card
+  /// shows the "Itemized" label + item count instead of the plain mode name.
+  final bool isItemized;
+  final int itemCount;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final disabled = eligibleCount < 2;
     final l10n = context.l10n;
+    final title = isItemized
+        ? l10n.editorSplitItemized
+        : splitModeDisplayName(mode, l10n);
     final subtitle = disabled
         ? l10n.editorPickAtLeastTwoToSplit
+        : isItemized
+        ? l10n.itemizedNItems(itemCount)
         : switch (mode) {
             SplitMode.equally => l10n.editorSplitEvenly(eligibleCount),
             SplitMode.shares => l10n.editorWeightedByShares,
@@ -1771,7 +1793,7 @@ class _SplitModeCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    splitModeDisplayName(mode, l10n),
+                    title,
                     style: AppTypography.sans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

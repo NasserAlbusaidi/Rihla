@@ -101,29 +101,12 @@ Future<void> _assignOne(
   await tester.pumpAndSettle();
 }
 
-/// Enters [text] into the keyed field after scrolling it into view — the
-/// itemized sheet scrolls, and `enterText` needs the field laid out.
-Future<void> _enterField(WidgetTester tester, String key, String text) async {
-  final finder = find.byKey(Key(key));
-  await tester.ensureVisible(finder);
-  await tester.pumpAndSettle();
-  await tester.enterText(finder, text);
-  await tester.pump();
-}
-
 Future<void> _addItem(WidgetTester tester) async {
   final add = find.byKey(const Key('itemized_add_item'));
   await tester.ensureVisible(add);
   await tester.pumpAndSettle();
   await tester.tap(add);
   await tester.pumpAndSettle();
-}
-
-Future<void> _tapApply(WidgetTester tester) async {
-  final apply = find.byKey(const Key('split_sheet_apply'));
-  await tester.ensureVisible(apply);
-  await tester.pumpAndSettle();
-  await tester.tap(apply);
 }
 
 void main() {
