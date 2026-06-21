@@ -174,7 +174,7 @@ Seed an expense doc with a `splitExplanation`, then update, read back via `Expen
 
 **Step 1: Write failing test** — `edit_expense_screen` test: edit an itemized expense to equal → assert `updateExpense` called with `clearExplanation: true`; relabel-only itemized edit → asserts `splitExplanation` passed AND `splitMode/splitDistribution` written (mock `ExpenseService` with mocktail, capture args).
 **Step 2:** Run → FAIL.
-**Step 3: Implement** — add `splitExplanation: payload.splitExplanation` to `stageExpense` call; add `explanationChanged`, fold into `splitChanged`, pass `splitExplanation`/`clearExplanation` per Data Contracts; add `_explanationEquals` (compare `items` length + each item's `label`/`amountFils`/`participantIds` set/`quantity`).
+**Step 3: Implement** — add `splitExplanation: payload.splitExplanation` to `stageExpense` call; add `explanationChanged` and pass `splitExplanation`/`clearExplanation` per Data Contracts, **independent of `splitChanged`** (do NOT fold it in — a relabel-only edit must not rewrite an identical distribution); add `_explanationEquals` (compare `items` length + each item's `label`/`amountFils`/`participantIds` set/`quantity`).
 **Step 4:** Run → PASS. `flutter analyze` + `flutter test test/features/ledger/` green.
 **Step 5:** Commit `feat(ledger): screens persist itemized splitExplanation + orphan-delete (#203 S2 PR1)`.
 
@@ -259,7 +259,7 @@ Branch `feat/203-s2-pr2-editor` (worktree, off PR1's merge). PR body `Closes #20
 
 ## Edge cases the tests MUST cover (adversarial / orthogonal axes)
 
-- **Relabel-only edit** (identity axis): change an item label, distribution byte-identical → `splitExplanation` still written (via `explanationChanged` folded into `splitChanged`). Without this the new label is silently dropped.
+- **Relabel-only edit** (identity axis): change an item label, distribution byte-identical → `splitExplanation` still written (via its OWN `updateExpense` param, gated on `explanationChanged`, independent of `splitChanged`). Without this the new label is silently dropped; folding into `splitChanged` would instead needlessly rewrite an identical distribution.
 - **Switch-away orphan** (state axis): itemized → equal → `updateExpense(clearExplanation: true)` → stored `splitExplanation` deleted; itemized → plain exact → also deleted (it's no longer itemized). No orphaned metadata on a non-itemized expense.
 - **Reopen reconstruction** (read-path): persisted `splitExplanation.items` re-seed the editor drafts; a legacy expense with no metadata opens the existing exact view (no crash).
 - **Conservation** (money axis): `Σ(distribution) == amount` for OMR 3dp shared-item scenario; remainder lands alphabetically-last (S1 contract) — pin the exact per-person figures.
