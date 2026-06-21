@@ -253,19 +253,24 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
         _pickDate(isStart: isStart);
       },
       child: AbsorbPointer(
-        child: TextField(
-          controller: TextEditingController(text: _formatDate(date)),
-          readOnly: true,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-            color: date == null
-                ? context.colors.textSecondary
-                : context.colors.textPrimary,
-          ),
+        // #625: a read-only date display, not an input. A TextField here forced
+        // an inline TextEditingController allocated on every build and never
+        // disposed (the State disposes only name/description). InputDecorator +
+        // Text renders the identical decoration with nothing to leak.
+        child: InputDecorator(
           decoration: _fieldDecoration(
             labelText: label,
             icon: Iconsax.calendar,
+          ),
+          child: Text(
+            _formatDate(date),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: date == null
+                  ? context.colors.textSecondary
+                  : context.colors.textPrimary,
+            ),
           ),
         ),
       ),
