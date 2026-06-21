@@ -189,6 +189,15 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
   bool _isSubmitting = false;
 
+  /// #627 follow-up: the disambiguation name map is event-derived and shared by
+  /// every in-build consumer (`_PaidByCard`, `_ExpenseProvenanceByline`,
+  /// `_SplitPreviewCard`). The parent `setState`s `_amount` on every keystroke,
+  /// so `build` re-runs per digit; without this memo each consumer would re-run
+  /// `disambiguateEventParticipants` on every keystroke. Cached here and
+  /// recomputed only when the event INSTANCE changes — see [_disambiguatedNames].
+  Event? _displayNamesKey;
+  Map<String, String> _displayNames = const {};
+
   bool get _isEdit => widget.mode == ExpenseEditorMode.edit;
 
   /// The currency every money surface in the editor scales/labels with (#382
@@ -621,6 +630,21 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     return true;
   }
 
+  /// uid → render-ready name for the event's participants (#289 disambiguation),
+  /// memoized across the per-keystroke `build`s. Keyed on the event INSTANCE, not
+  /// `Event ==` (which is id-only — #106): a same-id rename/member change arrives
+  /// as a fresh Event instance, so identity refreshes the map; `==` would keep a
+  /// stale name. INBOUND/display-only — write paths key by uid and strip the
+  /// `(#…)` discriminator, never persist the returned string.
+  Map<String, String> _disambiguatedNames(Event event) {
+    if (!identical(event, _displayNamesKey)) {
+      _displayNamesKey = event;
+      debugEditorNameMapComputes++;
+      _displayNames = MemberNameResolver.disambiguateEventParticipants(event);
+    }
+    return _displayNames;
+  }
+
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(tripCategoriesProvider(widget.eventId));
@@ -698,6 +722,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                     // come from its participantNames map).
                     if (_isEdit && event != null && widget.initial != null)
                       _ExpenseProvenanceByline(
+                        displayNames: _disambiguatedNames(event),
                         event: event,
                         expense: widget.initial!,
                       ),
@@ -720,6 +745,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         action: context.l10n.editorChange,
                         onAction: () => _openPayerSheet(event),
                         child: _PaidByCard(
+                          displayNames: _disambiguatedNames(event),
                           event: event,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
                           onTap: () => _openPayerSheet(event),
@@ -730,6 +756,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         action: context.l10n.editorCustomise,
                         onAction: () => _openCustomiseSheet(event),
                         child: _SplitPreviewCard(
+                          displayNames: _disambiguatedNames(event),
                           event: event,
                           amount: Decimal.tryParse(_amount) ?? Decimal.zero,
                           currency: effectiveCurrency,
@@ -1206,16 +1233,19 @@ class _CurrencyMismatchNotice extends StatelessWidget {
 /// payer are surfaced side by side without conflating them. Renders nothing for
 /// legacy expenses with no creator.
 class _ExpenseProvenanceByline extends StatelessWidget {
-  const _ExpenseProvenanceByline({required this.event, required this.expense});
+  const _ExpenseProvenanceByline({
+    required this.displayNames,
+    required this.event,
+    required this.expense,
+  });
 
+  /// #289 disambiguation map, shared from the parent (#627 follow-up).
+  final Map<String, String> displayNames;
   final Event event;
   final Expense expense;
 
   @override
   Widget build(BuildContext context) {
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(
-      event,
-    );
     String resolve(String uid) =>
         displayNames[uid] ??
         event.participantNames[uid] ??
@@ -1438,8 +1468,17 @@ class _CategoryChip extends StatelessWidget {
 }
 
 class _PaidByCard extends StatelessWidget {
-  const _PaidByCard({required this.event, required this.payerId, this.onTap});
+  const _PaidByCard({
+    required this.displayNames,
+    required this.event,
+    required this.payerId,
+    this.onTap,
+  });
 
+  /// #289 disambiguation map, computed once by the parent and shared with the
+  /// split-preview/provenance consumers (#627 follow-up) — recomputing it here
+  /// per amount keystroke is the redundancy this removes.
+  final Map<String, String> displayNames;
   final Event event;
   final String? payerId;
   // #280: tap the card (or the section's "Change" action) to pick the payer.
@@ -1449,9 +1488,6 @@ class _PaidByCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectivePayerId = payerId ?? event.participantIds.firstOrNull;
     // #289: distinguish two same-named members in the "Paid by" attribution.
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(
-      event,
-    );
     final payerName =
         displayNames[effectivePayerId] ??
         event.participantNames[effectivePayerId] ??
@@ -1478,17 +1514,22 @@ class _PaidByCard extends StatelessWidget {
   }
 }
 
-/// #627 perf seam: counts how often [_SplitPreviewCard] actually recomputes the
-/// disambiguation name map / the `allocateExpenseOwed` allocation. Tests assert
-/// a pure amount keystroke recomputes `owed` but NOT the name map (the win).
-/// Reset in test `setUp`; production never reads these.
+/// #627 (+ follow-up) perf seam. [debugEditorNameMapComputes] counts how often
+/// the editor recomputes the SHARED disambiguation name map — hoisted to
+/// `_ExpenseEditorBodyState._disambiguatedNames` and fed to the paid-by,
+/// provenance, and split-preview consumers, so it computes once per event change
+/// rather than per keystroke per consumer. [debugSplitPreviewOwedComputes] counts
+/// the `_SplitPreviewCard` `allocateExpenseOwed` allocation. Tests assert a pure
+/// amount keystroke recomputes `owed` but NOT the name map (the win). Reset in
+/// test `setUp`; production never reads these.
 @visibleForTesting
-int debugSplitPreviewNameComputes = 0;
+int debugEditorNameMapComputes = 0;
 @visibleForTesting
 int debugSplitPreviewOwedComputes = 0;
 
 class _SplitPreviewCard extends StatefulWidget {
   const _SplitPreviewCard({
+    required this.displayNames,
     required this.event,
     required this.amount,
     required this.currency,
@@ -1499,6 +1540,10 @@ class _SplitPreviewCard extends StatefulWidget {
     required this.splitDistribution,
   });
 
+  /// #289 disambiguation map, computed once by the parent and shared (#627
+  /// follow-up). Event-derived, so it refreshes with the event instance; the
+  /// owed memo below still tracks the money inputs separately.
+  final Map<String, String> displayNames;
   final Event event;
   final Decimal amount;
   final String currency;
@@ -1513,12 +1558,13 @@ class _SplitPreviewCard extends StatefulWidget {
 }
 
 /// #627: the parent `setState`s `_amount` on every keystroke, so this card is
-/// rebuilt per digit. Both the disambiguation name map (event-derived) and the
-/// `allocateExpenseOwed` allocation are memoized here and recomputed only when
-/// their actual inputs change, so a pure amount edit re-allocates `owed` (it
-/// must — the figures change) without re-running the name map.
+/// rebuilt per digit. The `allocateExpenseOwed` allocation is memoized here and
+/// recomputed only when its actual inputs change, so a pure amount edit
+/// re-allocates `owed` (it must — the figures change). The disambiguation name
+/// map is no longer memoized here: it is event-derived and shared by sibling
+/// cards, so the parent owns the single memo and passes it in as `displayNames`
+/// (#627 follow-up).
 class _SplitPreviewCardState extends State<_SplitPreviewCard> {
-  late Map<String, String> _displayNames;
   Map<String, Decimal>? _owed;
 
   /// True for shares/exact/percent splits with a distribution — the per-tile
@@ -1551,32 +1597,15 @@ class _SplitPreviewCardState extends State<_SplitPreviewCard> {
   @override
   void initState() {
     super.initState();
-    _recomputeDisplayNames();
     _recomputeOwed();
   }
 
   @override
   void didUpdateWidget(_SplitPreviewCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Name map depends ONLY on the event. Key on instance identity, NOT
-    // `Event ==` (which is id-only — #106): a same-id rename/member change
-    // arrives as a fresh Event instance, so identity refreshes; `==` would
-    // show a stale name.
-    if (!identical(widget.event, oldWidget.event)) {
-      _recomputeDisplayNames();
-    }
     if (_owedInputsChanged(oldWidget)) {
       _recomputeOwed();
     }
-  }
-
-  void _recomputeDisplayNames() {
-    debugSplitPreviewNameComputes++;
-    // #289: distinguish two same-named members; the compact tile keeps the
-    // ` (#…)` discriminator alive through the first-name collapse.
-    _displayNames = MemberNameResolver.disambiguateEventParticipants(
-      widget.event,
-    );
   }
 
   /// True when ANY input to `allocateExpenseOwed` changed. `participantIds` is
@@ -1624,7 +1653,7 @@ class _SplitPreviewCardState extends State<_SplitPreviewCard> {
   Widget build(BuildContext context) {
     final ids = _splitParticipantIds;
     final count = ids.length;
-    final displayNames = _displayNames;
+    final displayNames = widget.displayNames;
     final each = count == 0
         ? Decimal.zero
         : (widget.amount / Decimal.fromInt(count)).toDecimal(

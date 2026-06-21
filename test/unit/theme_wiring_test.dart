@@ -80,5 +80,24 @@ void main() {
             AppColorTokens.dark);
       });
     });
+
+    // #622: themes derive only from compile-time tokens (no runtime/context
+    // inputs), so each access must return the SAME cached ThemeData rather than
+    // rebuilding the full tree on every root rebuild. Pins the static-final
+    // memoization — a regression to a `get` accessor makes these identical
+    // checks fail.
+    testWidgets('lightTheme returns the same cached instance across accesses',
+        (tester) async {
+      _suppressFontErrors(() {
+        expect(identical(AppTheme.lightTheme, AppTheme.lightTheme), isTrue);
+      });
+    });
+
+    testWidgets('darkTheme returns the same cached instance across accesses',
+        (tester) async {
+      _suppressFontErrors(() {
+        expect(identical(AppTheme.darkTheme, AppTheme.darkTheme), isTrue);
+      });
+    });
   });
 }
