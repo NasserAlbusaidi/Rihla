@@ -1,4 +1,5 @@
 import 'package:decimal/decimal.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1477,7 +1478,16 @@ class _PaidByCard extends StatelessWidget {
   }
 }
 
-class _SplitPreviewCard extends StatelessWidget {
+/// #627 perf seam: counts how often [_SplitPreviewCard] actually recomputes the
+/// disambiguation name map / the `allocateExpenseOwed` allocation. Tests assert
+/// a pure amount keystroke recomputes `owed` but NOT the name map (the win).
+/// Reset in test `setUp`; production never reads these.
+@visibleForTesting
+int debugSplitPreviewNameComputes = 0;
+@visibleForTesting
+int debugSplitPreviewOwedComputes = 0;
+
+class _SplitPreviewCard extends StatefulWidget {
   const _SplitPreviewCard({
     required this.event,
     required this.amount,
@@ -1498,64 +1508,129 @@ class _SplitPreviewCard extends StatelessWidget {
   final SplitMode splitMode;
   final Map<String, Decimal>? splitDistribution;
 
+  @override
+  State<_SplitPreviewCard> createState() => _SplitPreviewCardState();
+}
+
+/// #627: the parent `setState`s `_amount` on every keystroke, so this card is
+/// rebuilt per digit. Both the disambiguation name map (event-derived) and the
+/// `allocateExpenseOwed` allocation are memoized here and recomputed only when
+/// their actual inputs change, so a pure amount edit re-allocates `owed` (it
+/// must — the figures change) without re-running the name map.
+class _SplitPreviewCardState extends State<_SplitPreviewCard> {
+  late Map<String, String> _displayNames;
+  Map<String, Decimal>? _owed;
+
   /// True for shares/exact/percent splits with a distribution — the per-tile
   /// amounts vary, so the preview must allocate them via [BalanceCalculator]
   /// rather than show the equal figure (#242). Mirrors the calculateBalances
   /// gate and `ledger_day_card._isNonEqualSplit`.
   bool get _isNonEqual =>
-      splitMode != SplitMode.equally &&
-      splitDistribution != null &&
-      splitDistribution!.isNotEmpty;
+      widget.splitMode != SplitMode.equally &&
+      widget.splitDistribution != null &&
+      widget.splitDistribution!.isNotEmpty;
 
   List<String> get _splitParticipantIds {
-    switch (scope) {
+    switch (widget.scope) {
       case ExpenseScope.global:
-        return event.participantIds;
+        return widget.event.participantIds;
       case ExpenseScope.custom:
         // #247: preview the persisted custom set verbatim (no payer insert),
         // mirroring BalanceCalculator's empty→global fallback so the preview
         // equals the ledger for every custom set, including empty.
-        return customSplitParticipants.isEmpty
-            ? event.participantIds
-            : customSplitParticipants.toList();
+        return widget.customSplitParticipants.isEmpty
+            ? widget.event.participantIds
+            : widget.customSplitParticipants.toList();
       case ExpenseScope.personal:
-        return payerId != null ? [payerId!] : const [];
+        return widget.payerId != null ? [widget.payerId!] : const [];
       case ExpenseScope.subGroup:
-        return event.participantIds;
+        return widget.event.participantIds;
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _recomputeDisplayNames();
+    _recomputeOwed();
+  }
+
+  @override
+  void didUpdateWidget(_SplitPreviewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Name map depends ONLY on the event. Key on instance identity, NOT
+    // `Event ==` (which is id-only — #106): a same-id rename/member change
+    // arrives as a fresh Event instance, so identity refreshes; `==` would
+    // show a stale name.
+    if (!identical(widget.event, oldWidget.event)) {
+      _recomputeDisplayNames();
+    }
+    if (_owedInputsChanged(oldWidget)) {
+      _recomputeOwed();
+    }
+  }
+
+  void _recomputeDisplayNames() {
+    debugSplitPreviewNameComputes++;
+    // #289: distinguish two same-named members; the compact tile keeps the
+    // ` (#…)` discriminator alive through the first-name collapse.
+    _displayNames = MemberNameResolver.disambiguateEventParticipants(
+      widget.event,
+    );
+  }
+
+  /// True when ANY input to `allocateExpenseOwed` changed. `participantIds` is
+  /// covered by the event identity check; the rest are compared by value
+  /// (`mapEquals`/`setEquals` deep-compare, safe even if a value-equal instance
+  /// arrives). Missing any input here would display a stale owed figure.
+  bool _owedInputsChanged(_SplitPreviewCard oldWidget) {
+    return !identical(widget.event, oldWidget.event) ||
+        widget.amount != oldWidget.amount ||
+        widget.splitMode != oldWidget.splitMode ||
+        widget.scope != oldWidget.scope ||
+        widget.currency != oldWidget.currency ||
+        widget.payerId != oldWidget.payerId ||
+        !mapEquals(widget.splitDistribution, oldWidget.splitDistribution) ||
+        !setEquals(
+          widget.customSplitParticipants,
+          oldWidget.customSplitParticipants,
+        );
+  }
+
+  void _recomputeOwed() {
+    if (!_isNonEqual) {
+      _owed = null;
+      return;
+    }
+    debugSplitPreviewOwedComputes++;
+    // #242 WYSIWYG: for shares/exact/percent, show each person's REAL owed
+    // amount by allocating through the same pure helper calculateBalances uses,
+    // so the preview equals what gets persisted. `onFallback: null` keeps a
+    // transient/forged split silent (no Sentry). Equal splits keep `each`.
+    _owed = BalanceCalculator.allocateExpenseOwed(
+      amount: widget.amount,
+      splitMode: widget.splitMode,
+      splitDistribution: widget.splitDistribution,
+      scope: widget.scope,
+      customSplitParticipants: widget.customSplitParticipants.toList(),
+      payerId: widget.payerId ?? '',
+      participantIds: widget.event.participantIds,
+      currency: widget.currency,
+      onFallback: null,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final ids = _splitParticipantIds;
     final count = ids.length;
-    // #289: distinguish two same-named members; the compact tile keeps the
-    // ` (#…)` discriminator alive through the first-name collapse.
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(
-      event,
-    );
+    final displayNames = _displayNames;
     final each = count == 0
         ? Decimal.zero
-        : (amount / Decimal.fromInt(count)).toDecimal(
+        : (widget.amount / Decimal.fromInt(count)).toDecimal(
             scaleOnInfinitePrecision: 3,
           );
-    // #242 WYSIWYG: for shares/exact/percent, show each person's REAL owed
-    // amount by allocating through the same pure helper calculateBalances uses,
-    // so the preview equals what gets persisted. `onFallback: null` keeps a
-    // transient/forged split silent (no Sentry). Equal splits keep `each`.
-    final owed = _isNonEqual
-        ? BalanceCalculator.allocateExpenseOwed(
-            amount: amount,
-            splitMode: splitMode,
-            splitDistribution: splitDistribution,
-            scope: scope,
-            customSplitParticipants: customSplitParticipants.toList(),
-            payerId: payerId ?? '',
-            participantIds: event.participantIds,
-            currency: currency,
-            onFallback: null,
-          )
-        : null;
+    final owed = _owed;
     final colors = context.colors;
     final l10n = context.l10n;
 
@@ -1581,10 +1656,10 @@ class _SplitPreviewCard extends StatelessWidget {
                         // a finished split beside the "pick ≥2" hint (#152).
                         count >= 2
                             ? l10n.editorSplitSummary(
-                                expenseScopeDisplayName(scope, l10n),
+                                expenseScopeDisplayName(widget.scope, l10n),
                                 count,
                               )
-                            : expenseScopeDisplayName(scope, l10n),
+                            : expenseScopeDisplayName(widget.scope, l10n),
                         style: AppTypography.sans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -1597,7 +1672,10 @@ class _SplitPreviewCard extends StatelessWidget {
                           owed != null
                               ? l10n.editorAmountsVary
                               : l10n.editorEachAmount(
-                                  AppFormatters.formatCurrency(each, currency),
+                                  AppFormatters.formatCurrency(
+                                    each,
+                                    widget.currency,
+                                  ),
                                 ),
                           style: AppTypography.sans(
                             fontSize: 12,
@@ -1608,7 +1686,7 @@ class _SplitPreviewCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (scope == ExpenseScope.global)
+                if (widget.scope == ExpenseScope.global)
                   Text(
                     l10n.editorEventDefault,
                     style: AppTypography.mono(
@@ -1647,7 +1725,7 @@ class _SplitPreviewCard extends StatelessWidget {
                     final id = ids[index];
                     final name =
                         displayNames[id] ??
-                        event.participantNames[id] ??
+                        widget.event.participantNames[id] ??
                         l10n.editorMemberFallback;
                     final firstName = MemberNameResolver.compactDisambiguated(
                       name,
@@ -1659,8 +1737,8 @@ class _SplitPreviewCard extends StatelessWidget {
                       // `?? 0` is defensive — distribution.keys always covers
                       // the participant set in the happy path.
                       share: owed != null ? (owed[id] ?? Decimal.zero) : each,
-                      currency: currency,
-                      isPayer: id == payerId,
+                      currency: widget.currency,
+                      isPayer: id == widget.payerId,
                     );
                   },
                 ),
