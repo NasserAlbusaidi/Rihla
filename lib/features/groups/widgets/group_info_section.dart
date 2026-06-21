@@ -119,7 +119,12 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              GroupGlyph(name: widget.group.name, size: 44),
+              GroupGlyph(
+                name: widget.group.name,
+                glyph: widget.group.glyph,
+                inkIndex: widget.group.inkIndex,
+                size: 44,
+              ),
               if (widget.isCreator)
                 Positioned.directional(
                   textDirection: Directionality.of(context),

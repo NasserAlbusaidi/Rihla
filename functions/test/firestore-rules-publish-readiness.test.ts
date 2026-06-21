@@ -4,8 +4,16 @@ import {
   assertSucceeds,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
+// rules-unit-testing v5 hands back a COMPAT Firestore instance (the suite uses
+// the namespaced `db.doc(...).set/update` API, not the modular `doc(db, ...)`),
+// so a field-DELETE sentinel must come from the compat FieldValue, NOT the
+// modular `deleteField()` nor `firebase-admin`'s FieldValue (Admin context only).
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+const deleteSentinel = (): unknown => firebase.firestore.FieldValue.delete();
 
 const PROJECT_ID = 'rihla-publish-readiness-rules-test';
 const RULES_PATH = resolve(__dirname, '../../security/firestore.rules');
@@ -437,6 +445,131 @@ describe('Publish readiness Firestore rules', () => {
       name: '   ',
       updatedAt: new Date(),
     }));
+  });
+
+  // #287 / trip-stamps PR-2a: the group glyph (allow-listed enum string) and
+  // inkIndex (int 0..5) are accepted+bounded on create and on creator-only
+  // metadata edit. A field-DELETE clears a stamp back to monogram (post-write
+  // key absent → passes the `!('glyph' in data)` guard); an explicit null is
+  // neither absent nor a valid value → DENIED.
+  describe('#287 group glyph + inkIndex (create & creator-edit)', () => {
+    test('create accepts a valid glyph + inkIndex', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g-stamp-valid').set(
+        validGroup('g-stamp-valid', {
+          inviteCode: 'STAMP1',
+          glyph: 'tent',
+          inkIndex: 3,
+        }),
+      ));
+    });
+
+    test('create still accepts a group with no glyph/inkIndex (allow-list regression guard)', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g-stamp-absent').set(
+        validGroup('g-stamp-absent', { inviteCode: 'STAMP2' }),
+      ));
+    });
+
+    test('create accepts a monogram group (inkIndex only, no glyph)', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g-stamp-mono').set(
+        validGroup('g-stamp-mono', { inviteCode: 'STAMP3', inkIndex: 0 }),
+      ));
+    });
+
+    test('create rejects a forged glyph value', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g-stamp-forged').set(
+        validGroup('g-stamp-forged', { inviteCode: 'STAMP4', glyph: 'pwned' }),
+      ));
+    });
+
+    test('create rejects a non-string glyph', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g-stamp-glyphtype').set(
+        validGroup('g-stamp-glyphtype', { inviteCode: 'STAMP5', glyph: 5 }),
+      ));
+    });
+
+    test('create rejects an explicit null glyph', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g-stamp-glyphnull').set(
+        validGroup('g-stamp-glyphnull', { inviteCode: 'STAMP6', glyph: null }),
+      ));
+    });
+
+    test('create rejects an inkIndex above the range', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g-stamp-inkhigh').set(
+        validGroup('g-stamp-inkhigh', { inviteCode: 'STAMP7', inkIndex: 6 }),
+      ));
+    });
+
+    test('create rejects a negative inkIndex', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g-stamp-inklow').set(
+        validGroup('g-stamp-inklow', { inviteCode: 'STAMP8', inkIndex: -1 }),
+      ));
+    });
+
+    test('create rejects a non-int inkIndex', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g-stamp-inktype').set(
+        validGroup('g-stamp-inktype', { inviteCode: 'STAMP9', inkIndex: '3' }),
+      ));
+    });
+
+    test('creator can edit glyph + inkIndex to valid values', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1').update({
+        glyph: 'wave',
+        inkIndex: 2,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('creator can clear glyph back to monogram (field-delete)', async () => {
+      // Seed a REAL glyph first (rules-disabled) so the delete is a genuine
+      // present→absent transition: affectedKeys() then includes 'glyph', which
+      // the OLD hasOnly(['name','updatedAt']) would have rejected. Without this
+      // seed, deleting an absent field is a no-op (affectedKeys()={updatedAt})
+      // and the test passes vacuously even against the old rules.
+      await updateSeedGroup({ glyph: 'tent' });
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1').update({
+        glyph: deleteSentinel(),
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('creator can clear inkIndex (field-delete)', async () => {
+      // Seed a REAL inkIndex first (rules-disabled) so the delete is a genuine
+      // present→absent transition (affectedKeys() includes 'inkIndex'), not a
+      // vacuous no-op against the old allow-list.
+      await updateSeedGroup({ inkIndex: 3 });
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1').update({
+        inkIndex: deleteSentinel(),
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('a non-creator cannot edit the glyph', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1').update({
+        glyph: 'wave',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('creator cannot edit the glyph to a forged value', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1').update({
+        glyph: 'x',
+        updatedAt: new Date(),
+      }));
+    });
   });
 
   test('invite codes cannot be read, listed, forged, or deleted by arbitrary users', async () => {
@@ -1144,6 +1277,51 @@ describe('Publish readiness Firestore rules', () => {
       splitDistribution: { owner: 50000, ghost: 50000 },
       lastEditedBy: 'member', // #248 PR4: stamp so the denial isolates the ghost-participant guard
     }));
+  });
+
+  test('#203 splitExplanation accepted as opaque display-only map (create)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expSE').set(
+      validExpense({
+        id: 'expSE',
+        splitMode: 'exact',
+        splitDistribution: { owner: 500, member: 500 },
+        splitExplanation: {
+          type: 'itemized',
+          version: 1,
+          items: [
+            { label: 'Latte', amountFils: 500, quantity: 1, participantIds: ['owner'], allocation: 'equal' },
+            { label: 'Mocha', amountFils: 500, quantity: 1, participantIds: ['member'], allocation: 'equal' },
+          ],
+        },
+      }),
+    ));
+  });
+
+  test('#203 splitExplanation accepted on update (proves the SECOND/affectedKeys allowlist)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const ref = member.doc('groups/g1/events/e1/expenses/expSEUpd');
+    await assertSucceeds(ref.set(validExpense({ id: 'expSEUpd' })));
+    await assertSucceeds(ref.update({
+      splitExplanation: { type: 'itemized', version: 1, items: [] },
+      lastEditedBy: 'member', // #248 PR4: self-attribution mandatory
+    }));
+  });
+
+  test('#203 splitExplanation rejected when not a map (pins `is map`)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expSEBad').set(
+      validExpense({ id: 'expSEBad', splitExplanation: 'not-a-map' }),
+    ));
+  });
+
+  test('#203 splitExplanation rejected with >64 top-level keys (entry-count cap, NOT array length — Firestore 1MB doc limit bounds payload)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const big: Record<string, number> = {};
+    for (let i = 0; i < 65; i++) big[`k${i}`] = i;
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expSEBig').set(
+      validExpense({ id: 'expSEBig', splitExplanation: big }),
+    ));
   });
 
   test('#191 stale splitDistribution after participant removal can still be archived', async () => {

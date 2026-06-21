@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en" class="rihla">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Stamps — Group Tile Redesign</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  :root{
+    --ink-terracotta:#C2693B; --ink-harbour:#4F7B96; --ink-ochre:#8C6A2F;
+    --ink-olive:#6F7A3A; --ink-plum:#94517A; --ink-slate:#4D5A6A;
+  }
+  html,body{margin:0;background:var(--paper);color:var(--ink);}
+  body{font-family:var(--font-sans);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:64px 40px 120px;}
+  .kicker{font-family:var(--font-mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-3);font-weight:600;}
+  h1{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:56px;line-height:1.02;margin:14px 0 0;letter-spacing:-.5px;}
+  .dek{font-size:17px;color:var(--ink-2);max-width:620px;margin:16px 0 0;line-height:1.5;text-wrap:pretty;}
+  h2{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:32px;margin:0 0 4px;letter-spacing:-.3px;}
+  .sec{margin-top:84px;}
+  .sec-head{margin-bottom:28px;border-bottom:1px solid var(--rule-2);padding-bottom:18px;}
+  .sec-num{font-family:var(--font-mono);font-size:12px;color:var(--primary-dark);font-weight:600;letter-spacing:1px;}
+  .sec-sub{font-size:14.5px;color:var(--ink-3);margin-top:8px;max-width:680px;line-height:1.5;text-wrap:pretty;}
+
+  /* ---- The stamp tile ---- */
+  .stamp{--ink:var(--ink-terracotta);position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;
+    width:var(--sz,40px);height:var(--sz,40px);border-radius:calc(var(--sz,40px)*.30);
+    background:color-mix(in srgb,var(--ink) 13%,var(--paper));
+    border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);color:var(--ink);}
+  .stamp svg{width:56%;height:56%;display:block;}
+  .stamp svg [stroke]{stroke:var(--ink);}
+  .stamp .mg{font-family:var(--font-serif);font-style:italic;line-height:1;color:var(--ink);font-size:calc(var(--sz,40px)*.56);transform:translateY(2%);}
+  .stamp.sel{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--primary);}
+  /* flavour B — passport */
+  .stamp.passport{background:color-mix(in srgb,var(--ink) 9%,var(--paper));border:1.5px dashed color-mix(in srgb,var(--ink) 55%,transparent);border-radius:calc(var(--sz,40px)*.24);transform:rotate(-4deg);}
+  .stamp.passport::after{content:"";position:absolute;inset:calc(var(--sz,40px)*.10);border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);border-radius:calc(var(--sz,40px)*.16);}
+  /* monoline icon defaults */
+  .ic [stroke]{fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ---- generic layout ---- */
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;}
+  .cols{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:24px;}
+  .panel.soft{background:var(--card-soft);}
+  .label-mono{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-3);font-weight:600;}
+
+  /* ---- phone ---- */
+  .pf{width:340px;flex:none;background:var(--paper);border-radius:32px;border:8px solid #15140f;box-shadow:var(--shadow-floating);overflow:hidden;}
+  .pf-scr{height:680px;overflow:hidden;display:flex;flex-direction:column;background:var(--paper);}
+  .pf-bar{height:34px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-family:var(--font-mono);font-size:11px;font-weight:600;}
+  .pf-top{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 2px;}
+  .pf-top .cancel{font-size:14px;color:var(--ink-3);}
+  .pf-top .save{font-size:14px;color:var(--primary-dark);font-weight:600;}
+  .pf-title{font-family:var(--font-serif);font-style:italic;font-size:24px;text-align:center;padding:2px 0 14px;}
+  .pf-body{flex:1;overflow-y:auto;padding:0 18px 24px;}
+  .pf-body::-webkit-scrollbar{width:0;}
+
+  /* picker bits */
+  .hero{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0 20px;}
+  .hero .cap{font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-4);}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:20px;}
+  .field .fl{font-size:12px;font-weight:600;color:var(--ink-3);}
+  .field .fi{background:var(--card-soft);border:1px solid var(--border);border-radius:var(--r-input);padding:12px 14px;font-family:var(--font-sans);font-size:15px;color:var(--ink);}
+  .row-head{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px;display:flex;justify-content:space-between;align-items:baseline;}
+  .row-head .hint{letter-spacing:0;text-transform:none;font-family:var(--font-sans);font-size:11px;color:var(--ink-4);font-weight:500;}
+  .ink-row{display:flex;gap:12px;margin-bottom:24px;}
+  .swatch{flex:1;aspect-ratio:1;border-radius:var(--r-pill);cursor:pointer;border:none;position:relative;background:var(--c);}
+  .swatch.sel{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--primary);}
+  .sym-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+  .sym{aspect-ratio:1;border-radius:14px;background:var(--card-soft);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-2);transition:background .12s;}
+  .sym svg{width:24px;height:24px;}
+  .sym svg [stroke]{stroke:currentColor;}
+  .sym .mg{font-family:var(--font-serif);font-style:italic;font-size:22px;line-height:1;color:var(--ink-2);}
+  .sym.sel{background:var(--saffron-tint);border-color:var(--primary);color:var(--primary-dark);box-shadow:0 0 0 1.5px var(--primary) inset;}
+  .sym .none-lbl{font-family:var(--font-mono);font-size:8px;letter-spacing:.5px;text-transform:uppercase;position:absolute;}
+
+  /* list rows */
+  .lrow{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--border);}
+  .lrow:last-child{border-bottom:none;}
+  .lrow .lt{font-size:15px;font-weight:600;}
+  .lrow .ls{font-size:12px;color:var(--ink-3);font-family:var(--font-mono);margin-top:2px;}
+  .lrow .chev{margin-left:auto;color:var(--ink-4);font-size:18px;}
+  .amt{font-family:var(--font-mono);font-weight:600;font-size:14px;font-feature-settings:'tnum' 1;}
+  .amt .ccy{font-size:.66em;color:var(--ink-3);margin-right:.3em;font-weight:500;}
+  .amt.pos{color:var(--sage-text);} .amt.neg{color:var(--rust-text);} .amt.neu{color:var(--ink-3);}
+
+  /* specimen */
+  .spec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .spec{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 14px 14px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;}
+  .spec .gi{width:40px;height:40px;color:var(--ink);}
+  .spec .gi svg{width:100%;height:100%;}
+  .spec .gi svg [stroke]{stroke:currentColor;}
+  .spec .sn{font-size:13px;font-weight:600;}
+  .spec .sd{font-family:var(--font-mono);font-size:10px;color:var(--ink-4);letter-spacing:.3px;line-height:1.3;}
+
+  /* flavours */
+  .flav{flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:24px;display:flex;flex-direction:column;gap:18px;position:relative;}
+  .flav.pick{border-color:var(--primary);box-shadow:0 0 0 2px var(--saffron-tint);}
+  .flav .badge{position:absolute;top:-11px;left:24px;background:var(--primary);color:#fff;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:var(--r-pill);}
+  .flav h3{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:21px;margin:0;}
+  .flav .ft{font-size:13px;color:var(--ink-3);line-height:1.5;text-wrap:pretty;}
+  .flav .demo{display:flex;align-items:center;gap:18px;padding:18px;background:var(--paper);border-radius:14px;}
+  .flav .mini-list{flex:1;display:flex;flex-direction:column;gap:10px;}
+  .flav .mini{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;}
+  .pc{display:flex;gap:18px;font-size:12px;}
+  .pc div{flex:1;}
+  .pc .h{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-4);margin-bottom:5px;}
+  .pc li{margin:0 0 3px;padding-left:14px;position:relative;color:var(--ink-2);line-height:1.4;list-style:none;}
+  .pc ul{margin:0;padding:0;}
+  .pc .pro li::before{content:"+";position:absolute;left:0;color:var(--sage-text);font-weight:700;}
+  .pc .con li::before{content:"–";position:absolute;left:0;color:var(--rust-text);font-weight:700;}
+
+  .note-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;}
+  .note h4{font-family:var(--font-sans);font-size:14px;font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+  .note p{font-size:13.5px;color:var(--ink-2);line-height:1.55;margin:0;text-wrap:pretty;}
+  .note .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);flex:none;}
+  .callout{font-family:var(--font-mono);font-size:11px;color:var(--ink-4);letter-spacing:.3px;display:flex;align-items:center;gap:8px;margin-top:14px;}
+  .callout::before{content:"";width:18px;height:1px;background:var(--rule-2);}
+  .compare{display:flex;gap:16px;margin-top:26px;flex-wrap:wrap;}
+  .cmp{flex:1;min-width:240px;border-radius:16px;padding:18px 20px;border:1px solid var(--border);}
+  .cmp.bad{background:var(--card-soft);}
+  .cmp.good{background:#fff;border-color:var(--saffron-soft);}
+  .cmp .ct{font-family:var(--font-mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;margin-bottom:10px;}
+  .cmp.bad .ct{color:var(--rust-text);} .cmp.good .ct{color:var(--primary-dark);}
+  .cmp p{font-size:13px;color:var(--ink-2);line-height:1.5;margin:8px 0 0;}
+  .uni{display:inline-flex;gap:6px;font-size:20px;color:var(--ink-4);}
+</style>
+</head>
+<body>
+
+<!-- ===== ICON SPRITE ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="g-tent" class="ic"><path stroke="#000" d="M12 5 L3 20 M12 5 L21 20"/><path stroke="#000" d="M12 5 V2.8"/><path stroke="#000" d="M2.5 20 H21.5"/><path stroke="#000" d="M9.4 20 L12 11.5 L14.6 20"/></g>
+  <g id="g-mountain" class="ic"><path stroke="#000" d="M2 19 L8.5 6 L12.5 12.5 L16 7.5 L22 19"/><path stroke="#000" d="M6.8 9 L8.5 6.6 L10.2 9"/><path stroke="#000" d="M14.6 9.4 L16 7.6 L17.4 9.4"/></g>
+  <g id="g-palm" class="ic"><path stroke="#000" d="M12 9.5 C12 14 12.5 18 14 21"/><path stroke="#000" d="M12 9.5 C8 8.8 4.5 10 3 13"/><path stroke="#000" d="M12 9.5 C16 8.8 19.5 10 21 13"/><path stroke="#000" d="M12 9.5 C9.5 9 7 11.5 6 15"/><path stroke="#000" d="M12 9.5 C14.5 9 17 11.5 18 15"/><path stroke="#000" d="M12 9.5 C11.2 7.6 11.4 6 12 4.6"/><path stroke="#000" d="M12 9.5 C12.8 7.6 12.6 6 12 4.6"/></g>
+  <g id="g-sun" class="ic"><circle stroke="#000" cx="12" cy="12" r="4"/><path stroke="#000" d="M12 3 V5.2 M12 18.8 V21 M3 12 H5.2 M18.8 12 H21 M5.6 5.6 L7.1 7.1 M16.9 16.9 L18.4 18.4 M18.4 5.6 L16.9 7.1 M7.1 16.9 L5.6 18.4"/></g>
+  <g id="g-wave" class="ic"><path stroke="#000" d="M2 9 C4 6.5 6 6.5 8 9 C10 11.5 12 11.5 14 9 C16 6.5 18 6.5 20 9"/><path stroke="#000" d="M4 15 C6 12.5 8 12.5 10 15 C12 17.5 14 17.5 16 15 C18 12.5 20 12.5 22 15"/></g>
+  <g id="g-compass" class="ic"><circle stroke="#000" cx="12" cy="12" r="9"/><path stroke="#000" d="M12 6.5 L13.6 12 L12 17.5 L10.4 12 Z"/><path stroke="#000" d="M6.5 12 L12 10.4 L17.5 12 L12 13.6 Z"/></g>
+  <g id="g-anchor" class="ic"><circle stroke="#000" cx="12" cy="5" r="2"/><path stroke="#000" d="M12 7 V20"/><path stroke="#000" d="M8 11 H16"/><path stroke="#000" d="M4.5 13.5 C4.5 18 8 20.5 12 20.5 C16 20.5 19.5 18 19.5 13.5"/><path stroke="#000" d="M4.5 13.5 L3 14.8 M4.5 13.5 L6 12.4 M19.5 13.5 L21 14.8 M19.5 13.5 L18 12.4"/></g>
+  <g id="g-dining" class="ic"><path stroke="#000" d="M7 3 V8 M9.5 3 V8 M12 3 V8 M9.5 8 V21 M7 8 H12"/><path stroke="#000" d="M16.5 3 V21 M16.5 3 C18.8 4.5 18.8 9 16.5 11"/></g>
+  <g id="g-coffee" class="ic"><path stroke="#000" d="M5 9 H17 V13.5 C17 16.5 14.8 18.5 11 18.5 C7.2 18.5 5 16.5 5 13.5 Z"/><path stroke="#000" d="M17 10 C20 10 20 14 17 14"/><path stroke="#000" d="M8 3 C7 4.2 9 5 8 6.3 M12 3 C11 4.2 13 5 12 6.3"/></g>
+  <g id="g-house" class="ic"><path stroke="#000" d="M4 11 L12 4 L20 11"/><path stroke="#000" d="M6 10 V20 H18 V10"/><path stroke="#000" d="M10 20 V14 H14 V20"/></g>
+  <g id="g-gift" class="ic"><path stroke="#000" d="M4.5 11 H19.5 V20 H4.5 Z"/><path stroke="#000" d="M3.5 8 H20.5 V11 H3.5 Z"/><path stroke="#000" d="M12 8 V20"/><path stroke="#000" d="M12 8 C12 5 9.5 4 8.5 5.5 C7.7 6.8 9.6 8 12 8 C14.4 8 16.3 6.8 15.5 5.5 C14.5 4 12 5 12 8 Z"/></g>
+  <g id="g-camera" class="ic"><path stroke="#000" d="M3 8.5 H7 L8.5 6 H15.5 L17 8.5 H21 V19 H3 Z"/><circle stroke="#000" cx="12" cy="13" r="3.4"/></g>
+  <g id="g-route" class="ic"><circle stroke="#000" cx="6" cy="6" r="2.2"/><circle stroke="#000" cx="18" cy="18" r="2.2"/><path stroke="#000" d="M6 8.5 C6 13 18 11 18 15.4" stroke-dasharray="0.1 3.2"/></g>
+</defs></svg>
+
+<div class="wrap">
+
+  <!-- ===== MASTHEAD ===== -->
+  <header>
+    <div class="kicker">Rihla · Group identity</div>
+    <h1>Trip Stamps</h1>
+    <p class="dek">A group's tile becomes a <strong>stamp in a travel journal</strong> — a curated symbol inked in one of six journal colours, pressed into the existing paper tile. Pick nothing and you still get the serif monogram you have today. Zero regression, real meaning.</p>
+
+    <div class="compare">
+      <div class="cmp bad">
+        <div class="ct">Today — the picker that lies</div>
+        <div class="uni">⛺ ⌂ ↗ ✦ ◐ ⌘</div>
+        <p>Six Unicode glyphs sit in Create-Group as decoration. Nothing is selectable, nothing is stored, and the tile never shows any of them. It reads as an icon picker that does nothing.</p>
+      </div>
+      <div class="cmp good">
+        <div class="ct">Proposed — a stamp you choose</div>
+        <div style="display:flex;gap:10px;margin-top:2px;">
+          <span class="stamp" style="--ink:var(--ink-terracotta);--sz:40px"><svg class="ic"><use href="#g-tent"/></svg></span>
+          <span class="stamp" style="--ink:var(--ink-harbour);--sz:40px"><svg class="ic"><use href="#g-wave"/></svg></span>
+          <span class="stamp" style="--ink:var(--ink-plum);--sz:40px"><span class="mg">M</span></span>
+          <span class="stamp" style="--ink:var(--ink-olive);--sz:40px"><svg class="ic"><use href="#g-house"/></svg></span>
+        </div>
+        <p>Symbol + ink are chosen, previewed live, and stored. The monogram is just the no-symbol default — so existing groups upgrade themselves and nobody loses their tile.</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== 1. THE PICKER ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">01 / The redesigned picker</div>
+      <h2>Create &amp; edit group</h2>
+      <p class="sec-sub">A live hero previews the exact tile. Below it, the ink row (six journal colours) then the symbol grid — monogram first, then the icon family. Tap around the left phone; it's live.</p>
+    </div>
+
+    <div class="cols">
+      <!-- interactive picker -->
+      <div class="pf">
+        <div class="pf-scr">
+          <div class="pf-bar"><span>9:41</span><span>✦ ▮</span></div>
+          <div class="pf-top"><span class="cancel">Cancel</span><span class="save">Save</span></div>
+          <div class="pf-title">New group</div>
+          <div class="pf-body">
+            <div class="hero">
+              <span class="stamp" id="hero" style="--ink:var(--ink-terracotta);--sz:96px"><svg class="ic" id="heroSvg"><use href="#g-tent"/></svg></span>
+              <span class="cap" id="heroCap">Tent · Terracotta</span>
+            </div>
+            <div class="field">
+              <span class="fl">Group name</span>
+              <input class="fi" id="nameInput" value="Salalah Crew" autocomplete="off">
+            </div>
+            <div class="row-head">Ink</div>
+            <div class="ink-row" id="inkRow"></div>
+            <div class="row-head">Symbol <span class="hint">monogram is the default</span></div>
+            <div class="sym-grid" id="symGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- states legend -->
+      <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:20px;">
+        <div class="panel">
+          <div class="label-mono" style="margin-bottom:18px;">Hero states</div>
+          <div style="display:flex;gap:28px;flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+              <span class="stamp" style="--ink:var(--ink-plum);--sz:72px"><span class="mg">S</span></span>
+              <span class="label-mono" style="color:var(--ink-4)">Empty — monogram</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+              <span class="stamp" style="--ink:var(--ink-terracotta);--sz:72px"><svg class="ic"><use href="#g-tent"/></svg></span>
+              <span class="label-mono" style="color:var(--ink-4)">Symbol chosen</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+              <span class="stamp sel" style="--ink:var(--ink-harbour);--sz:72px"><svg class="ic"><use href="#g-wave"/></svg></span>
+              <span class="label-mono" style="color:var(--ink-4)">Selected ring</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="label-mono" style="margin-bottom:18px;">Cell states</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+            <div style="text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;">
+              <span class="sym" style="width:48px;height:48px;position:relative;"><span class="mg">A</span></span>
+              <span class="label-mono" style="color:var(--ink-4)">Monogram</span>
+            </div>
+            <div style="text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;">
+              <span class="sym" style="width:48px;height:48px;"><svg class="ic"><use href="#g-sun"/></svg></span>
+              <span class="label-mono" style="color:var(--ink-4)">Rest</span>
+            </div>
+            <div style="text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;">
+              <span class="sym sel" style="width:48px;height:48px;"><svg class="ic"><use href="#g-sun"/></svg></span>
+              <span class="label-mono" style="color:var(--ink-4)">Selected</span>
+            </div>
+          </div>
+          <div class="callout">Selected = saffron ring &amp; tint, never a colour change. Ink is set separately.</div>
+        </div>
+
+        <div class="panel soft">
+          <div class="label-mono" style="margin-bottom:10px;">People vs. groups</div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <span class="avatar av-5">LS</span>
+            <span style="font-size:13px;color:var(--ink-3)">round avatar = a person</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
+            <span class="stamp" style="--ink:var(--ink-olive);--sz:40px"><svg class="ic"><use href="#g-house"/></svg></span>
+            <span style="font-size:13px;color:var(--ink-3)">rounded stamp = a group</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2. ICON FAMILY ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">02 / The icon family</div>
+      <h2>Twelve monoline stamps</h2>
+      <p class="sec-sub">Even-stroke vectors themed around shared trips &amp; life. No emoji, no Unicode, nothing directional — every glyph is symmetric or balanced so it survives the Arabic RTL build untouched.</p>
+    </div>
+    <div class="spec-grid" id="specGrid"></div>
+    <div class="callout">Also queued: <strong style="color:var(--ink-2)">heart</strong>, <strong style="color:var(--ink-2)">ticket</strong>, <strong style="color:var(--ink-2)">crescent star</strong> — added only if usage data shows demand, to keep the grid one scroll-free screen.</div>
+  </section>
+
+  <!-- ===== 3. IN CONTEXT ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">03 / In context</div>
+      <h2>Legible at true size</h2>
+      <p class="sec-sub">The home list renders tiles at the real 40px; the group header at 44px. Monogram and symbol stamps share the row and stay crisp.</p>
+    </div>
+    <div class="cols">
+      <div class="pf">
+        <div class="pf-scr">
+          <div class="pf-bar"><span>9:41</span><span>✦ ▮</span></div>
+          <div style="padding:14px 20px 6px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-family:var(--font-serif);font-style:italic;font-size:26px;">Rihla</span>
+            <span class="avatar av-1" style="width:32px;height:32px;font-size:12px;">LS</span>
+          </div>
+          <div class="pf-body">
+            <div class="row-head" style="margin:8px 0 4px;">Your groups</div>
+            <div class="lrow"><span class="stamp" style="--ink:var(--ink-terracotta);--sz:40px"><svg class="ic"><use href="#g-tent"/></svg></span><div><div class="lt">Salalah Crew</div><div class="ls">4 people · Aug 12–18</div></div><span class="amt pos"><span class="ccy">OMR</span>92.750</span></div>
+            <div class="lrow"><span class="stamp" style="--ink:var(--ink-harbour);--sz:40px"><svg class="ic"><use href="#g-wave"/></svg></span><div><div class="lt">Musandam Dhow</div><div class="ls">6 people · settled</div></div><span class="amt neu"><span class="ccy">OMR</span>0.000</span></div>
+            <div class="lrow"><span class="stamp" style="--ink:var(--ink-olive);--sz:40px"><svg class="ic"><use href="#g-house"/></svg></span><div><div class="lt">Flat 3B</div><div class="ls">3 people · monthly</div></div><span class="amt neg"><span class="ccy">OMR</span>14.200</span></div>
+            <div class="lrow"><span class="stamp" style="--ink:var(--ink-plum);--sz:40px"><span class="mg">M</span></span><div><div class="lt">Maryam's Wedding</div><div class="ls">12 people · Nov 2</div></div><span class="amt pos"><span class="ccy">OMR</span>30.000</span></div>
+            <div class="lrow"><span class="stamp" style="--ink:var(--ink-ochre);--sz:40px"><svg class="ic"><use href="#g-dining"/></svg></span><div><div class="lt">Thursday Dinners</div><div class="ls">5 people · weekly</div></div><span class="amt neg"><span class="ccy">OMR</span>6.500</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:20px;">
+        <div class="panel">
+          <div class="label-mono" style="margin-bottom:16px;">Group header · 44px</div>
+          <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--ink),var(--ink-2));border-radius:16px;padding:18px;color:#fff;">
+            <span class="stamp" style="--ink:var(--ink-terracotta);--sz:44px;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff;"><svg class="ic"><use href="#g-tent"/></svg></span>
+            <div>
+              <div style="font-family:var(--font-serif);font-style:italic;font-size:22px;">Salalah Crew</div>
+              <div style="font-size:12px;color:#C9C4B8;font-family:var(--font-mono);">4 people · khareef trip</div>
+            </div>
+          </div>
+          <p style="font-size:12.5px;color:var(--ink-3);margin:14px 0 0;line-height:1.5;">On the dark module header the stamp keeps its symbol but inverts to a translucent white fill — the ink still reads through the tint.</p>
+        </div>
+
+        <div class="panel">
+          <div class="label-mono" style="margin-bottom:16px;">Actual size — 40px &amp; 44px</div>
+          <div style="display:flex;align-items:flex-end;gap:20px;">
+            <span class="stamp" style="--ink:var(--ink-harbour);--sz:40px"><svg class="ic"><use href="#g-compass"/></svg></span>
+            <span class="stamp" style="--ink:var(--ink-harbour);--sz:44px"><svg class="ic"><use href="#g-compass"/></svg></span>
+            <span class="stamp" style="--ink:var(--ink-plum);--sz:40px"><span class="mg">K</span></span>
+            <span class="stamp" style="--ink:var(--ink-plum);--sz:44px"><span class="mg">K</span></span>
+          </div>
+          <div class="callout">Shown 1:1. The 56% glyph inset keeps a hairline margin so the stamp never feels cramped at list size.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4. FLAVOURS ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">04 / Three tile flavours</div>
+      <h2>Pick the treatment</h2>
+      <p class="sec-sub">Same symbol + ink system, three frames. Tested at the only size that matters — 40px in a tight list.</p>
+    </div>
+    <div class="cols">
+      <div class="flav pick">
+        <span class="badge">Recommended</span>
+        <h3>A · Clean rounded tile</h3>
+        <p class="ft">Soft-tinted square, hairline border, 30% corner radius. The symbol does the talking.</p>
+        <div class="demo">
+          <span class="stamp" style="--ink:var(--ink-terracotta);--sz:72px"><svg class="ic"><use href="#g-tent"/></svg></span>
+          <div class="mini-list">
+            <div class="mini"><span class="stamp" style="--ink:var(--ink-harbour);--sz:40px"><svg class="ic"><use href="#g-wave"/></svg></span> Musandam</div>
+            <div class="mini"><span class="stamp" style="--ink:var(--ink-olive);--sz:40px"><svg class="ic"><use href="#g-house"/></svg></span> Flat 3B</div>
+            <div class="mini"><span class="stamp" style="--ink:var(--ink-plum);--sz:40px"><span class="mg">M</span></span> Maryam's</div>
+          </div>
+        </div>
+        <div class="pc">
+          <div class="pro"><div class="h">For</div><ul><li>Crispest at 40px</li><li>Aligns in lists</li><li>Calm, fintech-grade</li></ul></div>
+          <div class="con"><div class="h">Against</div><ul><li>Least playful alone</li></ul></div>
+        </div>
+      </div>
+
+      <div class="flav">
+        <h3>B · Passport stamp</h3>
+        <p class="ft">Dashed perforated frame, double rule, a 4° tilt — a rubber stamp in a journal.</p>
+        <div class="demo">
+          <span class="stamp passport" style="--ink:var(--ink-terracotta);--sz:72px"><svg class="ic"><use href="#g-tent"/></svg></span>
+          <div class="mini-list">
+            <div class="mini"><span class="stamp passport" style="--ink:var(--ink-harbour);--sz:40px"><svg class="ic"><use href="#g-wave"/></svg></span> Musandam</div>
+            <div class="mini"><span class="stamp passport" style="--ink:var(--ink-olive);--sz:40px"><svg class="ic"><use href="#g-house"/></svg></span> Flat 3B</div>
+            <div class="mini"><span class="stamp passport" style="--ink:var(--ink-plum);--sz:40px"><span class="mg">M</span></span> Maryam's</div>
+          </div>
+        </div>
+        <div class="pc">
+          <div class="pro"><div class="h">For</div><ul><li>Most on-concept</li><li>Joyful on hero</li></ul></div>
+          <div class="con"><div class="h">Against</div><ul><li>Tilt breaks list rhythm</li><li>Dashes muddy at 40px</li></ul></div>
+        </div>
+      </div>
+
+      <div class="flav">
+        <h3>C · Monogram + ink</h3>
+        <p class="ft">No symbols at all — just the serif initial in colour. The lowest-effort path.</p>
+        <div class="demo">
+          <span class="stamp" style="--ink:var(--ink-terracotta);--sz:72px"><span class="mg">S</span></span>
+          <div class="mini-list">
+            <div class="mini"><span class="stamp" style="--ink:var(--ink-harbour);--sz:40px"><span class="mg">M</span></span> Musandam</div>
+            <div class="mini"><span class="stamp" style="--ink:var(--ink-olive);--sz:40px"><span class="mg">F</span></span> Flat 3B</div>
+            <div class="mini"><span class="stamp" style="--ink:var(--ink-plum);--sz:40px"><span class="mg">M</span></span> Maryam's</div>
+          </div>
+        </div>
+        <div class="pc">
+          <div class="pro"><div class="h">For</div><ul><li>Zero new art</li><li>Always legible</li></ul></div>
+          <div class="con"><div class="h">Against</div><ul><li>Collisions (two M's)</li><li>No real identity</li></ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:24px;">Recommendation: ship <strong style="color:var(--ink-2)">A</strong> everywhere for legibility, keep <strong style="color:var(--ink-2)">C</strong> as its built-in default (no symbol), and borrow <strong style="color:var(--ink-2)">B</strong>'s perforation only for the large picker hero — concept where there's room, clarity where there isn't.</div>
+  </section>
+
+  <!-- ===== 5. NOTES ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">05 / Decisions &amp; open questions</div>
+      <h2>The thinking</h2>
+    </div>
+    <div class="note-grid">
+      <div class="note"><h4><span class="dot"></span>The symbol set</h4><p>Twelve covers the real reasons groups form in Rihla — trips (tent, mountain, palm, sun, wave, compass, anchor), shared life (house, dining, coffee), and moments (gift, camera). Chosen for distinct silhouettes at 40px, not literal completeness.</p></div>
+      <div class="note"><h4><span class="dot"></span>Empty &amp; selected states</h4><p>No symbol → the serif monogram of the name's first letter (today's behaviour, now intentional). Selected is always a saffron ring + tint over the unchanged glyph; we never recolour the symbol to show selection, so ink stays meaningful.</p></div>
+      <div class="note"><h4><span class="dot"></span>RTL safety</h4><p>The app ships Arabic, so nothing points: no bare arrows, no left/right asymmetry. Compass is a 4-point rose, the anchor and tent are mirror-symmetric, fork+knife reads as a balanced pair. The grid never flips meaning.</p></div>
+      <div class="note"><h4><span class="dot"></span>Ink = the six journal colours</h4><p>Ink reuses the existing avatar palette — terracotta, harbour, ochre, olive, plum, slate — so groups and people draw from one harmonious set. Saffron stays reserved for actions and the selected ring; it is never an ink.</p></div>
+      <div class="note" style="grid-column:1 / -1;"><h4><span class="dot"></span>Could this extend to per-event tiles?</h4><p>Yes, and cleanly. An event (a dinner, a fuel stop, a hotel) inherits its group's ink and picks a symbol from the same family — the dining glyph for a meal, anchor for a boat day — so a ledger reads as a strip of small stamps in one trip's colour. Same component, same picker, narrower symbol subset. Worth prototyping once the group rollout lands.</p>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <span class="stamp" style="--ink:var(--ink-terracotta);--sz:34px;border-radius:9px"><svg class="ic"><use href="#g-dining"/></svg></span>
+          <span class="stamp" style="--ink:var(--ink-terracotta);--sz:34px;border-radius:9px"><svg class="ic"><use href="#g-coffee"/></svg></span>
+          <span class="stamp" style="--ink:var(--ink-terracotta);--sz:34px;border-radius:9px"><svg class="ic"><use href="#g-house"/></svg></span>
+          <span class="stamp" style="--ink:var(--ink-terracotta);--sz:34px;border-radius:9px"><svg class="ic"><use href="#g-camera"/></svg></span>
+          <span style="font-size:12px;color:var(--ink-4);font-family:var(--font-mono);align-self:center;margin-left:6px;">events in one trip's ink</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const INKS = [
+    ['Terracotta','var(--ink-terracotta)'],['Harbour','var(--ink-harbour)'],
+    ['Ochre','var(--ink-ochre)'],['Olive','var(--ink-olive)'],
+    ['Plum','var(--ink-plum)'],['Slate','var(--ink-slate)']
+  ];
+  const SYMS = [
+    ['tent','Tent','Camping trip'],['mountain','Mountain','Hike · road trip'],
+    ['palm','Palm','Beach getaway'],['sun','Sun','Khareef · summer'],
+    ['wave','Wave','Sea · dhow day'],['compass','Compass','Exploring'],
+    ['anchor','Anchor','Boating'],['house','House','Flatmates · rent'],
+    ['dining','Fork & knife','Meals out'],['coffee','Coffee','Gatherings · qahwa'],
+    ['gift','Gift','Celebrations'],['camera','Camera','Memories']
+  ];
+
+  let state = { ink: 0, sym: 0 }; // sym -1 = monogram
+
+  const heroEl = document.getElementById('hero');
+  const heroSvg = document.getElementById('heroSvg');
+  const heroCap = document.getElementById('heroCap');
+  const nameInput = document.getElementById('nameInput');
+
+  function initial(){ return (nameInput.value.trim()[0] || 'A').toUpperCase(); }
+
+  function renderHero(){
+    heroEl.style.setProperty('--ink', INKS[state.ink][1]);
+    if(state.sym < 0){
+      heroEl.innerHTML = '<span class="mg">'+initial()+'</span>';
+      heroCap.textContent = 'Monogram · '+INKS[state.ink][0];
+    } else {
+      heroEl.innerHTML = '<svg class="ic"><use href="#g-'+SYMS[state.sym][0]+'"/></svg>';
+      heroCap.textContent = SYMS[state.sym][1]+' · '+INKS[state.ink][0];
+    }
+  }
+
+  // ink row
+  const inkRow = document.getElementById('inkRow');
+  INKS.forEach((ink,i)=>{
+    const b=document.createElement('button');
+    b.className='swatch'+(i===state.ink?' sel':'');
+    b.style.setProperty('--c',ink[1]); b.title=ink[0];
+    b.onclick=()=>{ state.ink=i; [...inkRow.children].forEach((c,j)=>c.classList.toggle('sel',j===i)); renderHero(); renderGrid(); };
+    inkRow.appendChild(b);
+  });
+
+  // symbol grid (monogram cell first)
+  const symGrid = document.getElementById('symGrid');
+  function renderGrid(){
+    symGrid.innerHTML='';
+    const mono=document.createElement('button');
+    mono.className='sym'+(state.sym<0?' sel':'');
+    mono.style.position='relative';
+    mono.innerHTML='<span class="mg">'+initial()+'</span>';
+    mono.onclick=()=>{ state.sym=-1; renderGrid(); renderHero(); };
+    symGrid.appendChild(mono);
+    SYMS.forEach((s,i)=>{
+      const b=document.createElement('button');
+      b.className='sym'+(state.sym===i?' sel':'');
+      b.title=s[1];
+      b.innerHTML='<svg class="ic"><use href="#g-'+s[0]+'"/></svg>';
+      b.onclick=()=>{ state.sym=i; renderGrid(); renderHero(); };
+      symGrid.appendChild(b);
+    });
+  }
+
+  nameInput.addEventListener('input',()=>{ renderHero(); renderGrid(); });
+
+  renderHero(); renderGrid();
+
+  // specimen sheet
+  const specGrid=document.getElementById('specGrid');
+  SYMS.forEach(s=>{
+    const c=document.createElement('div');
+    c.className='spec';
+    c.innerHTML='<div class="gi"><svg class="ic"><use href="#g-'+s[0]+'"/></svg></div><div class="sn">'+s[1]+'</div><div class="sd">'+s[2]+'</div>';
+    specGrid.appendChild(c);
+  });
+</script>
+</body>
+</html>

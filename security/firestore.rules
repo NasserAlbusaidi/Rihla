@@ -77,6 +77,23 @@ service cloud.firestore {
         && value in ['OMR', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'JPY', 'KWD', 'BHD', 'QAR'];
     }
 
+    // #287 (trip-stamps): a group's optional decorative "stamp". `glyph` is an
+    // allow-listed enum string (the 12 ship-with icons); `inkIndex` is the ink
+    // colour swatch 0..5. Both are nullable-by-absence on the model — these
+    // helpers are STRICT (key must be ABSENT or a valid value). An explicit null
+    // is neither, so it is rejected; clearing a stamp uses a field-DELETE
+    // (post-write key absent), which the `!('glyph' in data)` guards admit.
+    // Mirrored by the Dart model + picker (GroupGlyph) and PR-2b/PR-3.
+    function validGlyph(value) {
+      return value is string && value in [
+        'tent', 'mountain', 'palm', 'sun', 'wave', 'compass',
+        'anchor', 'house', 'dining', 'coffee', 'gift', 'camera'
+      ];
+    }
+    function validInkIndex(value) {
+      return value is int && value >= 0 && value <= 5;
+    }
+
     function positiveInt(value) {
       // #528: cap at Number.MAX_SAFE_INTEGER (2^53-1). Above it, an amountFils
       // stored as a Dart int64 reads back as a divergent JS number server-side,
@@ -265,7 +282,11 @@ service cloud.firestore {
             // !group.isDeleted filter so legacy field-absent groups stay visible.
             // A group can never be created already-deleted.
             'isDeleted',
-            'deletedAt'
+            'deletedAt',
+            // #287 trip-stamps: optional decorative stamp (allow-listed glyph
+            // enum + 0..5 ink swatch). Absent on legacy/monogram groups.
+            'glyph',
+            'inkIndex'
           ])
           && request.resource.data.id == groupId
           && isValidDisplayName(request.resource.data.name)
@@ -276,7 +297,11 @@ service cloud.firestore {
           && request.resource.data.createdAt is timestamp
           && request.resource.data.updatedAt is timestamp
           && request.resource.data.isDeleted == false
-          && request.resource.data.deletedAt == null;
+          && request.resource.data.deletedAt == null
+          && (!('glyph' in request.resource.data)
+            || validGlyph(request.resource.data.glyph))
+          && (!('inkIndex' in request.resource.data)
+            || validInkIndex(request.resource.data.inkIndex));
       }
 
       function validCreatorMetadataUpdate() {
@@ -286,12 +311,21 @@ service cloud.firestore {
         // new expenses (each money doc carries its own per-doc currency, bucketed
         // independently), not a constraint every money doc must match; but mutating
         // a live group's default has no benefit and is left immutable.
+        // #287 trip-stamps: the creator may also set/clear the decorative stamp
+        // (glyph + inkIndex). A field-DELETE that clears a stamp counts as an
+        // affected key (present→absent), so both must sit in `hasOnly([...])` or
+        // the clear-update would be denied; the guards below stay STRICT
+        // (absent-or-valid), so an explicit-null write is still rejected.
         return isCreator()
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['name', 'updatedAt'])
+            .hasOnly(['name', 'updatedAt', 'glyph', 'inkIndex'])
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['name'])
             || isValidDisplayName(request.resource.data.name))
-          && request.resource.data.updatedAt is timestamp;
+          && request.resource.data.updatedAt is timestamp
+          && (!('glyph' in request.resource.data)
+            || validGlyph(request.resource.data.glyph))
+          && (!('inkIndex' in request.resource.data)
+            || validInkIndex(request.resource.data.inkIndex));
       }
 
       // #290 + #318: membership removal is server-authoritative. The `leaveGroup`
@@ -497,6 +531,19 @@ service cloud.firestore {
               || d.splitDistribution.values().join(',').matches('^[0-9,]+$');
           }
 
+          // #203 - splitExplanation is OPAQUE display-only metadata (balance
+          // truth stays in splitDistribution; the server never reads it). Guard
+          // type + a generous top-level entry-count cap only; value content is
+          // intentionally unvalidated. NOTE: map.size() counts entry COUNT, not
+          // value weight — the 1MB Firestore doc limit is the hard payload
+          // backstop. Kept in the create/update WRAPPERS (not validExpenseBase)
+          // so a legacy/forged oversized doc stays soft-deletable (the #192/#194
+          // pattern). Wired unconditionally on create, diff-gated on update.
+          function splitExplanationBounded(d) {
+            return !d.keys().hasAny(['splitExplanation'])
+              || (d.splitExplanation is map && d.splitExplanation.size() <= 64);
+          }
+
           // #194 - free-text fields present on every expense create map
           // (expense_service.dart writes all of them). Bounds + charset; the
           // base keeps nullableString for the type guarantee.
@@ -544,7 +591,8 @@ service cloud.firestore {
               'isDeleted',
               'deletedAt',
               'createdAt',
-              'lastEditedBy'
+              'lastEditedBy',
+              'splitExplanation'
             ])
             && data.id == docId
             && data.eventId == eventId
@@ -573,6 +621,7 @@ service cloud.firestore {
               && eventAllowsClientWrites(groupId, eventId)
               && validExpenseBase(request.resource.data, true)
               && splitValuesNonNegative(request.resource.data)
+              && splitExplanationBounded(request.resource.data)
               && validExpenseFreeText(request.resource.data)
               && request.resource.data.createdBy == request.auth.uid
               // #248: when present, lastEditedBy must be the caller (unforgeable
@@ -642,11 +691,14 @@ service cloud.firestore {
                   'note',
                   'isDeleted',
                   'deletedAt',
-                  'lastEditedBy'
+                  'lastEditedBy',
+                  'splitExplanation'
                 ])
               && validExpenseBase(request.resource.data, affectsExpenseAllocation())
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
                 || splitValuesNonNegative(request.resource.data))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitExplanation'])
+                || splitExplanationBounded(request.resource.data))
               // #382 PR-6: per-expense currency. An expense's currency need only be
               // a SUPPORTED code (validExpenseBase validCurrency floor at :563), no
               // longer one that equals group.currency — the old diff-gated

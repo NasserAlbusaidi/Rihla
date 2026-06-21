@@ -1,0 +1,3 @@
+/* Shim so claude.ai/design exports (which link ./styles.css → ./_ds_bundle.css)
+   render locally against the same token set used by the rest of the gallery. */
+@import "assets/rihla.css";

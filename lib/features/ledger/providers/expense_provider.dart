@@ -12,6 +12,7 @@ import '../../groups/providers/group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
+import '../models/split_explanation.dart';
 import '../services/expense_service.dart';
 import '../services/settlement_service.dart';
 
@@ -500,6 +501,69 @@ class BalanceCalculator {
         recipients = participantIds.toSet();
     }
     return _allocateEqual(amount, recipients, fenced);
+  }
+
+  /// Pure itemized → exact-distribution producer (#203 Slice 1). Each
+  /// [SplitItem.amountFils] (integer-subunit LINE TOTAL) is split equally among
+  /// its [SplitItem.participantIds]; the per-item integer remainder lands on the
+  /// alphabetically-last assignee (the project-wide remainder contract). Owed
+  /// accumulates across items.
+  ///
+  /// Returns the `SplitMode.exact` splitDistribution to persist:
+  ///  - Σ(values) == Σ(item amountFils) exactly (conservation), and
+  ///  - every value is a whole number of subunits (#596 — keeps netBalance
+  ///    whole-subunit so client↔server oracle parity + the settle-up cap hold).
+  ///
+  /// This is a WRITE-TIME producer, NOT part of the read-time oracle surface:
+  /// the persisted artifact is a standard exact split that `recomputeNet` /
+  /// [_allocateExact] already decode, so there is no server mirror to keep in
+  /// lockstep (itemized reduces to `exact` at persistence).
+  ///
+  /// Preconditions — ENFORCED here (throws [ArgumentError]), so this producer
+  /// can never emit a negative owed or a non-conserving distribution:
+  ///  - non-negative [SplitItem.amountFils] (a negative price is invalid input;
+  ///    the Slice 2 editor validates pre-call, `firestore.rules`
+  ///    `splitValuesNonNegative` is the write backstop, [_allocateExact] guards
+  ///    forged docs on read).
+  ///  - ≥1 assignee per item — every item's cost must land somewhere, else
+  ///    `Σ distribution < Σ items` and the exact read-back would drift into the
+  ///    tolerance fallback and silently discard the itemization.
+  static Map<String, Decimal> allocateItemizedDistribution({
+    required List<SplitItem> items,
+    required String currency,
+  }) {
+    final fenced = MoneySerializer.isSupported(currency) ? currency : 'OMR';
+    final owedSubunits = <String, int>{};
+
+    for (final item in items) {
+      if (item.amountFils < 0) {
+        throw ArgumentError.value(
+          item.amountFils,
+          'amountFils',
+          'itemized item "${item.label}" is negative',
+        );
+      }
+      final assignees = item.participantIds.toSet().toList()..sort();
+      if (assignees.isEmpty) {
+        throw ArgumentError.value(
+          item.participantIds,
+          'participantIds',
+          'itemized item "${item.label}" has no assignees',
+        );
+      }
+      final n = assignees.length;
+      final base = item.amountFils ~/ n;
+      final remainder = item.amountFils - base * n;
+      for (var i = 0; i < n; i++) {
+        final share = base + (i == n - 1 ? remainder : 0);
+        owedSubunits[assignees[i]] = (owedSubunits[assignees[i]] ?? 0) + share;
+      }
+    }
+
+    return {
+      for (final entry in owedSubunits.entries)
+        entry.key: MoneySerializer.fromSubunits(entry.value, fenced),
+    };
   }
 
   static Map<String, Decimal> _allocateShares(
