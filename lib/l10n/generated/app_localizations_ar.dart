@@ -1082,6 +1082,60 @@ class AppLocalizationsAr extends AppLocalizations {
   String get customSplitModePercent => 'نسبة مئوية';
 
   @override
+  String get editorSplitItemized => 'حسب الأصناف';
+
+  @override
+  String get itemizedItemsHeader => 'الأصناف';
+
+  @override
+  String get itemizedAddItem => '+ إضافة صنف';
+
+  @override
+  String get itemizedRemoveItem => 'حذف الصنف';
+
+  @override
+  String get itemizedItemLabelHint => 'الصنف';
+
+  @override
+  String get itemizedWhoHadThis => 'من طلب هذا؟';
+
+  @override
+  String get itemizedEveryone => 'الجميع';
+
+  @override
+  String get itemizedEachOwes => 'حصة كل شخص';
+
+  @override
+  String get itemizedItemsMatchTotal => 'الأصناف تساوي الإجمالي';
+
+  @override
+  String itemizedAmountLeft(Object amount) {
+    return 'متبقٍّ $amount';
+  }
+
+  @override
+  String itemizedForName(Object name) {
+    return 'لـ $name';
+  }
+
+  @override
+  String itemizedNItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count صنف',
+      many: '$count صنفًا',
+      few: '$count أصناف',
+      two: 'صنفان',
+      one: 'صنف واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get itemizedNeedsSomeone => 'حدّد شخصًا';
+
+  @override
   String get categoryPickerTitle => 'ما الغرض منه؟';
 
   @override

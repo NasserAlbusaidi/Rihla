@@ -1053,6 +1053,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customSplitModePercent => 'Percent';
 
   @override
+  String get editorSplitItemized => 'Itemized';
+
+  @override
+  String get itemizedItemsHeader => 'Items';
+
+  @override
+  String get itemizedAddItem => '+ Add item';
+
+  @override
+  String get itemizedRemoveItem => 'Remove item';
+
+  @override
+  String get itemizedItemLabelHint => 'Item';
+
+  @override
+  String get itemizedWhoHadThis => 'Who had this?';
+
+  @override
+  String get itemizedEveryone => 'Everyone';
+
+  @override
+  String get itemizedEachOwes => 'Each person owes';
+
+  @override
+  String get itemizedItemsMatchTotal => 'Items match total';
+
+  @override
+  String itemizedAmountLeft(Object amount) {
+    return '$amount left';
+  }
+
+  @override
+  String itemizedForName(Object name) {
+    return 'for $name';
+  }
+
+  @override
+  String itemizedNItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get itemizedNeedsSomeone => 'Assign someone';
+
+  @override
   String get categoryPickerTitle => 'What\'s this for?';
 
   @override

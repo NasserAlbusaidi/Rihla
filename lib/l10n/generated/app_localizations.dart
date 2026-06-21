@@ -1904,6 +1904,84 @@ abstract class AppLocalizations {
   /// **'Percent'**
   String get customSplitModePercent;
 
+  /// No description provided for @editorSplitItemized.
+  ///
+  /// In en, this message translates to:
+  /// **'Itemized'**
+  String get editorSplitItemized;
+
+  /// No description provided for @itemizedItemsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get itemizedItemsHeader;
+
+  /// No description provided for @itemizedAddItem.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add item'**
+  String get itemizedAddItem;
+
+  /// No description provided for @itemizedRemoveItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove item'**
+  String get itemizedRemoveItem;
+
+  /// No description provided for @itemizedItemLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get itemizedItemLabelHint;
+
+  /// No description provided for @itemizedWhoHadThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Who had this?'**
+  String get itemizedWhoHadThis;
+
+  /// No description provided for @itemizedEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get itemizedEveryone;
+
+  /// No description provided for @itemizedEachOwes.
+  ///
+  /// In en, this message translates to:
+  /// **'Each person owes'**
+  String get itemizedEachOwes;
+
+  /// No description provided for @itemizedItemsMatchTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Items match total'**
+  String get itemizedItemsMatchTotal;
+
+  /// Itemized split: how far the line items are from the bill total (shown until they reconcile). {amount} is a formatted currency string, e.g. 'OMR 0.400'.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} left'**
+  String itemizedAmountLeft(Object amount);
+
+  /// Itemized split: caption under a line item assigned to a single person. {name} is the assignee's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'for {name}'**
+  String itemizedForName(Object name);
+
+  /// Itemized split: subtitle on the How card showing the line-item count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item} other{{count} items}}'**
+  String itemizedNItems(int count);
+
+  /// No description provided for @itemizedNeedsSomeone.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign someone'**
+  String get itemizedNeedsSomeone;
+
   /// No description provided for @categoryPickerTitle.
   ///
   /// In en, this message translates to:
