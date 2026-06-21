@@ -2125,6 +2125,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupNew => 'New group';
 
   @override
+  String get groupEditTitle => 'Edit group';
+
+  @override
   String get groupCreate => 'Create';
 
   @override

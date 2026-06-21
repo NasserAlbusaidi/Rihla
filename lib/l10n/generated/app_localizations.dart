@@ -3588,6 +3588,12 @@ abstract class AppLocalizations {
   /// **'New group'**
   String get groupNew;
 
+  /// No description provided for @groupEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group'**
+  String get groupEditTitle;
+
   /// No description provided for @groupCreate.
   ///
   /// In en, this message translates to:
