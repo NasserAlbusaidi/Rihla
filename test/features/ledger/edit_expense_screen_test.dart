@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -11,6 +12,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/split_explanation.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/edit_expense_screen.dart';
@@ -367,6 +369,160 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // #203 S2 PR1 — switching an itemized expense to an Equally split must
+  // orphan-delete the now-stale splitExplanation (clearExplanation: true), not
+  // leave itemized metadata stranded on a non-itemized expense.
+  testWidgets(
+    '#203 S2: itemized → equal edit clears splitExplanation (orphan-delete)',
+    (tester) async {
+      final service = _MockExpenseService();
+      when(
+        () => service.updateExpense(
+          groupId: any(named: 'groupId'),
+          eventId: any(named: 'eventId'),
+          expenseId: any(named: 'expenseId'),
+          amount: any(named: 'amount'),
+          currency: any(named: 'currency'),
+          description: any(named: 'description'),
+          scope: any(named: 'scope'),
+          customSplitParticipants: any(named: 'customSplitParticipants'),
+          splitMode: any(named: 'splitMode'),
+          splitDistribution: any(named: 'splitDistribution'),
+          clearSplit: any(named: 'clearSplit'),
+          splitExplanation: any(named: 'splitExplanation'),
+          clearExplanation: any(named: 'clearExplanation'),
+          categoryId: any(named: 'categoryId'),
+          payerParticipantId: any(named: 'payerParticipantId'),
+          lastEditedBy: any(named: 'lastEditedBy'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await _pumpEditableRoute(
+        tester,
+        expenseService: service,
+        expenses: Stream<List<Expense>>.value([_itemizedExpense()]),
+      );
+
+      await tester.tap(find.text('Open edit'));
+      await tester.pumpAndSettle();
+
+      // Open the "How" split sheet (the second "Customise" — after "Split
+      // between") and switch to an Equal split, then Apply.
+      final howCustomise = find.text('Customise').last;
+      await tester.ensureVisible(howCustomise);
+      await tester.pumpAndSettle();
+      await tester.tap(howCustomise);
+      await tester.pumpAndSettle();
+      // The segmented control labels come from splitModeDisplayName — Equally
+      // renders as "Equal" (splitModeEqually), not "Equally".
+      await tester.tap(find.text('Equal'));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('split_sheet_apply')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // The split went equal AND its itemized metadata was orphan-deleted.
+      verify(
+        () => service.updateExpense(
+          groupId: 'group-1',
+          eventId: 'event-1',
+          expenseId: 'expense-1',
+          amount: any(named: 'amount'),
+          currency: any(named: 'currency'),
+          description: any(named: 'description'),
+          scope: any(named: 'scope'),
+          customSplitParticipants: any(named: 'customSplitParticipants'),
+          splitMode: any(named: 'splitMode'),
+          splitDistribution: any(named: 'splitDistribution'),
+          clearSplit: true,
+          splitExplanation: null,
+          clearExplanation: true,
+          categoryId: any(named: 'categoryId'),
+          payerParticipantId: any(named: 'payerParticipantId'),
+          lastEditedBy: any(named: 'lastEditedBy'),
+        ),
+      ).called(1);
+    },
+  );
+
+  // #203 S2 PR1 — an edit that touches neither the split nor its metadata (here
+  // a description-only change on an itemized expense) must NOT rewrite or clear
+  // the splitExplanation: it passes splitExplanation: null + clearExplanation:
+  // false so updateExpense leaves the stored map untouched. (Authoring a
+  // *changed* itemized result — the relabel-only case — needs PR2's editor; the
+  // independent set/clear/preserve branches are pinned at the service layer.)
+  // The amount is left at the seeded 12.500 so the exact-split sync guard, which
+  // checks the stored distribution sums to the current amount, does not fire.
+  testWidgets(
+    '#203 S2: a description-only edit on an itemized expense leaves '
+    'splitExplanation untouched',
+    (tester) async {
+      final service = _MockExpenseService();
+      when(
+        () => service.updateExpense(
+          groupId: any(named: 'groupId'),
+          eventId: any(named: 'eventId'),
+          expenseId: any(named: 'expenseId'),
+          amount: any(named: 'amount'),
+          currency: any(named: 'currency'),
+          description: any(named: 'description'),
+          scope: any(named: 'scope'),
+          customSplitParticipants: any(named: 'customSplitParticipants'),
+          splitMode: any(named: 'splitMode'),
+          splitDistribution: any(named: 'splitDistribution'),
+          clearSplit: any(named: 'clearSplit'),
+          splitExplanation: any(named: 'splitExplanation'),
+          clearExplanation: any(named: 'clearExplanation'),
+          categoryId: any(named: 'categoryId'),
+          payerParticipantId: any(named: 'payerParticipantId'),
+          lastEditedBy: any(named: 'lastEditedBy'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await _pumpEditableRoute(
+        tester,
+        expenseService: service,
+        expenses: Stream<List<Expense>>.value([_itemizedExpense()]),
+      );
+
+      await tester.tap(find.text('Open edit'));
+      await tester.pumpAndSettle();
+      // Change only the description; the split (exact) and its sum are untouched
+      // so the #250 exact-sync guard passes and updateExpense is reached.
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Description'),
+        'Dinner at the souq',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      verify(
+        () => service.updateExpense(
+          groupId: 'group-1',
+          eventId: 'event-1',
+          expenseId: 'expense-1',
+          amount: any(named: 'amount'),
+          currency: any(named: 'currency'),
+          description: 'Dinner at the souq',
+          scope: any(named: 'scope'),
+          customSplitParticipants: any(named: 'customSplitParticipants'),
+          splitMode: any(named: 'splitMode'),
+          splitDistribution: any(named: 'splitDistribution'),
+          clearSplit: any(named: 'clearSplit'),
+          splitExplanation: null,
+          clearExplanation: false,
+          categoryId: any(named: 'categoryId'),
+          payerParticipantId: any(named: 'payerParticipantId'),
+          lastEditedBy: any(named: 'lastEditedBy'),
+        ),
+      ).called(1);
+    },
+  );
 }
 
 Future<void> _pumpEditExpenseScreen(
@@ -469,6 +625,42 @@ Expense _expense({required String createdBy, String currency = 'OMR'}) {
     scope: ExpenseScope.global,
     createdAt: DateTime(2026, 5, 30),
     createdBy: createdBy,
+  );
+}
+
+// #203 S2 PR1: an itemized expense — persists AS exact + a splitExplanation.
+// Its distribution sums to the total (12.500) so the exact-split sync check
+// passes on save.
+Expense _itemizedExpense() {
+  return Expense(
+    id: 'expense-1',
+    tripId: 'event-1',
+    payerParticipantId: 'uid-yasmin',
+    amount: Decimal.parse('12.500'),
+    currency: 'OMR',
+    description: 'Dinner',
+    scope: ExpenseScope.global,
+    createdAt: DateTime(2026, 5, 30),
+    createdBy: 'uid-yasmin',
+    splitMode: SplitMode.exact,
+    splitDistribution: {
+      'uid-yasmin': Decimal.parse('8.500'),
+      'uid-layla': Decimal.parse('4.000'),
+    },
+    splitExplanation: const SplitExplanation(
+      items: [
+        SplitItem(
+          label: 'Tagine',
+          amountFils: 8500,
+          participantIds: ['uid-yasmin'],
+        ),
+        SplitItem(
+          label: 'Mint tea',
+          amountFils: 4000,
+          participantIds: ['uid-yasmin', 'uid-layla'],
+        ),
+      ],
+    ),
   );
 }
 

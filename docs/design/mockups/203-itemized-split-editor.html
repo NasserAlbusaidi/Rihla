@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#203 Slice 2 — Itemized split editor (MVP) · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+</head>
+<body>
+<div class="page-head">
+  <h1>#203 · <span class="saffron">Itemized</span> split editor <span style="font-size:22px;color:#8a8576">— Slice 2 (MVP)</span></h1>
+  <p>Slice 1 (foundation) shipped: the <code>splitExplanation</code> schema, the pure
+     <code>allocateItemizedDistribution</code> allocator, and the rules allow-list — all deployed.
+     This slice is the <b>editor</b> that finally lets a user build one. Locked from the planning
+     gallery's <b>V1 (item rows)</b> pick, scoped down to MVP.
+     <a href="203-itemized-split.html">← original 3-variant exploration</a> · <a href="index.html">gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#203 · S2</span>
+    <h2 class="issue-title">The itemized editor — list the bill, tap who had each, app computes the exact split</h2>
+    <span class="issue-meta">P2 · money · the Gate applies (schema write + read-path + money math)</span>
+  </div>
+  <p class="issue-desc">
+    Scenario: <b>Coffee run, Nasser paid OMR 6.100.</b> Shared pastries for the table, then each had a
+    different drink. Today the payer opens <b>How → Exact</b> and types four hand-computed amounts.
+    With <b>Itemized</b> they list the items, assign each (a one-tap <b>Everyone</b> = the shared base),
+    and the app derives the exact <code>splitDistribution</code> — persisted as a normal
+    <code>SplitMode.exact</code> + <code>splitExplanation</code>, so balances and the server oracle are
+    untouched. Hessa, who only shared the pastries, owes <b>OMR 0.300</b> — not 0.
+  </p>
+  <p class="issue-rec"><b>Scope:</b> item rows · shared-base via "Everyone" · live reconcile-to-total · reopen read-back.
+     <b>Deferred → #605:</b> service / tax / tip / discount. <b>No new SplitMode</b> — Itemized is a 5th option in the How sheet that <i>produces</i> an exact split.</p>
+
+  <div class="variant-row">
+
+    <!-- ───────────────── Frame A · Today (the pain) ───────────────── -->
+    <div class="variant">
+      <div class="variant-label">A · Today <span class="tag">exact, by hand</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">✕</div>
+            <div class="title sans">How to split</div>
+            <div style="width:64px;text-align:right;color:var(--primary);font-weight:700;font-size:14px;padding-right:6px">Apply</div>
+          </div>
+          <div style="padding:0 var(--s16) var(--s12)">
+            <div class="chip-row" style="gap:6px">
+              <span class="chip" style="padding:6px 11px">Equally</span>
+              <span class="chip" style="padding:6px 11px">Shares</span>
+              <span class="chip selected" style="padding:6px 11px">Exact</span>
+              <span class="chip" style="padding:6px 11px">%</span>
+            </div>
+          </div>
+          <div class="content tight" style="padding-top:0">
+            <div class="card flush raised">
+              <div class="list-row"><div class="avatar sm av-5">N</div><div class="row-body"><div class="row-title">Nasser <span class="pill-tag" style="margin-inline-start:4px">paid</span></div></div>
+                <span class="input-box" style="font-family:var(--font-mono)">1.900</span></div>
+              <div class="list-row"><div class="avatar sm av-2">S</div><div class="row-body"><div class="row-title">Sara</div></div>
+                <span class="input-box" style="font-family:var(--font-mono)">1.500</span></div>
+              <div class="list-row"><div class="avatar sm av-6">K</div><div class="row-body"><div class="row-title">Khalid</div></div>
+                <span class="input-box" style="font-family:var(--font-mono)">2.400</span></div>
+              <div class="list-row"><div class="avatar sm av-3">H</div><div class="row-body"><div class="row-title">Hessa</div></div>
+                <span class="input-box" style="font-family:var(--font-mono)">0.300</span></div>
+            </div>
+            <div class="card soft between" style="padding:14px var(--s16);margin-top:var(--s12)">
+              <span class="uppercase-label">Must equal total</span>
+              <span class="r-amount pos" style="font-size:12px">✓ 100 %</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The math is the user's problem.</b> To get here you first worked out each person's
+        share on paper — shared pastries ÷ 4, plus their own drink — then typed four figures and prayed they sum to
+        6.100. Itemized moves that arithmetic into the app.</p>
+    </div>
+
+    <!-- ───────────────── Frame B · Itemized editor (PICK) ───────────────── -->
+    <div class="variant pick">
+      <div class="variant-label">B · Itemized editor <span class="tag">the bill as a list</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">✕</div>
+            <div class="title sans">How to split</div>
+            <div style="width:64px;text-align:right;color:var(--primary);font-weight:700;font-size:14px;padding-right:6px">Apply</div>
+          </div>
+          <div style="padding:0 var(--s16) var(--s12)">
+            <div class="chip-row" style="gap:6px">
+              <span class="chip" style="padding:6px 11px">Equally</span>
+              <span class="chip" style="padding:6px 11px">Exact</span>
+              <span class="chip" style="padding:6px 11px">%</span>
+              <span class="chip selected" style="padding:6px 11px">Itemized</span>
+            </div>
+          </div>
+          <div class="content tight" style="padding-top:0">
+            <div class="section-header"><span class="label">Items</span><span class="see-all">+ Add item</span></div>
+            <div class="card flush raised">
+              <!-- shared base = assigned to Everyone -->
+              <div class="list-row">
+                <div class="row-body">
+                  <div class="row-title">Pastries (shared)</div>
+                  <div class="row-sub"><span style="color:var(--primary);font-weight:600">Everyone · 4</span> — OMR 0.300 each</div>
+                </div>
+                <div class="row-trail">
+                  <span class="avatar-stack"><span class="avatar xs av-5">N</span><span class="avatar xs av-2">S</span><span class="avatar xs av-6">K</span><span class="avatar xs av-3">H</span></span>
+                  <span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.200</span></span>
+                </div>
+              </div>
+              <div class="list-row">
+                <div class="row-body"><div class="row-title">Americano</div><div class="row-sub">for Nasser</div></div>
+                <div class="row-trail"><div class="avatar sm av-5">N</div><span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.600</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-body"><div class="row-title">Espresso</div><div class="row-sub">for Sara</div></div>
+                <div class="row-trail"><div class="avatar sm av-2">S</div><span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.200</span></span></div>
+              </div>
+              <div class="list-row">
+                <div class="row-body"><div class="row-title">Latte</div><div class="row-sub">for Khalid</div></div>
+                <div class="row-trail"><div class="avatar sm av-6">K</div><span class="r-amount neu"><span class="ccy">OMR</span>2<span class="dec">.100</span></span></div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">Each person owes · live</span></div>
+            <div class="card raised" style="padding:0">
+              <div class="list-row" style="padding:9px var(--s16)"><div class="avatar sm av-5">N</div><div class="row-body"><div class="row-title" style="font-size:14px">Nasser <span class="pill-tag" style="margin-inline-start:4px">paid</span></div><div class="row-sub">shared + Americano</div></div><span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.900</span></span></div>
+              <div class="list-row" style="padding:9px var(--s16)"><div class="avatar sm av-2">S</div><div class="row-body"><div class="row-title" style="font-size:14px">Sara</div><div class="row-sub">shared + Espresso</div></div><span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.500</span></span></div>
+              <div class="list-row" style="padding:9px var(--s16)"><div class="avatar sm av-6">K</div><div class="row-body"><div class="row-title" style="font-size:14px">Khalid</div><div class="row-sub">shared + Latte</div></div><span class="r-amount neu"><span class="ccy">OMR</span>2<span class="dec">.400</span></span></div>
+              <div class="list-row" style="padding:9px var(--s16)"><div class="avatar sm av-3">H</div><div class="row-body"><div class="row-title" style="font-size:14px">Hessa</div><div class="row-sub">shared only</div></div><span class="r-amount neu"><span class="ccy">OMR</span>0<span class="dec">.300</span></span></div>
+              <div class="divider strong" style="margin:0"></div>
+              <div class="list-row between" style="padding:12px var(--s16)">
+                <span class="uppercase-label">Items match total</span>
+                <span class="row" style="gap:8px"><span class="r-amount pos" style="font-size:12px">✓ reconciled</span><span class="r-amount neu lg"><span class="ccy">OMR</span>6<span class="dec">.100</span></span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>List the bill, tap who had each.</b> Each row is label · assignee · amount;
+        <b>Everyone</b> is the one-tap shared base (pastries → 0.300 each). The live per-person card is the
+        reconcile-to-total guard — Apply stays dim until <b>items match total</b>. Apply emits the exact
+        <code>splitDistribution</code> + <code>splitExplanation</code>. New Itemized body in
+        <code>custom_split_sheet.dart</code>; result extended to carry the items.</p>
+    </div>
+
+    <!-- ───────────────── Frame C · Assign sheet + reconcile guard ───────────────── -->
+    <div class="variant">
+      <div class="variant-label">C · Add / assign an item <span class="tag">+ the guard</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Add item</div>
+            <div style="width:64px;text-align:right;color:var(--primary);font-weight:700;font-size:14px;padding-right:6px">Done</div>
+          </div>
+          <div class="content tight">
+            <div class="card raised" style="padding:var(--s16)">
+              <div class="uppercase-label" style="margin-bottom:6px">Item</div>
+              <div class="input-line" style="font-size:16px">Pastries (shared)</div>
+              <div class="row between" style="margin-top:var(--s16)">
+                <div><div class="uppercase-label" style="margin-bottom:6px">Amount</div>
+                  <div class="input-line" style="font-family:var(--font-mono);font-size:16px">OMR 1.200</div></div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">Who had this?</span><span class="see-all" style="color:var(--primary)">Everyone</span></div>
+            <div class="card flush raised">
+              <div class="list-row" style="background:var(--saffron-tint)"><div class="row-lead" style="color:var(--primary);font-size:18px;font-weight:700">☑</div><div class="avatar sm av-5">N</div><div class="row-body"><div class="row-title">Nasser</div></div></div>
+              <div class="list-row" style="background:var(--saffron-tint)"><div class="row-lead" style="color:var(--primary);font-size:18px;font-weight:700">☑</div><div class="avatar sm av-2">S</div><div class="row-body"><div class="row-title">Sara</div></div></div>
+              <div class="list-row" style="background:var(--saffron-tint)"><div class="row-lead" style="color:var(--primary);font-size:18px;font-weight:700">☑</div><div class="avatar sm av-6">K</div><div class="row-body"><div class="row-title">Khalid</div></div></div>
+              <div class="list-row" style="background:var(--saffron-tint)"><div class="row-lead" style="color:var(--primary);font-size:18px;font-weight:700">☑</div><div class="avatar sm av-3">H</div><div class="row-body"><div class="row-title">Hessa</div></div></div>
+            </div>
+            <div class="card soft" style="text-align:center;padding:var(--s12)">
+              <div class="tiny muted">Splits among 4 — each owes</div>
+              <span class="r-amount neu lg"><span class="ccy">OMR</span>0<span class="dec">.300</span></span>
+            </div>
+
+            <!-- the not-yet-reconciled state, shown as the guard -->
+            <div class="section-header"><span class="label">If items don't add up</span></div>
+            <div class="card raised between" style="padding:12px var(--s16);border:1px solid var(--rust)">
+              <span class="uppercase-label" style="color:var(--rust-text)">Items vs total</span>
+              <span class="row" style="gap:8px"><span class="r-amount neg" style="font-size:12px">OMR 0.400 left</span></span>
+            </div>
+            <div class="tiny muted center" style="margin-top:6px">Apply stays disabled until items reconcile to the bill total.</div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Assign = tick people.</b> One item can go to one person, several, or
+        <b>Everyone</b> (the shared base — pastries ÷ 4 = 0.300 each). The footer is the live reconcile guard:
+        while items ≠ total it shows the remainder in rust and <b>Apply is disabled</b>, mirroring the existing
+        Exact-split tolerance check.</p>
+    </div>
+
+    <!-- ───────────────── Frame D · Reopen read-back ───────────────── -->
+    <div class="variant">
+      <div class="variant-label">D · Reopen <span class="tag">receipt read-back</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Coffee run</div>
+            <div style="width:64px;text-align:right;color:var(--primary);font-weight:700;font-size:14px;padding-right:6px">Edit</div>
+          </div>
+          <div class="content tight">
+            <div class="card soft" style="border:1px dashed var(--rule-2);padding:var(--s20) var(--s16)">
+              <div class="center" style="margin-bottom:var(--s12)">
+                <div class="serif" style="font-size:20px">Coffee run</div>
+                <div class="uppercase-label" style="letter-spacing:2px">— itemized split —</div>
+              </div>
+              <div class="between" style="font-family:var(--font-mono);font-size:13px;padding:6px 0"><span style="color:var(--ink-2)">Pastries (shared)</span><span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.200</span></span></div>
+              <div class="between" style="font-family:var(--font-mono);font-size:13px;padding:6px 0;border-top:1px dotted var(--rule-2)"><span style="color:var(--ink-2)">Americano</span><span class="row" style="gap:8px"><span class="avatar xs av-5">N</span><span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.600</span></span></span></div>
+              <div class="between" style="font-family:var(--font-mono);font-size:13px;padding:6px 0;border-top:1px dotted var(--rule-2)"><span style="color:var(--ink-2)">Espresso</span><span class="row" style="gap:8px"><span class="avatar xs av-2">S</span><span class="r-amount neu"><span class="ccy">OMR</span>1<span class="dec">.200</span></span></span></div>
+              <div class="between" style="font-family:var(--font-mono);font-size:13px;padding:6px 0;border-top:1px dotted var(--rule-2)"><span style="color:var(--ink-2)">Latte</span><span class="row" style="gap:8px"><span class="avatar xs av-6">K</span><span class="r-amount neu"><span class="ccy">OMR</span>2<span class="dec">.100</span></span></span></div>
+              <div class="between" style="font-family:var(--font-mono);font-size:14px;padding:10px 0 4px;margin-top:4px;border-top:2px dashed var(--rule-2)"><span class="uppercase-label" style="letter-spacing:2px">Total</span><span class="r-amount neu lg"><span class="ccy">OMR</span>6<span class="dec">.100</span></span></div>
+              <div class="center tiny muted" style="margin-top:6px">Nasser paid the bill</div>
+            </div>
+
+            <div class="section-header"><span class="label">Each person owes</span></div>
+            <div class="card flush raised">
+              <div class="list-row" style="padding:9px var(--s16)"><div class="avatar sm av-2">S</div><div class="row-body"><div class="row-title" style="font-size:14px">Sara</div><div class="row-sub">shared + Espresso</div></div><span class="r-amount neg"><span class="ccy">OMR</span>1<span class="dec">.500</span></span></div>
+              <div class="list-row" style="padding:9px var(--s16)"><div class="avatar sm av-6">K</div><div class="row-body"><div class="row-title" style="font-size:14px">Khalid</div><div class="row-sub">shared + Latte</div></div><span class="r-amount neg"><span class="ccy">OMR</span>2<span class="dec">.400</span></span></div>
+              <div class="list-row" style="padding:9px var(--s16)"><div class="avatar sm av-3">H</div><div class="row-body"><div class="row-title" style="font-size:14px">Hessa</div><div class="row-sub">shared only</div></div><span class="r-amount neg"><span class="ccy">OMR</span>0<span class="dec">.300</span></span></div>
+            </div>
+            <div class="card soft" style="padding:var(--s12) var(--s16)">
+              <div class="tiny muted" style="margin-bottom:4px">Split method</div>
+              <div style="font-size:13px;color:var(--ink-2)">Itemized · exact distribution</div>
+              <div class="tiny muted" style="margin-top:4px">Stored as <code>SplitMode.exact</code> + <code>splitExplanation</code> — reopening rebuilds the editor; balances identical to a manual exact split.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Reopen rebuilds the bill.</b> The persisted <code>splitExplanation</code> renders as a
+        receipt and the editor reconstructs every row for editing — satisfying the AC "reopen/view reconstructs the
+        itemized explanation." A legacy expense with no metadata falls back to the existing exact view.</p>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .input-box { font-family:var(--font-mono); font-size:14px; font-weight:600; color:var(--ink);
+    border:1px solid var(--rule-2); border-radius:8px; padding:6px 12px; min-width:84px; text-align:right; }
+  .input-line { color:var(--ink); border-bottom:1.5px solid var(--primary); padding-bottom:6px; }
+  .avatar-stack { display:inline-flex; }
+  .avatar-stack .avatar.xs { margin-inline-start:-6px; border:1.5px solid var(--card); }
+  .avatar-stack .avatar.xs:first-child { margin-inline-start:0; }
+  .avatar.xs { width:20px; height:20px; font-size:9px; border-radius:50%; display:inline-flex;
+    align-items:center; justify-content:center; color:#fff; font-weight:700; }
+  .av-3 { background:var(--cat3); }
+</style>
+</body>
+</html>
