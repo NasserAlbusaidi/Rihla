@@ -222,10 +222,13 @@ void main() {
     'keystroke (#627 follow-up)',
     (tester) async {
       // Two LIVE members named "Sara" collide → the #196/#289 disambiguator
-      // appends ` (#<last4-of-uid>)`. Both the paid-by attribution and the split
-      // preview render it from the SAME parent-owned map; the paid-by card
-      // reading the discriminator proves it consumes that map, not raw
-      // participantNames (which would show a bare, ambiguous "Sara").
+      // appends ` (#<last4-of-uid>)`. The disambiguated PAYER string is fed from
+      // the ONE parent-owned map to BOTH surfaces that render it exactly: the
+      // paid-by attribution AND the payer's split-preview tile. Asserting exactly
+      // two occurrences pins both — were _PaidByCard to revert to raw
+      // participantNames it would render a bare "Sara" and the count would drop
+      // to one (the provenance byline renders "Added by Sara (#smin)", which is
+      // not an exact match, so it never contributes to this count).
       final twoSaras = Event(
         id: 'event-1',
         name: 'Marrakech',
@@ -245,8 +248,10 @@ void main() {
         eventStream: Stream.value(twoSaras),
       );
 
-      // Payer is uid-yasmin → discriminator is the last 4 chars 'smin'.
-      expect(find.text('Sara (#smin)'), findsWidgets);
+      // Payer is uid-yasmin → discriminator is the last 4 chars 'smin'. Exactly
+      // two surfaces render that string: the paid-by card title and the payer's
+      // preview tile (both fed from the shared map).
+      expect(find.text('Sara (#smin)'), findsNWidgets(2));
 
       // One compute serves every in-build consumer (paid-by + provenance +
       // preview), not one recompute per consumer.
