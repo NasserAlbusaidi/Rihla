@@ -2192,6 +2192,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupNew => 'مجموعة جديدة';
 
   @override
+  String get groupEditTitle => 'تعديل المجموعة';
+
+  @override
   String get groupCreate => 'إنشاء';
 
   @override

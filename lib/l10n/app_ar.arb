@@ -623,6 +623,7 @@
   "groupCreateError": "خطأ: {error}",
   "groupCreatedWillSync": "تم إنشاء المجموعة — ستتم المزامنة عند الاتصال.",
   "groupNew": "مجموعة جديدة",
+  "groupEditTitle": "تعديل المجموعة",
   "groupCreate": "إنشاء",
   "groupMoodTitle": "من سيكون معك؟",
   "groupMoodBody": "المجموعة هي دائرة أشخاص تتشاركون معهم المصاريف — بيت، فريق سفر، أو فريق مشروع.",

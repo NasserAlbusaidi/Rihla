@@ -16,6 +16,7 @@ Future<void> pumpPicker(
   required String name,
   required GroupStampSelection value,
   required ValueChanged<GroupStampSelection> onChanged,
+  bool showHero = true,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -28,6 +29,7 @@ Future<void> pumpPicker(
             name: name,
             value: value,
             onChanged: onChanged,
+            showHero: showHero,
           ),
         ),
       ),
@@ -244,6 +246,45 @@ void main() {
         hasSaffronRing(tester, find.byKey(const Key('stampSym_monogram_ring'))),
         isFalse,
       );
+    });
+  });
+
+  group('GroupStampPicker — showHero', () {
+    testWidgets('showHero: false drops the internal hero, keeps ink + grid', (
+      tester,
+    ) async {
+      await pumpPicker(
+        tester,
+        name: 'Crew',
+        value: (glyph: 'tent', inkIndex: 1),
+        onChanged: (_) {},
+        showHero: false,
+      );
+
+      // No internal hero GroupGlyph — the edit sheet renders its own above.
+      expect(find.byType(GroupGlyph), findsNothing);
+      // Ink swatches + symbol grid (incl. monogram) still render.
+      for (var i = 0; i < 6; i++) {
+        expect(find.byKey(Key('stampInk_$i')), findsOneWidget);
+      }
+      expect(find.byKey(const Key('stampSym_monogram')), findsOneWidget);
+      expect(find.byKey(const Key('stampSym_tent')), findsOneWidget);
+    });
+
+    testWidgets('default (showHero: true) still renders the internal hero', (
+      tester,
+    ) async {
+      await pumpPicker(
+        tester,
+        name: 'Crew',
+        value: (glyph: 'tent', inkIndex: 1),
+        onChanged: (_) {},
+      );
+
+      final heroes = tester
+          .widgetList<GroupGlyph>(find.byType(GroupGlyph))
+          .where((g) => g.size >= 64);
+      expect(heroes, hasLength(1), reason: 'internal hero present by default');
     });
   });
 
