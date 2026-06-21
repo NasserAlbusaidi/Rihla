@@ -116,8 +116,8 @@ The app uses GoRouter. Every route is declarative; deep links work without prelo
    /settings                        (GroupSettingsScreen)
    /settle-up                       (GroupSettleUpScreen, ?memberId=)
    /activity                        (GroupActivityScreen)
-   /create-event                    (EventTypePickerScreen)
-   /create-event/:type              (CreateEventScreen)
+   /create-event                    (CreateEventScreen — type chip-row)
+   /create-event/:type              (CreateEventScreen — type pre-selected)
    /event/:eid                      (EventCommandCenter — reachable but UI bypasses to /ledger)
       /ledger                       (LedgerScreen)        ← landing page when tapping an event card
          /add                       (AddExpenseScreen)

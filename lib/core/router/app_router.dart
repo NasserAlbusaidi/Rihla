@@ -7,7 +7,6 @@ import '../../features/events/screens/create_event_screen.dart';
 import '../../features/events/screens/event_command_center.dart';
 import '../../features/events/screens/event_recap_screen.dart';
 import '../../features/events/screens/event_settings_screen.dart';
-import '../../features/events/screens/event_type_picker_screen.dart';
 import '../../features/groups/screens/create_group_screen.dart';
 import '../../features/groups/screens/group_activity_screen.dart';
 import '../../features/groups/screens/group_detail_screen.dart';
@@ -280,26 +279,27 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
 
-          // Create event — type selector
+          // Create event — folded form (type is a chip-row; #489)
           GoRoute(
             path: 'create-event',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
-              child: EventTypePickerScreen(
+              child: CreateEventScreen(
                 groupId: state.pathParameters['gid']!,
+                initialEventType: EventType.trip,
               ),
               transitionsBuilder: _sharedAxisTransition,
             ),
           ),
 
-          // Create event — typed (EventType parsed from path param)
+          // Create event — typed deep link (type pre-selected; folded form, #489)
           GoRoute(
             path: 'create-event/:type',
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: CreateEventScreen(
                 groupId: state.pathParameters['gid']!,
-                eventType: EventType.fromString(
+                initialEventType: EventType.fromString(
                   state.pathParameters['type'] ?? 'custom',
                 ),
               ),

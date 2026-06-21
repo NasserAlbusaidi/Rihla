@@ -13,10 +13,8 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/app_messenger.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
-import 'package:safar/features/events/models/event_type_config.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/create_event_screen.dart';
-import 'package:safar/features/events/screens/event_type_picker_screen.dart';
 import 'package:safar/features/events/services/event_service.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -80,19 +78,6 @@ final _anyEvent = Event(
   createdAt: DateTime(2026, 6, 1),
 );
 
-/// Wraps a widget in ProviderScope + MaterialApp with standard test overrides.
-Widget _wrapPicker(Widget child, SharedPreferences prefs) {
-  return ProviderScope(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-    child: MaterialApp(
-      theme: AppTheme.lightTheme,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: child,
-    ),
-  );
-}
-
 Widget _wrapCreate(Widget child, SharedPreferences prefs) {
   return ProviderScope(
     overrides: [
@@ -120,15 +105,16 @@ Widget _wrapCreateRouted({
   required GroupActivityService activityService,
   String? currentUserId = 'uid-creator',
   ConnectivityStatus connectivity = ConnectivityStatus.online,
+  EventType initialType = EventType.trip,
 }) {
   final router = GoRouter(
     initialLocation: '/create',
     routes: [
       GoRoute(
         path: '/create',
-        builder: (_, _) => const CreateEventScreen(
+        builder: (_, _) => CreateEventScreen(
           groupId: 'group-1',
-          eventType: EventType.trip,
+          initialEventType: initialType,
         ),
       ),
       GoRoute(
@@ -208,7 +194,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: const CreateEventScreen(
           groupId: 'group-1',
-          eventType: EventType.trip,
+          initialEventType: EventType.trip,
         ),
       ),
     );
@@ -241,119 +227,6 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // EventTypePickerScreen
-  // -------------------------------------------------------------------------
-
-  group('EventTypePickerScreen', () {
-    testWidgets('displays all 5 event type cards', (tester) async {
-      await tester.pumpWidget(
-        _wrapPicker(const EventTypePickerScreen(groupId: 'group-1'), prefs),
-      );
-      await tester.pumpAndSettle();
-
-      // Verify all 5 type labels appear
-      for (final config in EventTypeConfig.allTypes) {
-        expect(
-          find.text(config.label),
-          findsOneWidget,
-          reason: 'Expected type label "${config.label}" to appear',
-        );
-      }
-    });
-
-    testWidgets('shows top bar title "New event"', (tester) async {
-      await tester.pumpWidget(
-        _wrapPicker(const EventTypePickerScreen(groupId: 'group-1'), prefs),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('New event'), findsOneWidget);
-    });
-
-    testWidgets('shows 5 type descriptions', (tester) async {
-      await tester.pumpWidget(
-        _wrapPicker(const EventTypePickerScreen(groupId: 'group-1'), prefs),
-      );
-      await tester.pumpAndSettle();
-
-      for (final config in EventTypeConfig.allTypes) {
-        expect(
-          find.text(config.description),
-          findsOneWidget,
-          reason: 'Expected description for ${config.label}',
-        );
-      }
-    });
-
-    testWidgets('tapping type card navigates to CreateEventScreen', (
-      tester,
-    ) async {
-      // EventTypePickerScreen uses context.push so we need MaterialApp.router
-      final router = GoRouter(
-        initialLocation: '/group/group-1/create-event',
-        routes: [
-          GoRoute(
-            path: '/group/:gid',
-            builder: (_, state) => Scaffold(
-              body: Text('GroupDetail:${state.pathParameters['gid']}'),
-            ),
-            routes: [
-              GoRoute(
-                path: 'create-event',
-                builder: (_, state) =>
-                    const EventTypePickerScreen(groupId: 'group-1'),
-              ),
-              GoRoute(
-                path: 'create-event/:type',
-                builder: (_, state) => CreateEventScreen(
-                  groupId: 'group-1',
-                  eventType: EventType.fromString(
-                    state.pathParameters['type'] ?? 'custom',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            groupMembersProvider(
-              'group-1',
-            ).overrideWith((ref) => Stream.value(_testMembers)),
-            groupDetailProvider(
-              'group-1',
-            ).overrideWith((ref) => Stream.value(_testGroup)),
-            eventLoadingProvider.overrideWith((ref) => false),
-          ],
-          child: MaterialApp.router(
-            theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            routerConfig: router,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Select the first card (Trip), then continue.
-      await tester.tap(find.byKey(EventKeys.eventTypeCard('Trip')));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
-      await tester.tap(find.byKey(EventKeys.createEventButton));
-      await tester.pumpAndSettle();
-
-      // AppBar title is gone after Plan 02; event type appears in ModuleHeader
-      // title AND in the badge — both are correct, so findsAtLeastNWidgets(1).
-      expect(find.text('New Trip Event'), findsNothing);
-      expect(find.text('Trip'), findsAtLeastNWidgets(1));
-    });
-  });
-
-  // -------------------------------------------------------------------------
   // CreateEventScreen
   // -------------------------------------------------------------------------
 
@@ -365,7 +238,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),
@@ -387,25 +260,234 @@ void main() {
       }
     });
 
-    testWidgets('shows event type badge with type label, no AppBar title', (
+    testWidgets(
+      'header reads "New event"; the type chip-row shows the type (#489)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrapCreate(
+            const CreateEventScreen(
+              groupId: 'group-1',
+              initialEventType: EventType.camping,
+            ),
+            prefs,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // The header is the generic "New event"; the type lives in the chip-row.
+        expect(find.text('New event'), findsOneWidget);
+        // The Camping chip renders its label exactly once (no static badge now).
+        expect(find.text('Camping'), findsOneWidget);
+        // Custom is not creatable — no Custom chip.
+        expect(find.byKey(EventKeys.eventTypeCard('Custom')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'renders 4 selectable chips (Custom dropped), Trip selected by default (#489)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrapCreate(
+            const CreateEventScreen(
+              groupId: 'group-1',
+              initialEventType: EventType.trip,
+            ),
+            prefs,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        for (final label in const [
+          'Trip',
+          'Camping',
+          'Travel',
+          'Night/Day Out',
+        ]) {
+          expect(
+            find.byKey(EventKeys.eventTypeCard(label)),
+            findsOneWidget,
+            reason: 'Expected a $label chip',
+          );
+        }
+        expect(find.byKey(EventKeys.eventTypeCard('Custom')), findsNothing);
+
+        // Trip is the selected chip by default; Camping is not (WYSIWYG).
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is Semantics &&
+                (w.properties.selected ?? false) &&
+                w.properties.label == 'Trip',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is Semantics &&
+                (w.properties.selected ?? false) &&
+                w.properties.label == 'Camping',
+          ),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets('selecting the Camping chip creates a camping event (#489)', (
       tester,
     ) async {
+      final eventService = _MockEventService();
+      final activityService = _MockGroupActivityService();
+      final createdEvent = Event(
+        id: 'event-created',
+        name: 'Beach Day',
+        type: EventType.camping,
+        groupId: 'group-1',
+        createdBy: 'uid-creator',
+        participantIds: const ['uid-creator', 'uid-member'],
+        participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+        modules: const EventModules(),
+        createdAt: DateTime(2026, 6, 1),
+      );
+      when(
+        () => eventService.stageEvent(
+          groupId: 'group-1',
+          name: 'Beach Day',
+          type: EventType.camping,
+          participantIds: const ['uid-creator', 'uid-member'],
+          participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+          createdBy: 'uid-creator',
+          startDate: null,
+          endDate: null,
+          modules: null,
+        ),
+      ).thenReturn((event: createdEvent, ack: Future<void>.value()));
+      when(
+        () => activityService.logGroupEvent(
+          groupId: any(named: 'groupId'),
+          type: any(named: 'type'),
+          actorId: any(named: 'actorId'),
+          actorName: any(named: 'actorName'),
+          description: any(named: 'description'),
+          metadata: any(named: 'metadata'),
+        ),
+      ).thenReturn(null);
+
       await tester.pumpWidget(
-        _wrapCreate(
-          const CreateEventScreen(
-            groupId: 'group-1',
-            eventType: EventType.camping,
-          ),
-          prefs,
+        _wrapCreateRouted(
+          prefs: prefs,
+          eventService: eventService,
+          activityService: activityService,
         ),
       );
       await tester.pumpAndSettle();
 
-      // After Plan 02: AppBar title is gone; type label shows in ModuleHeader
-      // title AND in the event type badge — both correct, so findsAtLeastNWidgets(1).
-      expect(find.text('New Camping Event'), findsNothing);
-      expect(find.text('Camping'), findsAtLeastNWidgets(1));
+      // Switch the type to Camping via the chip-row.
+      await tester.tap(find.byKey(EventKeys.eventTypeCard('Camping')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'Beach Day');
+      await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+      await tester.tap(find.byKey(EventKeys.createEventButton));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => eventService.stageEvent(
+          groupId: 'group-1',
+          name: 'Beach Day',
+          type: EventType.camping,
+          participantIds: const ['uid-creator', 'uid-member'],
+          participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+          createdBy: 'uid-creator',
+          startDate: null,
+          endDate: null,
+          modules: null,
+        ),
+      ).called(1);
+      expect(find.text('EventHub:event-created'), findsOneWidget);
     });
+
+    testWidgets(
+      'a custom deep-link coerces to Trip — creating yields a trip event (#489)',
+      (tester) async {
+        final eventService = _MockEventService();
+        final activityService = _MockGroupActivityService();
+        final createdEvent = Event(
+          id: 'event-created',
+          name: 'Beach Day',
+          type: EventType.trip,
+          groupId: 'group-1',
+          createdBy: 'uid-creator',
+          participantIds: const ['uid-creator', 'uid-member'],
+          participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+          modules: const EventModules(),
+          createdAt: DateTime(2026, 6, 1),
+        );
+        when(
+          () => eventService.stageEvent(
+            groupId: 'group-1',
+            name: 'Beach Day',
+            type: EventType.trip,
+            participantIds: const ['uid-creator', 'uid-member'],
+            participantNames: const {
+              'uid-creator': 'Alice',
+              'uid-member': 'Bob',
+            },
+            createdBy: 'uid-creator',
+            startDate: null,
+            endDate: null,
+            modules: null,
+          ),
+        ).thenReturn((event: createdEvent, ack: Future<void>.value()));
+        when(
+          () => activityService.logGroupEvent(
+            groupId: any(named: 'groupId'),
+            type: any(named: 'type'),
+            actorId: any(named: 'actorId'),
+            actorName: any(named: 'actorName'),
+            description: any(named: 'description'),
+            metadata: any(named: 'metadata'),
+          ),
+        ).thenReturn(null);
+
+        await tester.pumpWidget(
+          _wrapCreateRouted(
+            prefs: prefs,
+            eventService: eventService,
+            activityService: activityService,
+            initialType: EventType.custom,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // No Custom chip exists; the custom seed was coerced to Trip.
+        expect(find.byKey(EventKeys.eventTypeCard('Custom')), findsNothing);
+
+        await tester.enterText(find.byType(TextFormField), 'Beach Day');
+        await tester.ensureVisible(find.byKey(EventKeys.createEventButton));
+        await tester.tap(find.byKey(EventKeys.createEventButton));
+        await tester.pumpAndSettle();
+
+        // Coercion is proven by the OUTBOUND type: trip (NOT custom) — the only
+        // signal that distinguishes a coerced-Trip from a default-Trip.
+        verify(
+          () => eventService.stageEvent(
+            groupId: 'group-1',
+            name: 'Beach Day',
+            type: EventType.trip,
+            participantIds: const ['uid-creator', 'uid-member'],
+            participantNames: const {
+              'uid-creator': 'Alice',
+              'uid-member': 'Bob',
+            },
+            createdBy: 'uid-creator',
+            startDate: null,
+            endDate: null,
+            modules: null,
+          ),
+        ).called(1);
+      },
+    );
 
     testWidgets('does NOT show module toggles for non-Custom types', (
       tester,
@@ -414,7 +496,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),
@@ -430,7 +512,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),
@@ -454,7 +536,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),
@@ -471,7 +553,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),
@@ -487,7 +569,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),
@@ -495,6 +577,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // First deselect Alice to ensure not all are selected
+      await tester.ensureVisible(find.text('Alice'));
       await tester.tap(find.text('Alice'));
       await tester.pumpAndSettle();
 
@@ -520,7 +603,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),
@@ -550,7 +633,7 @@ void main() {
         _wrapCreate(
           const CreateEventScreen(
             groupId: 'group-1',
-            eventType: EventType.trip,
+            initialEventType: EventType.trip,
           ),
           prefs,
         ),

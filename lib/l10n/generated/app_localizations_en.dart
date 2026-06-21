@@ -1870,18 +1870,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventTypeCustomDescription => 'Start from a flexible event setup';
 
   @override
-  String get eventPickerTitle => 'What kind of\njourney is this?';
-
-  @override
-  String get eventPickerSubtitle =>
-      'We\'ll set sensible defaults for categories and splits.';
-
-  @override
-  String eventContinueWith(Object type) {
-    return 'Continue with $type';
-  }
-
-  @override
   String get eventNew => 'New event';
 
   @override

@@ -3180,24 +3180,6 @@ abstract class AppLocalizations {
   /// **'Start from a flexible event setup'**
   String get eventTypeCustomDescription;
 
-  /// No description provided for @eventPickerTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'What kind of\njourney is this?'**
-  String get eventPickerTitle;
-
-  /// No description provided for @eventPickerSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'We\'ll set sensible defaults for categories and splits.'**
-  String get eventPickerSubtitle;
-
-  /// No description provided for @eventContinueWith.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue with {type}'**
-  String eventContinueWith(Object type);
-
   /// No description provided for @eventNew.
   ///
   /// In en, this message translates to:
