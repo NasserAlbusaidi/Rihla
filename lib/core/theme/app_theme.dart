@@ -14,7 +14,12 @@ import 'tokens/typography_tokens.dart';
 /// - Mono (Geist Mono, tabular figures) — accessed via [AppTypography.mono]
 ///   when needed inline (money widgets, timestamps); not part of [TextTheme].
 class AppTheme {
-  static ThemeData get lightTheme {
+  // Built once and cached: themes derive only from compile-time tokens (no
+  // runtime/context inputs), so a `get` accessor needlessly rebuilt the full
+  // ThemeData tree on every root rebuild (#622).
+  static final ThemeData lightTheme = _buildLightTheme();
+
+  static ThemeData _buildLightTheme() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
@@ -202,7 +207,9 @@ class AppTheme {
   /// Dark theme — saffron-direction stub. Visual quality target deferred per
   /// plan; values come from [AppColorTokens.dark] which compile and don't
   /// produce illegible text but have not been tuned.
-  static ThemeData get darkTheme {
+  static final ThemeData darkTheme = _buildDarkTheme();
+
+  static ThemeData _buildDarkTheme() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
