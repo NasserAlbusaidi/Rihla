@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/split_explanation.dart';
 import 'package:safar/features/ledger/services/expense_service.dart';
 
 void main() {
@@ -889,6 +890,247 @@ void main() {
             restored.splitDistribution!['p2'],
             equals(Decimal.parse('10.000')),
           );
+        },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // #203 S2 PR1 — opaque splitExplanation display metadata on the write path.
+    // Itemized persists AS SplitMode.exact + a top-level splitExplanation map;
+    // the metadata is INBOUND/display-only (balance truth is splitDistribution).
+    // FakeFirebaseFirestore does NOT enforce rules — these prove the client
+    // serializes the right shape, not that the rules accept it (that's pinned by
+    // functions/test/firestore-rules-publish-readiness.test.ts, deployed in S1).
+    // -------------------------------------------------------------------------
+
+    group('splitExplanation (#203 S2 PR1)', () {
+      Future<Map<String, dynamic>> readDoc(
+        String gid,
+        String eid,
+        String xid,
+      ) async {
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(gid)
+            .collection('events')
+            .doc(eid)
+            .collection('expenses')
+            .doc(xid)
+            .get();
+        return snap.data()!;
+      }
+
+      // A realistic OMR (3dp) itemized bill: Pastries 1.200 shared four ways,
+      // Americano 1.600 for the payer alone → total 2.800. The distribution is
+      // hand-built (the allocator is not run in PR1).
+      SplitExplanation coffeeRun() => const SplitExplanation(
+        items: [
+          SplitItem(
+            label: 'Pastries',
+            amountFils: 1200,
+            participantIds: ['n', 's', 'k', 'h'],
+          ),
+          SplitItem(label: 'Americano', amountFils: 1600, participantIds: ['n']),
+        ],
+      );
+
+      Map<String, Decimal> coffeeRunDistribution() => {
+        'n': Decimal.parse('1.900'),
+        's': Decimal.parse('0.300'),
+        'k': Decimal.parse('0.300'),
+        'h': Decimal.parse('0.300'),
+      };
+
+      test(
+        'stageExpense persists splitExplanation at top level (itemized → exact)',
+        () async {
+          final staged = service.stageExpense(
+            groupId: 'g',
+            eventId: 'e',
+            payerParticipantId: 'n',
+            amount: Decimal.parse('2.800'),
+            currency: 'OMR',
+            createdBy: 'n',
+            splitMode: SplitMode.exact,
+            splitDistribution: coffeeRunDistribution(),
+            splitExplanation: coffeeRun(),
+          );
+          await staged.ack;
+
+          final data = await readDoc('g', 'e', staged.expense.id);
+          // Top-level, NOT nested in the splitMode/splitDistribution block.
+          expect(data['splitExplanation'], isA<Map>());
+          expect((data['splitExplanation'] as Map)['type'], 'itemized');
+          expect((data['splitExplanation'] as Map)['version'], 1);
+          // The split itself still persists as exact subunits.
+          expect(data['splitMode'], 'exact');
+          expect(
+            data['splitDistribution'],
+            equals({'n': 1900, 's': 300, 'k': 300, 'h': 300}),
+          );
+
+          final restored = Expense.fromFirestore({...data, 'id': staged.expense.id});
+          expect(restored.splitExplanation, isNotNull);
+          expect(restored.splitExplanation!.items.length, 2);
+          expect(restored.splitExplanation!.items[0].label, 'Pastries');
+          expect(restored.splitExplanation!.items[0].amountFils, 1200);
+          expect(
+            restored.splitExplanation!.items[0].participantIds,
+            ['n', 's', 'k', 'h'],
+          );
+        },
+      );
+
+      test(
+        'addExpense forwards splitExplanation through to the document',
+        () async {
+          final expense = await service.addExpense(
+            groupId: 'g',
+            eventId: 'e',
+            payerParticipantId: 'n',
+            amount: Decimal.parse('2.800'),
+            currency: 'OMR',
+            createdBy: 'n',
+            splitMode: SplitMode.exact,
+            splitDistribution: coffeeRunDistribution(),
+            splitExplanation: coffeeRun(),
+          );
+
+          final data = await readDoc('g', 'e', expense.id);
+          expect((data['splitExplanation'] as Map)['type'], 'itemized');
+          expect(
+            Expense.fromFirestore({...data, 'id': expense.id})
+                .splitExplanation
+                ?.items
+                .length,
+            2,
+          );
+        },
+      );
+
+      test(
+        'stageExpense omits splitExplanation entirely when none is given',
+        () async {
+          final staged = service.stageExpense(
+            groupId: 'g',
+            eventId: 'e',
+            payerParticipantId: 'n',
+            amount: Decimal.parse('5.000'),
+            createdBy: 'n',
+          );
+          await staged.ack;
+
+          final data = await readDoc('g', 'e', staged.expense.id);
+          // Absent key (not a null value) — a null would fail the `is map`
+          // rules bound (splitExplanationBounded).
+          expect(data.containsKey('splitExplanation'), isFalse);
+        },
+      );
+
+      test('updateExpense sets splitExplanation on an itemized edit', () async {
+        final expense = await service.addExpense(
+          groupId: 'g',
+          eventId: 'e',
+          payerParticipantId: 'n',
+          amount: Decimal.parse('5.000'),
+          createdBy: 'n',
+        );
+
+        await service.updateExpense(
+          groupId: 'g',
+          eventId: 'e',
+          expenseId: expense.id,
+          splitMode: SplitMode.exact,
+          splitDistribution: coffeeRunDistribution(),
+          splitExplanation: coffeeRun(),
+        );
+
+        final data = await readDoc('g', 'e', expense.id);
+        expect((data['splitExplanation'] as Map)['type'], 'itemized');
+        expect(
+          Expense.fromFirestore({...data, 'id': expense.id})
+              .splitExplanation
+              ?.items
+              .length,
+          2,
+        );
+      });
+
+      test(
+        'updateExpense clearExplanation:true orphan-deletes the metadata',
+        () async {
+          // Seed an expense that already carries a splitExplanation.
+          final staged = service.stageExpense(
+            groupId: 'g',
+            eventId: 'e',
+            payerParticipantId: 'n',
+            amount: Decimal.parse('2.800'),
+            currency: 'OMR',
+            createdBy: 'n',
+            splitMode: SplitMode.exact,
+            splitDistribution: coffeeRunDistribution(),
+            splitExplanation: coffeeRun(),
+          );
+          await staged.ack;
+          expect(
+            (await readDoc('g', 'e', staged.expense.id))
+                .containsKey('splitExplanation'),
+            isTrue,
+          );
+
+          await service.updateExpense(
+            groupId: 'g',
+            eventId: 'e',
+            expenseId: staged.expense.id,
+            clearExplanation: true,
+            lastEditedBy: 'n',
+          );
+
+          final data = await readDoc('g', 'e', staged.expense.id);
+          // FieldValue.delete() removes the key entirely.
+          expect(data.containsKey('splitExplanation'), isFalse);
+          expect(
+            Expense.fromFirestore({...data, 'id': staged.expense.id})
+                .splitExplanation,
+            isNull,
+          );
+        },
+      );
+
+      test(
+        'updateExpense leaves an existing splitExplanation intact on an '
+        'unrelated edit (neither flag set)',
+        () async {
+          final staged = service.stageExpense(
+            groupId: 'g',
+            eventId: 'e',
+            payerParticipantId: 'n',
+            amount: Decimal.parse('2.800'),
+            currency: 'OMR',
+            createdBy: 'n',
+            splitMode: SplitMode.exact,
+            splitDistribution: coffeeRunDistribution(),
+            splitExplanation: coffeeRun(),
+          );
+          await staged.ack;
+
+          // A note-only edit: passes neither splitExplanation nor
+          // clearExplanation → the stored map must be preserved untouched.
+          await service.updateExpense(
+            groupId: 'g',
+            eventId: 'e',
+            expenseId: staged.expense.id,
+            note: 'split the bill',
+            lastEditedBy: 'n',
+          );
+
+          final data = await readDoc('g', 'e', staged.expense.id);
+          expect(data['note'], 'split the bill');
+          expect((data['splitExplanation'] as Map)['type'], 'itemized');
+          final restored =
+              Expense.fromFirestore({...data, 'id': staged.expense.id});
+          expect(restored.splitExplanation!.items.length, 2);
+          expect(restored.splitExplanation!.items[1].label, 'Americano');
         },
       );
     });

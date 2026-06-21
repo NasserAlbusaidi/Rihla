@@ -7,6 +7,7 @@ import '../../../core/models/split_mode.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
 import '../models/expense_model.dart';
+import '../models/split_explanation.dart';
 
 /// Firestore-backed service for Expense CRUD operations.
 ///
@@ -110,6 +111,7 @@ class ExpenseService extends FirestoreRepository {
     List<String>? customSplitParticipants,
     SplitMode? splitMode,
     Map<String, Decimal>? splitDistribution,
+    SplitExplanation? splitExplanation,
     String? receiptUrl,
     String? categoryId,
     String? note,
@@ -127,6 +129,7 @@ class ExpenseService extends FirestoreRepository {
       customSplitParticipants: customSplitParticipants,
       splitMode: splitMode,
       splitDistribution: splitDistribution,
+      splitExplanation: splitExplanation,
       receiptUrl: receiptUrl,
       categoryId: categoryId,
       note: note,
@@ -166,6 +169,7 @@ class ExpenseService extends FirestoreRepository {
     List<String>? customSplitParticipants,
     SplitMode? splitMode,
     Map<String, Decimal>? splitDistribution,
+    SplitExplanation? splitExplanation,
     String? receiptUrl,
     String? categoryId,
     String? note,
@@ -198,6 +202,10 @@ class ExpenseService extends FirestoreRepository {
           currency,
         ),
       },
+      // #203 S2: opaque itemized display metadata. TOP-LEVEL (not nested in the
+      // splitMode block, which is omitted for an equally split). Write only when
+      // present — a null value fails the `is map` rules bound.
+      if (splitExplanation != null) 'splitExplanation': splitExplanation.toMap(),
       'receiptUrl': receiptUrl,
       'categoryId': categoryId,
       'note': note,
@@ -237,6 +245,8 @@ class ExpenseService extends FirestoreRepository {
     SplitMode? splitMode,
     Map<String, Decimal>? splitDistribution,
     bool clearSplit = false,
+    SplitExplanation? splitExplanation,
+    bool clearExplanation = false,
     String? note,
     String? categoryId,
     String? payerParticipantId,
@@ -270,6 +280,16 @@ class ExpenseService extends FirestoreRepository {
         splitDistribution ?? const {},
         currency ?? 'OMR',
       );
+    }
+    // #203 S2: itemized display metadata, written through its OWN flags —
+    // independent of clearSplit/splitMode so a relabel-only edit (identical
+    // distribution) still persists the new map. clearExplanation orphan-deletes
+    // it when an expense stops being itemized; absent both flags, the key is
+    // untouched so an unrelated edit (e.g. a note change) preserves it.
+    if (clearExplanation) {
+      updates['splitExplanation'] = FieldValue.delete();
+    } else if (splitExplanation != null) {
+      updates['splitExplanation'] = splitExplanation.toMap();
     }
     if (note != null) updates['note'] = note;
     if (categoryId != null) updates['categoryId'] = categoryId;
