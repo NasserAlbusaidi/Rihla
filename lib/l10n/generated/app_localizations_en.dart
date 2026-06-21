@@ -2400,9 +2400,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupShareInviteSemantic => 'Share invite';
 
   @override
-  String get groupNameEmpty => 'Group name can\'t be empty.';
-
-  @override
   String groupUpdateNameFailed(Object error) {
     return 'Failed to update name: $error';
   }
