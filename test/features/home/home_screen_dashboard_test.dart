@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
+
+import '../../helpers/repaint_boundary_finder.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -268,6 +270,12 @@ void main() {
 
       expect(find.byType(JourneyTicketCard), findsNWidgets(2));
       expect(find.text('Camping Trip'), findsWidgets);
+
+      // #626: each card is wrapped in a RepaintBoundary so its procedural
+      // cover + frosted date-pill blur raster is cached across the eager
+      // horizontal strip's repaints (the strip is a SingleChildScrollView +
+      // Row, which inserts no automatic per-child boundary).
+      expectWrappedInRepaintBoundary(find.byType(JourneyTicketCard));
     });
 
     testWidgets('Test 3: renders inline group rows from userGroupsProvider', (

@@ -1303,7 +1303,9 @@ class _CoverHeader extends StatelessWidget {
         clipBehavior: Clip.none,
         fit: StackFit.expand,
         children: [
-          CoverArt.forEventType(event.type),
+          // #626: cache the procedural cover raster — this header lives in a
+          // SliverToBoxAdapter (no automatic per-child RepaintBoundary).
+          RepaintBoundary(child: CoverArt.forEventType(event.type)),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
