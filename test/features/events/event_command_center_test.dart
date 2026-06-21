@@ -16,6 +16,9 @@ import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/cover_art.dart';
+
+import '../../helpers/repaint_boundary_finder.dart';
 
 void main() {
   testWidgets('renders current day badge when event is in progress', (
@@ -437,6 +440,21 @@ void main() {
       expect(_rosterDot(colors.error), findsOneWidget);
       expect(_rosterDot(colors.success), findsNothing);
     });
+  });
+
+  testWidgets('#626: event cover art is wrapped in a RepaintBoundary', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        event: _event(
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 1, 3),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expectWrappedInRepaintBoundary(find.byType(CoverArt));
   });
 }
 
