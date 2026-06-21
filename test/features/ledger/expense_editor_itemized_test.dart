@@ -65,6 +65,38 @@ Expense _itemizedExpense() => Expense(
       splitExplanation: const SplitExplanation(items: _items),
     );
 
+/// #605 — an itemized expense that also carries a bill-level adjustment.
+/// Pastries 5.100 (1.275 each) + Service 1.000 equal (0.250 each) = 1.525 each,
+/// Σ = 6.100, so the seeded sheet reconciles out of the box.
+Expense _itemizedExpenseWithAdjustment() => Expense(
+      id: 'expense-2',
+      tripId: 'event-1',
+      payerParticipantId: 'n',
+      amount: Decimal.parse('6.100'),
+      scope: ExpenseScope.global,
+      createdAt: DateTime(2026, 5, 30),
+      createdBy: 'n',
+      splitMode: SplitMode.exact,
+      splitDistribution: {
+        'h': Decimal.parse('1.525'),
+        'k': Decimal.parse('1.525'),
+        'n': Decimal.parse('1.525'),
+        's': Decimal.parse('1.525'),
+      },
+      splitExplanation: const SplitExplanation(
+        items: [
+          SplitItem(
+            label: 'Pastries',
+            amountFils: 5100,
+            participantIds: ['h', 'k', 'n', 's'],
+          ),
+        ],
+        adjustments: [
+          SplitAdjustment(type: 'service', amountFils: 1000, allocation: 'equal'),
+        ],
+      ),
+    );
+
 void main() {
   Future<void> pumpEditor(WidgetTester tester, Expense initial) async {
     SharedPreferences.setMockInitialValues({});
@@ -184,5 +216,37 @@ void main() {
       find.descendant(of: howCard(), matching: find.text('Equal')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('reopen seeds the adjustment row and apply retains it (#605)',
+      (tester) async {
+    await pumpEditor(tester, _itemizedExpenseWithAdjustment());
+
+    Future<void> openHow() async {
+      await tester.tap(find.descendant(
+        of: find.ancestor(
+          of: find.text('How'),
+          matching: find.byType(Column),
+        ).first,
+        matching: find.text('Customise'),
+      ).first);
+      await tester.pumpAndSettle();
+    }
+
+    await openHow();
+    // The seeded adjustment row is present → initialAdjustments threading works.
+    expect(find.byKey(const Key('itemized_adjustment_0')), findsOneWidget);
+    final apply = tester.widget<ElevatedButton>(
+      find.byKey(const Key('split_sheet_apply')),
+    );
+    expect(apply.onPressed, isNotNull, reason: 'seed reconciles → Apply enabled');
+    await tester.tap(find.byKey(const Key('split_sheet_apply')));
+    await tester.pumpAndSettle();
+
+    // Reopen — the adjustment survived apply (bridge no longer drops it).
+    await openHow();
+    expect(find.byKey(const Key('itemized_adjustment_0')), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
   });
 }

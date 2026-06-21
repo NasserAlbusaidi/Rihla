@@ -148,4 +148,288 @@ void main() {
       expect(owed, dist); // exact read-back, residual 0, no mutation
     });
   });
+
+  group('allocateItemizedDistribution + adjustments (#605)', () {
+    Decimal sum(Map<String, Decimal> m) =>
+        m.values.fold(Decimal.zero, (s, v) => s + v);
+
+    test('approved scenario: service+tax+tip all equal (OMR) → each +1.000', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(
+            label: 'Mixed grill',
+            amountFils: 8000,
+            participantIds: ['hessa', 'khalid', 'nasser', 'sara'],
+          ),
+          SplitItem(label: 'Pasta', amountFils: 4000, participantIds: ['sara']),
+          SplitItem(label: 'Steak', amountFils: 6000, participantIds: ['khalid']),
+          SplitItem(label: 'Salad', amountFils: 2000, participantIds: ['hessa']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(type: 'service', amountFils: 2000, allocation: 'equal'),
+          SplitAdjustment(type: 'tax', amountFils: 1000, allocation: 'equal'),
+          SplitAdjustment(type: 'tip', amountFils: 1000, allocation: 'equal'),
+        ],
+        participantIds: const ['nasser', 'sara', 'khalid', 'hessa'],
+      );
+      expect(dist['nasser'], _d('3.000'));
+      expect(dist['sara'], _d('7.000'));
+      expect(dist['khalid'], _d('9.000'));
+      expect(dist['hessa'], _d('5.000'));
+      expect(sum(dist), _d('24.000'));
+    });
+
+    test('additive proportional: service by item share', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'Cheap', amountFils: 5000, participantIds: ['a']),
+          SplitItem(label: 'Pricey', amountFils: 15000, participantIds: ['b']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'service',
+            amountFils: 4000,
+            allocation: 'proportional',
+          ),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      expect(dist['a'], _d('6.000')); // 5 + 1
+      expect(dist['b'], _d('18.000')); // 15 + 3
+      expect(sum(dist), _d('24.000'));
+    });
+
+    test('equal across whole table incl. zero-item person', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'Solo', amountFils: 10000, participantIds: ['a']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(type: 'tax', amountFils: 1000, allocation: 'equal'),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      expect(dist['a'], _d('10.500'));
+      expect(dist['b'], _d('0.500')); // owes tax despite no item
+      expect(sum(dist), _d('11.000'));
+    });
+
+    test('discount re-allocates the remaining bill proportionally (non-negative)', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'Cheap', amountFils: 5000, participantIds: ['a']),
+          SplitItem(label: 'Pricey', amountFils: 15000, participantIds: ['b']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'service',
+            amountFils: 4000,
+            allocation: 'proportional',
+          ),
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 6000,
+            allocation: 'proportional',
+          ),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      expect(dist['a'], _d('4.500'));
+      expect(dist['b'], _d('13.500'));
+      expect(sum(dist), _d('18.000'));
+    });
+
+    test('negative-edge: {1,1,1} JPY − discount 2 → {0,0,1}, never negative', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'x', amountFils: 1, participantIds: ['a']),
+          SplitItem(label: 'y', amountFils: 1, participantIds: ['b']),
+          SplitItem(label: 'z', amountFils: 1, participantIds: ['c']),
+        ],
+        currency: 'JPY',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 2,
+            allocation: 'proportional',
+          ),
+        ],
+        participantIds: const ['a', 'b', 'c'],
+      );
+      expect(dist['a'], _d('0'));
+      expect(dist['b'], _d('0'));
+      expect(dist['c'], _d('1')); // alphabetically-last positive-weight absorbs remainder
+      expect(sum(dist), _d('1'));
+      for (final v in dist.values) {
+        expect(v >= Decimal.zero, isTrue);
+      }
+    });
+
+    test('equal additive on a zero-item person, THEN discount (conserves, ≥0)', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'Solo', amountFils: 10000, participantIds: ['a']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(type: 'service', amountFils: 1000, allocation: 'equal'),
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 2000,
+            allocation: 'proportional',
+          ),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      expect(dist['a'], _d('8.590'));
+      expect(dist['b'], _d('0.410'));
+      expect(sum(dist), _d('9.000'));
+    });
+
+    test('JPY ×1 additive equal', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'A', amountFils: 100, participantIds: ['a']),
+          SplitItem(label: 'B', amountFils: 300, participantIds: ['b']),
+        ],
+        currency: 'JPY',
+        adjustments: const [
+          SplitAdjustment(type: 'tip', amountFils: 100, allocation: 'equal'),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      expect(dist['a'], _d('150'));
+      expect(dist['b'], _d('350'));
+      expect(sum(dist), _d('500'));
+    });
+
+    test('empty adjustments → byte-identical to no-adjustments (participantIds ignored)', () {
+      const items = [
+        SplitItem(label: 'Shared', amountFils: 1000, participantIds: ['p1', 'p2', 'p3']),
+      ];
+      final withEmpty = BalanceCalculator.allocateItemizedDistribution(
+        items: items,
+        currency: 'OMR',
+        adjustments: const [],
+      );
+      final without = BalanceCalculator.allocateItemizedDistribution(
+        items: items,
+        currency: 'OMR',
+      );
+      expect(withEmpty, without);
+    });
+
+    test('additive proportional with empty items → equal over whole table (amount not dropped)', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'service',
+            amountFils: 1000,
+            allocation: 'proportional',
+          ),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      expect(dist['a'], _d('0.500'));
+      expect(dist['b'], _d('0.500'));
+      expect(sum(dist), _d('1.000'));
+    });
+
+    test('throws: discount exceeds pre-discount (remaining < 0)', () {
+      expect(
+        () => BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'I', amountFils: 1000, participantIds: ['a']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(
+              type: 'discount',
+              amountFils: 5000,
+              allocation: 'proportional',
+            ),
+          ],
+          participantIds: const ['a', 'b'],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws: unknown adjustment type', () {
+      expect(
+        () => BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'I', amountFils: 1000, participantIds: ['a']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(type: 'gratuity', amountFils: 500, allocation: 'equal'),
+          ],
+          participantIds: const ['a', 'b'],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws: negative adjustment amount', () {
+      expect(
+        () => BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'I', amountFils: 1000, participantIds: ['a']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(type: 'service', amountFils: -500, allocation: 'equal'),
+          ],
+          participantIds: const ['a', 'b'],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws: adjustments present but participantIds empty (whole-table required)', () {
+      expect(
+        () => BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'I', amountFils: 1000, participantIds: ['a']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(type: 'service', amountFils: 500, allocation: 'equal'),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('folded dist decodes byte-clean through the exact read-back (zero-item bearer kept)', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'Solo', amountFils: 10000, participantIds: ['a']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(type: 'tax', amountFils: 1000, allocation: 'equal'),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      final owed = BalanceCalculator.allocateExpenseOwed(
+        amount: _d('11.000'),
+        splitMode: SplitMode.exact,
+        splitDistribution: dist,
+        scope: ExpenseScope.custom,
+        customSplitParticipants: const ['a', 'b'],
+        payerId: 'a',
+        participantIds: const ['a', 'b'],
+        currency: 'OMR',
+      );
+      expect(owed, dist); // b (zero-item, tax-bearer) survives the read-back
+    });
+  });
 }

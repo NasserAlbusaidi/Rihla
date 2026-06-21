@@ -221,6 +221,20 @@ class EditExpenseScreen extends ConsumerWidget {
         return false;
       }
     }
+    // #605: adjustments also gate the metadata rewrite so an adjustment-only
+    // edit persists (the folded splitDistribution rides splitChanged
+    // independently). SplitAdjustment has no value ==; hand-compare fields,
+    // order-sensitive (display order is meaningful). null and [] are equal.
+    final aAdj = a.adjustments ?? const <SplitAdjustment>[];
+    final bAdj = b.adjustments ?? const <SplitAdjustment>[];
+    if (aAdj.length != bAdj.length) return false;
+    for (var i = 0; i < aAdj.length; i++) {
+      if (aAdj[i].type != bAdj[i].type ||
+          aAdj[i].amountFils != bAdj[i].amountFils ||
+          aAdj[i].allocation != bAdj[i].allocation) {
+        return false;
+      }
+    }
     return true;
   }
 

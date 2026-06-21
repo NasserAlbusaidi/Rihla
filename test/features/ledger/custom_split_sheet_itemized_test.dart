@@ -15,6 +15,7 @@ Future<SplitResult?> _runSheet(
   required List<SplitParticipant> participants,
   String currency = 'OMR',
   List<SplitItem>? initialItems,
+  List<SplitAdjustment>? initialAdjustments,
   bool initialItemized = false,
   required Future<void> Function(WidgetTester tester) interactions,
 }) async {
@@ -43,6 +44,7 @@ Future<SplitResult?> _runSheet(
                   currency: currency,
                   participants: participants,
                   initialItems: initialItems,
+                  initialAdjustments: initialAdjustments,
                   initialItemized: initialItemized,
                 );
                 done = true;
@@ -106,6 +108,31 @@ Future<void> _addItem(WidgetTester tester) async {
   await tester.ensureVisible(add);
   await tester.pumpAndSettle();
   await tester.tap(add);
+  await tester.pumpAndSettle();
+}
+
+/// Opens the add-adjustment sheet, picks [type], enters [amount], optionally
+/// picks [alloc] ('equal'/'proportional'; ignored for a discount), and closes.
+Future<void> _addAdjustment(
+  WidgetTester tester, {
+  required String type,
+  required String amount,
+  String? alloc,
+}) async {
+  final add = find.byKey(const Key('itemized_add_adjustment'));
+  await tester.ensureVisible(add);
+  await tester.pumpAndSettle();
+  await tester.tap(add);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(Key('adjustment_type_$type')));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const Key('adjustment_amount')), amount);
+  await tester.pump();
+  if (alloc != null && type != 'discount') {
+    await tester.tap(find.byKey(Key('adjustment_alloc_$alloc')));
+    await tester.pump();
+  }
+  await tester.tap(find.byKey(const Key('adjustment_done')));
   await tester.pumpAndSettle();
 }
 
@@ -360,6 +387,113 @@ void main() {
           await t.tap(find.text('Cancel'));
         },
       );
+    });
+  });
+
+  group('CustomSplitSheet — bill-level adjustments (#605)', () {
+    const two = [
+      SplitParticipant(id: 'a', name: 'Aki'),
+      SplitParticipant(id: 'b', name: 'Bo'),
+    ];
+
+    testWidgets('adding a service adjustment reconciles + folds into the result',
+        (tester) async {
+      final result = await _runSheet(
+        tester,
+        total: Decimal.parse('2.000'),
+        participants: two,
+        interactions: (t) async {
+          await t.tap(find.text('Itemized'));
+          await t.pumpAndSettle();
+          await t.enterText(find.byKey(const Key('itemized_label_0')), 'Food');
+          await t.enterText(find.byKey(const Key('itemized_amount_0')), '1.000');
+          await _assignEveryone(t, 0);
+          // Items alone (1.000) under the 2.000 bill → Apply disabled.
+          expect(_applyEnabled(t), isFalse);
+
+          await _addAdjustment(t, type: 'service', amount: '1.000', alloc: 'equal');
+          // Items 1.000 + service 1.000 == 2.000 → reconciled.
+          expect(_applyEnabled(t), isTrue);
+          await t.tap(find.byKey(const Key('split_sheet_apply')));
+        },
+      );
+      expect(result, isNotNull);
+      expect(result!.mode, SplitMode.exact);
+      expect(result.adjustments, isNotNull);
+      expect(result.adjustments!.length, 1);
+      expect(result.adjustments!.single.type, 'service');
+      expect(result.adjustments!.single.amountFils, 1000);
+      expect(result.adjustments!.single.allocation, 'equal');
+      // Each: 0.500 item share + 0.500 service share = 1.000.
+      expect(result.distribution!['a'], Decimal.parse('1.000'));
+      expect(result.distribution!['b'], Decimal.parse('1.000'));
+    });
+
+    testWidgets('a discount larger than items does not crash the preview',
+        (tester) async {
+      await _runSheet(
+        tester,
+        total: Decimal.parse('2.000'),
+        participants: two,
+        interactions: (t) async {
+          await t.tap(find.text('Itemized'));
+          await t.pumpAndSettle();
+          await t.enterText(find.byKey(const Key('itemized_label_0')), 'Food');
+          await t.enterText(find.byKey(const Key('itemized_amount_0')), '1.000');
+          await _assignEveryone(t, 0);
+          // Discount 5.000 ≫ items 1.000 → would-be remaining < 0; must not throw.
+          await _addAdjustment(t, type: 'discount', amount: '5.000');
+          expect(tester.takeException(), isNull);
+          expect(_applyEnabled(t), isFalse); // nowhere near reconciled
+          await t.tap(find.text('Cancel'));
+        },
+      );
+    });
+
+    testWidgets('an adjustment with no items still renders the whole-table spread',
+        (tester) async {
+      await _runSheet(
+        tester,
+        total: Decimal.parse('1.000'),
+        participants: two,
+        interactions: (t) async {
+          await t.tap(find.text('Itemized'));
+          await t.pumpAndSettle();
+          // No item entered (default empty draft). Add 1.000 service equally.
+          await _addAdjustment(t, type: 'service', amount: '1.000', alloc: 'equal');
+          // Each of the 2 owes 0.500 in the live preview despite zero items.
+          expect(
+            find.textContaining('0.500', findRichText: true),
+            findsWidgets,
+          );
+          await t.tap(find.text('Cancel'));
+        },
+      );
+    });
+
+    testWidgets('initialAdjustments seed an editable adjustment row on reopen',
+        (tester) async {
+      final result = await _runSheet(
+        tester,
+        total: Decimal.parse('2.000'),
+        participants: two,
+        initialItemized: true,
+        initialItems: const [
+          SplitItem(label: 'Food', amountFils: 1000, participantIds: ['a', 'b']),
+        ],
+        initialAdjustments: const [
+          SplitAdjustment(type: 'service', amountFils: 1000, allocation: 'equal'),
+        ],
+        interactions: (t) async {
+          // The seeded adjustment row is present and the bill reconciles.
+          expect(find.byKey(const Key('itemized_adjustment_0')), findsOneWidget);
+          expect(_applyEnabled(t), isTrue);
+          await t.tap(find.byKey(const Key('split_sheet_apply')));
+        },
+      );
+      expect(result!.adjustments!.single.type, 'service');
+      expect(result.distribution!['a'], Decimal.parse('1.000'));
+      expect(result.distribution!['b'], Decimal.parse('1.000'));
     });
   });
 }

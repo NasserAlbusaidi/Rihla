@@ -46,6 +46,53 @@ class SplitItem {
   };
 }
 
+/// Canonical bill-level adjustment types (#605). Additive = anything but
+/// `'discount'` (service/tax/tip ADD; discount SUBTRACTS). The allocator's
+/// strict allow-list, the l10n labels, and the tests all reference this one set.
+const Set<String> kAdjustmentTypes = {'service', 'tax', 'tip', 'discount'};
+
+/// One bill-level adjustment on an itemized expense (#605): service charge, tax,
+/// tip (each ADDS) or discount (SUBTRACTS). Display-only metadata like
+/// [SplitItem] — balance truth is the folded `splitDistribution`.
+///
+/// [amountFils] is the positive magnitude in integer subunits; the SIGN is
+/// derived from [type] ('discount' subtracts, all others add). [allocation] is
+/// `'equal'` (spread across the whole table) or `'proportional'` (by each
+/// person's item subtotal). A 'discount' is always folded proportional to each
+/// person's pre-discount owed regardless of this field (that is what guarantees
+/// non-negativity); the editor normalizes a discount's [allocation] to
+/// `'proportional'` on write.
+///
+/// Lenient [fromMap] (display reconstruction, never throws) vs strict producer:
+/// `BalanceCalculator.allocateItemizedDistribution` rejects an unknown [type] or
+/// a negative [amountFils] on the write path, so a forged doc displays fine but
+/// cannot resave a bad fold.
+class SplitAdjustment {
+  final String type;
+  final int amountFils;
+  final String allocation;
+
+  const SplitAdjustment({
+    required this.type,
+    required this.amountFils,
+    this.allocation = 'equal',
+  });
+
+  factory SplitAdjustment.fromMap(Map<String, dynamic> map) {
+    return SplitAdjustment(
+      type: map['type'] as String? ?? 'service',
+      amountFils: (map['amountFils'] as num?)?.toInt() ?? 0,
+      allocation: map['allocation'] as String? ?? 'equal',
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'type': type,
+    'amountFils': amountFils,
+    'allocation': allocation,
+  };
+}
+
 /// Opaque display metadata for an itemized expense (#203). Reconstructs the
 /// itemized editor on reopen. **INBOUND/display-only** — NEVER read by balance
 /// math, the server oracle (`recomputeNet`), or any Cloud Function; balance
@@ -56,10 +103,10 @@ class SplitExplanation {
   final int version;
   final List<SplitItem> items;
 
-  /// RESERVED for #605 (bill-level adjustments: service/tax/tip/discount).
-  /// Slice 1 round-trips it opaquely so a #605-written doc never loses its
-  /// adjustments when read here. Additive — no schema version bump.
-  final List<dynamic>? adjustments;
+  /// Bill-level adjustments (#605: service/tax/tip/discount), folded into the
+  /// exact `splitDistribution` at save. Display-only, like [items] — additive,
+  /// no schema version bump. Null or empty ⇒ the key is omitted on write.
+  final List<SplitAdjustment>? adjustments;
 
   const SplitExplanation({
     this.type = 'itemized',
@@ -78,7 +125,10 @@ class SplitExplanation {
               .map((e) => SplitItem.fromMap(Map<String, dynamic>.from(e)))
               .toList() ??
           const [],
-      adjustments: map['adjustments'] as List?,
+      adjustments: (map['adjustments'] as List?)
+          ?.whereType<Map>()
+          .map((e) => SplitAdjustment.fromMap(Map<String, dynamic>.from(e)))
+          .toList(),
     );
   }
 
@@ -86,6 +136,7 @@ class SplitExplanation {
     'type': type,
     'version': version,
     'items': [for (final i in items) i.toMap()],
-    if (adjustments != null) 'adjustments': adjustments,
+    if (adjustments != null && adjustments!.isNotEmpty)
+      'adjustments': [for (final a in adjustments!) a.toMap()],
   };
 }
