@@ -2213,7 +2213,16 @@ class AppLocalizationsAr extends AppLocalizations {
       'المجموعة هي دائرة أشخاص تتشاركون معهم المصاريف — بيت، فريق سفر، أو فريق مشروع.';
 
   @override
-  String get groupGlyph => 'رمز المجموعة';
+  String get groupGlyph => 'الطابع';
+
+  @override
+  String get groupStampInk => 'اللون';
+
+  @override
+  String get groupStampSymbol => 'الرمز';
+
+  @override
+  String get groupStampMonogramHint => 'الحرف الأول هو الافتراضي';
 
   @override
   String get groupDefaultCurrency => 'العملة الافتراضية';

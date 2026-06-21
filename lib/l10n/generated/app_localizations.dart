@@ -3624,11 +3624,29 @@ abstract class AppLocalizations {
   /// **'A group is a circle of people you share expenses with — a household, a travel crew, a project team.'**
   String get groupMoodBody;
 
-  /// No description provided for @groupGlyph.
+  /// #287 trip-stamps: section header above the group stamp picker on the Create-Group screen.
   ///
   /// In en, this message translates to:
-  /// **'Group glyph'**
+  /// **'Stamp'**
   String get groupGlyph;
+
+  /// #287 trip-stamps: label for the ink-colour swatch row in the group stamp picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Ink'**
+  String get groupStampInk;
+
+  /// #287 trip-stamps: label for the symbol grid in the group stamp picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbol'**
+  String get groupStampSymbol;
+
+  /// #287 trip-stamps: muted caption explaining that, with no symbol chosen, the group's first initial is used as the stamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Your initial is the default'**
+  String get groupStampMonogramHint;
 
   /// No description provided for @groupDefaultCurrency.
   ///

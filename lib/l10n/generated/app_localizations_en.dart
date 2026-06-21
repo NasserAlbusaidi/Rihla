@@ -2147,7 +2147,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'A group is a circle of people you share expenses with — a household, a travel crew, a project team.';
 
   @override
-  String get groupGlyph => 'Group glyph';
+  String get groupGlyph => 'Stamp';
+
+  @override
+  String get groupStampInk => 'Ink';
+
+  @override
+  String get groupStampSymbol => 'Symbol';
+
+  @override
+  String get groupStampMonogramHint => 'Your initial is the default';
 
   @override
   String get groupDefaultCurrency => 'Default currency';

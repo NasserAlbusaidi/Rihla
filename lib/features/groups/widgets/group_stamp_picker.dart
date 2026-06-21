@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../home/widgets/group_glyph.dart';
@@ -71,7 +72,7 @@ class GroupStampPicker extends StatelessWidget {
         SizedBox(height: spacing.space24),
 
         // ── 2. Ink row — six journal colours, fill the row equally. ──
-        const _RowLabel('Ink'),
+        _RowLabel(context.l10n.groupStampInk),
         SizedBox(height: spacing.space12),
         Row(
           children: [
@@ -92,7 +93,7 @@ class GroupStampPicker extends StatelessWidget {
         SizedBox(height: spacing.space24),
 
         // ── 3. Symbol grid — monogram cell first, then the 12 glyphs. ──
-        const _RowLabel('Symbol'),
+        _RowLabel(context.l10n.groupStampSymbol),
         SizedBox(height: spacing.space12),
         GridView.count(
           crossAxisCount: 5,
@@ -115,6 +116,20 @@ class GroupStampPicker extends StatelessWidget {
                     onChanged((glyph: id, inkIndex: value.inkIndex)),
               ),
           ],
+        ),
+        SizedBox(height: spacing.space8),
+        // Muted caption: with no symbol chosen, the monogram cell renders the
+        // name's first initial as the default stamp.
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            context.l10n.groupStampMonogramHint,
+            style: AppTypography.sans(
+              fontSize: 11,
+              color: colors.textSecondary,
+              height: 1.3,
+            ),
+          ),
         ),
       ],
     );

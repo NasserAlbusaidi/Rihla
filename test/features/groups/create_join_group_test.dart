@@ -17,6 +17,7 @@ import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/groups/widgets/group_stamp_picker.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/groups/screens/create_group_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
@@ -114,9 +115,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Group glyph'), findsOneWidget);
-      expect(find.text('⛺'), findsOneWidget);
-      expect(find.text('⌂'), findsOneWidget);
+      expect(find.byType(GroupStampPicker), findsOneWidget);
       expect(find.text('Default currency'), findsOneWidget);
       expect(find.text('OMR'), findsOneWidget);
       expect(find.text("You're the creator."), findsOneWidget);
@@ -130,7 +129,11 @@ void main() {
       // Defaults to OMR.
       expect(find.text('OMR'), findsOneWidget);
 
-      // Open the picker (tappable field).
+      // Open the picker (tappable field). The trip-stamp picker (#287) makes
+      // the form taller than the 600px test viewport, so scroll the field into
+      // view before tapping.
+      await tester.ensureVisible(find.byKey(GroupKeys.currencyField));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(GroupKeys.currencyField));
       await tester.pumpAndSettle();
       expect(find.text('Currency'), findsOneWidget); // sheet title
@@ -185,7 +188,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Pick USD in the currency sheet.
+        // Pick USD in the currency sheet. Scroll the field into view first —
+        // the #287 stamp picker pushes it below the 600px test viewport.
+        await tester.ensureVisible(find.byKey(GroupKeys.currencyField));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(GroupKeys.currencyField));
         await tester.pumpAndSettle();
         await tester.tap(find.text('US dollar'));
@@ -206,6 +212,118 @@ void main() {
         final groups = await fakeDb.collection('groups').get();
         expect(groups.docs.length, 1, reason: 'exactly one group created');
         expect(groups.docs.first.data()['currency'], 'USD');
+      },
+    );
+
+    testWidgets(
+      '#287: selecting an ink + symbol persists glyph/inkIndex on create',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Test User',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              notificationPromptProvider.overrideWithValue(_NoopPrompt()),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-creator',
+                ),
+              ),
+              connectivityProvider.overrideWith(
+                (ref) => ConnectivityNotifier(startPeriodicChecks: false),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const CreateGroupScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Pick ink swatch index 2 and the 'palm' symbol (kGroupGlyphIds[2]).
+        await tester.tap(find.byKey(const Key('stampInk_2')));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('stampSym_palm')));
+        await tester.pump();
+
+        await tester.enterText(find.byKey(GroupKeys.groupNameInput), 'Trip');
+        await tester.enterText(
+          find.byKey(GroupKeys.deviceNameInput),
+          'Test User',
+        );
+        await tester.pump();
+        await tester.tap(find.byKey(GroupKeys.createGroupButton));
+        await tester.pumpAndSettle();
+
+        final groups = await fakeDb.collection('groups').get();
+        expect(groups.docs.length, 1, reason: 'exactly one group created');
+        final data = groups.docs.first.data();
+        expect(data['glyph'], 'palm');
+        expect(data['inkIndex'], 2);
+      },
+    );
+
+    testWidgets(
+      '#287: creating without touching the picker omits glyph/inkIndex '
+      '(monogram default)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Test User',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              notificationPromptProvider.overrideWithValue(_NoopPrompt()),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-creator',
+                ),
+              ),
+              connectivityProvider.overrideWith(
+                (ref) => ConnectivityNotifier(startPeriodicChecks: false),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const CreateGroupScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byKey(GroupKeys.groupNameInput), 'Trip');
+        await tester.enterText(
+          find.byKey(GroupKeys.deviceNameInput),
+          'Test User',
+        );
+        await tester.pump();
+        await tester.tap(find.byKey(GroupKeys.createGroupButton));
+        await tester.pumpAndSettle();
+
+        final groups = await fakeDb.collection('groups').get();
+        expect(groups.docs.length, 1, reason: 'exactly one group created');
+        final data = groups.docs.first.data();
+        // validGroupCreate REJECTS explicit null — defaults must omit the keys.
+        expect(data.containsKey('glyph'), isFalse);
+        expect(data.containsKey('inkIndex'), isFalse);
       },
     );
 
