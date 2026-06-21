@@ -572,6 +572,8 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       initialDistribution: _splitDistribution,
       // #203 S2: reopen the itemized tab from the stored metadata.
       initialItems: _splitExplanation?.items,
+      // #605: reopen the bill-level adjustments too.
+      initialAdjustments: _splitExplanation?.adjustments,
       initialItemized: _splitExplanation != null,
     );
 
@@ -582,8 +584,13 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       // #203 S2: an itemized result carries its items; switching to any plain
       // mode returns items: null, which clears the metadata here (the UI-level
       // orphan guard — edit_expense_screen then FieldValue.deletes the field).
-      _splitExplanation =
-          result.items == null ? null : SplitExplanation(items: result.items!);
+      _splitExplanation = result.items == null
+          ? null
+          : SplitExplanation(
+              items: result.items!,
+              // #605: carry the bill-level adjustments through, don't drop them.
+              adjustments: result.adjustments,
+            );
     });
   }
 
