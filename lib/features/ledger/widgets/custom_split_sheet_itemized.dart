@@ -5,8 +5,9 @@ part of 'custom_split_sheet.dart';
 // Presentational widgets + the per-row draft model for the itemized split tab.
 // A `part of` the custom_split_sheet library so these stay private and share
 // SplitParticipant / the sheet's imports without a circular dependency. The
-// sheet state (the `_itemized` flag, `_itemizedCanApply`, `_buildItemizedResult`,
-// `_ModeSegmented`) lives in custom_split_sheet.dart and drives these via props.
+// sheet state (the `_itemized` flag, `_itemizedCanApply`, `_buildItemizedResult`)
+// lives in custom_split_sheet.dart and drives these via props; the `_ModeSegmented`
+// tab-bar that toggles itemized lives in the custom_split_sheet_mode_selector.dart part.
 
 /// Mutable editor state for one itemized line item. Owns its text controllers;
 /// the sheet state disposes them. [quantity]/[allocation] are not editable in
