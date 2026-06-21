@@ -370,7 +370,9 @@ class _CoverHeader extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CoverArt.fromSeed(group.name),
+          // #626: cache the procedural cover raster — this header lives in a
+          // SliverToBoxAdapter (no automatic per-child RepaintBoundary).
+          RepaintBoundary(child: CoverArt.fromSeed(group.name)),
           // Dark gradient overlay — transparent at top, ink at bottom.
           DecoratedBox(
             decoration: BoxDecoration(

@@ -15,6 +15,9 @@ import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/ledger_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/cover_art.dart';
+
+import '../../helpers/repaint_boundary_finder.dart';
 
 /// #382 PR-5 — the ledger renders EVERY currency bucket and the settled gate
 /// spans all of them. The money-wrong bug: a user settled in the group bucket
@@ -255,6 +258,14 @@ void main() {
       // perspective, each formatted at its bucket's precision.
       expect(find.text('−5.000'), findsOneWidget);
       expect(find.text('−15.00'), findsOneWidget);
+    });
+
+    testWidgets('#626: event cover art is wrapped in a RepaintBoundary', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildLedger(expenses: const []));
+      await tester.pumpAndSettle();
+      expectWrappedInRepaintBoundary(find.byType(CoverArt));
     });
   });
 }
