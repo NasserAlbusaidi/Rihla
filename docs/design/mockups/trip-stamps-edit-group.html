@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en" class="rihla">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Stamps — Editing an Existing Group</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  :root{
+    --ink-terracotta:#C2693B; --ink-harbour:#4F7B96; --ink-ochre:#8C6A2F;
+    --ink-olive:#6F7A3A; --ink-plum:#94517A; --ink-slate:#4D5A6A;
+  }
+  html,body{margin:0;background:var(--paper);color:var(--ink);}
+  body{font-family:var(--font-sans);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:64px 40px 120px;}
+  .kicker{font-family:var(--font-mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-3);font-weight:600;}
+  h1{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:56px;line-height:1.02;margin:14px 0 0;letter-spacing:-.5px;}
+  .dek{font-size:17px;color:var(--ink-2);max-width:640px;margin:16px 0 0;line-height:1.5;text-wrap:pretty;}
+  h2{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:32px;margin:0 0 4px;letter-spacing:-.3px;}
+  .sec{margin-top:84px;}
+  .sec-head{margin-bottom:28px;border-bottom:1px solid var(--rule-2);padding-bottom:18px;}
+  .sec-num{font-family:var(--font-mono);font-size:12px;color:var(--primary-dark);font-weight:600;letter-spacing:1px;}
+  .sec-sub{font-size:14.5px;color:var(--ink-3);margin-top:8px;max-width:700px;line-height:1.5;text-wrap:pretty;}
+
+  /* ---- The stamp tile ---- */
+  .stamp{--ink:var(--ink-terracotta);position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;
+    width:var(--sz,40px);height:var(--sz,40px);border-radius:calc(var(--sz,40px)*.30);
+    background:color-mix(in srgb,var(--ink) 13%,var(--paper));
+    border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);color:var(--ink);}
+  .stamp svg{width:56%;height:56%;display:block;}
+  .stamp svg [stroke]{stroke:var(--ink);}
+  .stamp .mg{font-family:var(--font-serif);font-style:italic;line-height:1;color:var(--ink);font-size:calc(var(--sz,40px)*.56);transform:translateY(2%);}
+  .stamp.sel{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--primary);}
+  .ic [stroke]{fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* edit-pencil badge on a stamp */
+  .pencil{position:absolute;right:-5px;bottom:-5px;width:21px;height:21px;border-radius:50%;
+    background:var(--ink);border:2px solid var(--card);display:flex;align-items:center;justify-content:center;}
+  .pencil svg{width:10px;height:10px;}
+  .pencil svg [stroke]{stroke:var(--card);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ---- generic layout ---- */
+  .cols{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:24px;}
+  .panel.soft{background:var(--card-soft);}
+  .label-mono{font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-3);font-weight:600;}
+
+  /* ---- phone ---- */
+  .pf{width:340px;flex:none;background:var(--paper);border-radius:32px;border:8px solid #15140f;box-shadow:var(--shadow-floating);overflow:hidden;}
+  .pf-scr{height:680px;overflow:hidden;display:flex;flex-direction:column;background:var(--paper);position:relative;}
+  .pf-bar{height:34px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-family:var(--font-mono);font-size:11px;font-weight:600;}
+  .pf-appbar{display:flex;align-items:center;gap:14px;padding:4px 16px 10px;}
+  .pf-appbar .bk{font-size:20px;color:var(--ink-2);}
+  .pf-appbar .ttl{font-family:var(--font-serif);font-style:italic;font-size:22px;}
+  .pf-top{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 2px;}
+  .pf-top .cancel{font-size:14px;color:var(--ink-3);}
+  .pf-top .save{font-size:14px;color:var(--primary-dark);font-weight:600;}
+  .pf-title{font-family:var(--font-serif);font-style:italic;font-size:24px;text-align:center;padding:2px 0 14px;}
+  .pf-body{flex:1;overflow-y:auto;padding:0 16px 24px;}
+  .pf-body::-webkit-scrollbar{width:0;}
+  .scrim{position:absolute;inset:0;background:rgba(21,20,15,.34);}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-radius:22px 22px 0 0;box-shadow:0 -12px 40px rgba(21,20,15,.18);padding:0 18px 22px;max-height:90%;display:flex;flex-direction:column;}
+  .grab{width:38px;height:4px;border-radius:2px;background:var(--rule-2);margin:10px auto 2px;}
+
+  /* settings cards */
+  .scard{background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow-raised,0 1px 3px rgba(21,20,15,.08));padding:14px;margin-bottom:10px;}
+  .idrow{display:flex;align-items:center;gap:14px;}
+  .idrow .nm{font-family:var(--font-serif);font-style:italic;font-size:22px;line-height:1.1;}
+  .idrow .sub{font-size:12px;color:var(--ink-3);margin-top:3px;}
+  .invite .il{font-size:12px;color:var(--ink-3);}
+  .invite .code{font-family:var(--font-mono);font-size:24px;font-weight:600;letter-spacing:4px;color:var(--ink);margin-top:6px;}
+
+  /* real settings screen chrome */
+  .pf-topbar{position:relative;height:42px;flex:none;display:flex;align-items:center;padding:0 14px;}
+  .pf-topbar .bk{font-size:24px;color:var(--ink-2);line-height:1;}
+  .pf-topbar .ttl2{position:absolute;left:0;right:0;text-align:center;font-size:14px;font-weight:600;color:var(--ink);}
+  .shdr{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:baseline;margin:14px 2px 8px;}
+  .shdr.tight{margin-top:0;}
+  .shdr .act{margin-left:auto;font-family:var(--font-sans);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--primary-dark);}
+  .iconbtn{width:32px;height:32px;border-radius:50%;background:var(--card-soft);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:15px;flex:none;}
+  .mtile{display:flex;align-items:center;gap:12px;padding:9px 0;}
+  .mtile + .mtile{border-top:.5px solid var(--border);}
+  .mtile .mn{font-size:14px;font-weight:600;flex:1;}
+  .mtile .role{font-size:12px;color:var(--ink-3);}
+  .avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex:none;font-family:var(--font-sans);letter-spacing:.3px;}
+  .defrow{display:flex;align-items:center;}
+  .defrow .dt{font-size:14px;font-weight:600;flex:1;}
+  .defrow .dv{font-size:13px;color:var(--ink-3);}
+
+  /* picker bits */
+  .hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px 0 18px;}
+  .hero .cap{font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-4);}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:20px;}
+  .field .fl{font-size:12px;font-weight:600;color:var(--ink-3);}
+  .field .fi{background:var(--card-soft);border:1px solid var(--border);border-radius:var(--r-input);padding:12px 14px;font-family:var(--font-sans);font-size:15px;color:var(--ink);display:flex;align-items:center;justify-content:space-between;}
+  .field .fi .cur{color:var(--primary);font-size:13px;}
+  .row-head{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px;display:flex;justify-content:space-between;align-items:baseline;}
+  .row-head .hint{letter-spacing:0;text-transform:none;font-family:var(--font-sans);font-size:11px;color:var(--ink-4);font-weight:500;}
+  .ink-row{display:flex;gap:12px;margin-bottom:24px;}
+  .swatch{flex:1;aspect-ratio:1;border-radius:var(--r-pill);cursor:pointer;border:none;position:relative;background:var(--c);}
+  .swatch.sel{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--primary);}
+  .sym-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+  .sym{aspect-ratio:1;border-radius:14px;background:var(--card-soft);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-2);position:relative;}
+  .sym svg{width:24px;height:24px;}
+  .sym svg [stroke]{stroke:currentColor;}
+  .sym .mg{font-family:var(--font-serif);font-style:italic;font-size:22px;line-height:1;color:var(--ink-2);}
+  .sym.sel{background:var(--saffron-tint);border-color:var(--primary);color:var(--primary-dark);box-shadow:0 0 0 1.5px var(--primary) inset;}
+  .sym .tag{position:absolute;bottom:3px;font-family:var(--font-mono);font-size:7px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-4);}
+
+  /* notes / compare */
+  .compare{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;}
+  .cmp{flex:1;min-width:240px;border-radius:16px;padding:18px 20px;border:1px solid var(--border);}
+  .cmp.bad{background:var(--card-soft);}
+  .cmp.good{background:#fff;border-color:var(--saffron-soft);}
+  .cmp .ct{font-family:var(--font-mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;margin-bottom:10px;}
+  .cmp.bad .ct{color:var(--rust-text);} .cmp.good .ct{color:var(--primary-dark);}
+  .cmp p{font-size:13px;color:var(--ink-2);line-height:1.5;margin:8px 0 0;}
+  .cap-under{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-4);text-align:center;margin-top:14px;}
+  .flow{display:flex;align-items:center;gap:8px;color:var(--ink-4);font-size:26px;align-self:center;}
+
+  .pc{display:flex;gap:22px;font-size:12px;margin-top:14px;}
+  .pc div{flex:1;}
+  .pc .h{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-4);margin-bottom:6px;}
+  .pc li{margin:0 0 4px;padding-left:15px;position:relative;color:var(--ink-2);line-height:1.45;list-style:none;}
+  .pc ul{margin:0;padding:0;}
+  .pc .pro li::before{content:"+";position:absolute;left:0;color:var(--sage-text);font-weight:700;}
+  .pc .con li::before{content:"–";position:absolute;left:0;color:var(--rust-text);font-weight:700;}
+
+  .note-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;}
+  .note h4{font-family:var(--font-sans);font-size:14px;font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+  .note p{font-size:13.5px;color:var(--ink-2);line-height:1.55;margin:0;text-wrap:pretty;}
+  .note .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);flex:none;}
+  .callout{font-family:var(--font-mono);font-size:11px;color:var(--ink-4);letter-spacing:.3px;display:flex;align-items:center;gap:8px;margin-top:14px;}
+  .callout::before{content:"";width:18px;height:1px;background:var(--rule-2);}
+  .recommend{display:inline-flex;align-items:center;gap:7px;background:var(--saffron-tint);color:var(--primary-dark);font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:5px 11px;border-radius:var(--r-pill);}
+</style>
+</head>
+<body>
+
+<!-- ===== ICON SPRITE (lifted from the redesign file) ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="g-tent" class="ic"><path stroke="#000" d="M12 5 L3 20 M12 5 L21 20"/><path stroke="#000" d="M12 5 V2.8"/><path stroke="#000" d="M2.5 20 H21.5"/><path stroke="#000" d="M9.4 20 L12 11.5 L14.6 20"/></g>
+  <g id="g-wave" class="ic"><path stroke="#000" d="M2 9 C4 6.5 6 6.5 8 9 C10 11.5 12 11.5 14 9 C16 6.5 18 6.5 20 9"/><path stroke="#000" d="M4 15 C6 12.5 8 12.5 10 15 C12 17.5 14 17.5 16 15 C18 12.5 20 12.5 22 15"/></g>
+  <g id="g-mountain" class="ic"><path stroke="#000" d="M2 19 L8.5 6 L12.5 12.5 L16 7.5 L22 19"/><path stroke="#000" d="M6.8 9 L8.5 6.6 L10.2 9"/><path stroke="#000" d="M14.6 9.4 L16 7.6 L17.4 9.4"/></g>
+  <g id="g-palm" class="ic"><path stroke="#000" d="M12 9.5 C12 14 12.5 18 14 21"/><path stroke="#000" d="M12 9.5 C8 8.8 4.5 10 3 13"/><path stroke="#000" d="M12 9.5 C16 8.8 19.5 10 21 13"/><path stroke="#000" d="M12 9.5 C9.5 9 7 11.5 6 15"/><path stroke="#000" d="M12 9.5 C14.5 9 17 11.5 18 15"/><path stroke="#000" d="M12 9.5 C11.2 7.6 11.4 6 12 4.6"/><path stroke="#000" d="M12 9.5 C12.8 7.6 12.6 6 12 4.6"/></g>
+  <g id="g-sun" class="ic"><circle stroke="#000" cx="12" cy="12" r="4"/><path stroke="#000" d="M12 3 V5.2 M12 18.8 V21 M3 12 H5.2 M18.8 12 H21 M5.6 5.6 L7.1 7.1 M16.9 16.9 L18.4 18.4 M18.4 5.6 L16.9 7.1 M7.1 16.9 L5.6 18.4"/></g>
+  <g id="g-compass" class="ic"><circle stroke="#000" cx="12" cy="12" r="9"/><path stroke="#000" d="M12 6.5 L13.6 12 L12 17.5 L10.4 12 Z"/><path stroke="#000" d="M6.5 12 L12 10.4 L17.5 12 L12 13.6 Z"/></g>
+  <g id="g-anchor" class="ic"><circle stroke="#000" cx="12" cy="5" r="2"/><path stroke="#000" d="M12 7 V20"/><path stroke="#000" d="M8 11 H16"/><path stroke="#000" d="M4.5 13.5 C4.5 18 8 20.5 12 20.5 C16 20.5 19.5 18 19.5 13.5"/><path stroke="#000" d="M4.5 13.5 L3 14.8 M4.5 13.5 L6 12.4 M19.5 13.5 L21 14.8 M19.5 13.5 L18 12.4"/></g>
+  <g id="g-house" class="ic"><path stroke="#000" d="M4 11 L12 4 L20 11"/><path stroke="#000" d="M6 10 V20 H18 V10"/><path stroke="#000" d="M10 20 V14 H14 V20"/></g>
+  <g id="g-dining" class="ic"><path stroke="#000" d="M7 3 V8 M9.5 3 V8 M12 3 V8 M9.5 8 V21 M7 8 H12"/><path stroke="#000" d="M16.5 3 V21 M16.5 3 C18.8 4.5 18.8 9 16.5 11"/></g>
+  <g id="g-coffee" class="ic"><path stroke="#000" d="M5 9 H17 V13.5 C17 16.5 14.8 18.5 11 18.5 C7.2 18.5 5 16.5 5 13.5 Z"/><path stroke="#000" d="M17 10 C20 10 20 14 17 14"/><path stroke="#000" d="M8 3 C7 4.2 9 5 8 6.3 M12 3 C11 4.2 13 5 12 6.3"/></g>
+  <g id="g-gift" class="ic"><path stroke="#000" d="M4.5 11 H19.5 V20 H4.5 Z"/><path stroke="#000" d="M3.5 8 H20.5 V11 H3.5 Z"/><path stroke="#000" d="M12 8 V20"/><path stroke="#000" d="M12 8 C12 5 9.5 4 8.5 5.5 C7.7 6.8 9.6 8 12 8 C14.4 8 16.3 6.8 15.5 5.5 C14.5 4 12 5 12 8 Z"/></g>
+  <g id="g-camera" class="ic"><path stroke="#000" d="M3 8.5 H7 L8.5 6 H15.5 L17 8.5 H21 V19 H3 Z"/><circle stroke="#000" cx="12" cy="13" r="3.4"/></g>
+  <g id="g-pencil"><path stroke="#000" d="M14 4 L20 10 L9 21 L3 21 L3 15 Z"/><path stroke="#000" d="M12.5 5.5 L18.5 11.5"/></g>
+</defs></svg>
+
+<div class="wrap">
+
+  <!-- ===== MASTHEAD ===== -->
+  <header>
+    <div class="kicker">Rihla · Group identity · PR-3</div>
+    <h1>Restamping a group</h1>
+    <p class="dek">Trip Stamps lets you choose a symbol + ink when you <em>create</em> a group. PR-3 is the missing half: a creator coming back to <strong>change the stamp on a group that already exists</strong>. The question this board answers — where does that edit live, and does the name come along for the ride?</p>
+  </header>
+
+  <!-- ===== 01 — THE ENTRY + SHEET ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">01 / Proposed flow</div>
+      <h2>The pencil already on the stamp opens one “Edit group” sheet</h2>
+      <p class="sec-sub">Group&nbsp;settings already stacks a creator-only ✎ badge on the group stamp. Today it only renames. We let it open a single identity sheet — the same hero · ink · symbol layout as Create, plus the name field — seeded from the group’s current stamp. <span class="recommend">◆ Recommended</span></p>
+    </div>
+
+    <div class="cols" style="justify-content:center;gap:40px;">
+
+      <!-- Phone A — settings, the entry -->
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div class="pf">
+          <div class="pf-scr">
+            <div class="pf-bar"><span>9:41</span><span>✦ ▮</span></div>
+            <div class="pf-topbar"><span class="bk">‹</span><span class="ttl2">Group settings</span></div>
+            <div class="pf-body">
+              <!-- identity card (the ✎ entry) -->
+              <div class="scard">
+                <div class="idrow">
+                  <span class="stamp" style="--ink:var(--ink-terracotta);--sz:44px">
+                    <svg class="ic"><use href="#g-tent"/></svg>
+                    <span class="pencil"><svg><use href="#g-pencil"/></svg></span>
+                  </span>
+                  <div>
+                    <div class="nm">Salalah Crew</div>
+                    <div class="sub">Created Jun 12 · OMR</div>
+                  </div>
+                </div>
+              </div>
+              <!-- invite -->
+              <div class="shdr tight">Invite</div>
+              <div class="scard invite">
+                <div class="il">Anyone with the code can join</div>
+                <div style="display:flex;align-items:center;gap:9px;margin-top:9px;">
+                  <div class="code" style="flex:1;margin:0;font-size:19px;letter-spacing:2px;">SLLH-4K2</div>
+                  <span class="iconbtn">⧉</span>
+                  <span class="iconbtn">⊞</span>
+                  <span class="iconbtn">↗</span>
+                </div>
+              </div>
+              <!-- members -->
+              <div class="shdr">Members <span class="act">Manage</span></div>
+              <div class="scard" style="padding:2px 14px;">
+                <div class="mtile"><span class="avatar" style="background:var(--ink-harbour)">SA</span><span class="mn">Salim</span><span class="role">Creator</span></div>
+                <div class="mtile"><span class="avatar" style="background:var(--ink-plum)">LA</span><span class="mn">Layla</span><span class="role">Member</span></div>
+                <div class="mtile"><span class="avatar" style="background:var(--ink-olive)">NA</span><span class="mn">Nasser</span><span class="role">You</span></div>
+              </div>
+              <!-- defaults -->
+              <div class="shdr">Defaults</div>
+              <div class="scard defrow"><span class="dt">Currency</span><span class="dv">OMR</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="cap-under">Tap the ✎ on the stamp</div>
+      </div>
+
+      <div class="flow">→</div>
+
+      <!-- Phone B — the edit sheet -->
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div class="pf">
+          <div class="pf-scr">
+            <div class="pf-bar"><span>9:41</span><span>✦ ▮</span></div>
+            <!-- dimmed settings behind -->
+            <div class="pf-topbar" style="opacity:.35"><span class="bk">‹</span><span class="ttl2">Group settings</span></div>
+            <div class="pf-body" style="opacity:.35">
+              <div class="scard"><div class="idrow"><span class="stamp" style="--ink:var(--ink-terracotta);--sz:44px"><svg class="ic"><use href="#g-tent"/></svg></span><div><div class="nm">Salalah Crew</div><div class="sub">Created Jun 12 · OMR</div></div></div></div>
+              <div class="shdr tight">Invite</div>
+              <div class="scard invite"><div class="il">Anyone with the code can join</div><div class="code" style="margin-top:8px;">SLLH-4K2</div></div>
+            </div>
+            <div class="scrim"></div>
+            <!-- bottom sheet -->
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="pf-top"><span class="cancel">Cancel</span><span class="save">Save</span></div>
+              <div class="pf-title">Edit group</div>
+              <div style="overflow-y:auto;">
+                <div class="hero">
+                  <span class="stamp" style="--ink:var(--ink-terracotta);--sz:84px"><svg class="ic"><use href="#g-tent"/></svg></span>
+                  <span class="cap">Tent · Terracotta</span>
+                </div>
+                <div class="field">
+                  <span class="fl">Group name</span>
+                  <span class="fi">Salalah Crew</span>
+                </div>
+                <div class="row-head">Ink</div>
+                <div class="ink-row">
+                  <button class="swatch sel" style="--c:var(--ink-terracotta)"></button>
+                  <button class="swatch" style="--c:var(--ink-harbour)"></button>
+                  <button class="swatch" style="--c:var(--ink-ochre)"></button>
+                  <button class="swatch" style="--c:var(--ink-olive)"></button>
+                  <button class="swatch" style="--c:var(--ink-plum)"></button>
+                  <button class="swatch" style="--c:var(--ink-slate)"></button>
+                </div>
+                <div class="row-head">Symbol <span class="hint">your initial is the default</span></div>
+                <div class="sym-grid">
+                  <div class="sym"><span class="mg">S</span><span class="tag">none</span></div>
+                  <div class="sym sel"><svg class="ic"><use href="#g-tent"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-mountain"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-palm"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-sun"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-wave"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-compass"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-anchor"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-house"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-dining"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-coffee"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-gift"/></svg></div>
+                  <div class="sym"><svg class="ic"><use href="#g-camera"/></svg></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cap-under">Seeded from the current stamp · Save writes name + stamp at once</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== 02 — WHY FOLD THE NAME IN ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">02 / The decision</div>
+      <h2>One identity sheet, not two editors</h2>
+      <p class="sec-sub">The ✎ already means “edit this group.” Folding the name into the same sheet as the stamp keeps a single mental model, mirrors the Create screen exactly, and lets one atomic write carry name + symbol + ink (the rules already allow them together). The alternative keeps the diff smaller but splits identity across two affordances.</p>
+    </div>
+
+    <div class="cols">
+      <div class="panel" style="flex:1;min-width:300px;">
+        <div class="label-mono" style="margin-bottom:6px;">A · Combined “Edit group” sheet</div>
+        <div class="recommend" style="margin-bottom:4px;">◆ Recommended</div>
+        <div class="pc">
+          <div class="pro">
+            <div class="h">For</div>
+            <ul>
+              <li>Matches the signed-off Create&nbsp;&amp;&nbsp;edit sheet 1:1</li>
+              <li>✎ keeps one meaning: edit identity</li>
+              <li>Name + stamp = one atomic write, one Save</li>
+              <li>Nothing new to discover on the tile</li>
+            </ul>
+          </div>
+          <div class="con">
+            <div class="h">Against</div>
+            <ul>
+              <li>Inline rename relocates into the sheet</li>
+              <li>Rewrites the 3 existing name-edit tests</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel soft" style="flex:1;min-width:300px;">
+        <div class="label-mono" style="margin-bottom:10px;">B · Stamp-only sheet (tile becomes tappable)</div>
+        <div class="pc">
+          <div class="pro">
+            <div class="h">For</div>
+            <ul>
+              <li>Smallest diff; rename path untouched</li>
+              <li>No existing tests change</li>
+            </ul>
+          </div>
+          <div class="con">
+            <div class="h">Against</div>
+            <ul>
+              <li>Two tap targets on one 44px tile (✎ = name, body = stamp)</li>
+              <li>“Tap the tile” is undiscoverable &amp; undrawn</li>
+              <li>Identity edited in two different places</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="callout">Both write the same data. The split is purely where the creator taps and whether rename moves.</div>
+  </section>
+
+  <!-- ===== 03 — REMOVE SYMBOL ===== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div class="sec-num">03 / Back to the monogram</div>
+      <h2>Removing a symbol returns the serif initial</h2>
+      <p class="sec-sub">The first symbol cell is the no-symbol default: the group’s initial in the serif. Selecting it clears the stored symbol (the field is deleted, not blanked) so the tile is byte-identical to a group that never picked one. The same is true for ink — clear it and the colour derives from the name again.</p>
+    </div>
+    <div class="compare">
+      <div class="cmp good">
+        <div class="ct">Symbol chosen</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:4px;">
+          <span class="stamp" style="--ink:var(--ink-harbour);--sz:48px"><svg class="ic"><use href="#g-wave"/></svg></span>
+          <span style="font-size:13px;color:var(--ink-2);">Wave · Harbour — stored as <code style="font-family:var(--font-mono);font-size:12px;">glyph:'wave', inkIndex:1</code></span>
+        </div>
+      </div>
+      <div class="cmp bad">
+        <div class="ct">Symbol removed → monogram</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:4px;">
+          <span class="stamp" style="--ink:var(--ink-harbour);--sz:48px"><span class="mg">S</span></span>
+          <span style="font-size:13px;color:var(--ink-2);">Initial returns — <code style="font-family:var(--font-mono);font-size:12px;">glyph</code> field deleted, ink kept</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== NOTES ===== -->
+  <section class="sec">
+    <div class="note-grid">
+      <div class="note">
+        <h4><span class="dot"></span>Creator-only</h4>
+        <p>The ✎ is already gated to the group creator. Non-creators never see the affordance and the rules reject a non-creator stamp write, so the sheet inherits that gate for free.</p>
+      </div>
+      <div class="note">
+        <h4><span class="dot"></span>No new route</h4>
+        <p>It’s a bottom sheet over Group&nbsp;settings, not a screen — nothing to deep-link, nothing to guard on back. The sheet reuses the exact picker built for Create.</p>
+      </div>
+      <div class="note">
+        <h4><span class="dot"></span>Live hero</h4>
+        <p>The hero restamps as you tap — symbol, ink, and the name’s initial all update in place, so Save never surprises you. Identical behaviour to the Create hero.</p>
+      </div>
+      <div class="note">
+        <h4><span class="dot"></span>Rules already shipped</h4>
+        <p>PR-2a deployed the allow-list and creator-edit guard for <code style="font-family:var(--font-mono);font-size:12px;">glyph</code>/<code style="font-family:var(--font-mono);font-size:12px;">inkIndex</code>. PR-3 is client-only — no backend change.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

@@ -2192,6 +2192,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupNew => 'مجموعة جديدة';
 
   @override
+  String get groupEditTitle => 'تعديل المجموعة';
+
+  @override
   String get groupCreate => 'إنشاء';
 
   @override
@@ -2463,9 +2466,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupShareInviteSemantic => 'مشاركة الدعوة';
-
-  @override
-  String get groupNameEmpty => 'لا يمكن أن يكون اسم المجموعة فارغًا.';
 
   @override
   String groupUpdateNameFailed(Object error) {

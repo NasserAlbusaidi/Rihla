@@ -10,7 +10,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -305,33 +304,46 @@ Widget _wrapBackNavigationTest({required SharedPreferences prefs}) {
   );
 }
 
-Widget _wrapGroupInfoSection({
-  required Future<void> Function({
-    required String groupId,
-    String? name,
-  })
-  onUpdateGroup,
+/// Pumps [GroupInfoSection] under a recording service so the ✎-opened
+/// [GroupEditSheet]'s `updateGroupIdentity` call can be asserted, and returns
+/// that service. The container is read eagerly so the recording service exists
+/// even before the first save (a lazy `overrideWith` would leave it
+/// uninstantiated). [onIdentitySave] lets a test make the save throw.
+Future<_IdentityRecordingService> _pumpGroupInfoSection(
+  WidgetTester tester, {
   Group? group,
   bool isCreator = true,
-}) {
-  return ProviderScope(
+  Future<void> Function()? onIdentitySave,
+}) async {
+  final container = ProviderContainer(
     overrides: [
       groupServiceProvider.overrideWith(
-        (ref) => _UpdatingGroupService(ref, onUpdateGroup: onUpdateGroup),
+        (ref) => _IdentityRecordingService(ref, onSave: onIdentitySave),
       ),
     ],
-    child: MaterialApp(
-      theme: AppTheme.lightTheme,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: GroupInfoSection(
-          group: group ?? _testGroup,
-          isCreator: isCreator,
+  );
+  addTearDown(container.dispose);
+  final service =
+      container.read(groupServiceProvider) as _IdentityRecordingService;
+
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: GroupInfoSection(
+            group: group ?? _testGroup,
+            isCreator: isCreator,
+          ),
         ),
       ),
     ),
   );
+  await tester.pumpAndSettle();
+  return service;
 }
 
 Widget _wrapMembersSection({
@@ -396,22 +408,32 @@ class _RouteInvalidatingDeleteService extends GroupService {
   Future<void> deleteGroup({required String groupId}) => onDelete();
 }
 
-class _UpdatingGroupService extends GroupService {
-  _UpdatingGroupService(Ref ref, {required this.onUpdateGroup})
+/// Records every [updateGroupIdentity] call (the only write the ✎-opened
+/// [GroupEditSheet] performs) so a test can assert the exact args, or that it
+/// was never called. [onSave], when set, runs before recording — pass a
+/// throwing closure to exercise the sheet's failure path.
+class _IdentityRecordingService extends GroupService {
+  _IdentityRecordingService(Ref ref, {this.onSave})
     : super.withFirestore(ref, FakeFirebaseFirestore());
 
-  final Future<void> Function({
-    required String groupId,
-    String? name,
-  })
-  onUpdateGroup;
+  final Future<void> Function()? onSave;
+  final calls =
+      <({String groupId, String name, String? glyph, int? inkIndex})>[];
 
   @override
-  Future<void> updateGroup({
+  Future<void> updateGroupIdentity({
     required String groupId,
-    String? name,
-  }) {
-    return onUpdateGroup(groupId: groupId, name: name);
+    required String name,
+    String? glyph,
+    int? inkIndex,
+  }) async {
+    await onSave?.call();
+    calls.add((
+      groupId: groupId,
+      name: name,
+      glyph: glyph,
+      inkIndex: inkIndex,
+    ));
   }
 }
 
@@ -569,68 +591,71 @@ void main() {
       expect(find.text('ABC123'), findsWidgets);
     });
 
-    testWidgets('creator edits and saves the group name', (tester) async {
-      final calls = <({String groupId, String? name})>[];
-      await tester.pumpWidget(
-        _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name}) async {
-            calls.add((groupId: groupId, name: name));
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(GroupKeys.groupNameEditIcon));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'New Crew');
-      await tester.tap(find.byIcon(Iconsax.tick_circle));
-      await tester.pumpAndSettle();
-
-      expect(calls, [(groupId: 'group-1', name: 'New Crew')]);
-      expect(find.byType(TextField), findsNothing);
-    });
-
-    testWidgets('empty group name shows validation snack bar', (tester) async {
-      var called = false;
-      await tester.pumpWidget(
-        _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name}) async {
-            called = true;
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(GroupKeys.groupNameEditIcon));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '   ');
-      await tester.tap(find.byIcon(Iconsax.tick_circle));
-      await tester.pump();
-
-      expect(called, isFalse);
-      expect(find.text("Group name can't be empty."), findsOneWidget);
-    });
-
-    testWidgets('failed group-name save leaves editor open with error', (
+    testWidgets('creator ✎ opens the edit sheet, saves name + stamp', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name}) async {
-            throw StateError('write failed');
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
+      final service = await _pumpGroupInfoSection(tester);
 
       await tester.tap(find.byKey(GroupKeys.groupNameEditIcon));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'New Crew');
-      await tester.tap(find.byIcon(Iconsax.tick_circle));
+      expect(find.byKey(GroupKeys.editGroupSheet), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(GroupKeys.editGroupNameField),
+        'New Crew',
+      );
+      await tester.tap(find.byKey(GroupKeys.editGroupSaveButton));
       await tester.pumpAndSettle();
 
-      expect(find.byType(TextField), findsOneWidget);
+      // The single recorded identity write carries the edited name; glyph +
+      // inkIndex pass through unchanged from the (unset) test group.
+      expect(service.calls, hasLength(1));
+      final call = service.calls.single;
+      expect(call.groupId, 'group-1');
+      expect(call.name, 'New Crew');
+      // Sheet dismissed on success.
+      expect(find.byKey(GroupKeys.editGroupSheet), findsNothing);
+    });
+
+    testWidgets('empty name in the sheet blocks Save (validation, no write)', (
+      tester,
+    ) async {
+      final service = await _pumpGroupInfoSection(tester);
+
+      await tester.tap(find.byKey(GroupKeys.groupNameEditIcon));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(GroupKeys.editGroupNameField), '   ');
+      await tester.tap(find.byKey(GroupKeys.editGroupSaveButton));
+      await tester.pumpAndSettle();
+
+      // The display-name validator surfaces an inline error; nothing is written
+      // and the sheet stays open.
+      expect(service.calls, isEmpty);
+      expect(find.text("Name can't be empty."), findsOneWidget);
+      expect(find.byKey(GroupKeys.editGroupSheet), findsOneWidget);
+    });
+
+    testWidgets('failed save in the sheet shows error, sheet stays open', (
+      tester,
+    ) async {
+      final service = await _pumpGroupInfoSection(
+        tester,
+        onIdentitySave: () async => throw StateError('write failed'),
+      );
+
+      await tester.tap(find.byKey(GroupKeys.groupNameEditIcon));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(GroupKeys.editGroupNameField),
+        'New Crew',
+      );
+      await tester.tap(find.byKey(GroupKeys.editGroupSaveButton));
+      await tester.pumpAndSettle();
+
+      // The sheet's catch path surfaces the failure SnackBar and does NOT pop.
+      expect(service.calls, isEmpty);
       expect(find.textContaining('Failed to update name'), findsOneWidget);
+      expect(find.byKey(GroupKeys.editGroupSheet), findsOneWidget);
     });
 
     testWidgets('copy invite code writes the code to clipboard', (
@@ -650,12 +675,7 @@ void main() {
             .setMockMethodCallHandler(SystemChannels.platform, null),
       );
 
-      await tester.pumpWidget(
-        _wrapGroupInfoSection(
-          onUpdateGroup: ({required groupId, name}) async {},
-        ),
-      );
-      await tester.pumpAndSettle();
+      await _pumpGroupInfoSection(tester);
 
       await tester.tap(find.byKey(GroupKeys.inviteCodeCopyButton));
       await tester.pump();
@@ -665,19 +685,12 @@ void main() {
       expect(find.text('Invite code copied'), findsOneWidget);
     });
 
-    testWidgets('non-creator cannot open the group-name editor', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrapGroupInfoSection(
-          isCreator: false,
-          onUpdateGroup: ({required groupId, name}) async {},
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets('non-creator sees no ✎ edit affordance', (tester) async {
+      await _pumpGroupInfoSection(tester, isCreator: false);
 
+      // No creator pencil → no way to open the edit sheet.
       expect(find.byKey(GroupKeys.groupNameEditIcon), findsNothing);
-      expect(find.byType(TextField), findsNothing);
+      expect(find.byKey(GroupKeys.editGroupSheet), findsNothing);
       expect(find.text('Adventure Crew'), findsOneWidget);
     });
 

@@ -2125,6 +2125,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupNew => 'New group';
 
   @override
+  String get groupEditTitle => 'Edit group';
+
+  @override
   String get groupCreate => 'Create';
 
   @override
@@ -2395,9 +2398,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupShareInviteSemantic => 'Share invite';
-
-  @override
-  String get groupNameEmpty => 'Group name can\'t be empty.';
 
   @override
   String groupUpdateNameFailed(Object error) {

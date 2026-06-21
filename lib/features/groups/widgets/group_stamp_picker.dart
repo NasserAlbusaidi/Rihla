@@ -29,6 +29,7 @@ class GroupStampPicker extends StatelessWidget {
     required this.name,
     required this.value,
     required this.onChanged,
+    this.showHero = true,
   });
 
   /// Live group name — drives the hero/monogram first letter (and the
@@ -40,6 +41,11 @@ class GroupStampPicker extends StatelessWidget {
 
   /// Emitted with an immutable record copy on every ink/symbol tap.
   final ValueChanged<GroupStampSelection> onChanged;
+
+  /// Whether to render the leading hero [GroupGlyph] preview. The Create
+  /// screen keeps it (`true`); the Edit sheet renders its OWN hero above a
+  /// name field and passes `false`, so the picker shows only ink + symbol.
+  final bool showHero;
 
   static const double _heroSize = 80;
 
@@ -60,16 +66,20 @@ class GroupStampPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── 1. Live hero — the exact tile that will render after create. ──
-        Center(
-          child: GroupGlyph(
-            name: name,
-            glyph: value.glyph,
-            inkIndex: value.inkIndex,
-            size: _heroSize,
+        // ── 1. Live hero — the exact tile that will render after create. The
+        // Edit sheet supplies its own hero above the name field, so it passes
+        // showHero:false and this leading preview (+ its gap) is omitted.
+        if (showHero) ...[
+          Center(
+            child: GroupGlyph(
+              name: name,
+              glyph: value.glyph,
+              inkIndex: value.inkIndex,
+              size: _heroSize,
+            ),
           ),
-        ),
-        SizedBox(height: spacing.space24),
+          SizedBox(height: spacing.space24),
+        ],
 
         // ── 2. Ink row — six journal colours, fill the row equally. ──
         _RowLabel(context.l10n.groupStampInk),

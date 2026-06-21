@@ -1567,6 +1567,7 @@
   },
   "groupCreatedWillSync": "Group created — will sync when online.",
   "groupNew": "New group",
+  "groupEditTitle": "Edit group",
   "groupCreate": "Create",
   "groupMoodTitle": "Who's coming along?",
   "groupMoodBody": "A group is a circle of people you share expenses with — a household, a travel crew, a project team.",
@@ -1696,7 +1697,6 @@
   "groupCopyInviteCodeSemantic": "Copy invite code",
   "groupShowQrCodeSemantic": "Show QR code",
   "groupShareInviteSemantic": "Share invite",
-  "groupNameEmpty": "Group name can't be empty.",
   "groupUpdateNameFailed": "Failed to update name: {error}",
   "@groupUpdateNameFailed": {
     "placeholders": {

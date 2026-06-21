@@ -125,6 +125,12 @@ abstract final class GroupKeys {
   // GroupInfoSection
   static const infoSection = Key('group_info_section');
   static const groupNameEditIcon = Key('group_settings_group_name_edit_icon');
+
+  // GroupEditSheet (trip-stamps PR-3): creator edits name + stamp in one sheet.
+  static const editGroupSheet = Key('group_edit_sheet');
+  static const editGroupNameField = Key('group_edit_name_field');
+  static const editGroupSaveButton = Key('group_edit_save_button');
+  static const editGroupCancelButton = Key('group_edit_cancel_button');
   static const inviteCodeCopyButton = Key('group_settings_invite_code_copy');
   static const inviteQrCard = Key('group_settings_invite_qr_card');
   static const inviteWhatsAppButton = Key('group_invite_whatsapp_button');

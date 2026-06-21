@@ -3588,6 +3588,12 @@ abstract class AppLocalizations {
   /// **'New group'**
   String get groupNew;
 
+  /// No description provided for @groupEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group'**
+  String get groupEditTitle;
+
   /// No description provided for @groupCreate.
   ///
   /// In en, this message translates to:
@@ -4073,12 +4079,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share invite'**
   String get groupShareInviteSemantic;
-
-  /// No description provided for @groupNameEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Group name can\'t be empty.'**
-  String get groupNameEmpty;
 
   /// No description provided for @groupUpdateNameFailed.
   ///
