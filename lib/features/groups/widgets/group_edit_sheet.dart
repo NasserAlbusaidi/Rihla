@@ -259,6 +259,8 @@ class _NameField extends StatelessWidget {
               color: colors.errorText,
               height: 1.3,
             ),
+            // textMuted-decorative-justified: placeholder copy is non-functional
+            // guidance; the field label + validation error carry the meaning.
             hintStyle: AppTypography.sans(
               fontSize: 17,
               color: colors.textMuted,
