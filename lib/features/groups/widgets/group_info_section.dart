@@ -1,28 +1,28 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
-import '../../../core/utils/share_helper.dart';
 
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/utils/error_message_translator.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
+import '../../../core/utils/share_helper.dart';
 import '../../home/widgets/group_glyph.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
-import '../providers/group_provider.dart';
+import 'group_edit_sheet.dart';
 import 'qr_invite_sheet.dart';
 import 'settings_section_header.dart';
 
 /// Wireframe identity and invite cards for GroupSettingsScreen.
-class GroupInfoSection extends ConsumerStatefulWidget {
+///
+/// The creator-only ✎ on the identity card opens [GroupEditSheet] (name +
+/// trip-stamp in one atomic save). There is no inline name editor anymore —
+/// editing lives entirely in the sheet.
+class GroupInfoSection extends ConsumerWidget {
   const GroupInfoSection({
     super.key,
     required this.group,
@@ -33,78 +33,21 @@ class GroupInfoSection extends ConsumerStatefulWidget {
   final bool isCreator;
 
   @override
-  ConsumerState<GroupInfoSection> createState() => _GroupInfoSectionState();
-}
-
-class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
-  final _nameController = TextEditingController();
-  bool _isEditing = false;
-  bool _isSaving = false;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveGroupName() async {
-    final trimmed = _nameController.text.trim();
-    if (trimmed.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.groupNameEmpty),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    try {
-      await ref
-          .read(groupServiceProvider)
-          .updateGroup(groupId: widget.group.id, name: trimmed);
-      if (mounted) {
-        HapticService.success();
-        setState(() {
-          _isEditing = false;
-          _isSaving = false;
-        });
-      }
-    } catch (e, st) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        unawaited(Sentry.captureException(e, stackTrace: st));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.l10n.groupUpdateNameFailed(friendlyMessageFor(context, e)),
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       key: GroupKeys.infoSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildIdentityCard(),
+        _buildIdentityCard(context),
         const SizedBox(height: 10),
         SettingsSectionHeader(title: context.l10n.groupInvite),
         SizedBox(height: context.spacing.space8),
-        _buildInviteCodeCard(),
+        _buildInviteCodeCard(context),
       ],
     );
   }
 
-  Widget _buildIdentityCard() {
+  Widget _buildIdentityCard(BuildContext context) {
     final spacing = context.spacing;
     return Container(
       key: GroupKeys.settingsGroupNameTile,
@@ -120,12 +63,12 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             clipBehavior: Clip.none,
             children: [
               GroupGlyph(
-                name: widget.group.name,
-                glyph: widget.group.glyph,
-                inkIndex: widget.group.inkIndex,
+                name: group.name,
+                glyph: group.glyph,
+                inkIndex: group.inkIndex,
                 size: 44,
               ),
-              if (widget.isCreator)
+              if (isCreator)
                 Positioned.directional(
                   textDirection: Directionality.of(context),
                   end: -4,
@@ -134,10 +77,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                     key: GroupKeys.groupNameEditIcon,
                     onTap: () {
                       HapticService.selection();
-                      setState(() {
-                        _isEditing = true;
-                        _nameController.text = widget.group.name;
-                      });
+                      GroupEditSheet.show(context, group: group);
                     },
                     child: Container(
                       width: 20,
@@ -162,20 +102,18 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             ],
           ),
           const SizedBox(width: 14),
-          Expanded(
-            child: _isEditing ? _buildNameEditor() : _buildIdentityText(),
-          ),
+          Expanded(child: _buildIdentityText(context)),
         ],
       ),
     );
   }
 
-  Widget _buildIdentityText() {
+  Widget _buildIdentityText(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.group.name,
+          group.name,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: AppTypography.display(
@@ -187,8 +125,8 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
         const SizedBox(height: 2),
         Text(
           context.l10n.groupCreatedDateCurrency(
-            _formatCreated(context, widget.group.createdAt),
-            widget.group.currency,
+            _formatCreated(context, group.createdAt),
+            group.currency,
           ),
           style: AppTypography.sans(
             fontSize: 12,
@@ -199,43 +137,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
     );
   }
 
-  Widget _buildNameEditor() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _nameController,
-            autofocus: true,
-            style: AppTypography.sans(
-              fontSize: 14,
-              color: context.colors.textPrimary,
-            ),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              filled: false,
-            ),
-            onSubmitted: (_) => _saveGroupName(),
-          ),
-        ),
-        _isSaving
-            ? SizedBox(
-                width: context.spacing.space20,
-                height: context.spacing.space20,
-                child: const Padding(
-                  padding: EdgeInsets.all(2),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            : IconButton(
-                icon: Icon(Iconsax.tick_circle, color: context.colors.primary),
-                onPressed: _saveGroupName,
-              ),
-      ],
-    );
-  }
-
-  Widget _buildInviteCodeCard() {
+  Widget _buildInviteCodeCard(BuildContext context) {
     final spacing = context.spacing;
     return Container(
       key: GroupKeys.settingsInviteCodeTile,
@@ -260,7 +162,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
             children: [
               Expanded(
                 child: Text(
-                  widget.group.inviteCode,
+                  group.inviteCode,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.mono(
@@ -278,7 +180,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 semanticLabel: context.l10n.groupCopyInviteCodeSemantic,
                 onTap: () {
                   Clipboard.setData(
-                    ClipboardData(text: widget.group.inviteCode),
+                    ClipboardData(text: group.inviteCode),
                   );
                   HapticService.success();
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -295,7 +197,7 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                 semanticLabel: context.l10n.groupShowQrCodeSemantic,
                 onTap: () {
                   HapticService.selection();
-                  showGroupInviteQrSheet(context, group: widget.group);
+                  showGroupInviteQrSheet(context, group: group);
                 },
               ),
               const SizedBox(width: 6),
@@ -307,11 +209,11 @@ class _GroupInfoSectionState extends ConsumerState<GroupInfoSection> {
                   shareText(
                     context,
                     context.l10n.groupShareInviteMessage(
-                      widget.group.name,
-                      AppLinks.inviteUrl(widget.group.inviteCode).toString(),
-                      widget.group.inviteCode,
+                      group.name,
+                      AppLinks.inviteUrl(group.inviteCode).toString(),
+                      group.inviteCode,
                     ),
-                    subject: context.l10n.groupShareSubject(widget.group.name),
+                    subject: context.l10n.groupShareSubject(group.name),
                   );
                 },
               ),

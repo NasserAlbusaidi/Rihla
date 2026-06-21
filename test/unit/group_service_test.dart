@@ -507,44 +507,6 @@ void main() {
       );
     });
 
-    group('updateGroup', () {
-      test(
-        'updateGroup throws when group document does not exist in fakeDb',
-        () async {
-          SharedPreferences.setMockInitialValues({
-            'settings_device_name': 'Test',
-          });
-          final prefs = await SharedPreferences.getInstance();
-          final fakeDb = FakeFirebaseFirestore();
-
-          final container = ProviderContainer(
-            overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
-              groupServiceProvider.overrideWith(
-                (ref) => GroupService.withFirestore(ref, fakeDb),
-              ),
-            ],
-          );
-          addTearDown(container.dispose);
-
-          final service = container.read(groupServiceProvider);
-
-          // FakeFirebaseFirestore throws 'not-found' when updating a non-existent doc.
-          // This verifies that updateGroup propagates the Firestore error correctly.
-          expect(
-            () async =>
-                service.updateGroup(groupId: 'grp-nonexistent', name: 'Name'),
-            throwsA(anything),
-          );
-        },
-      );
-
-      // #261 (Model A): currency is immutable after create — `updateGroup` no
-      // longer accepts a `currency:` param (settable only in `createGroup`), so
-      // the former 'updates currency field' / 'both name and currency' tests are
-      // removed. Rule enforcement is covered in the functions rules suite.
-    });
-
     group('updateGroupIdentity', () {
       // PR-3 Task A: the creator edits an existing group's identity in ONE
       // atomic write — display name + trip-stamp (glyph + inkIndex). A null
@@ -573,6 +535,25 @@ void main() {
         addTearDown(container.dispose);
         return container.read(groupServiceProvider);
       }
+
+      test(
+        'throws when the group document does not exist in fakeDb',
+        () async {
+          // .update() on a missing doc rejects against FakeFirebaseFirestore
+          // (matching prod 'not-found'); verifies updateGroupIdentity propagates
+          // the Firestore error rather than silently swallowing it. (Migrated
+          // from the removed `updateGroup` group — same write-path edge.)
+          final service = await identityService(FakeFirebaseFirestore());
+
+          expect(
+            () => service.updateGroupIdentity(
+              groupId: 'grp-nonexistent',
+              name: 'Name',
+            ),
+            throwsA(anything),
+          );
+        },
+      );
 
       test('writes name + glyph + inkIndex in one update', () async {
         final fakeDb = FakeFirebaseFirestore();
