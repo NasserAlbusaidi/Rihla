@@ -531,10 +531,13 @@ class BalanceCalculator {
   static Map<String, Decimal> allocateItemizedDistribution({
     required List<SplitItem> items,
     required String currency,
+    List<SplitAdjustment> adjustments = const [],
+    List<String> participantIds = const [],
   }) {
     final fenced = MoneySerializer.isSupported(currency) ? currency : 'OMR';
     final owedSubunits = <String, int>{};
 
+    // ── Phase 1 — items: each item's cost split equally among its assignees ──
     for (final item in items) {
       if (item.amountFils < 0) {
         throw ArgumentError.value(
@@ -560,10 +563,127 @@ class BalanceCalculator {
       }
     }
 
+    // No adjustments ⇒ byte-identical to #203 (participantIds untouched).
+    if (adjustments.isEmpty) {
+      return {
+        for (final entry in owedSubunits.entries)
+          entry.key: MoneySerializer.fromSubunits(entry.value, fenced),
+      };
+    }
+
+    // #605 — bill-level adjustments fold into the same exact distribution.
+    // 'equal' adjustments (and the empty-weight proportional fallback) spread
+    // over the WHOLE table, so the caller MUST pass it (reuse-safety).
+    final equalBase = participantIds.toSet().toList()..sort();
+    if (equalBase.isEmpty) {
+      throw ArgumentError.value(
+        participantIds,
+        'participantIds',
+        'itemized adjustments require the full participant list',
+      );
+    }
+
+    // Per-person item subtotal — the weights for a 'proportional' additive.
+    final itemSubtotal = Map<String, int>.from(owedSubunits);
+
+    // ── Phase 2 — additive adjustments (service / tax / tip): each ADDS ──
+    for (final adj in adjustments) {
+      if (adj.type == 'discount') continue;
+      _validateAdjustment(adj);
+      final shares = adj.allocation == 'proportional'
+          ? _spreadProportional(adj.amountFils, itemSubtotal, equalBase)
+          : _spreadEqual(adj.amountFils, equalBase);
+      shares.forEach((k, v) => owedSubunits[k] = (owedSubunits[k] ?? 0) + v);
+    }
+
+    // ── Phase 3 — discounts: SUBTRACT by re-allocating the REMAINING bill
+    // proportional to each person's pre-discount owed. A discount's own
+    // `allocation` is intentionally ignored — proportional-to-pre-discount is
+    // what provably keeps every owed ≥ 0 (it can never exceed pre-discount). ──
+    var totalDiscount = 0;
+    for (final adj in adjustments) {
+      if (adj.type != 'discount') continue;
+      _validateAdjustment(adj);
+      totalDiscount += adj.amountFils;
+    }
+    if (totalDiscount > 0) {
+      final preDiscount = Map<String, int>.from(owedSubunits);
+      final preTotal = preDiscount.values.fold(0, (s, v) => s + v);
+      final remaining = preTotal - totalDiscount;
+      if (remaining < 0) {
+        throw ArgumentError.value(
+          totalDiscount,
+          'discount',
+          'discount $totalDiscount exceeds pre-discount owed $preTotal',
+        );
+      }
+      final reallocated = _spreadProportional(remaining, preDiscount, equalBase);
+      owedSubunits
+        ..clear()
+        ..addAll(reallocated);
+    }
+
     return {
       for (final entry in owedSubunits.entries)
         entry.key: MoneySerializer.fromSubunits(entry.value, fenced),
     };
+  }
+
+  /// Strict validation for a #605 adjustment fed to the producer: known [type]
+  /// and non-negative [SplitAdjustment.amountFils]. Mirrors the item guards so a
+  /// forged/legacy doc displays (lenient `fromMap`) but cannot resave a bad fold.
+  static void _validateAdjustment(SplitAdjustment adj) {
+    if (!kAdjustmentTypes.contains(adj.type)) {
+      throw ArgumentError.value(adj.type, 'type', 'unknown adjustment type');
+    }
+    if (adj.amountFils < 0) {
+      throw ArgumentError.value(
+        adj.amountFils,
+        'amountFils',
+        'adjustment "${adj.type}" is negative',
+      );
+    }
+  }
+
+  /// Spread [amount] subunits equally across [baseSorted]; the integer remainder
+  /// lands on the alphabetically-last key (the project remainder contract).
+  static Map<String, int> _spreadEqual(int amount, List<String> baseSorted) {
+    final n = baseSorted.length;
+    if (n == 0) return {};
+    final base = amount ~/ n;
+    final remainder = amount - base * n;
+    return {
+      for (var i = 0; i < n; i++)
+        baseSorted[i]: base + (i == n - 1 ? remainder : 0),
+    };
+  }
+
+  /// Spread [amount] subunits proportional to [weights]; the remainder lands on
+  /// the alphabetically-last POSITIVE-weight key (distinct from, but compatible
+  /// with, the whole-table-last contract — never a zero-weight key). When NO key
+  /// has positive weight, fall back to an equal spread over [fallbackBase] (the
+  /// whole table) so the amount is never silently dropped (conservation).
+  static Map<String, int> _spreadProportional(
+    int amount,
+    Map<String, int> weights,
+    List<String> fallbackBase,
+  ) {
+    final keys = [
+      for (final e in weights.entries)
+        if (e.value > 0) e.key,
+    ]..sort();
+    if (keys.isEmpty) return _spreadEqual(amount, fallbackBase);
+    final total = keys.fold(0, (s, k) => s + weights[k]!);
+    if (total == 0) return _spreadEqual(amount, fallbackBase);
+    final out = <String, int>{};
+    var used = 0;
+    for (final k in keys) {
+      final share = (amount * weights[k]!) ~/ total;
+      out[k] = share;
+      used += share;
+    }
+    out[keys.last] = out[keys.last]! + (amount - used);
+    return out;
   }
 
   static Map<String, Decimal> _allocateShares(
