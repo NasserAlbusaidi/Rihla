@@ -104,9 +104,9 @@ class _GroupEditSheetState extends ConsumerState<GroupEditSheet> {
     return SafeArea(
       key: GroupKeys.editGroupSheet,
       child: Padding(
-        padding: EdgeInsets.only(
-          left: spacing.space24,
-          right: spacing.space24,
+        padding: EdgeInsetsDirectional.only(
+          start: spacing.space24,
+          end: spacing.space24,
           top: spacing.space12,
           // Lift the sheet above the keyboard when the name field has focus.
           bottom: spacing.space24 + MediaQuery.of(context).viewInsets.bottom,

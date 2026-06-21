@@ -188,6 +188,27 @@ void main() {
       expect(call.inkIndex, 1, reason: 'seeded ink carried to save');
     });
 
+    testWidgets('clearing the symbol then Save records glyph: null', (
+      tester,
+    ) async {
+      final service = await pumpSheet(tester, group: _seedGroup());
+
+      await tester.tap(find.byKey(const Key('stampSym_monogram')));
+      await tester.pump();
+      await tester.tap(find.byKey(GroupKeys.editGroupSaveButton));
+      await tester.pump();
+
+      expect(service.calls, hasLength(1));
+      final call = service.calls.single;
+      expect(
+        call.glyph,
+        isNull,
+        reason: 'cleared symbol → glyph null → FieldValue.delete in the provider',
+      );
+      expect(call.name, 'Salalah Crew', reason: 'unedited name carried');
+      expect(call.inkIndex, 1, reason: 'untouched ink carried');
+    });
+
     testWidgets('empty name blocks Save (validation, no write)', (
       tester,
     ) async {
