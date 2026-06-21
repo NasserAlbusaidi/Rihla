@@ -1570,7 +1570,22 @@
   "groupCreate": "Create",
   "groupMoodTitle": "Who's coming along?",
   "groupMoodBody": "A group is a circle of people you share expenses with — a household, a travel crew, a project team.",
-  "groupGlyph": "Group glyph",
+  "groupGlyph": "Stamp",
+  "@groupGlyph": {
+    "description": "#287 trip-stamps: section header above the group stamp picker on the Create-Group screen."
+  },
+  "groupStampInk": "Ink",
+  "@groupStampInk": {
+    "description": "#287 trip-stamps: label for the ink-colour swatch row in the group stamp picker."
+  },
+  "groupStampSymbol": "Symbol",
+  "@groupStampSymbol": {
+    "description": "#287 trip-stamps: label for the symbol grid in the group stamp picker."
+  },
+  "groupStampMonogramHint": "Your initial is the default",
+  "@groupStampMonogramHint": {
+    "description": "#287 trip-stamps: muted caption explaining that, with no symbol chosen, the group's first initial is used as the stamp."
+  },
   "groupDefaultCurrency": "Default currency",
   "groupCreatorTitle": "You're the creator.",
   "groupCreatorBody": "Once created, share an invite code to bring others in.",

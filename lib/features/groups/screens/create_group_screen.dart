@@ -30,6 +30,7 @@ import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../widgets/currency_picker_sheet.dart';
+import '../widgets/group_stamp_picker.dart';
 import '../widgets/invite_code_display.dart';
 import '../widgets/shadow_member_chips_field.dart';
 
@@ -38,9 +39,9 @@ import '../widgets/shadow_member_chips_field.dart';
 /// Wireframe ref: `Wireframes/Rihla/hifi/screens-group.jsx` →
 /// `Hi_CreateGroup()`.
 ///
-/// Shows a warm-paper creation form with a mood header, glyph row, underlined
-/// inputs, and a compact top-bar create action. On success, presents a share
-/// prompt with the invite code (D-11, D-22).
+/// Shows a warm-paper creation form with a mood header, trip-stamp picker,
+/// underlined inputs, and a compact top-bar create action. On success, presents
+/// a share prompt with the invite code (D-11, D-22).
 class CreateGroupScreen extends ConsumerStatefulWidget {
   const CreateGroupScreen({super.key});
 
@@ -57,6 +58,13 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   /// #261: the group's currency, chosen at create time and immutable after
   /// (Model A). Local state only — NOT persisted to AppSettings.
   String _selectedCurrency = 'OMR';
+
+  /// #287/trip-stamps: the chosen stamp identity. Both start null = defaulted
+  /// (monogram glyph + name-derived ink); a non-null value is an explicit pick
+  /// passed to stageGroup and persisted. NOT carried by PendingGateIntent — on
+  /// the rare #441 gate-restart path the picks fall back to the monogram.
+  String? _selectedGlyph;
+  int? _selectedInkIndex;
 
   /// #278: placeholder ("shadow") member names seeded at create time. Local UI
   /// state until Create, then fanned out to the addShadowMember callable once
@@ -183,6 +191,8 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           .stageGroup(
             name: _nameController.text.trim(),
             currency: _selectedCurrency,
+            glyph: _selectedGlyph,
+            inkIndex: _selectedInkIndex,
           );
       final outcome = await awaitServerAck(
         staged.ack,
@@ -352,7 +362,25 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                     children: [
                       const _MoodBlock(),
                       const SizedBox(height: 22),
-                      const _GlyphRow(),
+                      // #287: live trip-stamp picker. Wrapped in a
+                      // ListenableBuilder so the hero monogram tracks the name
+                      // as the user types (the screen doesn't rebuild on
+                      // keystroke). Stays inside the SingleChildScrollView so the
+                      // picker's shrinkWrap GridView is height-bounded.
+                      ListenableBuilder(
+                        listenable: _nameController,
+                        builder: (context, _) => GroupStampPicker(
+                          name: _nameController.text,
+                          value: (
+                            glyph: _selectedGlyph,
+                            inkIndex: _selectedInkIndex,
+                          ),
+                          onChanged: (sel) => setState(() {
+                            _selectedGlyph = sel.glyph;
+                            _selectedInkIndex = sel.inkIndex;
+                          }),
+                        ),
+                      ),
                       const SizedBox(height: 26),
                       _WireframeTextField(
                         key: GroupKeys.groupNameInput,
@@ -519,57 +547,6 @@ class _MoodBlock extends StatelessWidget {
             color: colors.textSecondary,
             height: 1.5,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlyphRow extends StatelessWidget {
-  const _GlyphRow();
-
-  static const _glyphs = ['⛺', '⌂', '↗', '✦', '◐', '⌘'];
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final palette = [
-      _GlyphColor(colors.saffronSoft, colors.primaryDark),
-      _GlyphColor(colors.success.withValues(alpha: 0.18), colors.success),
-      _GlyphColor(colors.cat2.withValues(alpha: 0.16), colors.cat2),
-      _GlyphColor(colors.cat5.withValues(alpha: 0.15), colors.cat5),
-      _GlyphColor(colors.cat3.withValues(alpha: 0.18), colors.cat3),
-      _GlyphColor(colors.cat4.withValues(alpha: 0.18), colors.cat4),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _FieldLabel(context.l10n.groupGlyph),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (var index = 0; index < _glyphs.length; index++)
-              Container(
-                width: 46,
-                height: 46,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: palette[index].background,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  _glyphs[index],
-                  style: AppTypography.display(
-                    fontSize: 24,
-                    color: palette[index].foreground,
-                    height: 1,
-                  ),
-                ),
-              ),
-          ],
         ),
       ],
     );
@@ -752,13 +729,6 @@ UnderlineInputBorder _inputBorder(Color color, {double width = 1}) {
   return UnderlineInputBorder(
     borderSide: BorderSide(color: color, width: width),
   );
-}
-
-class _GlyphColor {
-  const _GlyphColor(this.background, this.foreground);
-
-  final Color background;
-  final Color foreground;
 }
 
 /// Post-creation share prompt presented as a bottom sheet.
