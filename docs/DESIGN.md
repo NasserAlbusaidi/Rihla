@@ -354,6 +354,6 @@ are the enforcement backlog:
 | D4 | **Group avatar dead code deleted.** ✅ `AppGroupAvatarColors` + `groupAvatarSlot()` + `_stableGroupHash` removed (zero live callers; groups render via `RAvatar`). | — | ✅ Done (same cleanup PR). |
 | D5 | **Dark theme untuned.** Compiles, legible, not designed. | `color_tokens.dart` dark docstring; `app_theme.dart` darkTheme is a stub. | Tune dark after light adherence lands. |
 | D6 | **Motion tokens landed; adoption pending.** `context.motion` (quick/standard/emphasis + curves) exists; ~20 ad-hoc `flutter_animate` durations not yet migrated. | §6. | ✅ Phase 1 (tokens). Phase 2: migrate ad-hoc durations. |
-| ~~D7~~ | **CLOSED — not dead.** Module color fields look stranded post-Phase-39 but are **live**: `event_type_picker_screen.dart` reads `moduleLedgerLight`/`moduleMemoriesLight` as the event-type color palette. Do **not** delete them. | grep: `colors.module*Light` in `event_type_picker_screen.dart`. | None — caught by the cleanup PR's adversarial dead-code check. |
+| D7 | **REOPENED — now orphaned.** `event_type_picker_screen.dart` (their only reader) was deleted with #489's type-picker fold; `moduleLedgerLight`/`moduleMemoriesLight` now have **zero `lib/` readers** (defined only in `color_tokens.dart`). | grep: `colors.module*Light` → 0 hits outside `color_tokens.dart`. | Delete the dead `module*Light` token fields in a cleanup PR. |
 
 Track adherence by re-running the §13 greps; the counts are the metric.
