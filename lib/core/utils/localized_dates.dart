@@ -15,6 +15,14 @@ String formatShortMonthDay(BuildContext context, DateTime date) {
   return DateFormat.MMMd(localeNameOf(context)).format(date);
 }
 
+/// The same short month-day formatter as [formatShortMonthDay], but returned
+/// once for reuse across a loop. Constructing a `DateFormat` parses the ICU
+/// skeleton each time, so per-log calls in a day-grouping loop pay that cost N
+/// times — hoist this out of the loop and call `.format(date)` per item (#634).
+DateFormat shortMonthDayFormatter(BuildContext context) {
+  return DateFormat.MMMd(localeNameOf(context));
+}
+
 String formatShortMonthDayYear(BuildContext context, DateTime date) {
   return DateFormat.yMMMd(localeNameOf(context)).format(date);
 }

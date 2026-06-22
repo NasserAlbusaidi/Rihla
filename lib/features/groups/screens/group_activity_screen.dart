@@ -48,6 +48,13 @@ class GroupActivityScreen extends ConsumerStatefulWidget {
 
 enum _Filter { all, settlements, events, members }
 
+/// Test seam (#634): increments each time the filtered activity list is
+/// actually recomputed (a cache miss). Re-tapping the already-active chip and
+/// unrelated rebuilds (e.g. the group-name stream re-emitting) must NOT
+/// increment this once the cache + equality guard are in place.
+@visibleForTesting
+int debugGroupActivityFilterComputes = 0;
+
 class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   final List<GroupActivityLog> _activities = [];
   DocumentSnapshot? _lastDocument;
@@ -114,8 +121,28 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     }
   }
 
-  List<GroupActivityLog> get _filtered =>
-      _activities.where((a) => _matches(a.type, _filter)).toList();
+  // #634: memoize the filtered list. `_activities` is append-only (only
+  // `addAll` in `_loadPage`), so its length uniquely identifies its content;
+  // recompute only when the list grows or the filter changes — not on every
+  // build (the group-name stream re-emitting, or re-tapping the active chip).
+  List<GroupActivityLog>? _filteredCache;
+  int _filteredCacheLen = -1;
+  _Filter? _filteredCacheFilter;
+
+  List<GroupActivityLog> get _filtered {
+    if (_filteredCache != null &&
+        _filteredCacheLen == _activities.length &&
+        _filteredCacheFilter == _filter) {
+      return _filteredCache!;
+    }
+    debugGroupActivityFilterComputes++;
+    final result =
+        _activities.where((a) => _matches(a.type, _filter)).toList();
+    _filteredCache = result;
+    _filteredCacheLen = _activities.length;
+    _filteredCacheFilter = _filter;
+    return result;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +162,11 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
             _TopBar(title: groupName, groupId: widget.groupId),
             _FilterStrip(
               current: _filter,
-              onChange: (f) => setState(() => _filter = f),
+              onChange: (f) {
+                // #634: re-tapping the already-active chip is a no-op.
+                if (f == _filter) return;
+                setState(() => _filter = f);
+              },
             ),
             SizedBox(height: context.spacing.space8),
             Expanded(child: _buildBody(context, currency)),
@@ -650,16 +681,21 @@ List<_DayGroup> _groupByDay(
   DateTime now,
 ) {
   final today = DateTime(now.year, now.month, now.day);
+  // #634: hoist the constant l10n strings and the DateFormat out of the
+  // per-log loop — constructing a DateFormat parses the ICU skeleton each call.
+  final todayLabel = context.l10n.timelineToday;
+  final yesterdayLabel = context.l10n.timelineYesterday;
+  final monthDayFmt = shortMonthDayFormatter(context);
   final buckets = <String, _DayBucket>{};
   final order = <String>[];
   for (final log in logs) {
     final ts = log.timestamp;
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
-    final dateText = formatShortMonthDay(context, ts);
+    final dateText = monthDayFmt.format(ts);
     final (label, suffix) = switch (diff) {
-      0 => (context.l10n.timelineToday, dateText),
-      1 => (context.l10n.timelineYesterday, dateText),
+      0 => (todayLabel, dateText),
+      1 => (yesterdayLabel, dateText),
       _ => (dateText, null),
     };
     final bucket = buckets.putIfAbsent(label, () {
