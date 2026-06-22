@@ -454,6 +454,12 @@ List<_DayGroup> _groupByDay(
   DateTime now,
 ) {
   final today = DateTime(now.year, now.month, now.day);
+  // #634: hoist the constant l10n strings and the DateFormat out of the
+  // per-log loop — constructing a DateFormat parses the ICU skeleton each call,
+  // which over an unbounded paginated list is re-paid per log on every build.
+  final todayLabel = context.l10n.timelineToday;
+  final yesterdayLabel = context.l10n.timelineYesterday;
+  final monthDayFmt = shortMonthDayFormatter(context);
   final groups = <String, List<ActivityLog>>{};
   final order = <String>[];
   for (final log in logs) {
@@ -461,10 +467,10 @@ List<_DayGroup> _groupByDay(
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
     final label = diff == 0
-        ? context.l10n.timelineToday
+        ? todayLabel
         : diff == 1
-        ? context.l10n.timelineYesterday
-        : formatShortMonthDay(context, ts);
+        ? yesterdayLabel
+        : monthDayFmt.format(ts);
     if (!groups.containsKey(label)) {
       groups[label] = [];
       order.add(label);
