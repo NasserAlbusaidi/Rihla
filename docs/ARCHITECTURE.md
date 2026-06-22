@@ -64,9 +64,7 @@ lib/
 │   ├── groups/                   # Persistent groups (create, join, detail)
 │   ├── home/                     # Home dashboard + BottomNavShell
 │   ├── ledger/                   # Expenses, settlements, balance calculator
-│   ├── onboarding/               # Archived/unreachable OnboardingScreen — not in the route tree (deletion tracked #56); not a live first-launch flow
-│   ├── profile/                  # ProfileScreen, link-email flow
-│   ├── settings/                 # Theme, notifications, device name
+│   ├── settings/                 # Theme, notifications, device name, ProfileScreen (link-email flow lives under auth/)
 │   └── trip/                     # Legacy compatibility models/providers (do not extend)
 └── shared/
     ├── animations/               # Shared animation helpers
@@ -209,12 +207,13 @@ Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Na
     ├── /activity          (GroupActivityScreen)
     ├── /create-event      (CreateEventScreen — type chip-row)
     ├── /create-event/:type (CreateEventScreen — type pre-selected)
-    └── /event/:eid        (EventCommandCenter — reachable but UI bypasses to /ledger)
-        ├── /ledger        (LedgerScreen — landing page when tapping an event card)
+    └── /event/:eid        (EventCommandCenter — ACTIVE landing hub; user taps Ledger→ / +Add expense from here)
+        ├── /ledger        (LedgerScreen)
         │   ├── /add       (AddExpenseScreen)
         │   ├── /edit/:expId (EditExpenseScreen)
         │   └── /settle-up (SettleUpScreen)
         ├── /activity      (ActivityFeedScreen, event-scoped)
+        ├── /recap         (EventRecapScreen — #202 event closeout projection)
         └── /settings      (EventSettingsScreen)
 ```
 
@@ -232,7 +231,7 @@ The splash route redirects unconditionally to `/home`; `appRouteRedirect` does n
 
 ### Direct-entry back guards
 
-Any screen reachable as a direct route (deep links, recovery flows) checks `context.canPop()` and falls back to `/home` (or another root) when the stack is fresh. Tests under `test/features/.../direct_entry_*` enforce this; `Navigator.push`, `state.extra`, and named GoRouter calls (`goNamed`) are forbidden in production code (the readiness check greps for them).
+Any screen reachable as a direct route (deep links, recovery flows) checks `context.canPop()` and falls back to `/home` (or another root) when the stack is fresh. Tests under `test/features/.../*_navigation_test.dart` (e.g. `group_detail_navigation_test.dart`) enforce this; `Navigator.push`, `state.extra`, and named GoRouter calls (`goNamed`) are forbidden in production code (the readiness check greps for them).
 
 ### Type-Safe Route Names
 
@@ -295,7 +294,7 @@ final colors = Theme.of(context).extension<AppColorTokens>()!;
 
 ### Color Palette (Saffron, light)
 
-Saffron travel-journal direction (v2.0). Semantic groupings: `primary` → saffron, `scaffoldBackground` → paper, success → sage, error → rust. Hardcoded `Color(0xFF...)` literals outside the token definitions fail CI (`tool/check_no_hardcoded_colors.dart`).
+Saffron travel-journal direction (v2.0). Semantic groupings: `primary` → saffron, `scaffoldBackground` → paper, success → sage, error → rust. Hardcoded `Color(0xFF...)` literals outside the token definitions fail CI (`tool/check_theme_purity.sh`, a CI-only step in `readiness_check.yml` — not run by `flutter analyze` / `flutter test`).
 
 | Token | Approx | Use |
 |-------|-------|-----|
@@ -358,7 +357,7 @@ Primary currency is **OMR** (Omani Rial, 3 decimal places).
 
 ### `BalanceCalculator`
 
-Defined in `lib/features/ledger/providers/expense_provider.dart` (line 121). Pure function — no side effects, no providers. The remainder from rounding goes to the **alphabetically-last recipient** so `sum(shares) == amount` exactly. Do not change this without updating `test/unit/balance_calculations_test.dart`.
+Defined in `lib/features/ledger/providers/expense_provider.dart` (around line 254). Pure function — no side effects, no providers. The remainder from rounding goes to the **alphabetically-last recipient** so `sum(shares) == amount` exactly. Do not change this without updating `test/unit/balance_calculations_test.dart`.
 
 **`calculateBalances()`** processes four expense scopes:
 
@@ -368,6 +367,8 @@ Defined in `lib/features/ledger/providers/expense_provider.dart` (line 121). Pur
 | `subGroup` | Legacy scope (logistics removed in Phase 39) — back-compat fallback that splits evenly among all event participants, same as `global` |
 | `personal` | No split — payer is solely responsible |
 | `custom` | Split among a specified subset of `customSplitParticipants` |
+
+> **Itemized bills (#203/#605) are NOT a fifth scope or `SplitMode`.** They are `SplitMode.exact` plus an opaque `SplitExplanation`/`SplitAdjustment` payload (`lib/features/ledger/models/split_explanation.dart`); items + service/tax/tip/discount adjustments fold into the exact `splitDistribution` client-side, and `splitExplanation` is display-only — never read by the server oracle.
 
 Per-head cost uses 3-decimal-place fixed precision:
 
@@ -416,6 +417,7 @@ Payment processing is out of scope for the shippable v1 surface. Ledger settleme
 | `decimal` | `^3.2.4` | Precise money arithmetic — no floating point |
 | `google_fonts` | `^8.0.2` | Font config helper (runtime fetch disabled; brand faces are bundled assets, #103) |
 | `flutter_animate` | `^4.5.0` | Micro-interaction animations |
+| `flutter_svg` | `2.3.0` | Renders trip-stamp group glyphs (#287) |
 | `shimmer` | `^3.0.0` | Skeleton loading shimmer effect |
 | `skeletonizer` | `^2.1.3` | Skeleton loading scaffolds |
 | `sentry_flutter` | `^9.0.0` | Error monitoring and performance tracing |

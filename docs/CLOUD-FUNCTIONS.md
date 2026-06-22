@@ -1,16 +1,27 @@
 # Cloud Functions
 
-Reference for the Firebase Cloud Functions Rihla ships: HTTPS callables
-(`firebase-functions/v2/https`), Firestore document triggers
-(`firebase-functions/v2/firestore`), and a scheduled backstop
-(`firebase-functions/v2/scheduler`), all deployed to `us-central1`.
-`joinGroupByInviteCode` enforces App Check;
-`deleteAccount` runs with App Check in verify-if-present (soft) mode.
+Reference for the Firebase Cloud Functions Rihla ships: 11 HTTPS callables
+(`firebase-functions/v2/https`), 13 Firestore document triggers
+(`firebase-functions/v2/firestore`), and 3 scheduled backstops
+(`firebase-functions/v2/scheduler`) — 27 functions total, all deployed to
+`us-central1`. The deploy-drift check reads the expected set from
+`tool/list_expected_functions.sh` (add new functions as `export { … } from`
+re-exports in `index.ts` or they escape it). `joinGroupByInviteCode` enforces
+App Check; `deleteAccount` runs with App Check in verify-if-present (soft) mode.
 
 | Callable | File | Purpose |
 |----------|------|---------|
 | `joinGroupByInviteCode` | `functions/src/callables/joinGroupByInviteCode.ts` | Validate a 6-char invite code and atomically add the caller to the group + active events. |
 | `deleteAccount` | `functions/src/callables/deleteAccount.ts` | Server-side account-deletion cascade: revoke refresh tokens, scrub PII, replace UID with a per-group tombstone, delete FCM/joinAttempts/Auth user. On an incomplete cascade it writes a `deletionAudit/{uid}` marker (#76) for the reaper backstop. |
+| `deleteGroup` | `functions/src/callables/deleteGroup.ts` | Server-authoritative group delete + cascade; gated on a zero net balance via the shared `recomputeNet` oracle (#190). |
+| `leaveGroup` | `functions/src/callables/leaveGroup.ts` | Member self-leave; gated on the leaver's net == 0 via `recomputeNet` (hard-delete, not tombstone — leave doesn't touch `participantIds`) (#290). |
+| `removeMember` | `functions/src/callables/removeMember.ts` | Creator removes another member; gates the TARGET's net == 0 via `recomputeNet`; self-removal rejected (#318). |
+| `addShadowMember` | `functions/src/callables/addShadowMember.ts` | Creator adds an unclaimed placeholder ("shadow") member by name (uuid-keyed; `doc.id===userId===randomUUID()`) — the only path that mints a member doc by name (#278). |
+| `requestClaimShadow` | `functions/src/callables/requestClaimShadow.ts` | A joiner requests to claim an unclaimed shadow's identity + balance (#278). |
+| `decideClaimRequest` | `functions/src/callables/decideClaimRequest.ts` | Creator approves/denies a claim; on approve runs the uuid→uid re-key engine `claimShadowEngine` (de-exported — reachable only via this callable) (#278). |
+| `listMyClaimRequests` | `functions/src/callables/listMyClaimRequests.ts` | Lists the caller's pending/decided claim requests (#278). |
+| `listGroupClaimRequests` | `functions/src/callables/listGroupClaimRequests.ts` | Creator-side list of pending claim requests for a group (#278). |
+| `listUnclaimedShadows` | `functions/src/callables/listUnclaimedShadows.ts` | Lists a group's unclaimed shadows so a joiner can offer to claim one (#278). |
 
 Functions live in `functions/` (Node 22 / TypeScript). They use the
 Firebase Admin SDK which **bypasses Firestore Security Rules** — every
@@ -28,6 +39,14 @@ setGlobalOptions({ region: 'us-central1' });
 export { joinGroupByInviteCode } from './callables/joinGroupByInviteCode';
 export { deleteAccount } from './callables/deleteAccount';
 export { deleteGroup } from './callables/deleteGroup';
+export { leaveGroup } from './callables/leaveGroup';
+export { removeMember } from './callables/removeMember';
+export { addShadowMember } from './callables/addShadowMember';
+export { requestClaimShadow } from './callables/requestClaimShadow';
+export { decideClaimRequest } from './callables/decideClaimRequest';
+export { listMyClaimRequests } from './callables/listMyClaimRequests';
+export { listGroupClaimRequests } from './callables/listGroupClaimRequests';
+export { listUnclaimedShadows } from './callables/listUnclaimedShadows';
 export {
   eventWriteRateMonitor,
   groupSettlementWriteRateMonitor,
@@ -37,7 +56,19 @@ export {
   eventSettlementNotifier,
   groupSettlementNotifier,
 } from './triggers/settlementNotifier';
+export { expenseAuditLogger } from './triggers/expenseAuditLogger';
+export { expenseNotifier } from './triggers/expenseNotifier';
+export { eventNotifier } from './triggers/eventNotifier';
+export { claimRequestNotifier } from './triggers/claimRequestNotifier';
+export {
+  eventModuleBalanceAggregator,
+  groupSettlementBalanceAggregator,
+  eventBalanceAggregator,
+  memberBalanceAggregator,
+} from './triggers/balanceAggregator';
 export { deletionReaper } from './scheduled/deletionReaper';
+export { balanceReconciler } from './scheduled/balanceReconciler';
+export { deleteGroupLockReaper } from './scheduled/deleteGroupLockReaper';
 ```
 
 The Flutter client wraps the callables in
@@ -45,11 +76,18 @@ The Flutter client wraps the callables in
 has its own service inside the `groups` feature. The triggers and the
 scheduled reaper have no client surface — they fire server-side.
 
-## Scheduled functions — deletion reaper (#76)
+## Scheduled functions
+
+There are **3** `onSchedule` jobs: `deletionReaper` (below), `balanceReconciler`
+(`scheduled/balanceReconciler.ts` — periodically recomputes the
+`groups/{gid}/aggregates/balance` display cache, #366), and `deleteGroupLockReaper`
+(`scheduled/deleteGroupLockReaper.ts` — resumes a `deleteGroup` cascade stalled
+past its lock horizon, #519/#529).
+
+### Deletion reaper (#76)
 
 `functions/src/scheduled/deletionReaper.ts` is an `onSchedule` job (runs
-`every 24 hours`; the **first** scheduled function in the codebase, so it
-adds Cloud Scheduler deploy surface). It is the server-side backstop for the
+`every 24 hours`). It is the server-side backstop for the
 "user uninstalls / never retries" tail of `deleteAccount`:
 
 - When a `deleteAccount` cascade is incomplete (partial scrub, or the Auth
@@ -97,9 +135,6 @@ and stamps `lastFlaggedAt`. None of the trigger paths match
 `_writeCounters`, so the counter write never re-fires a trigger.
 Response to a flag is **manual** (ops sees the log, then intervenes).
 
-> Note: the `deleteGroup` callable (#190) is also live but not yet itemized
-> in the callable table above — tracked as a docs follow-up.
-
 ## Firestore triggers — push notifications (#53)
 
 `functions/src/triggers/settlementNotifier.ts` ships two `onDocumentCreated`
@@ -137,6 +172,26 @@ client tap route to `/group/:gid`. Client consumer: `lib/core/services/
 notification_service.dart` (+ `local_notifier.dart`). **iOS push is inert**
 until APNs cert + entitlement are configured (no iOS CI) — tracked as a
 follow-up; the client stays crash-safe and the token is still stored.
+
+## Firestore triggers — audit log & balance aggregation
+
+Beyond the write-rate monitor (#198) and settlement notifiers (#53), these
+triggers fire server-side after commit:
+
+| Trigger | Type / path | Purpose |
+|---------|-------------|---------|
+| `expenseAuditLogger` | `onDocumentWritten` `groups/{gid}/events/{eid}/expenses/{expenseId}` | Server-authored, tamper-proof audit of every expense create/edit/soft-delete; attributes the actor from the rules-pinned `lastEditedBy` (B1 / #248). |
+| `expenseNotifier` | `onDocumentCreated` `groups/{gid}/events/{eid}/expenses/{expenseId}` | Push to event participants on a new expense (#179). |
+| `eventNotifier` | `onDocumentCreated` `groups/{gid}/events/{eid}` | Push to group members on a new event (#179). |
+| `claimRequestNotifier` | `onDocumentWritten` `groups/{gid}/claimRequests/{requestId}` | Push to the group creator when a claim request arrives (re-open-safe status guard) (#560). |
+| `eventModuleBalanceAggregator` | `onDocumentWritten` `groups/{gid}/events/{eid}/{module}/{docId}` | Maintains the per-currency `groups/{gid}/aggregates/balance` display cache via `recomputeNet` (#366/#382). |
+| `eventBalanceAggregator` | `onDocumentWritten` `groups/{gid}/events/{eid}` | Same cache, on event-doc changes. |
+| `groupSettlementBalanceAggregator` | `onDocumentWritten` `groups/{gid}/settlements/{settlementId}` | Same cache, on group-settlement changes. |
+| `memberBalanceAggregator` | `onDocumentWritten` `groups/{gid}/members/{memberId}` | Same cache, on membership changes. |
+
+The 4 `balanceAggregator` triggers reuse the same `recomputeNet` oracle as
+`deleteGroup`/`leaveGroup`/`removeMember`; the aggregate doc is a **display
+cache, never OUTBOUND** (see CLAUDE.md money landmines).
 
 ---
 
@@ -427,7 +482,7 @@ matches the current commit, and the App Check repo variables agree.
 
 | File | Lines | Notes |
 |------|-------|-------|
-| `functions/src/index.ts` | 8 | Region + exports |
+| `functions/src/index.ts` | 39 | Region + 27 re-exports (11 callables, 13 triggers, 3 scheduled) |
 | `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
