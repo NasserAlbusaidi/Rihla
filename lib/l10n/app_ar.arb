@@ -480,6 +480,7 @@
   "homeRestoreWithGoogle": "سجّل الدخول عبر Google للاستعادة",
   "homeRestoreWithEmail": "أو الاستعادة عبر البريد الإلكتروني",
   "restoreGoogleFailed": "تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.",
+  "restoreBlockedHasData": "الاستعادة ستبدّل إلى حسابك المحفوظ وستترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً.",
   "homeBackupNudgeTitle": "احفظ نسخة من حسابك",
   "homeBackupNudgeBody": "مجموعاتك ومصاريفك موجودة على هذا الهاتف فقط. اربط حساب Google حتى لا يمحوها هاتف جديد أو إعادة تثبيت أو جهاز مفقود.",
   "homeBackupNudgeCta": "ربط حساب Google",

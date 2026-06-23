@@ -18,7 +18,6 @@ import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/r_icon_button.dart';
-import '../../auth/providers/durable_credential_gate_provider.dart';
 import '../../auth/services/pending_gate_intent.dart';
 import '../keys/group_keys.dart';
 import '../models/claim_models.dart';
@@ -107,7 +106,6 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   Future<void> _onSubmit() async {
     if (ref.read(groupLoadingProvider) || _claimBusy) return;
 
-    final trimmedName = _nameController.text.trim();
     final nameError = validateDisplayNameLocalized(
       context,
       _nameController.text,
@@ -119,21 +117,10 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       return;
     }
 
-    // #441: first valuable write — an anonymous user must link Google first.
-    // Single chokepoint for all entries (button, 6th-char auto-submit, deep-link
-    // prefill). The claim path also needs a durable account (D6), so the gate
-    // stays here, ahead of discovery. The intent carries the typed form across
-    // the gate-conflict discard-shell restart (#428).
-    final gateOk = await ref
-        .read(durableCredentialGateProvider)
-        .ensure(
-          context,
-          intent: PendingGateIntent.join(
-            joinCode: _codeController.text.trim().toUpperCase(),
-            displayName: trimmedName,
-          ),
-        );
-    if (!gateOk || !mounted) return;
+    // #648: "gate creation, not participation" — NO durable-credential gate on
+    // join. Anonymous users may join and add expenses; only group/invite-code
+    // CREATE stays gated. (The populated-anon-shell swap hole this opens is
+    // closed at every swap entry point — #647 + the triggerGoogleRestore gate.)
 
     // #278 PR9: pre-join discovery. Best-effort — any failure (anon, offline,
     // bad code, no-Firebase-in-test) falls through to the normal join, which
@@ -160,8 +147,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     await _doJoin(preferClaimHint: false);
   }
 
-  /// Execute a plain join (the durable gate + name validation already ran in
-  /// [_onSubmit]). Used by the no-shadow path and the "I'm new" fallback.
+  /// Execute a plain join (name validation already ran in [_onSubmit]; there is
+  /// no durable gate on join since #648). Used by the no-shadow path and the
+  /// "I'm new" fallback.
   Future<void> _doJoin({required bool preferClaimHint}) async {
     if (ref.read(groupLoadingProvider)) return;
     ref.read(groupLoadingProvider.notifier).state = true;
@@ -341,11 +329,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Please sign in')) {
       return context.l10n.groupJoinPleaseSignIn;
     }
-    // #441: covers BOTH the service-level DurableCredentialRequiredException
-    // toString and the callable's permission-denied sentinel.
-    if (error.contains('linked account is required')) {
-      return context.l10n.durableCredentialRequired;
-    }
+    // #648: the join path no longer produces a durable-credential rejection
+    // (the gate moved to create-only), so there's no 'linked account' branch.
     return context.l10n.groupJoinFailed;
   }
 

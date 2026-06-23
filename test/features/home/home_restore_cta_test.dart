@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -84,6 +85,13 @@ Widget _buildApp({
       sharedPreferencesProvider.overrideWithValue(prefs),
       linkedEmailProvider.overrideWithValue('secured@example.com'),
       authRecoveryServiceProvider.overrideWithValue(recovery),
+      // #648: triggerGoogleRestore now gates on a provably-empty shell, which
+      // awaits firebaseUserProvider.future FIRST. Without this seam the gate
+      // hits [core/no-app] → fail-safe blocks → the swap never fires. An
+      // empty+resolved anon shell lets the CTA proceed exactly as before.
+      firebaseUserProvider.overrideWith(
+        (ref) => Stream.value(MockUser(isAnonymous: true, uid: 'u1')),
+      ),
       ..._emptyOverrides(),
     ],
     child: MaterialApp.router(

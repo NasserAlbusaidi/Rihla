@@ -312,10 +312,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               SizedBox(height: context.spacing.space20),
               TextButton(
                 key: const Key('home_empty_recover_cta'),
-                // #441 PR3: cross-UID Google restore (discard-shell swap), not a
-                // route push. Safe here — the empty state only renders when the
-                // user has zero groups, so the discarded anon shell holds no
-                // money data.
+                // #441 PR3 / #648: cross-UID Google restore (discard-shell
+                // swap), not a route push. The empty state can FALSE-EMPTY on
+                // the cold-start firebaseUserProvider race, so the CTA's
+                // visibility is NOT the safety boundary — triggerGoogleRestore
+                // re-verifies a provably-empty shell before swapping (#648).
                 onPressed: () => triggerGoogleRestore(context, ref),
                 child: Text(
                   context.l10n.homeRestoreWithGoogle,
@@ -328,9 +329,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               ),
               TextButton(
                 key: const Key('home_empty_recover_email_cta'),
-                // #441 PR4: slim email fallback (D3). Same safety argument as
-                // the Google CTA above — empty state ⇒ zero groups ⇒ the
-                // discarded anon shell holds no money data.
+                // #441 PR4: slim email fallback (D3). This only routes to
+                // /recover; the actual cross-UID swap is the #647-guarded
+                // bootstrap (restoreWithEmailLink runs only after the
+                // empty-shell gate), so CTA visibility here isn't load-bearing.
                 onPressed: () => context.push('/recover'),
                 child: Text(
                   context.l10n.homeRestoreWithEmail,
