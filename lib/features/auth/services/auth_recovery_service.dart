@@ -175,6 +175,16 @@ class AuthRecoveryService {
   /// is preserved). Reads the email from SharedPreferences unless
   /// [overrideEmail] is supplied (spec §4.7 / different-device path).
   /// Clears the pending email on success.
+  ///
+  /// #647 (safe-by-assertion): this is a SAME-UID link with NO conflict→switch
+  /// route — an `email-already-in-use` (and friends) throw propagates to the
+  /// bootstrap caller as an error and the anon session is left intact (#414).
+  /// If a future PR makes the email path symmetric with Google (offer "switch
+  /// to that account" on conflict), that switch MUST route through the same
+  /// `userGroupsProvider` `groups.isEmpty` gate the deep-link recover path
+  /// (`auth_email_link_bootstrap_provider.dart`) and the durable-credential
+  /// sheet use — NEVER an unguarded [restoreWithEmailLink], which would
+  /// silently orphan a populated anon shell.
   Future<UserCredential> completeEmailLink(
     String emailLink, {
     String? overrideEmail,

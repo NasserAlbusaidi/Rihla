@@ -9,12 +9,21 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/app_messenger.dart';
+import '../../groups/providers/group_provider.dart';
 import '../services/auth_email_link_config.dart';
 import '../services/auth_error_humanizer.dart';
 import '../services/auth_recovery_service.dart';
 import 'auth_provider.dart';
 
 final appLinksProvider = Provider<AppLinks>((ref) => AppLinks());
+
+/// Upper bound on the #647 outgoing-shell emptiness gate before an email
+/// RECOVER cross-UID swap. Generous enough that a settled anon shell's
+/// local-cache `memberIds` query (near-instant) never trips it; a pathological
+/// hang times out into the fail-safe block. Overridable in tests.
+final recoverSwapGateTimeoutProvider = Provider<Duration>(
+  (_) => const Duration(seconds: 5),
+);
 
 /// Latest email-link URL the bootstrap listener received but could not
 /// auto-complete (typically because no pending email is saved — the
@@ -48,7 +57,11 @@ String? _emailLinkFromUri(Uri uri) {
   return null;
 }
 
-void _showSnack(String message, {bool isError = false}) {
+void _showSnack(
+  String message, {
+  bool isError = false,
+  Duration duration = const Duration(seconds: 4),
+}) {
   final messenger = appMessengerKey.currentState;
   if (messenger == null) return;
   messenger.removeCurrentSnackBar();
@@ -57,13 +70,49 @@ void _showSnack(String message, {bool isError = false}) {
       content: Text(message),
       backgroundColor: isError ? Colors.red.shade700 : null,
       behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 4),
+      duration: duration,
     ),
   );
 }
 
 String _humanize(FirebaseAuthException error) =>
     humanizeAuthErrorCode(error.code);
+
+/// True only when the OUTGOING anon shell is provably empty — the single
+/// condition under which an email RECOVER cross-UID swap (#647) is
+/// non-destructive. Reuses [userGroupsProvider] (membership-aware:
+/// `memberIds arrayContains uid`, local-cache-complete for a device-bound anon
+/// uid), the same predicate the Profile restore affordance and the
+/// durable-credential conflict sheet already gate on.
+///
+/// Resolves the auth UID FIRST: [firebaseUserProvider] replays the current user
+/// via a microtask, so on cold start [userGroupsProvider]'s synchronous first
+/// read can see `uid == null` → `Stream.value([])` → a FALSE empty. Awaiting the
+/// user settles the UID so the membership read targets the real shell.
+///
+/// Fail-safe by construction — a single [Future.timeout] bounds the whole gate;
+/// a hang or stream error is caught into `false` (block). Only `data && empty`
+/// (or no signed-in user — nothing to orphan) proceeds; never
+/// `loading/error → proceed`.
+Future<bool> _outgoingShellProvablyEmpty(Ref ref, Duration timeout) async {
+  try {
+    return await _resolveShellEmpty(ref).timeout(timeout);
+  } catch (error, stackTrace) {
+    FirebaseConfig.log(
+      'Recovery: emptiness gate could not confirm an empty shell '
+      '(${error.runtimeType}) — blocking the recover swap (fail-safe)',
+      stackTrace: stackTrace,
+    );
+    return false;
+  }
+}
+
+Future<bool> _resolveShellEmpty(Ref ref) async {
+  final user = await ref.read(firebaseUserProvider.future);
+  if (user == null) return true; // no shell → nothing to orphan → proceed
+  final groups = await ref.read(userGroupsProvider.future);
+  return groups.isEmpty;
+}
 
 /// Starts the email-link listener early enough to catch cold-start links.
 ///
@@ -137,6 +186,53 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
 
     try {
       if (op == AuthRecoveryService.opRecover) {
+        // #647: an email RECOVER is a cross-UID discard-shell swap —
+        // restoreWithEmailLink engages isolation + a guaranteed restart in its
+        // finally, so it CANNOT be aborted once entered. Gate it on the
+        // OUTGOING anon shell being provably empty BEFORE the call, mirroring
+        // the Profile restore affordance and the durable-credential sheet. A
+        // populated shell would be silently orphaned: its trips were flushed to
+        // the server under the old anon UID, and after the swap the user is the
+        // recovered UID with none of them (#414/#216 lineage). Latent today
+        // (anon can't create/join behind the durable-gate), live once join is
+        // un-gated (#648 — this blocks it).
+        final gateTimeout = ref.read(recoverSwapGateTimeoutProvider);
+        if (!await _outgoingShellProvablyEmpty(ref, gateTimeout)) {
+          FirebaseConfig.log(
+            'Recovery: recover swap BLOCKED — shell not provably empty',
+          );
+          unawaited(Sentry.addBreadcrumb(
+            Breadcrumb(
+              category: 'auth.recovery',
+              message: 'recover swap blocked (non-empty/unresolved shell)',
+            ),
+          ));
+          // A blocked recover performed no swap and no restart, so a lingering
+          // inFlightOp='recover' is a PHANTOM that makes GateIntentReplay skip
+          // create/join replay on every boot (gate_intent_replay.dart). Clear
+          // the handshake; the next legitimate recover re-arms it via
+          // sendRecoveryLink. The live anon SESSION is never signed out
+          // (#213/#414). Guarded: a failed prefs write must not crash the
+          // listener.
+          try {
+            await service.clearInFlightOp();
+            await service.clearPendingEmail();
+          } catch (error, stackTrace) {
+            FirebaseConfig.log(
+              'Recovery: clearing op-state after block failed',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }
+          _showSnack(
+            'Recovery would switch to your saved account and leave this '
+            "device's current trips behind — they're tied to a temporary "
+            "identity that can't be moved. Resolve them first.",
+            isError: true,
+            duration: const Duration(seconds: 8),
+          );
+          return;
+        }
         final result = await service.restoreWithEmailLink(link);
         FirebaseConfig.log('Recovery: restoreWithEmailLink succeeded');
         ref.read(pendingEmailLinkProvider.notifier).state = null;
