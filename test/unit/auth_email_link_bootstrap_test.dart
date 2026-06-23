@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -9,12 +10,29 @@ import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/services/auth_email_link_config.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 
 class _MockAppLinks extends Mock implements AppLinks {}
 
 class _MockRecoveryService extends Mock implements AuthRecoveryService {}
 
 class _MockUserCredential extends Mock implements UserCredential {}
+
+class _MockGroupService extends Mock implements GroupService {}
+
+/// A settled outgoing anon shell (the UID that an email RECOVER swap would
+/// replace). `#647` gates the swap on this shell being provably empty.
+final _anonUser = MockUser(isAnonymous: true, uid: 'anonA');
+
+Group _group() => Group(
+  id: 'g1',
+  name: 'Trip',
+  inviteCode: 'ABCDEF',
+  createdBy: 'anonA',
+  memberIds: const ['anonA'],
+  createdAt: DateTime(2026, 1, 1),
+);
 
 Uri _validAuthLink({String oobCode = 'ABC123'}) => Uri.parse(
   'https://${AuthEmailLinkConfig.hostingDomain}'
@@ -31,22 +49,27 @@ Uri _customSchemeFallbackLink() => Uri(
 void main() {
   late _MockAppLinks appLinks;
   late _MockRecoveryService service;
+  late _MockGroupService groupService;
   late StreamController<Uri> uriStream;
   late ProviderContainer container;
 
   setUp(() {
     appLinks = _MockAppLinks();
     service = _MockRecoveryService();
+    groupService = _MockGroupService();
     uriStream = StreamController<Uri>.broadcast();
     when(() => appLinks.uriLinkStream).thenAnswer((_) => uriStream.stream);
     when(() => appLinks.getInitialLink()).thenAnswer((_) async => null);
-
-    container = ProviderContainer(
-      overrides: [
-        appLinksProvider.overrideWithValue(appLinks),
-        authRecoveryServiceProvider.overrideWithValue(service),
-      ],
-    );
+    // #647: the recover BLOCK path clears the recovery handshake. Stub so the
+    // block tests can `verify` it and the proceed tests are unaffected.
+    when(() => service.clearInFlightOp()).thenAnswer((_) async {});
+    when(() => service.clearPendingEmail()).thenAnswer((_) async {});
+    // Default outgoing shell: settled anon user with NO groups → empty →
+    // recover PROCEEDS. Individual tests override watchUserGroups / the user
+    // stream to exercise the block + race paths.
+    when(
+      () => groupService.watchUserGroups(any()),
+    ).thenAnswer((_) => Stream.value(const <Group>[]));
   });
 
   tearDown(() async {
@@ -54,8 +77,35 @@ void main() {
     await uriStream.close();
   });
 
-  Future<void> attach() async {
+  // Drives the REAL userGroupsProvider through two seams — a controllable
+  // `firebaseUserProvider` (so a test can hold the UID in `loading` then settle
+  // it AFTER the deep link arrives — the #647 cold-start race) and a mocked
+  // `groupServiceProvider` (membership result without Firestore). NOT a direct
+  // `userGroupsProvider` override, which would mask the race the gate fixes.
+  Future<void> attach({
+    Stream<User?>? users,
+    Duration gateTimeout = const Duration(seconds: 5),
+  }) async {
+    container = ProviderContainer(
+      overrides: [
+        appLinksProvider.overrideWithValue(appLinks),
+        authRecoveryServiceProvider.overrideWithValue(service),
+        firebaseUserProvider.overrideWith(
+          (ref) => users ?? Stream<User?>.value(_anonUser),
+        ),
+        groupServiceProvider.overrideWithValue(groupService),
+        recoverSwapGateTimeoutProvider.overrideWithValue(gateTimeout),
+      ],
+    );
     container.read(authEmailLinkBootstrapProvider);
+  }
+
+  // The gate chains firebaseUserProvider.future → userGroupsProvider rebuild →
+  // watchUserGroups first-emit; a lone pumpEventQueue can under-drain it.
+  Future<void> settle([int rounds = 12]) async {
+    for (var i = 0; i < rounds; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
   }
 
   test('opLink in pendingOp routes to completeEmailLink', () async {
@@ -373,5 +423,155 @@ void main() {
 
       verify(() => service.restoreWithEmailLink(any())).called(2);
     });
+  });
+
+  // #647 — a populated anon shell must never silently cross-UID swap. The email
+  // RECOVER deep link is the one entrance that never consulted the emptiness
+  // predicate the Profile/sheet entrances already use. restoreWithEmailLink
+  // engages isolation + a guaranteed restart in its finally — it can't be
+  // aborted once entered — so the gate must fire BEFORE the call, fail-safe.
+  group('#647 cross-UID swap guard (op=recover)', () {
+    void stubRecover() {
+      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+      when(
+        () => service.readInFlightOp(),
+      ).thenReturn(AuthRecoveryService.opRecover);
+      when(
+        () => service.restoreWithEmailLink(any()),
+      ).thenAnswer((_) async => _MockUserCredential());
+    }
+
+    test(
+      'cold-start race: UID settles AFTER dispatch, shell populated → NO swap',
+      () async {
+        // The P1: on cold-start the deep link can be the FIRST reader of
+        // userGroupsProvider while firebaseUserProvider is still loading →
+        // uid==null → Stream.value([]) → a FALSE empty. Without the
+        // `await firebaseUserProvider.future` this proceeds and orphans the
+        // populated shell. RED before the fix (restore called), GREEN after.
+        final userController = StreamController<User?>.broadcast();
+        addTearDown(userController.close);
+        when(
+          () => groupService.watchUserGroups(any()),
+        ).thenAnswer((_) => Stream.value([_group()]));
+        stubRecover();
+
+        await attach(users: userController.stream); // UID held in `loading`
+        uriStream.add(_validAuthLink());
+        await settle(); // gate now awaits firebaseUserProvider.future
+        userController.add(_anonUser); // settle the UID — shell is populated
+        await settle();
+
+        verifyNever(() => service.restoreWithEmailLink(any()));
+        verify(() => service.clearInFlightOp()).called(1);
+      },
+    );
+
+    test('settled populated shell → blocks the swap', () async {
+      when(
+        () => groupService.watchUserGroups(any()),
+      ).thenAnswer((_) => Stream.value([_group()]));
+      stubRecover();
+
+      await attach();
+      uriStream.add(_validAuthLink());
+      await settle();
+
+      verifyNever(() => service.restoreWithEmailLink(any()));
+    });
+
+    test('settled empty shell → proceeds with the swap', () async {
+      // Default watchUserGroups → [] (empty).
+      stubRecover();
+
+      await attach();
+      uriStream.add(_validAuthLink());
+      await settle();
+
+      verify(() => service.restoreWithEmailLink(any())).called(1);
+      verifyNever(() => service.clearInFlightOp());
+    });
+
+    test('groups stream error → blocks (fail-safe)', () async {
+      when(
+        () => groupService.watchUserGroups(any()),
+      ).thenAnswer((_) => Stream<List<Group>>.error(StateError('boom')));
+      stubRecover();
+
+      await attach();
+      uriStream.add(_validAuthLink());
+      await settle();
+
+      verifyNever(() => service.restoreWithEmailLink(any()));
+      verify(() => service.clearInFlightOp()).called(1);
+    });
+
+    test('gate hang → blocks (fail-safe on timeout)', () async {
+      // firebaseUserProvider never emits → gate await hangs → timeout → block.
+      final neverUser = StreamController<User?>.broadcast();
+      addTearDown(neverUser.close);
+      stubRecover();
+
+      await attach(
+        users: neverUser.stream,
+        gateTimeout: const Duration(milliseconds: 50),
+      );
+      uriStream.add(_validAuthLink());
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await settle();
+
+      verifyNever(() => service.restoreWithEmailLink(any()));
+      verify(() => service.clearInFlightOp()).called(1);
+    });
+
+    test('no current user → proceeds (nothing to orphan)', () async {
+      stubRecover();
+
+      await attach(users: Stream<User?>.value(null));
+      uriStream.add(_validAuthLink());
+      await settle();
+
+      verify(() => service.restoreWithEmailLink(any())).called(1);
+    });
+
+    test('blocked recover clears the recovery handshake (no phantom op)', () async {
+      // A blocked recover performed no swap/restart, so the persisted
+      // inFlightOp='recover' is a phantom that suppresses GateIntentReplay.
+      when(
+        () => groupService.watchUserGroups(any()),
+      ).thenAnswer((_) => Stream.value([_group()]));
+      stubRecover();
+
+      await attach();
+      uriStream.add(_validAuthLink());
+      await settle();
+
+      verify(() => service.clearInFlightOp()).called(1);
+      verify(() => service.clearPendingEmail()).called(1);
+      verifyNever(() => service.restoreWithEmailLink(any()));
+    });
+
+    test(
+      'guard-rail: op=link conflict (email-already-in-use) never swaps UID',
+      () async {
+        // completeEmailLink is SAME-UID with no conflict→switch route; the
+        // conflict must surface as an error and NEVER fall back to a swap
+        // (#414). Pins the safe-by-absence invariant as safe-by-assertion.
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opLink);
+        when(
+          () => service.completeEmailLink(any()),
+        ).thenThrow(FirebaseAuthException(code: 'email-already-in-use'));
+
+        await attach();
+        uriStream.add(_validAuthLink());
+        await settle();
+
+        verify(() => service.completeEmailLink(any())).called(1);
+        verifyNever(() => service.restoreWithEmailLink(any()));
+      },
+    );
   });
 }
