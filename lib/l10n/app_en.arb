@@ -1318,6 +1318,7 @@
   "homeRestoreWithGoogle": "Sign in with Google to restore",
   "homeRestoreWithEmail": "Restore with email instead",
   "restoreGoogleFailed": "Couldn't sign in with Google. Please try again.",
+  "restoreBlockedHasData": "Restoring switches to your saved account and leaves this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first.",
   "homeBackupNudgeTitle": "Back up your account",
   "homeBackupNudgeBody": "Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can't erase them.",
   "homeBackupNudgeCta": "Link Google account",

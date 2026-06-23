@@ -94,6 +94,13 @@ Future<Widget> _wrap({
       authUserChangesProvider.overrideWith(
         (ref) => Stream<firebase_auth.User?>.value(user),
       ),
+      // #648: the Google restore now gates on a provably-empty shell, which
+      // awaits firebaseUserProvider.future (distinct from authUserChangesProvider
+      // above — the gate reads the membership-aware pair). Seed it with the same
+      // user so an anon+empty shell still reaches restoreWithGoogle.
+      firebaseUserProvider.overrideWith(
+        (ref) => Stream<firebase_auth.User?>.value(user),
+      ),
       userGroupsProvider.overrideWith(
         (ref) => Stream.value(groups ?? const <Group>[]),
       ),

@@ -1622,6 +1622,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t sign in with Google. Please try again.';
 
   @override
+  String get restoreBlockedHasData =>
+      'Restoring switches to your saved account and leaves this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first.';
+
+  @override
   String get homeBackupNudgeTitle => 'Back up your account';
 
   @override

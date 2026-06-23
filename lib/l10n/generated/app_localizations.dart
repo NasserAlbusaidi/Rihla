@@ -2742,6 +2742,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t sign in with Google. Please try again.'**
   String get restoreGoogleFailed;
 
+  /// No description provided for @restoreBlockedHasData.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring switches to your saved account and leaves this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first.'**
+  String get restoreBlockedHasData;
+
   /// No description provided for @homeBackupNudgeTitle.
   ///
   /// In en, this message translates to:

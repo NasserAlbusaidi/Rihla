@@ -252,46 +252,35 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('typing the 6th code char consults the gate; declined gate '
-        'blocks joinGroup', (tester) async {
-      final sp = await prefs();
-      await tester.pumpWidget(
-        wrap(sp, const JoinGroupScreen(), '/join', gateResult: false),
-      );
-      await tester.pumpAndSettle();
-      materializeGate(tester);
-
-      await typeJoin(tester);
-
-      expect(gate.ensured, 1);
-      verifyNever(
-        () => groupService.joinGroup(inviteCode: any(named: 'inviteCode')),
-      );
-      expect(find.text('group-landing'), findsNothing);
-    });
-
-    testWidgets('gate receives the typed code + name as a join intent (#428)',
-        (tester) async {
-      final sp = await prefs();
-      await tester.pumpWidget(
-        wrap(sp, const JoinGroupScreen(), '/join', gateResult: false),
-      );
-      await tester.pumpAndSettle();
-      materializeGate(tester);
-
-      await typeJoin(tester);
-
-      final intent = gate.lastIntent;
-      expect(intent, isNotNull);
-      expect(intent!.type, PendingGateIntent.typeJoin);
-      expect(intent.joinCode, 'ABCDEF');
-      expect(intent.displayName, 'Tester');
-    });
-
-    testWidgets('passed gate proceeds to joinGroup and lands on the group',
-        (tester) async {
+    // #648: "gate creation, not participation" — the join path no longer
+    // consults the durable-credential gate at all (anonymous users may join).
+    // The gate stays on the CREATE path only (the create group above).
+    testWidgets('join does NOT consult the durable gate and proceeds straight '
+        'to joinGroup (#648)', (tester) async {
       when(() => groupService.joinGroup(inviteCode: any(named: 'inviteCode')))
           .thenAnswer((_) async => _group());
+
+      final sp = await prefs();
+      // gateResult: false would have BLOCKED the old gated join; it must be
+      // irrelevant now — the gate is never consulted on join.
+      await tester.pumpWidget(
+        wrap(sp, const JoinGroupScreen(), '/join', gateResult: false),
+      );
+      await tester.pumpAndSettle();
+      materializeGate(tester);
+
+      await typeJoin(tester);
+
+      expect(gate.ensured, 0);
+      verify(() => groupService.joinGroup(inviteCode: 'ABCDEF')).called(1);
+      expect(find.text('group-landing'), findsOneWidget);
+    });
+
+    testWidgets('a join failure surfaces the generic join error', (
+      tester,
+    ) async {
+      when(() => groupService.joinGroup(inviteCode: any(named: 'inviteCode')))
+          .thenThrow(Exception('boom'));
 
       final sp = await prefs();
       await tester.pumpWidget(
@@ -302,33 +291,7 @@ void main() {
 
       await typeJoin(tester);
 
-      expect(gate.ensured, 1);
-      verify(() => groupService.joinGroup(inviteCode: 'ABCDEF')).called(1);
-      expect(find.text('group-landing'), findsOneWidget);
+      expect(find.text(AppLocalizationsEn().groupJoinFailed), findsOneWidget);
     });
-
-    testWidgets(
-      'service-level DurableCredentialRequiredException maps to the '
-      'durableCredentialRequired snackbar (defense path)',
-      (tester) async {
-        when(
-          () => groupService.joinGroup(inviteCode: any(named: 'inviteCode')),
-        ).thenThrow(const DurableCredentialRequiredException());
-
-        final sp = await prefs();
-        await tester.pumpWidget(
-          wrap(sp, const JoinGroupScreen(), '/join', gateResult: true),
-        );
-        await tester.pumpAndSettle();
-        materializeGate(tester);
-
-        await typeJoin(tester);
-
-        expect(
-          find.text(AppLocalizationsEn().durableCredentialRequired),
-          findsOneWidget,
-        );
-      },
-    );
   });
 }

@@ -97,23 +97,21 @@ describe('joinGroupByInviteCode', () => {
     } as any)).rejects.toMatchObject({ code: 'resource-exhausted' });
   });
 
-  // #441: an anonymous-provider join is rejected before the throttle —
-  // money-relevant membership must never attach to a discardable anon UID.
-  test('anonymous provider rejected with permission-denied', async () => {
-    await expect(wrapped({
+  // #648: "gate creation, not participation" — an anonymous user may JOIN and
+  // participate (the durable gate is kept on group/invite-code CREATE only).
+  // Anon membership is identity-equivalent to durable at the rules layer
+  // (validExpenseCreate → isEventParticipant), so the join callable no longer
+  // rejects anonymous providers. (#647 closes the populated-shell swap hole.)
+  test('anonymous provider joins successfully (#648)', async () => {
+    const res = await wrapped({
       data: { inviteCode: 'ABC123', displayName: 'Anon' },
       auth: { uid: 'anon-1', token: { firebase: { sign_in_provider: 'anonymous' } } },
-    } as any)).rejects.toMatchObject({ code: 'permission-denied' });
-  });
+    } as any);
 
-  test('anonymous reject does NOT burn the join throttle', async () => {
-    await expect(wrapped({
-      data: { inviteCode: 'ABC123', displayName: 'Anon' },
-      auth: { uid: 'anon-1', token: { firebase: { sign_in_provider: 'anonymous' } } },
-    } as any)).rejects.toMatchObject({ code: 'permission-denied' });
-
-    expect((await getFirestore().doc('joinAttempts/anon-1').get()).exists)
-      .toBe(false);
+    expect(res).toEqual({ groupId: 'g1' });
+    const db = getFirestore();
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toContain('anon-1');
+    expect((await db.doc('groups/g1/members/anon-1').get()).exists).toBe(true);
   });
 
   test('google.com provider joins successfully', async () => {

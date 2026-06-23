@@ -14,16 +14,9 @@ import '../services/auth_email_link_config.dart';
 import '../services/auth_error_humanizer.dart';
 import '../services/auth_recovery_service.dart';
 import 'auth_provider.dart';
+import 'shell_emptiness_gate.dart';
 
 final appLinksProvider = Provider<AppLinks>((ref) => AppLinks());
-
-/// Upper bound on the #647 outgoing-shell emptiness gate before an email
-/// RECOVER cross-UID swap. Generous enough that a settled anon shell's
-/// local-cache `memberIds` query (near-instant) never trips it; a pathological
-/// hang times out into the fail-safe block. Overridable in tests.
-final recoverSwapGateTimeoutProvider = Provider<Duration>(
-  (_) => const Duration(seconds: 5),
-);
 
 /// Latest email-link URL the bootstrap listener received but could not
 /// auto-complete (typically because no pending email is saved — the
@@ -77,42 +70,6 @@ void _showSnack(
 
 String _humanize(FirebaseAuthException error) =>
     humanizeAuthErrorCode(error.code);
-
-/// True only when the OUTGOING anon shell is provably empty — the single
-/// condition under which an email RECOVER cross-UID swap (#647) is
-/// non-destructive. Reuses [userGroupsProvider] (membership-aware:
-/// `memberIds arrayContains uid`, local-cache-complete for a device-bound anon
-/// uid), the same predicate the Profile restore affordance and the
-/// durable-credential conflict sheet already gate on.
-///
-/// Resolves the auth UID FIRST: [firebaseUserProvider] replays the current user
-/// via a microtask, so on cold start [userGroupsProvider]'s synchronous first
-/// read can see `uid == null` → `Stream.value([])` → a FALSE empty. Awaiting the
-/// user settles the UID so the membership read targets the real shell.
-///
-/// Fail-safe by construction — a single [Future.timeout] bounds the whole gate;
-/// a hang or stream error is caught into `false` (block). Only `data && empty`
-/// (or no signed-in user — nothing to orphan) proceeds; never
-/// `loading/error → proceed`.
-Future<bool> _outgoingShellProvablyEmpty(Ref ref, Duration timeout) async {
-  try {
-    return await _resolveShellEmpty(ref).timeout(timeout);
-  } catch (error, stackTrace) {
-    FirebaseConfig.log(
-      'Recovery: emptiness gate could not confirm an empty shell '
-      '(${error.runtimeType}) — blocking the recover swap (fail-safe)',
-      stackTrace: stackTrace,
-    );
-    return false;
-  }
-}
-
-Future<bool> _resolveShellEmpty(Ref ref) async {
-  final user = await ref.read(firebaseUserProvider.future);
-  if (user == null) return true; // no shell → nothing to orphan → proceed
-  final groups = await ref.read(userGroupsProvider.future);
-  return groups.isEmpty;
-}
 
 /// Starts the email-link listener early enough to catch cold-start links.
 ///
@@ -196,8 +153,12 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         // recovered UID with none of them (#414/#216 lineage). Latent today
         // (anon can't create/join behind the durable-gate), live once join is
         // un-gated (#648 — this blocks it).
-        final gateTimeout = ref.read(recoverSwapGateTimeoutProvider);
-        if (!await _outgoingShellProvablyEmpty(ref, gateTimeout)) {
+        final gateTimeout = ref.read(shellEmptinessGateTimeoutProvider);
+        if (!await outgoingShellProvablyEmpty(
+          readUser: () => ref.read(firebaseUserProvider.future),
+          readGroups: () => ref.read(userGroupsProvider.future),
+          timeout: gateTimeout,
+        )) {
           FirebaseConfig.log(
             'Recovery: recover swap BLOCKED — shell not provably empty',
           );

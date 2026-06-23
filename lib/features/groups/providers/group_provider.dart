@@ -298,9 +298,10 @@ class GroupService extends FirestoreRepository {
     if (uid == null) {
       throw Exception('User not authenticated');
     }
-    if (_isCurrentUserAnonymous) {
-      throw const DurableCredentialRequiredException();
-    }
+    // #648: NO durable gate on join — "gate creation, not participation."
+    // Anonymous users may join and add expenses (the gate stays on create:
+    // see stageGroup). The cross-UID swap hole a populated anon shell opens is
+    // closed at every swap entry point (#647 + triggerGoogleRestore gate).
 
     final rawName = _ref.read(settingsProvider).deviceName;
     final displayName = rawName.isEmpty ? 'Anonymous' : rawName;
@@ -348,9 +349,9 @@ class GroupService extends FirestoreRepository {
       // group' substring (groupJoinNameTaken).
       'already-exists' => 'That name is already taken in this group.',
       'resource-exhausted' => 'Too many attempts. Try again later.',
-      // #441: server-side anonymous-provider reject. The screen re-localizes
-      // via the 'linked account is required' substring.
-      'permission-denied' => 'A linked account is required to join.',
+      // #648: the join path no longer rejects anonymous users, so the callable
+      // never returns permission-denied here; any other code falls through to
+      // the generic message below.
       _ => 'Could not join group. Try again.',
     };
   }

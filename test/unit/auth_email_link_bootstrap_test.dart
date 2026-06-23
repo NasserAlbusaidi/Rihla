@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/auth/providers/shell_emptiness_gate.dart';
 import 'package:safar/features/auth/services/auth_email_link_config.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -94,7 +95,7 @@ void main() {
           (ref) => users ?? Stream<User?>.value(_anonUser),
         ),
         groupServiceProvider.overrideWithValue(groupService),
-        recoverSwapGateTimeoutProvider.overrideWithValue(gateTimeout),
+        shellEmptinessGateTimeoutProvider.overrideWithValue(gateTimeout),
       ],
     );
     container.read(authEmailLinkBootstrapProvider);
