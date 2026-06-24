@@ -50,52 +50,29 @@ void main() {
 
   // GroupKeys.* sit on wrapper widgets — read the descendant TextField.
   String keyedFieldText(WidgetTester tester, Key key) => fieldText(
-        tester,
-        find.descendant(of: find.byKey(key), matching: find.byType(TextField)),
-      );
+    tester,
+    find.descendant(of: find.byKey(key), matching: find.byType(TextField)),
+  );
 
   group('JoinGroupScreen prefill', () {
-    testWidgets('join marker prefills code + name and clears one-shot',
-        (tester) async {
+    testWidgets('route-supplied initialInviteCode prefills the code field', (
+      tester,
+    ) async {
       final sp = await prefs();
-      await PendingGateIntent.save(
-        sp,
-        PendingGateIntent.join(joinCode: 'ABC123', displayName: 'Nasser'),
-      );
-
-      await tester.pumpWidget(wrap(sp, const JoinGroupScreen()));
-      await tester.pumpAndSettle();
-
-      final fields = find.byType(TextField);
-      // Name field (0), invite-code field (1) — order pinned by
-      // durable_gate_wiring_test.dart.
-      expect(fieldText(tester, fields.at(0)), 'Nasser');
-      expect(fieldText(tester, fields.at(1)), 'ABC123');
-      expect(PendingGateIntent.read(sp), isNull);
-    });
-
-    testWidgets('route-supplied initialInviteCode wins over the marker code',
-        (tester) async {
-      final sp = await prefs();
-      await PendingGateIntent.save(
-        sp,
-        PendingGateIntent.join(joinCode: 'MARKER', displayName: 'Nasser'),
-      );
-
       await tester.pumpWidget(
         wrap(sp, const JoinGroupScreen(initialInviteCode: 'ROUTED')),
       );
       await tester.pumpAndSettle();
 
       final fields = find.byType(TextField);
+      // Name field (0), invite-code field (1) — order pinned by
+      // durable_gate_wiring_test.dart.
       expect(fieldText(tester, fields.at(1)), 'ROUTED');
-      // Display name still comes from the marker.
-      expect(fieldText(tester, fields.at(0)), 'Nasser');
-      expect(PendingGateIntent.read(sp), isNull);
     });
 
-    testWidgets('create marker does NOT prefill join and stays persisted',
-        (tester) async {
+    testWidgets('create marker does NOT prefill join and stays persisted', (
+      tester,
+    ) async {
       final sp = await prefs();
       await PendingGateIntent.save(
         sp,
@@ -114,8 +91,9 @@ void main() {
       expect(PendingGateIntent.read(sp), isNotNull);
     });
 
-    testWidgets('no marker → unchanged behavior (name seeded from settings)',
-        (tester) async {
+    testWidgets('no marker → unchanged behavior (name seeded from settings)', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({
         'settings_device_name': 'DeviceName',
       });
@@ -128,29 +106,12 @@ void main() {
       expect(fieldText(tester, fields.at(0)), 'DeviceName');
       expect(fieldText(tester, fields.at(1)), isEmpty);
     });
-
-    testWidgets('marker displayName wins over the settings seed',
-        (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'settings_device_name': 'DeviceName',
-      });
-      final sp = await prefs();
-      await PendingGateIntent.save(
-        sp,
-        PendingGateIntent.join(joinCode: 'ABC123', displayName: 'Typed'),
-      );
-
-      await tester.pumpWidget(wrap(sp, const JoinGroupScreen()));
-      await tester.pumpAndSettle();
-
-      final fields = find.byType(TextField);
-      expect(fieldText(tester, fields.at(0)), 'Typed');
-    });
   });
 
   group('CreateGroupScreen prefill', () {
-    testWidgets('create marker prefills name/displayName/currency and clears',
-        (tester) async {
+    testWidgets('create marker prefills name/displayName/currency and clears', (
+      tester,
+    ) async {
       final sp = await prefs();
       await PendingGateIntent.save(
         sp,
@@ -170,8 +131,9 @@ void main() {
       expect(PendingGateIntent.read(sp), isNull);
     });
 
-    testWidgets('invalid currency code falls back to the OMR default',
-        (tester) async {
+    testWidgets('invalid currency code falls back to the OMR default', (
+      tester,
+    ) async {
       final sp = await prefs();
       await PendingGateIntent.save(
         sp,
@@ -187,21 +149,6 @@ void main() {
 
       expect(find.text('OMR'), findsOneWidget);
       expect(find.text('XXX'), findsNothing);
-    });
-
-    testWidgets('join marker does NOT prefill create and stays persisted',
-        (tester) async {
-      final sp = await prefs();
-      await PendingGateIntent.save(
-        sp,
-        PendingGateIntent.join(joinCode: 'ABC123', displayName: 'Nasser'),
-      );
-
-      await tester.pumpWidget(wrap(sp, const CreateGroupScreen()));
-      await tester.pumpAndSettle();
-
-      expect(keyedFieldText(tester, GroupKeys.groupNameInput), isEmpty);
-      expect(PendingGateIntent.read(sp), isNotNull);
     });
   });
 }

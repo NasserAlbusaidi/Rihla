@@ -13,22 +13,6 @@ void main() {
   });
 
   group('PendingGateIntent', () {
-    test('join intent round-trips through prefs', () async {
-      final intent = PendingGateIntent.join(
-        joinCode: 'ABC123',
-        displayName: 'Nasser',
-      );
-      await PendingGateIntent.save(prefs, intent);
-
-      final read = PendingGateIntent.read(prefs);
-      expect(read, isNotNull);
-      expect(read!.type, 'join');
-      expect(read.joinCode, 'ABC123');
-      expect(read.displayName, 'Nasser');
-      expect(read.groupName, isNull);
-      expect(read.currencyCode, isNull);
-    });
-
     test('create intent round-trips through prefs', () async {
       final intent = PendingGateIntent.create(
         groupName: 'Muscat Trip',
@@ -43,7 +27,6 @@ void main() {
       expect(read.groupName, 'Muscat Trip');
       expect(read.displayName, 'Nasser');
       expect(read.currencyCode, 'OMR');
-      expect(read.joinCode, isNull);
     });
 
     test('read returns null when no marker exists', () {
@@ -69,7 +52,7 @@ void main() {
           .millisecondsSinceEpoch;
       await prefs.setString(
         PendingGateIntent.prefsKey,
-        '{"v":1,"type":"join","joinCode":"ABC123","displayName":"N",'
+        '{"v":1,"type":"create","groupName":"G","displayName":"N",'
         '"atMillis":$stale}',
       );
       expect(PendingGateIntent.read(prefs), isNull);
@@ -81,7 +64,7 @@ void main() {
           .millisecondsSinceEpoch;
       await prefs.setString(
         PendingGateIntent.prefsKey,
-        '{"v":1,"type":"join","joinCode":"ABC123","displayName":"N",'
+        '{"v":1,"type":"create","groupName":"G","displayName":"N",'
         '"atMillis":$fresh}',
       );
       expect(PendingGateIntent.read(prefs), isNotNull);
@@ -90,7 +73,11 @@ void main() {
     test('save overwrites an existing marker', () async {
       await PendingGateIntent.save(
         prefs,
-        PendingGateIntent.join(joinCode: 'AAAAAA', displayName: 'A'),
+        PendingGateIntent.create(
+          groupName: 'First',
+          displayName: 'A',
+          currencyCode: 'OMR',
+        ),
       );
       await PendingGateIntent.save(
         prefs,
@@ -108,7 +95,11 @@ void main() {
     test('clear removes the marker', () async {
       await PendingGateIntent.save(
         prefs,
-        PendingGateIntent.join(joinCode: 'ABC123', displayName: 'N'),
+        PendingGateIntent.create(
+          groupName: 'G',
+          displayName: 'N',
+          currencyCode: 'OMR',
+        ),
       );
       await PendingGateIntent.clear(prefs);
       expect(PendingGateIntent.read(prefs), isNull);
