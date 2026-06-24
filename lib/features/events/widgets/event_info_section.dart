@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/localized_dates.dart';
+import '../../../core/utils/write_ack.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../providers/event_provider.dart';
@@ -97,16 +99,26 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
     setState(() => _isSaving = true);
     try {
       final description = _descriptionController.text.trim();
-      await ref
-          .read(eventServiceProvider)
-          .updateEvent(
-            groupId: widget.event.groupId,
-            eventId: widget.event.id,
-            name: name != widget.event.name ? name : null,
-            startDate: _startDate,
-            endDate: _endDate,
-            description: description.isNotEmpty ? description : null,
-          );
+      final connectivity = ref.read(connectivityProvider.notifier);
+      final connectivityStatus = ref.read(connectivityProvider);
+      final outcome = await awaitServerAck(
+        ref
+            .read(eventServiceProvider)
+            .updateEvent(
+              groupId: widget.event.groupId,
+              eventId: widget.event.id,
+              name: name != widget.event.name ? name : null,
+              startDate: _startDate,
+              endDate: _endDate,
+              description: description.isNotEmpty ? description : null,
+            ),
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite();
+      } else {
+        connectivity.noteQueuedWrite();
+      }
       if (mounted) {
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -212,7 +224,10 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
           width: 1.5,
         ),
       ),
-      contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space12),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space12,
+        vertical: context.spacing.space12,
+      ),
     );
   }
 

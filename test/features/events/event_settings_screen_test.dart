@@ -17,6 +17,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -181,6 +182,9 @@ Widget _wrapSettings({
                     eventDetailProvider(
                       eventRef,
                     ).overrideWith((ref) => eventStream ?? Stream.value(event)),
+                    connectivityProvider.overrideWith(
+                      (ref) => ConnectivityNotifier(startPeriodicChecks: false),
+                    ),
                     groupDetailProvider(event.groupId).overrideWith(
                       (ref) => groupStream ?? Stream.value(resolvedGroup),
                     ),
@@ -250,6 +254,9 @@ Widget _wrapDangerSection({
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      connectivityProvider.overrideWith(
+        (ref) => ConnectivityNotifier(startPeriodicChecks: false),
+      ),
       eventServiceProvider.overrideWithValue(eventService),
       groupActivityServiceProvider.overrideWithValue(activityService),
       eventExpensesProvider(
@@ -589,7 +596,9 @@ void main() {
       ).called(1);
       // #356: a raw error is translated to a friendly cause, never shown verbatim.
       expect(
-        find.text('Failed to delete event: Something went wrong. Please try again.'),
+        find.text(
+          'Failed to delete event: Something went wrong. Please try again.',
+        ),
         findsOneWidget,
       );
       expect(find.textContaining('Bad state: boom'), findsNothing);
@@ -630,6 +639,10 @@ void main() {
                         eventDetailProvider(
                           eventRef,
                         ).overrideWith((ref) => Stream.value(event)),
+                        connectivityProvider.overrideWith(
+                          (ref) =>
+                              ConnectivityNotifier(startPeriodicChecks: false),
+                        ),
                         groupDetailProvider(event.groupId).overrideWith(
                           (ref) => Stream.value(_makeGroup(id: event.groupId)),
                         ),

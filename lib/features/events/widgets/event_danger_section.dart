@@ -8,10 +8,12 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/error_message_translator.dart';
+import '../../../core/utils/write_ack.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../keys/event_keys.dart';
@@ -101,7 +103,10 @@ class EventDangerSection extends ConsumerWidget {
 
   Widget _buildBalanceWarning(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: 10,
+      ),
       child: Row(
         children: [
           Icon(Iconsax.warning_2, size: 16, color: context.colors.warning),
@@ -134,7 +139,10 @@ class EventDangerSection extends ConsumerWidget {
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space16,
+          vertical: 10,
+        ),
         child: Row(
           children: [
             Container(
@@ -249,9 +257,19 @@ class EventDangerSection extends ConsumerWidget {
     }
 
     try {
-      await ref
-          .read(eventServiceProvider)
-          .deleteEvent(groupId: groupId, eventId: eventId);
+      final connectivity = ref.read(connectivityProvider.notifier);
+      final connectivityStatus = ref.read(connectivityProvider);
+      final outcome = await awaitServerAck(
+        ref
+            .read(eventServiceProvider)
+            .deleteEvent(groupId: groupId, eventId: eventId),
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite();
+      } else {
+        connectivity.noteQueuedWrite();
+      }
       if (context.mounted) {
         context.go('/group/$groupId');
       }

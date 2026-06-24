@@ -230,8 +230,8 @@ class GroupService extends FirestoreRepository {
       // create rule allow-lists glyph/inkIndex but REJECTS an explicit null
       // (validGroupCreate), so a default group must omit both keys — never a
       // derived fallback. fromDoc reads absence as null.
-      if (glyph != null) 'glyph': glyph,
-      if (inkIndex != null) 'inkIndex': inkIndex,
+      'glyph': ?glyph,
+      'inkIndex': ?inkIndex,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -577,18 +577,14 @@ class GroupService extends FirestoreRepository {
 
   /// Reactive stream for one group document.
   Stream<Group?> watchGroup(String groupId) {
-    return db
-        .collection('groups')
-        .doc(groupId)
-        .snapshots()
-        .map((doc) {
-          if (!doc.exists) return null;
-          final group = Group.fromDoc(doc);
-          // #518: fence out soft-deleted docs — a single-doc snapshot always
-          // EXISTS, so isDeleted must be checked in-memory (no server-side
-          // .where filter on a .doc().snapshots() stream).
-          return group.isDeleted ? null : group;
-        });
+    return db.collection('groups').doc(groupId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      final group = Group.fromDoc(doc);
+      // #518: fence out soft-deleted docs — a single-doc snapshot always
+      // EXISTS, so isDeleted must be checked in-memory (no server-side
+      // .where filter on a .doc().snapshots() stream).
+      return group.isDeleted ? null : group;
+    });
   }
 }
 
