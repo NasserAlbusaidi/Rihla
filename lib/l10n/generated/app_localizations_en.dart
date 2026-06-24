@@ -2947,7 +2947,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get durableGateConflict =>
-      'That Google account is already in use by another Rihla account. Use a different Google account for now.';
+      'That Google account already belongs to another Rihla account. Switching to it would leave this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first, then use a different Google account.';
 
   @override
   String get durableGateConflictTitle => 'That account already has Rihla data';

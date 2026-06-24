@@ -5025,7 +5025,7 @@ abstract class AppLocalizations {
   /// Dead-end conflict copy, shown only when the switch offer is unsafe (this device's current account already has groups, or the group check failed). The sheet must never resolve a conflict by signing out.
   ///
   /// In en, this message translates to:
-  /// **'That Google account is already in use by another Rihla account. Use a different Google account for now.'**
+  /// **'That Google account already belongs to another Rihla account. Switching to it would leave this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first, then use a different Google account.'**
   String get durableGateConflict;
 
   /// Title of the gate sheet's conflict state (#428): the chosen Google account already backs another Rihla account.

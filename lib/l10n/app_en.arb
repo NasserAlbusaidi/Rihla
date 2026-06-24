@@ -2134,7 +2134,7 @@
   "@durableGateNotNow": {
     "description": "Dismiss action on the gate sheet. Aborts the pending create/join; the gate re-asks on the next attempt."
   },
-  "durableGateConflict": "That Google account is already in use by another Rihla account. Use a different Google account for now.",
+  "durableGateConflict": "That Google account already belongs to another Rihla account. Switching to it would leave this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first, then use a different Google account.",
   "@durableGateConflict": {
     "description": "Dead-end conflict copy, shown only when the switch offer is unsafe (this device's current account already has groups, or the group check failed). The sheet must never resolve a conflict by signing out."
   },
