@@ -230,5 +230,67 @@ void main() {
 
       expect(events, ['removeToken', 'engage', 'signIn', 'restart']);
     });
+
+    test('still swaps and restarts when removeFcmToken hangs offline — the '
+        'unbounded fcm_tokens delete never acks (#412/#664)', () async {
+      final events = <String>[];
+      final userCredential = _MockUserCredential();
+      when(() => userCredential.user).thenReturn(anonUser);
+      when(
+        () => auth.signInWithEmailLink(
+          email: 'saved@example.com',
+          emailLink: link,
+        ),
+      ).thenAnswer((_) async {
+        events.add('signIn');
+        return userCredential;
+      });
+
+      final service = buildService(
+        events: events,
+        // Never completes → models the offline unbounded fcm_tokens delete
+        // (#412): the future does not ack until reconnect.
+        removeFcmToken: () => Completer<void>().future,
+      );
+      await service.setPendingEmail('saved@example.com');
+
+      // Test-side bound proves the PRODUCTION code returns; without the fix the
+      // restore hangs on the FCM await and this fails fast at onTimeout.
+      await service
+          .restoreWithEmailLink(
+            link,
+            pendingWritesTimeout: const Duration(milliseconds: 50),
+          )
+          .timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => fail(
+              'restoreWithEmailLink hung on removeFcmToken — the unbounded '
+              'await never returned (offline #412/#664)',
+            ),
+          );
+
+      // FCM removal was bounded and skipped (no 'removeToken'); swap completed.
+      expect(events, ['engage', 'signIn', 'restart']);
+    });
+
+    test('a non-timeout removeFcmToken error still aborts cleanly — no '
+        'isolation, no swap, no restart (the bound is timeout-only)', () async {
+      final events = <String>[];
+      final service = buildService(
+        events: events,
+        removeFcmToken: () async => throw StateError('fcm delete failed'),
+      );
+      await service.setPendingEmail('saved@example.com');
+
+      await expectLater(service.restoreWithEmailLink(link), throwsStateError);
+      expect(events, isEmpty);
+      verifyNever(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      );
+      verifyNever(() => auth.signOut());
+    });
   });
 }
