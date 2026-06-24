@@ -4,8 +4,8 @@ import 'auth_recovery_service.dart';
 import 'pending_gate_intent.dart';
 
 /// Cold-boot replay for a [PendingGateIntent] (#428): navigates back into the
-/// create/join flow the gate-conflict restart interrupted. Navigation only —
-/// the matching screen prefills from the marker and clears it, so a boot that
+/// create flow the gate-conflict restart interrupted. Navigation only — the
+/// CreateGroupScreen prefills from the marker and clears it, so a boot that
 /// never reaches the screen leaves the marker for the next one (until TTL).
 abstract final class GateIntentReplay {
   /// [go] is `GoRouter.go` — injected as a plain callback for testability.
@@ -18,15 +18,7 @@ abstract final class GateIntentReplay {
     if (pendingOp == AuthRecoveryService.opRecover) return;
 
     final intent = PendingGateIntent.read(prefs);
-    if (intent == null) return;
-
-    switch (intent.type) {
-      case PendingGateIntent.typeJoin:
-        final code = intent.joinCode?.trim().toUpperCase() ?? '';
-        if (code.isEmpty) return;
-        go('/join/$code');
-      case PendingGateIntent.typeCreate:
-        go('/create-group');
-    }
+    if (intent == null || intent.type != PendingGateIntent.typeCreate) return;
+    go('/create-group');
   }
 }

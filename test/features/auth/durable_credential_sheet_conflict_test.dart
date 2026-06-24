@@ -99,8 +99,9 @@ void main() {
     PendingGateIntent? intent,
     AuthCredential? credential,
   }) async {
-    when(() => recovery.linkGoogleToCurrentUser())
-        .thenThrow(conflict(credential ?? _FakeAuthCredential()));
+    when(
+      () => recovery.linkGoogleToCurrentUser(),
+    ).thenThrow(conflict(credential ?? _FakeAuthCredential()));
     await tester.pumpWidget(harness(groups: groups, intent: intent));
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
@@ -131,17 +132,16 @@ void main() {
       final credential = _FakeAuthCredential();
       var markerPresentAtCall = false;
       when(
-        () => recovery.restoreWithGoogle(
-          credential: any(named: 'credential'),
-        ),
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
       ).thenAnswer((_) async {
         markerPresentAtCall = PendingGateIntent.read(prefs) != null;
         return _MockUserCredential();
       });
 
-      final intent = PendingGateIntent.join(
-        joinCode: 'ABC123',
+      final intent = PendingGateIntent.create(
+        groupName: 'Muscat Trip',
         displayName: 'Nasser',
+        currencyCode: 'OMR',
       );
       final l10n = await openAndConflict(
         tester,
@@ -154,20 +154,28 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      verify(() => recovery.restoreWithGoogle(credential: credential))
-          .called(1);
-      expect(markerPresentAtCall, isTrue,
-          reason: 'intent must be persisted before the restore restarts');
-      expect(PendingGateIntent.read(prefs)?.joinCode, 'ABC123');
-      expect(result, isNull,
-          reason: 'sheet never pops — production restarts here');
+      verify(
+        () => recovery.restoreWithGoogle(credential: credential),
+      ).called(1);
+      expect(
+        markerPresentAtCall,
+        isTrue,
+        reason: 'intent must be persisted before the restore restarts',
+      );
+      expect(PendingGateIntent.read(prefs)?.groupName, 'Muscat Trip');
+      expect(
+        result,
+        isNull,
+        reason: 'sheet never pops — production restarts here',
+      );
       expect(l10n.durableGateSwitch, isNotEmpty);
       verifyNever(() => recovery.signOutCurrentDevice());
     },
   );
 
-  testWidgets('switch with no intent writes no marker, still restores',
-      (tester) async {
+  testWidgets('switch with no intent writes no marker, still restores', (
+    tester,
+  ) async {
     final credential = _FakeAuthCredential();
     when(
       () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
@@ -186,8 +194,9 @@ void main() {
     expect(PendingGateIntent.read(prefs), isNull);
   });
 
-  testWidgets('conflict + populated shell → dead-end copy, no switch',
-      (tester) async {
+  testWidgets('conflict + populated shell → dead-end copy, no switch', (
+    tester,
+  ) async {
     final l10n = await openAndConflict(
       tester,
       groups: Stream.value([_group()]),
@@ -200,8 +209,9 @@ void main() {
     );
   });
 
-  testWidgets('conflict + groups error → dead-end copy (fail-safe)',
-      (tester) async {
+  testWidgets('conflict + groups error → dead-end copy (fail-safe)', (
+    tester,
+  ) async {
     final l10n = await openAndConflict(
       tester,
       groups: Stream.error(Exception('no-app')),
@@ -211,22 +221,27 @@ void main() {
     expect(find.text(l10n.durableGateConflict), findsOneWidget);
   });
 
-  testWidgets('conflict + groups still loading → progress, no dead-end advice',
-      (tester) async {
-    // A stream that completes without emitting keeps the provider in loading.
-    final l10n = await openAndConflict(
-      tester,
-      groups: const Stream<List<Group>>.empty(),
-    );
+  testWidgets(
+    'conflict + groups still loading → progress, no dead-end advice',
+    (tester) async {
+      // A stream that completes without emitting keeps the provider in loading.
+      final l10n = await openAndConflict(
+        tester,
+        groups: const Stream<List<Group>>.empty(),
+      );
 
-    expect(find.byKey(const Key('durableGate.switch')), findsNothing);
-    expect(find.text(l10n.durableGateConflict), findsNothing);
-    expect(find.byKey(const Key('durableGate.conflictLoading')),
-        findsOneWidget);
-  });
+      expect(find.byKey(const Key('durableGate.switch')), findsNothing);
+      expect(find.text(l10n.durableGateConflict), findsNothing);
+      expect(
+        find.byKey(const Key('durableGate.conflictLoading')),
+        findsOneWidget,
+      );
+    },
+  );
 
-  testWidgets('"Use a different account" returns to the initial state',
-      (tester) async {
+  testWidgets('"Use a different account" returns to the initial state', (
+    tester,
+  ) async {
     final l10n = await openAndConflict(tester, groups: Stream.value(const []));
 
     await tester.tap(find.text(l10n.durableGateUseDifferent));
@@ -239,11 +254,12 @@ void main() {
     verifyNever(() => recovery.signOutCurrentDevice());
   });
 
-  testWidgets('provider-already-linked pops true (already durable)',
-      (tester) async {
-    when(() => recovery.linkGoogleToCurrentUser()).thenThrow(
-      FirebaseAuthException(code: 'provider-already-linked'),
-    );
+  testWidgets('provider-already-linked pops true (already durable)', (
+    tester,
+  ) async {
+    when(
+      () => recovery.linkGoogleToCurrentUser(),
+    ).thenThrow(FirebaseAuthException(code: 'provider-already-linked'));
     await tester.pumpWidget(harness(groups: Stream.value(const [])));
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
@@ -255,8 +271,9 @@ void main() {
     expect(result, isTrue);
   });
 
-  testWidgets('failed restore (pre-isolation throw) resets to generic error',
-      (tester) async {
+  testWidgets('failed restore (pre-isolation throw) resets to generic error', (
+    tester,
+  ) async {
     when(
       () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
     ).thenThrow(StateError('fcm remove failed'));

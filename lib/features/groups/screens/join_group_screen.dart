@@ -18,7 +18,6 @@ import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/r_icon_button.dart';
-import '../../auth/services/pending_gate_intent.dart';
 import '../keys/group_keys.dart';
 import '../models/claim_models.dart';
 import '../providers/group_balance_provider.dart';
@@ -70,30 +69,6 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
         selection: TextSelection.collapsed(offset: initialInviteCode.length),
       );
     }
-    _consumePendingGateIntent();
-  }
-
-  /// One-shot prefill from a gate-conflict restart marker (#428). The route
-  /// param wins for the code; the marker's displayName wins over the settings
-  /// seed in build(). A create-type marker is left untouched for its screen.
-  void _consumePendingGateIntent() {
-    final prefs = ref.read(sharedPreferencesProvider);
-    final intent = PendingGateIntent.read(prefs);
-    if (intent == null || intent.type != PendingGateIntent.typeJoin) return;
-
-    final code = intent.joinCode?.trim().toUpperCase() ?? '';
-    if (_codeController.text.isEmpty && code.isNotEmpty) {
-      _codeController.value = TextEditingValue(
-        text: code,
-        selection: TextSelection.collapsed(offset: code.length),
-      );
-    }
-    final name = intent.displayName?.trim() ?? '';
-    if (name.isNotEmpty) {
-      _nameController.text = name;
-      _didInitName = true;
-    }
-    unawaited(PendingGateIntent.clear(prefs));
   }
 
   @override
