@@ -14,6 +14,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/shell_emptiness_gate.dart';
 import '../services/durable_credential_exception.dart';
 import '../services/pending_gate_intent.dart';
 
@@ -27,10 +28,10 @@ import '../services/pending_gate_intent.dart';
 ///
 /// On a link conflict ([GoogleLinkConflictException]) the sheet offers
 /// "switch to that account" (#428) — a discard-shell `restoreWithGoogle`
-/// reusing the failed credential — but ONLY when the live [userGroupsProvider]
-/// proves the current shell empty. [intent] is the caller's in-flight form
-/// state, persisted before the restore so its forced restart can replay the
-/// interrupted create/join.
+/// reusing the failed credential — but ONLY when [outgoingShellProvablyEmpty]
+/// proves the current shell empty. [intent] is the caller's in-flight form state,
+/// persisted before the restore so its forced restart can replay the interrupted
+/// create/join.
 Future<bool> showDurableCredentialSheet(
   BuildContext context, {
   PendingGateIntent? intent,
@@ -60,12 +61,14 @@ class _DurableCredentialSheetState
   bool _restoring = false;
   String? _errorText;
   GoogleLinkConflictException? _conflict;
+  GoogleLinkConflictException? _conflictShellGateOwner;
+  Future<bool>? _conflictShellGate;
 
   Future<void> _continueWithGoogle() async {
     setState(() {
       _linking = true;
       _errorText = null;
-      _conflict = null;
+      _clearConflict();
     });
     try {
       final result = await ref
@@ -80,18 +83,22 @@ class _DurableCredentialSheetState
       if (mounted) setState(() => _linking = false);
     } on GoogleLinkConflictException catch (e) {
       // PII-safe trail (#439): conflict code only.
-      unawaited(Sentry.addBreadcrumb(
-        Breadcrumb(
-          category: 'auth.gate',
-          message: 'link conflict code=${e.cause.code}',
+      unawaited(
+        Sentry.addBreadcrumb(
+          Breadcrumb(
+            category: 'auth.gate',
+            message: 'link conflict code=${e.cause.code}',
+          ),
         ),
-      ));
-      // The switch decision renders from build against the live group count
-      // (#428) — and is NEVER resolved by signing the anon user out (#213).
+      );
+      // The switch decision is gated by outgoingShellProvablyEmpty (#648) and
+      // is NEVER resolved by signing the anon user out (#213).
       if (!mounted) return;
       setState(() {
         _linking = false;
         _conflict = e;
+        _conflictShellGateOwner = null;
+        _conflictShellGate = null;
       });
     } on FirebaseAuthException catch (e) {
       if (e.code == 'provider-already-linked') {
@@ -133,6 +140,15 @@ class _DurableCredentialSheetState
     if (conflict == null || _restoring) return;
     setState(() => _restoring = true);
     try {
+      if (!await _outgoingShellEmpty()) {
+        if (!mounted) return;
+        setState(() {
+          _restoring = false;
+          _errorText = context.l10n.durableGateConflict;
+          _clearConflict();
+        });
+        return;
+      }
       final intent = widget.intent;
       if (intent != null) {
         await PendingGateIntent.save(
@@ -150,10 +166,32 @@ class _DurableCredentialSheetState
       if (!mounted) return;
       setState(() {
         _restoring = false;
-        _conflict = null;
+        _clearConflict();
         _errorText = context.l10n.durableGateError;
       });
     }
+  }
+
+  void _clearConflict() {
+    _conflict = null;
+    _conflictShellGateOwner = null;
+    _conflictShellGate = null;
+  }
+
+  Future<bool> _outgoingShellEmpty() {
+    return outgoingShellProvablyEmpty(
+      readUser: () => ref.read(firebaseUserProvider.future),
+      readGroups: () => ref.read(userGroupsProvider.future),
+      timeout: ref.read(shellEmptinessGateTimeoutProvider),
+    );
+  }
+
+  Future<bool> _conflictShellEmpty(GoogleLinkConflictException conflict) {
+    if (!identical(_conflictShellGateOwner, conflict)) {
+      _conflictShellGateOwner = conflict;
+      _conflictShellGate = _outgoingShellEmpty();
+    }
+    return _conflictShellGate!;
   }
 
   @override
@@ -165,17 +203,18 @@ class _DurableCredentialSheetState
       return _sheetShell(children: _initialContent(errorText: _errorText));
     }
 
-    // Conflict state: the switch offer is safe only against a provably-empty
-    // shell. Loading → progress (don't show dead-end advice prematurely);
-    // error → dead-end (fail-safe: treat as possibly-populated).
-    final groupsAsync = ref.watch(userGroupsProvider);
-    return _sheetShell(
-      children: groupsAsync.when(
-        loading: _conflictLoadingContent,
-        data: (groups) => groups.isEmpty
+    // Conflict state: switch visibility is derived from the same guard used at
+    // the irreversible swap. Loading → progress; false/error/timeout → dead-end.
+    return FutureBuilder<bool>(
+      future: _conflictShellEmpty(conflict),
+      builder: (context, snapshot) => _sheetShell(
+        children:
+            snapshot.connectionState == ConnectionState.done &&
+                snapshot.data == true
             ? _switchOfferContent()
-            : _initialContent(errorText: l10n.durableGateConflict),
-        error: (_, _) => _initialContent(errorText: l10n.durableGateConflict),
+            : snapshot.connectionState == ConnectionState.done
+            ? _initialContent(errorText: l10n.durableGateConflict)
+            : _conflictLoadingContent(),
       ),
     );
   }
