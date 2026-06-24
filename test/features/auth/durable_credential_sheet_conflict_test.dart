@@ -1,13 +1,16 @@
 // Gate-conflict switch flow (#428 PR-A2).
 //
 // On GoogleLinkConflictException the sheet offers "switch to that account"
-// (discard-shell restore reusing the failed credential) ONLY when the live
-// userGroupsProvider proves the current shell empty. Populated/error → the
-// dead-end copy; loading → progress. The intent marker is persisted BEFORE
+// (discard-shell restore reusing the failed credential) ONLY when
+// outgoingShellProvablyEmpty proves the current shell empty. Populated/error →
+// the dead-end copy; loading → progress. The intent marker is persisted BEFORE
 // restoreWithGoogle so the interrupted create/join replays after the
 // restart. NEVER signOut (#213).
 
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +19,7 @@ import 'package:safar/core/extensions/build_context_l10n.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/auth/providers/shell_emptiness_gate.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/auth/services/durable_credential_exception.dart';
 import 'package:safar/features/auth/services/pending_gate_intent.dart';
@@ -26,6 +30,8 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockAuthRecoveryService extends Mock implements AuthRecoveryService {}
+
+class _MockGroupService extends Mock implements GroupService {}
 
 class _MockUserCredential extends Mock implements UserCredential {}
 
@@ -70,7 +76,45 @@ void main() {
       overrides: [
         authRecoveryServiceProvider.overrideWithValue(recovery),
         sharedPreferencesProvider.overrideWithValue(prefs),
+        firebaseUserProvider.overrideWith(
+          (ref) => Stream.value(MockUser(uid: 'u1', isAnonymous: true)),
+        ),
         userGroupsProvider.overrideWith((ref) => groups),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                result = await showDurableCredentialSheet(
+                  context,
+                  intent: intent,
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget harnessWithRealGroups({
+    required Stream<User?> users,
+    required GroupService groupService,
+    Duration timeout = const Duration(seconds: 5),
+    PendingGateIntent? intent,
+  }) {
+    return ProviderScope(
+      overrides: [
+        authRecoveryServiceProvider.overrideWithValue(recovery),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        firebaseUserProvider.overrideWith((ref) => users),
+        groupServiceProvider.overrideWithValue(groupService),
+        shellEmptinessGateTimeoutProvider.overrideWithValue(timeout),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
@@ -114,6 +158,34 @@ void main() {
     return l10n;
   }
 
+  Future<AppLocalizations> openAndConflictWithRealGroups(
+    WidgetTester tester, {
+    required Stream<User?> users,
+    required GroupService groupService,
+    Duration timeout = const Duration(seconds: 5),
+    PendingGateIntent? intent,
+    AuthCredential? credential,
+  }) async {
+    when(
+      () => recovery.linkGoogleToCurrentUser(),
+    ).thenThrow(conflict(credential ?? _FakeAuthCredential()));
+    await tester.pumpWidget(
+      harnessWithRealGroups(
+        users: users,
+        groupService: groupService,
+        timeout: timeout,
+        intent: intent,
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    final l10n = tester.element(find.text('open')).l10n;
+    await tester.tap(find.text(l10n.durableGateContinueGoogle));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    return l10n;
+  }
+
   testWidgets('conflict + zero groups → switch offer', (tester) async {
     final l10n = await openAndConflict(tester, groups: Stream.value(const []));
 
@@ -124,6 +196,36 @@ void main() {
     expect(result, isNull);
     verifyNever(() => recovery.signOutCurrentDevice());
   });
+
+  testWidgets(
+    'conflict + unresolved user does not false-empty into a switch offer',
+    (tester) async {
+      final userController = StreamController<User?>.broadcast();
+      final groupService = _MockGroupService();
+      addTearDown(userController.close);
+      when(
+        () => groupService.watchUserGroups(any()),
+      ).thenAnswer((_) => Stream.value([_group()]));
+      when(
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+      ).thenAnswer((_) async => _MockUserCredential());
+
+      final l10n = await openAndConflictWithRealGroups(
+        tester,
+        users: userController.stream,
+        groupService: groupService,
+        timeout: const Duration(milliseconds: 50),
+      );
+      await tester.pump(const Duration(milliseconds: 120));
+      await tester.pump();
+
+      expect(find.byKey(const Key('durableGate.switch')), findsNothing);
+      expect(find.text(l10n.durableGateConflict), findsOneWidget);
+      verifyNever(
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+      );
+    },
+  );
 
   testWidgets(
     'switch persists the intent BEFORE restoreWithGoogle and reuses the '
@@ -170,6 +272,53 @@ void main() {
       );
       expect(l10n.durableGateSwitch, isNotEmpty);
       verifyNever(() => recovery.signOutCurrentDevice());
+    },
+  );
+
+  testWidgets(
+    'switch re-check blocks if shell becomes populated after the offer renders',
+    (tester) async {
+      final credential = _FakeAuthCredential();
+      final groupService = _MockGroupService();
+      final groupsController = StreamController<List<Group>>.broadcast();
+      addTearDown(groupsController.close);
+      when(
+        () => groupService.watchUserGroups(any()),
+      ).thenAnswer((_) => groupsController.stream);
+      when(
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+      ).thenAnswer((_) async => _MockUserCredential());
+
+      final intent = PendingGateIntent.create(
+        groupName: 'Muscat Trip',
+        displayName: 'Nasser',
+        currencyCode: 'OMR',
+      );
+      await openAndConflictWithRealGroups(
+        tester,
+        users: Stream.value(MockUser(uid: 'u1', isAnonymous: true)),
+        groupService: groupService,
+        intent: intent,
+        credential: credential,
+      );
+
+      groupsController.add(const []);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const Key('durableGate.switch')), findsOneWidget);
+
+      groupsController.add([_group()]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byKey(const Key('durableGate.switch')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      verifyNever(() => recovery.restoreWithGoogle());
+      verifyNever(
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+      );
+      expect(PendingGateIntent.read(prefs), isNull);
     },
   );
 
