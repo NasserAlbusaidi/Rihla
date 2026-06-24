@@ -81,6 +81,21 @@ class AuthRecoveryService {
 
   static Future<void> _noopFcmTokenRemover() async {}
 
+  /// Remove the outgoing UID's FCM token before a cross-UID swap, bounded so an
+  /// offline delete that never acks (#412) can't hang the restore before the
+  /// guaranteed restart. Timeout-only swallow: a real (non-timeout) failure
+  /// still propagates and aborts the restore with the shell intact (#664).
+  Future<void> _removeFcmTokenBestEffort(Duration timeout) async {
+    try {
+      await _removeFcmToken().timeout(timeout);
+    } on TimeoutException {
+      FirebaseConfig.log(
+        'Restore: removeFcmToken timed out after ${timeout.inSeconds}s — '
+        'restoring anyway',
+      );
+    }
+  }
+
   /// Shared gateway so [GoogleSignIn.initialize] runs once per process, not
   /// once per service instance.
   static final GoogleSignInGateway _defaultGoogleGateway =
@@ -287,7 +302,7 @@ class AuthRecoveryService {
     // token while still signed in as the outgoing anon UID. Best-effort by
     // placement: this runs before isolation and outside the try/finally, so a
     // throw aborts the restore with the shell intact rather than stranding it.
-    await _removeFcmToken();
+    await _removeFcmTokenBestEffort(pendingWritesTimeout);
 
     _cacheIsolationController.engageIsolation();
     try {
@@ -358,7 +373,7 @@ class AuthRecoveryService {
     // remove the token while still signed in as the outgoing UID. Placed
     // before isolation and outside the try/finally: a throw aborts the
     // restore with the shell intact rather than stranding the overlay.
-    await _removeFcmToken();
+    await _removeFcmTokenBestEffort(pendingWritesTimeout);
 
     _cacheIsolationController.engageIsolation();
     try {
