@@ -872,7 +872,7 @@
   "durableGateBody": "مجموعاتك ومصاريفك مرتبطة بهذا الحساب. اربط حساب Google حتى لا تفقدها مع هذا الجهاز.",
   "durableGateContinueGoogle": "المتابعة عبر Google",
   "durableGateNotNow": "ليس الآن",
-  "durableGateConflict": "حساب Google هذا مستخدم بالفعل في حساب رحلة آخر. استخدم حساب Google مختلفًا في الوقت الحالي.",
+  "durableGateConflict": "حساب Google هذا يخص حساب رحلة آخر بالفعل. التبديل إليه سيترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً، ثم استخدم حساب Google مختلفًا.",
   "durableGateConflictTitle": "هذا الحساب يحتوي على بيانات رحلة بالفعل",
   "durableGateConflictSwitchBody": "حساب Google هذا يحتوي على بيانات رحلة بالفعل. التبديل إليه؟ سيتابع هذا الجهاز بذلك الحساب.",
   "durableGateSwitch": "تبديل الحساب",

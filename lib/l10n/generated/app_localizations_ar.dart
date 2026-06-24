@@ -3016,7 +3016,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get durableGateConflict =>
-      'حساب Google هذا مستخدم بالفعل في حساب رحلة آخر. استخدم حساب Google مختلفًا في الوقت الحالي.';
+      'حساب Google هذا يخص حساب رحلة آخر بالفعل. التبديل إليه سيترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً، ثم استخدم حساب Google مختلفًا.';
 
   @override
   String get durableGateConflictTitle =>
