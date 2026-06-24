@@ -68,12 +68,25 @@ void main() {
   );
 
   test(
-    'joinGroup throws DurableCredentialRequiredException for an anonymous '
-    'user without invoking the callable',
+    '#648: joinGroup invokes the callable for an anonymous user '
+    '(gate creation, not participation)',
     () async {
       var callableInvoked = false;
+      final db = FakeFirebaseFirestore();
+      // The callable owns the membership write; mirror it so the post-join
+      // group read (Group.fromDoc) finds a document.
+      await db.collection('groups').doc('g1').set({
+        'id': 'g1',
+        'name': 'Trip',
+        'inviteCode': 'ABC234',
+        'createdBy': 'creator',
+        'memberIds': ['creator', 'uid-under-test'],
+        'currency': 'OMR',
+        'createdAt': DateTime(2026).toIso8601String(),
+        'updatedAt': DateTime(2026).toIso8601String(),
+      });
       final service = buildService(
-        FakeFirebaseFirestore(),
+        db,
         isAnonymous: () => true,
         joinGroupCallableOverride:
             ({required inviteCode, required displayName}) async {
@@ -82,11 +95,10 @@ void main() {
             },
       );
 
-      await expectLater(
-        service.joinGroup(inviteCode: 'ABC234'),
-        throwsA(isA<DurableCredentialRequiredException>()),
-      );
-      expect(callableInvoked, isFalse);
+      final group = await service.joinGroup(inviteCode: 'ABC234');
+
+      expect(callableInvoked, isTrue);
+      expect(group.id, 'g1');
     },
   );
 

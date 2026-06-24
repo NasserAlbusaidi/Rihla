@@ -1671,6 +1671,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.';
 
   @override
+  String get restoreBlockedHasData =>
+      'الاستعادة ستبدّل إلى حسابك المحفوظ وستترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً.';
+
+  @override
   String get homeBackupNudgeTitle => 'احفظ نسخة من حسابك';
 
   @override
