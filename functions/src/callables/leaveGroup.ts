@@ -22,10 +22,12 @@ import { recomputeNet } from './groupNetBalance';
 // non-participant split-recipient / #249 conservation edge is pre-existing and
 // out of scope; tombstoning would CHANGE balance semantics on that axis.)
 //
-// No lock and no rate-limit (unlike deleteGroup): leave is a single small atomic
-// batch touching only the leaver's own membership; re-entry is bounded upstream
-// by joinGroupByInviteCode's 5/hr throttle. enforceAppCheck is the per-actor
-// control (#197).
+// No separate mutation lock and no rate-limit (unlike deleteGroup): leave is a
+// single small atomic mutation touching only the leaver's own membership;
+// re-entry is bounded upstream by joinGroupByInviteCode's 5/hr throttle. It
+// still honors deleteGroup's quiesce marker like every Admin-SDK membership
+// writer, because Admin SDK writes bypass firestore.rules. enforceAppCheck is
+// the per-actor control (#197).
 
 export interface LeaveGroupInput {
   groupId: string;
@@ -58,6 +60,12 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
       throw new HttpsError('not-found', 'Group not found.');
     }
     const group = groupSnap.data() ?? {};
+    // Honor the same write-lock as firestore.rules (Admin SDK bypasses rules),
+    // mirroring joinGroupByInviteCode/addShadowMember: soft-deleted or
+    // delete-quiesced groups are indistinguishable from missing groups.
+    if (group.isDeleted === true || group.deletingInProgress === true) {
+      throw new HttpsError('not-found', 'Group not found.');
+    }
     const memberIds: string[] = Array.isArray(group.memberIds)
       ? group.memberIds.filter((v): v is string => typeof v === 'string')
       : [];
@@ -108,26 +116,55 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
         .find((name): name is string => typeof name === 'string' && name.length > 0)
       ?? 'Someone';
 
-    const now = Timestamp.now();
-    const batch = db.batch();
-    batch.update(groupRef, {
-      memberIds: FieldValue.arrayRemove(uid),
-      updatedAt: now,
+    const mutation = await db.runTransaction(async (tx) => {
+      const freshGroupSnap = await tx.get(groupRef);
+      if (!freshGroupSnap.exists) {
+        throw new HttpsError('not-found', 'Group not found.');
+      }
+      const freshGroup = freshGroupSnap.data() ?? {};
+      if (freshGroup.isDeleted === true || freshGroup.deletingInProgress === true) {
+        throw new HttpsError('not-found', 'Group not found.');
+      }
+      const freshMemberIds: string[] = Array.isArray(freshGroup.memberIds)
+        ? freshGroup.memberIds.filter((v): v is string => typeof v === 'string')
+        : [];
+      const freshMemberDocsSnap = await tx.get(
+        groupRef.collection('members').where('userId', '==', uid),
+      );
+      const freshIsMember = freshMemberIds.includes(uid);
+      if (!freshIsMember && freshMemberDocsSnap.empty) {
+        return { alreadyLeft: true };
+      }
+      const freshActorName =
+        freshMemberDocsSnap.docs
+          .map((d) => d.data().displayName)
+          .find((name): name is string => typeof name === 'string' && name.length > 0)
+        ?? actorName;
+
+      const now = Timestamp.now();
+      tx.update(groupRef, {
+        memberIds: FieldValue.arrayRemove(uid),
+        updatedAt: now,
+      });
+      for (const memberDoc of freshMemberDocsSnap.docs) {
+        tx.delete(memberDoc.ref);
+      }
+      const activityRef = groupRef.collection('activity').doc();
+      tx.set(activityRef, {
+        id: activityRef.id,
+        type: 'member_left',
+        actorId: uid,
+        actorName: freshActorName,
+        description: 'left the group',
+        metadata: {},
+        timestamp: new Date().toISOString(),
+      });
+      return { alreadyLeft: false };
     });
-    for (const memberDoc of memberDocsSnap.docs) {
-      batch.delete(memberDoc.ref);
+
+    if (mutation.alreadyLeft) {
+      return { groupId, mode: 'left', alreadyLeft: true };
     }
-    const activityRef = groupRef.collection('activity').doc();
-    batch.set(activityRef, {
-      id: activityRef.id,
-      type: 'member_left',
-      actorId: uid,
-      actorName,
-      description: 'left the group',
-      metadata: {},
-      timestamp: new Date().toISOString(),
-    });
-    await batch.commit();
 
     logger.info('leaveGroup removed member', { uid, groupId });
 
