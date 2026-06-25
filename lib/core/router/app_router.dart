@@ -453,7 +453,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.activity,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: const CrossGroupActivityScreen(),
+          // #666: top-level route entry → render the back affordance with a
+          // /home fallback. The bottom-nav tab keeps the showBack:false default.
+          child: const CrossGroupActivityScreen(showBack: true),
           transitionsBuilder: _sharedAxisTransition,
         ),
       ),
