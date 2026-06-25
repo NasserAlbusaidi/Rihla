@@ -11,7 +11,7 @@ import { recomputeNet } from './groupNetBalance';
 // it recomputes the LEAVER's net via the shared groupNetBalance oracle (exactly
 // as the client BalanceCalculator), refuses with FAILED_PRECONDITION on a
 // non-zero net, then atomically removes the uid from memberIds + deletes EVERY
-// member doc matching `userId == uid` (creator docs are uuid-keyed, #294) +
+// member doc matching `userId == uid` (legacy docs may be uuid-keyed, #294) +
 // writes the `member_left` activity entry. The direct client self-leave write is
 // locked in firestore.rules (`validSelfLeave` dropped from group `allow update`).
 //
@@ -71,9 +71,9 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
       : [];
     const isMember = memberIds.includes(uid);
 
-    // Match member docs by the `userId` FIELD, never the doc id: joiners key by
-    // {uid} but the creator's doc is keyed by a random uuid with `userId:uid`
-    // (#294) — a `.doc(uid)` lookup would miss it.
+    // Match member docs by the `userId` FIELD, never the doc id: new client docs
+    // key by {uid}, but legacy creator docs may still be uuid-keyed (#294/#524).
+    // A `.doc(uid)` lookup would miss those legacy rows.
     const memberDocsSnap = await groupRef
       .collection('members')
       .where('userId', '==', uid)

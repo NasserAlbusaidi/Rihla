@@ -90,7 +90,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
       }
       if (!mounted) return;
-      await _showSuccessDialog(staged.expense, synced: outcome == WriteAck.acked);
+      await _showSuccessDialog(
+        staged.expense,
+        synced: outcome == WriteAck.acked,
+      );
     } finally {
       if (mounted) {
         ref.read(expenseLoadingProvider.notifier).state = false;
@@ -121,9 +124,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // #261: the expense's default currency is the owning group's currency. Gate
-    // the editor on the group resolving — never default to 'OMR' for an unloaded
-    // group (a non-OMR group would mis-scale 10× and be rules-rejected).
+    // #261/#382: the group currency is the smart fallback for a new expense.
+    // Gate the editor on the group resolving so the amount field uses the right
+    // precision and the per-expense picker starts from an honest default.
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     // #382 PR-6: the smart per-expense default is last-used-in-event → group

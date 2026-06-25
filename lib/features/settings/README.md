@@ -4,7 +4,7 @@
 - **profile_stats_provider.dart**: Aggregate user stats (total spending, group count, event count) computed from the user's groups.
 
 ### screens/
-- **profile_screen.dart**: Identity card (avatar + display name + edit name sheet), QR profile sheet, stats grid, notifications toggle, theme + language + default-split pickers, linked-email + sign-out section, legal links sheet, support link (feedback mailto; the donate URL is defined in `AppLinks.paypalUrl` but not yet surfaced — no `ProfileSupportSection` is wired in), about card, version. `showBack` constructor param avoids the `canPop` probe crash when rendered inside `BottomNavShell`. (No currency picker — 1.0 is OMR-only per #61.)
+- **profile_screen.dart**: Identity card (avatar + display name + edit name sheet), QR profile sheet, stats grid, notifications toggle, theme + language + default-split pickers, linked-email + sign-out section, legal links sheet, support link (feedback mailto; the donate URL is defined in `AppLinks.paypalUrl` but not yet surfaced — no `ProfileSupportSection` is wired in), about card, version. `showBack` constructor param avoids the `canPop` probe crash when rendered inside `BottomNavShell`. There is no global currency picker; groups choose their default currency at create time and balances render per-currency buckets.
 
 ### widgets/
 - **edit_name_bottom_sheet.dart** — display-name editor with validation matching `security/firestore.rules`.

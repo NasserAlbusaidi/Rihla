@@ -21,14 +21,14 @@ explicitly allowed is refused.
 | `joinAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAudit/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
-| `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh / self-leave / creator-remove | creator |
-| `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self-leave or creator-remove |
+| `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh | ❌ (server soft-delete only) |
+| `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | after server-authoritative memberIds removal |
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
 | `groups/{gid}/settlements/{sid}` (group-level) | members | members (creator must be self) | ❌ (B3 append-only) | ❌ (B3 append-only) |
 | `groups/{gid}/events/{eid}` | members | members | event participants (light) / event-or-group creator (admin) | ❌ (soft-delete only) |
-| `groups/{gid}/events/{eid}/expenses/{xid}` | members | event participants (creator must be self) | record creator, allowed-fields, soft-delete one-way | ❌ |
+| `groups/{gid}/events/{eid}/expenses/{xid}` | members | event participants (creator must be self) | event participants, allowed-fields, soft-delete one-way | ❌ |
 | `groups/{gid}/events/{eid}/settlements/{sid}` | members | event participants (creator must be self) | ❌ (B3) | ❌ (B3) |
-| `groups/{gid}/events/{eid}/activity_logs/{aid}` | members | event participants (actor must be self) | ❌ | ❌ |
+| `groups/{gid}/events/{eid}/activity_logs/{aid}` | members | ❌ (server audit trigger only) | ❌ | ❌ |
 
 "Member" means `request.auth.uid in groups/{gid}.memberIds`. "Creator"
 means `request.auth.uid == groups/{gid}.createdBy`. Sign-in is anonymous
@@ -48,7 +48,7 @@ The rules file defines reusable predicates near the top of the
 | `isValidDisplayName(s)` | 1-32 char string, no control chars, no `(former member)` suffix | Mirrors the client-side `validateDisplayName` in `lib/core/utils/name_validators.dart`. **Both must be edited together.** |
 | `isValidNullableDisplayName(s)` | `s == null || isValidDisplayName(s)` | For optional snapshot fields like `payerName`. |
 | `displayNameMapValuesAreValid(m)` | Every value in `m` passes `isValidDisplayName` | Validates `event.participantNames`. Implemented by joining values on `'\n'` and asserting against a regex — Firestore Rules has no map iteration. |
-| `validCurrency(v)` | `v is string && v.size() == 3` | ISO 4217 length check; does not enforce a whitelist. |
+| `validCurrency(v)` | supported ISO code allowlist | Matches the app's supported storage/display currencies. |
 | `positiveInt(v)` | `v is int && v > 0` | For money subunits (`amountFils`). |
 | `groupPath(gid)` | Path to `/groups/{gid}` | Avoids string concatenation in every rule. |
 | `groupData(gid)` | `get(groupPath).data` | Current Firestore state. |
@@ -57,7 +57,7 @@ The rules file defines reusable predicates near the top of the
 | `isGroupCreator(gid)` | Group exists and caller is `createdBy` | Used for elevated operations. |
 | `eventPath(gid, eid)` / `eventData(gid, eid)` | Path / data helpers for event docs | |
 | `isEventParticipant(gid, eid)` | Event exists and caller is in `participantIds` | The expense/settlement write gate. |
-| `requesterIsRecordCreator()` | `resource.data.createdBy == request.auth.uid` | The B1 ownership check for expenses and settlements. |
+| `requesterIsRecordCreator()` | `resource.data.createdBy == request.auth.uid` | Retained settlement-corrections scaffold; live settlement updates are hard-denied and live expense updates no longer call it. |
 
 `get` and `getAfter` cost one document read per invocation and Firestore
 caps them at 10 per request. The rules are carefully written to stay
@@ -71,11 +71,15 @@ under that cap — for example, `isGroupMember(gid)` reuses
 These guardrails apply across multiple collections. They are the
 "OS-level" guarantees of the data model.
 
-### B1 — Money record ownership (creator-only edit)
+### B1 — Money record authorship
 
 Every expense and settlement carries `createdBy` (auth UID). The field
-is **immutable** after creation. Only the creator can update or
-soft-delete their own record.
+is **immutable** after creation.
+
+Expense edits are now open-edit: any event participant may update or
+soft-delete any expense through `validExpenseUpdate`. The editor is pinned by
+`lastEditedBy == request.auth.uid`, and the `expenseAuditLogger` trigger logs
+the change. Settlements stay append-only; corrections are new offsetting rows.
 
 ```
 function requesterIsRecordCreator() {
@@ -83,10 +87,15 @@ function requesterIsRecordCreator() {
 }
 ```
 
-Implication: anyone in an event can create a record naming someone else
-as `payerParticipantId`, but only the creator can later modify it. If
-forging false claims becomes a real problem, B2 (peer acknowledgement)
-and B3 (immutable settlements) would need to be revisited.
+`requesterIsRecordCreator()` is retained only for dead settlement-update helper
+paths kept as settlement-corrections scaffolding. Those match blocks still
+hard-deny update, so the helper is not part of live expense authorization.
+
+Implication: anyone in an event can create a record naming someone else as
+`payerParticipantId`, and any event participant can later modify the expense
+within the allowed field/value guards. If forging false claims becomes a real
+problem, B2 (peer acknowledgement), the future `ledgerEditPolicy`, and B3
+(append-only settlements) would need to be revisited.
 
 ### B3 — Settlements are append-only
 
@@ -96,7 +105,7 @@ group-level (`groups/{gid}/settlements/{sid}`) settlements deny
 settlement, not by mutating the old one. This preserves an audit trail
 for money movement.
 
-The expense rules permit updates and soft-deletes by the creator; only
+The expense rules permit updates and soft-deletes by event participants; only
 settlements are absolute.
 
 ### Identity rewrites vs. financial immutability (Admin-SDK maintenance)
@@ -272,11 +281,12 @@ allow read: if isMember();
 #### Create (`validGroupCreate`)
 
 The caller creates the group with themselves as the only member. The
-new doc must contain *exactly* this key set:
+new doc's keys must be within this allowlist:
 
 ```
 ['id', 'name', 'inviteCode', 'createdBy', 'memberIds',
- 'currency', 'createdAt', 'updatedAt']
+ 'currency', 'createdAt', 'updatedAt', 'isDeleted', 'deletedAt',
+ 'glyph', 'inkIndex']
 ```
 
 Additional invariants:
@@ -285,32 +295,34 @@ Additional invariants:
 - `name` passes `isValidDisplayName`
 - `createdBy == request.auth.uid`
 - `memberIds == [request.auth.uid]` (you cannot pre-seed members)
-- `currency` is a 3-char string
+- `currency` passes the supported-code `validCurrency` allowlist
 - Timestamps present
+- `isDeleted == false`, `deletedAt == null`
+- `glyph` / `inkIndex` are optional; each present value must pass its
+  trip-stamp allowlist
 
-#### Update (four allowed shapes)
+#### Update (two allowed shapes)
 
 | Shape | Function | Who |
 |-------|----------|-----|
-| Metadata edit | `validCreatorMetadataUpdate` | Creator. Affected keys ⊆ `{name, currency, updatedAt}`; `name` validates if present; `currency` validates if present. |
+| Metadata edit | `validCreatorMetadataUpdate` | Creator. Affected keys ⊆ `{name, updatedAt, glyph, inkIndex}`; `name` validates if present; `glyph` / `inkIndex` must be absent-or-valid. `currency` is immutable after create. |
 | Member-list refresh | `validMemberIdsRefresh` | Any member. `memberIds` unchanged + bump `updatedAt`. Used by clients to refresh the `updatedAt` ordering signal without mutating membership. |
-| Self-leave | `validSelfLeave` | Member removing themselves. Exactly one element drops from `memberIds` and that element is the caller. |
-| Creator-remove-member | `validCreatorRemoveMember` | Creator removing someone else. Exactly one element drops and that element is **not** the caller (so creators cannot leave their own group while members remain). |
 
-The "exactly one drop" predicate (`removesExactlyOneExistingMember`)
-ensures the entire `memberIds` array is preserved minus a single
-element — clients cannot smuggle in a different list under cover of a
-membership change.
+Direct client membership removal is forbidden. `leaveGroup` and
+`removeMember` are server-authoritative Cloud Functions that recompute the
+leaver/target balance, refuse non-zero net, then remove the UID from
+`memberIds` and delete the member doc in an Admin SDK batch.
 
 #### Delete
 
 ```
-allow delete: if isCreator();
+allow delete: if false;
 ```
 
-Hard-delete. Used by the creator's "Delete group" action. Cascading
-deletion of subcollections is the client's responsibility — Firestore
-itself does not cascade.
+Direct group document deletion is forbidden. The `deleteGroup` callable recomputes net
+balances across all events plus group settlements, refuses non-zero net, then
+soft-deletes the group and its events while keeping append-only expense and
+settlement records reachable.
 
 ### 4.5 `groups/{gid}/events/{eid}` (C-Hierarchy)
 
@@ -434,17 +446,17 @@ stripped `gear` / `vault` / `logistics` / `memories` subcollections).
 
 #### Create
 
-`allow create: if validExpenseCreate() || validEventSettlementCreate() || validActivityCreate();`
+`allow create: if validExpenseCreate() || validEventSettlementCreate();`
 
 Each branch enforces the module name plus its own schema.
 
 **Expenses** (`validExpenseBase` + `validExpenseCreate`):
 
-- Exact key set: `id, eventId, createdBy, payerParticipantId, amountFils, currency, description, scope, subGroupId, customSplitParticipants, splitMode, splitDistribution, receiptUrl, categoryId, note, isDeleted, deletedAt, createdAt`
+- Exact key set: `id, eventId, createdBy, payerParticipantId, amountFils, currency, description, scope, subGroupId, customSplitParticipants, splitMode, splitDistribution, receiptUrl, categoryId, note, isDeleted, deletedAt, createdAt, lastEditedBy, splitExplanation`
 - `id == {docId}`, `eventId == {eid}`
 - `payerParticipantId in event.participantIds`
 - `amountFils` is a positive int (money is stored as subunits — see [ARCHITECTURE.md § Financial Calculations](./ARCHITECTURE.md))
-- `currency` is a 3-char string
+- `currency` passes the supported-code `validCurrency` allowlist
 - `scope in ['global', 'sub_group', 'personal', 'custom']`
 - `customSplitParticipants` is a list whose elements are all event participants
 - `splitMode in ['equally', 'shares', 'exact', 'percent']` (if present)
@@ -454,25 +466,26 @@ Each branch enforces the module name plus its own schema.
 
 **Event settlements** (`validEventSettlementBase` + `validEventSettlementCreate`):
 
-- Exact key set: `id, eventId, createdBy, payerParticipantId, recipientParticipantId, amountFils, currency, note, isDeleted, deletedAt, settledAt`
+- Exact key set: `id, eventId, createdBy, payerParticipantId, recipientParticipantId, amountFils, currency, note, payerName, recipientName, isDeleted, deletedAt, settledAt`
 - Payer and recipient must both be participants AND different from each other
-- `amountFils` positive int, `currency` 3-char string
+- `payerName` / `recipientName` are nullable valid display names
+- `amountFils` positive int, `currency` passes the supported-code `validCurrency` allowlist
 - `createdBy == request.auth.uid` and caller `isEventParticipant`
 
-**Activity logs** (`validActivityCreate`):
+**Activity logs**:
 
-- Exact key set: `id, eventId, category, eventType, logText, actorId, actorName, metadata, createdAt`
-- `actorId == request.auth.uid` (actor must be self)
-- `actorName` is a valid display name (or null)
-- `category`, `eventType`, `logText` are strings; `metadata` is a map; `createdAt` is a string
+- Clients may read event activity logs, but cannot create/update/delete them.
+- Expense create/edit/soft-delete audit entries are written by the
+  `expenseAuditLogger` trigger through the Admin SDK, bypassing rules.
 
 #### Update
 
 Only expenses are updatable (`validExpenseUpdate`):
 
-- Caller is event participant **and** record creator (B1)
+- Caller is an event participant; creator-only edit was removed in #248 PR4
 - `createdBy` cannot change
-- Affected keys ⊆ `{payerParticipantId, amountFils, currency, description, scope, subGroupId, customSplitParticipants, splitMode, splitDistribution, receiptUrl, categoryId, note, isDeleted, deletedAt}`
+- `lastEditedBy == request.auth.uid` on every update for audit attribution
+- Affected keys ⊆ `{payerParticipantId, amountFils, currency, description, scope, subGroupId, customSplitParticipants, splitMode, splitDistribution, receiptUrl, categoryId, note, isDeleted, deletedAt, lastEditedBy, splitExplanation}`
 - The full base validator runs against the new state
 - The `isDeleted` / `deletedAt` pair must either both stay the same OR perform the one-way soft-delete
 
@@ -482,7 +495,7 @@ Only expenses are updatable (`validExpenseUpdate`):
 allow delete: if false;
 ```
 
-Hard-delete is forbidden; use the soft-delete update path.
+Direct document deletion is forbidden; use the soft-delete update path.
 
 #### Nested deeper subcollections
 
@@ -522,12 +535,16 @@ the audit trail.
 | `read` | Any group member. |
 | `create` (`validMemberCreate`) | Caller is a group member. New doc keys ⊆ `{id, userId, displayName, role, joinedAt, isShadow}`. `id == {memberId}`, `userId == request.auth.uid`, `displayName` valid, `role` in `['CREATOR', 'MEMBER']`. `CREATOR` role allowed only when caller is the group's `createdBy`. |
 | `update` (`validSelfDisplayNameUpdate`) | Caller owns the member doc (`resource.data.userId == request.auth.uid`). Affected keys = `{displayName}` only. |
-| `delete` (`validMemberDelete`) | Either self-leave (caller's UID dropped from group's `memberIds` in the same transaction) or creator-remove (caller is group creator and target UID is being dropped from `memberIds` or the group is being deleted entirely). |
+| `delete` (`validMemberDelete`) | Residual cleanup only after a server-authoritative membership mutation has already made the target absent from `group.memberIds` (or the group will not exist after the write). Self cleanup requires `resource.data.userId == request.auth.uid`; creator cleanup requires caller is `group.createdBy`. |
 
-The cross-doc `getAfter` checks make the member doc deletion atomic
-with the group's `memberIds` update — you cannot delete a member doc
-without simultaneously reflecting the leave in the parent group, and
-vice versa.
+The cross-doc `getAfter` checks are a guardrail for batches that already
+have a valid parent-group post-state: the member doc can be deleted only
+when `groupAfter.memberIds` no longer contains that `userId` (or, for
+creator cleanup, the group is absent after the write). Client group
+updates no longer allow arbitrary `memberIds` removal, so direct
+self-leave / creator-remove is not achieved through rules; use the
+server callables (`leaveGroup`, `removeMember`, `deleteGroup`) for those
+flows.
 
 ### 4.9 `groups/{gid}/activity/{activityId}` (group-level)
 
@@ -577,7 +594,7 @@ rewrite once it bypasses the rules, see
 | Invite-code redemption | A rule cannot atomically read `inviteCodes` + add to `memberIds` + fan out into all events while staying under the `get` budget. | `joinGroupByInviteCode` callable. |
 | Rate-limiting failed joins | Rules cannot increment a counter across requests. | `joinAttempts` doc, written by the callable. |
 | Account deletion cascade | Cross-collection scrub across hundreds of docs exceeds rules' write surface. | `deleteAccount` callable. |
-| Currency whitelist | `validCurrency` checks length only; the actual allowed set (OMR/USD/EUR/GBP/SAR/AED/JPY/KWD/BHD/QAR) lives in `MoneySerializer`. | Client validation + `MoneySerializer`. |
+| Currency whitelist | Rules enforce the same supported-code allowlist shape as the app; no FX, sign/sum, or cross-currency arithmetic is enforced in rules. | `validCurrency` + client `MoneySerializer` / balance tests. |
 | Money math correctness | Rules can validate fields, not arithmetic. | `BalanceCalculator` + unit tests under `test/unit/`. |
 | Server-side App Check enforcement | Rules don't see App Check tokens. | `{ enforceAppCheck: true }` on every callable. |
 

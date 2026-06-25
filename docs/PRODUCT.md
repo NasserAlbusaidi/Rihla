@@ -12,7 +12,7 @@ Rihla ("journey" in Arabic) is a Splitwise-style group expense splitter organise
 
 **Core value:** Groups persist; financial history accumulates across events; settle-up is debt-minimising and works across the whole group.
 
-**Target market:** Oman / GCC first, then global. Default currency is OMR (Omani Rial, 3-decimal precision). Money math uses the `Decimal` package — no floats anywhere.
+**Target market:** Oman / GCC first, then global. Default group currency is OMR (Omani Rial, 3-decimal precision), with supported per-group/per-expense currencies and per-currency balance buckets. Money math uses the `Decimal` package — no floats anywhere.
 
 **Tech footprint:** Flutter mobile app (`safar` package, Android `com.safar.safar`), Firebase backend (Firestore + Auth + Cloud Functions + FCM — **no Storage SDK use**). Firestore's own offline persistence is the only cache — it serves offline reads and replays queued writes; there is no separate local cache.
 
@@ -46,7 +46,8 @@ Group ──< Event ──< Expense
 
 ### GroupMember
 - `userId`, `displayName`, `role` ∈ `{ 'CREATOR', 'MEMBER' }`, `isShadow`, `joinedAt`.
-- `isShadow` exists to support placeholder members added by the creator before they join (not exposed in v1 UI but reserved by the schema).
+- `isShadow` is live: creators can add placeholder members by name from create/settings, joiners can request to claim one of those placeholders, and creator approval (`requestClaimShadow` → `decideClaimRequest`) re-keys that placeholder's balances/references to the joiner's UID.
+- Match members by the `userId` field, never by document id: client-created real members are UID-keyed, server-minted shadows are UUID-keyed, and legacy creator docs may also be UUID-keyed.
 
 ### Event (`lib/features/events/models/event_model.dart`)
 - `id`, `name`, `type` ∈ `{ trip, camping, travel, nightDayOut, custom }`, `groupId`, `createdBy`, `participantIds`, `participantNames` (snapshot map), `modules`, optional `startDate` / `endDate` / `description`, soft-delete via `isDeleted` + `deletedAt`.
@@ -61,7 +62,11 @@ Group ──< Event ──< Expense
   - **custom** — split among an explicit subset.
   - **subGroup** — legacy; back-compat falls through to global.
 - Orthogonal to scope, each expense carries a `splitMode` ∈ `{ equally, shares, exact, percent }` with an optional `splitDistribution` map — scope picks WHO shares, `splitMode` picks HOW the amount divides.
-- Rounding: per-head share is truncated to 3 decimals; the deterministic last recipient (sorted alphabetically) absorbs the residual so `sum(shares) == amount` exactly. No rounding errors leak.
+- Rounding: per-head shares are quantized to the expense currency's integer
+  subunit precision through `MoneySerializer` (for example OMR/KWD/BHD 3dp,
+  USD-style currencies 2dp, JPY 0dp); the deterministic last recipient (sorted
+  alphabetically) absorbs the residual so `sum(shares) == amount` exactly. No
+  rounding errors leak.
 
 ### Settlement
 - A payment from one participant to another. Recorded against an event (event-level settle-up) or a group (cross-event settle-up). Soft-deleted.
@@ -82,7 +87,7 @@ Two roles per group:
 | Edit event dates / description   | ✅      | ❌     |
 | Delete event                     | ✅      | ❌     |
 | Add expense                      | ✅      | ✅     |
-| Edit / delete own expense        | ✅      | ✅     |
+| Edit / delete event expenses     | ✅      | ✅     |
 | Settle up                        | ✅      | ✅     |
 | Leave group (self)               | ✅*     | ✅     |
 | View everything                  | ✅      | ✅     |
@@ -241,7 +246,7 @@ Single-scroll layout — there are no tabs:
 2. **Offline banner** when applicable.
 3. **`LedgerHeroCard`** — your net balance for this event, the event's total spend, expense + settlement counts, and two CTAs: **Add Expense** and **Settle Up**.
 4. **TRANSACTIONS overline**.
-5. **Timeline** — `FadeInList` of expenses and settlements interleaved by date desc. Each expense card shows payer, amount, description, category icon, and split scope; tapping it opens the edit screen if it's yours.
+5. **Timeline** — `FadeInList` of expenses and settlements interleaved by date desc. Each expense card shows payer, amount, description, category icon, and split scope; tapping an expense opens the editor for event participants.
 
 Empty state: a friendly prompt with the same Add Expense CTA from the hero card.
 
@@ -336,7 +341,7 @@ The following were intentionally removed in Phase 39 ("Strip to Shippable") and 
 - Payment processing
 - Chat / messaging tab
 
-The Firestore schema still tolerates legacy keys for these features (silent `fromMap` ignore) so existing user data does not break, but no UI exposes them. The `OnboardingScreen` exists as archived code but is NOT reachable in v1 — the router has no `/onboarding` route and never gates on `onboardingComplete`. Deletion is tracked in #56.
+The Firestore schema still tolerates legacy keys for these features (silent `fromMap` ignore) so existing user data does not break, but no UI exposes them. The onboarding route/screen was deleted (#56): the router has no `/onboarding` route and never gates on `onboardingComplete`; only the legacy settings flag/tests remain for compatibility.
 
 ---
 
@@ -346,7 +351,7 @@ The Firestore schema still tolerates legacy keys for these features (silent `fro
 - **No iOS CI.** Android-only release pipeline. iOS builds are manual; iOS launch soft-deferred ~weeks behind Android Production.
 - **No general multi-device account workflow.** Anonymous UIDs are device-bound unless the user has linked and restored through email-link recovery.
 - **Soft-delete only** for expenses, events, groups, and settlements where supported — they remain in Firestore until retention tooling exists.
-- **OMR-pinned writes.** A currency-default picker (OMR/AED/SAR/USD/EUR/GBP) ships in Profile and `MoneySerializer` handles 10 currencies, but group/expense creation still hardcodes `'OMR'` (`create_group_screen.dart`), so all live data is OMR pending #61.
+- **No FX conversion.** Multi-currency balances are bucketed per currency. OMR cannot cancel out AED, so settle-up records one payment per currency instead of inventing exchange rates.
 - **Anon-UID orphan risk closed by the durable-credential gate (#441).** Money data can no longer be born under an anonymous UID (server-enforced at group create/join), so restore is same-UID and the old cross-UID cleanup engine was deleted (PR5).
 
 ---

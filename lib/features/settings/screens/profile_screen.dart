@@ -56,7 +56,7 @@ import '../widgets/profile_qr_sheet.dart';
 ///   3. Identity card — decorative corner flourish, 84dp avatar, italic name,
 ///      tagline, two action chips
 ///   4. 3-column stats grid (Journeys / Groups / Spent)
-///   5. Preferences card (Notifications / Currency / Language / Default split)
+///   5. Preferences card (Notifications / Language / Default split)
 ///   6. Display section (theme picker)
 ///   7. Account card (linked email, sign out, delete)
 ///   8. About card (Help / Feedback / Terms)
@@ -115,7 +115,9 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 18),
                     Padding(
                       key: ProfileKeys.displaySection,
-                      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.spacing.space20,
+                      ),
                       child: const ProfileDisplaySection(),
                     ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                     const SizedBox(height: 18),
@@ -284,7 +286,12 @@ class _PendingRecoveryBanner extends ConsumerWidget {
     final colors = context.colors;
     return Padding(
       key: ProfileKeys.pendingRecoveryBanner,
-      padding: EdgeInsets.fromLTRB(context.spacing.space20, context.spacing.space12, context.spacing.space20, context.spacing.space4),
+      padding: EdgeInsets.fromLTRB(
+        context.spacing.space20,
+        context.spacing.space12,
+        context.spacing.space20,
+        context.spacing.space4,
+      ),
       child: Material(
         color: colors.cardSoft,
         borderRadius: BorderRadius.circular(14),
@@ -295,7 +302,10 @@ class _PendingRecoveryBanner extends ConsumerWidget {
             context.push('/recover');
           },
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14, vertical: context.spacing.space12),
+            padding: EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: context.spacing.space12,
+            ),
             child: Row(
               children: [
                 Icon(Iconsax.sms_tracking, size: 18, color: colors.textPrimary),
@@ -609,7 +619,10 @@ class _IdentityChip extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: 7),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space12,
+          vertical: 7,
+        ),
         decoration: BoxDecoration(
           color: colors.cardSoft,
           borderRadius: BorderRadius.circular(context.spacing.radiusPill),
@@ -819,11 +832,7 @@ class _SpentValue extends StatelessWidget {
         for (final s in shown)
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
-            child: RAmount(
-              value: s.amount,
-              currency: s.currency,
-              size: 15,
-            ),
+            child: RAmount(value: s.amount, currency: s.currency, size: 15),
           ),
         if (overflow > 0)
           Text(
@@ -983,11 +992,9 @@ class _PreferencesCard extends ConsumerWidget {
               unawaited(ref.read(notificationServiceProvider).initialize());
             },
           ),
-          // #61: 1.0 is OMR-only. The currency picker was orphaned (it wrote
-          // AppSettings.currencyCode, which no write path ever read), so it
-          // promised a choice the app could not honour. Removed until the
-          // multi-currency follow-up wires currency end-to-end AND solves
-          // currency-blind aggregation in computeGroupBalances.
+          // #61/#382: no global profile currency. Groups choose their default
+          // currency at create time, expenses can carry their own supported
+          // currency, and balances render per-currency buckets with no FX.
           _PrefRow(
             leading: _PrefIconLetter(letter: 'Aa', bg: colors.saffronTint),
             label: context.l10n.profilePreferencesLanguage,
@@ -1000,8 +1007,10 @@ class _PreferencesCard extends ConsumerWidget {
               bg: colors.cardSoft,
             ),
             label: context.l10n.profilePreferencesDefaultSplit,
-            trailingText:
-                splitModeDisplayName(settings.defaultSplitMode, context.l10n),
+            trailingText: splitModeDisplayName(
+              settings.defaultSplitMode,
+              context.l10n,
+            ),
             onTap: () => DefaultSplitPickerSheet.show(context),
             divider: false,
           ),
@@ -1078,9 +1087,7 @@ class _AccountCard extends ConsumerWidget {
       await ref.read(authRecoveryServiceProvider).signOutCurrentDevice();
       messenger.showSnackBar(SnackBar(content: Text(signedOut)));
     } catch (_) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(signOutFailed)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(signOutFailed)));
     }
   }
 
@@ -1096,7 +1103,8 @@ class _AccountCard extends ConsumerWidget {
     // Restore entries discard the current shell with no merge engine — only
     // safe when the shell is provably empty. Mirrors the home empty-state
     // guard (#428); userGroupsProvider loading/error → hidden (fail-safe).
-    final showRestore = isAnonymous &&
+    final showRestore =
+        isAnonymous &&
         (ref.watch(userGroupsProvider).valueOrNull?.isEmpty ?? false);
 
     // #487 bullet 3: only the backup & recovery rows live here now; the
@@ -1109,7 +1117,10 @@ class _AccountCard extends ConsumerWidget {
           if (googleAccount != null)
             _PrefRow(
               tileKey: ProfileKeys.googleAccountTile,
-              leading: _PrefIcon(icon: Iconsax.shield_tick, bg: colors.cardSoft),
+              leading: _PrefIcon(
+                icon: Iconsax.shield_tick,
+                bg: colors.cardSoft,
+              ),
               label: context.l10n.profileAccountGoogle,
               trailing: Text(
                 googleAccount.email ?? context.l10n.profileAccountGoogleLinked,
@@ -1125,7 +1136,10 @@ class _AccountCard extends ConsumerWidget {
           if (isAnonymous)
             _PrefRow(
               tileKey: ProfileKeys.googleLinkTile,
-              leading: _PrefIcon(icon: Iconsax.shield_tick, bg: colors.cardSoft),
+              leading: _PrefIcon(
+                icon: Iconsax.shield_tick,
+                bg: colors.cardSoft,
+              ),
               label: context.l10n.profileAccountLinkGoogle,
               trailing: DirectionalIcon(
                 Iconsax.arrow_right_3,
@@ -1197,7 +1211,10 @@ class _AccountCard extends ConsumerWidget {
             ),
             _PrefRow(
               tileKey: ProfileKeys.profileRestoreEmailTile,
-              leading: _PrefIcon(icon: Iconsax.sms_tracking, bg: colors.cardSoft),
+              leading: _PrefIcon(
+                icon: Iconsax.sms_tracking,
+                bg: colors.cardSoft,
+              ),
               label: context.l10n.homeRestoreWithEmail,
               trailing: DirectionalIcon(
                 Iconsax.arrow_right_3,
@@ -1241,8 +1258,10 @@ class _DangerZoneCard extends ConsumerWidget {
       }
       return;
     }
-    final confirmed =
-        await DeleteAccountDialog.show(context, isAnonymous: isAnonymous);
+    final confirmed = await DeleteAccountDialog.show(
+      context,
+      isAnonymous: isAnonymous,
+    );
     if (confirmed != true || !context.mounted) return;
     await _runDeletion(context, ref);
   }
@@ -1454,8 +1473,8 @@ class _NotificationPrefRow extends StatelessWidget {
                   onChanged: permissionDenied
                       ? (_) => onOpenSettings()
                       : errored
-                          ? (_) => onRetry()
-                          : onChanged,
+                      ? (_) => onRetry()
+                      : onChanged,
                   activeThumbColor: colors.primary,
                   activeTrackColor: colors.primary,
                   inactiveTrackColor: colors.cardSoft,
@@ -1523,7 +1542,10 @@ class _PrefRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: Row(
               children: [
-                if (leading != null) ...[leading!, SizedBox(width: context.spacing.space12)],
+                if (leading != null) ...[
+                  leading!,
+                  SizedBox(width: context.spacing.space12),
+                ],
                 Expanded(
                   child: Text(
                     label,

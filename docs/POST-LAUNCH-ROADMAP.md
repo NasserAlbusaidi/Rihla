@@ -22,7 +22,7 @@ These were checked against `origin/main` and the GitHub API, not issue text — 
 - **#40** (RD-QA matrix) — 2026-06-05 RD-QA ran **9/9 on a debug build** with an emulator standing in for RD-04; `RIHLA_REAL_DEVICE_QA_READY` left unset, so the release gate stays red. Closing it needs a real-device pass against a release AAB.
 - **PR #44** (codex auth-recovery hardening) — stale-open since 2026-05-28, `mergeable=UNKNOWN`. Decide: rebase+land or close.
 
-All dependency parents are closed: #61 (OMR-only 1.0), #192/#193 (rules value-domain), #216 (recovery ledger migration), #247 (attribution decoupling), #249 (conservation drop), #126 (RTL back-arrow), #41 (backend deploy).
+All dependency parents are closed: #61 (initial group-currency rollout), #192/#193 (rules value-domain), #216 (recovery ledger migration), #247 (attribution decoupling), #249 (conservation drop), #126 (RTL back-arrow), #41 (backend deploy).
 
 ---
 
@@ -41,7 +41,7 @@ The trust boundary and the recovery machinery are where being silently-wrong cos
 - **Cluster C · settlement-ux** — #245 (activation) → #200 / #202 (auditable dividend) → #203 / #204 / #180 (expense trust + insights)
 
 ### Phase 3 — Multi-currency (`Post-release features`)
-- **Cluster A · multi-currency** — #261 (aggregation design = the gate) → #70 / #242 fall out once a non-OMR write path exists
+- **Cluster A · multi-currency** — largely shipped by #261/#382; remaining issues are follow-up UX/polish, not the core aggregation model
 
 ### Ongoing / opportunistic
 - **Cluster E · schema-debt** — #71, #246 (+#219 once merged)
@@ -54,13 +54,13 @@ The trust boundary and the recovery machinery are where being silently-wrong cos
 ## The clusters
 
 ### A · Multi-currency end-to-end · `cluster:multi-currency`
-**Root cause:** the aggregation layer (`paidMap`/`owedMap`/`computeGroupBalances`, and the TS `deleteGroup` `recomputeNet` oracle) sums `Decimal`s with **no currency dimension** — a mixed-currency group computes nonsense (10 USD + 10 OMR = "20"). `MoneySerializer`/`BalanceCalculator` are already per-expense-currency-correct (#47); the missing piece is one design decision: **one-currency-per-group** (simplest) vs **per-currency buckets**. No FX in scope.
+**Resolved root cause:** the aggregation layer now buckets balances per currency on both the client and server oracle. OMR/AED/USD values never net against each other; settle-up records one payment per currency with no FX conversion. This section is retained as roadmap context for remaining multi-currency UX/polish, not as the current aggregation design state.
 
 | Issue | Milestone | Note |
 |---|---|---|
-| **#261** | Post-release features | The aggregation-design master. Decide the model + wire write paths + restore the currency picker. **Gate.** |
-| #70 | Post-launch hardening | Display sites still assume OMR (3dp / literal `'OMR'`). Latent until a non-OMR write exists. |
-| #242 | Post-release features | Split-preview WYSIWYG — depends on un-hardcoding `_tripCurrency`. **Gate.** |
+| **#261/#382** | Shipped | Per-currency balance buckets and write paths are live; no FX conversion. |
+| #70 | Post-launch hardening | Follow-up display audit for any remaining literal/default currency fallbacks. |
+| #242 | Post-release features | Split-preview WYSIWYG — depends on preserving the picked expense currency through the preview. **Gate.** |
 
 ### B · Server-side money trust boundary · `cluster:money-trust`
 **Root cause:** the write/read trust boundary is thinner than the money invariants the client enforces — forged or partial data can still surface wrong or misleading money. `firestore.rules` only checks shape, not all values.
@@ -68,7 +68,7 @@ The trust boundary and the recovery machinery are where being silently-wrong cos
 | Issue | Milestone | Note |
 |---|---|---|
 | #223 | Post-launch hardening | Server-side `sum==amount` within tolerance. Not a rules tweak — callable vs trigger arch decision. **Gate.** |
-| #248 | Post-launch hardening | Widen edit/delete from creator-only → creator+payer+leader (rules authz). Unblocked by #247. **Gate.** |
+| #248 | Shipped | Expense edit/soft-delete is now open to any event participant, with immutable `createdBy`, mandatory `lastEditedBy == auth.uid`, and audit logging. Future policy tightening would be a new `ledgerEditPolicy` track. |
 | #244 | Post-launch hardening | Home-hero graceful-partial signal (money-safety already shipped PR #253). **Gate.** |
 | #220 | Post-launch hardening | Client free-text validator + inline editor feedback (pure UX; rules half already deployed). |
 

@@ -89,10 +89,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   Widget build(BuildContext context) {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
-    // #261: settlements are denominated in the owning group's currency. Gate
-    // the screen on the group resolving — never default to 'OMR' (a non-OMR
-    // group would mis-scale 10× and be rules-rejected). Three branches mirror
-    // group_settle_up_screen.dart: loading / null group / data.
+    // #382: settlements are denominated in the selected balance bucket's
+    // currency. The group still has to resolve so an empty ledger can render a
+    // zero bucket in the group default instead of falling back to literal OMR.
+    // Three branches mirror group_settle_up_screen.dart: loading / null group /
+    // data.
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     if (eventAsync.isLoading || groupAsync.isLoading) {
@@ -171,8 +172,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     // itself (and the name maps + participants derived from it) is built inside
     // the data callback below, where expenses/settlements are available.
     final allMemberIds = groupMembers.map((m) => m.userId).toSet();
-    final liveMemberIds =
-        groupMembers.where((m) => !m.isTombstone).map((m) => m.userId).toSet();
+    final liveMemberIds = groupMembers
+        .where((m) => !m.isTombstone)
+        .map((m) => m.userId)
+        .toSet();
 
     return Scaffold(
       key: LedgerKeys.settleUpScreen,
@@ -576,7 +579,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       if (outcome == WriteAck.acked) {
         connectivityNotifier.noteLocalWrite(); // #357
       } else {
-        connectivityNotifier.noteQueuedWrite(); // #412: queued — force "will sync"
+        connectivityNotifier
+            .noteQueuedWrite(); // #412: queued — force "will sync"
       }
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

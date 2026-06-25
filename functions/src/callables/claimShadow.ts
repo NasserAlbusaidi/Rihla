@@ -351,8 +351,9 @@ export async function claimShadowEngine(
     throw new HttpsError('not-found', 'Group not found.');
   }
 
-  // Match the shadow by the userId FIELD (uuid-keyed; #294 trap), from the
-  // snapshot's already-loaded members.
+  // Match the shadow by the userId FIELD. Server-minted shadow docs are
+  // uuid-keyed (doc.id === userId), and field matching keeps this path aligned
+  // with the rest of the member-doc keying code.
   const shadowMembers = snapshot.members.filter((m) => m.data.userId === shadowMemberId);
   if (shadowMembers.length === 0) {
     // The placeholder doc is gone — a prior claim retired it (or it never

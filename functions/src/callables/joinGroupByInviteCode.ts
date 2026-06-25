@@ -313,8 +313,8 @@ export const joinGroupByInviteCode = onCall<
         // matches MemberNameResolver.disambiguate's collision key
         // (`trim().toLowerCase()`) so prevention and the display disambiguator
         // (#196/#289) agree. Compared across ALL member docs by the
-        // `userId`/`displayName` FIELDS (not doc id) so the creator's uuid-keyed
-        // doc is included. Throws `already-exists`, which is NOT in
+        // `userId`/`displayName` FIELDS (not doc id) so legacy uuid-keyed rows
+        // are included. Throws `already-exists`, which is NOT in
         // `isLookupFailure`, so a collision never burns the 5/hr join throttle —
         // it is a legitimate user error, not enumeration.
         if (didJoin) {

@@ -36,8 +36,9 @@ async function resolveGroupName(gid: string): Promise<string> {
   }
 }
 
-// Match by the userId FIELD, never the doc id — the creator's member doc is keyed
-// by a random uuid with userId:uid (#294). Mirrors expenseNotifier.resolveActorName.
+// Match by the userId FIELD, never the doc id. New client-created member docs
+// key by {uid}, but legacy creator docs and server-minted shadows can be
+// uuid-keyed (#294/#524). Mirrors expenseNotifier.resolveActorName.
 // Returns '' when unresolved; strings.ts actorLabel localizes the fallback.
 async function resolveActorName(gid: string, actorUid: string): Promise<string> {
   if (!actorUid) return '';

@@ -89,10 +89,7 @@ String normalizeDisplayName(String input) {
 /// (#194): `value.size() <= 280`.
 const int kFreeTextMaxLength = 280;
 
-enum FreeTextValidationError {
-  tooLong,
-  controlCharacter,
-}
+enum FreeTextValidationError { tooLong, controlCharacter }
 
 /// Returns the validation error for free-text [input], or `null` if valid.
 ///
@@ -136,7 +133,7 @@ String? validateFreeText(String? input) {
 ///
 /// [memberDocs] are RAW Firestore member maps (not `GroupMember`) so a
 /// malformed doc is skipped, never thrown on. Own-doc is matched by the
-/// `userId` FIELD (the creator doc is uuid-keyed — #294), and tombstoned
+/// `userId` FIELD (legacy docs can be uuid-keyed — #294/#524), and tombstoned
 /// (former) members are skipped to match the live-only counting in
 /// `disambiguate`. Used by the self-rename pre-check (#390).
 bool nameCollidesInDocs({

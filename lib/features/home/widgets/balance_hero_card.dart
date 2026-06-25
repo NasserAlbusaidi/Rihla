@@ -74,9 +74,8 @@ class _LoadedCard extends StatelessWidget {
     final buckets = balance.byCurrency;
     // #261: one block per currency (there is no FX, so amounts in different
     // currencies are never summed). The trailing currency code sits inline in
-    // the header ONLY when there is exactly one currency — today's all-OMR
-    // reality renders identically to before. Multi-currency: each block carries
-    // its own code; all-settled (empty): no code.
+    // the header ONLY when there is exactly one active currency bucket. Mixed
+    // currency: each block carries its own code; all-settled (empty): no code.
     final single = buckets.length == 1;
 
     final children = <Widget>[
@@ -473,7 +472,10 @@ class _IncompleteNotice extends StatelessWidget {
         Expanded(
           child: Text(
             context.l10n.homeBalanceIncompleteNotice,
-            style: AppTypography.sans(fontSize: 12, color: colors.textSecondary),
+            style: AppTypography.sans(
+              fontSize: 12,
+              color: colors.textSecondary,
+            ),
           ),
         ),
       ],

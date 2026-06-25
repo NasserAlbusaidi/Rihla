@@ -439,9 +439,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     required String fromUserId,
     required String toUserId,
     required Decimal suggestedAmount,
-    // #382 PR-1: the BUCKET currency the suggestion was computed in — the
-    // write must carry it (== group.currency for all prod data; a foreign
-    // legacy/forged bucket is rules-refused, the correct outcome until PR-6).
+    // #382: the BUCKET currency the suggestion was computed in — the write
+    // must carry it. Rules require a supported currency code; balances remain
+    // bucketed with no cross-currency netting.
     required String currency,
     String? stepLabel,
     bool showSuccessSnackbar = true,
@@ -490,9 +490,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
     if (editedAmount <= Decimal.zero) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.settleUpAmountGreaterThanZero),
-        ),
+        SnackBar(content: Text(context.l10n.settleUpAmountGreaterThanZero)),
       );
       return const _StepOutcome(_StepOutcomeKind.invalid);
     }
@@ -595,7 +593,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       if (outcome == WriteAck.acked) {
         connectivityNotifier.noteLocalWrite(); // #357
       } else {
-        connectivityNotifier.noteQueuedWrite(); // #412: queued — force "will sync"
+        connectivityNotifier
+            .noteQueuedWrite(); // #412: queued — force "will sync"
       }
 
       // #282: name the OTHER party relative to the actor. When the creditor

@@ -214,9 +214,10 @@ starts a new run.
       the owning group's currency, and `validCreatorMetadataUpdate` drops
       `currency` from its allow-list (settable only at create). Client
       `updateGroup(currency:)` param removed. Rules-only; 13 functions unchanged.
-      A tautology for every current OMR write — forward-enforcement for Model A
-      multi-currency (Phase 2 must move the `'OMR'` write hardcodes or non-OMR
-      writes get `PERMISSION_DENIED`).
+      Historical Model A enforcement: later #382 PRs moved write paths to
+      supported explicit currency codes and relaxed money-doc equality to
+      `validCurrency`, so non-OMR writes no longer fail solely for differing
+      from the group default.
     - **#279** (`b9163a1d`, #388) — server-authoritative display-name collision
       guard in `joinGroupByInviteCode`: a brand-new joiner whose
       `trim().toLowerCase()` name matches an existing member is rejected
@@ -250,9 +251,10 @@ starts a new run.
       `currencies.size>1` refusal → require **zero in every currency bucket** (no
       FX). `balanceAggregator` Shim #2 flattens the sole bucket → v1 aggregate doc
       byte-identical; `balanceReconciler` untouched. Functions-only; 17 functions
-      unchanged. Backward-compatible — single-currency (all prod) behavior is
-      identical; the per-bucket logic is unreachable until PR-6 relaxes the
-      uniformity rules. Mirrors the merged client PR-1; #382 epic stays open.
+      unchanged. Backward-compatible — single-currency behavior is identical;
+      later #382 PRs relaxed the uniformity constraint and made per-bucket
+      paths reachable. Mirrors the merged client PR-1; #382 epic stayed open
+      at this point in the rollout.
     - **#382 PR-3** (`b12a3f00`, #471) — aggregate doc v2: `balanceAggregator`
       drops Shim #2 and writes `schemaVersion: 2` per-currency milli maps
       (`netMilliByCurrency` `{ccy:{uid:int}}` + `perEventNetMilliByCurrency`

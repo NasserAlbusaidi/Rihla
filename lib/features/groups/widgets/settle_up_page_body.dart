@@ -119,8 +119,8 @@ steppedSettlePairs({
 /// "Each person's net" and a small recorded-payment history.
 ///
 /// Renders one section (summary card, transfer tiles, net rows) per currency
-/// bucket (#382 PR-1) — with a single bucket (all prod data under the live
-/// uniformity rules) the page is pixel-identical to the pre-bucketing layout.
+/// bucket (#382) — a single-bucket group stays pixel-identical to the
+/// pre-bucketing layout, while mixed-currency groups render separate sections.
 class SettleUpPageBody extends StatelessWidget {
   /// Label shown after "Optimized to minimise the number of payments across …"
   /// — group name on the group screen, event name on the event screen.
