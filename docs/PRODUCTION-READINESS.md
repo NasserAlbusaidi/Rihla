@@ -154,13 +154,18 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-20, `327d6284`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-25, `9caab3e0`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-20 deploy ceremony the `backend-deployed` tag is `327d6284`; prod
+    2026-06-25 deploy ceremony the `backend-deployed` tag is `9caab3e0`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
-    flags only the later **test-only** `cd33b5ad`/#586 — a `functions/test/…`-only
-    change with no deployable delta, a known false-positive, not ghost-debt).
-    Latest delta: **#528 (#588)** — `firestore.rules` `positiveInt` caps
+    exits clean — nothing pending).
+    Latest delta: **#673 (#673)** — a malformed (timestamp-less) deleteGroup lock
+    self-clears instead of wedging a group's deletion forever, and
+    `deleteGroupLockReaper` can now reap it · **#672 (#672)** `leaveGroup` /
+    `removeMember` honor the delete-quiesce marker inside a fresh transaction so
+    membership can't mutate during an in-flight group delete · **#676 (#676)**
+    comment-only doc refresh (no logic change). **27 functions unchanged**
+    (updated in place, none created/deleted). Prior delta: **#528 (#588)** — `firestore.rules` `positiveInt` caps
     `amountFils ≤ 2^53−1` (`Number.MAX_SAFE_INTEGER`; backstops the int64↔JS-number
     divergence, client `MoneySerializer.fitsSafeSubunits` guards the normal path) ·
     **#525 (#582)** `balanceReconciler` cursor-paginates ALL live groups (was
