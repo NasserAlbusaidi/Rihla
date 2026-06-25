@@ -236,6 +236,49 @@ describe('deleteGroupLockReaper (#519)', () => {
     expect(group?.isDeleted).toBe(false);
   });
 
+  test('4b. malformed lock missing deleteLockedAt -> clears lock, group NOT deleted', async () => {
+    await seedGroup('g', {
+      deletingInProgress: true,
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+
+    await wrapped({});
+
+    const group = await groupData('g');
+    expect(group?.deletingInProgress).toBe(false);
+    expect(group?.deleteLockedAt).toBeUndefined();
+    expect(group?.deleteLockedBy).toBeUndefined();
+    expect(group?.isDeleted).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'deleteGroupLockReaper malformed lock cleared',
+      { groupId: 'g' },
+    );
+  });
+
+  test('4c. malformed lock with string deleteLockedAt -> clears lock, group NOT deleted', async () => {
+    await seedGroup('g', {
+      deletingInProgress: true,
+      deleteLockedAt: 'not-a-timestamp',
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+
+    await wrapped({});
+
+    const group = await groupData('g');
+    expect(group?.deletingInProgress).toBe(false);
+    expect(group?.deleteLockedAt).toBeUndefined();
+    expect(group?.deleteLockedBy).toBeUndefined();
+    expect(group?.isDeleted).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'deleteGroupLockReaper malformed lock cleared',
+      { groupId: 'g' },
+    );
+  });
+
   test('5. no lock → no-op', async () => {
     await seedGroup('g'); // no deletingInProgress
     await seedMember('g', OWNER);

@@ -1144,6 +1144,65 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect(group?.deletingInProgress).toBe(false);
   });
 
+  test('20b. #668 owner retry clears missing-timestamp observed lock and does NOT finalize', async () => {
+    await seedGroup('g', {
+      deletingInProgress: true,
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      scope: 'personal',
+      payerParticipantId: OWNER,
+      amountFils: 1000,
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const group = (await groupSnap('g')).data();
+    expect(group?.isDeleted).toBe(false);
+    expect(group?.deletingInProgress).toBe(false);
+    expect(group?.deleteLockedAt).toBeUndefined();
+    expect(group?.deleteLockedBy).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'deleteGroup malformed lock cleared',
+      { uid: OWNER, groupId: 'g' },
+    );
+  });
+
+  test('20c. #668 owner retry clears string-timestamp observed lock and does NOT finalize', async () => {
+    await seedGroup('g', {
+      deletingInProgress: true,
+      deleteLockedAt: 'not-a-timestamp',
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+    await seedEvent('g', 'e1');
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      scope: 'personal',
+      payerParticipantId: OWNER,
+      amountFils: 1000,
+    });
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const group = (await groupSnap('g')).data();
+    expect(group?.isDeleted).toBe(false);
+    expect(group?.deletingInProgress).toBe(false);
+    expect(group?.deleteLockedAt).toBeUndefined();
+    expect(group?.deleteLockedBy).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'deleteGroup malformed lock cleared',
+      { uid: OWNER, groupId: 'g' },
+    );
+  });
+
   test('21. #205 failed owner retry does not clear another invocation lock', async () => {
     process.env.DELETE_GROUP_PAUSE_AFTER_LOCK_MS = '3000';
     const db = getFirestore();

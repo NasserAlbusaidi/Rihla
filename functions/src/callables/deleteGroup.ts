@@ -209,6 +209,32 @@ async function clearDeleteGroupLockForFailure(
   });
 }
 
+async function clearMalformedObservedDeleteGroupLock(
+  groupRef: DocumentReference,
+  lockedBy: string | null,
+): Promise<boolean> {
+  return groupRef.firestore.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    const groupData = groupSnap.data() ?? {};
+    const curLockedBy = typeof groupData.deleteLockedBy === 'string'
+      ? groupData.deleteLockedBy
+      : null;
+    if (
+      groupData.deletingInProgress !== true
+      || curLockedBy !== lockedBy
+      || timestampMillis(groupData.deleteLockedAt) != null
+    ) {
+      return false;
+    }
+    tx.update(groupRef, {
+      deletingInProgress: false,
+      deleteLockedAt: FieldValue.delete(),
+      deleteLockedBy: FieldValue.delete(),
+    });
+    return true;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Shared finalize core
 // ---------------------------------------------------------------------------
@@ -299,6 +325,15 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
     const lock = await acquireDeleteGroupLock(db, groupRef, uid);
     if (lock.alreadyDeleted) {
       return { groupId, mode: 'softDelete', eventsSoftDeleted: 0, alreadyDeleted: true };
+    }
+    if (!lock.createdLock && lock.lockedAtMs == null) {
+      if (await clearMalformedObservedDeleteGroupLock(groupRef, lock.lockedBy)) {
+        logger.warn('deleteGroup malformed lock cleared', { uid, groupId });
+      }
+      throw new HttpsError(
+        'failed-precondition',
+        'Malformed delete lock was cleared. Retry group deletion.',
+      );
     }
 
     let finalizeStarted = false;
