@@ -18,8 +18,8 @@ typedef CurrencySpend = ({String currency, Decimal amount});
 ///
 /// [spentByCurrency] is bucketed per currency (#378) — one entry per currency
 /// the user has nonzero lifetime spend in, sorted GCC-first (same rank rule as
-/// [crossGroupHomeBalanceProvider]'s `byCurrency`). Replaces the old
-/// currency-blind `totalSpent` scalar, which summed 10 USD + 10 OMR into "20".
+/// [crossGroupHomeBalanceProvider]'s `byCurrency`). Replaces the old scalar
+/// `totalSpent` shape, which wrongly summed 10 USD + 10 OMR into "20".
 typedef ProfileStats = ({
   int groupCount,
   int eventCount,
@@ -78,8 +78,8 @@ final profileStatsProvider = Provider<AsyncValue<ProfileStats>>((ref) {
   }
 
   // Step 2: Accumulate event count and per-currency spend across all groups.
-  // Spend is bucketed by the group's (single, immutable) currency — never
-  // summed across currencies (#378).
+  // Spend is bucketed by the balance provider's currency buckets — never summed
+  // across currencies (#378).
   var eventCount = 0;
   final spentMap = <String, Decimal>{};
   var anyEventsLoading = false;
@@ -106,10 +106,9 @@ final profileStatsProvider = Provider<AsyncValue<ProfileStats>>((ref) {
     } else {
       final balances = balancesAsync.valueOrNull?.balances;
       if (balances != null) {
-        // #382 PR-1: merge by the BUCKET currency (the honest key — equal to
-        // group.currency for all prod data under the uniformity rules). Never
-        // collapse back to group.currency: that re-introduces the #378
-        // cross-currency sum for legacy/forged mixed docs.
+        // #382: merge by the BUCKET currency (the honest key). Never collapse
+        // back to group.currency: that re-introduces the #378 cross-currency
+        // sum for mixed-currency docs.
         for (final entry in balances.totalSpent.entries) {
           spentMap[entry.key] =
               (spentMap[entry.key] ?? Decimal.zero) + entry.value;

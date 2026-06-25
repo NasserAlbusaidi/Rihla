@@ -353,11 +353,13 @@ JPY 100     →  100   (units, scale 1)
 
 Supported currencies: OMR, USD, EUR, GBP, SAR, AED, JPY, KWD, BHD, QAR.
 
-Primary currency is **OMR** (Omani Rial, 3 decimal places).
+Default group currency is **OMR** (Omani Rial, 3 decimal places), but money
+documents carry explicit currency codes and group/cross-group balances are
+bucketed per currency with no FX conversion.
 
 ### `BalanceCalculator`
 
-Defined in `lib/features/ledger/providers/expense_provider.dart` (around line 254). Pure function — no side effects, no providers. The remainder from rounding goes to the **alphabetically-last recipient** so `sum(shares) == amount` exactly. Do not change this without updating `test/unit/balance_calculations_test.dart`.
+Defined in `lib/features/ledger/providers/expense_provider.dart`. Pure function — no side effects, no providers. The remainder from quantization goes to the **alphabetically-last recipient** so `sum(shares) == amount` exactly. Do not change this without updating `test/unit/balance_calculations_test.dart`.
 
 **`calculateBalances()`** processes four expense scopes:
 
@@ -370,11 +372,18 @@ Defined in `lib/features/ledger/providers/expense_provider.dart` (around line 25
 
 > **Itemized bills (#203/#605) are NOT a fifth scope or `SplitMode`.** They are `SplitMode.exact` plus an opaque `SplitExplanation`/`SplitAdjustment` payload (`lib/features/ledger/models/split_explanation.dart`); items + service/tax/tip/discount adjustments fold into the exact `splitDistribution` client-side, and `splitExplanation` is display-only — never read by the server oracle.
 
-Per-head cost uses 3-decimal-place fixed precision:
+Per-head cost is quantized to the expense currency's integer subunit precision
+by round-tripping through `MoneySerializer` (`_toCurrencyPrecision`). This keeps
+client math aligned with the server oracle and handles OMR/KWD/BHD at 3dp,
+USD-style currencies at 2dp, and JPY at 0dp:
 
 ```dart
-final perHead = (expense.amount / Decimal.fromInt(splitCount))
-    .toDecimal(scaleOnInfinitePrecision: 3);
+final perHead = _toCurrencyPrecision(
+  (expense.amount / Decimal.fromInt(splitCount)).toDecimal(
+    scaleOnInfinitePrecision: 10,
+  ),
+  expense.currency,
+);
 ```
 
 Settlement adjustments are applied after the split phase. The result is a `List<UserBalance>` with `totalPaid`, `totalOwed`, and `netBalance` per participant.

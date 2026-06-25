@@ -375,9 +375,9 @@ async function processGroup(
   taken.delete(uid);
   const tombstoneId = deterministicTombstoneId(uid, taken);
 
-  // #294: match the deleted user's member doc by the `userId` FIELD, never the
-  // doc id — a creator's doc is keyed by a random uuid (createGroup writes
-  // .doc(uuid.v4()) with userId:uid), so doc.id===uid would miss it.
+  // #294/#524: match the deleted user's member doc by the `userId` FIELD,
+  // never the doc id. New client-created creator docs are uid-keyed, but
+  // legacy creator docs may still be uuid-keyed, so doc.id===uid is not enough.
   const oldMemberData = membersSnap.docs.find((doc) => doc.data().userId === uid)?.data();
   const eventsSnap = await groupRef.collection('events').get();
   const originalName = resolveOriginalName(oldMemberData, eventsSnap.docs, uid);
@@ -492,8 +492,9 @@ async function processGroup(
         `tombstone id ${tombstoneId} collides with a real member of ${groupRef.id}.`,
       );
     }
-    // #294: match by the `userId` FIELD (creator docs are uuid-keyed). Delete
-    // ALL matched docs (mirrors leaveGroup); realistically one per userId.
+    // #294/#524: match by the `userId` FIELD. Delete ALL matched docs (mirrors
+    // leaveGroup); realistically one per userId, but legacy duplicates are
+    // cleaned up too.
     const oldTxMembers = members.filter((m) => m.data.userId === uid);
     const oldTxMember = oldTxMembers[0]?.data;
     const remainingRealCreator = oldestRealMemberUid(members, uid);

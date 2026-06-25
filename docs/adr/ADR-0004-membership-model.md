@@ -5,6 +5,11 @@
 
 ## Context
 
+**Historical note:** this context records the pre-implementation state from
+2026-06-05. The decision has since shipped: `addShadowMember` creates
+server-minted shadow members, and `requestClaimShadow` / `decideClaimRequest`
+drive the creator-approved claim flow.
+
 `createGroup` writes a **single** member doc — the creator's — and there is no
 add-member-by-name UI anywhere (`group_provider.dart:99-160`; the create screen
 has only group-name + your-name fields). Every other person must self-install
@@ -13,13 +18,14 @@ nothing can be split until others act. For a Splitwise-refugee, non-tech-savvy
 cohort splitting *tonight's* dinner, the app fails to do its job on first
 session.
 
-The data model already half-supports the alternative: `GroupMember.isShadow`
+At the time, the data model already half-supported the alternative:
+`GroupMember.isShadow`
 exists (`group_member_model.dart:15`) and the split UI already renders a
 **"Shadow Profile"** label for shadow participants
-(`split_scope_selector.dart:320`). But **no write path ever creates a shadow
-member** — `createGroup` hardcodes `isShadow:false` (`group_provider.dart:159`)
-and the add-participant grep returns nothing. It is a dormant, half-built
-feature, not a decided-against one.
+(`split_scope_selector.dart:320`). But shadow creation was not wired:
+`createGroup` hardcoded `isShadow:false` (`group_provider.dart:159`) and the
+add-participant grep returned nothing. It was a dormant, half-built feature, not
+a decided-against one.
 
 ## Decision
 
@@ -47,21 +53,19 @@ code and closing #278 won't-do.
 
 ## Consequences
 
-- **Not implemented by this ADR.** This records direction only; the build is a
-  separate, larger piece of work.
+- **Implemented after this ADR.** The shipped build uses server-minted shadows
+  (`addShadowMember`) and creator-approved claim requests
+  (`requestClaimShadow` → `decideClaimRequest`).
 - **The claim/merge path is a money + schema write-path** (re-keying
   `splitDistribution` keys, payer ids, settlement parties from placeholder →
-  UID). Per the Operating Contract it is **Gate-mandatory** before
-  implementation, and it must respect the `calculateBalances` parity contract
-  and the member-doc-keying inconsistency flagged in #294 (creator doc keyed by
-  random uuid with `userId:uid`, joiners keyed by `{uid}` — match members by the
-  `userId` field, never the doc id).
+  UID). It went through the Gate and must continue to respect the
+  `calculateBalances` parity contract and the member-doc-keying history flagged
+  in #294/#524: new client-created members key by `{uid}`, legacy creator docs
+  and server-minted shadows can be uuid-keyed, so match members by the `userId`
+  field, never the doc id.
 - Uniqueness/disambiguation becomes load-bearing: duplicate display names are
   already possible and the disambiguator (#196) is only wired into 2 of ~6
   surfaces. A claim flow that asks "which name are you?" intersects #279
   (prevention) and #289 (display); those should be resolved alongside.
-- The CLAUDE.md "Name-based members" invariant correction is **already in flight**
-  on `docs/name-based-members-correction` (#294) and stands regardless of this
-  ADR — it documents *today's* code (creator adds only self; joiner free-types).
-  When the shadow-member build lands, that invariant is updated again to
-  describe the new creation + claim paths.
+- The old CLAUDE.md "Name-based members" invariant correction was superseded by
+  the shipped creation + claim paths.

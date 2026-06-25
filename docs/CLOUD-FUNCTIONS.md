@@ -341,7 +341,7 @@ interface DeleteAccountOutput {
    - Create `groups/{gid}/members/{tombstoneId}` with
      `displayName: "Deleted member"`, `role: 'MEMBER'`,
      `isTombstone: true`. Preserves `joinedAt` from the old member doc.
-   - Delete `groups/{gid}/members/{uid}`.
+   - Delete every `groups/{gid}/members/{memberDocId}` whose `userId == uid`.
    - Rewrite `groups/{gid}.memberIds`: caller's UID → tombstoneId.
    - If `createdBy == uid` and another real member exists, transfer
      creator to the oldest remaining real member. If no other real

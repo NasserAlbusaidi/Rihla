@@ -93,8 +93,9 @@ function moneySnap(d: DocumentData): Record<string, unknown> {
 }
 
 // Resolve the actor's display name from the group's members, matched by the
-// `userId` FIELD — never the doc id: joiners key by {uid} but the creator's doc
-// is keyed by a random uuid with `userId:uid` (#294), so .doc(uid) misses it.
+// `userId` FIELD — never the doc id. New client-created member docs key by
+// {uid}, but legacy creator docs and server-minted shadows can be uuid-keyed
+// (#294/#524), so doc-id lookup is not enough.
 // Mirrors leaveGroup.ts:66-99. Returns null (NOT 'Someone') when unresolved —
 // the event activity feed localizes a null actor to l10n.activitySomeone at
 // render (activity_feed_screen.dart); a literal 'Someone' would break Arabic/RTL.

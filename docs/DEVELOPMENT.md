@@ -403,7 +403,7 @@ final amount = MoneySerializer.fromSubunits(subunitsInt, 'OMR');
 
 Supported currencies: OMR (1000 subunits), USD/EUR/GBP/SAR/AED/QAR (100), JPY (1), KWD/BHD (1000).
 
-MoneySerializer knows 10 currencies, but writes currently pin currency to OMR pending #61 — only OMR is exercised at runtime.
+MoneySerializer knows 10 currencies. OMR is the default group currency, but group create and expense create/edit paths carry explicit currency codes, and balances are bucketed per currency with no FX conversion.
 
 ### Formatting
 

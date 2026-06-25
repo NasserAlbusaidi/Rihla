@@ -244,8 +244,9 @@ Full rules: [LOCALIZATION.md § RTL](./LOCALIZATION.md).
   `ink` for neutral totals where positive ≠ "good".
 - Decimals are currency-driven: **OMR/KWD/BHD = 3** (baisa), most others = 2,
   JPY = 0. Handled inside `RAmount`/`MoneySerializer` — don't pre-format.
-- App is **OMR-only for 1.0** (#61) — every write path hardcodes `'OMR'` on
-  purpose. `RAmount` is per-currency-correct for when multi-currency lands.
+- OMR is the default group currency, not the only live currency. Group create
+  chooses a default, expenses can carry their own supported currency, and money
+  surfaces must render per-currency buckets with no FX conversion.
 
 ---
 

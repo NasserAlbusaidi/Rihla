@@ -12,7 +12,7 @@ import { recomputeNet } from './groupNetBalance';
 // groupNetBalance oracle (exactly as the client BalanceCalculator), refuses with
 // FAILED_PRECONDITION on a non-zero TARGET net, then atomically removes the
 // target uid from memberIds + deletes EVERY member doc matching
-// `userId == targetUserId` (creator docs are uuid-keyed, #294) + writes the
+// `userId == targetUserId` (legacy docs may be uuid-keyed, #294) + writes the
 // `member_left` activity entry with metadata{memberAction:removed,memberName}.
 // The direct client creator-remove write is locked in firestore.rules
 // (`validCreatorRemoveMember` dropped from group `allow update`).
@@ -107,9 +107,9 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
       : [];
     const targetIsMember = memberIds.includes(targetUserId);
 
-    // Match member docs by the `userId` FIELD, never the doc id: joiners key by
-    // {uid} but the creator's doc is keyed by a random uuid with `userId:uid`
-    // (#294) — a `.doc(targetUserId)` lookup would miss it.
+    // Match member docs by the `userId` FIELD, never the doc id: new client docs
+    // key by {uid}, but legacy creator docs may still be uuid-keyed (#294/#524).
+    // A `.doc(targetUserId)` lookup would miss those legacy rows.
     const targetDocsSnap = await groupRef
       .collection('members')
       .where('userId', '==', targetUserId)
