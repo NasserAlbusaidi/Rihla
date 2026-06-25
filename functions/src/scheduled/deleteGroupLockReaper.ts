@@ -46,6 +46,29 @@ async function clearStaleLock(
   });
 }
 
+async function clearMalformedLock(
+  groupRef: FirebaseFirestore.DocumentReference,
+  lockedBy: string | null,
+): Promise<boolean> {
+  return groupRef.firestore.runTransaction(async (tx) => {
+    const cur = (await tx.get(groupRef)).data() ?? {};
+    const curLockedBy = typeof cur.deleteLockedBy === 'string' ? cur.deleteLockedBy : null;
+    if (
+      cur.deletingInProgress !== true
+      || curLockedBy !== lockedBy
+      || timestampMillis(cur.deleteLockedAt) != null
+    ) {
+      return false;
+    }
+    tx.update(groupRef, {
+      deletingInProgress: false,
+      deleteLockedAt: FieldValue.delete(),
+      deleteLockedBy: FieldValue.delete(),
+    });
+    return true;
+  });
+}
+
 export const deleteGroupLockReaper = onSchedule(
   { schedule: 'every 1 hours', timeoutSeconds: 540, memory: '1GiB' },
   async () => {
@@ -63,12 +86,21 @@ export const deleteGroupLockReaper = onSchedule(
     let resumed = 0;
     let cleared = 0;
     let stale = 0;
+    let malformed = 0;
     for (const doc of locked.docs) {
       const data = doc.data();
       const lockedAtMs = timestampMillis(data.deleteLockedAt);
-      if (lockedAtMs == null || lockedAtMs >= cutoffMs) continue; // fresh → a live invocation may hold it
-      stale += 1;
       const lockedBy = typeof data.deleteLockedBy === 'string' ? data.deleteLockedBy : null;
+      if (lockedAtMs == null) {
+        malformed += 1;
+        if (await clearMalformedLock(doc.ref, lockedBy)) {
+          cleared += 1;
+          logger.warn('deleteGroupLockReaper malformed lock cleared', { groupId: doc.id });
+        }
+        continue;
+      }
+      if (lockedAtMs >= cutoffMs) continue; // fresh → a live invocation may hold it
+      stale += 1;
       try {
         // Resumes via the SAME finalize the callable runs. Idempotent: re-soft-
         // deleting already-soft-deleted events is harmless; the resume horizon
@@ -104,7 +136,7 @@ export const deleteGroupLockReaper = onSchedule(
       });
     }
     logger.info('deleteGroupLockReaper run', {
-      scanned: locked.size, stale, resumed, cleared,
+      scanned: locked.size, stale, malformed, resumed, cleared,
     });
   },
 );
