@@ -31,8 +31,10 @@ import { recomputeNet } from './groupNetBalance';
 // universe is unchanged ⇒ other members' balances are preserved, and the net==0
 // gate (same oracle) only passes when the removal is balance-neutral.
 //
-// No lock and no rate-limit (unlike deleteGroup): remove is a single small
-// atomic batch. enforceAppCheck is the per-actor control (#197).
+// No separate mutation lock and no rate-limit (unlike deleteGroup): remove is a
+// single small atomic mutation. It still honors deleteGroup's quiesce marker
+// like every Admin-SDK membership writer, because Admin SDK writes bypass
+// firestore.rules. enforceAppCheck is the per-actor control (#197).
 
 export interface RemoveMemberInput {
   groupId: string;
@@ -85,6 +87,12 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
       throw new HttpsError('not-found', 'Group not found.');
     }
     const group = groupSnap.data() ?? {};
+    // Honor the same write-lock as firestore.rules (Admin SDK bypasses rules),
+    // mirroring joinGroupByInviteCode/addShadowMember: soft-deleted or
+    // delete-quiesced groups are indistinguishable from missing groups.
+    if (group.isDeleted === true || group.deletingInProgress === true) {
+      throw new HttpsError('not-found', 'Group not found.');
+    }
 
     // Only the group creator may remove another member (deleteGroup.ts:145).
     if (group.createdBy !== uid) {
@@ -145,38 +153,69 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
         .find((name): name is string => typeof name === 'string' && name.length > 0)
       ?? 'Someone';
 
-    // actorName = the creator's own display name (matches the old client log,
-    // group_settings_screen used the device name → creator's member doc name).
-    const actorDocsSnap = await groupRef
-      .collection('members')
-      .where('userId', '==', uid)
-      .get();
-    const actorName =
-      actorDocsSnap.docs
-        .map((d) => d.data().displayName)
-        .find((name): name is string => typeof name === 'string' && name.length > 0)
-      ?? 'Someone';
+    const mutation = await db.runTransaction(async (tx) => {
+      const freshGroupSnap = await tx.get(groupRef);
+      if (!freshGroupSnap.exists) {
+        throw new HttpsError('not-found', 'Group not found.');
+      }
+      const freshGroup = freshGroupSnap.data() ?? {};
+      if (freshGroup.isDeleted === true || freshGroup.deletingInProgress === true) {
+        throw new HttpsError('not-found', 'Group not found.');
+      }
+      if (freshGroup.createdBy !== uid) {
+        throw new HttpsError(
+          'permission-denied',
+          'Only the group creator can remove a member.',
+        );
+      }
+      const freshMemberIds: string[] = Array.isArray(freshGroup.memberIds)
+        ? freshGroup.memberIds.filter((v): v is string => typeof v === 'string')
+        : [];
+      const freshTargetDocsSnap = await tx.get(
+        groupRef.collection('members').where('userId', '==', targetUserId),
+      );
+      const freshActorDocsSnap = await tx.get(
+        groupRef.collection('members').where('userId', '==', uid),
+      );
+      const freshTargetIsMember = freshMemberIds.includes(targetUserId);
+      if (!freshTargetIsMember && freshTargetDocsSnap.empty) {
+        return { alreadyRemoved: true };
+      }
+      const freshTargetName =
+        freshTargetDocsSnap.docs
+          .map((d) => d.data().displayName)
+          .find((name): name is string => typeof name === 'string' && name.length > 0)
+        ?? targetName;
+      const freshActorName =
+        freshActorDocsSnap.docs
+          .map((d) => d.data().displayName)
+          .find((name): name is string => typeof name === 'string' && name.length > 0)
+        ?? 'Someone';
 
-    const now = Timestamp.now();
-    const batch = db.batch();
-    batch.update(groupRef, {
-      memberIds: FieldValue.arrayRemove(targetUserId),
-      updatedAt: now,
+      const now = Timestamp.now();
+      tx.update(groupRef, {
+        memberIds: FieldValue.arrayRemove(targetUserId),
+        updatedAt: now,
+      });
+      for (const memberDoc of freshTargetDocsSnap.docs) {
+        tx.delete(memberDoc.ref);
+      }
+      const activityRef = groupRef.collection('activity').doc();
+      tx.set(activityRef, {
+        id: activityRef.id,
+        type: 'member_left',
+        actorId: uid,
+        actorName: freshActorName,
+        description: `${freshTargetName} was removed from the group`,
+        metadata: { memberAction: 'removed', memberName: freshTargetName },
+        timestamp: new Date().toISOString(),
+      });
+      return { alreadyRemoved: false };
     });
-    for (const memberDoc of targetDocsSnap.docs) {
-      batch.delete(memberDoc.ref);
+
+    if (mutation.alreadyRemoved) {
+      return { groupId, mode: 'removed', alreadyRemoved: true };
     }
-    const activityRef = groupRef.collection('activity').doc();
-    batch.set(activityRef, {
-      id: activityRef.id,
-      type: 'member_left',
-      actorId: uid,
-      actorName,
-      description: `${targetName} was removed from the group`,
-      metadata: { memberAction: 'removed', memberName: targetName },
-      timestamp: new Date().toISOString(),
-    });
-    await batch.commit();
 
     logger.info('removeMember removed member', { uid, targetUserId, groupId });
 

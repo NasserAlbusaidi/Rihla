@@ -182,6 +182,36 @@ describe('leaveGroup callable — server-authoritative self-leave + balance gate
     ).rejects.toMatchObject({ code: 'not-found' });
   });
 
+  test('3b. soft-deleted OR deletingInProgress group -> not-found; no membership/activity writes', async () => {
+    await seedGroup('g1', { isDeleted: true });
+    await seedMember('g1', OWNER);
+    await seedMember('g1', MEMBER);
+
+    await expect(
+      wrapped({ data: { groupId: 'g1' }, auth: { uid: MEMBER } } as any),
+    ).rejects.toMatchObject({ code: 'not-found' });
+
+    expect((await groupData('g1')).memberIds).toEqual([OWNER, MEMBER]);
+    expect(await docExists('groups/g1/members/member')).toBe(true);
+    expect(await activityDocs('g1')).toHaveLength(0);
+
+    await seedGroup('g2', {
+      deletingInProgress: true,
+      deleteLockedAt: new Date('2026-06-25T00:00:00.000Z'),
+      deleteLockedBy: OWNER,
+    });
+    await seedMember('g2', OWNER);
+    await seedMember('g2', MEMBER);
+
+    await expect(
+      wrapped({ data: { groupId: 'g2' }, auth: { uid: MEMBER } } as any),
+    ).rejects.toMatchObject({ code: 'not-found' });
+
+    expect((await groupData('g2')).memberIds).toEqual([OWNER, MEMBER]);
+    expect(await docExists('groups/g2/members/member')).toBe(true);
+    expect(await activityDocs('g2')).toHaveLength(0);
+  });
+
   test('4. non-member (absent from memberIds, no member doc) → alreadyLeft, no writes', async () => {
     await seedGroup('g', { memberIds: [OWNER] });
     await seedMember('g', OWNER);
