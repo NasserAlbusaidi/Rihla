@@ -4,6 +4,77 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] — 2026-06-25
+
+Offline-hardening and account-safety patch. Tightens behaviour when the app is
+offline or restoring an account, makes group deletion self-healing on the server,
+and fixes a back-navigation dead-end. Backend (#672/#673) deployed to the
+production Firebase project (`9caab3e0`).
+
+### Fixed
+- **Account-switch group-orphan guard (#662).** Switching a populated anonymous
+  session to a Google account now blocks the irreversible swap unless the outgoing
+  session is provably empty, closing the third cross-UID swap path that could
+  orphan a user's joined groups.
+- **Offline event-settings writes (#670).** Editing an event's settings while
+  offline stages the write and replays it on reconnect instead of hanging.
+- **Offline account restore (#671).** Restoring an account no longer blocks on
+  FCM-token cleanup when the device is offline.
+- **Self-healing group-delete locks (#672/#673).** `leaveGroup` and `removeMember`
+  now defer safely to an in-flight group delete, and a malformed (timestamp-less)
+  delete lock clears itself instead of blocking deletion forever.
+- **Exact-split currency (#674).** Editing an exact (itemized) split now requires
+  an explicit currency, keeping each expense's currency consistent.
+- **Activity back navigation (#666).** Cold-starting directly into the activity
+  screen and pressing back now returns to home instead of dead-ending.
+
+## [1.6.1] — 2026-06-24
+
+Anonymous-join release. Lets anonymous users join groups (creating a group still
+requires a durable account) and finishes the cross-UID swap-honesty work. Backend
+(#648) deployed to the production Firebase project (`6dcf05e6`).
+
+### Changed
+- **Anonymous users can join groups (#648).** Joining by invite code and adding
+  expenses no longer requires a durable (email/Google) account; creating a group
+  or an invite code still does.
+
+### Fixed
+- **Honest cross-UID swap copy (#647).** Account-restore conflict messaging no
+  longer implies a swap will happen when the outgoing session isn't empty
+  (EN + AR), with a regression test pinning the no-swap path.
+
+## [1.6.0] — 2026-06-22
+
+Itemized-split and group-identity feature release, plus a broad performance and
+offline-resilience pass. Backend deployed to the production Firebase project.
+
+### Added
+- **Itemized split with bill-level adjustments (#203/#605).** Split an expense by
+  line items, then apply service charge, tax, tip, and discount — all reduced
+  client-side to an exact, whole-subunit split.
+- **Group trip stamps (#287).** Pick a glyph and ink colour to give each group a
+  distinct identity at create time and from settings.
+- **On-demand event recap (#202).** A per-event summary of total spent with a
+  per-currency, per-person breakdown.
+- **Settle on behalf of others (#595).** Any group member can record a payment
+  between two other people.
+
+### Changed
+- **One balance truth on group detail (#486).** Net balance is computed once and
+  shown in a single place; the people list shows others only.
+- **Performance pass (#622/#623/#626/#627/#634/#640).** Cached themes, memoized
+  split-preview and activity-feed work, repaint boundaries on scroll surfaces, and
+  a narrowed connectivity read to cut rebuilds.
+
+### Fixed
+- **Reject ambiguous European-format amounts (#530).** A pasted `1.234,56` is now
+  rejected instead of being silently truncated.
+- **Honest partial-payment copy (#587).** Settle-up no longer claims to "close out
+  the balance" on a partial payment; it shows what remains.
+- **Whole-subunit equal splits (#596).** Equal splits that divide to a sub-subunit
+  quotient quantize correctly, keeping balances whole.
+
 ## [1.5.1] — 2026-06-18
 
 Shadow-members & claim/merge release. Adds placeholder ("shadow") members so a
