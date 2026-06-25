@@ -426,40 +426,151 @@ void main() {
         },
       );
 
-      // The split-mode-only edit (no amount) stays exempt from the
-      // amount-requires-currency guard — it passes neither amount nor currency.
-      test('split-mode edit without amount does not require currency (#261)', () async {
-        final expense = await service.addExpense(
-          createdBy: 'uidA',
-          groupId: 'g1',
-          eventId: 'e1',
-          payerParticipantId: 'p1',
-          amount: Decimal.parse('20.000'),
-        );
+      test(
+        'exact split update without currency throws before writing (#665)',
+        () async {
+          final expense = await service.addExpense(
+            createdBy: 'uidA',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('20.00'),
+            currency: 'USD',
+            splitMode: SplitMode.exact,
+            splitDistribution: {
+              'p1': Decimal.parse('10.00'),
+              'p2': Decimal.parse('10.00'),
+            },
+          );
 
-        await service.updateExpense(
-          groupId: 'g1',
-          eventId: 'e1',
-          expenseId: expense.id,
-          scope: ExpenseScope.custom,
-          customSplitParticipants: ['p2', 'p3'],
-          splitMode: SplitMode.shares,
-          splitDistribution: {
-            'p2': Decimal.fromInt(2),
-            'p3': Decimal.fromInt(1),
-          },
-        );
+          await expectLater(
+            service.updateExpense(
+              groupId: 'g1',
+              eventId: 'e1',
+              expenseId: expense.id,
+              splitMode: SplitMode.exact,
+              splitDistribution: {
+                'p1': Decimal.parse('12.34'),
+                'p2': Decimal.parse('7.66'),
+              },
+            ),
+            throwsA(
+              isA<ArgumentError>().having(
+                (error) => error.message,
+                'message',
+                contains('currency'),
+              ),
+            ),
+          );
 
-        final snap = await fakeDb
-            .collection('groups')
-            .doc('g1')
-            .collection('events')
-            .doc('e1')
-            .collection('expenses')
-            .doc(expense.id)
-            .get();
-        expect(snap.data()!['splitMode'], 'shares');
-      });
+          final snap = await fakeDb
+              .collection('groups')
+              .doc('g1')
+              .collection('events')
+              .doc('e1')
+              .collection('expenses')
+              .doc(expense.id)
+              .get();
+
+          expect(snap.data()!['splitDistribution'], {'p1': 1000, 'p2': 1000});
+        },
+      );
+
+      test(
+        'exact split update with currency uses that currency scale (#665)',
+        () async {
+          final cases = [
+            (
+              currency: 'USD',
+              amount: Decimal.parse('20.00'),
+              distribution: {
+                'p1': Decimal.parse('12.34'),
+                'p2': Decimal.parse('7.66'),
+              },
+              expected: {'p1': 1234, 'p2': 766},
+            ),
+            (
+              currency: 'JPY',
+              amount: Decimal.parse('2000'),
+              distribution: {
+                'p1': Decimal.parse('1200'),
+                'p2': Decimal.parse('800'),
+              },
+              expected: {'p1': 1200, 'p2': 800},
+            ),
+          ];
+
+          for (final caseData in cases) {
+            final expense = await service.addExpense(
+              createdBy: 'uidA',
+              groupId: 'g1',
+              eventId: 'e1',
+              payerParticipantId: 'p1',
+              amount: caseData.amount,
+              currency: caseData.currency,
+            );
+
+            await service.updateExpense(
+              groupId: 'g1',
+              eventId: 'e1',
+              expenseId: expense.id,
+              currency: caseData.currency,
+              splitMode: SplitMode.exact,
+              splitDistribution: caseData.distribution,
+            );
+
+            final snap = await fakeDb
+                .collection('groups')
+                .doc('g1')
+                .collection('events')
+                .doc('e1')
+                .collection('expenses')
+                .doc(expense.id)
+                .get();
+
+            expect(snap.data()!['currency'], caseData.currency);
+            expect(snap.data()!['splitDistribution'], caseData.expected);
+          }
+        },
+      );
+
+      // Shares are raw weights, not currency subunits, so this split-only edit
+      // still does not need a currency.
+      test(
+        'shares split edit without amount does not require currency (#665)',
+        () async {
+          final expense = await service.addExpense(
+            createdBy: 'uidA',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            amount: Decimal.parse('20.000'),
+          );
+
+          await service.updateExpense(
+            groupId: 'g1',
+            eventId: 'e1',
+            expenseId: expense.id,
+            scope: ExpenseScope.custom,
+            customSplitParticipants: ['p2', 'p3'],
+            splitMode: SplitMode.shares,
+            splitDistribution: {
+              'p2': Decimal.fromInt(2),
+              'p3': Decimal.fromInt(1),
+            },
+          );
+
+          final snap = await fakeDb
+              .collection('groups')
+              .doc('g1')
+              .collection('events')
+              .doc('e1')
+              .collection('expenses')
+              .doc(expense.id)
+              .get();
+          expect(snap.data()!['splitMode'], 'shares');
+        },
+      );
     });
 
     group('deleteExpense', () {
@@ -1040,6 +1151,7 @@ void main() {
           groupId: 'g',
           eventId: 'e',
           expenseId: expense.id,
+          currency: 'OMR',
           splitMode: SplitMode.exact,
           splitDistribution: coffeeRunDistribution(),
           splitExplanation: coffeeRun(),
