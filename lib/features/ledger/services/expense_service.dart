@@ -230,8 +230,8 @@ class ExpenseService extends FirestoreRepository {
   /// Updates specific fields of an existing expense document.
   ///
   /// Only non-null parameters are included in the Firestore update to avoid
-  /// overwriting fields with null. If [amount] is provided, [currency] is
-  /// used for the MoneySerializer conversion (defaults to 'OMR').
+  /// overwriting fields with null. [currency] is required for every update path
+  /// that serializes money: [amount] and [SplitMode.exact] distributions.
   Future<void> updateExpense({
     required String groupId,
     required String eventId,
@@ -259,7 +259,9 @@ class ExpenseService extends FirestoreRepository {
       // the stored currency. The caller (edit_expense_screen) passes
       // original.currency; a uid-less / currency-less amount edit is a bug.
       if (currency == null) {
-        throw ArgumentError('updateExpense requires a currency when amount is set');
+        throw ArgumentError(
+          'updateExpense requires a currency when amount is set',
+        );
       }
       updates['amountFils'] = MoneySerializer.toSubunits(amount, currency);
       updates['currency'] = currency;
@@ -278,7 +280,7 @@ class ExpenseService extends FirestoreRepository {
       updates['splitDistribution'] = _encodeDistribution(
         splitMode,
         splitDistribution ?? const {},
-        currency ?? 'OMR',
+        currency,
       );
     }
     // #203 S2: itemized display metadata, written through its OWN flags —
@@ -360,13 +362,19 @@ class ExpenseService extends FirestoreRepository {
   static Map<String, int> _encodeDistribution(
     SplitMode mode,
     Map<String, Decimal> distribution,
-    String currency,
+    String? currency,
   ) {
+    if (mode == SplitMode.exact && currency == null) {
+      throw ArgumentError(
+        'updateExpense requires a currency when exact split is set',
+      );
+    }
+
     return {
       for (final entry in distribution.entries)
         entry.key: switch (mode) {
           SplitMode.exact =>
-            MoneySerializer.toSubunits(entry.value, currency),
+            MoneySerializer.toSubunits(entry.value, currency!),
           SplitMode.percent =>
             (entry.value * Decimal.fromInt(1000)).toBigInt().toInt(),
           SplitMode.shares ||
