@@ -362,7 +362,9 @@ void main() {
               overrides: _baseOverrides(
                 activityOverride: const AsyncValue.data([]),
               ),
-              child: const CrossGroupActivityScreen(),
+              // The /activity route builds the screen with showBack:true
+              // (mirrors app_router) so the pushed back button renders.
+              child: const CrossGroupActivityScreen(showBack: true),
             ),
           ),
           GoRoute(
@@ -404,5 +406,103 @@ void main() {
       expect(find.text('Go to Activity'), findsOneWidget);
       expect(find.text('Activity'), findsNothing);
     });
+
+    // #666: /activity is a top-level route (sibling of /home). When it is the
+    // sole stack page (canPop()==false), the route entry must still expose a
+    // back affordance that routes home — mirroring ProfileScreen's showBack.
+    testWidgets(
+      'cold direct-entry route (showBack): back button routes to /home (#666)',
+      (tester) async {
+        final router = GoRouter(
+          initialLocation: '/activity',
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (ctx, state) => const Scaffold(body: Text('Home')),
+            ),
+            GoRoute(
+              path: '/activity',
+              builder: (ctx, state) => ProviderScope(
+                overrides: _baseOverrides(
+                  activityOverride: const AsyncValue.data([]),
+                ),
+                child: const CrossGroupActivityScreen(showBack: true),
+              ),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: _baseOverrides(
+              activityOverride: const AsyncValue.data([]),
+            ),
+            child: MaterialApp.router(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              routerConfig: router,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // The back affordance must render even though canPop() is false…
+        expect(find.text('Activity'), findsOneWidget);
+        expect(find.byTooltip('Back'), findsOneWidget);
+
+        // …and tapping it must route home, not no-op / strand the user.
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Home'), findsOneWidget);
+        expect(find.text('Activity'), findsNothing);
+      },
+    );
+
+    // #666 [P1] guard: the same widget is the Activity bottom-nav tab
+    // (BottomNavShell case 1 builds `const CrossGroupActivityScreen()`), where
+    // canPop()==false. The tab default (showBack:false) must NOT show a back
+    // arrow — the hardening must not leak onto the tab.
+    testWidgets(
+      'tab default (showBack:false) shows no back affordance when canPop is '
+      'false (#666 tab-regression guard)',
+      (tester) async {
+        final router = GoRouter(
+          initialLocation: '/activity',
+          routes: [
+            GoRoute(
+              path: '/activity',
+              builder: (ctx, state) => ProviderScope(
+                overrides: _baseOverrides(
+                  activityOverride: const AsyncValue.data([]),
+                ),
+                child: const CrossGroupActivityScreen(),
+              ),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: _baseOverrides(
+              activityOverride: const AsyncValue.data([]),
+            ),
+            child: MaterialApp.router(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              routerConfig: router,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Activity'), findsOneWidget);
+        expect(find.byTooltip('Back'), findsNothing);
+      },
+    );
   });
 }

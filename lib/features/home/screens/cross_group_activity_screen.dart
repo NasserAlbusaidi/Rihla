@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
@@ -28,7 +29,12 @@ import '../providers/dashboard_providers.dart';
 /// group-life events (settlement, event creation, member changes) rather
 /// than per-expense entries. Chip labels are remapped to our type vocabulary.
 class CrossGroupActivityScreen extends ConsumerStatefulWidget {
-  const CrossGroupActivityScreen({super.key});
+  const CrossGroupActivityScreen({super.key, this.showBack = false});
+
+  /// Whether to render the back affordance. `false` (default) when the screen
+  /// is the Activity bottom-nav tab (`BottomNavShell`); the `/activity` route
+  /// builds it with `true`. Mirrors `ProfileScreen.showBack`. (#666)
+  final bool showBack;
 
   @override
   ConsumerState<CrossGroupActivityScreen> createState() =>
@@ -49,7 +55,7 @@ class _CrossGroupActivityScreenState
       body: SafeArea(
         child: Column(
           children: [
-            const _TopBar(),
+            _TopBar(showBack: widget.showBack),
             const SizedBox(height: 6),
             _FilterStrip(
               current: _filter,
@@ -114,12 +120,33 @@ class _CrossGroupActivityScreenState
 // ──────────────────────────── Top bar
 
 class _TopBar extends StatelessWidget {
-  const _TopBar();
+  const _TopBar({required this.showBack});
+
+  final bool showBack;
+
+  // #666: top-level route entry. When /activity is the sole stack page
+  // (canPop()==false), pop has nothing to return to — fall back to /home so
+  // the user is never stranded. Mirrors ProfileScreen._back.
+  void _back(BuildContext context) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go(AppRoutes.home);
+      }
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final canPop = GoRouter.of(context).canPop();
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(
         context.spacing.space20,
@@ -130,14 +157,14 @@ class _TopBar extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (canPop)
+          if (showBack)
             RIconButton(
               variant: RIconButtonVariant.ghost,
               icon: Directionality.of(context) == TextDirection.rtl
                   ? Iconsax.arrow_right
                   : Iconsax.arrow_left,
               tooltip: context.l10n.commonBack,
-              onTap: () => GoRouter.of(context).pop(),
+              onTap: () => _back(context),
             )
           else
             const SizedBox(width: 40),
