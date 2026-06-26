@@ -6,13 +6,13 @@ import 'package:google_fonts/google_fonts.dart';
 const Map<String, List<String>> _fontLicenseAssets = {
   'assets/fonts/OFL-Geist.txt': ['Geist'],
   'assets/fonts/OFL-GeistMono.txt': ['Geist Mono'],
-  'assets/fonts/OFL-ReemKufi.txt': ['Reem Kufi'],
+  'assets/fonts/OFL-ReemKufi.txt': ['Rihla Arabic Display'],
   'assets/fonts/OFL-InstrumentSerif.txt': ['Instrument Serif'],
 };
 
-/// Brand faces (Geist / Geist Mono / Reem Kufi / Instrument Serif) are bundled
-/// as app assets and resolved natively by the Flutter font engine, so no font
-/// is ever fetched at runtime (#103).
+/// Brand faces (Geist / Geist Mono / Instrument Serif plus a Reem Kufi Arabic
+/// wordmark subset) are bundled as app assets and resolved natively by the
+/// Flutter font engine, so no font is ever fetched at runtime (#103).
 ///
 /// This disables `google_fonts` runtime CDN fetching as a regression guard —
 /// any stray runtime google-fonts lookup that slips back in will throw loudly

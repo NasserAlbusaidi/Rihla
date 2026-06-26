@@ -140,8 +140,7 @@ starts a new run.
 - [x] Icon font is subset-safe and icon tree-shaking stays on in release builds (#636).
   - Evidence: every iconsax usage in `lib/` is a `static const IconData` reference, so Flutter's `--tree-shake-icons` (on by default for `flutter build`) subsets the ~1.3MB iconsax font down to only the glyphs actually used. No `--no-tree-shake-icons` flag exists anywhere in the build/CI scripts.
   - Guard: `test/unit/tree_shake_icons_guard_test.dart` scans `.github/workflows/*.yml` and `tool/*.sh` (incl. `release_android.yml`, `check_release_readiness.sh`, `print_android_qa_handoff.sh`) and fails if any `flutter build` path passes `--no-tree-shake-icons`.
-  - Not tree-shaken: the 5 brand font faces are NOT glyph-subset by Flutter — Flutter only tree-shakes icon fonts, never text fonts, so the full glyph set of each text face ships. This is inherent, not a regression.
-  - Follow-up: Reem Kufi (Arabic display face) Arabic-locale deferral / Latin subsetting — download-on-demand or Android deferred components — is tracked as remaining scope on #636; it is an asset-delivery change, not a build-flag fix.
+  - Text fonts: Flutter does not tree-shake text fonts, so the Arabic wordmark no longer declares the full Reem Kufi variable face. `pubspec.yaml` uses `assets/fonts/ReemKufi-RihlaWordmark.ttf` (about 11KB) under the `Rihla Arabic Display` family, and `test/unit/bundled_fonts_test.dart` fails if the full `ReemKufi-Variable.ttf` returns.
 
 ## Blockers
 

@@ -122,7 +122,7 @@ styles come from `Theme.of(context).textTheme.*` (wired to the same families).
 | **Instrument Serif** *(italic)* | `AppTypography.display(...)` | Wordmark, screen titles, hero numerals. The emotional voice — sparingly. |
 | **Geist** (sans) | `AppTypography.sans(...)` | All UI text, labels, buttons, body. |
 | **Geist Mono** (tabular) | `AppTypography.mono(...)` | All money amounts, currency codes, dates, uppercase captions ("ACTIVE JOURNEYS"). |
-| **Reem Kufi** | `AppTypography.arabicDisplay(...)` | Arabic-script display moments (no italic — Arabic doesn't mark emphasis that way). |
+| **Rihla Arabic Display** *(Reem Kufi subset)* | `AppTypography.arabicDisplay(...)` | Arabic wordmark only; do not use for general Arabic UI copy without replacing the subset strategy. |
 
 Fonts are **bundled app assets** (`pubspec.yaml` `flutter: fonts:`), not fetched
 at runtime — no `GoogleFonts.getFont` in `lib/` (guard-tested). Tabular figures

@@ -130,10 +130,11 @@ flutter:
     - assets/fonts/OFL-InstrumentSerif.txt
 
   # Brand typography — bundled so first-launch branding works offline and never
-  # hits the Google Fonts CDN (#103). Geist / Geist Mono / Reem Kufi are variable
-  # (wght axis); TextStyle.fontWeight drives the axis directly. Family names MUST
-  # match the const strings in lib/core/theme/tokens/typography_tokens.dart
-  # byte-for-byte (sansFamily / monoFamily / reemKufiFamily / displayFamily).
+  # hits the Google Fonts CDN (#103). Geist / Geist Mono are variable (wght
+  # axis); TextStyle.fontWeight drives the axis directly. The Arabic display
+  # face is a small Reem Kufi subset for the current Arabic wordmark only
+  # (#636). Family names MUST match the const strings in
+  # lib/core/theme/tokens/typography_tokens.dart byte-for-byte.
   fonts:
     - family: Geist
       fonts:
@@ -141,9 +142,9 @@ flutter:
     - family: Geist Mono
       fonts:
         - asset: assets/fonts/GeistMono-Variable.ttf
-    - family: Reem Kufi
+    - family: Rihla Arabic Display
       fonts:
-        - asset: assets/fonts/ReemKufi-Variable.ttf
+        - asset: assets/fonts/ReemKufi-RihlaWordmark.ttf
     - family: Instrument Serif
       fonts:
         - asset: assets/fonts/InstrumentSerif-Regular.ttf

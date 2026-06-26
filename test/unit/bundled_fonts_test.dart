@@ -5,11 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:safar/core/theme/font_bootstrap.dart';
 
-/// Guards the offline-branding contract from #103: the four brand faces are
-/// bundled as app assets and resolved natively, never fetched from the Google
-/// Fonts CDN. A drift here (renamed family, deleted .ttf, a reintroduced
-/// `GoogleFonts.getFont`) would silently fall back to the platform font on an
-/// offline first launch — exactly the bug this issue fixed.
+/// Guards the offline-branding contract from #103 and the bundle-size contract
+/// from #636: brand faces are bundled as app assets and resolved natively, never
+/// fetched from the Google Fonts CDN. The Arabic wordmark uses a deliberately
+/// small Reem Kufi subset, not the full variable face.
 void main() {
   String read(String path) => File(path).readAsStringSync();
 
@@ -17,7 +16,7 @@ void main() {
   const families = <String, List<String>>{
     'Geist': ['assets/fonts/Geist-Variable.ttf'],
     'Geist Mono': ['assets/fonts/GeistMono-Variable.ttf'],
-    'Reem Kufi': ['assets/fonts/ReemKufi-Variable.ttf'],
+    'Rihla Arabic Display': ['assets/fonts/ReemKufi-RihlaWordmark.ttf'],
     'Instrument Serif': [
       'assets/fonts/InstrumentSerif-Regular.ttf',
       'assets/fonts/InstrumentSerif-Italic.ttf',
@@ -44,7 +43,9 @@ void main() {
       );
       expect(
         tokens,
-        contains("static const String reemKufiFamily = 'Reem Kufi';"),
+        contains(
+          "static const String arabicDisplayFamily = 'Rihla Arabic Display';",
+        ),
       );
       expect(
         tokens,
@@ -102,6 +103,60 @@ void main() {
       expect(bootstrap, contains('LicenseRegistry.addLicense'));
       expect(bootstrap, contains('allowRuntimeFetching = false'));
       expect(read('lib/main.dart'), contains('configureBundledFonts()'));
+    });
+
+    test('Arabic wordmark does not ship the full Reem Kufi variable face', () {
+      expect(
+        pubspec,
+        isNot(contains('assets/fonts/ReemKufi-Variable.ttf')),
+        reason:
+            'The full Reem Kufi variable font is not tree-shaken by Flutter and '
+            'must not be bundled for the single Arabic wordmark use case (#636).',
+      );
+
+      final fullFace = File('assets/fonts/ReemKufi-Variable.ttf');
+      expect(
+        fullFace.existsSync(),
+        isFalse,
+        reason:
+            'Keep the full Reem Kufi source font out of the app asset tree; '
+            'regenerate the bounded wordmark subset from source control history '
+            'if the Arabic logo text changes.',
+      );
+
+      final subset = File('assets/fonts/ReemKufi-RihlaWordmark.ttf');
+      expect(subset.existsSync(), isTrue);
+      expect(
+        subset.lengthSync(),
+        lessThanOrEqualTo(24 * 1024),
+        reason:
+            'The Reem Kufi asset should stay a tiny wordmark subset, not drift '
+            'back toward the 127KB full variable face (#636).',
+      );
+    });
+
+    test('Arabic display subset is only used for the wordmark', () {
+      final offenders = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .where((f) => f.readAsStringSync().contains('arabicDisplay('))
+          .map((f) => f.path)
+          .where(
+            (path) =>
+                path != 'lib/shared/widgets/wordmark_logo.dart' &&
+                path != 'lib/core/theme/tokens/typography_tokens.dart',
+          )
+          .toList();
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'AppTypography.arabicDisplay is backed by a wordmark-only font '
+            'subset. Add a proper Arabic text font strategy before using it for '
+            'general UI copy.',
+      );
     });
 
     test('no GoogleFonts.getFont remains in lib/ (CDN path is gone)', () {

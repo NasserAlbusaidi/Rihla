@@ -24,7 +24,8 @@ Requires Google Chrome at the default macOS path and the bundled fonts in
 - `fastlane/metadata/android/en-US/images/featureGraphic.png` — 1024×500
 - `fastlane/metadata/android/en-US/images/phoneScreenshots/{1..4}_en-US.png` — 1242×2208
 - `fastlane/metadata/android/ar/images/phoneScreenshots/{1..4}_ar.png` — 1242×2208
-  (Reem Kufi RTL captions)
+  (RTL captions rendered with platform Arabic fonts; the bundled Reem Kufi asset
+  is a wordmark-only subset)
 
 ## Open items (need a fresh capture from the current app)
 
