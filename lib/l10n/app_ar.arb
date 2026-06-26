@@ -181,11 +181,15 @@
   "ledgerBucketActivities": "أنشطة",
   "ledgerBucketOther": "أخرى",
 
-  "categoryFood": "طعام ومطاعم",
+  "categoryFood": "طعام",
   "categoryTransport": "مواصلات",
   "categoryAccommodation": "إقامة",
   "categoryActivities": "أنشطة",
   "categoryShopping": "تسوق",
+  "categoryGroceries": "بقالة",
+  "categoryDrinks": "مشروبات",
+  "categoryFuel": "وقود",
+  "categoryFees": "رسوم",
   "categoryOther": "أخرى",
 
   "ledgerBackTooltip": "رجوع",

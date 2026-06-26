@@ -33,6 +33,7 @@ import '../models/split_explanation.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
 import '../utils/expense_provenance.dart';
+import '../utils/ledger_categories.dart';
 import '../utils/localized_category_name.dart';
 import 'custom_split_sheet.dart';
 import 'split_scope_selector.dart';
@@ -730,6 +731,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       title: context.l10n.editorCategory,
                       child: _CategoryStrip(
                         categoriesAsync: categoriesAsync,
+                        eventType: event?.type,
                         selectedCategoryId: _selectedCategoryId,
                         onCategorySelected: (id) {
                           HapticService.selection();
@@ -1353,11 +1355,17 @@ class _CategoryStrip extends StatelessWidget {
     required this.categoriesAsync,
     required this.selectedCategoryId,
     required this.onCategorySelected,
+    this.eventType,
   });
 
   final AsyncValue<List<ExpenseCategory>> categoriesAsync;
   final String? selectedCategoryId;
   final ValueChanged<String> onCategorySelected;
+
+  /// #689: when set, reorders the picker so the event type's likely categories
+  /// lead (camping → groceries/fuel first). Null (event still loading) → the
+  /// neutral catalog order.
+  final EventType? eventType;
 
   @override
   Widget build(BuildContext context) {
@@ -1376,23 +1384,30 @@ class _CategoryStrip extends StatelessWidget {
           style: TextStyle(color: context.colors.errorText),
         ),
       ),
-      data: (categories) => SizedBox(
-        height: 42,
-        child: ListView.separated(
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-          scrollDirection: Axis.horizontal,
-          itemCount: categories.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            return _CategoryChip(
-              category: category,
-              selected: selectedCategoryId == category.id,
-              onTap: () => onCategorySelected(category.id),
-            );
-          },
-        ),
-      ),
+      data: (categories) {
+        final order = categoryOrderForType(eventType ?? EventType.custom);
+        final sorted = [...categories]
+          ..sort((a, b) => order.indexOf(a.id).compareTo(order.indexOf(b.id)));
+        return SizedBox(
+          height: 42,
+          child: ListView.separated(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space24,
+            ),
+            scrollDirection: Axis.horizontal,
+            itemCount: sorted.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final category = sorted[index];
+              return _CategoryChip(
+                category: category,
+                selected: selectedCategoryId == category.id,
+                onTap: () => onCategorySelected(category.id),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -1410,7 +1425,7 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _categoryColor(context, category.name);
+    final color = categoryColorForId(context.colors, category.id);
     final displayName = localizedCategoryName(
       id: category.id,
       fallbackName: category.name,
@@ -1444,7 +1459,7 @@ class _CategoryChip extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                category.iconData,
+                categoryIconForId(category.id),
                 size: 11,
                 color: selected ? Colors.white : color,
               ),
@@ -2131,21 +2146,6 @@ class _InfoRow extends StatelessWidget {
       ),
     );
   }
-}
-
-Color _categoryColor(BuildContext context, String name) {
-  final colors = context.colors;
-  final normalized = name.toLowerCase();
-  if (normalized.contains('food')) return colors.cat1;
-  if (normalized.contains('lodg') || normalized.contains('hotel')) {
-    return colors.cat2;
-  }
-  if (normalized.contains('trans') || normalized.contains('taxi')) {
-    return colors.cat3;
-  }
-  if (normalized.contains('grocer')) return colors.cat4;
-  if (normalized.contains('activ')) return colors.cat5;
-  return colors.cat6;
 }
 
 // ──────────────────────────────────────────────────────────── Customise sheet

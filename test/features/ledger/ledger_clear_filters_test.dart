@@ -47,7 +47,7 @@ void main() {
     createdAt: DateTime(2026, 1, 11),
     createdBy: 'uid-sara',
     currency: 'OMR',
-    categoryName: 'Food',
+    categoryId: 'food',
   );
 
   Future<void> pumpLedger(WidgetTester tester) async {
@@ -124,7 +124,7 @@ void main() {
       expect(find.text('Food'), findsWidgets);
       expect(find.text('Nothing in this category'), findsNothing);
 
-      // Apply a category filter that matches no expense (Lodging = bucket 2)
+      // Apply a category filter that matches no expense (Groceries = bucket 2)
       // via the strip's public callback — exactly what tapping a chip does.
       final strip = tester.widget<LedgerCategoryStrip>(
         find.byType(LedgerCategoryStrip),

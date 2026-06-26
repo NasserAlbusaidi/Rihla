@@ -1001,7 +1001,7 @@ abstract class AppLocalizations {
   /// No description provided for @categoryFood.
   ///
   /// In en, this message translates to:
-  /// **'Food & Dining'**
+  /// **'Food'**
   String get categoryFood;
 
   /// No description provided for @categoryTransport.
@@ -1027,6 +1027,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shopping'**
   String get categoryShopping;
+
+  /// No description provided for @categoryGroceries.
+  ///
+  /// In en, this message translates to:
+  /// **'Groceries'**
+  String get categoryGroceries;
+
+  /// No description provided for @categoryDrinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Drinks'**
+  String get categoryDrinks;
+
+  /// No description provided for @categoryFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get categoryFuel;
+
+  /// No description provided for @categoryFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Fees'**
+  String get categoryFees;
 
   /// No description provided for @categoryOther.
   ///

@@ -25,9 +25,9 @@ class LedgerCategoryStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final present = <int>{};
     for (final e in expenses) {
-      present.add(ledgerCategoryBucket(e.categoryName));
+      present.add(ledgerCategoryBucket(e.categoryId));
     }
-    const order = [1, 2, 3, 4, 5, 6];
+    const order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     final available = order.where(present.contains).toList(growable: false);
 
     return SizedBox(

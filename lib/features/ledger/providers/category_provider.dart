@@ -5,7 +5,10 @@ import '../models/expense_category_model.dart';
 /// Default expense categories (hardcoded, no backend).
 ///
 /// Custom categories via the legacy backend have been removed. These are the
-/// built-in defaults that cover common expense types.
+/// built-in defaults that cover common expense types. Order, ids, display name,
+/// icon and color are governed by the canonical catalog (`ledger_categories.dart`,
+/// #689) — the `name`/`icon`/`color` fields below are vestigial fallbacks; all
+/// picker/ledger display resolves by `id` through the catalog.
 final tripCategoriesProvider =
     StreamProvider.family<List<ExpenseCategory>, String>((ref, tripId) {
       return Stream.value(_defaultCategories);
@@ -17,7 +20,23 @@ const _defaultCategories = [
     tripId: '',
     name: 'Food & Dining',
     icon: 'food',
-    color: '#F59E0B',
+    color: '#C2693B',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'groceries',
+    tripId: '',
+    name: 'Groceries',
+    icon: 'gear',
+    color: '#6F7A3A',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'drinks',
+    tripId: '',
+    name: 'Drinks',
+    icon: 'food',
+    color: '#C2693B',
     isDefault: true,
   ),
   ExpenseCategory(
@@ -25,7 +44,15 @@ const _defaultCategories = [
     tripId: '',
     name: 'Transport',
     icon: 'transport',
-    color: '#3B82F6',
+    color: '#8C6A2F',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'fuel',
+    tripId: '',
+    name: 'Fuel',
+    icon: 'gas',
+    color: '#8C6A2F',
     isDefault: true,
   ),
   ExpenseCategory(
@@ -33,7 +60,7 @@ const _defaultCategories = [
     tripId: '',
     name: 'Accommodation',
     icon: 'lodging',
-    color: '#8B5CF6',
+    color: '#4F7B96',
     isDefault: true,
   ),
   ExpenseCategory(
@@ -41,7 +68,7 @@ const _defaultCategories = [
     tripId: '',
     name: 'Activities',
     icon: 'other',
-    color: '#10B981',
+    color: '#94517A',
     isDefault: true,
   ),
   ExpenseCategory(
@@ -49,7 +76,15 @@ const _defaultCategories = [
     tripId: '',
     name: 'Shopping',
     icon: 'gear',
-    color: '#EC4899',
+    color: '#94517A',
+    isDefault: true,
+  ),
+  ExpenseCategory(
+    id: 'fees',
+    tripId: '',
+    name: 'Fees',
+    icon: 'other',
+    color: '#4D5A6A',
     isDefault: true,
   ),
   ExpenseCategory(
@@ -57,7 +92,7 @@ const _defaultCategories = [
     tripId: '',
     name: 'Other',
     icon: 'other',
-    color: '#6B7280',
+    color: '#4D5A6A',
     isDefault: true,
   ),
 ];
