@@ -1501,6 +1501,7 @@
   "eventDetailsSection": "EVENT DETAILS",
   "eventNameEmpty": "Event name can't be empty.",
   "eventUpdated": "Event updated",
+  "eventUpdatedWillSync": "Event updated — will sync when online.",
   "eventSaveFailed": "Couldn't save changes. Try again.",
   "eventNotSet": "Not set",
   "eventDescriptionLabel": "Description",

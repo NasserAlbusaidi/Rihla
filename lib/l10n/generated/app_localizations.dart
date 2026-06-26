@@ -3468,6 +3468,12 @@ abstract class AppLocalizations {
   /// **'Event updated'**
   String get eventUpdated;
 
+  /// No description provided for @eventUpdatedWillSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Event updated — will sync when online.'**
+  String get eventUpdatedWillSync;
+
   /// No description provided for @eventSaveFailed.
   ///
   /// In en, this message translates to:

@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/core/utils/write_ack.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -63,7 +64,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
 
-      expect(find.text('Event updated'), findsOneWidget);
+      expect(
+        find.text('Event updated — will sync when online.'),
+        findsOneWidget,
+      );
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Save Changes'), findsOneWidget);
       expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
@@ -77,6 +81,57 @@ void main() {
           description: null,
         ),
       ).called(1);
+    },
+  );
+
+  testWidgets(
+    '#682: stale-probe online Save surfaces queued "will sync" feedback '
+    'after the ack timeout',
+    (tester) async {
+      final service = _MockEventService();
+      // Stale probe: the connectivity provider still reads `online` (it lags
+      // real connectivity up to 60s, #633) while the device is actually
+      // offline, so `skipWait` is false and the write is awaited to timeout.
+      final connectivity = ConnectivityNotifier(startPeriodicChecks: false);
+      late ProviderContainer container;
+
+      when(
+        () => service.updateEvent(
+          groupId: 'group-1',
+          eventId: 'event-1',
+          name: 'Updated Event',
+          startDate: null,
+          endDate: null,
+          description: null,
+        ),
+      ).thenAnswer((_) => Completer<void>().future); // never acks (offline)
+
+      await tester.pumpWidget(
+        _wrapInfoSection(
+          eventService: service,
+          connectivity: connectivity,
+          onContainer: (c) => container = c,
+        ),
+      );
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField).first, 'Updated Event');
+      await tester.tap(find.byKey(EventKeys.saveChangesButton));
+      await tester.pump();
+
+      // Within the timeout: spinner up, no confirmation yet.
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      // Advance past kWriteAckTimeout → awaitServerAck resolves to queued.
+      await tester.pump(kWriteAckTimeout + const Duration(milliseconds: 200));
+
+      expect(
+        find.text('Event updated — will sync when online.'),
+        findsOneWidget,
+      );
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Save Changes'), findsOneWidget);
+      expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
     },
   );
 
