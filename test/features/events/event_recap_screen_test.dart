@@ -32,36 +32,36 @@ void main() {
       );
 
   Event event() => Event(
-        id: 'e1',
-        name: 'Jabal Trip',
-        type: EventType.trip,
-        groupId: 'g1',
-        createdBy: 'a',
-        participantIds: const ['a', 'b'],
-        participantNames: const {'a': 'Alice', 'b': 'Bob'},
-        modules: const EventModules(),
-        createdAt: DateTime(2026, 3, 1),
-      );
+    id: 'e1',
+    name: 'Jabal Trip',
+    type: EventType.trip,
+    groupId: 'g1',
+    createdBy: 'a',
+    participantIds: const ['a', 'b'],
+    participantNames: const {'a': 'Alice', 'b': 'Bob'},
+    modules: const EventModules(),
+    createdAt: DateTime(2026, 3, 1),
+  );
 
   // a paid 100, share 50, received a 50 settlement → net 0, settled -50.
   EventRecap settledRecap() => EventRecap.from(
-        eventId: 'e1',
-        eventName: 'Jabal Trip',
-        startDate: null,
-        endDate: null,
-        participantIds: const ['a', 'b'],
-        expenseCount: 2,
-        totalSpentByCurrency: {'OMR': d('100')},
-        balances: {
-          'OMR': [ub('a', '100', '50', '0'), ub('b', '0', '50', '0')],
-        },
-        uid: 'a',
-      );
+    eventId: 'e1',
+    eventName: 'Jabal Trip',
+    startDate: null,
+    endDate: null,
+    participantIds: const ['a', 'b'],
+    expenseCount: 2,
+    totalSpentByCurrency: {'OMR': d('100')},
+    balances: {
+      'OMR': [ub('a', '100', '50', '0'), ub('b', '0', '50', '0')],
+    },
+    uid: 'a',
+  );
 
   List<Override> overridesFor(EventRecap recap) => [
-        eventDetailProvider(eventRef).overrideWith((ref) => Stream.value(event())),
-        eventRecapProvider(eventRef).overrideWithValue(recap),
-      ];
+    eventDetailProvider(eventRef).overrideWith((ref) => Stream.value(event())),
+    eventRecapProvider(eventRef).overrideWithValue(recap),
+  ];
 
   testWidgets('renders the recap screen with money rows (EN)', (tester) async {
     await pumpRihlaApp(
@@ -82,8 +82,9 @@ void main() {
     expect(find.text('Net'), findsOneWidget);
   });
 
-  testWidgets('square-but-active user still shows paid/share (no settlement)',
-      (tester) async {
+  testWidgets('square-but-active user still shows paid/share (no settlement)', (
+    tester,
+  ) async {
     // a paid exactly their share → net 0, no settlement. Block must NOT blank.
     final recap = EventRecap.from(
       eventId: 'e1',
@@ -109,6 +110,33 @@ void main() {
     // No settlements → that row is suppressed.
     expect(find.text('Settlements'), findsNothing);
     expect(find.text('Net'), findsOneWidget);
+  });
+
+  testWidgets('pluralizes one participant and one expense in the subtitle', (
+    tester,
+  ) async {
+    final recap = EventRecap.from(
+      eventId: 'e1',
+      eventName: 'Solo Dinner',
+      startDate: null,
+      endDate: null,
+      participantIds: const ['a'],
+      expenseCount: 1,
+      totalSpentByCurrency: {'OMR': d('12')},
+      balances: {
+        'OMR': [ub('a', '12', '12', '0')],
+      },
+      uid: 'a',
+    );
+
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(recap),
+    );
+
+    expect(find.text('1 person · 1 expense'), findsOneWidget);
+    expect(find.text('1 people · 1 expenses'), findsNothing);
   });
 
   testWidgets('renders Arabic strings under RTL locale', (tester) async {

@@ -21,6 +21,9 @@ import '../models/group_model.dart';
 // Exceptions
 // ---------------------------------------------------------------------------
 
+const _callableDeviceVerificationMessage =
+    'Could not verify this device. Try again, or update from the Play Store.';
+
 /// Thrown by [GroupService.addShadowMember] (#278) when the placeholder name
 /// collides — case-insensitive, trimmed — with an existing real or shadow
 /// member. Maps the callable's `already-exists` code. The create flow surfaces
@@ -341,7 +344,7 @@ class GroupService extends FirestoreRepository {
 
   String _joinGroupErrorMessage(String code) {
     return switch (code) {
-      'unauthenticated' => 'Please sign in and try again.',
+      'unauthenticated' => _callableDeviceVerificationMessage,
       'invalid-argument' => 'Invalid invite code.',
       'not-found' => 'Invalid invite code.',
       // #279: server rejects a join whose display name collides with an existing
@@ -417,7 +420,7 @@ class GroupService extends FirestoreRepository {
 
   String _addShadowMemberErrorMessage(String code) {
     return switch (code) {
-      'unauthenticated' => 'Please sign in and try again.',
+      'unauthenticated' => _callableDeviceVerificationMessage,
       'permission-denied' => 'Only the group creator can add names.',
       'invalid-argument' => 'That name is not valid.',
       'not-found' => 'That group no longer exists.',
