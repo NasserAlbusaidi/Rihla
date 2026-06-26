@@ -420,6 +420,26 @@ void main() {
       expect(find.text("Name can't be empty."), findsOneWidget);
     });
 
+    testWidgets('group-name error clears when a valid name is typed (#680)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(await buildCreateScreen());
+      await tester.pump();
+
+      // Submit with an empty group name → validation error appears.
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+      expect(find.text("Name can't be empty."), findsOneWidget);
+
+      // Type a valid group name. With autovalidateMode.onUserInteraction the
+      // form re-validates on input, so the stale error must clear WITHOUT
+      // re-submitting (the device-name field is pre-filled and valid).
+      await tester.enterText(find.byKey(GroupKeys.groupNameInput), 'Beach Trip');
+      await tester.pumpAndSettle();
+
+      expect(find.text("Name can't be empty."), findsNothing);
+    });
+
     testWidgets('validates display name is required on submit', (tester) async {
       SharedPreferences.setMockInitialValues({'device_name': ''});
       final prefs = await SharedPreferences.getInstance();

@@ -339,6 +339,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       body: SafeArea(
         child: Form(
           key: _formKey,
+          // #680: re-validate each field as the user edits it so a stale
+          // "Name can't be empty." clears the moment a valid name is typed,
+          // instead of lingering until the next Create tap.
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             children: [
               _CreateGroupTopBar(
