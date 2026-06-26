@@ -71,7 +71,12 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
       const groupData = groupSnap.data() ?? {};
       // Honor the same write-lock as firestore.rules (the Admin SDK bypasses
       // rules), mirroring joinGroupByInviteCode:286.
-      if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
+      if (
+        groupData.isDeleted === true
+        || groupData.deletingInProgress === true
+        || groupData.claimingInProgress === true
+        || groupData.accountDeletionInProgress === true
+      ) {
         throw new HttpsError('not-found', 'Group not found.');
       }
       if (groupData.createdBy !== uid) {

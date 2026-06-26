@@ -1,5 +1,5 @@
 import functionsTest from 'firebase-functions-test';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp, WriteBatch } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 
@@ -178,6 +178,8 @@ const groupDoc = async (groupId: string) =>
   (await getFirestore().doc(`groups/${groupId}`).get()).data() ?? {};
 const memberDoc = async (groupId: string, docId: string) =>
   (await getFirestore().doc(`groups/${groupId}/members/${docId}`).get()).data();
+const expenseDoc = async (path: string) =>
+  (await getFirestore().doc(path).get()).data() ?? {};
 const memberDocCount = async (groupId: string) =>
   (await getFirestore().collection(`groups/${groupId}/members`).get()).size;
 const reqDoc = async (groupId: string, rid: string) =>
@@ -306,6 +308,37 @@ describe('requestClaimShadow (#278 PR8)', () => {
     expect(await reqCount('g')).toBe(1);
     expect((await reqDoc('g', reqId(CLAIMER, SHADOW)))?.status).toBe('pending');
   });
+
+  test('#710 R8. re-request while existing request is claiming rejects and preserves lock fields', async () => {
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW);
+    await seedInviteCode(CODE, 'g');
+    const rid = await seedPendingRequest('g', CLAIMER, SHADOW);
+    const claimingAt = Timestamp.fromMillis(1234);
+    const mutationStartedAt = Timestamp.fromMillis(5678);
+    await getFirestore().doc(`groups/g/claimRequests/${rid}`).update({
+      status: 'claiming',
+      requesterDisplayName: 'Original requester',
+      claimingBy: OWNER,
+      claimingAt,
+      claimMutationStartedAt: mutationStartedAt,
+    });
+
+    await expect(
+      reqClaim({ inviteCode: CODE, shadowMemberId: SHADOW, displayName: 'New Name' }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    expect(await reqDoc('g', rid)).toMatchObject({
+      requesterUid: CLAIMER,
+      requesterDisplayName: 'Original requester',
+      shadowMemberId: SHADOW,
+      status: 'claiming',
+      claimingBy: OWNER,
+      claimingAt,
+      claimMutationStartedAt: mutationStartedAt,
+    });
+  });
 });
 
 describe('decideClaimRequest (#278 PR8)', () => {
@@ -429,7 +462,11 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect(omr(net, CLAIMER)).toBe('-6.000');
     expect(omr(net, OWNER)).toBe('6.000');
     expect(omr(net, SHADOW)).toBe('absent');
-    expect((await reqDoc('g', rid))?.status).toBe('claimed');
+    const request = await reqDoc('g', rid);
+    expect(request?.status).toBe('claimed');
+    expect(request?.claimMutationStartedAt).toBeInstanceOf(Timestamp);
+    expect((await getFirestore().doc(`groups/g/claimShadowLocks/${SHADOW}`).get()).exists).toBe(false);
+    expect(await groupDoc('g')).not.toMatchObject({ claimingInProgress: true });
   });
 
   test('D9. approve when the requester is ALREADY a member → engine failed-precondition; request stays pending; nothing mutated', async () => {
@@ -569,6 +606,107 @@ describe('decideClaimRequest (#278 PR8)', () => {
       code: 'failed-precondition',
     });
     expect((await reqDoc('g', ridClaimerS1))?.status).toBe('declined'); // NOT 'claimed'
+  });
+
+  test('#710 D15. active claim freeze rejects a second approval for the same shadow before money mutation', async () => {
+    await seedGroup('g', [OWNER, SHADOW], {
+      claimingInProgress: true,
+      claimLockedAt: Timestamp.fromMillis(1000),
+    });
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000,
+    });
+    const rid = await seedPendingRequest('g', OUTSIDER, SHADOW, 'Ali');
+
+    await expect(decide({ groupId: 'g', requestId: rid, approve: true })).rejects.toMatchObject({
+      code: expect.stringMatching(/^(aborted|failed-precondition)$/),
+    });
+
+    expect((await reqDoc('g', rid))?.status).toBe('pending');
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
+    expect(await memberDoc('g', OUTSIDER)).toBeUndefined();
+    expect((await expenseDoc('groups/g/events/e1/expenses/x1')).payerParticipantId).toBe(OWNER);
+  });
+
+  test('#710 D16. existing per-shadow lock rejects approval even if the group mirror is missing', async () => {
+    const lockedAt = Timestamp.fromMillis(2222);
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000,
+    });
+    const rid = await seedPendingRequest('g', OUTSIDER, SHADOW, 'Ali');
+    await getFirestore().doc(`groups/g/claimShadowLocks/${SHADOW}`).set({
+      groupId: 'g',
+      shadowMemberId: SHADOW,
+      claimerUid: CLAIMER,
+      requestId: reqId(CLAIMER, SHADOW),
+      lockedBy: OWNER,
+      lockedAt,
+      updatedAt: lockedAt,
+    });
+
+    await expect(decide({ groupId: 'g', requestId: rid, approve: true })).rejects.toMatchObject({
+      code: expect.stringMatching(/^(aborted|failed-precondition)$/),
+    });
+
+    expect((await reqDoc('g', rid))?.status).toBe('pending');
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
+    expect(await memberDoc('g', OUTSIDER)).toBeUndefined();
+    expect((await expenseDoc('groups/g/events/e1/expenses/x1')).payerParticipantId).toBe(OWNER);
+  });
+
+  test('#710 D17. post-marker engine failure leaves claiming request and lock for recovery', async () => {
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000,
+    });
+    const rid = await seedPendingRequest('g', CLAIMER, SHADOW, 'Ali');
+    const realCommit = WriteBatch.prototype.commit;
+    jest.spyOn(WriteBatch.prototype, 'commit').mockImplementation(function (this: WriteBatch) {
+      return Promise.reject(new Error('forced post-marker phase-B failure'));
+    });
+
+    await expect(decide({ groupId: 'g', requestId: rid, approve: true })).rejects.toBeDefined();
+
+    const request = await reqDoc('g', rid);
+    const group = await groupDoc('g');
+    const lock = (await getFirestore().doc(`groups/g/claimShadowLocks/${SHADOW}`).get()).data();
+    expect(request).toMatchObject({
+      status: 'claiming',
+      requesterUid: CLAIMER,
+      shadowMemberId: SHADOW,
+      claimingBy: OWNER,
+    });
+    expect(request?.claimingAt).toBeInstanceOf(Timestamp);
+    expect(request?.claimMutationStartedAt).toBeInstanceOf(Timestamp);
+    expect(lock).toMatchObject({
+      groupId: 'g',
+      shadowMemberId: SHADOW,
+      claimerUid: CLAIMER,
+      requestId: rid,
+      lockedBy: OWNER,
+    });
+    expect(lock?.mutationStartedAt).toBeInstanceOf(Timestamp);
+    expect(group.claimingInProgress).toBe(true);
+    expect(group.claimLockedAt).toBeInstanceOf(Timestamp);
+    expect(group.claimMutationStartedAt).toBeInstanceOf(Timestamp);
+    expect((await expenseDoc('groups/g/events/e1/expenses/x1')).payerParticipantId).toBe(OWNER);
+
+    jest.spyOn(WriteBatch.prototype, 'commit').mockImplementation(function (this: WriteBatch) {
+      return realCommit.apply(this);
+    });
   });
 });
 

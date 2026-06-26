@@ -273,7 +273,12 @@ export const joinGroupByInviteCode = onCall<
         // on rules evaluation. 'not-found' mirrors the missing-group throw above
         // (no deleted-vs-never-existed leak) and is intentionally counted as a
         // lookup failure toward the join rate limit, exactly like an invalid code.
-        if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
+        if (
+          groupData.isDeleted === true
+          || groupData.deletingInProgress === true
+          || groupData.claimingInProgress === true
+          || groupData.accountDeletionInProgress === true
+        ) {
           throw new HttpsError('not-found', 'Group not found.');
         }
 

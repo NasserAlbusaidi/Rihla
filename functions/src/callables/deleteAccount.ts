@@ -171,8 +171,7 @@ function rewriteString(value: unknown, originalName: string | undefined): unknow
 
 function rewriteMetadata(value: unknown, uid: string, tombstoneId: string, originalName?: string): unknown {
   if (typeof value === 'string') {
-    if (value === uid) return tombstoneId;
-    return rewriteString(value, originalName);
+    return rewriteString(value.split(uid).join(tombstoneId), originalName);
   }
   if (Array.isArray(value)) {
     return value.map((entry) => rewriteMetadata(entry, uid, tombstoneId, originalName));
@@ -214,12 +213,17 @@ function expenseUpdates(
   data: DocumentData,
   uid: string,
   tombstoneId: string,
+  originalName?: string,
 ): { updates: DocumentData; touched: boolean } {
   const updates: DocumentData = {};
   let touched = false;
 
   if (data.createdBy === uid) {
     updates.createdBy = deletedUserSentinel;
+    touched = true;
+  }
+  if (data.lastEditedBy === uid) {
+    updates.lastEditedBy = deletedUserSentinel;
     touched = true;
   }
   if (data.payerParticipantId === uid) {
@@ -243,11 +247,17 @@ function expenseUpdates(
     updates.splitDistribution = distribution.value;
     touched = true;
   }
+  const splitExplanation = rewriteMetadata(data.splitExplanation, uid, tombstoneId, originalName);
+  if (hasChanged(data.splitExplanation, splitExplanation)) {
+    updates.splitExplanation = splitExplanation;
+    touched = true;
+  }
 
   if (touched) {
     updates.receiptUrl = null;
     updates.note = null;
     updates.description = null;
+    updates.deleteAccountScrubAt = FieldValue.serverTimestamp();
   }
   return { updates, touched };
 }
@@ -350,6 +360,56 @@ function skippedGroup(): GroupCascadeResult {
   };
 }
 
+async function acquireAccountDeletionGroupMarker(
+  db: Firestore,
+  groupRef: DocumentReference,
+  uid: string,
+): Promise<boolean> {
+  const auditRef = db.doc(`${deletionAuditCollection}/${uid}`);
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const groupSnap = await tx.get(groupRef);
+    const auditSnap = await tx.get(auditRef);
+    if (!groupSnap.exists) return false;
+    const groupData = groupSnap.data() ?? {};
+    const memberIds = asStringArray(groupData.memberIds, `groups/${groupRef.id}.memberIds`);
+    if (!memberIds.includes(uid)) return false;
+    if (
+      groupData.deletingInProgress === true
+      || groupData.claimingInProgress === true
+      || (
+        groupData.accountDeletionInProgress === true
+        && groupData.accountDeletionUid !== uid
+      )
+    ) {
+      throw new HttpsError('aborted', 'Group is temporarily locked.');
+    }
+    const auditData = auditSnap.data() ?? {};
+    const firstFailedAt = auditData.firstFailedAt instanceof Timestamp
+      ? auditData.firstFailedAt
+      : now;
+    const attemptCount = typeof auditData.attemptCount === 'number'
+      ? auditData.attemptCount
+      : 0;
+    tx.set(auditRef, {
+      uid,
+      status: 'failed',
+      cascadeFailed: FieldValue.arrayUnion(groupRef.id),
+      firstFailedAt,
+      lastAttemptAt: now,
+      attemptCount: attemptCount + 1,
+      expiresAt: Timestamp.fromMillis(now.toMillis() + resolveAuditTtlMs()),
+    }, { merge: true });
+    tx.update(groupRef, {
+      accountDeletionInProgress: true,
+      accountDeletionUid: uid,
+      accountDeletionLockedAt: now,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
+  });
+}
+
 // #46: scrub one group in two phases. Phase B stages all child-doc scrubs into a
 // per-group batch and flushes; Phase C retires the member identity inside a
 // transaction. Critically, NONE of the three identity-visibility writes (tombstone
@@ -363,6 +423,9 @@ async function processGroup(
   groupRef: DocumentReference,
   uid: string,
 ): Promise<GroupCascadeResult> {
+  const acquired = await acquireAccountDeletionGroupMarker(db, groupRef, uid);
+  if (!acquired) return skippedGroup();
+
   // ---- Phase A: reads + deterministic identity ----
   const groupSnap = await groupRef.get();
   if (!groupSnap.exists) return skippedGroup();
@@ -419,7 +482,12 @@ async function processGroup(
 
     const expensesSnap = await eventDoc.ref.collection('expenses').get();
     for (const expenseDoc of expensesSnap.docs) {
-      const { updates, touched } = expenseUpdates(expenseDoc.data(), uid, tombstoneId);
+      const { updates, touched } = expenseUpdates(
+        expenseDoc.data(),
+        uid,
+        tombstoneId,
+        originalName,
+      );
       if (touched) {
         await writer.update(expenseDoc.ref, updates);
         expensesScrubbed += 1;
@@ -502,6 +570,9 @@ async function processGroup(
 
     const groupUpdate: DocumentData = {
       memberIds: replaceUid(currentMemberIds, uid, tombstoneId).values,
+      accountDeletionInProgress: FieldValue.delete(),
+      accountDeletionUid: FieldValue.delete(),
+      accountDeletionLockedAt: FieldValue.delete(),
       updatedAt: FieldValue.serverTimestamp(),
     };
     if (gData.createdBy === uid) {
@@ -564,16 +635,64 @@ async function writeDeletionAuditMarker(
     const prev = (await tx.get(ref)).data();
     const firstFailedAt = prev && isTimestamp(prev.firstFailedAt) ? prev.firstFailedAt : now;
     const attemptCount = prev && typeof prev.attemptCount === 'number' ? prev.attemptCount : 0;
+    const prevCascadeFailed = Array.isArray(prev?.cascadeFailed)
+      ? prev.cascadeFailed.filter((entry): entry is string => typeof entry === 'string')
+      : [];
+    const alreadyMarkedThisAttempt =
+      cascadeFailed.length > 0
+      && cascadeFailed.some((entry) => prevCascadeFailed.includes(entry));
     tx.set(ref, {
       uid,
       status: 'failed',
       cascadeFailed,
       firstFailedAt,
-      lastAttemptAt: now,
-      attemptCount: attemptCount + 1,
+      lastAttemptAt: alreadyMarkedThisAttempt && isTimestamp(prev?.lastAttemptAt)
+        ? prev.lastAttemptAt
+        : now,
+      attemptCount: alreadyMarkedThisAttempt ? attemptCount : attemptCount + 1,
       expiresAt: Timestamp.fromMillis(now.toMillis() + resolveAuditTtlMs()),
     });
   });
+}
+
+function addCascadeFailure(cascadeFailed: string[], id: string): void {
+  if (!cascadeFailed.includes(id)) cascadeFailed.push(id);
+}
+
+async function scrubClaimStateForDeletingUid(
+  db: Firestore,
+  uid: string,
+  cascadeFailed: string[],
+): Promise<void> {
+  const requests = await db.collectionGroup('claimRequests')
+    .where('requesterUid', '==', uid)
+    .get();
+  for (const doc of requests.docs) {
+    const groupId = doc.ref.parent.parent?.id ?? 'claimRequests';
+    const data = doc.data();
+    if (data.status === 'claiming') {
+      addCascadeFailure(cascadeFailed, groupId);
+      continue;
+    }
+    try {
+      await doc.ref.delete();
+    } catch (error) {
+      addCascadeFailure(cascadeFailed, groupId);
+      logger.error('deleteAccount claim request delete failed', {
+        uid,
+        groupId,
+        requestId: doc.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const locks = await db.collectionGroup('claimShadowLocks')
+    .where('claimerUid', '==', uid)
+    .get();
+  for (const doc of locks.docs) {
+    addCascadeFailure(cascadeFailed, doc.ref.parent.parent?.id ?? 'claimShadowLocks');
+  }
 }
 
 // #76: shared per-uid deletion cascade, called by BOTH the deleteAccount callable
@@ -665,6 +784,8 @@ export async function runAccountDeletionCascade(
       });
     }
   }
+
+  await scrubClaimStateForDeletingUid(db, uid, cascadeFailed);
 
   // #46: scrub identity residue before the Auth-delete gate, and fold these
   // failures into cascadeFailed too.

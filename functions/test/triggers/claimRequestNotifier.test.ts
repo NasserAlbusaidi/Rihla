@@ -171,6 +171,30 @@ describe('claimRequestNotifier', () => {
     expect(sendEach).not.toHaveBeenCalled();
   });
 
+  test('#710 claiming→claimed notifies the requester with approve copy', async () => {
+    await seedGroup('g1', 'Salalah Trip', 'creator');
+    await seedToken('R');
+    const sendEach = mockSendEach(1);
+
+    await fire(snap(pending({ status: 'claiming' })), snap(pending({ status: 'claimed' })));
+
+    const messages = sendEach.mock.calls[0][0];
+    expect(messages).toHaveLength(1);
+    expect(messages[0].token).toBe('tok-R');
+    expect(messages[0].data).toEqual({ type: 'claim_decided', groupId: 'g1' });
+    expect(messages[0].notification.body).toContain('approved');
+  });
+
+  test('#710 claiming→pending reset is silent and does not re-notify the creator', async () => {
+    await seedGroup('g1', 'Trip', 'creator');
+    await seedToken('creator');
+    const sendEach = mockSendEach(0);
+
+    await fire(snap(pending({ status: 'claiming' })), snap(pending()));
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
   test('delete (after absent) does NOT notify', async () => {
     await seedGroup('g1', 'Trip', 'creator');
     await seedToken('creator');

@@ -425,6 +425,109 @@ describe('deleteAccount', () => {
     });
   });
 
+  test('#710 scrubs itemized splitExplanation, lastEditedBy, and stamps the expense scrub sentinel', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+    await seedEvent('groupA', 'eventA');
+    await db.doc('groups/groupA/events/eventA/expenses/itemized').set({
+      id: 'itemized',
+      eventId: 'eventA',
+      createdBy: otherUid,
+      lastEditedBy: deletedUid,
+      payerParticipantId: otherUid,
+      amountFils: 12000,
+      currency: 'OMR',
+      scope: 'custom',
+      splitMode: 'exact',
+      customSplitParticipants: [deletedUid, otherUid],
+      splitDistribution: { [deletedUid]: 6000, [otherUid]: 6000 },
+      splitExplanation: {
+        type: 'itemized',
+        version: 1,
+        requestTrace: `manual-${deletedUid}-${oldName}`,
+        items: [{
+          label: `${oldName} coffee`,
+          amountFils: 12000,
+          quantity: 1,
+          participantIds: [deletedUid],
+          allocation: 'equal',
+          nested: { [deletedUid]: `opaque-${deletedUid}-${oldName}` },
+        }],
+      },
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-06T00:00:00.000Z',
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.expensesScrubbed).toBe(1);
+    const tombstoneId = tombstoneIdFor(deletedUid);
+    const expense = (await db.doc('groups/groupA/events/eventA/expenses/itemized').get()).data();
+    expect(expense).toMatchObject({
+      lastEditedBy: 'deleted-user',
+      customSplitParticipants: [tombstoneId, otherUid],
+      splitDistribution: { [tombstoneId]: 6000, [otherUid]: 6000 },
+      receiptUrl: null,
+      note: null,
+      description: null,
+    });
+    expect(expense?.splitExplanation).toMatchObject({
+      type: 'itemized',
+      version: 1,
+      requestTrace: `manual-${tombstoneId}-Deleted member`,
+      items: [expect.objectContaining({
+        label: 'Deleted member coffee',
+        participantIds: [tombstoneId],
+        nested: { [tombstoneId]: `opaque-${tombstoneId}-Deleted member` },
+      })],
+    });
+    expect(expense?.deleteAccountScrubAt).toBeInstanceOf(Timestamp);
+    expectNoDeletedIdentity(expense);
+  });
+
+  test('#710 active pre-join claim state blocks Auth deletion and writes deletionAudit', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('claimGroup', [otherUid, 'shadow-1'], { createdBy: otherUid });
+    await seedMember('claimGroup', otherUid);
+    await seedMember('claimGroup', 'shadow-1', { isShadow: true, displayName: 'Ali' });
+    await db.doc(`groups/claimGroup/claimRequests/${deletedUid}__shadow-1`).set({
+      requesterUid: deletedUid,
+      requesterDisplayName: oldName,
+      shadowMemberId: 'shadow-1',
+      shadowDisplayName: 'Ali',
+      status: 'claiming',
+      createdAt: Timestamp.now(),
+      decidedBy: null,
+      decidedAt: null,
+      claimingBy: otherUid,
+      claimingAt: Timestamp.fromMillis(1000),
+      claimMutationStartedAt: Timestamp.fromMillis(2000),
+    });
+    await db.doc('groups/claimGroup/claimShadowLocks/shadow-1').set({
+      groupId: 'claimGroup',
+      shadowMemberId: 'shadow-1',
+      claimerUid: deletedUid,
+      requestId: `${deletedUid}__shadow-1`,
+      lockedBy: otherUid,
+      lockedAt: Timestamp.fromMillis(1000),
+      mutationStartedAt: Timestamp.fromMillis(2000),
+      updatedAt: Timestamp.fromMillis(2000),
+    });
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+
+    await expect(getAuth().getUser(deletedUid)).resolves.toMatchObject({ uid: deletedUid });
+    const marker = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+    expect(marker).toMatchObject({ uid: deletedUid, status: 'failed' });
+    expect(marker?.cascadeFailed).toContain('claimGroup');
+  });
+
   test('user with no groups still deletes global docs and auth user', async () => {
     const db = getFirestore();
     await seedAuthUser();

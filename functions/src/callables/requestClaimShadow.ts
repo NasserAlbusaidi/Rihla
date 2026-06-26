@@ -72,7 +72,12 @@ export const requestClaimShadow = onCall<RequestClaimShadowInput, Promise<Reques
     const groupData = groupSnap.data() ?? {};
     // Honor the same write-lock as firestore.rules (Admin bypasses rules),
     // mirroring joinGroupByInviteCode:286 / addShadowMember:74.
-    if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
+    if (
+      groupData.isDeleted === true
+      || groupData.deletingInProgress === true
+      || groupData.claimingInProgress === true
+      || groupData.accountDeletionInProgress === true
+    ) {
       throw new HttpsError('not-found', 'Group not found.');
     }
 
@@ -112,12 +117,31 @@ export const requestClaimShadow = onCall<RequestClaimShadowInput, Promise<Reques
     const requestId = `${uid}__${shadowMemberId}`;
     const requestRef = groupRef.collection('claimRequests').doc(requestId);
     const existing = await requestRef.get();
-    if (existing.exists && existing.data()?.status === 'claimed') {
+    if (existing.exists) {
+      const existingStatus = existing.data()?.status;
+      if (existingStatus === 'claimed' || existingStatus === 'claiming') {
+        throw new HttpsError('failed-precondition', 'This member has already been claimed.');
+      }
+      if (existingStatus === 'pending') {
+        logger.info('claim request already pending', { uid, groupId, shadowMemberId });
+        return { requestId, status: 'pending', groupId };
+      }
+      if (existingStatus === 'declined') {
+        await requestRef.update({
+          requesterDisplayName,
+          shadowDisplayName,
+          status: 'pending',
+          decidedBy: null,
+          decidedAt: null,
+        });
+        logger.info('claim request re-opened', { uid, groupId, shadowMemberId });
+        return { requestId, status: 'pending', groupId };
+      }
       throw new HttpsError('failed-precondition', 'This member has already been claimed.');
     }
 
-    // (Re)open a pending request. A prior 'declined' is re-opened; an existing
-    // 'pending' is re-written unchanged (still one doc).
+    // Open a pending request. A prior 'declined' is re-opened above with a partial
+    // update so immutable request identity and createdAt survive the cycle.
     await requestRef.set({
       requesterUid: uid,
       requesterDisplayName,

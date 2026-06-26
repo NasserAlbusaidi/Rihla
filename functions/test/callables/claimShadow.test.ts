@@ -1110,4 +1110,133 @@ describe('claimShadowEngine — #558 post-commit parity TOCTOU (both holes)', ()
     };
     expect(res.alreadyClaimed).toBe(true);
   });
+
+  test('#710 T32. itemized splitExplanation participantIds re-key with the expense', async () => {
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000,
+      scope: 'custom',
+      customSplitParticipants: [OWNER, SHADOW],
+      splitMode: 'exact',
+      splitDistribution: { [OWNER]: 6000, [SHADOW]: 6000 },
+      splitExplanation: {
+        type: 'itemized',
+        version: 1,
+        topUnknown: 'keep-top',
+        items: [{
+          label: 'Coffee',
+          amountFils: 12000,
+          quantity: 1,
+          participantIds: [SHADOW],
+          allocation: 'equal',
+          itemUnknown: 'keep-item',
+        }],
+        adjustments: [{
+          type: 'service',
+          amountFils: 100,
+          allocation: 'equal',
+          adjustmentUnknown: 'keep-adjustment',
+        }],
+      },
+    });
+
+    await call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER });
+
+    const ex = await expenseDoc('groups/g/events/e1/expenses/x1');
+    expect(ex.splitDistribution).toEqual({ [OWNER]: 6000, [CLAIMER]: 6000 });
+    expect(ex.splitExplanation).toMatchObject({
+      type: 'itemized',
+      version: 1,
+      topUnknown: 'keep-top',
+      items: [expect.objectContaining({
+        label: 'Coffee',
+        amountFils: 12000,
+        quantity: 1,
+        allocation: 'equal',
+        participantIds: [CLAIMER],
+        itemUnknown: 'keep-item',
+      })],
+      adjustments: [expect.objectContaining({
+        type: 'service',
+        amountFils: 100,
+        allocation: 'equal',
+        adjustmentUnknown: 'keep-adjustment',
+      })],
+    });
+    expect(JSON.stringify(ex.splitExplanation)).not.toContain(SHADOW);
+  });
+
+  test('#710 T34. claimer already in itemized participantIds is rejected by D8', async () => {
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER,
+      amountFils: 12000,
+      splitExplanation: {
+        type: 'itemized',
+        version: 1,
+        items: [{
+          label: 'Shared',
+          amountFils: 12000,
+          participantIds: [SHADOW, CLAIMER],
+          allocation: 'equal',
+        }],
+      },
+    });
+
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
+    expect((await expenseDoc('groups/g/events/e1/expenses/x1')).splitExplanation.items[0].participantIds)
+      .toEqual([SHADOW, CLAIMER]);
+  });
+
+  test('#710 T35. activity metadata recursively re-keys shadow identity', async () => {
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    await getFirestore().doc('groups/g/events/e1/activity_logs/audit').set({
+      actorId: SHADOW,
+      actorName: 'Ali',
+      targetParticipantId: SHADOW,
+      logText: 'Ali edited expense',
+      metadata: {
+        before: { payerParticipantId: SHADOW, amountFils: 12000, currency: 'OMR' },
+        after: { payerParticipantId: SHADOW, amountFils: 12000, currency: 'OMR' },
+        nested: { [SHADOW]: 'shadow-key', array: [OWNER, SHADOW] },
+      },
+    });
+    await getFirestore().doc('groups/g/activity/settle').set({
+      actorId: OWNER,
+      actorName: 'Owner',
+      description: 'settled with Ali',
+      metadata: {
+        recipientId: SHADOW,
+        nested: { ids: [SHADOW] },
+      },
+    });
+
+    await call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER });
+
+    const eventLog = (await getFirestore().doc('groups/g/events/e1/activity_logs/audit').get()).data()!;
+    const groupLog = (await getFirestore().doc('groups/g/activity/settle').get()).data()!;
+    expect(eventLog.actorId).toBe(CLAIMER);
+    expect(eventLog.targetParticipantId).toBe(CLAIMER);
+    expect(eventLog.actorName).toBe('Ali');
+    expect(JSON.stringify(eventLog.metadata)).not.toContain(SHADOW);
+    expect(eventLog.metadata.before.payerParticipantId).toBe(CLAIMER);
+    expect(eventLog.metadata.after.payerParticipantId).toBe(CLAIMER);
+    expect(eventLog.metadata.nested[CLAIMER]).toBe('shadow-key');
+    expect(groupLog.metadata.recipientId).toBe(CLAIMER);
+    expect(JSON.stringify(groupLog.metadata)).not.toContain(SHADOW);
+  });
 });

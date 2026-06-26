@@ -35,6 +35,8 @@ async function clearStaleLock(
       cur.deletingInProgress !== true
       || cur.deleteLockedBy !== lockedBy
       || timestampMillis(cur.deleteLockedAt) !== lockedAtMs
+      || cur.claimingInProgress === true
+      || cur.accountDeletionInProgress === true
     ) {
       return;
     }
@@ -57,6 +59,8 @@ async function clearMalformedLock(
       cur.deletingInProgress !== true
       || curLockedBy !== lockedBy
       || timestampMillis(cur.deleteLockedAt) != null
+      || cur.claimingInProgress === true
+      || cur.accountDeletionInProgress === true
     ) {
       return false;
     }
@@ -91,6 +95,12 @@ export const deleteGroupLockReaper = onSchedule(
       const data = doc.data();
       const lockedAtMs = timestampMillis(data.deleteLockedAt);
       const lockedBy = typeof data.deleteLockedBy === 'string' ? data.deleteLockedBy : null;
+      if (data.claimingInProgress === true || data.accountDeletionInProgress === true) {
+        logger.warn('deleteGroupLockReaper left lock during claim/account-deletion freeze', {
+          groupId: doc.id,
+        });
+        continue;
+      }
       if (lockedAtMs == null) {
         malformed += 1;
         if (await clearMalformedLock(doc.ref, lockedBy)) {
