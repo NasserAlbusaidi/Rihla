@@ -35,6 +35,13 @@ class LedgerDayGroup {
   final List<LedgerTimelineItem> items;
 }
 
+/// #628: `DateFormat.MMMd` parses ICU patterns on construction, so allocating
+/// one per [groupTimelineByDay] call (every ledger build / chip-tap regroup)
+/// is wasted work. `DateFormat` carries no per-format mutable state, so a
+/// process-lifetime cache keyed by `localeName` (its only constructor input) is
+/// safe to share.
+final Map<String, DateFormat> _monthDayFormatByLocale = {};
+
 /// Groups timeline items by calendar day (newest first within each day).
 ///
 /// Labels: "Today · May 14", "Yesterday · May 13", "May 12".
@@ -50,7 +57,10 @@ List<LedgerDayGroup> groupTimelineByDay(
   // MMMd yields the locale's natural day/month order (e.g. en "May 19",
   // ar "19 مايو") with Western digits — matching Activity (#154). The old
   // MMM + manual " ${ts.day}" concat forced month-day everywhere.
-  final monthDayFormat = DateFormat.MMMd(l10n.localeName);
+  final monthDayFormat = _monthDayFormatByLocale.putIfAbsent(
+    l10n.localeName,
+    () => DateFormat.MMMd(l10n.localeName),
+  );
   for (final item in items) {
     final ts = item.date;
     final day = DateTime(ts.year, ts.month, ts.day);

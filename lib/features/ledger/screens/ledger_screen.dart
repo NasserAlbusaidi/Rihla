@@ -24,6 +24,7 @@ import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../../../core/constants/supported_currencies.dart';
 import '../providers/expense_provider.dart';
+import '../providers/ledger_perspective_provider.dart';
 import '../providers/ledger_view_provider.dart';
 import '../utils/ledger_categories.dart';
 import '../utils/ledger_timeline.dart';
@@ -151,7 +152,6 @@ class _Body extends ConsumerWidget {
     );
     final participants = data.participants;
     final eventTotal = data.eventTotal;
-    final rosterDisplayNames = data.rosterDisplayNames;
     final expensePayerDisplayNames = data.expensePayerDisplayNames;
     // Restore the non-null records the consumers require: the provider defers
     // the two l10n fallbacks (null ⇒ unknown party) to keep itself BuildContext-
@@ -169,77 +169,35 @@ class _Body extends ConsumerWidget {
     final currentPid = event.participantIds.contains(currentUserId)
         ? currentUserId
         : null;
-    // #382 PR-5: every currency bucket renders; "settled" ⇔ every bucket
-    // zero. Each bucket lists every participant, so the first hit carries the
-    // same display name the old single-bucket lookup resolved (and no money
-    // records ⇒ no buckets ⇒ the "You" fallback, exactly as before).
-    String? myDisplayName;
-    for (final bucket in data.balances.values) {
-      for (final b in bucket) {
-        if (b.participantId == currentPid) {
-          myDisplayName = b.displayName;
-          break;
-        }
-      }
-      if (myDisplayName != null) break;
-    }
-    final myLines = nonZeroNetsGccFirst(
-      myNetByCurrency(data.balances, currentPid),
+    // #628: the filter-INDEPENDENT perspective (the "You" lines, the per-person
+    // roster + sort, the per-currency people counts) is memoized in
+    // ledgerPerspectiveProvider, keyed by (eventRef, currentPid). A category-
+    // chip setState rebuilds this body but changes neither that key (currentPid
+    // is stable across the tap) nor the watched ledgerViewProvider value, so the
+    // O(C×M²) per-person `myNetByCurrency` pivots + sort are served from cache.
+    final perspective = ref.watch(
+      ledgerPerspectiveProvider((
+        eventRef: (groupId: groupId, eventId: eventId),
+        currentPid: currentPid,
+      )),
     );
-
-    int bucketPeopleCount(String c) =>
-        (data.balances[c] ?? const <UserBalance>[])
-            .where(
-              (b) =>
-                  b.participantId != currentPid && b.netBalance != Decimal.zero,
-            )
-            .length;
+    final myDisplayName = perspective.myDisplayName;
+    final myLines = perspective.myLines;
+    // Restore the l10n display fallback the provider defers (null ⇒ unknown).
+    final roster = <LedgerRosterPerson>[
+      for (final e in perspective.roster)
+        LedgerRosterPerson(
+          participantId: e.participantId,
+          displayName: e.displayName ?? context.l10n.ledgerMemberFallback,
+          signedAmount: e.signedAmount,
+          currency: e.currency,
+        ),
+    ];
 
     // From the current user's perspective:
     //   negative net for someone else → they owe you (positive chip)
     //   positive net for someone else → you owe them (negative chip)
-    // One entry per (person, non-zero bucket); settled-everywhere people keep
-    // a single zero entry so their EVEN chip stays on the strip.
-    final othersByPid = <String, UserBalance>{};
-    for (final bucket in data.balances.values) {
-      for (final b in bucket) {
-        if (b.participantId != currentPid) {
-          othersByPid.putIfAbsent(b.participantId, () => b);
-        }
-      }
-    }
-    final roster = <LedgerRosterPerson>[];
-    for (final other in othersByPid.values) {
-      final displayName =
-          rosterDisplayNames[other.participantId] ??
-          other.displayName ??
-          context.l10n.ledgerMemberFallback;
-      final otherLines = nonZeroNetsGccFirst(
-        myNetByCurrency(data.balances, other.participantId),
-      );
-      if (otherLines.isEmpty) {
-        roster.add(
-          LedgerRosterPerson(
-            participantId: other.participantId,
-            displayName: displayName,
-            signedAmount: Decimal.zero,
-          ),
-        );
-      } else {
-        for (final line in otherLines) {
-          roster.add(
-            LedgerRosterPerson(
-              participantId: other.participantId,
-              displayName: displayName,
-              signedAmount: -line.net,
-              currency: line.currency,
-            ),
-          );
-        }
-      }
-    }
-    roster.sort((a, b) => b.signedAmount.abs().compareTo(a.signedAmount.abs()));
-
+    // Hero derivations are O(1)/O(lines) off the memoized perspective.
     final hasExpenses = expenses.isNotEmpty;
     final isSettled = hasExpenses && myLines.isEmpty;
     final singleLine = myLines.length == 1 ? myLines.first : null;
@@ -256,7 +214,7 @@ class _Body extends ConsumerWidget {
           (
             currency: line.currency,
             net: line.net,
-            peopleCount: bucketPeopleCount(line.currency),
+            peopleCount: perspective.peopleCountByCurrency[line.currency] ?? 0,
           ),
     ];
     final rosterState = !hasExpenses
