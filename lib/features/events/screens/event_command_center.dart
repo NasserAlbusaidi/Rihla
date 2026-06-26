@@ -24,6 +24,7 @@ import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
+import '../../ledger/providers/ledger_view_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../providers/event_provider.dart';
@@ -110,9 +111,16 @@ class _Content extends ConsumerWidget {
     final eventRef = (groupId: groupId, eventId: eventId);
     final currentUid = ref.watch(currentUserIdProvider);
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
-    final balancesAsync = ref.watch(
-      eventBalancesProvider((eventRef: eventRef, event: event)),
-    );
+    // #631: share the ledger's memoized balance pass instead of running a
+    // second `calculateBalances` (via the now-deleted `eventBalancesProvider`)
+    // plus an inline `disambiguateEventScoped`/`calculateTotalExpensesByCurrency`
+    // on every rebuild. `ledgerViewProvider` is keyed by EventRef alone (watches
+    // `eventDetailProvider` internally), so it also drops the same-id `Event`
+    // staleness the old `({eventRef, event})` key carried. `eventRecapProvider`
+    // already reuses this provider for the same reason.
+    final view = ref.watch(ledgerViewProvider(eventRef));
+    // Still needed for `_RecentRow`'s departed-payer `resolveEventScoped`
+    // fallback — now just a cheap list read, no inline calc.
     final groupMembers =
         ref.watch(groupMembersProvider(groupId)).valueOrNull ?? [];
 
@@ -120,16 +128,12 @@ class _Content extends ConsumerWidget {
     // #382 PR-5: hero lines, breakdown rows, and roster dots walk EVERY
     // currency bucket — currencies never net against each other, so each
     // bucket renders its own lines and "settled" means settled in all of them.
-    final buckets =
-        balancesAsync.valueOrNull ?? const <String, List<UserBalance>>{};
+    final buckets = view.balances;
     // #289: distinguish same-named LIVE members across the hub (roster,
     // breakdown, recent rows) while still labelling departed ones.
-    final participantDisplayNames = MemberNameResolver.disambiguateEventScoped(
-      event: event,
-      members: groupMembers,
-    );
+    final participantDisplayNames = view.rosterDisplayNames;
 
-    final totals = BalanceCalculator.calculateTotalExpensesByCurrency(expenses);
+    final totals = view.eventTotal;
 
     final myLines = nonZeroNetsGccFirst(myNetByCurrency(buckets, currentUid));
 

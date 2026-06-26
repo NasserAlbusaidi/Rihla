@@ -46,16 +46,18 @@ typedef LedgerView = ({
 /// and the O(expenses)+O(settlements) [MemberNameResolver.resolveEventScoped]
 /// name maps) is served from cache instead of recomputed on every tap.
 ///
-/// Keyed by [EventRef] (NOT `({EventRef, Event})` like [eventBalancesProvider]):
-/// [Event] equality is **id-only** (`event_model.dart`), so a key carrying the
-/// event would serve a STALE value after a same-id participant rename/add. This
-/// provider watches [eventDetailProvider] internally instead, giving both a
-/// stable-across-chip-taps key AND a fresh recompute on any real event change.
+/// Keyed by [EventRef] (NOT `({EventRef, Event})`): [Event] equality is
+/// **id-only** (`event_model.dart`), so a key carrying the event would serve a
+/// STALE value after a same-id participant rename/add. This provider watches
+/// [eventDetailProvider] internally instead, giving both a stable-across-chip-
+/// taps key AND a fresh recompute on any real event change. Also the single
+/// shared per-event balance pass for the ledger AND the event hub (#631) and
+/// the recap (#202) — there is no second per-event `calculateBalances`.
 ///
 /// Reproduces the former `_Body.build` inline logic verbatim, except the two
 /// l10n settlement fallbacks are deferred to the widget (see
-/// [LedgerSettlementNames]). Non-`autoDispose`, matching its sibling
-/// [eventBalancesProvider] and the per-event streams it derives from.
+/// [LedgerSettlementNames]). Non-`autoDispose`, matching the per-event streams
+/// it derives from.
 final ledgerViewProvider = Provider.family<LedgerView, EventRef>((ref, eventRef) {
   final event = ref.watch(eventDetailProvider(eventRef)).valueOrNull;
   final expenses =
