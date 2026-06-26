@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Three-family typography system for the saffron travel-journal direction.
+/// Brand typography system for the saffron travel-journal direction.
 ///
 /// - [display] — Instrument Serif italic. Hero numerals, screen titles, the
 ///   "Rihla" wordmark. Use sparingly; this is the emotional voice.
@@ -25,8 +25,9 @@ class AppTypography {
   /// Geist Mono family name.
   static const String monoFamily = 'Geist Mono';
 
-  /// Reem Kufi family name. Bundled `ReemKufi[wght].ttf` variable face.
-  static const String reemKufiFamily = 'Reem Kufi';
+  /// Arabic display family name. Backed by a tiny Reem Kufi subset containing
+  /// only the current Arabic wordmark glyphs (#636).
+  static const String arabicDisplayFamily = 'Rihla Arabic Display';
 
   /// Tabular-numeric feature set — keeps money columns aligned.
   ///
@@ -59,15 +60,14 @@ class AppTypography {
     );
   }
 
-  /// Arabic display style — Reem Kufi.
+  /// Arabic display style — Reem Kufi wordmark subset.
   ///
   /// Mirrors [display] for Latin script. Reem Kufi has no italic style and
   /// Arabic typography doesn't mark emphasis this way, so this helper
   /// intentionally does NOT expose an `italic` parameter.
   ///
-  /// Use in the Arabic branch of widgets that pick a script-specific display
-  /// face — currently only [WordmarkLogo]; expected callers in PR2 (Settings
-  /// header) and PR3 (group-name display) per Arabic localization plan.
+  /// Use only for the Arabic wordmark. The bundled font is intentionally
+  /// subsetted and is not a general Arabic UI text face.
   static TextStyle arabicDisplay({
     required double fontSize,
     Color? color,
@@ -76,7 +76,7 @@ class AppTypography {
     double? height,
   }) {
     return TextStyle(
-      fontFamily: reemKufiFamily,
+      fontFamily: arabicDisplayFamily,
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,

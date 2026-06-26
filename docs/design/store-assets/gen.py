@@ -4,8 +4,9 @@
 On-brand marketing canvases rendered from the raw in-app screenshots in
 raw-screens/ via headless Chrome. Outputs straight into the fastlane metadata
 dir. Brand: cream #FBF7EE + ink #1F1B17 + terracotta #D17B2C; Instrument Serif
-Italic (EN display) / Reem Kufi (AR display); Geist UI — matches
-lib/core/theme/tokens/.
+Italic (EN display); Geist UI; platform Arabic sans for AR captions. The app's
+bundled Reem Kufi asset is a wordmark-only subset (#636), so this generator must
+not depend on it for full Arabic sentences.
 
 Usage:  python3 docs/design/store-assets/gen.py
 Then review the outputs and `fastlane android listing` to publish.
@@ -32,7 +33,6 @@ CREAM, INK, TERRA, MUTED = "#FBF7EE", "#1F1B17", "#D17B2C", "#6B675D"
 FONT_FACE = f"""
 @font-face {{ font-family:'Serif'; src:url('file://{FONTS}/InstrumentSerif-Italic.ttf'); }}
 @font-face {{ font-family:'Geist'; src:url('file://{FONTS}/Geist-Variable.ttf'); }}
-@font-face {{ font-family:'Kufi';  src:url('file://{FONTS}/ReemKufi-Variable.ttf'); }}
 """
 
 # Per row: raw source in raw-screens/, then (headline, sub) per locale. Same shot, both locales.
@@ -56,8 +56,10 @@ LOCALES = {
         hl_font="'Serif',serif", hl_style="font-style:italic", hl_size="118px", hl_lh="1.02",
         sub_font="'Geist',sans-serif", sub_size="46px"),
     "ar": dict(suffix="ar", dir="rtl",
-        hl_font="'Kufi',sans-serif", hl_style="font-weight:600", hl_size="100px", hl_lh="1.18",
-        sub_font="'Kufi',sans-serif", sub_size="42px"),
+        hl_font="'Geeza Pro','Noto Sans Arabic','Arial',sans-serif",
+        hl_style="font-weight:600", hl_size="100px", hl_lh="1.18",
+        sub_font="'Geeza Pro','Noto Sans Arabic','Arial',sans-serif",
+        sub_size="42px"),
 }
 
 def shot_css(L):
