@@ -158,12 +158,20 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-25, `9caab3e0`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-26, `aff3dd1f`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-25 deploy ceremony the `backend-deployed` tag is `9caab3e0`; prod
+    2026-06-26 deploy ceremony the `backend-deployed` tag is `aff3dd1f`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#673 (#673)** — a malformed (timestamp-less) deleteGroup lock
+    Latest delta: **#558 (#711)** — close two TOCTOU holes in `claimShadowEngine`'s
+    post-commit parity backstop: a mode/scope-gated lingering-shadow-reference scan
+    (`snapshotReferencesShadow`, reading field-for-field the oracle's identity set)
+    so a torn uuid→uid claim cascade is detected instead of throwing post-commit
+    (no rollback) / silently blessing the torn state on idempotent retry. Confined
+    to `claimShadow.ts` — **27 functions unchanged** (`claimShadow` is engine-only,
+    never a deployed function; updated in place, none created/deleted); follow-up
+    #710 (the two-engine concurrent torn mix) needs a per-shadow lock.
+    Prior delta: **#673 (#673)** — a malformed (timestamp-less) deleteGroup lock
     self-clears instead of wedging a group's deletion forever, and
     `deleteGroupLockReaper` can now reap it · **#672 (#672)** `leaveGroup` /
     `removeMember` honor the delete-quiesce marker inside a fresh transaction so
