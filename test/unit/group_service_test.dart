@@ -37,48 +37,41 @@ void main() {
         },
       );
 
-      test(
-        'creator member doc is keyed by uid (id == uid), not a random uuid '
-        '(#524 — one member doc per uid)',
-        () async {
-          SharedPreferences.setMockInitialValues({'device_name': 'Nasser'});
-          final prefs = await SharedPreferences.getInstance();
-          final fakeDb = FakeFirebaseFirestore();
-          const uid = 'creator-uid-524';
+      test('creator member doc is keyed by uid (id == uid), not a random uuid '
+          '(#524 — one member doc per uid)', () async {
+        SharedPreferences.setMockInitialValues({'device_name': 'Nasser'});
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+        const uid = 'creator-uid-524';
 
-          final container = ProviderContainer(
-            overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
-              groupServiceProvider.overrideWith(
-                (ref) => GroupService.withFirestore(
-                  ref,
-                  fakeDb,
-                  currentUserId: uid,
-                ),
-              ),
-            ],
-          );
-          addTearDown(container.dispose);
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupServiceProvider.overrideWith(
+              (ref) =>
+                  GroupService.withFirestore(ref, fakeDb, currentUserId: uid),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
 
-          final service = container.read(groupServiceProvider);
-          final staged =
-              service.stageGroup(name: 'Jebel Shams', currency: 'OMR');
-          await staged.ack;
+        final service = container.read(groupServiceProvider);
+        final staged = service.stageGroup(name: 'Jebel Shams', currency: 'OMR');
+        await staged.ack;
 
-          final members = await fakeDb
-              .collection('groups')
-              .doc(staged.group.id)
-              .collection('members')
-              .get();
+        final members = await fakeDb
+            .collection('groups')
+            .doc(staged.group.id)
+            .collection('members')
+            .get();
 
-          expect(members.docs.length, 1);
-          final memberDoc = members.docs.single;
-          expect(memberDoc.id, uid, reason: 'doc id must equal the uid');
-          expect(memberDoc.data()['id'], uid);
-          expect(memberDoc.data()['userId'], uid);
-          expect(memberDoc.data()['role'], 'CREATOR');
-        },
-      );
+        expect(members.docs.length, 1);
+        final memberDoc = members.docs.single;
+        expect(memberDoc.id, uid, reason: 'doc id must equal the uid');
+        expect(memberDoc.data()['id'], uid);
+        expect(memberDoc.data()['userId'], uid);
+        expect(memberDoc.data()['role'], 'CREATOR');
+      });
 
       group('glyph / inkIndex on create (#287 trip-stamps)', () {
         // PR-2b Task 6: an explicit stamp pick threads through stageGroup into
@@ -107,69 +100,59 @@ void main() {
           return container.read(groupServiceProvider);
         }
 
-        test(
-          'persists chosen glyph + inkIndex in the create doc and the local '
-          'Group',
-          () async {
-            final fakeDb = FakeFirebaseFirestore();
-            final service = await stampService(fakeDb);
+        test('persists chosen glyph + inkIndex in the create doc and the local '
+            'Group', () async {
+          final fakeDb = FakeFirebaseFirestore();
+          final service = await stampService(fakeDb);
 
-            final staged = service.stageGroup(
-              name: 'Jebel Shams',
-              currency: 'OMR',
-              glyph: 'tent',
-              inkIndex: 3,
-            );
-            await staged.ack;
+          final staged = service.stageGroup(
+            name: 'Jebel Shams',
+            currency: 'OMR',
+            glyph: 'tent',
+            inkIndex: 3,
+          );
+          await staged.ack;
 
-            final data = (await fakeDb
-                    .collection('groups')
-                    .doc(staged.group.id)
-                    .get())
-                .data()!;
-            expect(data['glyph'], 'tent');
-            expect(data['inkIndex'], 3);
+          final data =
+              (await fakeDb.collection('groups').doc(staged.group.id).get())
+                  .data()!;
+          expect(data['glyph'], 'tent');
+          expect(data['inkIndex'], 3);
 
-            // The optimistic pre-snapshot object carries the pick too, so the
-            // landing tile matches the doc before the first Firestore snapshot.
-            expect(staged.group.glyph, 'tent');
-            expect(staged.group.inkIndex, 3);
-          },
-        );
+          // The optimistic pre-snapshot object carries the pick too, so the
+          // landing tile matches the doc before the first Firestore snapshot.
+          expect(staged.group.glyph, 'tent');
+          expect(staged.group.inkIndex, 3);
+        });
 
-        test(
-          'omits both keys entirely when no stamp is chosen (never write a '
-          'fallback — rules reject an explicit null)',
-          () async {
-            final fakeDb = FakeFirebaseFirestore();
-            final service = await stampService(fakeDb);
+        test('omits both keys entirely when no stamp is chosen (never write a '
+            'fallback — rules reject an explicit null)', () async {
+          final fakeDb = FakeFirebaseFirestore();
+          final service = await stampService(fakeDb);
 
-            final staged = service.stageGroup(
-              name: 'Plain Group',
-              currency: 'OMR',
-            );
-            await staged.ack;
+          final staged = service.stageGroup(
+            name: 'Plain Group',
+            currency: 'OMR',
+          );
+          await staged.ack;
 
-            final data = (await fakeDb
-                    .collection('groups')
-                    .doc(staged.group.id)
-                    .get())
-                .data()!;
-            expect(
-              data.containsKey('glyph'),
-              isFalse,
-              reason: 'default group must not carry a glyph key',
-            );
-            expect(
-              data.containsKey('inkIndex'),
-              isFalse,
-              reason: 'default group must not carry an inkIndex key',
-            );
+          final data =
+              (await fakeDb.collection('groups').doc(staged.group.id).get())
+                  .data()!;
+          expect(
+            data.containsKey('glyph'),
+            isFalse,
+            reason: 'default group must not carry a glyph key',
+          );
+          expect(
+            data.containsKey('inkIndex'),
+            isFalse,
+            reason: 'default group must not carry an inkIndex key',
+          );
 
-            expect(staged.group.glyph, isNull);
-            expect(staged.group.inkIndex, isNull);
-          },
-        );
+          expect(staged.group.glyph, isNull);
+          expect(staged.group.inkIndex, isNull);
+        });
 
         test('writes glyph only, leaving inkIndex absent', () async {
           final fakeDb = FakeFirebaseFirestore();
@@ -224,10 +207,7 @@ void main() {
               inkIndex: 2,
             );
 
-            final data = (await fakeDb
-                    .collection('groups')
-                    .doc(group.id)
-                    .get())
+            final data = (await fakeDb.collection('groups').doc(group.id).get())
                 .data()!;
             expect(data['glyph'], 'palm');
             expect(data['inkIndex'], 2);
@@ -453,56 +433,95 @@ void main() {
         },
       );
 
-      test(
-        'joinGroup maps callable errors to existing user messages',
-        () async {
-          for (final entry in {
-            'unauthenticated': 'Please sign in and try again.',
-            'invalid-argument': 'Invalid invite code.',
-            'not-found': 'Invalid invite code.',
-            'resource-exhausted': 'Too many attempts. Try again later.',
-            'internal': 'Could not join group. Try again.',
-          }.entries) {
-            SharedPreferences.setMockInitialValues({
-              'settings_device_name': 'Joiner',
-            });
-            final prefs = await SharedPreferences.getInstance();
-            final fakeDb = FakeFirebaseFirestore();
+      test('joinGroup maps callable errors to existing user messages', () async {
+        for (final entry in {
+          'unauthenticated':
+              'Could not verify this device. Try again, or update from the Play Store.',
+          'invalid-argument': 'Invalid invite code.',
+          'not-found': 'Invalid invite code.',
+          'resource-exhausted': 'Too many attempts. Try again later.',
+          'internal': 'Could not join group. Try again.',
+        }.entries) {
+          SharedPreferences.setMockInitialValues({
+            'settings_device_name': 'Joiner',
+          });
+          final prefs = await SharedPreferences.getInstance();
+          final fakeDb = FakeFirebaseFirestore();
 
-            final container = ProviderContainer(
-              overrides: [
-                sharedPreferencesProvider.overrideWithValue(prefs),
-                groupServiceProvider.overrideWith(
-                  (ref) => GroupService.withFirestore(
-                    ref,
-                    fakeDb,
-                    currentUserId: 'uid-joiner',
-                    joinGroupCallableOverride:
-                        ({required inviteCode, required displayName}) async {
-                          throw FirebaseFunctionsException(
-                            code: entry.key,
-                            message: 'callable failed',
-                          );
-                        },
-                  ),
-                ),
-              ],
-            );
-            addTearDown(container.dispose);
-
-            expect(
-              () => container
-                  .read(groupServiceProvider)
-                  .joinGroup(inviteCode: 'ABC123'),
-              throwsA(
-                isA<Exception>().having(
-                  (error) => error.toString(),
-                  'message',
-                  contains(entry.value),
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-joiner',
+                  joinGroupCallableOverride:
+                      ({required inviteCode, required displayName}) async {
+                        throw FirebaseFunctionsException(
+                          code: entry.key,
+                          message: 'callable failed',
+                        );
+                      },
                 ),
               ),
-            );
-          }
+            ],
+          );
+          addTearDown(container.dispose);
+
+          expect(
+            () => container
+                .read(groupServiceProvider)
+                .joinGroup(inviteCode: 'ABC123'),
+            throwsA(
+              isA<Exception>().having(
+                (error) => error.toString(),
+                'message',
+                contains(entry.value),
+              ),
+            ),
+          );
+        }
+      });
+
+      test(
+        'addShadowMember maps unauthenticated to device verification copy',
+        () async {
+          final fakeDb = FakeFirebaseFirestore();
+          final container = ProviderContainer(
+            overrides: [
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-creator',
+                  addShadowMemberCallableOverride:
+                      ({required groupId, required displayName}) async {
+                        throw FirebaseFunctionsException(
+                          code: 'unauthenticated',
+                          message: 'callable failed',
+                        );
+                      },
+                ),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          expect(
+            () => container
+                .read(groupServiceProvider)
+                .addShadowMember(groupId: 'g1', displayName: 'Sara'),
+            throwsA(
+              isA<Exception>().having(
+                (error) => error.toString(),
+                'message',
+                contains(
+                  'Could not verify this device. Try again, or update from the Play Store.',
+                ),
+              ),
+            ),
+          );
         },
       );
     });
@@ -536,24 +555,21 @@ void main() {
         return container.read(groupServiceProvider);
       }
 
-      test(
-        'throws when the group document does not exist in fakeDb',
-        () async {
-          // .update() on a missing doc rejects against FakeFirebaseFirestore
-          // (matching prod 'not-found'); verifies updateGroupIdentity propagates
-          // the Firestore error rather than silently swallowing it. (Migrated
-          // from the removed `updateGroup` group — same write-path edge.)
-          final service = await identityService(FakeFirebaseFirestore());
+      test('throws when the group document does not exist in fakeDb', () async {
+        // .update() on a missing doc rejects against FakeFirebaseFirestore
+        // (matching prod 'not-found'); verifies updateGroupIdentity propagates
+        // the Firestore error rather than silently swallowing it. (Migrated
+        // from the removed `updateGroup` group — same write-path edge.)
+        final service = await identityService(FakeFirebaseFirestore());
 
-          expect(
-            () => service.updateGroupIdentity(
-              groupId: 'grp-nonexistent',
-              name: 'Name',
-            ),
-            throwsA(anything),
-          );
-        },
-      );
+        expect(
+          () => service.updateGroupIdentity(
+            groupId: 'grp-nonexistent',
+            name: 'Name',
+          ),
+          throwsA(anything),
+        );
+      });
 
       test('writes name + glyph + inkIndex in one update', () async {
         final fakeDb = FakeFirebaseFirestore();
@@ -571,8 +587,8 @@ void main() {
           inkIndex: 2,
         );
 
-        final data =
-            (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+        final data = (await fakeDb.collection('groups').doc('grp-id').get())
+            .data()!;
         expect(data['name'], 'New Name');
         expect(data['glyph'], 'wave');
         expect(data['inkIndex'], 2);
@@ -599,8 +615,8 @@ void main() {
             inkIndex: 3,
           );
 
-          final data =
-              (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+          final data = (await fakeDb.collection('groups').doc('grp-id').get())
+              .data()!;
           expect(
             data.containsKey('glyph'),
             isFalse,
@@ -630,8 +646,8 @@ void main() {
             inkIndex: null,
           );
 
-          final data =
-              (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+          final data = (await fakeDb.collection('groups').doc('grp-id').get())
+              .data()!;
           expect(
             data.containsKey('inkIndex'),
             isFalse,
@@ -650,13 +666,10 @@ void main() {
         });
         final service = await identityService(fakeDb);
 
-        await service.updateGroupIdentity(
-          groupId: 'grp-id',
-          name: 'Z',
-        );
+        await service.updateGroupIdentity(groupId: 'grp-id', name: 'Z');
 
-        final data =
-            (await fakeDb.collection('groups').doc('grp-id').get()).data()!;
+        final data = (await fakeDb.collection('groups').doc('grp-id').get())
+            .data()!;
         expect(data['updatedAt'], isNotNull);
       });
     });
