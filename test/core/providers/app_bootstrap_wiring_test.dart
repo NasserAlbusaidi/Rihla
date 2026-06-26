@@ -30,8 +30,12 @@ void main() {
   });
 
   group('appBootstrapProvider wiring', () {
+    // #635: the eager boot-time sync no longer fires on provider ACTIVATION —
+    // it's deferred to a post-first-frame callback in SafarApp.initState. So
+    // merely activating the provider must NOT touch the notification service;
+    // the listener now reacts only to LATER toggles.
     test(
-      'calls initialize() when pushNotificationsEnabled is true on activation',
+      'does NOT call initialize() on activation (deferred off first frame, #635)',
       () async {
         final container = ProviderContainer(
           overrides: [
@@ -45,18 +49,83 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        // Set push enabled BEFORE activating bootstrap
+        // Push enabled BEFORE activation — under the OLD fireImmediately this
+        // would have synced synchronously during activation.
         await container
             .read(settingsProvider.notifier)
             .setPushNotificationsEnabled(true);
 
-        // Activate the bootstrap provider
         container.read(appBootstrapProvider);
+        await Future<void>.delayed(Duration.zero);
 
-        // Allow async callbacks to fire
+        verifyNever(() => mockNotificationService.initialize());
+      },
+    );
+
+    // #635: the deferred initial kick must preserve the exact old behaviour —
+    // a push-enabled returning user STILL gets initialize() (the sync isn't
+    // lost, only later), and a disabled fresh user is a no-op with NO
+    // removeToken() on initial boot.
+    test(
+      'kickInitialNotificationSync syncs a push-enabled user (no regression, #635)',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            notificationServiceProvider.overrideWithValue(
+              mockNotificationService,
+            ),
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container
+            .read(settingsProvider.notifier)
+            .setPushNotificationsEnabled(true);
+        container.read(appBootstrapProvider);
+        await Future<void>.delayed(Duration.zero);
+        // Activation alone did nothing (deferred).
+        verifyNever(() => mockNotificationService.initialize());
+
+        // Simulate the post-first-frame kick.
+        runInitialNotificationSync(
+          container.read(settingsProvider),
+          () => container.read(notificationServiceProvider),
+        );
         await Future<void>.delayed(Duration.zero);
 
         verify(() => mockNotificationService.initialize()).called(1);
+      },
+    );
+
+    test(
+      'kickInitialNotificationSync is a no-op for a disabled user — no removeToken (#635)',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            notificationServiceProvider.overrideWithValue(
+              mockNotificationService,
+            ),
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        // Fresh user: push disabled (the default).
+        container.read(appBootstrapProvider);
+
+        runInitialNotificationSync(
+          container.read(settingsProvider),
+          () => container.read(notificationServiceProvider),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(() => mockNotificationService.initialize());
+        verifyNever(() => mockNotificationService.removeToken());
       },
     );
 
