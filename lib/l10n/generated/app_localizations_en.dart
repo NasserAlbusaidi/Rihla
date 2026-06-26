@@ -2344,6 +2344,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupJoinPleaseSignIn => 'Please sign in and try again.';
 
   @override
+  String get groupJoinDeviceVerificationFailed =>
+      'Could not verify this device. Try again, or update from the Play Store.';
+
+  @override
   String get groupJoinFailed =>
       'Couldn\'t join the group. Check your connection and try again.';
 
@@ -2986,6 +2990,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get createGroupShadowAddFailed =>
+      'Some names could not be added. You can add them from the group later.';
+
+  @override
   String get groupClaimPickerTitle => 'Is one of these you?';
 
   @override
@@ -3075,7 +3083,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String recapPeopleExpenses(int people, int expenses) {
-    return '$people people · $expenses expenses';
+    String _temp0 = intl.Intl.pluralLogic(
+      people,
+      locale: localeName,
+      other: '$people people',
+      one: '1 person',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      expenses,
+      locale: localeName,
+      other: '$expenses expenses',
+      one: '1 expense',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override

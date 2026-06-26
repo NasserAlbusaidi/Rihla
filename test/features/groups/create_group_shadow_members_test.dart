@@ -61,10 +61,7 @@ void main() {
     ).thenReturn((group: _group(), ack: Future<void>.value()));
   });
 
-  Widget wrap(
-    SharedPreferences sp, {
-    required ConnectivityStatus status,
-  }) {
+  Widget wrap(SharedPreferences sp, {required ConnectivityStatus status}) {
     connectivity = ConnectivityNotifier(startPeriodicChecks: false);
     if (status == ConnectivityStatus.offline) {
       connectivity.setOffline();
@@ -156,16 +153,11 @@ void main() {
         ),
       ).called(1);
       verify(
-        () => groupService.addShadowMember(
-          groupId: 'g1',
-          displayName: 'Sara',
-        ),
+        () => groupService.addShadowMember(groupId: 'g1', displayName: 'Sara'),
       ).called(1);
       verify(
-        () => groupService.addShadowMember(
-          groupId: 'g1',
-          displayName: 'Khalid',
-        ),
+        () =>
+            groupService.addShadowMember(groupId: 'g1', displayName: 'Khalid'),
       ).called(1);
     },
   );
@@ -259,16 +251,60 @@ void main() {
       expect(find.text('ABCDEF'), findsOneWidget);
       // Sara surfaced as taken.
       expect(find.textContaining('Sara'), findsWidgets);
-      expect(
-        find.textContaining('already used in this group'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('already used in this group'), findsOneWidget);
       // Khalid still got its call.
       verify(
+        () =>
+            groupService.addShadowMember(groupId: 'g1', displayName: 'Khalid'),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'generic addShadowMember failure surfaces that typed names were not added '
+    '(#649)',
+    (tester) async {
+      when(
         () => groupService.addShadowMember(
-          groupId: 'g1',
+          groupId: any(named: 'groupId'),
+          displayName: 'Sara',
+        ),
+      ).thenThrow(Exception('network failed'));
+      when(
+        () => groupService.addShadowMember(
+          groupId: any(named: 'groupId'),
           displayName: 'Khalid',
         ),
+      ).thenAnswer((_) async => 'm-khalid');
+
+      final sp = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wrap(sp, status: ConnectivityStatus.online));
+      await tester.pump();
+
+      await tester.enterText(
+        find.byKey(GroupKeys.groupNameInput),
+        'Family Trip',
+      );
+      await tester.enterText(find.byKey(GroupKeys.deviceNameInput), 'Tester');
+      await addChip(tester, 'Sara');
+      await addChip(tester, 'Khalid');
+      await tester.pump();
+
+      await tester.tap(find.byKey(GroupKeys.createGroupButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+
+      // The group was created, but the failed chip is not silently lost.
+      expect(find.text('ABCDEF'), findsOneWidget);
+      expect(
+        find.text(
+          'Some names could not be added. You can add them from the group later.',
+        ),
+        findsOneWidget,
+      );
+      verify(
+        () =>
+            groupService.addShadowMember(groupId: 'g1', displayName: 'Khalid'),
       ).called(1);
     },
   );

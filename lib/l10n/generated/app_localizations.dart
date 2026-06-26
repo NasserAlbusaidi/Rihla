@@ -3972,6 +3972,12 @@ abstract class AppLocalizations {
   /// **'Please sign in and try again.'**
   String get groupJoinPleaseSignIn;
 
+  /// No description provided for @groupJoinDeviceVerificationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not verify this device. Try again, or update from the Play Store.'**
+  String get groupJoinDeviceVerificationFailed;
+
   /// No description provided for @groupJoinFailed.
   ///
   /// In en, this message translates to:
@@ -5094,6 +5100,12 @@ abstract class AppLocalizations {
   /// **'\"{name}\" is already used in this group.'**
   String createGroupShadowNameTaken(Object name);
 
+  /// Snackbar when one or more create-time placeholder names failed after the group itself was created (#649).
+  ///
+  /// In en, this message translates to:
+  /// **'Some names could not be added. You can add them from the group later.'**
+  String get createGroupShadowAddFailed;
+
   /// Title of the #278 PR9 claim picker shown on the join screen when the entered invite code has unclaimed placeholder ('shadow') members.
   ///
   /// In en, this message translates to:
@@ -5235,7 +5247,7 @@ abstract class AppLocalizations {
   /// Subtitle under the recap title showing participant and expense counts (#202).
   ///
   /// In en, this message translates to:
-  /// **'{people} people · {expenses} expenses'**
+  /// **'{people, plural, =1{1 person} other{{people} people}} · {expenses, plural, =1{1 expense} other{{expenses} expenses}}'**
   String recapPeopleExpenses(int people, int expenses);
 
   /// Section label for total event spend in the recap (#202).

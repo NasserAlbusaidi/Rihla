@@ -1682,6 +1682,7 @@
   },
   "groupJoinTooManyAttempts": "Too many attempts. Try again later.",
   "groupJoinPleaseSignIn": "Please sign in and try again.",
+  "groupJoinDeviceVerificationFailed": "Could not verify this device. Try again, or update from the Play Store.",
   "groupJoinFailed": "Couldn't join the group. Check your connection and try again.",
   "groupMemberJoinedDescription": "joined the group",
   "groupMemberLeftDescription": "left the group",
@@ -2182,6 +2183,10 @@
       "name": {}
     }
   },
+  "createGroupShadowAddFailed": "Some names could not be added. You can add them from the group later.",
+  "@createGroupShadowAddFailed": {
+    "description": "Snackbar when one or more create-time placeholder names failed after the group itself was created (#649)."
+  },
   "groupClaimPickerTitle": "Is one of these you?",
   "@groupClaimPickerTitle": {
     "description": "Title of the #278 PR9 claim picker shown on the join screen when the entered invite code has unclaimed placeholder ('shadow') members."
@@ -2298,7 +2303,7 @@
   "@recapButtonTooltip": {
     "description": "Tooltip/label for the event recap entry button (#202 Slice 1)."
   },
-  "recapPeopleExpenses": "{people} people · {expenses} expenses",
+  "recapPeopleExpenses": "{people, plural, =1{1 person} other{{people} people}} · {expenses, plural, =1{1 expense} other{{expenses} expenses}}",
   "@recapPeopleExpenses": {
     "description": "Subtitle under the recap title showing participant and expense counts (#202).",
     "placeholders": {
