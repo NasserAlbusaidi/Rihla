@@ -12,7 +12,7 @@ import '../../../shared/widgets/r_amount.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
-import '../utils/localized_category_name.dart';
+import '../utils/ledger_categories.dart';
 
 /// T3.L — v1 minimal ledger search. Client-side substring filter across
 /// description / category / payer (expenses) and payer / recipient / note
@@ -101,6 +101,7 @@ class _LedgerSearchSheetState extends State<_LedgerSearchSheet> {
       widget.expenses,
       widget.settlements,
       _query,
+      l10n: context.l10n,
       expensePayerDisplayNames: widget.expensePayerDisplayNames,
       settlementDisplayNames: widget.settlementDisplayNames,
     );
@@ -432,12 +433,8 @@ final class _ExpenseHit extends _SearchHit {
     if (expense.description?.trim().isNotEmpty == true) {
       return expense.description!.trim();
     }
-    if (expense.categoryId != null || expense.categoryName != null) {
-      return localizedCategoryName(
-        id: expense.categoryId,
-        fallbackName: expense.categoryName,
-        l10n: l10n,
-      );
+    if (expense.categoryId != null) {
+      return categoryNameForId(expense.categoryId, l10n);
     }
     return l10n.ledgerExpenseFallback;
   }
@@ -445,12 +442,8 @@ final class _ExpenseHit extends _SearchHit {
   @override
   String subtitle(AppLocalizations l10n) {
     final parts = <String>[
-      if (expense.categoryId != null || expense.categoryName != null)
-        localizedCategoryName(
-          id: expense.categoryId,
-          fallbackName: expense.categoryName,
-          l10n: l10n,
-        ),
+      if (expense.categoryId != null)
+        categoryNameForId(expense.categoryId, l10n),
       if (payerDisplay != null) l10n.ledgerPaidBy(payerDisplay!),
     ];
     return parts.isEmpty ? '—' : parts.join(' · ');
@@ -502,6 +495,7 @@ List<_SearchHit> _filter(
   List<Expense> expenses,
   List<Settlement> settlements,
   String query, {
+  required AppLocalizations l10n,
   Map<String, String> expensePayerDisplayNames = const {},
   Map<String, ({String payerName, String recipientName})>
       settlementDisplayNames =
@@ -513,7 +507,7 @@ List<_SearchHit> _filter(
   bool hitsExpense(Expense e) {
     final haystacks = [
       e.description,
-      e.categoryName,
+      if (e.categoryId != null) categoryNameForId(e.categoryId, l10n),
       e.payerName,
       expensePayerDisplayNames[e.id],
     ];
@@ -551,9 +545,10 @@ List<_SearchHit> _filter(
 List<Object> debugFilter(
   List<Expense> expenses,
   List<Settlement> settlements,
-  String query,
-) {
-  return _filter(expenses, settlements, query)
+  String query, {
+  required AppLocalizations l10n,
+}) {
+  return _filter(expenses, settlements, query, l10n: l10n)
       .map<Object>(
         (hit) => switch (hit) {
           _ExpenseHit(:final expense) => expense,

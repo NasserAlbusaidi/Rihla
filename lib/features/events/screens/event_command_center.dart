@@ -25,6 +25,7 @@ import '../../groups/services/member_name_resolver.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/providers/ledger_view_provider.dart';
+import '../../ledger/utils/ledger_categories.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../providers/event_provider.dart';
@@ -898,8 +899,9 @@ class _RecentRow extends StatelessWidget {
                 Text(
                   (expense.description?.isNotEmpty ?? false)
                       ? expense.description!
-                      : (expense.categoryName ??
-                            context.l10n.ledgerExpenseFallback),
+                      : expense.categoryId == null
+                      ? context.l10n.ledgerExpenseFallback
+                      : categoryNameForId(expense.categoryId, context.l10n),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.sans(

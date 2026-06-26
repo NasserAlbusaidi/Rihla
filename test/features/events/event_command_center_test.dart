@@ -134,6 +134,31 @@ void main() {
     expect(find.textContaining('OMR'), findsNothing);
   });
 
+  testWidgets(
+    'recent row uses persisted categoryId when an expense has no description',
+    (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+      final expense = _expense(
+        id: 'x1',
+        eventId: event.id,
+        payer: 'uid-1',
+        amount: Decimal.parse('20.000'),
+        categoryId: 'groceries',
+      );
+
+      await tester.pumpWidget(
+        _wrap(event: event, expenses: [expense], balances: _settledBalances),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('Expense'), findsNothing);
+    },
+  );
+
   testWidgets('you-owe state — rust hero with per-row breakdown', (
     tester,
   ) async {
@@ -680,6 +705,7 @@ Expense _expense({
   required String payer,
   required Decimal amount,
   String currency = 'OMR',
+  String? categoryId,
 }) {
   return Expense(
     id: id,
@@ -690,6 +716,7 @@ Expense _expense({
     createdAt: DateTime(2026, 1, 2),
     createdBy: payer,
     currency: currency,
+    categoryId: categoryId,
   );
 }
 
