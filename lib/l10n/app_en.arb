@@ -576,11 +576,15 @@
   "ledgerBucketActivities": "Activities",
   "ledgerBucketOther": "Other",
 
-  "categoryFood": "Food & Dining",
+  "categoryFood": "Food",
   "categoryTransport": "Transport",
   "categoryAccommodation": "Accommodation",
   "categoryActivities": "Activities",
   "categoryShopping": "Shopping",
+  "categoryGroceries": "Groceries",
+  "categoryDrinks": "Drinks",
+  "categoryFuel": "Fuel",
+  "categoryFees": "Fees",
   "categoryOther": "Other",
 
   "ledgerBackTooltip": "Back",
