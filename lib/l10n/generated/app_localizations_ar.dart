@@ -2413,6 +2413,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupJoinPleaseSignIn => 'سجّل الدخول وحاول مرة أخرى.';
 
   @override
+  String get groupJoinDeviceVerificationFailed =>
+      'تعذّر التحقق من هذا الجهاز. حاول مرة أخرى، أو حدّث التطبيق من متجر Play.';
+
+  @override
   String get groupJoinFailed =>
       'تعذّر الانضمام إلى المجموعة. تحقق من اتصالك وحاول مرة أخرى.';
 
@@ -3057,6 +3061,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get createGroupShadowAddFailed =>
+      'تعذّرت إضافة بعض الأسماء. يمكنك إضافتها من المجموعة لاحقًا.';
+
+  @override
   String get groupClaimPickerTitle => 'هل أنت أحد هؤلاء؟';
 
   @override
@@ -3144,7 +3152,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String recapPeopleExpenses(int people, int expenses) {
-    return '$people أشخاص · $expenses مصروفات';
+    String _temp0 = intl.Intl.pluralLogic(
+      people,
+      locale: localeName,
+      other: '$people شخص',
+      many: '$people شخصًا',
+      few: '$people أشخاص',
+      two: 'شخصان',
+      one: 'شخص واحد',
+      zero: 'لا أشخاص',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      expenses,
+      locale: localeName,
+      other: '$expenses مصروف',
+      many: '$expenses مصروفًا',
+      few: '$expenses مصاريف',
+      two: 'مصروفان',
+      one: 'مصروف واحد',
+      zero: 'لا مصاريف',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override

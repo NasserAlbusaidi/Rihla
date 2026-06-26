@@ -201,7 +201,8 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
       if (outcome == WriteAck.acked) {
-        connectivity.noteLocalWrite(); // #357: stale-offline correction (no-op online)
+        connectivity
+            .noteLocalWrite(); // #357: stale-offline correction (no-op online)
         // #278: the group doc is acked, so its id exists server-side — fan out
         // one addShadowMember callable per seeded name. Runs only on a real
         // server ack (the callable has no offline replay); offline the chips
@@ -255,21 +256,24 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   /// #278: seed each entered placeholder name via the addShadowMember callable.
   /// The group already exists, so a per-chip failure never aborts the others —
   /// `already-exists` names are collected and surfaced together; any other
-  /// failure is swallowed quietly (the creator can re-add from the group later).
+  /// failure is collected and surfaced once (the creator can re-add from the
+  /// group later).
   Future<void> _seedShadowMembers(String groupId) async {
     if (_shadowNames.isEmpty) return;
     final service = ref.read(groupServiceProvider);
     final taken = <String>[];
+    final failed = <String>[];
     for (final name in List<String>.from(_shadowNames)) {
       try {
         await service.addShadowMember(groupId: groupId, displayName: name);
       } on ShadowMemberNameTakenException {
         taken.add(name);
       } catch (e, st) {
+        failed.add(name);
         unawaited(Sentry.captureException(e, stackTrace: st));
       }
     }
-    if (!mounted || taken.isEmpty) return;
+    if (!mounted) return;
     // Plain (no-action) snackbar per taken name, so it auto-dismisses without
     // the Flutter ≥3.41 persist trap (#411). floating is set explicitly so dark
     // mode doesn't render it full-width (darkTheme has no snackBarTheme).
@@ -278,6 +282,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(context.l10n.createGroupShadowNameTaken(name)),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
+    if (failed.isNotEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.createGroupShadowAddFailed),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 6),
         ),

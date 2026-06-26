@@ -301,6 +301,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Too many attempts')) {
       return context.l10n.groupJoinTooManyAttempts;
     }
+    if (error.contains('Could not verify this device')) {
+      return context.l10n.groupJoinDeviceVerificationFailed;
+    }
     if (error.contains('Please sign in')) {
       return context.l10n.groupJoinPleaseSignIn;
     }
