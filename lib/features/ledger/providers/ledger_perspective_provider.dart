@@ -82,7 +82,12 @@ final ledgerPerspectiveProvider =
       if (myDisplayName != null) break;
     }
 
-    final myLines = nonZeroNetsGccFirst(myNetByCurrency(balances, currentPid));
+    // #630: one O(C×M) pivot serves the "You" lines AND every roster row below,
+    // replacing the former 1 + M separate O(C×M) myNetByCurrency passes.
+    final pivot = pivotNetsByParticipant(balances);
+    final myLines = nonZeroNetsGccFirst(
+      (currentPid == null ? null : pivot[currentPid]) ?? const {},
+    );
 
     final peopleCountByCurrency = <String, int>{
       for (final entry in balances.entries)
@@ -112,8 +117,9 @@ final ledgerPerspectiveProvider =
       // l10n fallback (`ledgerMemberFallback`) DEFERRED to the widget → nullable.
       final displayName =
           rosterDisplayNames[other.participantId] ?? other.displayName;
-      final otherLines =
-          nonZeroNetsGccFirst(myNetByCurrency(balances, other.participantId));
+      final otherLines = nonZeroNetsGccFirst(
+        pivot[other.participantId] ?? const {},
+      );
       if (otherLines.isEmpty) {
         roster.add((
           participantId: other.participantId,

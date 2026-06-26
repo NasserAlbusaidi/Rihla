@@ -900,6 +900,10 @@ List<({String currency, Decimal net})> nonZeroNetsGccFirst(
 
 /// [uid]'s net per currency from a bucketed balance map (#382 PR-5). Buckets
 /// where [uid] is absent or nets exactly zero are dropped; null [uid] → `{}`.
+///
+/// Single-uid reads only. For a list/roster that needs every participant's
+/// nets, build [pivotNetsByParticipant] ONCE and index it per row — calling
+/// this per row is the O(C×M²) trap #630 fixed.
 Map<String, Decimal> myNetByCurrency(
   Map<String, List<UserBalance>> buckets,
   String? uid,
@@ -911,4 +915,28 @@ Map<String, Decimal> myNetByCurrency(
         if (balance.participantId == uid && balance.netBalance != Decimal.zero)
           entry.key: balance.netBalance,
   };
+}
+
+/// One single pass pivot of [buckets] → `participantId → {currency: net}`, each
+/// inner map zero-filtered exactly like [myNetByCurrency] (#630). For member /
+/// roster lists: build ONCE before the loop, then `pivot[uid] ?? const {}` per
+/// row is O(1) — collapsing the former O(C×M²) per-row [myNetByCurrency] pivots
+/// to O(C×M) for the whole list.
+///
+/// Equivalence contract: `pivot[uid] ?? const {}` == `myNetByCurrency(buckets,
+/// uid)` for every uid (zero predicate is the same EXACT `!= Decimal.zero`, so a
+/// member who nets exactly zero in every bucket is absent from the pivot).
+Map<String, Map<String, Decimal>> pivotNetsByParticipant(
+  Map<String, List<UserBalance>> buckets,
+) {
+  final pivot = <String, Map<String, Decimal>>{};
+  for (final entry in buckets.entries) {
+    for (final balance in entry.value) {
+      if (balance.netBalance != Decimal.zero) {
+        (pivot[balance.participantId] ??= <String, Decimal>{})[entry.key] =
+            balance.netBalance;
+      }
+    }
+  }
+  return pivot;
 }

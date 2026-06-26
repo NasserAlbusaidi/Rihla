@@ -81,4 +81,58 @@ void main() {
       expect(nets, {'OMR': Decimal.parse('0.0001')});
     });
   });
+
+  group('pivotNetsByParticipant', () {
+    // #630: one single pass replaces the per-row O(C×M²) myNetByCurrency loops.
+    // Contract: pivot[uid] == myNetByCurrency(buckets, uid) for every uid.
+    final buckets = <String, List<UserBalance>>{
+      'OMR': [balance('a', '5'), balance('b', '0'), balance('c', '-5')],
+      'USD': [balance('a', '0'), balance('b', '-3'), balance('c', '3')],
+      'EUR': [balance('a', '2')], // b, c absent from this bucket
+    };
+
+    test('one pass equals myNetByCurrency per uid (mixed currency/sign/presence)',
+        () {
+      for (final uid in ['a', 'b', 'c']) {
+        final pivot = pivotNetsByParticipant(buckets);
+        expect(
+          pivot[uid] ?? const <String, Decimal>{},
+          myNetByCurrency(buckets, uid),
+          reason: 'pivot[$uid] must equal myNetByCurrency for $uid',
+        );
+      }
+    });
+
+    test('exactly-zero entries are dropped (member absent from pivot/bucket)',
+        () {
+      final pivot = pivotNetsByParticipant(buckets);
+      // a: OMR+5, EUR+2 (USD 0 dropped). b: USD-3 (OMR 0 dropped, EUR absent).
+      expect(pivot['a'], {'OMR': Decimal.parse('5'), 'EUR': Decimal.parse('2')});
+      expect(pivot['b'], {'USD': Decimal.parse('-3')});
+      expect(pivot['c'], {'OMR': Decimal.parse('-5'), 'USD': Decimal.parse('3')});
+    });
+
+    test('member zero in every bucket is absent entirely', () {
+      final pivot = pivotNetsByParticipant({
+        'OMR': [balance('z', '0')],
+        'USD': [balance('z', '0')],
+      });
+      expect(pivot['z'], isNull);
+      expect(pivot['z'] ?? const <String, Decimal>{}, myNetByCurrency({
+        'OMR': [balance('z', '0')],
+        'USD': [balance('z', '0')],
+      }, 'z'));
+    });
+
+    test('sub-0.001 residual survives the pivot — exact zero predicate', () {
+      final pivot = pivotNetsByParticipant({
+        'OMR': [balance('me', '0.0001')],
+      });
+      expect(pivot['me'], {'OMR': Decimal.parse('0.0001')});
+    });
+
+    test('empty buckets yield empty pivot', () {
+      expect(pivotNetsByParticipant(const {}), isEmpty);
+    });
+  });
 }

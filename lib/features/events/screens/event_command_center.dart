@@ -1105,6 +1105,9 @@ class _RosterStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final count = event.participantIds.length;
+    // #630: one O(C×M) pivot for the whole strip; the itemBuilder indexes it in
+    // O(1) instead of re-running a per-row O(C×M) myNetByCurrency pivot.
+    final netsByUid = pivotNetsByParticipant(buckets);
 
     final othersCount =
         currentUid != null && event.participantIds.contains(currentUid)
@@ -1156,7 +1159,7 @@ class _RosterStrip extends StatelessWidget {
               // #382 PR-5: dot iff ANY bucket nets non-zero for this person;
               // with several non-zero buckets the GCC-first one decides the
               // color — deterministic, aligned with the hero's line order.
-              final lines = nonZeroNetsGccFirst(myNetByCurrency(buckets, uid));
+              final lines = nonZeroNetsGccFirst(netsByUid[uid] ?? const {});
               return _RosterPersonCard(
                 name: name,
                 isMe: isMe,

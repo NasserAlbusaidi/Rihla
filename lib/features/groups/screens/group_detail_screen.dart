@@ -1032,6 +1032,9 @@ class _MembersCard extends StatelessWidget {
     final selfMatches = allMembers.where((e) => e.key == currentUid).toList();
     final self = selfMatches.isEmpty ? null : selfMatches.first;
     final rowCount = others.length + (self == null ? 0 : 1);
+    // #630: one O(C×M) pivot for the whole roster; each row indexes it in O(1)
+    // instead of re-running a per-row O(C×M) myNetByCurrency pivot.
+    final netsByUid = pivotNetsByParticipant(data.balances);
     return Container(
       decoration: BoxDecoration(
         color: colors.cardSurface,
@@ -1051,7 +1054,7 @@ class _MembersCard extends StatelessWidget {
                 currentUid: currentUid,
               ),
               lines: nonZeroNetsGccFirst(
-                myNetByCurrency(data.balances, others[i].key),
+                netsByUid[others[i].key] ?? const {},
               ),
               groupCurrency: group.currency,
               divider: i < rowCount - 1,
