@@ -10,11 +10,13 @@ import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/event_command_center.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
+import 'package:safar/features/ledger/providers/ledger_view_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/cover_art.dart';
 
@@ -154,6 +156,64 @@ void main() {
     expect(find.text('YOU OWE'), findsOneWidget);
     expect(find.textContaining('you owe', findRichText: true), findsOneWidget);
   });
+
+  testWidgets(
+    '#631: hub computes "you owe" through the shared ledgerViewProvider '
+    '(no injected balances)',
+    (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+      // uid-2 pays 20 OMR, equal-split between the two participants → I (uid-1)
+      // owe 10, uid-2 is owed 10. No balance override: this drives the REAL
+      // BalanceCalculator pass via ledgerViewProvider, proving the #631 swap
+      // computes the hero state end-to-end (not just rewires an injection point).
+      final expense = _expense(
+        id: 'x1',
+        eventId: event.id,
+        payer: 'uid-2',
+        amount: Decimal.parse('20.000'),
+      );
+      final eventRef = (groupId: event.groupId, eventId: event.id);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            currentUserIdProvider.overrideWithValue('uid-1'),
+            eventDetailProvider(
+              eventRef,
+            ).overrideWith((_) => Stream<Event?>.value(event)),
+            groupDetailProvider(
+              event.groupId,
+            ).overrideWith((_) => Stream<Group?>.value(_group)),
+            eventExpensesProvider(
+              eventRef,
+            ).overrideWith((_) => Stream.value([expense])),
+            eventSettlementsProvider(
+              eventRef,
+            ).overrideWith((_) => Stream.value(const [])),
+            groupMembersProvider(event.groupId).overrideWith(
+              (_) => Stream.value([
+                _realMember('uid-1', 'Mona'),
+                _realMember('uid-2', 'Nasser'),
+              ]),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: EventCommandCenter(groupId: event.groupId, eventId: event.id),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('YOU OWE'), findsOneWidget);
+      expect(find.textContaining('you owe', findRichText: true), findsOneWidget);
+    },
+  );
 
   testWidgets('ledger summary strip routes to the event ledger path', (
     tester,
@@ -493,11 +553,12 @@ Widget _wrap({
         eventRef,
       ).overrideWith((_) => Stream.value(const [])),
       if (balances != null || buckets != null)
-        eventBalancesProvider((
-          eventRef: eventRef,
-          event: event,
-        )).overrideWith(
-          (_) => AsyncValue.data(buckets ?? {currency: balances!}),
+        ledgerViewProvider(eventRef).overrideWithValue(
+          _ledgerView(
+            event: event,
+            expenses: expenses,
+            balances: buckets ?? {currency: balances!},
+          ),
         ),
     ],
     child: MaterialApp(
@@ -578,10 +639,13 @@ Future<void> _pumpEventHubRouter(
           eventRef,
         ).overrideWith((_) => Stream.value(const [])),
         if (balances != null)
-          eventBalancesProvider((
-            eventRef: eventRef,
-            event: event,
-          )).overrideWithValue(AsyncValue.data({'OMR': balances})),
+          ledgerViewProvider(eventRef).overrideWithValue(
+            _ledgerView(
+              event: event,
+              expenses: expenses,
+              balances: {'OMR': balances},
+            ),
+          ),
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
@@ -651,6 +715,39 @@ UserBalance _balance({
     netBalance: net,
   );
 }
+
+/// Synthetic [LedgerView] for tests that inject pre-baked balances (#631 swaps
+/// the hub off `eventBalancesProvider` onto `ledgerViewProvider`). `eventTotal`
+/// mirrors the real provider (`calculateTotalExpensesByCurrency(expenses)`);
+/// `rosterDisplayNames` carries plain participant names; the command center
+/// reads none of the remaining record fields, so they stay empty.
+LedgerView _ledgerView({
+  required Event event,
+  required List<Expense> expenses,
+  required Map<String, List<UserBalance>> balances,
+}) {
+  return (
+    participants: const [],
+    balances: balances,
+    eventTotal: BalanceCalculator.calculateTotalExpensesByCurrency(expenses),
+    rosterDisplayNames: {
+      for (final id in event.participantIds)
+        if (event.participantNames[id] != null) id: event.participantNames[id]!,
+    },
+    expensePayerDisplayNames: const {},
+    settlementDisplayNames: const {},
+    owedByExpenseId: const {},
+  );
+}
+
+GroupMember _realMember(String uid, String name) => GroupMember(
+  id: 'doc-$uid',
+  groupId: 'group-1',
+  userId: uid,
+  displayName: name,
+  role: 'member',
+  joinedAt: DateTime(2026, 1, 1),
+);
 
 final _settledBalances = <UserBalance>[
   _balance(uid: 'uid-1', name: 'Mona', net: Decimal.zero),

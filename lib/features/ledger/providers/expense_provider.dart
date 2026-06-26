@@ -8,7 +8,6 @@ import '../../../core/models/split_mode.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
-import '../../groups/providers/group_provider.dart';
 import '../../trip/models/trip_model.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
@@ -78,78 +77,6 @@ final eventSettlementsProvider =
     StreamProvider.family<List<Settlement>, EventRef>((ref, eventRef) {
   final service = ref.read(settlementServiceProvider);
   return service.watchSettlements(eventRef.groupId, eventRef.eventId);
-});
-
-// ---------------------------------------------------------------------------
-// NEW: EventRef-based balance provider
-// ---------------------------------------------------------------------------
-
-/// Provider for user balances in an event.
-///
-/// Derives participants directly from [Event.participantIds] and
-/// [Event.participantNames] — no SQLite lookup needed. Uses
-/// [eventExpensesProvider], [eventSettlementsProvider], and
-/// [eventSubGroupsProvider] (all Firestore-backed).
-///
-/// Takes a record `({EventRef eventRef, Event event})` to carry both
-/// the EventRef (for provider lookups) and the Event (for participant data).
-final eventBalancesProvider = Provider.family<
-    AsyncValue<Map<String, List<UserBalance>>>,
-    ({EventRef eventRef, Event event})>((ref, params) {
-  final expensesAsync = ref.watch(eventExpensesProvider(params.eventRef));
-  final settlementsAsync =
-      ref.watch(eventSettlementsProvider(params.eventRef));
-
-  if (expensesAsync.isLoading || settlementsAsync.isLoading) {
-    if (!expensesAsync.hasValue || !settlementsAsync.hasValue) {
-      return const AsyncValue.loading();
-    }
-  }
-
-  if (expensesAsync.hasError) {
-    return AsyncValue.error(expensesAsync.error!, expensesAsync.stackTrace!);
-  }
-
-  final expenses = expensesAsync.valueOrNull ?? [];
-  final settlements = settlementsAsync.valueOrNull ?? [];
-
-  // #249: fold departed-member split recipients (and former payers/settlers)
-  // into the universe so their owed shares aren't dropped. Members supply the
-  // member-gate + former-member display names; before they load we degrade to
-  // participantIds-only (the prior behavior).
-  final members =
-      ref.watch(groupMembersProvider(params.eventRef.groupId)).valueOrNull ??
-      const [];
-  final allMemberIds = members.map((m) => m.userId).toSet();
-  final liveMemberIds =
-      members.where((m) => !m.isTombstone).map((m) => m.userId).toSet();
-  final memberNameByUid = {for (final m in members) m.userId: m.displayName};
-
-  final universe = eventBalanceUniverse(
-    event: params.event,
-    expenses: expenses,
-    settlements: settlements,
-    allMemberIds: allMemberIds,
-    liveMemberIds: liveMemberIds,
-  );
-
-  final participants = universe.map((id) {
-    return Participant(
-      id: id,
-      tripId: params.event.id,
-      role: ParticipantRole.member,
-      joinedAt: params.event.createdAt,
-      displayName: params.event.participantNames[id] ?? memberNameByUid[id],
-    );
-  }).toList();
-
-  final balances = BalanceCalculator.calculateBalances(
-    expenses: expenses,
-    settlements: settlements,
-    participants: participants,
-  );
-
-  return AsyncValue.data(balances);
 });
 
 // ---------------------------------------------------------------------------
