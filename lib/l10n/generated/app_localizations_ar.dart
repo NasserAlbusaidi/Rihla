@@ -2083,6 +2083,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get eventUpdated => 'تم تحديث الفعالية';
 
   @override
+  String get eventUpdatedWillSync =>
+      'تم تحديث الفعالية — ستتم المزامنة عند الاتصال.';
+
+  @override
   String get eventSaveFailed => 'تعذّر حفظ التغييرات. أعد المحاولة.';
 
   @override

@@ -603,6 +603,7 @@
   "eventDetailsSection": "تفاصيل الفعالية",
   "eventNameEmpty": "لا يمكن أن يكون اسم الفعالية فارغًا.",
   "eventUpdated": "تم تحديث الفعالية",
+  "eventUpdatedWillSync": "تم تحديث الفعالية — ستتم المزامنة عند الاتصال.",
   "eventSaveFailed": "تعذّر حفظ التغييرات. أعد المحاولة.",
   "eventNotSet": "غير محدد",
   "eventDescriptionLabel": "الوصف",

@@ -2030,6 +2030,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventUpdated => 'Event updated';
 
   @override
+  String get eventUpdatedWillSync => 'Event updated — will sync when online.';
+
+  @override
   String get eventSaveFailed => 'Couldn\'t save changes. Try again.';
 
   @override

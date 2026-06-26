@@ -114,17 +114,24 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
             ),
         skipWait: connectivityStatus != ConnectivityStatus.online,
       );
-      if (outcome == WriteAck.acked) {
-        connectivity.noteLocalWrite();
+      final queued = outcome == WriteAck.queued;
+      if (queued) {
+        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
       } else {
-        connectivity.noteQueuedWrite();
+        connectivity.noteLocalWrite(); // #357: stale-offline correction
       }
       if (mounted) {
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              context.l10n.eventUpdated,
+              // #682: when the write was queued offline, show a distinct
+              // "will sync when online" confirmation with a longer dwell, so the
+              // user isn't left unsure whether Save worked. Every other write
+              // site (add/edit expense, settle-up, create) already does this.
+              queued
+                  ? context.l10n.eventUpdatedWillSync
+                  : context.l10n.eventUpdated,
               style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: context.colors.textPrimary,
@@ -132,7 +139,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: queued ? 4 : 2),
           ),
         );
       }
