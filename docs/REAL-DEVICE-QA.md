@@ -177,6 +177,42 @@ All nine rows recorded Pass against the production Firebase backend (`rihla-safa
 
 **Gate status:** `tool/check_real_device_qa_gate.sh` (with `RIHLA_SKIP_IOS_QA=yes`) still reports FAIL on its hard requirement of **two physical Android devices** (emulators are excluded by design). `RIHLA_REAL_DEVICE_QA_READY` is therefore left **unset** — flip it only after RD-04 is re-confirmed on a second physical Android (or the gate/criteria are amended to accept the emulator for RD-04). Tracked under #40.
 
+## 2026-06-26 bundled-font offline QA + AAB size check (#140)
+
+Issue #140's residual checks were run on a Pixel 9 Pro XL (Android 16 / API 36)
+from `main @ b335a12004b6` (`pubspec.yaml` `1.6.2+26`) using the signed
+release APK/AAB from the same checkout. Evidence is committed under
+`docs/qa-evidence/v1.6.3-issue-140/`.
+
+- **AAB size sanity check:** `flutter build appbundle --release --analyze-size`
+  now requires a single Android target platform on Flutter 3.41.5, so the
+  passing analysis command was
+  `flutter build appbundle --release --analyze-size --target-platform android-arm64 --dart-define-from-file=config.json`.
+  Result: `app-release.aab` `24,275,701` bytes (`24.3MB`), SHA-256
+  `bcbf2ab6aba3870544a2688eac7685ce89d6a5d29c78750d3212b6237b842f22`;
+  analyze-size reported total compressed `23 MB` and `base/assets` `407 KB`.
+  The five bundled TTFs total `492 KiB` raw in this checkout.
+- **Fresh install, airplane-mode launch:** `adb uninstall com.safar.safar`
+  returned `Success`; airplane mode was enabled before install/launch; the
+  release APK installed with SHA-256
+  `99bc97036fcd4a5870e0a76ff8521f40ebef8b898e2589e0e6e628146fbb440b`.
+  The true fresh-offline boot reached the startup error surface
+  (`140-pixel-fresh-offline-launch.png`) because Firebase Auth cannot bootstrap
+  anonymously without network. The captured display/sans typography rendered
+  from bundled assets, and `grep -i gstatic` returned no matches across the
+  fresh-offline launch log (`140-pixel-fresh-offline-logcat.txt`, 3,629 lines).
+- **Offline wordmark + mono money witness:** after one online anonymous-auth
+  bootstrap (`140-pixel-online-bootstrap.png`), the app was force-stopped,
+  airplane mode was re-enabled, logcat was cleared, and the release build was
+  cold-launched again offline. Home rendered the Rihla wordmark
+  (`140-pixel-cold-offline-home-wordmark.png`) and Profile rendered the
+  `0.000` lifetime-spend amount via `RAmount` / Geist Mono
+  (`140-pixel-cold-offline-profile-money.png`) with no network. `grep -i gstatic`
+  returned no matches across `140-pixel-cold-offline-home-profile-logcat.txt`
+  (4,869 lines).
+
+Airplane mode was restored off after the run.
+
 ## Durable-credential recovery matrix (RD-10–RD-13)
 
 Added 2026-06-11 for the durable-credential recovery rework (epic #441; gate #444,
