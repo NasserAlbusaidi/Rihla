@@ -203,6 +203,13 @@ class _SafarAppState extends ConsumerState<SafarApp> {
         ref.read(sharedPreferencesProvider),
         ref.read(routerProvider).go,
       );
+      // #635: run the eager boot-time notification sync now — AFTER first paint
+      // — instead of via `fireImmediately` during the first build turn, so the
+      // OS-permission/FCM/Firestore work no longer contends for the platform
+      // channel / main isolate in the most contended cold-start window. The
+      // cacheIsolationProvider early-return above already skips this during an
+      // in-session UID-swap restart; the ensuing cold boot does the kick.
+      kickInitialNotificationSync(ref);
     });
   }
 
