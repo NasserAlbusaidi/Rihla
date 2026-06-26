@@ -12,7 +12,6 @@ import '../admin';
 import { BatchWriter } from './shared/batchWriter';
 import { replaceUid, renameMapKey, mergeUidMapKey } from './shared/mapReKey';
 import {
-  recomputeNet,
   computeNetFromSnapshot,
   loadGroupBalanceSnapshot,
   Money,
@@ -234,7 +233,7 @@ function claimerInLiveEventSlot(
 // path, so this mirrors Phase C exactly. Oracle-inert fields (participantNames,
 // createdBy, activity logs, the claimRekeyAt/updatedAt sentinels) are not read by
 // computeNetFromSnapshot, so leaving them un-re-keyed is safe.
-function simulateClaim(
+export function simulateClaim(
   snapshot: GroupBalanceSnapshot,
   shadowId: string,
   claimerUid: string,
@@ -293,35 +292,102 @@ function netMismatch(expected: Net, actual: Net): string | null {
   return null;
 }
 
-// Part 3 post-commit backstop (replaces the buggy claimer-only additive assert):
-// recompute the live net and assert it EXACTLY equals the pre-commit simulation
-// AND the shadow is gone. simNet already bakes in the legitimate remainder-hop,
-// so absent a concurrent write actualNet == simNet by construction (both are
-// computeNetFromSnapshot over the same relabeled docs). A mismatch ⇒ a write
-// landed between the snapshot read and the commit (TOCTOU) → loud P0 + `internal`
-// (idempotent so the next attempt re-snapshots).
-async function assertExactParity(
+// #558: does the shadow uuid still appear in ANY identity field the balance
+// oracle reads? That is the sound finalized-claim invariant — its presence either
+// (a) gives the shadow a live net position, or (b) strands the shadow's slice so
+// the member-gate DROPS it (money vanishes, hidden from `net` — so netHasUid is
+// blind to it; see #558 BREAK-1). Reads EXACTLY computeNetFromSnapshot's identity
+// inputs, gate-for-gate (groupNetBalance.ts:635-668): member.userId +
+// participantIds + expense.payerParticipantId + settlement parties UNCONDITIONALLY;
+// expense.customSplitParticipants ONLY for scope==='custom'; expense.splitDistribution
+// keys ONLY for a non-equally mode (an equally-mode split map is balance-inert →
+// the oracle ignores it, so scanning it would spuriously throw). Excludes the
+// balance-INERT re-key targets (participantNames keys, createdBy, activity_logs):
+// a residue there loses no money and Phase B re-keys them best-effort (test 18). So
+// a CLEAN claim leaves zero references; any reference ⇒ torn cascade / a doc that
+// referenced the shadow appeared after Phase B enumerated it. LIVE docs only
+// (isDeleted === false, mirroring isLiveDoc — the `!== false` skip keeps it
+// byte-aligned with the oracle's strict filter; do NOT use `!== true`): the claim
+// path forbids a delete lock (Phase A → not-found on deletingInProgress), so the
+// oracle's soft-deleted-event widening is never in scope here.
+export function snapshotReferencesShadow(
+  snapshot: GroupBalanceSnapshot,
+  shadowId: string,
+): boolean {
+  if (snapshot.members.some((m) => m.data.userId === shadowId)) return true;
+  for (const ev of snapshot.events) {
+    if (ev.data.isDeleted !== false) continue;
+    if (asStringArray(ev.data.participantIds).includes(shadowId)) return true;
+    for (const e of ev.expenses) {
+      if (e.isDeleted !== false) continue;
+      if (e.payerParticipantId === shadowId) return true;
+      if (e.scope === 'custom' && asStringArray(e.customSplitParticipants).includes(shadowId)) {
+        return true;
+      }
+      const nonEqually =
+        e.splitMode === 'shares' || e.splitMode === 'exact' || e.splitMode === 'percent';
+      const dist = e.splitDistribution;
+      if (
+        nonEqually
+        && dist != null
+        && typeof dist === 'object'
+        && !Array.isArray(dist)
+        && Object.prototype.hasOwnProperty.call(dist, shadowId)
+      ) {
+        return true;
+      }
+    }
+    for (const s of ev.settlements) {
+      if (s.isDeleted !== false) continue;
+      if (s.payerParticipantId === shadowId || s.recipientParticipantId === shadowId) return true;
+    }
+  }
+  for (const s of snapshot.groupSettlements) {
+    if (s.isDeleted !== false) continue;
+    if (s.payerParticipantId === shadowId || s.recipientParticipantId === shadowId) return true;
+  }
+  return false;
+}
+
+// Part 3 post-commit backstop (#558). The throw discriminant is the
+// lingering-shadow-reference scan (snapshotReferencesShadow) — NOT a net mismatch
+// and NOT netHasUid: a concurrent edit can strand a shadow slice that the
+// member-gate drops (money lost, shadow ABSENT from `net`), which netHasUid misses
+// and which absolute conservation cannot distinguish from the honest #249 drop. A
+// `simNet != actualNet` drift WITH the shadow fully de-referenced is a benign
+// concurrent edit — `actualNet` is the deterministic live oracle truth and is
+// authoritative — so it is logged advisory, never thrown (closing the Hole-1
+// false-reject of a correct claim). recomputeNet is decomposed here into one
+// snapshot load reused for BOTH the scan and the net (I/O-identical to recomputeNet).
+export async function assertExactParity(
   db: Firestore,
   groupRef: DocumentReference,
   simNet: Net,
   shadowId: string,
   claimerUid: string,
 ): Promise<void> {
-  const { net: actualNet } = await recomputeNet(db, groupRef);
-  const mismatch = netMismatch(simNet, actualNet);
-  const shadowSurvived = netHasUid(actualNet, shadowId);
-  if (mismatch != null || shadowSurvived) {
-    logger.error('claimShadow parity MISMATCH (TOCTOU?) — claim NOT finalized', {
+  const snapshot = await loadGroupBalanceSnapshot(db, groupRef);
+  if (snapshotReferencesShadow(snapshot, shadowId)) {
+    logger.error('claimShadow parity FAILED — shadow still referenced in a balance field post-commit', {
       groupId: groupRef.id,
       shadowId,
       claimerUid,
-      mismatch: mismatch ?? 'none',
-      shadowSurvived,
+      shadowReferenced: true,
     });
     throw new HttpsError(
       'internal',
       'Claim produced an inconsistent balance and was not finalized.',
     );
+  }
+  const { net: actualNet } = computeNetFromSnapshot(snapshot);
+  const mismatch = netMismatch(simNet, actualNet);
+  if (mismatch != null) {
+    logger.warn('claimShadow parity drifted post-commit (concurrent edit; actualNet authoritative)', {
+      groupId: groupRef.id,
+      shadowId,
+      claimerUid,
+      mismatch,
+    });
   }
 }
 
@@ -360,6 +426,22 @@ export async function claimShadowEngine(
     // existed). Idempotent no-op (convergence): nothing to re-key. This check runs
     // BEFORE the pre-scan, so a re-claim by an already-member claimer (test 6/16)
     // returns alreadyClaimed rather than failed-precondition.
+    // #558 Hole 2: a prior claim that retired the member doc but left a money doc
+    // still keyed to the shadow is a TORN cascade (the member-gate then DROPS the
+    // shadow's slice → money vanishes, shadow absent from net). Surface it loudly
+    // instead of blessing it un-verified. Reuses the already-loaded Phase-A snapshot
+    // (zero extra reads). A clean retry leaves zero shadow refs → alreadyClaimed.
+    if (snapshotReferencesShadow(snapshot, shadowMemberId)) {
+      logger.error('claimShadow idempotent path: shadow still referenced in a balance field despite no member doc — prior cascade torn', {
+        groupId,
+        shadowMemberId,
+        claimerUid,
+      });
+      throw new HttpsError(
+        'internal',
+        'A prior claim left an inconsistent balance and was not finalized.',
+      );
+    }
     return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true };
   }
   // Claimable predicate: a LIVE placeholder. A tombstoned shadow (Part 4) is NOT
@@ -509,10 +591,30 @@ export async function claimShadowEngine(
   });
 
   if (!retired) {
+    // #558 Hole 2 (the second idempotent return): the shadow was retired by a
+    // concurrent claim between our Phase A and Phase C (decideClaimRequest does NOT
+    // serialize two requests for one shadow). Our Phase-A snapshot is stale here
+    // (Phase B already re-keyed against it), so re-read and scan for a torn shadow
+    // residue before blessing. (A true two-engine claimer-A/claimer-B torn mix
+    // leaves NO shadow reference — the scan can't discriminate it; that needs a
+    // per-shadow lock, tracked as a follow-up. This still catches a torn shadow
+    // residue the current code blesses.)
+    const fresh = await loadGroupBalanceSnapshot(db, groupRef);
+    if (snapshotReferencesShadow(fresh, shadowMemberId)) {
+      logger.error('claimShadow Phase-C-already-retired path: shadow still referenced — torn cascade', {
+        groupId,
+        shadowMemberId,
+        claimerUid,
+      });
+      throw new HttpsError(
+        'internal',
+        'A prior claim left an inconsistent balance and was not finalized.',
+      );
+    }
     return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true };
   }
 
-  // ---- Part 3 post-commit: exact simNet == actualNet (TOCTOU backstop). ----
+  // ---- Part 3 post-commit: shadow-reference scan + advisory drift (#558). ----
   await assertExactParity(db, groupRef, simNet, shadowMemberId, claimerUid);
 
   logger.info('claimShadow re-keyed', { groupId, shadowMemberId, claimerUid });

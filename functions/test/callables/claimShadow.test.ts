@@ -19,8 +19,17 @@ import { clearFirestore } from '../fixtures';
 // kind: functions-jest (Firestore emulator + firebase-functions-test, Java 21)
 // runCommand: `cd functions && RIHLA_FIREBASE_EMULATOR_TEST_COMMAND="npx --yes node@22 node_modules/jest/bin/jest.js --runInBand test/callables/claimShadow.test.ts" npm run test:emulator`
 
-import { claimShadowEngine } from '../../src/callables/claimShadow';
-import { recomputeNet } from '../../src/callables/groupNetBalance';
+import {
+  claimShadowEngine,
+  assertExactParity,
+  snapshotReferencesShadow,
+  simulateClaim,
+} from '../../src/callables/claimShadow';
+import {
+  recomputeNet,
+  computeNetFromSnapshot,
+  type GroupBalanceSnapshot,
+} from '../../src/callables/groupNetBalance';
 import { refreshGroupBalanceAggregate } from '../../src/triggers/balanceAggregator';
 
 // #278 PR8 re-home: the raw `claimShadow` onCall wrapper was de-exported (the
@@ -781,8 +790,12 @@ describe('claimShadowEngine — uuid→uid re-key (#278 PR7; auth re-homed to cl
     // simNet == actualNet backstop ALLOWS it (a relabel is not a collision).
     // Ordering: SHADOW='shadow-7f3a9c' is last pre-claim; CLAIMER='claimer' sorts
     // FIRST → post-claim the last recipient is 'owner' (the remainder relocates to
-    // a third party). If the sim OMITS the participantIds re-key, simNet keeps the
-    // shadow last → simNet ≠ actualNet → this test goes RED (the sim-fidelity guard).
+    // a third party). This asserts the COMMITTED nets directly (the money), which a
+    // simulateClaim bug cannot perturb (the commit writes via Phase B/C, not the
+    // sim). NOTE (#558): the post-commit assert no longer THROWS on a simNet≠actualNet
+    // drift (it demotes a shadow-gone drift to an advisory warn), so the sim-fidelity
+    // tripwire moved to the U6 simulateClaim unit + the pre-commit :405
+    // netHasUid(simNet, shadow) sanity; this test stays a committed-money check.
     await seedGroup('g', [OWNER, MEMBER2, SHADOW]);
     await seedMember('g', OWNER);
     await seedMember('g', MEMBER2);
@@ -862,5 +875,239 @@ describe('claimShadowEngine — uuid→uid re-key (#278 PR7; auth re-homed to cl
     expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
     expect(await memberDoc('g', SHADOW)).toBeDefined();
     expect(await memberDocCount('g')).toBe(2);
+  });
+});
+
+// #558: the post-commit parity backstop had two holes — (1) it threw `internal`
+// AFTER the cascade was durable AND false-rejected benign concurrent edits, and
+// (2) the idempotent retry returned alreadyClaimed before any verification,
+// silently blessing a torn/corrupt state. The fix makes the THROW discriminant a
+// mode/scope-gated lingering-SHADOW-reference scan (snapshotReferencesShadow ==
+// the oracle's identity-read set) and demotes a simNet!=actualNet drift (shadow
+// fully gone) to an advisory warn (actualNet is the authoritative live truth).
+describe('claimShadowEngine — #558 post-commit parity TOCTOU (both holes)', () => {
+  beforeEach(async () => {
+    await clearFirestore();
+    delete process.env.DELETE_ACCOUNT_BATCH_LIMIT;
+    jest.restoreAllMocks();
+    jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+  });
+
+  // ---- pure-unit snapshot builders (no Firestore; ev.ref is a dummy doc the
+  // pure compute only echoes into liveEventRefs) ----
+  const exp = (o: Record<string, unknown> = {}): Record<string, unknown> => ({
+    payerParticipantId: OWNER,
+    amountFils: 12000,
+    currency: 'OMR',
+    scope: 'global',
+    customSplitParticipants: [],
+    splitMode: 'equally',
+    splitDistribution: {},
+    isDeleted: false,
+    ...o,
+  });
+  function gbs(opts: {
+    members?: Array<Record<string, unknown>>;
+    events?: Array<{
+      data?: Record<string, unknown>;
+      expenses?: Array<Record<string, unknown>>;
+      settlements?: Array<Record<string, unknown>>;
+    }>;
+    groupSettlements?: Array<Record<string, unknown>>;
+    groupData?: Record<string, unknown>;
+  }): GroupBalanceSnapshot {
+    return {
+      groupExists: true,
+      groupData: { memberIds: [], isDeleted: false, ...(opts.groupData ?? {}) },
+      members: (opts.members ?? []).map((data, i) => ({ docId: String(data.userId ?? i), data })),
+      events: (opts.events ?? []).map((e, i) => ({
+        id: `e${i}`,
+        ref: getFirestore().doc(`groups/u558/events/e${i}`),
+        data: { participantIds: [], isDeleted: false, ...(e.data ?? {}) },
+        expenses: e.expenses ?? [],
+        settlements: e.settlements ?? [],
+      })),
+      groupSettlements: opts.groupSettlements ?? [],
+    };
+  }
+  const hasUid = (net: Map<string, Map<string, unknown>>, uid: string): boolean =>
+    [...net.values()].some((b) => b.has(uid));
+
+  test('U1. scan catches a stranded NON-equally splitDistribution shadow key that netHasUid is BLIND to (Defect-C / #558 core)', () => {
+    // SHADOW ∉ participantIds and ∉ members, but keyed in an exact split → the
+    // oracle member-gate DROPS it (money vanishes, shadow absent from net), while
+    // the scan sees the splitDistribution key. This is the soundness pin.
+    const snap = gbs({
+      members: [{ userId: OWNER, isShadow: false }],
+      events: [{
+        data: { participantIds: [OWNER] },
+        expenses: [exp({ splitMode: 'exact', splitDistribution: { [OWNER]: 6000, [SHADOW]: 6000 } })],
+      }],
+    });
+    expect(snapshotReferencesShadow(snap, SHADOW)).toBe(true);
+    expect(hasUid(computeNetFromSnapshot(snap).net, SHADOW)).toBe(false); // ← netHasUid is blind
+  });
+
+  test('U2. scan == oracle identity set: participantIds / payer / custom-scope customSplit / event+group settlement parties → true', () => {
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER, SHADOW] }, expenses: [exp()] }] }), SHADOW,
+    )).toBe(true);
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER] }, expenses: [exp({ payerParticipantId: SHADOW })] }] }), SHADOW,
+    )).toBe(true);
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER] }, expenses: [exp({ scope: 'custom', customSplitParticipants: [OWNER, SHADOW] })] }] }), SHADOW,
+    )).toBe(true);
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER] }, settlements: [{ payerParticipantId: SHADOW, recipientParticipantId: OWNER, isDeleted: false }] }] }), SHADOW,
+    )).toBe(true);
+    expect(snapshotReferencesShadow(
+      gbs({ groupSettlements: [{ payerParticipantId: OWNER, recipientParticipantId: SHADOW, isDeleted: false }] }), SHADOW,
+    )).toBe(true);
+  });
+
+  test('U3. scan catches a surviving shadow member doc (userId === shadow)', () => {
+    expect(snapshotReferencesShadow(
+      gbs({ members: [{ userId: OWNER }, { userId: SHADOW, isShadow: true }] }), SHADOW,
+    )).toBe(true);
+  });
+
+  test('U4. clean snapshot (no shadow anywhere) → false', () => {
+    expect(snapshotReferencesShadow(
+      gbs({
+        members: [{ userId: OWNER }, { userId: CLAIMER }],
+        events: [{ data: { participantIds: [OWNER, CLAIMER] }, expenses: [exp()] }],
+      }),
+      SHADOW,
+    )).toBe(false);
+  });
+
+  test('U5. soft-deleted-only shadow ref → false (live-only, balance-inert)', () => {
+    // a soft-deleted event keying SHADOW, and a soft-deleted expense paid by SHADOW
+    // in a live event — both ignored by the oracle, so the scan must ignore them too.
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER, SHADOW], isDeleted: true } }] }), SHADOW,
+    )).toBe(false);
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER] }, expenses: [exp({ payerParticipantId: SHADOW, isDeleted: true })] }] }), SHADOW,
+    )).toBe(false);
+  });
+
+  test('U5b. balance-INERT residue is NOT scanned (the [P1-1] gate): equally-mode splitDistribution + non-custom customSplit → false', () => {
+    // equally-mode splitDistribution is ignored by the oracle (it splits by the
+    // universe), so a shadow key there loses no money → must NOT throw.
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER] }, expenses: [exp({ splitMode: 'equally', splitDistribution: { [OWNER]: 6000, [SHADOW]: 6000 } })] }] }), SHADOW,
+    )).toBe(false);
+    // customSplitParticipants is read only for scope==='custom'.
+    expect(snapshotReferencesShadow(
+      gbs({ events: [{ data: { participantIds: [OWNER] }, expenses: [exp({ scope: 'global', customSplitParticipants: [OWNER, SHADOW] })] }] }), SHADOW,
+    )).toBe(false);
+  });
+
+  test('U6. simulateClaim fidelity: remainder-hop relocates correctly (sim-fidelity guard, now independent of the advisory mismatch)', () => {
+    // test-26 fixture: 10.000 / 3 equally, SHADOW alphabetically-last pre-claim,
+    // CLAIMER sorts first → post-claim OWNER is last and absorbs the remainder.
+    const snap = gbs({
+      members: [{ userId: OWNER }, { userId: MEMBER2 }, { userId: SHADOW, isShadow: true }],
+      events: [{
+        data: { participantIds: [OWNER, MEMBER2, SHADOW] },
+        expenses: [exp({ payerParticipantId: OWNER, amountFils: 10000 })],
+      }],
+    });
+    const sim = computeNetFromSnapshot(simulateClaim(snap, SHADOW, CLAIMER)).net.get('OMR')!;
+    expect(sim.has(SHADOW)).toBe(false);
+    expect(sim.get(CLAIMER)!.toFixed(3)).toBe('-3.333'); // claimer sorts first → not the absorber
+    expect(sim.get(OWNER)!.toFixed(3)).toBe('6.666'); // remainder relocated to owner (sorted-last post-claim)
+    expect(sim.get(MEMBER2)!.toFixed(3)).toBe('-3.333');
+  });
+
+  test('T28. ★[#558] genuine corruption (shadow referenced post-commit) → assertExactParity THROWS, logging shadowReferenced (not warn-blessed)', async () => {
+    // BREAK-1: a concurrent exact x2 keys the now-deleted shadow → its slice is
+    // dropped (5.000 vanishes), shadow absent from net. Soundness guard against a
+    // naive warn-only fix. RED-against-current = the shadowReferenced log payload
+    // (current logs shadowSurvived); current also throws (via the mismatch arm).
+    await seedGroup('pre28', [OWNER, CLAIMER]);
+    await seedMember('pre28', OWNER);
+    await seedMember('pre28', CLAIMER, { displayName: 'Khalid' });
+    await seedEvent('pre28', 'e1', [OWNER, CLAIMER], { [OWNER]: 'Owner', [CLAIMER]: 'Khalid' });
+    await seedExpense('groups/pre28/events/e1/expenses/x1', { payerParticipantId: OWNER, amountFils: 12000 });
+    const simNet = (await recomputeNet(getFirestore(), getFirestore().doc('groups/pre28'))).net;
+
+    await seedGroup('g', [OWNER, CLAIMER]);
+    await seedMember('g', OWNER);
+    await seedMember('g', CLAIMER, { displayName: 'Khalid' });
+    await seedEvent('g', 'e1', [OWNER, CLAIMER], { [OWNER]: 'Owner', [CLAIMER]: 'Khalid' });
+    await seedExpense('groups/g/events/e1/expenses/x1', { payerParticipantId: OWNER, amountFils: 12000 });
+    await seedExpense('groups/g/events/e1/expenses/x2', {
+      payerParticipantId: OWNER, amountFils: 10000, splitMode: 'exact',
+      splitDistribution: { [OWNER]: 5000, [SHADOW]: 5000 },
+    });
+
+    await expect(
+      assertExactParity(getFirestore(), getFirestore().doc('groups/g'), simNet, SHADOW, CLAIMER),
+    ).rejects.toMatchObject({ code: 'internal' });
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ shadowReferenced: true }),
+    );
+  });
+
+  test('T29. ★[#558] benign concurrent edit (shadow gone, conserves) → assertExactParity RESOLVES (Hole-1 false-reject fixed)', async () => {
+    // simNet is the 2-way pre-edit; the live state is a conserving 3-way (an honest
+    // mid-claim participant add). No shadow reference → actualNet is authoritative.
+    await seedGroup('pre29', [OWNER, CLAIMER]);
+    await seedMember('pre29', OWNER);
+    await seedMember('pre29', CLAIMER);
+    await seedEvent('pre29', 'e1', [OWNER, CLAIMER], { [OWNER]: 'Owner', [CLAIMER]: 'Khalid' });
+    await seedExpense('groups/pre29/events/e1/expenses/x1', { payerParticipantId: OWNER, amountFils: 12000 });
+    const simNet = (await recomputeNet(getFirestore(), getFirestore().doc('groups/pre29'))).net;
+
+    await seedGroup('g', [OWNER, CLAIMER, 'dave']);
+    await seedMember('g', OWNER);
+    await seedMember('g', CLAIMER);
+    await seedMember('g', 'dave');
+    await seedEvent('g', 'e1', [OWNER, CLAIMER, 'dave'], { [OWNER]: 'Owner', [CLAIMER]: 'Khalid', dave: 'Dave' });
+    await seedExpense('groups/g/events/e1/expenses/x1', { payerParticipantId: OWNER, amountFils: 12000 });
+
+    await expect(
+      assertExactParity(getFirestore(), getFirestore().doc('groups/g'), simNet, SHADOW, CLAIMER),
+    ).resolves.toBeUndefined();
+  });
+
+  test('T30. ★[#558] idempotent retry on a torn (shadow-referenced) cascade → engine THROWS, not alreadyClaimed-bless (Hole-2 fixed)', async () => {
+    // Torn end-state: shadow member doc gone + ∉ memberIds (→ idempotent branch),
+    // but a live exact expense still keys SHADOW → 6.000 dropped by the member-gate.
+    await seedGroup('g', [OWNER, CLAIMER]);
+    await seedMember('g', OWNER);
+    await seedMember('g', CLAIMER, { displayName: 'Khalid' });
+    await seedEvent('g', 'e1', [OWNER, CLAIMER], { [OWNER]: 'Owner', [CLAIMER]: 'Khalid' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      payerParticipantId: OWNER, amountFils: 12000, splitMode: 'exact',
+      splitDistribution: { [OWNER]: 6000, [SHADOW]: 6000 },
+    });
+
+    const net = await nets('g');
+    expect(hasUid(net, SHADOW)).toBe(false); // shadow absent from net — why netHasUid was rejected
+    expect(omr(net, OWNER)).toBe('6.000'); // 12 paid − 6 owed (SHADOW's 6 dropped → money lost)
+
+    await expect(
+      call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER }),
+    ).rejects.toMatchObject({ code: 'internal' });
+  });
+
+  test('T31. ★[#558] clean idempotent double-claim still returns alreadyClaimed (Edit-B no false-throw)', async () => {
+    await seedGroup('g', [OWNER, CLAIMER]);
+    await seedMember('g', OWNER);
+    await seedMember('g', CLAIMER);
+    await seedEvent('g', 'e1', [OWNER, CLAIMER], { [OWNER]: 'Owner', [CLAIMER]: 'Khalid' });
+    await seedExpense('groups/g/events/e1/expenses/x1', { payerParticipantId: OWNER, amountFils: 12000 });
+
+    const res = (await call({ groupId: 'g', shadowMemberId: SHADOW, claimerUid: CLAIMER })) as {
+      alreadyClaimed: boolean;
+    };
+    expect(res.alreadyClaimed).toBe(true);
   });
 });
