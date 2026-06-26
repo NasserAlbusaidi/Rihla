@@ -35,6 +35,7 @@ void main() {
               'expense-1': 'Aisha (former member)',
             },
             settlementDisplayNames: const {},
+            owedByExpenseId: const {},
             onExpenseTap: (_) {},
           ),
         ),

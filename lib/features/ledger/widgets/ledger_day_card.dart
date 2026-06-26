@@ -8,7 +8,6 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
-import '../providers/expense_provider.dart';
 import '../utils/ledger_categories.dart';
 import '../utils/ledger_timeline.dart';
 
@@ -98,6 +97,7 @@ class LedgerDayCard extends StatelessWidget {
     required this.participantCount,
     required this.expensePayerDisplayNames,
     required this.settlementDisplayNames,
+    required this.owedByExpenseId,
     required this.onExpenseTap,
   });
 
@@ -109,6 +109,10 @@ class LedgerDayCard extends StatelessWidget {
   final Map<String, String> expensePayerDisplayNames;
   final Map<String, ({String payerName, String recipientName})>
   settlementDisplayNames;
+  /// #629: per-expense gross owed-by-uid for the NON-equal-split expenses in
+  /// [items], memoized by `ledgerViewProvider`. A row looks up its own expense's
+  /// map (absent ⇒ equal split ⇒ the row's cheap arithmetic branch handles it).
+  final Map<String, Map<String, Decimal>> owedByExpenseId;
   final ValueChanged<Expense> onExpenseTap;
 
   @override
@@ -152,6 +156,7 @@ class LedgerDayCard extends StatelessWidget {
         divider: index < total - 1,
         currentParticipantId: currentParticipantId,
         participantCount: participantCount,
+        owedForExpense: owedByExpenseId[expense.id],
         payerDisplayName:
             expensePayerDisplayNames[expense.id] ??
             expense.payerName ??
@@ -182,6 +187,7 @@ class _ExpenseRow extends StatelessWidget {
     required this.divider,
     required this.currentParticipantId,
     required this.participantCount,
+    required this.owedForExpense,
     required this.payerDisplayName,
     required this.onTap,
   });
@@ -190,6 +196,10 @@ class _ExpenseRow extends StatelessWidget {
   final bool divider;
   final String? currentParticipantId;
   final int participantCount;
+  /// #629: gross owed-by-uid for THIS expense, precomputed by `ledgerViewProvider`
+  /// for non-equal splits (null for equal splits). Replaces the per-row
+  /// `allocateExpenseOwed` call in [_userShare].
+  final Map<String, Decimal>? owedForExpense;
   final String payerDisplayName;
   final VoidCallback onTap;
 
@@ -322,29 +332,18 @@ class _ExpenseRow extends StatelessWidget {
     }
     final isPayer = expense.payerParticipantId == currentParticipantId;
 
-    // Non-equal splits (shares/exact/percent): reuse the single source of
-    // owed-allocation math (#242) so the row's signed sub-line matches the
-    // editor preview and the persisted balance byte-for-byte (#591), instead
-    // of the old #125 omission. `allocateExpenseOwed` returns GROSS owed per id;
-    // reconstruct the signed, current-user-relative figure the row renders with
-    // `sign: true` — the payer sees `amount - mine` (what others owe them), a
-    // participant sees `-mine`. This generalizes the equal-split tail below.
+    // Non-equal splits (shares/exact/percent): read the precomputed GROSS owed
+    // per id that `ledgerViewProvider` memoized via the SAME single-source
+    // `allocateExpenseOwed` (#242/#629), so the row's signed sub-line matches the
+    // editor preview and the persisted balance byte-for-byte (#591) WITHOUT
+    // re-allocating per visible row on every chip-tap/scroll. Reconstruct the
+    // signed, current-user-relative figure the row renders with `sign: true` —
+    // the payer sees `amount - mine` (what others owe them), a participant sees
+    // `-mine`. `owedForExpense` is non-null here by construction: the provider's
+    // memo gate is byte-identical to `_isNonEqualSplit` (null-safe `?? zero`
+    // degrades to no share line rather than throwing if the maps ever desync).
     if (_isNonEqualSplit(expense)) {
-      final owed = BalanceCalculator.allocateExpenseOwed(
-        amount: expense.amount,
-        splitMode: expense.splitMode,
-        splitDistribution: expense.splitDistribution,
-        scope: expense.scope,
-        customSplitParticipants: expense.customSplitParticipants,
-        payerId: expense.payerParticipantId,
-        // Unused on the distribution branch: `allocateExpenseOwed`'s non-equal
-        // gate is identical to `_isNonEqualSplit`, so it always allocates over
-        // `splitDistribution` keys here and never reads `participantIds`.
-        participantIds: const <String>[],
-        currency: expense.currency,
-        onFallback: null, // display path — no Sentry telemetry
-      );
-      final mine = owed[currentParticipantId] ?? Decimal.zero;
+      final mine = owedForExpense?[currentParticipantId] ?? Decimal.zero;
       return (isPayer ? expense.amount : Decimal.zero) - mine;
     }
 

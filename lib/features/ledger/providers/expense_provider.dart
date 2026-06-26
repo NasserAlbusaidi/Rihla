@@ -263,6 +263,14 @@ class BalanceCalculator {
   @visibleForTesting
   static int debugCalculateBalancesCount = 0;
 
+  /// Test-only invocation counter (#629). Lets a widget test prove a category
+  /// chip tap (or a scroll) no longer re-runs [allocateExpenseOwed] per visible
+  /// non-equal-split row — the per-expense owed allocation is now memoized once
+  /// in `ledgerViewProvider` and the row is a map lookup. Reset it in test setUp;
+  /// production never reads it.
+  @visibleForTesting
+  static int debugAllocateExpenseOwedCount = 0;
+
   /// Telemetry sink for split-allocation fallbacks (#250). Defaults to a
   /// PII-free Sentry warning ([_reportSplitFallbackToSentry]); overridable in
   /// tests to assert the calculator never silently swallows a malformed split.
@@ -463,6 +471,7 @@ class BalanceCalculator {
     required String currency,
     void Function(SplitFallbackReason reason)? onFallback,
   }) {
+    debugAllocateExpenseOwedCount++;
     final fenced = MoneySerializer.isSupported(currency) ? currency : 'OMR';
 
     if (splitMode != null &&

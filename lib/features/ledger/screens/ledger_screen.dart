@@ -393,6 +393,7 @@ class _Body extends ConsumerWidget {
                         participantCount: participants.length,
                         expensePayerDisplayNames: expensePayerDisplayNames,
                         settlementDisplayNames: settlementDisplayNames,
+                        owedByExpenseId: data.owedByExpenseId,
                         onExpenseTap: (expense) => GoRouter.of(context).push(
                           '/group/$groupId/event/$eventId/ledger/'
                           'edit/${expense.id}',

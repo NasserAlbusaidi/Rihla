@@ -184,4 +184,108 @@ void main() {
     // (d) unresolvable participant + persisted name → former-member label.
     expect(view.settlementDisplayNames['s-d']!.payerName, 'Sam (former member)');
   });
+
+  // #629 — the provider memoizes the per-expense owed allocation the ledger row
+  // renders, so the row is a map lookup instead of an in-build allocation. Only
+  // non-equal splits are memoized; the value must equal what the row computed
+  // before (single-sourced via the same `allocateExpenseOwed`).
+  group('#629 owedByExpenseId memo', () {
+    Expense nonEqual(
+      String id, {
+      required SplitMode mode,
+      required Map<String, Decimal> dist,
+      String payer = 'uid-sara',
+      String amount = '12.000',
+    }) =>
+        Expense(
+          id: id,
+          tripId: eventId,
+          payerParticipantId: payer,
+          amount: Decimal.parse(amount),
+          scope: ExpenseScope.global,
+          customSplitParticipants: const [],
+          splitMode: mode,
+          splitDistribution: dist,
+          createdAt: DateTime(2026, 1, 11),
+          createdBy: payer,
+          currency: 'OMR',
+        );
+
+    Expense equalGlobal(String id) => Expense(
+          id: id,
+          tripId: eventId,
+          payerParticipantId: 'uid-sara',
+          amount: Decimal.parse('9.000'),
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026, 1, 11),
+          createdBy: 'uid-sara',
+          currency: 'OMR',
+        );
+
+    Map<String, Decimal> expectedOwed(Expense e) =>
+        BalanceCalculator.allocateExpenseOwed(
+          amount: e.amount,
+          splitMode: e.splitMode,
+          splitDistribution: e.splitDistribution,
+          scope: e.scope,
+          customSplitParticipants: e.customSplitParticipants,
+          payerId: e.payerParticipantId,
+          participantIds: const <String>[],
+          currency: e.currency,
+          onFallback: null,
+        );
+
+    test('memoizes ONLY non-equal splits, each equal to allocateExpenseOwed',
+        () async {
+      final shares = nonEqual(
+        'e-shares',
+        mode: SplitMode.shares,
+        dist: {'uid-sara': Decimal.parse('2'), 'uid-bob': Decimal.one},
+      );
+      final exact = nonEqual(
+        'e-exact',
+        mode: SplitMode.exact,
+        dist: {
+          'uid-sara': Decimal.parse('8.000'),
+          'uid-bob': Decimal.parse('4.000'),
+        },
+      );
+      final percent = nonEqual(
+        'e-percent',
+        mode: SplitMode.percent,
+        payer: 'uid-bob',
+        amount: '10.000',
+        dist: {
+          'uid-sara': Decimal.parse('50'),
+          'uid-bob': Decimal.parse('50'),
+        },
+      );
+      final equal = equalGlobal('e-equal');
+
+      final container =
+          makeContainer(expenses: [shares, exact, percent, equal]);
+      final view = await readView(container);
+
+      // Exactly the three non-equal splits are memoized; the equal split is
+      // ABSENT — the row handles it with cheap arithmetic and never reads this
+      // map. (Pins the boundary against a future "memoize everything" regress.)
+      expect(view.owedByExpenseId.keys.toSet(), {
+        'e-shares',
+        'e-exact',
+        'e-percent',
+      });
+      expect(view.owedByExpenseId.containsKey('e-equal'), isFalse);
+
+      // Single-sourced: each memoized map equals the row's prior in-build call.
+      expect(view.owedByExpenseId['e-shares'], equals(expectedOwed(shares)));
+      expect(view.owedByExpenseId['e-exact'], equals(expectedOwed(exact)));
+      expect(view.owedByExpenseId['e-percent'], equals(expectedOwed(percent)));
+    });
+
+    test('empty when there are no non-equal-split expenses', () async {
+      final container = makeContainer(expenses: [equalGlobal('e-equal')]);
+      final view = await readView(container);
+      expect(view.owedByExpenseId, isEmpty);
+    });
+  });
 }
