@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/split_mode.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/models/group_member_model.dart';
 import '../../groups/providers/group_provider.dart';
@@ -27,6 +28,13 @@ typedef LedgerView = ({
   Map<String, String> rosterDisplayNames,
   Map<String, String> expensePayerDisplayNames,
   Map<String, LedgerSettlementNames> settlementDisplayNames,
+  // #629: per-expense gross owed-by-uid, memoized once per data change so a
+  // ledger row renders its signed share by lookup instead of re-running
+  // `allocateExpenseOwed` per visible non-equal-split row on every chip-tap /
+  // scroll. Populated ONLY for non-equal splits (shares/exact/percent) — the
+  // equal-split row stays cheap widget arithmetic and never reads this. INBOUND
+  // display-only: never read by a write path, `recomputeNet`, or the rules.
+  Map<String, Map<String, Decimal>> owedByExpenseId,
 });
 
 /// Filter-independent ledger view data for one event, memoized by [EventRef]
@@ -73,6 +81,7 @@ final ledgerViewProvider = Provider.family<LedgerView, EventRef>((ref, eventRef)
       rosterDisplayNames: const <String, String>{},
       expensePayerDisplayNames: const <String, String>{},
       settlementDisplayNames: const <String, LedgerSettlementNames>{},
+      owedByExpenseId: const <String, Map<String, Decimal>>{},
     );
   }
 
@@ -167,6 +176,35 @@ final ledgerViewProvider = Provider.family<LedgerView, EventRef>((ref, eventRef)
       ),
   };
 
+  // #629: memoize the per-expense owed allocation the ledger row needs, so a
+  // category-chip `setState` (which rebuilds the rows but NOT this provider) and
+  // on-scroll row builds become map lookups instead of re-running the Decimal
+  // allocation per visible row. Only NON-equal splits are memoized — the gate
+  // below is byte-identical to `_ExpenseRow._isNonEqualSplit`, so the equal-split
+  // row (which never reads this map) stays cheap. The call args are the EXACT set
+  // the row passes today (`participantIds: const []` — ignored on the distribution
+  // branch; `onFallback: null` — `calculateBalances` already fired the telemetry),
+  // so the memoized value equals the row's prior in-build computation by
+  // construction (single-sourced math; no oracle divergence).
+  final owedByExpenseId = <String, Map<String, Decimal>>{
+    for (final expense in expenses)
+      if (expense.splitMode != null &&
+          expense.splitMode != SplitMode.equally &&
+          expense.splitDistribution != null &&
+          expense.splitDistribution!.isNotEmpty)
+        expense.id: BalanceCalculator.allocateExpenseOwed(
+          amount: expense.amount,
+          splitMode: expense.splitMode,
+          splitDistribution: expense.splitDistribution,
+          scope: expense.scope,
+          customSplitParticipants: expense.customSplitParticipants,
+          payerId: expense.payerParticipantId,
+          participantIds: const <String>[],
+          currency: expense.currency,
+          onFallback: null,
+        ),
+  };
+
   return (
     participants: participants,
     balances: balances,
@@ -174,5 +212,6 @@ final ledgerViewProvider = Provider.family<LedgerView, EventRef>((ref, eventRef)
     rosterDisplayNames: rosterDisplayNames,
     expensePayerDisplayNames: expensePayerDisplayNames,
     settlementDisplayNames: settlementDisplayNames,
+    owedByExpenseId: owedByExpenseId,
   );
 });

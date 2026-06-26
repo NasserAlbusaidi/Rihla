@@ -5,6 +5,7 @@ import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
+import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/utils/ledger_timeline.dart';
 import 'package:safar/features/ledger/widgets/ledger_day_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -24,6 +25,33 @@ import 'package:safar/shared/widgets/r_amount.dart';
 /// Fixtures use `Expense.fromFirestore` (the `[]` shape production persists)
 /// except where a typed splitMode/distribution is needed.
 void main() {
+  // Mirror `ledgerViewProvider`'s #629 memo: a non-equal split's row reads its
+  // precomputed gross owed map (the row no longer allocates in build()). Equal
+  // splits get no entry and take the row's cheap arithmetic branch.
+  Map<String, Map<String, Decimal>> owedMapFor(Expense expense) {
+    final mode = expense.splitMode;
+    final dist = expense.splitDistribution;
+    if (mode == null ||
+        mode == SplitMode.equally ||
+        dist == null ||
+        dist.isEmpty) {
+      return const {};
+    }
+    return {
+      expense.id: BalanceCalculator.allocateExpenseOwed(
+        amount: expense.amount,
+        splitMode: expense.splitMode,
+        splitDistribution: expense.splitDistribution,
+        scope: expense.scope,
+        customSplitParticipants: expense.customSplitParticipants,
+        payerId: expense.payerParticipantId,
+        participantIds: const <String>[],
+        currency: expense.currency,
+        onFallback: null,
+      ),
+    };
+  }
+
   Future<void> pumpRow(
     WidgetTester tester,
     Expense expense, {
@@ -44,6 +72,7 @@ void main() {
             participantCount: participantCount,
             expensePayerDisplayNames: const {'e1': 'Aisha'},
             settlementDisplayNames: const {},
+            owedByExpenseId: owedMapFor(expense),
             onExpenseTap: (_) {},
           ),
         ),
@@ -314,6 +343,7 @@ void main() {
             participantCount: 2,
             expensePayerDisplayNames: const {},
             settlementDisplayNames: const {},
+            owedByExpenseId: const {},
             onExpenseTap: (_) {},
           ),
         ),
@@ -360,6 +390,7 @@ void main() {
                 recipientName: 'Resolved Recipient',
               ),
             },
+            owedByExpenseId: const {},
             onExpenseTap: (_) {},
           ),
         ),

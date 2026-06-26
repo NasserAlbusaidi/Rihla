@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -149,6 +150,54 @@ void main() {
       expect(find.byKey(LedgerKeys.expenseCard('x-food')), findsOneWidget);
       // ... but the balance pass was NOT re-run. (RED on pre-#106 main.)
       expect(BalanceCalculator.debugCalculateBalancesCount, 0);
+    },
+  );
+
+  testWidgets(
+    '#629: a chip tap does NOT re-allocate the visible non-equal-split row',
+    (tester) async {
+      // A shares split forces the row down its `allocateExpenseOwed` path. On
+      // pre-#629 main the row re-allocates inside build(), so a chip tap that
+      // keeps the row visible bumped the counter; now the row reads the memoized
+      // `owedByExpenseId` map and the tap allocates nothing.
+      final sharesExpense = Expense(
+        id: 'x-shares',
+        tripId: eventId,
+        payerParticipantId: 'uid-sara',
+        amount: Decimal.parse('30.000'),
+        description: 'Dinner',
+        categoryName: 'Dinner',
+        scope: ExpenseScope.global,
+        customSplitParticipants: const [],
+        splitMode: SplitMode.shares,
+        splitDistribution: {
+          'uid-sara': Decimal.parse('2'),
+          'uid-bob': Decimal.one,
+        },
+        createdAt: DateTime(2026, 1, 11),
+        createdBy: 'uid-sara',
+        currency: 'OMR',
+      );
+
+      await pumpLedger(
+        tester,
+        event: twoCategoryEvent,
+        expenses: [sharesExpense],
+        members: [member('uid-sara', 'Sara'), member('uid-bob', 'Bob')],
+      );
+
+      expect(find.byKey(LedgerKeys.expenseCard('x-shares')), findsOneWidget);
+
+      // Measure ONLY the work the tap itself triggers. Tap the row's own
+      // category so it stays visible across the rebuild.
+      BalanceCalculator.debugAllocateExpenseOwedCount = 0;
+      await tester.tap(find.text('Food'));
+      await tester.pump();
+
+      // The non-equal row is still on screen ...
+      expect(find.byKey(LedgerKeys.expenseCard('x-shares')), findsOneWidget);
+      // ... and rendering it cost ZERO new allocations. (RED on pre-#629 main.)
+      expect(BalanceCalculator.debugAllocateExpenseOwedCount, 0);
     },
   );
 
