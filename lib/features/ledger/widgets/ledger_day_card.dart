@@ -206,7 +206,7 @@ class _ExpenseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final bucket = ledgerCategoryBucket(expense.categoryName);
+    final bucket = ledgerCategoryBucket(expense.categoryId);
     final isPayer = expense.payerParticipantId == currentParticipantId;
     final l10n = context.l10n;
     final payerName = isPayer ? l10n.ledgerYou : payerDisplayName;

@@ -227,7 +227,7 @@ class _Body extends ConsumerWidget {
         ? expenses
         : expenses
               .where(
-                (e) => ledgerCategoryBucket(e.categoryName) == categoryFilter,
+                (e) => ledgerCategoryBucket(e.categoryId) == categoryFilter,
               )
               .toList();
     final filteredSettlements = categoryFilter == null

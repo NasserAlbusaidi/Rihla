@@ -476,7 +476,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ledgerBucketOther => 'أخرى';
 
   @override
-  String get categoryFood => 'طعام ومطاعم';
+  String get categoryFood => 'طعام';
 
   @override
   String get categoryTransport => 'مواصلات';
@@ -489,6 +489,18 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get categoryShopping => 'تسوق';
+
+  @override
+  String get categoryGroceries => 'بقالة';
+
+  @override
+  String get categoryDrinks => 'مشروبات';
+
+  @override
+  String get categoryFuel => 'وقود';
+
+  @override
+  String get categoryFees => 'رسوم';
 
   @override
   String get categoryOther => 'أخرى';

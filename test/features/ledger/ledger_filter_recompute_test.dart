@@ -40,16 +40,17 @@ void main() {
   Expense expense({
     required String id,
     required String payer,
-    required String category,
+    required String categoryId,
     required String amount,
+    String description = 'Expense',
   }) =>
       Expense(
         id: id,
         tripId: eventId,
         payerParticipantId: payer,
         amount: Decimal.parse(amount),
-        description: category,
-        categoryName: category,
+        description: description,
+        categoryId: categoryId,
         scope: ExpenseScope.global,
         createdAt: DateTime(2026, 1, 11),
         createdBy: payer,
@@ -130,8 +131,8 @@ void main() {
         tester,
         event: twoCategoryEvent,
         expenses: [
-          expense(id: 'x-food', payer: 'uid-sara', category: 'Dinner', amount: '30.000'),
-          expense(id: 'x-transit', payer: 'uid-bob', category: 'Taxi', amount: '12.000'),
+          expense(id: 'x-food', payer: 'uid-sara', categoryId: 'food', amount: '30.000', description: 'Dinner'),
+          expense(id: 'x-transit', payer: 'uid-bob', categoryId: 'transport', amount: '12.000', description: 'Taxi'),
         ],
         members: [member('uid-sara', 'Sara'), member('uid-bob', 'Bob')],
       );
@@ -166,7 +167,7 @@ void main() {
         payerParticipantId: 'uid-sara',
         amount: Decimal.parse('30.000'),
         description: 'Dinner',
-        categoryName: 'Dinner',
+        categoryId: 'food',
         scope: ExpenseScope.global,
         customSplitParticipants: const [],
         splitMode: SplitMode.shares,
@@ -207,7 +208,7 @@ void main() {
       tester,
       event: twoCategoryEvent,
       expenses: [
-        expense(id: 'x-omar', payer: 'uid-omar', category: 'Dinner', amount: '20.000'),
+        expense(id: 'x-omar', payer: 'uid-omar', categoryId: 'food', amount: '20.000', description: 'Dinner'),
       ],
       members: [
         member('uid-sara', 'Sara'),
@@ -234,7 +235,7 @@ void main() {
         event: twoCategoryEvent,
         currentUser: 'uid-bob',
         expenses: [
-          expense(id: 'x-food', payer: 'uid-sara', category: 'Dinner', amount: '30.000'),
+          expense(id: 'x-food', payer: 'uid-sara', categoryId: 'food', amount: '30.000', description: 'Dinner'),
         ],
         members: [member('uid-sara', 'Sara'), member('uid-bob', 'Bob')],
       );
@@ -271,7 +272,7 @@ void main() {
                 .overrideWith((ref) => Stream.value(twoCategoryEvent)),
             eventExpensesProvider(eventRef).overrideWith(
               (ref) => Stream.value([
-                expense(id: 'x-food', payer: 'uid-sara', category: 'Dinner', amount: '30.000'),
+                expense(id: 'x-food', payer: 'uid-sara', categoryId: 'food', amount: '30.000', description: 'Dinner'),
               ]),
             ),
             eventSettlementsProvider(eventRef)
