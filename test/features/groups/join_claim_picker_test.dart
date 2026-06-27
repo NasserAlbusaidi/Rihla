@@ -38,11 +38,12 @@ void main() {
     fns = _FakeFns();
     db = FakeFirebaseFirestore();
     joinCalled = false;
-    when(() => fns.listUnclaimedShadows(inviteCode: any(named: 'inviteCode')))
-        .thenAnswer((_) async => const <UnclaimedShadow>[]);
+    when(
+      () => fns.listUnclaimedShadows(inviteCode: any(named: 'inviteCode')),
+    ).thenAnswer((_) async => const <UnclaimedShadow>[]);
   });
 
-  Future<Widget> harness() async {
+  Future<Widget> harness({String? initialInviteCode}) async {
     SharedPreferences.setMockInitialValues({'settings_device_name': 'Joiner'});
     final prefs = await SharedPreferences.getInstance();
     await db.collection('groups').doc('g1').set({
@@ -58,7 +59,11 @@ void main() {
     final router = GoRouter(
       initialLocation: '/join',
       routes: [
-        GoRoute(path: '/join', builder: (c, s) => const JoinGroupScreen()),
+        GoRoute(
+          path: '/join',
+          builder: (c, s) =>
+              JoinGroupScreen(initialInviteCode: initialInviteCode),
+        ),
         GoRoute(
           path: '/group/:id',
           builder: (c, s) =>
@@ -101,8 +106,9 @@ void main() {
   }
 
   void stubShadows() {
-    when(() => fns.listUnclaimedShadows(inviteCode: any(named: 'inviteCode')))
-        .thenAnswer((_) async => oneShadow);
+    when(
+      () => fns.listUnclaimedShadows(inviteCode: any(named: 'inviteCode')),
+    ).thenAnswer((_) async => oneShadow);
   }
 
   void stubRequestPending() {
@@ -145,6 +151,28 @@ void main() {
     expect(find.text('Ali'), findsOneWidget);
     expect(find.byKey(GroupKeys.claimImNewButton), findsOneWidget);
     expect(joinCalled, isFalse);
+  });
+
+  testWidgets('route prefill is side-effect-free until the user acts (#368)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(await harness(initialInviteCode: 'ABC123'));
+    await tester.pumpAndSettle();
+
+    expect(joinCalled, isFalse);
+    verifyNever(
+      () => fns.listUnclaimedShadows(inviteCode: any(named: 'inviteCode')),
+    );
+    verifyNever(
+      () => fns.requestClaimShadow(
+        inviteCode: any(named: 'inviteCode'),
+        shadowMemberId: any(named: 'shadowMemberId'),
+        displayName: any(named: 'displayName'),
+      ),
+    );
+    verifyNever(
+      () => fns.listMyClaimRequests(inviteCode: any(named: 'inviteCode')),
+    );
   });
 
   testWidgets('J2: no shadows runs the normal join (regression guard)', (
@@ -219,49 +247,53 @@ void main() {
     expect(find.byKey(GroupKeys.claimPicker), findsOneWidget);
   });
 
-  testWidgets('J6: waiting + Check again with claimed navigates into the group', (
-    tester,
-  ) async {
-    when(() => fns.listMyClaimRequests(inviteCode: any(named: 'inviteCode')))
-        .thenAnswer(
-          (_) async => const [
-            MyClaimRequest(
-              requestId: 'uid-joiner__s1',
-              shadowMemberId: 's1',
-              shadowDisplayName: 'Ali',
-              status: 'claimed',
-            ),
-          ],
-        );
-    await reachWaiting(tester);
+  testWidgets(
+    'J6: waiting + Check again with claimed navigates into the group',
+    (tester) async {
+      when(
+        () => fns.listMyClaimRequests(inviteCode: any(named: 'inviteCode')),
+      ).thenAnswer(
+        (_) async => const [
+          MyClaimRequest(
+            requestId: 'uid-joiner__s1',
+            shadowMemberId: 's1',
+            shadowDisplayName: 'Ali',
+            status: 'claimed',
+          ),
+        ],
+      );
+      await reachWaiting(tester);
 
-    await tester.tap(find.byKey(GroupKeys.claimCheckAgainButton));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.claimCheckAgainButton));
+      await tester.pumpAndSettle();
 
-    expect(find.text('GROUP g1'), findsOneWidget);
-  });
+      expect(find.text('GROUP g1'), findsOneWidget);
+    },
+  );
 
-  testWidgets('J7: waiting + Check again with declined shows the declined copy', (
-    tester,
-  ) async {
-    when(() => fns.listMyClaimRequests(inviteCode: any(named: 'inviteCode')))
-        .thenAnswer(
-          (_) async => const [
-            MyClaimRequest(
-              requestId: 'uid-joiner__s1',
-              shadowMemberId: 's1',
-              shadowDisplayName: 'Ali',
-              status: 'declined',
-            ),
-          ],
-        );
-    await reachWaiting(tester);
+  testWidgets(
+    'J7: waiting + Check again with declined shows the declined copy',
+    (tester) async {
+      when(
+        () => fns.listMyClaimRequests(inviteCode: any(named: 'inviteCode')),
+      ).thenAnswer(
+        (_) async => const [
+          MyClaimRequest(
+            requestId: 'uid-joiner__s1',
+            shadowMemberId: 's1',
+            shadowDisplayName: 'Ali',
+            status: 'declined',
+          ),
+        ],
+      );
+      await reachWaiting(tester);
 
-    await tester.tap(find.byKey(GroupKeys.claimCheckAgainButton));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.claimCheckAgainButton));
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('declined your claim'), findsOneWidget);
-  });
+      expect(find.textContaining('declined your claim'), findsOneWidget);
+    },
+  );
 
   testWidgets('J8: "No, I\'m new" runs the normal join', (tester) async {
     stubShadows();
