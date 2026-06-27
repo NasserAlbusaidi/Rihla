@@ -88,6 +88,19 @@ Recommended columns for the private working file:
 slot,champion,google_play_email,segment,added_to_play,opted_in,installed,notes
 ```
 
+If champion names are filled but Google Play emails are still blank, generate a
+private access-request packet before building the Play upload:
+
+```bash
+dart tool/first_100_access_requests.dart \
+  "$HOME/Desktop/rihla-first-10-roster.csv" \
+  --output=/tmp/rihla-first-10-access-requests.md
+```
+
+Send `/tmp/rihla-first-10-access-requests.md` privately, then fill
+`google_play_email` in the private roster as replies arrive. The command prints
+only slot numbers and counts to the terminal.
+
 Before uploading to Play Console, export only the email column into the format
 Play expects. Keep all already-active testers in the exported list so an upload
 does not accidentally remove access for people who were already added.

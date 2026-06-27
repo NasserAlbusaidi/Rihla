@@ -25,6 +25,9 @@ Use alongside:
 - `tool/first_100_roster_check.dart` to validate the filled private roster
   before Play upload or launch-packet generation without printing names or
   emails.
+- `tool/first_100_access_requests.dart` to generate private access-request
+  messages for named champions who have not sent their Google Play email yet,
+  while terminal output stays limited to slot numbers.
 - `tool/first_100_tracker_patch.dart` to apply the private roster to
   `~/Desktop/rihla-first-100-tracker.csv` after sending the first batch without
   carrying Google Play tester emails into the tracker.
@@ -71,6 +74,14 @@ messages, and checklist stay in sync:
 dart tool/first_100_launch_packet.dart \
   --write-roster-template="$HOME/Desktop/rihla-first-10-roster.csv"
 
+# Fill champion names, language, segment, use case, and channel in the private
+# CSV before running this command.
+dart tool/first_100_access_requests.dart \
+  "$HOME/Desktop/rihla-first-10-roster.csv" \
+  --output=/tmp/rihla-first-10-access-requests.md
+
+# Fill google_play_email in the private CSV as replies come in before this
+# readiness check.
 dart tool/first_100_roster_check.dart \
   "$HOME/Desktop/rihla-first-10-roster.csv"
 
@@ -93,6 +104,11 @@ Omit `--include-existing-testers=...` only for the first Play upload when there
 is no active tester file yet. After each upload, copy the generated
 `play-testers.csv` to `~/Desktop/rihla-active-play-testers.csv` so the next
 batch does not remove earlier testers from closed testing.
+
+Use `/tmp/rihla-first-10-access-requests.md` before the launch packet when a
+named champion has not sent the Google Play account they use in Play. It asks
+only for the Play email and the real group test; it does not include install
+links.
 
 Use `/tmp/rihla-first-10-launch-packet/send-sheet.md` when sending the batch.
 It gives each slot's channel, tracked link, message anchor, and WhatsApp draft

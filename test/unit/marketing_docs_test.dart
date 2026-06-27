@@ -33,6 +33,10 @@ void main() {
     expect(outreachKit, contains('tool/first_100_followups.dart'));
     expect(commandCenter, contains('tool/first_100_roster_check.dart'));
     expect(outreachKit, contains('tool/first_100_roster_check.dart'));
+    expect(commandCenter, contains('tool/first_100_access_requests.dart'));
+    expect(outreachKit, contains('tool/first_100_access_requests.dart'));
+    expect(commandCenter, contains('rihla-first-10-access-requests.md'));
+    expect(outreachKit, contains('rihla-first-10-access-requests.md'));
     expect(commandCenter, contains('tool/first_100_tracker_patch.dart'));
     expect(outreachKit, contains('tool/first_100_tracker_patch.dart'));
     expect(commandCenter, contains('rihla-first-100-tracker.csv'));
@@ -62,6 +66,8 @@ void main() {
     ).readAsStringSync();
 
     expect(accessKit, contains('tool/export_play_tester_emails.dart'));
+    expect(accessKit, contains('tool/first_100_access_requests.dart'));
+    expect(accessKit, contains('rihla-first-10-access-requests.md'));
     expect(accessKit, contains('~/Desktop/rihla-first-100-play-testers.csv'));
     expect(accessKit, contains('--include-existing='));
     expect(accessKit, contains('/tmp/rihla-play-testers.csv'));
