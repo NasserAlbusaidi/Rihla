@@ -25,4 +25,23 @@
       url.searchParams.set('referrer', referrerParams.toString());
       link.href = url.toString();
     });
+
+  document
+    .querySelectorAll('a[data-alpha-access-mailto][href^="mailto:"]')
+    .forEach((link) => {
+      const url = new URL(link.href);
+      if (url.protocol !== 'mailto:') return;
+
+      const body = url.searchParams.get('body') || '';
+      const decodedBody = decodeURIComponent(body);
+      if (decodedBody.includes('Campaign source:')) return;
+
+      const nextBody = `${decodedBody}\n\nCampaign source: ${referrerParams.toString()}`;
+      const encodedBody = encodeURIComponent(nextBody);
+      const params = new URLSearchParams(url.search.slice(1));
+      params.delete('body');
+
+      const query = params.toString();
+      link.href = `${url.protocol}${url.pathname}?${query}${query ? '&' : ''}body=${encodedBody}`;
+    });
 })();

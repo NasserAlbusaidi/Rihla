@@ -275,6 +275,23 @@ void main() {
     }
   });
 
+  test('alpha access mailto requests preserve campaign source', () {
+    final campaignScript = File('hosting/campaign.js').readAsStringSync();
+    final english = File('hosting/alpha.html').readAsStringSync();
+    final arabic = File('hosting/ar/alpha.html').readAsStringSync();
+
+    expect(english, contains('data-alpha-access-mailto'));
+    expect(arabic, contains('data-alpha-access-mailto'));
+    expect(
+      campaignScript,
+      contains('a[data-alpha-access-mailto][href^="mailto:"]'),
+    );
+    expect(campaignScript, contains('Campaign source:'));
+    expect(campaignScript, contains('decodeURIComponent(body)'));
+    expect(campaignScript, contains('encodeURIComponent(nextBody)'));
+    expect(campaignScript, contains("url.protocol !== 'mailto:'"));
+  });
+
   test('landing pages explain Play alpha access fallback', () {
     final englishPages = [
       'hosting/index.html',
