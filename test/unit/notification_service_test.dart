@@ -70,32 +70,36 @@ void main() {
     },
   );
 
-  test('token write persists the resolver locale for server-side copy (#53)', () async {
-    final db = FakeFirebaseFirestore();
-    final messaging = _MockFirebaseMessaging();
-    final tokenRefresh = StreamController<String>.broadcast();
-    final serviceProvider = _serviceProvider(
-      messaging: messaging,
-      firestore: db,
-      currentUserId: () => 'uid-1',
-      localeResolver: () => 'ar',
-      tokenRefresh: tokenRefresh.stream,
-    );
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    addTearDown(tokenRefresh.close);
+  test(
+    'token write persists the resolver locale for server-side copy (#53)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final serviceProvider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        localeResolver: () => 'ar',
+        tokenRefresh: tokenRefresh.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
 
-    when(
-      () => messaging.requestPermission(alert: true, badge: true, sound: true),
-    ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
-    when(messaging.getToken).thenAnswer((_) async => 'token-1');
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
 
-    final service = container.read(serviceProvider);
-    await service.initialize();
+      final service = container.read(serviceProvider);
+      await service.initialize();
 
-    final tokenDoc = await db.collection('fcm_tokens').doc('uid-1').get();
-    expect(tokenDoc.data()?['locale'], 'ar');
-  });
+      final tokenDoc = await db.collection('fcm_tokens').doc('uid-1').get();
+      expect(tokenDoc.data()?['locale'], 'ar');
+    },
+  );
 
   test(
     'initialize denies without trying to save a token when permission is denied',
@@ -215,7 +219,8 @@ void main() {
       final service = container.read(serviceProvider);
       await service.initialize();
       expect(
-        (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['locale'],
+        (await db.collection('fcm_tokens').doc('uid-1').get())
+            .data()?['locale'],
         'en',
       );
 
@@ -224,7 +229,8 @@ void main() {
       await service.refreshTokenLocale();
 
       expect(
-        (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['locale'],
+        (await db.collection('fcm_tokens').doc('uid-1').get())
+            .data()?['locale'],
         'ar',
       );
     },
@@ -296,11 +302,18 @@ void main() {
   );
 
   group('consumer (#53)', () {
-    Future<({NotificationService service, _FakeLocalNotifier notifier, List<String> nav})>
+    Future<
+      ({
+        NotificationService service,
+        _FakeLocalNotifier notifier,
+        List<String> nav,
+      })
+    >
     boot({
       Stream<RemoteMessage>? foreground,
       Stream<RemoteMessage>? opened,
       Future<RemoteMessage?> Function()? initialMessage,
+      bool handleInitialMessage = true,
     }) async {
       final messaging = _MockFirebaseMessaging();
       final tokenRefresh = StreamController<String>.broadcast();
@@ -326,90 +339,129 @@ void main() {
       ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
       when(messaging.getToken).thenAnswer((_) async => 'token-1');
       final service = container.read(provider);
-      await service.initialize();
+      await service.initialize(handleInitialMessage: handleInitialMessage);
       return (service: service, notifier: notifier, nav: nav);
     }
 
-    test('foreground message with a notification displays it locally', () async {
-      final foreground = StreamController<RemoteMessage>.broadcast();
-      addTearDown(foreground.close);
-      final h = await boot(foreground: foreground.stream);
+    test(
+      'foreground message with a notification displays it locally',
+      () async {
+        final foreground = StreamController<RemoteMessage>.broadcast();
+        addTearDown(foreground.close);
+        final h = await boot(foreground: foreground.stream);
 
-      foreground.add(
-        const RemoteMessage(
-          notification: RemoteNotification(title: 'Trip', body: 'Ahmed settled'),
-          data: {'type': 'settlement', 'groupId': 'g1'},
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
+        foreground.add(
+          const RemoteMessage(
+            notification: RemoteNotification(
+              title: 'Trip',
+              body: 'Ahmed settled',
+            ),
+            data: {'type': 'settlement', 'groupId': 'g1'},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(h.notifier.shown, hasLength(1));
-      expect(h.notifier.shown.first['title'], 'Trip');
-      expect(h.notifier.shown.first['body'], 'Ahmed settled');
-      expect(h.notifier.shown.first['payload'], contains('"groupId":"g1"'));
-    });
+        expect(h.notifier.shown, hasLength(1));
+        expect(h.notifier.shown.first['title'], 'Trip');
+        expect(h.notifier.shown.first['body'], 'Ahmed settled');
+        expect(h.notifier.shown.first['payload'], contains('"groupId":"g1"'));
+      },
+    );
 
-    test('foreground data-only message (no notification) is NOT displayed', () async {
-      final foreground = StreamController<RemoteMessage>.broadcast();
-      addTearDown(foreground.close);
-      final h = await boot(foreground: foreground.stream);
+    test(
+      'foreground data-only message (no notification) is NOT displayed',
+      () async {
+        final foreground = StreamController<RemoteMessage>.broadcast();
+        addTearDown(foreground.close);
+        final h = await boot(foreground: foreground.stream);
 
-      foreground.add(const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g1'}));
-      await Future<void>.delayed(Duration.zero);
+        foreground.add(
+          const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g1'}),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(h.notifier.shown, isEmpty);
-    });
+        expect(h.notifier.shown, isEmpty);
+      },
+    );
 
-    test('tapping an event-settlement notification routes to the event ledger', () async {
-      final opened = StreamController<RemoteMessage>.broadcast();
-      addTearDown(opened.close);
-      final h = await boot(opened: opened.stream);
+    test(
+      'tapping an event-settlement notification routes to the event ledger',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
 
-      opened.add(const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g7', 'eventId': 'e1'}));
-      await Future<void>.delayed(Duration.zero);
+        opened.add(
+          const RemoteMessage(
+            data: {'type': 'settlement', 'groupId': 'g7', 'eventId': 'e1'},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(h.nav, ['/group/g7/event/e1/ledger']);
-    });
+        expect(h.nav, ['/group/g7/event/e1/ledger']);
+      },
+    );
 
-    test('tapping a group-settlement notification (no eventId) routes to the group', () async {
-      final opened = StreamController<RemoteMessage>.broadcast();
-      addTearDown(opened.close);
-      final h = await boot(opened: opened.stream);
+    test(
+      'tapping a group-settlement notification (no eventId) routes to the group',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
 
-      opened.add(const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g7'}));
-      await Future<void>.delayed(Duration.zero);
+        opened.add(
+          const RemoteMessage(data: {'type': 'settlement', 'groupId': 'g7'}),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(h.nav, ['/group/g7']);
-    });
+        expect(h.nav, ['/group/g7']);
+      },
+    );
 
-    test('tapping an expense notification routes to the event ledger', () async {
-      final opened = StreamController<RemoteMessage>.broadcast();
-      addTearDown(opened.close);
-      final h = await boot(opened: opened.stream);
+    test(
+      'tapping an expense notification routes to the event ledger',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
 
-      opened.add(const RemoteMessage(data: {'type': 'expense', 'groupId': 'g7', 'eventId': 'e1'}));
-      await Future<void>.delayed(Duration.zero);
+        opened.add(
+          const RemoteMessage(
+            data: {'type': 'expense', 'groupId': 'g7', 'eventId': 'e1'},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(h.nav, ['/group/g7/event/e1/ledger']);
-    });
+        expect(h.nav, ['/group/g7/event/e1/ledger']);
+      },
+    );
 
-    test('tapping an event-created notification routes to the event hub', () async {
-      final opened = StreamController<RemoteMessage>.broadcast();
-      addTearDown(opened.close);
-      final h = await boot(opened: opened.stream);
+    test(
+      'tapping an event-created notification routes to the event hub',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
 
-      opened.add(const RemoteMessage(data: {'type': 'event', 'groupId': 'g7', 'eventId': 'e1'}));
-      await Future<void>.delayed(Duration.zero);
+        opened.add(
+          const RemoteMessage(
+            data: {'type': 'event', 'groupId': 'g7', 'eventId': 'e1'},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(h.nav, ['/group/g7/event/e1']);
-    });
+        expect(h.nav, ['/group/g7/event/e1']);
+      },
+    );
 
     test('tapping a member_join notification routes to the group', () async {
       final opened = StreamController<RemoteMessage>.broadcast();
       addTearDown(opened.close);
       final h = await boot(opened: opened.stream);
 
-      opened.add(const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g9'}));
+      opened.add(
+        const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g9'}),
+      );
       await Future<void>.delayed(Duration.zero);
 
       expect(h.nav, ['/group/g9']);
@@ -420,29 +472,57 @@ void main() {
       addTearDown(opened.close);
       final h = await boot(opened: opened.stream);
 
-      opened.add(const RemoteMessage(data: {'type': 'mystery', 'groupId': 'g1'}));
-      opened.add(const RemoteMessage(data: {'type': 'settlement'})); // no groupId
+      opened.add(
+        const RemoteMessage(data: {'type': 'mystery', 'groupId': 'g1'}),
+      );
+      opened.add(
+        const RemoteMessage(data: {'type': 'settlement'}),
+      ); // no groupId
       await Future<void>.delayed(Duration.zero);
 
       expect(h.nav, isEmpty);
     });
 
-    test('tapping a foreground local notification routes from its payload', () async {
-      final h = await boot();
+    test(
+      'tapping a foreground local notification routes from its payload',
+      () async {
+        final h = await boot();
 
-      h.notifier.onTap!('{"type":"settlement","groupId":"g3"}');
+        h.notifier.onTap!('{"type":"settlement","groupId":"g3"}');
 
-      expect(h.nav, ['/group/g3']);
-    });
+        expect(h.nav, ['/group/g3']);
+      },
+    );
 
-    test('cold-start (terminated) launch from a notification routes once', () async {
-      final h = await boot(
-        initialMessage: () async =>
-            const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g5'}),
-      );
+    test(
+      'cold-start (terminated) launch from a notification routes once',
+      () async {
+        final h = await boot(
+          initialMessage: () async => const RemoteMessage(
+            data: {'type': 'member_join', 'groupId': 'g5'},
+          ),
+        );
 
-      expect(h.nav, ['/group/g5']);
-    });
+        expect(h.nav, ['/group/g5']);
+      },
+    );
+
+    test(
+      'initialize can skip only cold-start notification routing after an invite wins',
+      () async {
+        final h = await boot(
+          handleInitialMessage: false,
+          initialMessage: () async => const RemoteMessage(
+            data: {'type': 'member_join', 'groupId': 'g5'},
+          ),
+        );
+
+        expect(h.nav, isEmpty);
+
+        h.notifier.onTap!('{"type":"settlement","groupId":"g3"}');
+        expect(h.nav, ['/group/g3']);
+      },
+    );
   });
 
   group('resume permission re-check (#482)', () {
@@ -544,7 +624,8 @@ void main() {
           NotificationStatus.enabled,
         );
         expect(
-          (await db.collection('fcm_tokens').doc('uid-1').get()).data()?['token'],
+          (await db.collection('fcm_tokens').doc('uid-1').get())
+              .data()?['token'],
           'token-1',
           reason: 'resume recovery must actually save a token',
         );

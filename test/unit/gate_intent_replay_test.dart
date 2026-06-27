@@ -31,15 +31,15 @@ void main() {
           ),
         );
 
-        GateIntentReplay.maybeReplay(prefs, go);
+        await GateIntentReplay.maybeReplay(prefs, go);
 
         expect(navigations, ['/create-group']);
         expect(PendingGateIntent.read(prefs), isNotNull);
       },
     );
 
-    test('no marker → no navigation', () {
-      GateIntentReplay.maybeReplay(prefs, go);
+    test('no marker → no navigation', () async {
+      await GateIntentReplay.maybeReplay(prefs, go);
       expect(navigations, isEmpty);
     });
 
@@ -53,7 +53,7 @@ void main() {
         '"atMillis":$stale}',
       );
 
-      GateIntentReplay.maybeReplay(prefs, go);
+      await GateIntentReplay.maybeReplay(prefs, go);
 
       expect(navigations, isEmpty);
     });
@@ -72,7 +72,7 @@ void main() {
         AuthRecoveryService.opRecover,
       );
 
-      GateIntentReplay.maybeReplay(prefs, go);
+      await GateIntentReplay.maybeReplay(prefs, go);
 
       expect(navigations, isEmpty);
       expect(PendingGateIntent.read(prefs), isNotNull);
@@ -94,9 +94,31 @@ void main() {
           AuthRecoveryService.opLink,
         );
 
-        GateIntentReplay.maybeReplay(prefs, go);
+        await GateIntentReplay.maybeReplay(prefs, go);
 
         expect(navigations, ['/create-group']);
+      },
+    );
+
+    test(
+      'skipNavigation clears a pending create marker so it cannot hijack the next boot',
+      () async {
+        await PendingGateIntent.save(
+          prefs,
+          PendingGateIntent.create(
+            groupName: 'G',
+            displayName: 'N',
+            currencyCode: 'OMR',
+          ),
+        );
+
+        await GateIntentReplay.maybeReplay(prefs, go, skipNavigation: true);
+
+        expect(navigations, isEmpty);
+        expect(PendingGateIntent.read(prefs), isNull);
+
+        await GateIntentReplay.maybeReplay(prefs, go);
+        expect(navigations, isEmpty);
       },
     );
   });

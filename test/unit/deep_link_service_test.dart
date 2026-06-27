@@ -132,30 +132,89 @@ void main() {
         (_) async => Uri.parse('https://rihla-safar.web.app/join/abc123'),
       );
 
-      await service.init(router);
+      final decision = await service.init(router);
+
+      expect(decision.joinRouted, isTrue);
+      expect(decision.suppressInstallReferrer, isTrue);
+      verify(() => router.go('/join/ABC123')).called(1);
+    });
+
+    test(
+      'reports a stream-only cold-start join during the initial window',
+      () async {
+        final init = service.init(
+          router,
+          initialStreamWindow: const Duration(milliseconds: 10),
+        );
+
+        uriLinks.add(Uri.parse('rihla://join/new222'));
+        final decision = await init;
+
+        expect(decision.joinRouted, isTrue);
+        expect(decision.suppressInstallReferrer, isTrue);
+        verify(() => router.go('/join/NEW222')).called(1);
+      },
+    );
+
+    test('dedupes a cold-start link emitted via both getInitialLink and the '
+        'stream, but allows a later explicit re-open (#370/#368)', () async {
+      final coldStart = Uri.parse('https://rihla-safar.web.app/join/abc123');
+      when(() => appLinks.getInitialLink()).thenAnswer((_) async => coldStart);
+
+      final init = service.init(
+        router,
+        initialStreamWindow: const Duration(milliseconds: 10),
+      );
+
+      // app_links can surface the same cold-start URI a second time through
+      // uriLinkStream. The duplicate emission must not re-navigate.
+      uriLinks.add(coldStart);
+      await init;
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => router.go('/join/ABC123')).called(1);
+
+      // After the bounded cold-start window, tapping the same real invite
+      // again should still navigate. The cold-start dedupe must not poison
+      // runtime explicit links for the rest of the process.
+      uriLinks.add(coldStart);
+      await Future<void>.delayed(Duration.zero);
 
       verify(() => router.go('/join/ABC123')).called(1);
     });
 
     test(
-      'dedupes a cold-start link emitted via both getInitialLink and the '
-      'stream (#370)',
+      'auth links can suppress install referrer routing without join nav',
       () async {
-        final coldStart =
-            Uri.parse('https://rihla-safar.web.app/join/abc123');
-        when(() => appLinks.getInitialLink())
-            .thenAnswer((_) async => coldStart);
+        when(() => appLinks.getInitialLink()).thenAnswer(
+          (_) async => Uri.parse('rihla://auth-link?link=https%3A%2F%2Fx.test'),
+        );
 
-        await service.init(router);
+        final decision = await service.init(
+          router,
+          suppressInstallReferrerFor: (uri) => uri.scheme == 'rihla',
+        );
 
-        // app_links can surface the same cold-start URI a second time through
-        // uriLinkStream. The duplicate emission must not re-navigate.
-        uriLinks.add(coldStart);
-        await Future<void>.delayed(Duration.zero);
-
-        verify(() => router.go('/join/ABC123')).called(1);
+        expect(decision.joinRouted, isFalse);
+        expect(decision.suppressInstallReferrer, isTrue);
+        verifyNever(() => router.go(any()));
       },
     );
+
+    test('initial link lookup timeout does not block startup', () async {
+      when(
+        () => appLinks.getInitialLink(),
+      ).thenAnswer((_) => Completer<Uri?>().future);
+
+      final decision = await service.init(
+        router,
+        initialStreamWindow: Duration.zero,
+        initialLinkTimeout: Duration.zero,
+      );
+
+      expect(decision.joinRouted, isFalse);
+      expect(decision.suppressInstallReferrer, isFalse);
+    });
 
     test('opens runtime join links from the app link stream', () async {
       await service.init(router);

@@ -4,6 +4,16 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
+class DeepLinkInitialDecision {
+  const DeepLinkInitialDecision({
+    required this.joinRouted,
+    required this.suppressInstallReferrer,
+  });
+
+  final bool joinRouted;
+  final bool suppressInstallReferrer;
+}
+
 class DeepLinkService {
   DeepLinkService._(this._appLinks);
 
@@ -21,29 +31,77 @@ class DeepLinkService {
   // ignore: cancel_subscriptions, process-lifetime singleton listener
   StreamSubscription<Uri>? _subscription;
 
-  // app_links can emit the same cold-start URI through both getInitialLink()
-  // and uriLinkStream on a single cold start. Mirrors the seenKeys guard in
-  // authEmailLinkBootstrapProvider so a duplicated emission navigates once.
-  final Set<String> _seenKeys = <String>{};
+  Future<DeepLinkInitialDecision> init(
+    GoRouter router, {
+    Duration initialStreamWindow = const Duration(milliseconds: 50),
+    Duration initialLinkTimeout = const Duration(milliseconds: 250),
+    bool Function(Uri uri) suppressInstallReferrerFor = _neverSuppress,
+  }) async {
+    if (_subscription != null) {
+      return const DeepLinkInitialDecision(
+        joinRouted: false,
+        suppressInstallReferrer: false,
+      );
+    }
 
-  Future<void> init(GoRouter router) async {
-    if (_subscription != null) return;
+    var collectingInitialStream = true;
+    var initialJoinRouted = false;
+    var suppressInstallReferrer = false;
+    final initialSeenKeys = <String>{};
 
     _subscription = _appLinks.uriLinkStream.listen(
-      (uri) => _openJoinLink(router, uri),
+      (uri) {
+        if (collectingInitialStream && suppressInstallReferrerFor(uri)) {
+          suppressInstallReferrer = true;
+        }
+        final routed = openJoinLink(
+          router,
+          uri,
+          dedupeKeys: collectingInitialStream ? initialSeenKeys : null,
+        );
+        if (collectingInitialStream && routed) {
+          initialJoinRouted = true;
+          suppressInstallReferrer = true;
+        }
+      },
       onError: (Object error, StackTrace stackTrace) {
         _reportError(error, stackTrace);
       },
     );
 
+    Uri? initialLink;
     try {
-      final initialLink = await _appLinks.getInitialLink();
-      if (initialLink != null) {
-        _openJoinLink(router, initialLink);
-      }
+      initialLink = await Future.any<Uri?>([
+        _appLinks.getInitialLink(),
+        Future<Uri?>.delayed(initialLinkTimeout, () => null),
+      ]);
     } catch (error, stackTrace) {
       _reportError(error, stackTrace);
+      initialLink = null;
     }
+
+    if (initialLink != null) {
+      if (suppressInstallReferrerFor(initialLink)) {
+        suppressInstallReferrer = true;
+      }
+      final routed = openJoinLink(
+        router,
+        initialLink,
+        dedupeKeys: initialSeenKeys,
+      );
+      if (routed) {
+        initialJoinRouted = true;
+        suppressInstallReferrer = true;
+      }
+    }
+
+    await Future<void>.delayed(initialStreamWindow);
+    collectingInitialStream = false;
+
+    return DeepLinkInitialDecision(
+      joinRouted: initialJoinRouted,
+      suppressInstallReferrer: suppressInstallReferrer,
+    );
   }
 
   Future<void> dispose() async {
@@ -66,14 +124,15 @@ class DeepLinkService {
     return null;
   }
 
-  void _openJoinLink(GoRouter router, Uri uri) {
+  bool openJoinLink(GoRouter router, Uri uri, {Set<String>? dedupeKeys}) {
     final joinUri = parseJoinLink(uri);
-    if (joinUri == null) return;
+    if (joinUri == null) return false;
 
     final target = joinUri.toString();
-    if (!_seenKeys.add(target)) return;
+    if (dedupeKeys != null && !dedupeKeys.add(target)) return false;
 
     router.go(target);
+    return true;
   }
 
   String? _customSchemeInviteCode(Uri uri) {
@@ -122,4 +181,6 @@ class DeepLinkService {
       ),
     );
   }
+
+  static bool _neverSuppress(Uri uri) => false;
 }

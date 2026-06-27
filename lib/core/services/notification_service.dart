@@ -133,7 +133,7 @@ class NotificationService with WidgetsBindingObserver {
       _messaging!.getNotificationSettings();
 
   /// Initialize Firebase Messaging. Call only after the user has opted in.
-  Future<bool> initialize() async {
+  Future<bool> initialize({bool handleInitialMessage = true}) async {
     if (_initialized) {
       await _saveToken();
       _setStatus(NotificationStatus.enabled);
@@ -167,7 +167,9 @@ class NotificationService with WidgetsBindingObserver {
 
         // Cold-start tap: the app was launched FROM a notification while
         // terminated. Route once after listeners are wired.
-        await _handleInitialMessage();
+        if (handleInitialMessage) {
+          await _handleInitialMessage();
+        }
         return true;
       }
 
