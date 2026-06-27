@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://rihla-safar.web.app/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rihla-safar.web.app/"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://rihla-safar.web.app/ar"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rihla-safar.web.app/"/>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/ar</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rihla-safar.web.app/"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://rihla-safar.web.app/ar"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rihla-safar.web.app/"/>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/split-bills-oman</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rihla-safar.web.app/split-bills-oman"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://rihla-safar.web.app/ar/split-bills-oman"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rihla-safar.web.app/split-bills-oman"/>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/ar/split-bills-oman</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rihla-safar.web.app/split-bills-oman"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://rihla-safar.web.app/ar/split-bills-oman"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rihla-safar.web.app/split-bills-oman"/>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/alpha</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rihla-safar.web.app/alpha"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://rihla-safar.web.app/ar/alpha"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rihla-safar.web.app/alpha"/>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/ar/alpha</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rihla-safar.web.app/alpha"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://rihla-safar.web.app/ar/alpha"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rihla-safar.web.app/alpha"/>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/privacy</loc>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/terms</loc>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/delete-data</loc>
+  </url>
+  <url>
+    <loc>https://rihla-safar.web.app/help</loc>
+  </url>
+</urlset>

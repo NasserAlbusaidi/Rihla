@@ -132,6 +132,142 @@ void main() {
     );
   });
 
+  test('landing page routes typed invite codes to the join fallback', () {
+    final page = File('hosting/index.html').readAsStringSync();
+
+    expect(page, contains('id="invite-code-form"'));
+    expect(page, contains('id="landing-invite-code"'));
+    expect(page, contains(r'window.location.href = `/join/${code}`'));
+    expect(page, contains('pattern="[A-Za-z0-9]{6}"'));
+  });
+
+  test('landing pages expose English and Arabic SEO alternates', () {
+    final english = File('hosting/index.html').readAsStringSync();
+    final arabic = File('hosting/ar.html').readAsStringSync();
+
+    expect(english, contains('hreflang="en"'));
+    expect(english, contains('href="https://rihla-safar.web.app/ar"'));
+    expect(arabic, contains('<html lang="ar" dir="rtl">'));
+    expect(arabic, contains('hreflang="ar"'));
+    expect(arabic, contains('قسّم الفواتير'));
+    expect(arabic, contains('id="invite-code-form"'));
+    expect(arabic, contains(r'window.location.href = `/join/${code}`'));
+  });
+
+  test('public site exposes sitemap and robots files for crawlers', () {
+    final sitemap = File('hosting/sitemap.xml').readAsStringSync();
+    final robots = File('hosting/robots.txt').readAsStringSync();
+
+    expect(sitemap, contains('<loc>https://rihla-safar.web.app/</loc>'));
+    expect(sitemap, contains('<loc>https://rihla-safar.web.app/ar</loc>'));
+    expect(
+      sitemap,
+      contains('<loc>https://rihla-safar.web.app/split-bills-oman</loc>'),
+    );
+    expect(
+      sitemap,
+      contains('<loc>https://rihla-safar.web.app/ar/split-bills-oman</loc>'),
+    );
+    expect(sitemap, contains('<loc>https://rihla-safar.web.app/alpha</loc>'));
+    expect(
+      sitemap,
+      contains('<loc>https://rihla-safar.web.app/ar/alpha</loc>'),
+    );
+    expect(sitemap, contains('<loc>https://rihla-safar.web.app/privacy</loc>'));
+    expect(robots, contains('User-agent: *'));
+    expect(
+      robots,
+      contains('Sitemap: https://rihla-safar.web.app/sitemap.xml'),
+    );
+  });
+
+  test('public site has Oman split-bills SEO pages', () {
+    final english = File('hosting/split-bills-oman.html').readAsStringSync();
+    final arabic = File('hosting/ar/split-bills-oman.html').readAsStringSync();
+
+    expect(english, contains('Split Bills in Oman'));
+    expect(english, contains('Splitwise alternative for Oman'));
+    expect(
+      english,
+      contains('href="https://rihla-safar.web.app/ar/split-bills-oman"'),
+    );
+    expect(english, contains('"@type": "FAQPage"'));
+    expect(arabic, contains('<html lang="ar" dir="rtl">'));
+    expect(arabic, contains('تقسيم الفواتير في عمان'));
+    expect(arabic, contains('بديل Splitwise في عمان'));
+    expect(
+      arabic,
+      contains('href="https://rihla-safar.web.app/split-bills-oman"'),
+    );
+    expect(arabic, contains('"@type": "FAQPage"'));
+  });
+
+  test('public site has Android alpha access pages', () {
+    final english = File('hosting/alpha.html').readAsStringSync();
+    final arabic = File('hosting/ar/alpha.html').readAsStringSync();
+    final join = File('hosting/join.html').readAsStringSync();
+
+    expect(english, contains('Rihla Android Alpha Access'));
+    expect(english, contains('href="https://rihla-safar.web.app/ar/alpha"'));
+    expect(english, contains('Request tester access'));
+    expect(english, contains('mailto:nasserbusaidi@gmail.com'));
+    expect(english, contains('Rihla%20Android%20alpha%20access'));
+    expect(english, contains('same account that was added to the tester list'));
+    expect(arabic, contains('<html lang="ar" dir="rtl">'));
+    expect(arabic, contains('الوصول إلى Rihla Android Alpha'));
+    expect(arabic, contains('href="https://rihla-safar.web.app/alpha"'));
+    expect(arabic, contains('اطلب وصول التجربة'));
+    expect(arabic, contains('mailto:nasserbusaidi@gmail.com'));
+    expect(join, contains('Rihla Android alpha access'));
+    expect(join, contains('href="/alpha"'));
+  });
+
+  test('landing pages preserve campaign source into Play referrer', () {
+    final campaignScript = File('hosting/campaign.js').readAsStringSync();
+    final landingPages = [
+      'hosting/index.html',
+      'hosting/ar.html',
+      'hosting/split-bills-oman.html',
+      'hosting/ar/split-bills-oman.html',
+      'hosting/alpha.html',
+      'hosting/ar/alpha.html',
+    ];
+
+    expect(campaignScript, contains('utm_source'));
+    expect(campaignScript, contains('utm_medium'));
+    expect(campaignScript, contains('utm_campaign'));
+    expect(campaignScript, contains("searchParams.set('referrer'"));
+    expect(campaignScript, contains('play.google.com/store/apps/details'));
+
+    for (final pagePath in landingPages) {
+      final page = File(pagePath).readAsStringSync();
+      expect(page, contains('<script src="/campaign.js" defer></script>'));
+    }
+  });
+
+  test('landing pages explain Play alpha access fallback', () {
+    final englishPages = [
+      'hosting/index.html',
+      'hosting/split-bills-oman.html',
+    ];
+    final arabicPages = ['hosting/ar.html', 'hosting/ar/split-bills-oman.html'];
+
+    for (final pagePath in englishPages) {
+      final page = File(pagePath).readAsStringSync();
+
+      expect(page, contains('Android alpha'));
+      expect(page, contains('Google Play'));
+      expect(page, contains('href="/alpha"'));
+    }
+    for (final pagePath in arabicPages) {
+      final page = File(pagePath).readAsStringSync();
+
+      expect(page, contains('Android alpha'));
+      expect(page, contains('Google Play'));
+      expect(page, contains('href="/ar/alpha"'));
+    }
+  });
+
   test('production-state check verifies both Firebase Hosting domains', () {
     final script = File('tool/check_firebase_prod_state.sh').readAsStringSync();
 

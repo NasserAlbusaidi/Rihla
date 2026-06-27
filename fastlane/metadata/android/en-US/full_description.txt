@@ -1,33 +1,31 @@
-Rihla is the easiest way to split bills and track group expenses with friends, family, and roommates — and see exactly who owes who, across every trip you take together.
+Rihla helps friend groups in Oman and the Gulf split bills, track shared expenses, and settle up clearly. Use it for Salalah trips, weekend plans, dinner bills, roommate costs, camping, groceries, and any moment where one person pays for the group.
 
-Most bill splitters forget your group the moment a trip ends. Rihla keeps a permanent group for your people, so balances carry over from one trip to the next. One tap shows who owes whom across every outing your group has ever shared — no more starting from zero.
+No signup required. Open Rihla, create a group, invite friends with WhatsApp, and add the first real expense. Everyone can see who owes who and the simplest payments needed to settle up.
 
 WHY RIHLA
 
-• Persistent groups, not one-off trips. Keep a group for your friends and start a new trip, dinner, or outing inside it anytime. Balances add up across all of them.
-• Settle up with the fewest payments. Rihla works out the simplest set of transfers to clear everyone's debts — for a single trip or across the whole group.
-• Split it any way you like, always fairly. Share an expense evenly, by weighted shares, by exact amounts, or by percentage — across everyone, a chosen few, or just yourself.
-• Works fully offline. Add expenses and settle up with no signal — everything syncs automatically the moment you're back online.
-• Start in seconds, free forever. No account, no email, no password — no subscription, no ads. Rihla is ready the instant you open it.
-• Built for the Gulf, ready anywhere. Pick each group's currency — OMR, SAR, AED, QAR, USD, EUR, or GBP — tracked to the smallest unit, with 3-decimal precision for the rial.
-• English and Arabic. Fully localized with complete right-to-left support.
-
-EVERYTHING YOU NEED TO SHARE EXPENSES
-
-• Invite friends with a short 6-character code, a QR scan, or a link that drops them straight into the group.
-• Tag expenses by category — food, lodging, transit, groceries, activities, and more — so you can see where the money went.
-• Follow every expense and payment as it happens — a clear expense tracker and activity log for each event, each group, and across all your groups.
-• Turn on push notifications for new expenses and payments, and switch them off anytime.
-• Optionally link an email to recover your groups and history if you switch or reset your device.
-• Choose light or dark mode, or let Rihla follow your device.
+• Built for recurring groups. Keep one group for your people, then add trips, dinners, and outings inside it.
+• OMR and Gulf-friendly money tracking. Record shared expenses in supported currencies with precise decimal handling.
+• WhatsApp-ready invites. Share a link, QR code, or 6-character invite code.
+• Settle up with fewer payments. Rihla calculates the simplest transfers to clear balances.
+• Flexible splitting. Split equally, by shares, by exact amounts, or by percentage.
+• Works offline. Add expenses when the signal is weak; changes sync when you are back online.
+• Arabic and English. Full right-to-left support for Arabic.
 
 PERFECT FOR
 
 • Trips and holidays with friends
-• Roommates splitting rent and shared bills
-• Dinners and restaurant bills with the group
-• Any group that shares costs again and again
+• Dinner, coffee, and majlis bills
+• Roommates splitting groceries, utilities, and rent extras
+• Groups that share costs again and again
 
-Stop doing the math in your head. Rihla tracks shared expenses, tells you who owes who, and settles up with the fewest possible payments — so money never gets in the way of the people you share it with.
+EVERYTHING YOU NEED
 
-Rihla means "journey." Start yours.
+• Track expenses and payments by group and event.
+• Categorize expenses like food, lodging, transit, groceries, and activities.
+• See who owes who across a single event or the whole group.
+• Turn push notifications on or off anytime.
+• Optionally link an email to recover your groups and history if you switch or reset your device.
+• Choose light mode, dark mode, or device theme.
+
+Rihla means "journey." Start with your next shared bill.

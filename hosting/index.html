@@ -3,44 +3,191 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rihla — Group trip planning</title>
-  <meta name="description" content="Rihla is a Flutter mobile app for splitting expenses and planning trips with friends.">
+  <title>Rihla - split bills with friends in Oman and the GCC</title>
+  <meta name="description" content="Rihla is an Android app for splitting group bills, seeing who owes who, and settling up with friends. No signup, Arabic and English, OMR-friendly, and offline-ready.">
+  <link rel="canonical" href="https://rihla-safar.web.app/">
+  <link rel="alternate" hreflang="en" href="https://rihla-safar.web.app/">
+  <link rel="alternate" hreflang="ar" href="https://rihla-safar.web.app/ar">
+  <link rel="alternate" hreflang="x-default" href="https://rihla-safar.web.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Rihla - split bills with friends">
+  <meta property="og:description" content="Track shared expenses, invite friends from WhatsApp, and settle up across trips. No signup. Arabic and English.">
+  <meta property="og:url" content="https://rihla-safar.web.app/">
+  <meta property="og:image" content="https://rihla-safar.web.app/assets/feature-graphic.png">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="/_styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Rihla",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Android",
+    "description": "Rihla helps friends split group bills, track shared expenses, and settle up with no signup.",
+    "url": "https://rihla-safar.web.app/",
+    "downloadUrl": "https://play.google.com/store/apps/details?id=com.safar.safar"
+  }
+  </script>
 </head>
 <body>
-  <main class="wrap">
-    <header class="brand">
-      <span class="logo">R</span>
-      <span class="name">Rihla</span>
-    </header>
+  <main>
+    <section class="landing-hero">
+      <div class="landing-wrap hero-grid">
+        <div class="hero-copy">
+          <header class="brand brand-plain">
+            <span class="logo">R</span>
+            <span class="name">Rihla</span>
+            <a class="language-link" href="/ar" lang="ar">العربية</a>
+          </header>
 
-    <h1>Rihla</h1>
-    <p class="subtitle">Group trip planning &amp; expense splitting on iOS and Android.</p>
+          <p class="eyebrow">Android alpha now on Google Play</p>
+          <h1>Split bills with your group, then settle up clearly.</h1>
+          <p class="hero-subtitle">
+            Rihla helps friends in Oman and the GCC track shared expenses,
+            see who owes who, and settle up across trips, dinners, and
+            roommate bills. No signup. Arabic and English. Offline-ready.
+          </p>
 
-    <p>
-      Rihla (&ldquo;Journey&rdquo;) helps you plan trips with friends, track shared
-      expenses, and settle up at the end. Start anonymously, then optionally
-      link an email if you want a recovery path for a lost or replaced phone.
-    </p>
+          <div class="hero-actions" aria-label="Primary actions">
+            <a class="btn-primary" href="https://play.google.com/store/apps/details?id=com.safar.safar">Get it on Google Play</a>
+            <a class="btn-secondary" href="#invite-code-form">Join with an invite code</a>
+          </div>
+          <p class="alpha-access-note">
+            Android alpha access is managed through Google Play. If Play says
+            Rihla is unavailable,
+            <a href="/alpha">request tester access</a>
+            with the Google account you use on Play.
+          </p>
 
-    <h2>Legal &amp; Support</h2>
-    <ul>
-      <li><a href="/privacy">Privacy policy</a></li>
-      <li><a href="/terms">Terms of service</a></li>
-      <li><a href="/delete-data">Delete your data</a></li>
-      <li><a href="/help">Help &amp; contact</a></li>
-    </ul>
+          <form id="invite-code-form" class="invite-code-form" novalidate>
+            <label for="landing-invite-code">Have an invite code?</label>
+            <div class="invite-code-row">
+              <input
+                id="landing-invite-code"
+                name="code"
+                type="text"
+                inputmode="text"
+                autocomplete="one-time-code"
+                autocapitalize="characters"
+                maxlength="6"
+                pattern="[A-Za-z0-9]{6}"
+                placeholder="ABC123"
+                aria-describedby="invite-code-error">
+              <button type="submit">Open invite</button>
+            </div>
+            <p id="invite-code-error" class="invite-code-error" role="status" aria-live="polite"></p>
+          </form>
 
-    <footer class="nav">
+          <ul class="proof-strip" aria-label="Rihla highlights">
+            <li>No signup</li>
+            <li>WhatsApp invites</li>
+            <li>OMR-friendly</li>
+            <li>Works offline</li>
+          </ul>
+        </div>
+
+        <div class="hero-media" aria-label="Rihla store preview">
+          <img src="/assets/feature-graphic.png" alt="Rihla split group expenses preview">
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-wrap section-band" aria-labelledby="use-cases">
+      <div class="section-heading">
+        <p class="eyebrow">Built for real group spending</p>
+        <h2 id="use-cases">Use it when the money gets shared.</h2>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card">
+          <h3>Trips and weekends</h3>
+          <p>Track fuel, stays, food, activities, and anything someone pays for on behalf of the group.</p>
+          <a class="feature-link" href="/split-bills-oman">Split bills in Oman</a>
+        </article>
+        <article class="feature-card">
+          <h3>Dinners and gatherings</h3>
+          <p>Add the bill, split it evenly or custom, then see the simplest transfers to settle.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Roommates and shared bills</h3>
+          <p>Keep one persistent group for rent extras, groceries, utilities, and repeat expenses.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="landing-wrap split-section" aria-labelledby="why-rihla">
+      <div>
+        <p class="eyebrow">Why Rihla</p>
+        <h2 id="why-rihla">Made for friend groups that keep doing things together.</h2>
+      </div>
+
+      <div class="benefit-list">
+        <div class="benefit-row">
+          <span class="marker">1</span>
+          <div>
+            <h3>Persistent groups</h3>
+            <p>Create a crew once, then start new trips, dinners, and events inside it.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <span class="marker">2</span>
+          <div>
+            <h3>Fewer settlement payments</h3>
+            <p>Rihla shows the simple set of transfers needed to make everyone even.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <span class="marker">3</span>
+          <div>
+            <h3>Arabic and English</h3>
+            <p>Use Rihla in English or Arabic, with right-to-left support and Gulf currency examples.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-cta">
+      <div class="landing-wrap cta-inner">
+        <h2>Start with your next shared bill.</h2>
+        <p>Create a group, send the WhatsApp invite, and add the first expense while it is still fresh.</p>
+        <a class="btn-primary" href="https://play.google.com/store/apps/details?id=com.safar.safar">Get it on Google Play</a>
+      </div>
+    </section>
+
+    <footer class="landing-wrap nav landing-footer">
       <a href="/privacy">Privacy</a>
-      <span class="sep">·</span>
+      <span class="sep">.</span>
       <a href="/terms">Terms</a>
-      <span class="sep">·</span>
+      <span class="sep">.</span>
       <a href="/delete-data">Delete data</a>
-      <span class="sep">·</span>
+      <span class="sep">.</span>
+      <a href="/alpha">Android alpha</a>
+      <span class="sep">.</span>
       <a href="/help">Help</a>
-      <div class="copyright">© 2026 Rihla. All rights reserved.</div>
+      <div class="copyright">&copy; 2026 Rihla. All rights reserved.</div>
     </footer>
   </main>
+  <script>
+    const inviteForm = document.getElementById('invite-code-form');
+    const inviteInput = document.getElementById('landing-invite-code');
+    const inviteError = document.getElementById('invite-code-error');
+
+    inviteInput.addEventListener('input', () => {
+      inviteInput.value = inviteInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      inviteError.textContent = '';
+    });
+
+    inviteForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const code = inviteInput.value.trim().toUpperCase();
+      if (!/^[A-Z0-9]{6}$/.test(code)) {
+        inviteError.textContent = 'Enter the 6-character invite code.';
+        inviteInput.focus();
+        return;
+      }
+      window.location.href = `/join/${code}`;
+    });
+  </script>
+  <script src="/campaign.js" defer></script>
 </body>
 </html>
