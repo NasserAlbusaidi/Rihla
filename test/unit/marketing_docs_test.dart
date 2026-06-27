@@ -29,6 +29,8 @@ void main() {
     expect(commandCenter, contains('tool/first_100_messages.dart'));
     expect(commandCenter, contains('tool/first_100_launch_packet.dart'));
     expect(outreachKit, contains('tool/first_100_messages.dart'));
+    expect(commandCenter, contains('tool/first_100_followups.dart'));
+    expect(outreachKit, contains('tool/first_100_followups.dart'));
     expect(outreachKit, contains('tool/first_100_launch_packet.dart'));
     expect(commandCenter, contains('--write-roster-template'));
     expect(outreachKit, contains('--write-roster-template'));

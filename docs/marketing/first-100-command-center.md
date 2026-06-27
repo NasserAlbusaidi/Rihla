@@ -46,6 +46,8 @@ Verified this session:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` now exports
   the first empty tracker slots into a blank private roster template so
   champion names and Google Play emails stay outside git.
+- `tool/first_100_followups.dart` now generates privacy-safe follow-up prompts
+  from due tracker rows without printing champion names.
 - `short-video-content-kit.md` now gives ready-to-record Reels/TikTok/WhatsApp
   Status scripts with tracked install and alpha access links.
 - `public-channel-hit-list.md` now maps permission-first public/community
@@ -135,7 +137,9 @@ performance.
 12. Follow up within 24 hours with one concrete ask: create group, invite people,
    or add first expense.
 13. Record the exact blocker in the tracker, not a vague note.
-14. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD` and use its
+14. Generate due follow-ups:
+    `dart tool/first_100_followups.dart --today=YYYY-MM-DD`.
+15. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD` and use its
     recommended next action for the next batch.
 
 Do not send a generic broadcast until at least 20 personal asks have been sent.
@@ -167,6 +171,10 @@ the Play upload, opt-in link, messages, and checklist together.
 Use `tool/first_100_launch_packet.dart --write-roster-template=...` before the
 first private batch. It copies the next empty public tracker slots and leaves
 `champion` and `google_play_email` blank so private data is filled locally only.
+
+Use `tool/first_100_followups.dart --today=YYYY-MM-DD` after the first messages
+are sent. It prints due follow-up prompts by slot and stage without exposing
+champion names.
 
 Use `short-video-content-kit.md` for the first week of short-form posts. Treat
 content as support for direct outreach, not a replacement for named champion
