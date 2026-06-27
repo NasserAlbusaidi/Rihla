@@ -197,6 +197,152 @@ void main() {
       });
     });
 
+    // #632: every live snapshot tick re-emits the FULL document set, but only
+    // CHANGED docs should be re-deserialized (Expense.fromFirestore runs O(P)
+    // Decimal allocations). The stream caches unchanged Expense instances keyed
+    // by doc id, so an unchanged expense is the SAME instance across ticks —
+    // the observable proxy for "not re-deserialized". RED on the old full-remap
+    // (every tick builds fresh instances → none identical).
+    group('watchExpenses incremental deserialization (#632)', () {
+      const groupId = 'g1';
+      const eventId = 'e1';
+
+      Future<void> insertExpense(
+        String id, {
+        required DateTime createdAt,
+        int amountFils = 5000,
+        bool isDeleted = false,
+      }) {
+        return fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('expenses')
+            .doc(id)
+            .set({
+              'id': id,
+              'eventId': eventId,
+              'payerParticipantId': 'p1',
+              'amountFils': amountFils,
+              'currency': 'OMR',
+              'scope': 'global',
+              'customSplitParticipants': const <String>[],
+              'isDeleted': isDeleted,
+              'deletedAt': null,
+              'createdAt': createdAt.toIso8601String(),
+              'createdBy': 'uidA',
+              'lastEditedBy': 'uidA',
+            });
+      }
+
+      Expense byId(List<Expense> list, String id) =>
+          list.firstWhere((e) => e.id == id);
+
+      test('adding one expense re-deserializes ONLY the new doc; the '
+          'unchanged ones are reused (identical instances)', () async {
+        await insertExpense('a', createdAt: DateTime.utc(2025, 1, 1));
+        await insertExpense('b', createdAt: DateTime.utc(2025, 1, 2));
+        await insertExpense('c', createdAt: DateTime.utc(2025, 1, 3));
+
+        final emissions = <List<Expense>>[];
+        final sub = service.watchExpenses(groupId, eventId).listen(emissions.add);
+        await pumpEventQueue();
+
+        await insertExpense('d', createdAt: DateTime.utc(2025, 1, 4));
+        await pumpEventQueue();
+        await sub.cancel();
+
+        expect(emissions.length, greaterThanOrEqualTo(2));
+        final before = emissions.first; // [c, b, a]
+        final after = emissions.last; // [d, c, b, a]
+        expect(before.map((e) => e.id), containsAll(['a', 'b', 'c']));
+        expect(after.map((e) => e.id), containsAll(['a', 'b', 'c', 'd']));
+
+        for (final id in ['a', 'b', 'c']) {
+          expect(
+            identical(byId(before, id), byId(after, id)),
+            isTrue,
+            reason: 'unchanged expense $id must be reused from cache, '
+                'not re-deserialized on the add tick',
+          );
+        }
+      });
+
+      test('editing one expense re-deserializes ONLY that doc; siblings stay '
+          'identical', () async {
+        await insertExpense('a',
+            createdAt: DateTime.utc(2025, 1, 1), amountFils: 5000);
+        await insertExpense('b',
+            createdAt: DateTime.utc(2025, 1, 2), amountFils: 6000);
+
+        final emissions = <List<Expense>>[];
+        final sub = service.watchExpenses(groupId, eventId).listen(emissions.add);
+        await pumpEventQueue();
+
+        await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('expenses')
+            .doc('b')
+            .update({'amountFils': 9000});
+        await pumpEventQueue();
+        await sub.cancel();
+
+        expect(emissions.length, greaterThanOrEqualTo(2));
+        final before = emissions.first;
+        final after = emissions.last;
+
+        // Sibling 'a' untouched → reused instance.
+        expect(identical(byId(before, 'a'), byId(after, 'a')), isTrue,
+            reason: 'unchanged sibling a must be reused across the edit tick');
+        // 'b' changed → fresh instance carrying the new amount.
+        expect(identical(byId(before, 'b'), byId(after, 'b')), isFalse,
+            reason: 'edited expense b must be re-deserialized');
+        expect(byId(after, 'b').amount, equals(Decimal.parse('9.000')));
+      });
+
+      test('soft-deleting one expense evicts it; survivors stay identical',
+          () async {
+        await insertExpense('a', createdAt: DateTime.utc(2025, 1, 1));
+        await insertExpense('b', createdAt: DateTime.utc(2025, 1, 2));
+        await insertExpense('c', createdAt: DateTime.utc(2025, 1, 3));
+
+        final emissions = <List<Expense>>[];
+        final sub = service.watchExpenses(groupId, eventId).listen(emissions.add);
+        await pumpEventQueue();
+
+        await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('events')
+            .doc(eventId)
+            .collection('expenses')
+            .doc('c')
+            .update({
+              'isDeleted': true,
+              'deletedAt': DateTime.utc(2025, 1, 4).toIso8601String(),
+            });
+        await pumpEventQueue();
+        await sub.cancel();
+
+        expect(emissions.length, greaterThanOrEqualTo(2));
+        final before = emissions.first;
+        final after = emissions.last;
+
+        // c leaves the isDeleted==false result set.
+        expect(before.any((e) => e.id == 'c'), isTrue);
+        expect(after.any((e) => e.id == 'c'), isFalse);
+        // Survivors reused.
+        for (final id in ['a', 'b']) {
+          expect(identical(byId(before, id), byId(after, id)), isTrue,
+              reason: 'survivor $id must be reused after the soft-delete tick');
+        }
+      });
+    });
+
     group('updateExpense', () {
       test('updates expense fields using Firestore update', () async {
         const groupId = 'g1';

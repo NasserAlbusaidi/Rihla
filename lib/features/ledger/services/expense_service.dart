@@ -33,17 +33,53 @@ class ExpenseService extends FirestoreRepository {
   /// The query filters `isDeleted == false` so soft-deleted documents are
   /// excluded from the stream without a client-side filter.
   Stream<List<Expense>> watchExpenses(String groupId, String eventId) {
+    final cache = <String, Expense>{};
     return eventSubcollection(groupId, eventId, 'expenses')
         .where('isDeleted', isEqualTo: false)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map(
-                (doc) => Expense.fromFirestore({...doc.data(), 'id': doc.id}),
-              )
-              .toList(),
-        );
+        .map((snap) => _reconcileExpenses(cache, snap));
+  }
+
+  /// Maps a fresh expense-query [snap] to `List<Expense>`, deserializing only
+  /// the docs that changed since the previous tick (#632).
+  ///
+  /// Firestore re-emits the FULL document set on every `.snapshots()` tick, but
+  /// its `docChanges` delta names only the added/modified/removed docs (the
+  /// initial snapshot reports every doc as `added`). `Expense.fromFirestore`
+  /// runs O(P) `Decimal`/`MoneySerializer` allocations per doc, so remapping all
+  /// N docs each tick is an O(N×P) UI-isolate burst on every add/edit/delete by
+  /// any member. The [cache] (`id → Expense`) lets us re-deserialize only the
+  /// changed docs and reuse the cached immutable [Expense] for every unchanged
+  /// one. Per-tick cost becomes an O(N) list rebuild + O(changed×P)
+  /// deserialization (typically one doc), down from O(N×P). The first tick still
+  /// parses all N once (all `added`) — unavoidable on open.
+  ///
+  /// [cache] is created fresh per `watchExpenses`/`watchExpensesInRange` call,
+  /// and each call returns its own stream listened to exactly once (production
+  /// `.snapshots()` is single-subscription), so the cache is effectively
+  /// per-subscription — no cross-subscription bleed. The `??=` in the build loop
+  /// is a defensive parse-on-miss; in practice the docChanges loop fills the
+  /// cache before the list is rebuilt.
+  List<Expense> _reconcileExpenses(
+    Map<String, Expense> cache,
+    QuerySnapshot<Map<String, dynamic>> snap,
+  ) {
+    for (final change in snap.docChanges) {
+      final doc = change.doc;
+      if (change.type == DocumentChangeType.removed) {
+        cache.remove(doc.id);
+        continue;
+      }
+      final data = doc.data();
+      if (data != null) {
+        cache[doc.id] = Expense.fromFirestore({...data, 'id': doc.id});
+      }
+    }
+    return [
+      for (final doc in snap.docs)
+        cache[doc.id] ??= Expense.fromFirestore({...doc.data(), 'id': doc.id}),
+    ];
   }
 
   /// One-shot read of non-deleted expenses for an event — the same query as
@@ -78,19 +114,14 @@ class ExpenseService extends FirestoreRepository {
     required DateTime startUtc,
     required DateTime endExclusiveUtc,
   }) {
+    final cache = <String, Expense>{};
     return eventSubcollection(groupId, eventId, 'expenses')
         .where('isDeleted', isEqualTo: false)
         .where('createdAt', isGreaterThanOrEqualTo: startUtc.toIso8601String())
         .where('createdAt', isLessThan: endExclusiveUtc.toIso8601String())
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map(
-                (doc) => Expense.fromFirestore({...doc.data(), 'id': doc.id}),
-              )
-              .toList(),
-        );
+        .map((snap) => _reconcileExpenses(cache, snap));
   }
 
   /// Creates a new expense document in Firestore and returns the resulting
