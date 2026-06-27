@@ -40,6 +40,9 @@ Verified this session:
   private tester-email handling, and access-first messages for the first cohort.
 - `tool/export_play_tester_emails.dart` now turns the private tester roster into
   a Play Console upload file without committing real emails.
+- `tool/first_100_launch_packet.dart` now turns a private first-10 roster into a
+  Play upload CSV, paste-ready DMs, and a launch checklist in one private output
+  folder.
 - `short-video-content-kit.md` now gives ready-to-record Reels/TikTok/WhatsApp
   Status scripts with tracked install and alpha access links.
 - `public-channel-hit-list.md` now maps permission-first public/community
@@ -110,18 +113,17 @@ performance.
 3. Ask for the Google account they use in Play if they are not already a tester.
 4. Add their segment, real use case, and channel.
 5. Update the private tester roster.
-6. Run `dart tool/export_play_tester_emails.dart ~/Desktop/rihla-first-100-play-testers.csv --output=/tmp/rihla-play-testers.csv`.
-7. Upload `/tmp/rihla-play-testers.csv` to Play closed testing if required.
-8. Export the private opt-in link:
+6. Export the private opt-in link:
    `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
-9. Generate the next slot-specific message batch with the closed-test opt-in
-   step included:
-   `dart tool/first_100_messages.dart --count=10 --language=en --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`
-   or `dart tool/first_100_messages.dart --count=10 --language=ar --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`.
+7. Build the private launch packet:
+   `dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" --output-dir=/tmp/rihla-first-10-launch-packet`.
+8. Upload `/tmp/rihla-first-10-launch-packet/play-testers.csv` to Play closed
+   testing if required.
+9. Send messages from `/tmp/rihla-first-10-launch-packet/outreach-messages.md`.
 10. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
    steps explained separately.
-11. Send the personal ask from the generated batch or
-   `first-100-outreach-kit.md`.
+11. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
+   tracker after each message is sent.
 12. Follow up within 24 hours with one concrete ask: create group, invite people,
    or add first expense.
 13. Record the exact blocker in the tracker, not a vague note.
@@ -149,6 +151,10 @@ access checks, and 24-hour follow-up prompts.
 
 Use `closed-test-access-kit.md` whenever a champion is not already able to
 install from the Play alpha.
+
+Use `tool/first_100_messages.dart` only for ad hoc single-language batches. The
+preferred first-10 path is `tool/first_100_launch_packet.dart` because it keeps
+the Play upload, opt-in link, messages, and checklist together.
 
 Use `short-video-content-kit.md` for the first week of short-form posts. Treat
 content as support for direct outreach, not a replacement for named champion
