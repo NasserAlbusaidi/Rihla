@@ -67,6 +67,30 @@ slot,champion,google_play_email,language,segment,use_case,contact_channel
     expect(launchPacket.checklist, contains('Send `outreach-messages.md`'));
   });
 
+  test('can include already-active Play testers in the upload CSV', () {
+    final launchPacket = packet.buildLaunchPacket(
+      '''
+slot,champion,google_play_email,language,segment,use_case,contact_channel
+1,Aisha,aisha@gmail.com,en,Travel crews,Salalah trip,WhatsApp
+2,Khalid,khalid@example.com,en,Travel crews,Camping trip,WhatsApp
+''',
+      playOptInLink: 'https://play.google.com/apps/testing/com.safar.safar',
+      existingTesterEmailsSource: '''
+active@example.com
+AISHA@GMAIL.COM
+''',
+    );
+
+    expect(
+      launchPacket.playTesterCsv,
+      'active@example.com\naisha@gmail.com\nkhalid@example.com\n',
+    );
+    expect(
+      launchPacket.checklist,
+      contains('Includes 2 already-active tester emails'),
+    );
+  });
+
   test('writes launch packet files to an output directory', () async {
     final tempDir = await Directory.systemTemp.createTemp(
       'rihla-launch-packet-',

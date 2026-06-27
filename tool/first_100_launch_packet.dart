@@ -7,6 +7,7 @@
 // Run via:
 //   dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10.csv \
 //     --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" \
+//     --include-existing-testers=~/Desktop/rihla-active-play-testers.csv \
 //     --output-dir=/tmp/rihla-first-10-launch-packet
 
 import 'dart:io';
@@ -92,10 +93,14 @@ Future<void> writeLaunchRosterTemplate(
 LaunchPacket buildLaunchPacket(
   String rosterCsv, {
   required String playOptInLink,
+  String? existingTesterEmailsSource,
   DateTime? today,
 }) {
   final entries = parseLaunchRoster(rosterCsv);
-  final emailExport = email_exporter.exportTesterEmailsFromCsv(rosterCsv);
+  final emailExport = email_exporter.exportTesterEmailsFromCsv(
+    rosterCsv,
+    existingEmailsSource: existingTesterEmailsSource,
+  );
   final outreachMessages = _renderOutreachMessages(
     entries,
     playOptInLink: playOptInLink,
@@ -104,6 +109,7 @@ LaunchPacket buildLaunchPacket(
     entries,
     today: today,
     testerCount: emailExport.emails.length,
+    includedExistingEmails: emailExport.includedExistingEmails,
   );
 
   return LaunchPacket(
@@ -202,12 +208,15 @@ Future<void> main(List<String> args) async {
   String? inputPath;
   String? outputDir;
   String? templateOutputPath;
+  String? existingTestersPath;
   var playOptInLink = Platform.environment['RIHLA_PLAY_OPT_IN_LINK'];
   var templateCount = 10;
 
   for (final arg in args) {
     if (arg.startsWith('--output-dir=')) {
       outputDir = arg.substring('--output-dir='.length);
+    } else if (arg.startsWith('--include-existing-testers=')) {
+      existingTestersPath = arg.substring('--include-existing-testers='.length);
     } else if (arg.startsWith('--write-roster-template=')) {
       templateOutputPath = arg.substring('--write-roster-template='.length);
     } else if (arg.startsWith('--template-count=')) {
@@ -234,7 +243,8 @@ Future<void> main(List<String> args) async {
   if (inputPath == null || outputDir == null || playOptInLink == null) {
     stderr.writeln(
       'Usage: dart tool/first_100_launch_packet.dart <private-roster.csv> '
-      '--play-opt-in-link=<https-url> --output-dir=<private-output-dir>\n'
+      '--play-opt-in-link=<https-url> --output-dir=<private-output-dir> '
+      '[--include-existing-testers=<one-email-per-line-file>]\n'
       '   or: dart tool/first_100_launch_packet.dart '
       '[tracker.csv] --write-roster-template=<private-roster.csv> '
       '[--template-count=10]',
@@ -243,7 +253,14 @@ Future<void> main(List<String> args) async {
   }
 
   final rosterCsv = await File(inputPath).readAsString();
-  final packet = buildLaunchPacket(rosterCsv, playOptInLink: playOptInLink);
+  final existingTesterEmailsSource = existingTestersPath == null
+      ? null
+      : await File(existingTestersPath).readAsString();
+  final packet = buildLaunchPacket(
+    rosterCsv,
+    playOptInLink: playOptInLink,
+    existingTesterEmailsSource: existingTesterEmailsSource,
+  );
   await writeLaunchPacket(packet, outputDir);
   stderr.writeln('Wrote first-100 launch packet to $outputDir');
 }
@@ -289,6 +306,7 @@ String _renderOutreachMessages(
 String _renderChecklist(
   List<LaunchRosterEntry> entries, {
   required int testerCount,
+  required int includedExistingEmails,
   DateTime? today,
 }) {
   final date = today == null
@@ -304,6 +322,7 @@ String _renderChecklist(
     ..writeln()
     ..writeln('- Champions: ${entries.length}')
     ..writeln('- Play tester emails: $testerCount')
+    ..writeln('- Includes $includedExistingEmails already-active tester emails')
     ..writeln()
     ..writeln('## Steps')
     ..writeln()

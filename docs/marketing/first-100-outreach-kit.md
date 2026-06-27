@@ -74,8 +74,14 @@ dart tool/first_100_roster_check.dart \
 export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"
 dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv \
   --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" \
+  --include-existing-testers="$HOME/Desktop/rihla-active-play-testers.csv" \
   --output-dir=/tmp/rihla-first-10-launch-packet
 ```
+
+Omit `--include-existing-testers=...` only for the first Play upload when there
+is no active tester file yet. After each upload, copy the generated
+`play-testers.csv` to `~/Desktop/rihla-active-play-testers.csv` so the next
+batch does not remove earlier testers from closed testing.
 
 For closed-test outreach, inject the private Play Console opt-in link into the
 generated message after the tester is added:

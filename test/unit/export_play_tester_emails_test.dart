@@ -30,6 +30,31 @@ Aisha,aisha@gmail.com
     expect(export.emails, ['aisha@gmail.com']);
   });
 
+  test('merges already-active tester emails before new roster emails', () {
+    final export = exporter.exportTesterEmailsFromCsv(
+      '''
+slot,champion,google_play_email,segment,added_to_play,opted_in,installed,notes
+1,Aisha,aisha@gmail.com,Travel crews,no,no,no,
+2,Khalid,khalid@example.com,Dinner / majlis groups,no,no,no,
+''',
+      existingEmailsSource: '''
+old-tester@example.com
+AISHA@GMAIL.COM
+''',
+    );
+
+    expect(export.emails, [
+      'old-tester@example.com',
+      'aisha@gmail.com',
+      'khalid@example.com',
+    ]);
+    expect(export.includedExistingEmails, 2);
+    expect(
+      exporter.renderPlayTesterCsv(export),
+      'old-tester@example.com\naisha@gmail.com\nkhalid@example.com\n',
+    );
+  });
+
   test('rejects missing email column', () {
     expect(
       () => exporter.exportTesterEmailsFromCsv('slot,champion\n1,Aisha\n'),

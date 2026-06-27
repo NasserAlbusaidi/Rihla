@@ -57,9 +57,11 @@ void main() {
 
     expect(accessKit, contains('tool/export_play_tester_emails.dart'));
     expect(accessKit, contains('~/Desktop/rihla-first-100-play-testers.csv'));
+    expect(accessKit, contains('--include-existing='));
     expect(accessKit, contains('/tmp/rihla-play-testers.csv'));
     expect(accessKit, contains('UTF-8 without a BOM'));
     expect(commandCenter, contains('tool/export_play_tester_emails.dart'));
+    expect(commandCenter, contains('--include-existing-testers='));
   });
 
   test('public channel hit list is linked and permission-first', () {

@@ -11,15 +11,21 @@ import 'dart:io';
 const defaultEmailColumn = 'google_play_email';
 
 class TesterEmailExport {
-  TesterEmailExport({required this.emails, required this.skippedBlankRows});
+  TesterEmailExport({
+    required this.emails,
+    required this.skippedBlankRows,
+    this.includedExistingEmails = 0,
+  });
 
   final List<String> emails;
   final int skippedBlankRows;
+  final int includedExistingEmails;
 }
 
 TesterEmailExport exportTesterEmailsFromCsv(
   String source, {
   String emailColumn = defaultEmailColumn,
+  String? existingEmailsSource,
 }) {
   final rows = _parseCsv(source);
   if (rows.isEmpty) {
@@ -34,7 +40,17 @@ TesterEmailExport exportTesterEmailsFromCsv(
 
   final emails = <String>[];
   final seen = <String>{};
+  var includedExistingEmails = 0;
   var skippedBlankRows = 0;
+
+  if (existingEmailsSource != null) {
+    for (final email in _parseExistingEmails(existingEmailsSource)) {
+      if (seen.add(email)) {
+        emails.add(email);
+        includedExistingEmails += 1;
+      }
+    }
+  }
 
   for (final row in rows.skip(1)) {
     final raw = emailIndex < row.length ? row[emailIndex].trim() : '';
@@ -56,7 +72,11 @@ TesterEmailExport exportTesterEmailsFromCsv(
     throw const FormatException('tester roster has no usable emails');
   }
 
-  return TesterEmailExport(emails: emails, skippedBlankRows: skippedBlankRows);
+  return TesterEmailExport(
+    emails: emails,
+    skippedBlankRows: skippedBlankRows,
+    includedExistingEmails: includedExistingEmails,
+  );
 }
 
 String renderPlayTesterCsv(TesterEmailExport export) {
@@ -69,11 +89,14 @@ String renderPlayTesterCsv(TesterEmailExport export) {
 Future<void> main(List<String> args) async {
   String? inputPath;
   String? outputPath;
+  String? existingEmailsPath;
   var emailColumn = defaultEmailColumn;
 
   for (final arg in args) {
     if (arg.startsWith('--output=')) {
       outputPath = arg.substring('--output='.length);
+    } else if (arg.startsWith('--include-existing=')) {
+      existingEmailsPath = arg.substring('--include-existing='.length);
     } else if (arg.startsWith('--column=')) {
       emailColumn = arg.substring('--column='.length);
     } else if (!arg.startsWith('--')) {
@@ -84,13 +107,22 @@ Future<void> main(List<String> args) async {
   if (inputPath == null) {
     stderr.writeln(
       'Usage: dart tool/export_play_tester_emails.dart <private-roster.csv> '
-      '[--output=/tmp/rihla-play-testers.csv] [--column=google_play_email]',
+      '[--output=/tmp/rihla-play-testers.csv] '
+      '[--include-existing=/tmp/current-play-testers.csv] '
+      '[--column=google_play_email]',
     );
     exit(64);
   }
 
   final source = await File(inputPath).readAsString();
-  final export = exportTesterEmailsFromCsv(source, emailColumn: emailColumn);
+  final existingEmailsSource = existingEmailsPath == null
+      ? null
+      : await File(existingEmailsPath).readAsString();
+  final export = exportTesterEmailsFromCsv(
+    source,
+    emailColumn: emailColumn,
+    existingEmailsSource: existingEmailsSource,
+  );
   final rendered = renderPlayTesterCsv(export);
 
   if (outputPath == null) {
@@ -99,9 +131,26 @@ Future<void> main(List<String> args) async {
     await File(outputPath).writeAsString(rendered);
     stderr.writeln(
       'Exported ${export.emails.length} tester emails to $outputPath '
-      '(${export.skippedBlankRows} blank rows skipped).',
+      '(${export.includedExistingEmails} active existing included, '
+      '${export.skippedBlankRows} blank rows skipped).',
     );
   }
+}
+
+List<String> _parseExistingEmails(String source) {
+  final emails = <String>[];
+  for (final line in source.split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) {
+      continue;
+    }
+    final normalized = trimmed.toLowerCase();
+    if (!_looksLikeEmail(normalized)) {
+      throw FormatException('invalid existing tester email: $trimmed');
+    }
+    emails.add(normalized);
+  }
+  return emails;
 }
 
 List<List<String>> _parseCsv(String source) {
