@@ -31,6 +31,8 @@ void main() {
     expect(outreachKit, contains('tool/first_100_messages.dart'));
     expect(commandCenter, contains('tool/first_100_followups.dart'));
     expect(outreachKit, contains('tool/first_100_followups.dart'));
+    expect(commandCenter, contains('tool/play_acquisition_summary.dart'));
+    expect(outreachKit, contains('tool/play_acquisition_summary.dart'));
     expect(outreachKit, contains('tool/first_100_launch_packet.dart'));
     expect(commandCenter, contains('--write-roster-template'));
     expect(outreachKit, contains('--write-roster-template'));
@@ -99,6 +101,8 @@ void main() {
 
     expect(commandCenter, contains('play-store-aso-conversion-plan.md'));
     expect(asoPlan, contains('first-100-cohort-tracker.csv'));
+    expect(asoPlan, contains('tool/play_acquisition_summary.dart'));
+    expect(asoPlan, contains('--write-template'));
     expect(asoPlan, contains('Store listing visitors'));
     expect(asoPlan, contains('First-time installers'));
     expect(asoPlan, contains('Do not start a Play experiment'));
