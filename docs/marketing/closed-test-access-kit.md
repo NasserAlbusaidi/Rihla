@@ -92,17 +92,28 @@ Before uploading to Play Console, export only the email column into the format
 Play expects. Keep all already-active testers in the exported list so an upload
 does not accidentally remove access for people who were already added.
 
-Generate the upload file from the private roster:
+After each Play Console update, keep a private one-email-per-line copy of the
+currently active tester list outside git, for example:
+
+```text
+~/Desktop/rihla-active-play-testers.csv
+```
+
+Generate the upload file from the private roster and merge in the active tester
+list. Omit `--include-existing=...` only for the first upload when no active
+tester file exists yet.
 
 ```bash
 dart tool/export_play_tester_emails.dart \
   ~/Desktop/rihla-first-100-play-testers.csv \
+  --include-existing="$HOME/Desktop/rihla-active-play-testers.csv" \
   --output=/tmp/rihla-play-testers.csv
 ```
 
 The export writes one email per line, removes duplicates, skips blank email
 rows, rejects invalid email-looking values, and writes UTF-8 without a BOM.
-Upload the generated `/tmp/rihla-play-testers.csv` file to Play Console.
+Upload the generated `/tmp/rihla-play-testers.csv` file to Play Console, then
+replace the private active tester file with the same generated file.
 
 ## Access-First Messages
 

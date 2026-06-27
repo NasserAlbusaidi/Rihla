@@ -43,6 +43,9 @@ Verified this session:
 - `tool/first_100_launch_packet.dart` now turns a private first-10 roster into a
   Play upload CSV, paste-ready DMs, and a launch checklist in one private output
   folder.
+- `tool/first_100_launch_packet.dart --include-existing-testers=...` preserves
+  already-active Play tester emails in the upload CSV so later batches do not
+  accidentally remove earlier tester access.
 - `tool/first_100_launch_packet.dart --write-roster-template=...` now exports
   the first empty tracker slots into a blank private roster template so
   champion names and Google Play emails stay outside git.
@@ -133,10 +136,19 @@ performance.
    `dart tool/first_100_roster_check.dart ~/Desktop/rihla-first-10-roster.csv`.
 7. Export the private opt-in link:
    `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
-8. Build the private launch packet:
-   `dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" --output-dir=/tmp/rihla-first-10-launch-packet`.
+8. Build the private launch packet, preserving already-active testers if this
+   is not the first Play upload:
+
+   ```bash
+   dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv \
+     --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" \
+     --include-existing-testers="$HOME/Desktop/rihla-active-play-testers.csv" \
+     --output-dir=/tmp/rihla-first-10-launch-packet
+   ```
+
 9. Upload `/tmp/rihla-first-10-launch-packet/play-testers.csv` to Play closed
-   testing if required.
+   testing if required, then copy that generated file to
+   `~/Desktop/rihla-active-play-testers.csv` as the next batch's active list.
 10. Send messages from `/tmp/rihla-first-10-launch-packet/outreach-messages.md`.
 11. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
    steps explained separately.
@@ -208,6 +220,11 @@ Use `tool/first_100_roster_check.dart ~/Desktop/rihla-first-10-roster.csv`
 before generating the launch packet. It reports only slot numbers and issue
 types, so roster mistakes can be fixed without leaking names or emails into
 terminal output.
+
+Use `--include-existing-testers="$HOME/Desktop/rihla-active-play-testers.csv"`
+on every launch-packet upload after the first one. Google Play CSV uploads can
+replace the tester list, so each generated upload must include people who
+already have alpha access.
 
 Use `tool/first_100_followups.dart --today=YYYY-MM-DD` after the first messages
 are sent. It prints due follow-up prompts by slot and stage without exposing
