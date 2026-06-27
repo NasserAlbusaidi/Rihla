@@ -22,6 +22,9 @@ Use alongside:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` to start a
   private roster from the next empty public tracker slots without committing
   champion names or Google Play emails.
+- `tool/first_100_champion_sourcing.dart` to turn blank tracker slots into a
+  private candidate worksheet, confirm Android/live-bill readiness, and write
+  the private roster for ready candidates.
 - `tool/first_100_roster_check.dart` to validate the filled private roster
   before Play upload or launch-packet generation without printing names or
   emails.
@@ -71,11 +74,23 @@ For the first 10 private champions, prefer one launch packet so Play upload,
 messages, and checklist stay in sync:
 
 ```bash
+dart tool/first_100_champion_sourcing.dart \
+  --write-template="$HOME/Desktop/rihla-first-10-candidates.csv"
+
+# Fill candidate names, relationship, Android likelihood, group size, live
+# shared bill, priority, language, segment, use case, and channel in the private
+# candidate worksheet. Use yes for Android/live-bill readiness and 1, 2, or 3
+# for priority. Then promote ready candidates into the launch roster.
+dart tool/first_100_champion_sourcing.dart \
+  "$HOME/Desktop/rihla-first-10-candidates.csv" \
+  --write-roster="$HOME/Desktop/rihla-first-10-roster.csv"
+
+# If names are already chosen, this older blank-roster path is still available:
 dart tool/first_100_launch_packet.dart \
   --write-roster-template="$HOME/Desktop/rihla-first-10-roster.csv"
 
-# Fill champion names, language, segment, use case, and channel in the private
-# CSV before running this command.
+# Fill or confirm champion names, language, segment, use case, and channel in
+# the private CSV before running this command.
 dart tool/first_100_access_requests.dart \
   "$HOME/Desktop/rihla-first-10-roster.csv" \
   --output=/tmp/rihla-first-10-access-requests.md
@@ -109,6 +124,11 @@ Use `/tmp/rihla-first-10-access-requests.md` before the launch packet when a
 named champion has not sent the Google Play account they use in Play. It asks
 only for the Play email and the real group test; it does not include install
 links.
+
+Use `~/Desktop/rihla-first-10-candidates.csv` before the roster when names are
+still blank. The sourcing tool treats a candidate as ready only when Android,
+group size, and a live shared bill are confirmed, then writes the roster with
+`google_play_email` blank so the access-request packet can collect it next.
 
 Use `/tmp/rihla-first-10-launch-packet/send-sheet.md` when sending the batch.
 It gives each slot's channel, tracked link, message anchor, and WhatsApp draft
