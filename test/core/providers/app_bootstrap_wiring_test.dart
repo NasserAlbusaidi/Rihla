@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
@@ -21,7 +22,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     mockNotificationService = MockNotificationService();
     when(
-      () => mockNotificationService.initialize(),
+      () => mockNotificationService.initialize(
+        handleInitialMessage: any(named: 'handleInitialMessage'),
+      ),
     ).thenAnswer((_) async => true);
     when(() => mockNotificationService.removeToken()).thenAnswer((_) async {});
     when(
@@ -96,7 +99,41 @@ void main() {
         );
         await Future<void>.delayed(Duration.zero);
 
-        verify(() => mockNotificationService.initialize()).called(1);
+        verify(
+          () => mockNotificationService.initialize(handleInitialMessage: true),
+        ).called(1);
+      },
+    );
+
+    test(
+      'kickInitialNotificationSync can skip initial notification routing only',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            notificationServiceProvider.overrideWithValue(
+              mockNotificationService,
+            ),
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container
+            .read(settingsProvider.notifier)
+            .setPushNotificationsEnabled(true);
+
+        runInitialNotificationSync(
+          container.read(settingsProvider),
+          () => container.read(notificationServiceProvider),
+          handleInitialMessage: false,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        verify(
+          () => mockNotificationService.initialize(handleInitialMessage: false),
+        ).called(1);
       },
     );
 
@@ -186,7 +223,9 @@ void main() {
 
         // OS permission denied → initialize() returns false.
         when(
-          () => mockNotificationService.initialize(),
+          () => mockNotificationService.initialize(
+            handleInitialMessage: any(named: 'handleInitialMessage'),
+          ),
         ).thenAnswer((_) async => false);
 
         // User explicitly opted in.
@@ -232,12 +271,15 @@ void main() {
       },
     );
 
-    test('ref.watch(appBootstrapProvider) exists in lib/main.dart', () {
-      // This test verifies the production wiring via static analysis.
-      // The grep verification in CI/acceptance criteria handles this —
-      // this test documents the intent.
-      expect(true, isTrue, reason: 'Verified by grep in acceptance criteria');
-    });
+    test(
+      'main.dart defers appBootstrapProvider activation to the coordinator',
+      () {
+        final main = File('lib/main.dart').readAsStringSync();
+
+        expect(main, contains('runColdStartCoordinator'));
+        expect(main, isNot(contains('ref.watch(appBootstrapProvider)')));
+      },
+    );
   });
 
   // #480: an in-place anon→durable link (Settings "Link Google", home backup
@@ -289,7 +331,11 @@ void main() {
         authChanges.add(MockUser(uid: 'u1', isAnonymous: false));
         await Future<void>.delayed(Duration.zero);
 
-        verify(() => mockNotificationService.initialize()).called(1);
+        verify(
+          () => mockNotificationService.initialize(
+            handleInitialMessage: any(named: 'handleInitialMessage'),
+          ),
+        ).called(1);
       },
     );
 
@@ -359,15 +405,18 @@ void main() {
       return container;
     }
 
-    test('re-saves the token locale on a language change when push is on', () async {
-      final container = await makeContainer(pushEnabled: true);
-      clearInteractions(mockNotificationService);
+    test(
+      're-saves the token locale on a language change when push is on',
+      () async {
+        final container = await makeContainer(pushEnabled: true);
+        clearInteractions(mockNotificationService);
 
-      await container.read(settingsProvider.notifier).setLanguage('ar');
-      await Future<void>.delayed(Duration.zero);
+        await container.read(settingsProvider.notifier).setLanguage('ar');
+        await Future<void>.delayed(Duration.zero);
 
-      verify(() => mockNotificationService.refreshTokenLocale()).called(1);
-    });
+        verify(() => mockNotificationService.refreshTokenLocale()).called(1);
+      },
+    );
 
     test('does NOT re-save the token locale when push is off', () async {
       final container = await makeContainer(pushEnabled: false);

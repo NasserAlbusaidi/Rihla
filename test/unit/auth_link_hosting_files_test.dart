@@ -132,6 +132,36 @@ void main() {
     );
   });
 
+  test(
+    'web join page carries invite code through Play Install Referrer (#368)',
+    () {
+      final page = File('hosting/join.html').readAsStringSync();
+
+      expect(page, contains(r'encodeURIComponent(`code=${code}`)'));
+      expect(
+        page,
+        contains('play.google.com/store/apps/details?id=com.safar.safar'),
+      );
+    },
+  );
+
+  test('Android app declares the Play Install Referrer bridge (#368)', () {
+    final build = File('android/app/build.gradle.kts').readAsStringSync();
+    final activity = File(
+      'android/app/src/main/kotlin/com/safar/safar/MainActivity.kt',
+    ).readAsStringSync();
+    final dart = File(
+      'lib/core/services/install_referrer_service.dart',
+    ).readAsStringSync();
+
+    expect(build, contains('com.android.installreferrer:installreferrer:2.2'));
+    for (final source in [activity, dart]) {
+      expect(source, contains('com.safar.safar/install_referrer'));
+      expect(source, contains('getInstallReferrer'));
+    }
+    expect(activity, contains('endConnection()'));
+  });
+
   test('production-state check verifies both Firebase Hosting domains', () {
     final script = File('tool/check_firebase_prod_state.sh').readAsStringSync();
 

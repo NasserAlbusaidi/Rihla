@@ -13,7 +13,16 @@ abstract final class GateIntentReplay {
   /// Skipped while an email-restore op is pending: that bootstrap ends in
   /// another forced restart, which would destroy the replayed form again.
   /// The marker survives untouched and replays on the boot after.
-  static void maybeReplay(SharedPreferences prefs, void Function(String) go) {
+  static Future<void> maybeReplay(
+    SharedPreferences prefs,
+    void Function(String) go, {
+    bool skipNavigation = false,
+  }) async {
+    if (skipNavigation) {
+      await PendingGateIntent.clear(prefs);
+      return;
+    }
+
     final pendingOp = prefs.getString(AuthRecoveryService.inFlightOpPrefsKey);
     if (pendingOp == AuthRecoveryService.opRecover) return;
 

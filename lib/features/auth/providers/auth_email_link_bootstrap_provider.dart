@@ -11,6 +11,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/services/app_messenger.dart';
 import '../../groups/providers/group_provider.dart';
 import '../services/auth_email_link_config.dart';
+import '../services/auth_email_link_recognizer.dart';
 import '../services/auth_error_humanizer.dart';
 import '../services/auth_recovery_service.dart';
 import 'auth_provider.dart';
@@ -32,22 +33,6 @@ final pendingEmailLinkProvider = StateProvider<String?>((ref) => null);
 String _dedupeKey(String link) {
   final code = Uri.tryParse(link)?.queryParameters['oobCode'];
   return (code != null && code.isNotEmpty) ? 'oob:$code' : 'url:$link';
-}
-
-String? _emailLinkFromUri(Uri uri) {
-  final scheme = uri.scheme.toLowerCase();
-
-  if (scheme == 'rihla' && uri.host.toLowerCase() == 'auth-link') {
-    final link = uri.queryParameters['link']?.trim();
-    if (link == null || link.isEmpty) return null;
-    return link;
-  }
-
-  if (scheme == 'https') {
-    return uri.toString();
-  }
-
-  return null;
 }
 
 void _showSnack(
@@ -97,11 +82,10 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
   final seenKeys = <String>{};
 
   Future<void> handleUri(Uri uri) async {
-    final link = _emailLinkFromUri(uri);
+    final link = emailLinkFromUri(uri);
     if (link == null) return;
 
-    if (!AuthEmailLinkConfig.looksLikeEmailAuthLink(link) &&
-        !FirebaseConfig.auth.isSignInWithEmailLink(link)) {
+    if (!isRecognizedAuthEmailLink(uri)) {
       return;
     }
 
@@ -137,9 +121,11 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
     final op = service.readInFlightOp() ?? AuthRecoveryService.opLink;
     // PII-safe trail for release builds (#439): op kind only, never the
     // email/link/oobCode.
-    unawaited(Sentry.addBreadcrumb(
-      Breadcrumb(category: 'auth.recovery', message: 'dispatch op=$op'),
-    ));
+    unawaited(
+      Sentry.addBreadcrumb(
+        Breadcrumb(category: 'auth.recovery', message: 'dispatch op=$op'),
+      ),
+    );
 
     try {
       if (op == AuthRecoveryService.opRecover) {
@@ -162,12 +148,14 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
           FirebaseConfig.log(
             'Recovery: recover swap BLOCKED — shell not provably empty',
           );
-          unawaited(Sentry.addBreadcrumb(
-            Breadcrumb(
-              category: 'auth.recovery',
-              message: 'recover swap blocked (non-empty/unresolved shell)',
+          unawaited(
+            Sentry.addBreadcrumb(
+              Breadcrumb(
+                category: 'auth.recovery',
+                message: 'recover swap blocked (non-empty/unresolved shell)',
+              ),
             ),
-          ));
+          );
           // A blocked recover performed no swap and no restart, so a lingering
           // inFlightOp='recover' is a PHANTOM that makes GateIntentReplay skip
           // create/join replay on every boot (gate_intent_replay.dart). Clear
@@ -217,10 +205,12 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
       // Reaches here only on the non-restarting paths (link op, or a
       // pre-isolation throw) — the restarting recover path is captured by
       // the #439 outcome marker on the next boot instead.
-      unawaited(Sentry.captureMessage(
-        'recovery_dispatch_failed op=$op code=${error.code}',
-        level: SentryLevel.error,
-      ));
+      unawaited(
+        Sentry.captureMessage(
+          'recovery_dispatch_failed op=$op code=${error.code}',
+          level: SentryLevel.error,
+        ),
+      );
       _showSnack(_humanize(error), isError: true);
     } catch (error, stack) {
       FirebaseConfig.log(

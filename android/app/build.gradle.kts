@@ -60,6 +60,7 @@ flutter {
 }
 
 dependencies {
+    implementation("com.android.installreferrer:installreferrer:2.2")
     // Core library desugaring runtime for flutter_local_notifications (#53).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

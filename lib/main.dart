@@ -23,9 +23,12 @@ import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
 import 'core/services/app_messenger.dart';
 import 'core/services/cache_isolation_controller.dart';
+import 'core/services/cold_start_coordinator.dart';
 import 'core/services/deep_link_service.dart';
+import 'core/services/install_referrer_service.dart';
 import 'features/auth/services/gate_intent_replay.dart';
 import 'features/auth/providers/cache_isolation_controller_provider.dart';
+import 'features/auth/services/auth_email_link_recognizer.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
@@ -196,20 +199,36 @@ class _SafarAppState extends ConsumerState<SafarApp> {
       // An in-session UID swap is restarting the app — don't build the router
       // or start deep-link handling; the cold boot will do it fresh (#45).
       if (ref.read(cacheIsolationProvider)) return;
-      unawaited(DeepLinkService.instance.init(ref.read(routerProvider)));
-      // #428: resume a create/join flow a gate-conflict restart interrupted.
-      // After DeepLinkService.init so a cold-start invite link wins (last go).
-      GateIntentReplay.maybeReplay(
-        ref.read(sharedPreferencesProvider),
-        ref.read(routerProvider).go,
+      final router = ref.read(routerProvider);
+      final prefs = ref.read(sharedPreferencesProvider);
+      unawaited(
+        runColdStartCoordinator(
+          resolveDeepLinks: () => DeepLinkService.instance.init(
+            router,
+            suppressInstallReferrerFor: isRecognizedAuthEmailLink,
+          ),
+          consumeInstallReferrer: ({required route}) => InstallReferrerService
+              .instance
+              .consumeDeferredInvite(router, prefs, route: route),
+          replayGateIntent: ({required skipNavigation}) =>
+              GateIntentReplay.maybeReplay(
+                prefs,
+                router.go,
+                skipNavigation: skipNavigation,
+              ),
+          activateAppBootstrap: () async {
+            if (!mounted) return;
+            ref.read(appBootstrapProvider);
+          },
+          runInitialNotificationSync: ({required handleInitialMessage}) async {
+            if (!mounted) return;
+            kickInitialNotificationSync(
+              ref,
+              handleInitialMessage: handleInitialMessage,
+            );
+          },
+        ),
       );
-      // #635: run the eager boot-time notification sync now — AFTER first paint
-      // — instead of via `fireImmediately` during the first build turn, so the
-      // OS-permission/FCM/Firestore work no longer contends for the platform
-      // channel / main isolate in the most contended cold-start window. The
-      // cacheIsolationProvider early-return above already skips this during an
-      // in-session UID-swap restart; the ensuing cold boot does the kick.
-      kickInitialNotificationSync(ref);
     });
   }
 
@@ -225,8 +244,6 @@ class _SafarAppState extends ConsumerState<SafarApp> {
 
     final router = ref.watch(routerProvider);
     final settings = ref.watch(settingsProvider);
-    // Activate bootstrap listeners (notification sync, etc.)
-    ref.watch(appBootstrapProvider);
 
     return _SystemChromeThemeSync(
       child: MaterialApp.router(
@@ -303,12 +320,9 @@ class _CacheIsolationAppState extends ConsumerState<_CacheIsolationApp> {
               onRetry: () {
                 // Re-attempt the native restart. Clear the failed flag first so
                 // a fresh failure can re-trigger the affordance.
-                ref
-                    .read(cacheIsolationRestartFailedProvider.notifier)
-                    .state = false;
-                unawaited(
-                  ref.read(cacheIsolationControllerProvider).restart(),
-                );
+                ref.read(cacheIsolationRestartFailedProvider.notifier).state =
+                    false;
+                unawaited(ref.read(cacheIsolationControllerProvider).restart());
               },
             )
           : const SplashScreen(key: Key('cache-isolation-overlay')),

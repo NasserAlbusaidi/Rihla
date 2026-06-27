@@ -21,12 +21,15 @@ import '../services/notification_service.dart';
 Future<void> _syncNotifications(
   AppSettings settings,
   NotificationService notificationService,
+  bool handleInitialMessage,
 ) async {
   if (!settings.pushNotificationsEnabled) {
     await notificationService.removeToken();
     return;
   }
-  await notificationService.initialize();
+  await notificationService.initialize(
+    handleInitialMessage: handleInitialMessage,
+  );
 }
 
 /// #635: the eager boot-time notification sync, deferred off the first-frame
@@ -41,10 +44,14 @@ Future<void> _syncNotifications(
 /// `if (previous == null && !next) return;` guard: an enabled user still gets
 /// `initialize()`; a disabled fresh user is a no-op (NO `removeToken()` on
 /// initial boot — that only fires on a later off-toggle via the listener).
-void kickInitialNotificationSync(WidgetRef ref) {
+void kickInitialNotificationSync(
+  WidgetRef ref, {
+  bool handleInitialMessage = true,
+}) {
   runInitialNotificationSync(
     ref.read(settingsProvider),
     () => ref.read(notificationServiceProvider),
+    handleInitialMessage: handleInitialMessage,
   );
 }
 
@@ -52,10 +59,13 @@ void kickInitialNotificationSync(WidgetRef ref) {
 /// lazily so a disabled fresh user never even resolves the notification service.
 void runInitialNotificationSync(
   AppSettings settings,
-  NotificationService Function() serviceFactory,
-) {
+  NotificationService Function() serviceFactory, {
+  bool handleInitialMessage = true,
+}) {
   if (!settings.pushNotificationsEnabled) return;
-  unawaited(_syncNotifications(settings, serviceFactory()));
+  unawaited(
+    _syncNotifications(settings, serviceFactory(), handleInitialMessage),
+  );
 }
 
 /// Keeps opt-in services in sync with persisted settings.
@@ -80,6 +90,7 @@ final appBootstrapProvider = Provider<void>((ref) {
         _syncNotifications(
           ref.read(settingsProvider),
           ref.read(notificationServiceProvider),
+          true,
         ),
       );
     },
@@ -99,14 +110,19 @@ final appBootstrapProvider = Provider<void>((ref) {
   ref.listen<AsyncValue<User?>>(authUserChangesProvider, (previous, next) {
     final before = previous?.valueOrNull;
     final after = next.valueOrNull;
-    final upgradedInPlace = before != null &&
+    final upgradedInPlace =
+        before != null &&
         before.isAnonymous &&
         after != null &&
         !after.isAnonymous &&
         before.uid == after.uid;
     if (!upgradedInPlace) return;
     if (ref.read(settingsProvider).pushNotificationsEnabled) {
-      unawaited(ref.read(notificationServiceProvider).initialize());
+      unawaited(
+        ref
+            .read(notificationServiceProvider)
+            .initialize(handleInitialMessage: true),
+      );
     }
   });
 
@@ -116,13 +132,13 @@ final appBootstrapProvider = Provider<void>((ref) {
   // was first written. `refreshTokenLocale` no-ops while push is off /
   // uninitialized and stays a silent skip for anonymous shells, so this only
   // writes for a push-enabled durable user.
-  ref.listen<String>(
-    settingsProvider.select((value) => value.languageCode),
-    (previous, next) {
-      if (previous == null || previous == next) return;
-      if (ref.read(settingsProvider).pushNotificationsEnabled) {
-        unawaited(ref.read(notificationServiceProvider).refreshTokenLocale());
-      }
-    },
-  );
+  ref.listen<String>(settingsProvider.select((value) => value.languageCode), (
+    previous,
+    next,
+  ) {
+    if (previous == null || previous == next) return;
+    if (ref.read(settingsProvider).pushNotificationsEnabled) {
+      unawaited(ref.read(notificationServiceProvider).refreshTokenLocale());
+    }
+  });
 });
