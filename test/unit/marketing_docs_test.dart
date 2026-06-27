@@ -31,6 +31,8 @@ void main() {
     expect(outreachKit, contains('tool/first_100_messages.dart'));
     expect(commandCenter, contains('tool/first_100_followups.dart'));
     expect(outreachKit, contains('tool/first_100_followups.dart'));
+    expect(commandCenter, contains('tool/first_100_roster_check.dart'));
+    expect(outreachKit, contains('tool/first_100_roster_check.dart'));
     expect(commandCenter, contains('tool/play_acquisition_summary.dart'));
     expect(outreachKit, contains('tool/play_acquisition_summary.dart'));
     expect(outreachKit, contains('tool/first_100_launch_packet.dart'));
