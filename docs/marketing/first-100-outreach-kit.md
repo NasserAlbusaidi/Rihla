@@ -22,6 +22,8 @@ Use alongside:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` to start a
   private roster from the next empty public tracker slots without committing
   champion names or Google Play emails.
+- `tool/first_100_followups.dart` to generate slot-based follow-up prompts for
+  due tracker rows without exposing champion names.
 - `tool/first_100_messages.dart` to generate slot-specific DM copy with tracked
   links from the cohort tracker.
 
@@ -78,6 +80,15 @@ dart tool/first_100_messages.dart --count=10 --language=en \
 Keep the real `RIHLA_PLAY_OPT_IN_LINK` out of git and send it only to approved
 testers. The generated message will put the tester opt-in step before the
 tracked landing-page link.
+
+After first contact, generate due follow-up prompts from the tracker:
+
+```bash
+dart tool/first_100_followups.dart --today=YYYY-MM-DD
+```
+
+The follow-up output uses tracker slot numbers and funnel stages, not champion
+names, so it is safe to paste into planning notes.
 
 ## Operating Rule
 
