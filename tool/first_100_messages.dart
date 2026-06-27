@@ -5,6 +5,7 @@
 // Run via:
 //   dart tool/first_100_messages.dart
 //   dart tool/first_100_messages.dart --count=10 --language=ar
+//   dart tool/first_100_messages.dart --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"
 
 import 'dart:io';
 
@@ -45,11 +46,13 @@ List<OutreachMessage> buildOutreachMessages(
   List<Map<String, String>> rows, {
   String language = 'en',
   int count = defaultCount,
+  String? playOptInLink,
 }) {
   final normalizedLanguage = language.toLowerCase();
   if (normalizedLanguage != 'en' && normalizedLanguage != 'ar') {
     throw ArgumentError.value(language, 'language', 'Use en or ar.');
   }
+  final normalizedOptInLink = _normalizeHttpsLink(playOptInLink);
 
   return selectUncontactedRows(rows, count: count)
       .map((row) {
@@ -69,8 +72,8 @@ List<OutreachMessage> buildOutreachMessages(
           channel: channel,
           link: link,
           body: normalizedLanguage == 'ar'
-              ? _arabicMessage(link)
-              : _englishMessage(link),
+              ? _arabicMessage(link, playOptInLink: normalizedOptInLink)
+              : _englishMessage(link, playOptInLink: normalizedOptInLink),
         );
       })
       .toList(growable: false);
@@ -126,12 +129,15 @@ Future<void> main(List<String> args) async {
   var trackerPath = first100.defaultTrackerPath;
   var count = defaultCount;
   var language = 'en';
+  var playOptInLink = Platform.environment['RIHLA_PLAY_OPT_IN_LINK'];
 
   for (final arg in args) {
     if (arg.startsWith('--count=')) {
       count = int.parse(arg.substring('--count='.length));
     } else if (arg.startsWith('--language=')) {
       language = arg.substring('--language='.length);
+    } else if (arg.startsWith('--play-opt-in-link=')) {
+      playOptInLink = arg.substring('--play-opt-in-link='.length);
     } else if (!arg.startsWith('--')) {
       trackerPath = arg;
     }
@@ -148,13 +154,38 @@ Future<void> main(List<String> args) async {
     rows,
     count: count,
     language: language,
+    playOptInLink: playOptInLink,
   );
   stdout.write(renderMessageBatch(messages));
 }
 
-String _englishMessage(String link) {
-  return '''
-Can you use Rihla for one real shared bill this week?
+String? _normalizeHttpsLink(String? link) {
+  final trimmed = link?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return null;
+  }
+
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+    throw ArgumentError.value(link, 'playOptInLink', 'Use a valid HTTPS URL.');
+  }
+  return trimmed;
+}
+
+String _englishMessage(String link, {String? playOptInLink}) {
+  final accessPrefix = playOptInLink == null
+      ? ''
+      : '''
+I added your Google Play account for Rihla alpha access.
+
+Open this tester opt-in link first: $playOptInLink
+Then confirm you joined the test before opening the install link.
+
+Access help: $_baseUrl/alpha
+
+''';
+
+  return '''${accessPrefix}Can you use Rihla for one real shared bill this week?
 
 Best case: a trip, dinner, groceries, fuel, or a booking where one person pays for the group.
 
@@ -165,9 +196,20 @@ Link: $link
 If you install from a group invite and the code is not filled automatically, go back to the WhatsApp invite link and tap it again after installing.''';
 }
 
-String _arabicMessage(String link) {
-  return '''
-ممكن تستخدم Rihla لمصاريف مجموعة حقيقية هذا الأسبوع؟
+String _arabicMessage(String link, {String? playOptInLink}) {
+  final accessPrefix = playOptInLink == null
+      ? ''
+      : '''
+أضفت حساب Google Play الخاص بك للوصول إلى Rihla alpha.
+
+افتح رابط المختبرين أولًا: $playOptInLink
+ثم أكد الانضمام للتجربة قبل فتح رابط التثبيت.
+
+صفحة المساعدة للوصول: $_baseUrl/ar/alpha
+
+''';
+
+  return '''$accessPrefixممكن تستخدم Rihla لمصاريف مجموعة حقيقية هذا الأسبوع؟
 
 أفضل تجربة: رحلة، عشاء، مشتريات، بترول، أو حجز يدفعه شخص عن المجموعة.
 

@@ -53,6 +53,52 @@ $header
     expect(rendered, contains('ممكن تستخدم Rihla'));
   });
 
+  test('can prepend closed-test opt-in steps before the tracked link', () {
+    final rows = first100.parseTrackerCsv('''
+$header
+1,,Travel crews,Trip expenses,WhatsApp,no,,,no,no,0,0,0,0,no,,,fill champion name
+''');
+
+    final batch = messages.buildOutreachMessages(
+      rows,
+      playOptInLink: 'https://play.google.com/apps/testing/com.safar.safar',
+    );
+    final rendered = messages.renderMessageBatch(batch);
+
+    expect(
+      rendered,
+      contains(
+        'Open this tester opt-in link first: '
+        'https://play.google.com/apps/testing/com.safar.safar',
+      ),
+    );
+    expect(
+      rendered,
+      contains('Access help: https://rihla-safar.web.app/alpha'),
+    );
+    expect(
+      rendered,
+      contains(
+        'Link: https://rihla-safar.web.app/?utm_source=whatsapp&utm_medium=dm',
+      ),
+    );
+  });
+
+  test('rejects non-HTTPS Play opt-in links', () {
+    final rows = first100.parseTrackerCsv('''
+$header
+1,,Travel crews,Trip expenses,WhatsApp,no,,,no,no,0,0,0,0,no,,,fill champion name
+''');
+
+    expect(
+      () => messages.buildOutreachMessages(
+        rows,
+        playOptInLink: 'http://play.google.com/apps/testing/com.safar.safar',
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('skips already-contacted rows', () {
     final rows = first100.parseTrackerCsv('''
 $header
