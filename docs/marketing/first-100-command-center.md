@@ -52,6 +52,9 @@ Verified this session:
 - `tool/first_100_roster_check.dart` now checks a filled private roster before
   Play upload or message generation without printing champion names or tester
   emails.
+- `tool/first_100_tracker_patch.dart` now applies a filled private roster to a
+  private tracker copy after messages are sent, without carrying Play tester
+  emails into the tracker output.
 - `tool/first_100_followups.dart` now generates privacy-safe follow-up prompts
   from due tracker rows without printing champion names.
 - `tool/play_acquisition_summary.dart` now turns a private weekly Play Console
@@ -152,17 +155,32 @@ performance.
 10. Send messages from `/tmp/rihla-first-10-launch-packet/send-sheet.md`,
    using `/tmp/rihla-first-10-launch-packet/outreach-messages.md` as the full
    message source.
-11. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
+11. Patch the private tracker copy after the batch is sent:
+
+   ```bash
+   dart tool/first_100_tracker_patch.dart \
+     docs/marketing/first-100-cohort-tracker.csv \
+     "$HOME/Desktop/rihla-first-10-roster.csv" \
+     --today=YYYY-MM-DD \
+     --mark-tester-added \
+     --mark-contacted \
+     --output="$HOME/Desktop/rihla-first-100-tracker.csv"
+   ```
+
+   Keep `~/Desktop/rihla-first-100-tracker.csv` out of git. It may contain
+   champion names, but it must not contain Google Play tester emails.
+12. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
    steps explained separately.
-12. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
-   tracker after each message is sent.
-13. Follow up within 24 hours with one concrete ask: create group, invite people,
+13. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
+   tracker after each response.
+14. Follow up within 24 hours with one concrete ask: create group, invite people,
    or add first expense.
-14. Record the exact blocker in the tracker, not a vague note.
-15. Generate due follow-ups:
+15. Record the exact blocker in the tracker, not a vague note.
+16. Generate due follow-ups:
     `dart tool/first_100_followups.dart --today=YYYY-MM-DD`.
-16. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD` and use its
-    recommended next action for the next batch.
+17. Run
+    `dart tool/first_100_summary.dart "$HOME/Desktop/rihla-first-100-tracker.csv" --today=YYYY-MM-DD`
+    and use its recommended next action for the next batch.
 
 Do not send a generic broadcast until at least 20 personal asks have been sent.
 
@@ -226,6 +244,11 @@ terminal output.
 Use `/tmp/rihla-first-10-launch-packet/send-sheet.md` as the send queue after
 Play access is ready. It keeps the slot, channel, tracked link, message anchor,
 and WhatsApp draft link together without printing tester emails.
+
+Use `tool/first_100_tracker_patch.dart` after sending the batch to write
+`~/Desktop/rihla-first-100-tracker.csv` from the public tracker plus the private
+roster. The tool reports only updated slot numbers in terminal output and does
+not carry Google Play tester emails into the tracker CSV.
 
 Use `--include-existing-testers="$HOME/Desktop/rihla-active-play-testers.csv"`
 on every launch-packet upload after the first one. Google Play CSV uploads can
