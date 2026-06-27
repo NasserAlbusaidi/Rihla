@@ -51,4 +51,30 @@ void main() {
     expect(accessKit, contains('UTF-8 without a BOM'));
     expect(commandCenter, contains('tool/export_play_tester_emails.dart'));
   });
+
+  test('public channel hit list is linked and permission-first', () {
+    final commandCenter = File(
+      'docs/marketing/first-100-command-center.md',
+    ).readAsStringSync();
+    final outreachKit = File(
+      'docs/marketing/first-100-outreach-kit.md',
+    ).readAsStringSync();
+    final hitList = File(
+      'docs/marketing/public-channel-hit-list.md',
+    ).readAsStringSync();
+
+    expect(commandCenter, contains('public-channel-hit-list.md'));
+    expect(outreachKit, contains('public-channel-hit-list.md'));
+    expect(hitList, contains('Do not scrape'));
+    expect(hitList, contains('ask moderator permission'));
+    expect(hitList, contains('utm_source=community'));
+    expect(hitList, contains('InterNations Muscat'));
+    expect(hitList, contains('Eventbrite Muscat'));
+    expect(hitList, contains('r/Oman'));
+    expect(hitList, contains('r/omantravel'));
+    expect(hitList, contains('Sultan Qaboos University'));
+    expect(hitList, contains('GUtech'));
+    expect(hitList, contains('Oman Tourism College'));
+    expect(hitList, contains('https://support.google.com/googleplay/android-developer/answer/9845334'));
+  });
 }

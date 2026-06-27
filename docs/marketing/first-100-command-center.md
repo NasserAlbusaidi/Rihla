@@ -42,6 +42,8 @@ Verified this session:
   a Play Console upload file without committing real emails.
 - `short-video-content-kit.md` now gives ready-to-record Reels/TikTok/WhatsApp
   Status scripts with tracked install and alpha access links.
+- `public-channel-hit-list.md` now maps permission-first public/community
+  outreach targets for the second wave after the first 10 warm asks.
 
 Known growth blocker:
 
@@ -151,6 +153,10 @@ install from the Play alpha.
 Use `short-video-content-kit.md` for the first week of short-form posts. Treat
 content as support for direct outreach, not a replacement for named champion
 asks.
+
+Use `public-channel-hit-list.md` only after the first 10 warm asks are sent or
+when you have moderator/organizer permission. Public channels should supplement
+the champion loop, not replace it.
 
 ## Messages To Send Today
 
