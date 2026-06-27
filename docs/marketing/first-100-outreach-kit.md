@@ -22,6 +22,9 @@ Use alongside:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` to start a
   private roster from the next empty public tracker slots without committing
   champion names or Google Play emails.
+- `tool/first_100_roster_check.dart` to validate the filled private roster
+  before Play upload or launch-packet generation without printing names or
+  emails.
 - `tool/first_100_followups.dart` to generate slot-based follow-up prompts for
   due tracker rows without exposing champion names.
 - `tool/play_acquisition_summary.dart` to summarize weekly Play Console
@@ -64,6 +67,9 @@ messages, and checklist stay in sync:
 ```bash
 dart tool/first_100_launch_packet.dart \
   --write-roster-template="$HOME/Desktop/rihla-first-10-roster.csv"
+
+dart tool/first_100_roster_check.dart \
+  "$HOME/Desktop/rihla-first-10-roster.csv"
 
 export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"
 dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv \

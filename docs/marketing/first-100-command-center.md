@@ -46,6 +46,9 @@ Verified this session:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` now exports
   the first empty tracker slots into a blank private roster template so
   champion names and Google Play emails stay outside git.
+- `tool/first_100_roster_check.dart` now checks a filled private roster before
+  Play upload or message generation without printing champion names or tester
+  emails.
 - `tool/first_100_followups.dart` now generates privacy-safe follow-up prompts
   from due tracker rows without printing champion names.
 - `tool/play_acquisition_summary.dart` now turns a private weekly Play Console
@@ -126,23 +129,25 @@ performance.
    emails. Keep this file out of git.
 4. Ask for the Google account they use in Play if they are not already a tester.
 5. Confirm or adjust each row's language, segment, real use case, and channel.
-6. Export the private opt-in link:
+6. Check the private roster before Play upload or message generation:
+   `dart tool/first_100_roster_check.dart ~/Desktop/rihla-first-10-roster.csv`.
+7. Export the private opt-in link:
    `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
-7. Build the private launch packet:
+8. Build the private launch packet:
    `dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" --output-dir=/tmp/rihla-first-10-launch-packet`.
-8. Upload `/tmp/rihla-first-10-launch-packet/play-testers.csv` to Play closed
+9. Upload `/tmp/rihla-first-10-launch-packet/play-testers.csv` to Play closed
    testing if required.
-9. Send messages from `/tmp/rihla-first-10-launch-packet/outreach-messages.md`.
-10. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
+10. Send messages from `/tmp/rihla-first-10-launch-packet/outreach-messages.md`.
+11. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
    steps explained separately.
-11. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
+12. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
    tracker after each message is sent.
-12. Follow up within 24 hours with one concrete ask: create group, invite people,
+13. Follow up within 24 hours with one concrete ask: create group, invite people,
    or add first expense.
-13. Record the exact blocker in the tracker, not a vague note.
-14. Generate due follow-ups:
+14. Record the exact blocker in the tracker, not a vague note.
+15. Generate due follow-ups:
     `dart tool/first_100_followups.dart --today=YYYY-MM-DD`.
-15. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD` and use its
+16. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD` and use its
     recommended next action for the next batch.
 
 Do not send a generic broadcast until at least 20 personal asks have been sent.
@@ -198,6 +203,11 @@ the Play upload, opt-in link, messages, and checklist together.
 Use `tool/first_100_launch_packet.dart --write-roster-template=...` before the
 first private batch. It copies the next empty public tracker slots and leaves
 `champion` and `google_play_email` blank so private data is filled locally only.
+
+Use `tool/first_100_roster_check.dart ~/Desktop/rihla-first-10-roster.csv`
+before generating the launch packet. It reports only slot numbers and issue
+types, so roster mistakes can be fixed without leaking names or emails into
+terminal output.
 
 Use `tool/first_100_followups.dart --today=YYYY-MM-DD` after the first messages
 are sent. It prints due follow-up prompts by slot and stage without exposing
