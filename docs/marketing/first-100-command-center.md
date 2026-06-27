@@ -41,8 +41,8 @@ Verified this session:
 - `tool/export_play_tester_emails.dart` now turns the private tester roster into
   a Play Console upload file without committing real emails.
 - `tool/first_100_launch_packet.dart` now turns a private first-10 roster into a
-  Play upload CSV, paste-ready DMs, and a launch checklist in one private output
-  folder.
+  Play upload CSV, paste-ready DMs, a send sheet, and a launch checklist in one
+  private output folder.
 - `tool/first_100_launch_packet.dart --include-existing-testers=...` preserves
   already-active Play tester emails in the upload CSV so later batches do not
   accidentally remove earlier tester access.
@@ -149,7 +149,9 @@ performance.
 9. Upload `/tmp/rihla-first-10-launch-packet/play-testers.csv` to Play closed
    testing if required, then copy that generated file to
    `~/Desktop/rihla-active-play-testers.csv` as the next batch's active list.
-10. Send messages from `/tmp/rihla-first-10-launch-packet/outreach-messages.md`.
+10. Send messages from `/tmp/rihla-first-10-launch-packet/send-sheet.md`,
+   using `/tmp/rihla-first-10-launch-packet/outreach-messages.md` as the full
+   message source.
 11. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
    steps explained separately.
 12. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
@@ -220,6 +222,10 @@ Use `tool/first_100_roster_check.dart ~/Desktop/rihla-first-10-roster.csv`
 before generating the launch packet. It reports only slot numbers and issue
 types, so roster mistakes can be fixed without leaking names or emails into
 terminal output.
+
+Use `/tmp/rihla-first-10-launch-packet/send-sheet.md` as the send queue after
+Play access is ready. It keeps the slot, channel, tracked link, message anchor,
+and WhatsApp draft link together without printing tester emails.
 
 Use `--include-existing-testers="$HOME/Desktop/rihla-active-play-testers.csv"`
 on every launch-packet upload after the first one. Google Play CSV uploads can
