@@ -13,6 +13,8 @@ Use alongside:
 - `day-1-outreach.md` for the first 10 slot-specific messages and follow-ups.
 - `closed-test-access-kit.md` for Play alpha opt-in instructions before sending
   install asks.
+- `public-channel-hit-list.md` for permission-first public/community targets
+  once the first 10 warm champion asks are in motion.
 - `short-video-content-kit.md` for ready-to-record Reels, TikTok, WhatsApp
   Status scripts, and tracked captions.
 - `tool/first_100_messages.dart` to generate slot-specific DM copy with tracked
