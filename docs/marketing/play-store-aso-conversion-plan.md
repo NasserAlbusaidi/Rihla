@@ -36,7 +36,9 @@ or invitee taps a link.
 3. Send the launch-packet messages from `tool/first_100_launch_packet.dart`.
 4. Confirm the listing has at least 100 Store listing visitors or 30 first-time
    installer attempts in Play Console.
-5. Record the current baseline:
+5. Create the private Play acquisition log template:
+   `dart tool/play_acquisition_summary.dart --write-template="$HOME/Desktop/rihla-play-acquisition-log.csv"`.
+6. Record the current baseline:
    - Store listing visitors
    - First-time installers
    - Store listing conversion rate
@@ -55,11 +57,13 @@ Run this once per week while the app remains in alpha:
 
 1. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD`.
 2. Export or manually record Play Console metrics for the same date range.
-3. Add one row to the weekly ASO log below.
-4. Change only one store variable at a time.
-5. Leave each tested variant live for at least 7 days or until it has enough
+3. Add one row to the private Play acquisition log.
+4. Run:
+   `dart tool/play_acquisition_summary.dart "$HOME/Desktop/rihla-play-acquisition-log.csv" docs/marketing/first-100-cohort-tracker.csv`.
+5. Change only one store variable at a time.
+6. Leave each tested variant live for at least 7 days or until it has enough
    visitors to compare fairly.
-6. Keep the winner only if it improves first-time installers without hurting
+7. Keep the winner only if it improves first-time installers without hurting
    activation in the tracker.
 
 | Week | Date range | Store listing visitors | First-time installers | Conversion rate | Tracker installs | Activated groups | Variant | Decision |
@@ -160,11 +164,12 @@ to send directly to a champion.
 
 Use this before pushing any Play listing update:
 
-1. Run `flutter test --reporter compact test/unit/play_store_metadata_test.dart test/unit/marketing_docs_test.dart`.
+1. Run `flutter test --reporter compact test/unit/play_store_metadata_test.dart test/unit/marketing_docs_test.dart test/unit/play_acquisition_summary_test.dart`.
 2. Check title, short description, and full description lengths.
 3. Confirm screenshots match the claims in the first two description paragraphs.
 4. Confirm Arabic and English listings make the same promise.
-5. Update this file's weekly log after Play Console has data.
+5. Run `tool/play_acquisition_summary.dart` against the private weekly log and
+   confirm the experiment gate is open.
 6. Update `first-100-command-center.md` only if the next operating decision
    changes.
 

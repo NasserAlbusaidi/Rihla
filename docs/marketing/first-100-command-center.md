@@ -48,6 +48,9 @@ Verified this session:
   champion names and Google Play emails stay outside git.
 - `tool/first_100_followups.dart` now generates privacy-safe follow-up prompts
   from due tracker rows without printing champion names.
+- `tool/play_acquisition_summary.dart` now turns a private weekly Play Console
+  acquisition log into a store-listing conversion summary and experiment gate
+  without committing Play metrics or tester data.
 - `short-video-content-kit.md` now gives ready-to-record Reels/TikTok/WhatsApp
   Status scripts with tracked install and alpha access links.
 - `public-channel-hit-list.md` now maps permission-first public/community
@@ -143,6 +146,30 @@ performance.
     recommended next action for the next batch.
 
 Do not send a generic broadcast until at least 20 personal asks have been sent.
+
+## Weekly Play Acquisition Loop
+
+Run this only after the first batch has been sent and Play Console has a week of
+Store listing data:
+
+```bash
+dart tool/play_acquisition_summary.dart \
+  --write-template="$HOME/Desktop/rihla-play-acquisition-log.csv"
+```
+
+Fill the private CSV from Play Console with Store listing visitors,
+first-time installers, country/language/search-term context when available, and
+the tracker installs/activated groups for the same date range. Then run:
+
+```bash
+dart tool/play_acquisition_summary.dart \
+  "$HOME/Desktop/rihla-play-acquisition-log.csv" \
+  docs/marketing/first-100-cohort-tracker.csv
+```
+
+If the output says the experiment gate is closed, keep the current listing and
+send more champion asks. Do not start a Play Store experiment until both the
+first-100 tracker and Play traffic floor support it.
 
 ## Conversion Targets
 

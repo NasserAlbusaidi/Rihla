@@ -24,6 +24,9 @@ Use alongside:
   champion names or Google Play emails.
 - `tool/first_100_followups.dart` to generate slot-based follow-up prompts for
   due tracker rows without exposing champion names.
+- `tool/play_acquisition_summary.dart` to summarize weekly Play Console
+  visitors, first-time installers, and tracker activation before changing store
+  copy or screenshots.
 - `tool/first_100_messages.dart` to generate slot-specific DM copy with tracked
   links from the cohort tracker.
 
@@ -89,6 +92,21 @@ dart tool/first_100_followups.dart --today=YYYY-MM-DD
 
 The follow-up output uses tracker slot numbers and funnel stages, not champion
 names, so it is safe to paste into planning notes.
+
+After the first batch has a week of Play Console data, create and fill the
+private acquisition log, then summarize it before making any ASO change:
+
+```bash
+dart tool/play_acquisition_summary.dart \
+  --write-template="$HOME/Desktop/rihla-play-acquisition-log.csv"
+
+dart tool/play_acquisition_summary.dart \
+  "$HOME/Desktop/rihla-play-acquisition-log.csv" \
+  docs/marketing/first-100-cohort-tracker.csv
+```
+
+If the summary says the experiment gate is closed, send more direct asks before
+changing the Play Store listing.
 
 ## Operating Rule
 
