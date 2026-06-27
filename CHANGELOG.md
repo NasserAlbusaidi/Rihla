@@ -4,6 +4,42 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] — 2026-06-27
+
+Performance, ledger-category correctness, and offline-UX patch, plus backend
+claimShadow hardening already live in production (`18306fc6`). No schema or
+client-breaking changes.
+
+### Added
+- **Event-type smart defaults (#689).** Ledger categories are now driven by an
+  id-based catalog (10 built-ins) and ordered by the event's type, so the most
+  likely categories surface first.
+
+### Changed
+- **Faster ledger and event screens.** Per-expense owed shares are memoized
+  instead of re-allocated per visible row (#629); `EventCommandCenter` shares a
+  single balance pass (#631); filter-independent roster/hero/timeline no longer
+  rebuild on every category-chip tap (#628); net-by-currency is pivoted once per
+  build (#630).
+- **Faster cold boot (#635).** Eager notification sync is deferred off the
+  first-frame turn.
+- **Smaller app bundle (#636).** Arabic wordmark font is subset and icon
+  tree-shaking is guarded on for release builds.
+
+### Fixed
+- **Ledger categories displayed correctly (#689/#694).** Category display and
+  search read the never-persisted `categoryName`, bucketing every expense as
+  "Other"; both now resolve through `categoryId`.
+- **Create-group name validation (#680).** The "Name can't be empty." error no
+  longer lingers after a valid name is typed.
+- **Offline event-settings Save (#682).** Saving event settings while offline now
+  shows distinct "will sync" feedback instead of appearing to hang.
+- **Group callable failures (#649).** Failed group/shadow callables now surface a
+  clear message instead of failing silently.
+- **Backend: claimShadow parity + per-shadow locking (#558/#710).** Post-commit
+  parity no longer throws after a TOCTOU `participantIds` edit, and concurrent
+  claim approvals are isolated per shadow. Deployed to production.
+
 ## [1.6.2] — 2026-06-25
 
 Offline-hardening and account-safety patch. Tightens behaviour when the app is
