@@ -155,6 +155,9 @@ async function acquireDeleteGroupLock(
           : null,
       };
     }
+    if (groupData.claimingInProgress === true || groupData.accountDeletionInProgress === true) {
+      throw new HttpsError('failed-precondition', 'Group is temporarily locked.');
+    }
 
     const now = Timestamp.now();
     tx.update(groupRef, {
@@ -260,6 +263,12 @@ export async function finalizeGroupDeletion(
   groupRef: DocumentReference,
   onMutateStart?: () => void,
 ): Promise<{ eventsSoftDeleted: number }> {
+  const groupSnap = await groupRef.get();
+  const groupData = groupSnap.data() ?? {};
+  if (groupData.claimingInProgress === true || groupData.accountDeletionInProgress === true) {
+    throw new HttpsError('aborted', 'Group is temporarily locked.');
+  }
+
   const { net, liveEventRefs } = await recomputeNet(db, groupRef);
   // #382 PR-2: per-currency net buckets (currency -> uid -> net). A group is
   // settled only when EVERY actor in EVERY currency bucket nets exactly zero —

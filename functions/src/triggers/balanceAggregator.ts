@@ -76,7 +76,9 @@ export async function refreshGroupBalanceAggregate(
     !groupSnap.exists ||
     groupData == null ||
     groupData.isDeleted === true ||
-    groupData.deletingInProgress === true
+    groupData.deletingInProgress === true ||
+    groupData.claimingInProgress === true ||
+    groupData.accountDeletionInProgress === true
   ) {
     return;
   }
@@ -137,7 +139,19 @@ export async function refreshGroupBalanceAggregate(
 
   const aggRef = groupRef.collection('aggregates').doc('balance');
   await db.runTransaction(async (tx) => {
+    const freshGroupSnap = await tx.get(groupRef);
     const existing = await tx.get(aggRef);
+    const freshGroupData = freshGroupSnap.data();
+    if (
+      !freshGroupSnap.exists ||
+      freshGroupData == null ||
+      freshGroupData.isDeleted === true ||
+      freshGroupData.deletingInProgress === true ||
+      freshGroupData.claimingInProgress === true ||
+      freshGroupData.accountDeletionInProgress === true
+    ) {
+      return;
+    }
     const existingTime = existing.exists ? existing.data()?.sourceTimeMs : null;
     if (typeof existingTime === 'number' && existingTime > sourceTimeMs) {
       return; // a fresher recompute already landed — this one is stale

@@ -425,6 +425,129 @@ describe('deleteAccount', () => {
     });
   });
 
+  test('#710 scrubs itemized splitExplanation, lastEditedBy, and stamps the expense scrub sentinel', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('groupA', deletedUid);
+    await seedMember('groupA', otherUid);
+    await seedEvent('groupA', 'eventA');
+    await db.doc('groups/groupA/events/eventA/expenses/itemized').set({
+      id: 'itemized',
+      eventId: 'eventA',
+      createdBy: otherUid,
+      lastEditedBy: deletedUid,
+      payerParticipantId: otherUid,
+      amountFils: 12000,
+      currency: 'OMR',
+      scope: 'custom',
+      splitMode: 'exact',
+      customSplitParticipants: [deletedUid, otherUid],
+      splitDistribution: { [deletedUid]: 6000, [otherUid]: 6000 },
+      splitExplanation: {
+        type: 'itemized',
+        version: 1,
+        requestTrace: `manual-${deletedUid}-${oldName}`,
+        items: [{
+          label: `${oldName} coffee`,
+          amountFils: 12000,
+          quantity: 1,
+          participantIds: [deletedUid],
+          allocation: 'equal',
+          nested: { [deletedUid]: `opaque-${deletedUid}-${oldName}` },
+        }],
+      },
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-06T00:00:00.000Z',
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.expensesScrubbed).toBe(1);
+    const tombstoneId = tombstoneIdFor(deletedUid);
+    const expense = (await db.doc('groups/groupA/events/eventA/expenses/itemized').get()).data();
+    expect(expense).toMatchObject({
+      lastEditedBy: 'deleted-user',
+      customSplitParticipants: [tombstoneId, otherUid],
+      splitDistribution: { [tombstoneId]: 6000, [otherUid]: 6000 },
+      receiptUrl: null,
+      note: null,
+      description: null,
+    });
+    expect(expense?.splitExplanation).toMatchObject({
+      type: 'itemized',
+      version: 1,
+      requestTrace: `manual-${tombstoneId}-Deleted member`,
+      items: [expect.objectContaining({
+        label: 'Deleted member coffee',
+        participantIds: [tombstoneId],
+        nested: { [tombstoneId]: `opaque-${tombstoneId}-Deleted member` },
+      })],
+    });
+    expect(expense?.deleteAccountScrubAt).toBeInstanceOf(Timestamp);
+    expectNoDeletedIdentity(expense);
+  });
+
+  test('#710 active pre-join claim state blocks Auth deletion and writes deletionAudit', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('claimGroup', [otherUid, 'shadow-1'], { createdBy: otherUid });
+    await seedMember('claimGroup', otherUid);
+    await seedMember('claimGroup', 'shadow-1', { isShadow: true, displayName: 'Ali' });
+    await db.doc(`groups/claimGroup/claimRequests/${deletedUid}__shadow-1`).set({
+      requesterUid: deletedUid,
+      requesterDisplayName: oldName,
+      shadowMemberId: 'shadow-1',
+      shadowDisplayName: 'Ali',
+      status: 'claiming',
+      createdAt: Timestamp.now(),
+      decidedBy: null,
+      decidedAt: null,
+      claimingBy: otherUid,
+      claimingAt: Timestamp.fromMillis(1000),
+      claimMutationStartedAt: Timestamp.fromMillis(2000),
+    });
+    await db.doc('groups/claimGroup/claimShadowLocks/shadow-1').set({
+      groupId: 'claimGroup',
+      shadowMemberId: 'shadow-1',
+      claimerUid: deletedUid,
+      requestId: `${deletedUid}__shadow-1`,
+      lockedBy: otherUid,
+      lockedAt: Timestamp.fromMillis(1000),
+      mutationStartedAt: Timestamp.fromMillis(2000),
+      updatedAt: Timestamp.fromMillis(2000),
+    });
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+
+    await expect(getAuth().getUser(deletedUid)).resolves.toMatchObject({ uid: deletedUid });
+    const marker = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+    expect(marker).toMatchObject({ uid: deletedUid, status: 'failed' });
+    expect(marker?.cascadeFailed).toContain('claimGroup');
+  });
+
+  // #714 P1 #1: the two collectionGroup scrub queries need COLLECTION_GROUP indexes
+  // (added to firestore.indexes.json). The emulator ignores indexes, so simulate the
+  // prod FAILED_PRECONDITION: it must degrade to partialCascade (auth user preserved,
+  // 'claimState' recorded), NOT abort the whole cascade before the Auth-delete gate.
+  test('#714 a claim-state scrub query failure degrades to partialCascade (auth preserved)', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    jest.spyOn(db, 'collectionGroup').mockImplementation(() => {
+      throw new Error('FAILED_PRECONDITION: The query requires an index.');
+    });
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+
+    // Auth user preserved → the still-valid session can retry the (idempotent) cascade.
+    await expect(getAuth().getUser(deletedUid)).resolves.toMatchObject({ uid: deletedUid });
+    const marker = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+    expect(marker?.cascadeFailed).toContain('claimState');
+  });
+
   test('user with no groups still deletes global docs and auth user', async () => {
     const db = getFirestore();
     await seedAuthUser();
@@ -685,6 +808,10 @@ describe('deleteAccount', () => {
     // [P1] group stays query-visible AND old member survives (so retry resolves the name).
     expect(((await db.doc('groups/big').get()).data()?.memberIds as string[])).toContain(deletedUid);
     expect((await db.doc(`groups/big/members/${deletedUid}`).get()).exists).toBe(true);
+    // #714 P1 #4: the accountDeletionInProgress freeze (acquired before Phase B) MUST be
+    // released when Phase B throws, or every co-member's writes to this group are frozen
+    // group-wide until the same uid's deletionReaper converges.
+    expect((await db.doc('groups/big').get()).data()?.accountDeletionInProgress).toBeUndefined();
 
     // ---- retry (real commit, default batch limit) ----
     delete process.env.DELETE_ACCOUNT_BATCH_LIMIT;

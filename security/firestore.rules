@@ -136,7 +136,11 @@ service cloud.firestore {
         && (!groupData(groupId).keys().hasAny(['isDeleted'])
           || groupData(groupId).isDeleted == false)
         && (!groupData(groupId).keys().hasAny(['deletingInProgress'])
-          || groupData(groupId).deletingInProgress == false);
+          || groupData(groupId).deletingInProgress == false)
+        && (!groupData(groupId).keys().hasAny(['claimingInProgress'])
+          || groupData(groupId).claimingInProgress == false)
+        && (!groupData(groupId).keys().hasAny(['accountDeletionInProgress'])
+          || groupData(groupId).accountDeletionInProgress == false);
     }
 
     function isGroupMember(groupId) {
@@ -592,7 +596,9 @@ service cloud.firestore {
               'deletedAt',
               'createdAt',
               'lastEditedBy',
-              'splitExplanation'
+              'splitExplanation',
+              'claimRekeyAt',
+              'deleteAccountScrubAt'
             ])
             && data.id == docId
             && data.eventId == eventId
@@ -612,6 +618,8 @@ service cloud.firestore {
             && nullableString(data.note)
             && data.isDeleted is bool
             && (data.deletedAt == null || data.deletedAt is string)
+            && (!('claimRekeyAt' in data) || data.claimRekeyAt is timestamp)
+            && (!('deleteAccountScrubAt' in data) || data.deleteAccountScrubAt is timestamp)
             && data.createdAt is string;
           }
 
@@ -629,6 +637,7 @@ service cloud.firestore {
               // pre-feature client that omits it still creates.
               && (!('lastEditedBy' in request.resource.data)
                 || request.resource.data.lastEditedBy == request.auth.uid)
+              && !request.resource.data.keys().hasAny(['claimRekeyAt', 'deleteAccountScrubAt'])
               && request.resource.data.isDeleted == false
               && request.resource.data.deletedAt == null;
           }
@@ -1011,6 +1020,13 @@ service cloud.firestore {
       // a non-member carve-out fighting the member-gated convention, and a client
       // write would let a stranger forge an approval/claim.
       match /claimRequests/{requestId} {
+        allow read, write: if false;
+      }
+
+      // #710: per-shadow claim reservations are Admin-only. The member-readable
+      // group doc carries only non-identifying freeze fields; the tuple stays
+      // hidden here with the server-only request document.
+      match /claimShadowLocks/{shadowMemberId} {
         allow read, write: if false;
       }
     }

@@ -1,4 +1,4 @@
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { clearFirestore } from '../fixtures';
 
 // RED → GREEN (#366 Tasks 2-3): the balance-aggregate writer. The handler
@@ -210,6 +210,24 @@ describe('refreshGroupBalanceAggregate (#366)', () => {
     await db.doc(`groups/${GROUP}`).update({ deletingInProgress: true });
 
     await refreshGroupBalanceAggregate(db, GROUP, 1000);
+
+    expect((await db.doc(AGG_PATH).get()).exists).toBe(false);
+  });
+
+  it('#710 skips a group with claimingInProgress or accountDeletionInProgress', async () => {
+    const db = getFirestore();
+    await db.doc(`groups/${GROUP}`).update({ claimingInProgress: true });
+
+    await refreshGroupBalanceAggregate(db, GROUP, 1000);
+
+    expect((await db.doc(AGG_PATH).get()).exists).toBe(false);
+
+    await db.doc(`groups/${GROUP}`).update({
+      claimingInProgress: FieldValue.delete(),
+      accountDeletionInProgress: true,
+    });
+
+    await refreshGroupBalanceAggregate(db, GROUP, 2000);
 
     expect((await db.doc(AGG_PATH).get()).exists).toBe(false);
   });

@@ -623,6 +623,33 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  test('#710 claim shadow locks are not readable or writable by clients', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('groups/g1/claimShadowLocks/shadow').set({
+        groupId: 'g1',
+        shadowMemberId: 'shadow',
+        claimerUid: 'claimer',
+        requestId: 'claimer__shadow',
+        lockedBy: 'owner',
+        lockedAt: new Date(),
+        updatedAt: new Date(),
+      });
+    });
+
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    await assertFails(owner.doc('groups/g1/claimShadowLocks/shadow').get());
+    await assertFails(owner.collection('groups/g1/claimShadowLocks').get());
+    await assertFails(owner.doc('groups/g1/claimShadowLocks/other-shadow').set({
+      groupId: 'g1',
+      shadowMemberId: 'other-shadow',
+      claimerUid: 'owner',
+      requestId: 'owner__other-shadow',
+      lockedBy: 'owner',
+      lockedAt: new Date(),
+      updatedAt: new Date(),
+    }));
+  });
+
   // #190: group deletion is server-authoritative (deleteGroup callable, Admin
   // SDK). The direct client delete path is locked (`allow delete: if false;`)
   // so the balance-zero gate + soft-delete cascade cannot be bypassed by a
@@ -872,6 +899,51 @@ describe('Publish readiness Firestore rules', () => {
     ));
     await assertFails(member.doc('groups/g1/settlements/gset-during').set(
       validGroupSettlement({ id: 'gset-during', createdBy: 'member' }),
+    ));
+  });
+
+  test('#710 claim/account-deletion freeze markers reject stale client writes while preserving reads', async () => {
+    await updateSeedGroup({
+      claimingInProgress: true,
+      claimLockedAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const owner = testEnv.authenticatedContext('owner').firestore();
+    const member = testEnv.authenticatedContext('member').firestore();
+
+    await assertSucceeds(member.doc('groups/g1').get());
+    await assertFails(owner.doc('groups/g1').update({
+      name: 'During Claim',
+      updatedAt: new Date(),
+    }));
+    await assertFails(owner.doc('groups/g1/events/e-during-claim').set(
+      validEvent({
+        name: 'During Claim',
+        createdBy: 'owner',
+        participantIds: ['owner'],
+        participantNames: { owner: 'Owner' },
+      }),
+    ));
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp-during-claim').set(
+      validExpense({ id: 'exp-during-claim', createdBy: 'member' }),
+    ));
+
+    await updateSeedGroup({
+      claimingInProgress: deleteSentinel(),
+      claimLockedAt: deleteSentinel(),
+      accountDeletionInProgress: true,
+      accountDeletionUid: 'member',
+      accountDeletionLockedAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await assertFails(owner.doc('groups/g1').update({
+      name: 'During Account Delete',
+      updatedAt: new Date(),
+    }));
+    await assertFails(member.doc('groups/g1/events/e1/expenses/exp-during-account-delete').set(
+      validExpense({ id: 'exp-during-account-delete', createdBy: 'member' }),
     ));
   });
 
@@ -1221,6 +1293,31 @@ describe('Publish readiness Firestore rules', () => {
     await assertFails(member.doc('groups/g1/events/e1/expenses/exp3').set(
       validExpense({ id: 'exp3', payerParticipantId: 'eve' }),
     ));
+  });
+
+  test('#710 expenses tolerate existing server scrub sentinels but clients cannot create them', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expSentinelCreate').set(
+      validExpense({
+        id: 'expSentinelCreate',
+        claimRekeyAt: new Date(),
+        deleteAccountScrubAt: new Date(),
+      }),
+    ));
+
+    await seedExpense({
+      id: 'expSentinel',
+      claimRekeyAt: new Date(),
+      deleteAccountScrubAt: new Date(),
+    });
+    await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expSentinel').update({
+      note: 'ordinary edit',
+      lastEditedBy: 'member',
+    }));
+    await assertFails(member.doc('groups/g1/events/e1/expenses/expSentinel').update({
+      claimRekeyAt: new Date(),
+      lastEditedBy: 'member',
+    }));
   });
 
   test('expenses allow valid custom splits and reject unknown split modes', async () => {

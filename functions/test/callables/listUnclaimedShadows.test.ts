@@ -148,6 +148,21 @@ describe('listUnclaimedShadows (#278 PR9)', () => {
     await expect(call({ inviteCode: CODE })).rejects.toMatchObject({ code: 'not-found' });
   });
 
+  test('#710 claim/account deletion freeze returns no claimable shadows', async () => {
+    await seedGroup('gclaim', [OWNER, SHADOW], { claimingInProgress: true });
+    await seedMember('gclaim', OWNER);
+    await seedShadow('gclaim', SHADOW, 'Ali');
+    await seedInviteCode(CODE, 'gclaim');
+    expect((await call({ inviteCode: CODE })).shadows).toEqual([]);
+
+    await clearFirestore();
+    await seedGroup('gdelete', [OWNER, SHADOW], { accountDeletionInProgress: true });
+    await seedMember('gdelete', OWNER);
+    await seedShadow('gdelete', SHADOW, 'Ali');
+    await seedInviteCode(CODE, 'gdelete');
+    expect((await call({ inviteCode: CODE })).shadows).toEqual([]);
+  });
+
   test('U4. non-member caller: returns EXACTLY the claimable shadows, real members ABSENT (P9-4)', async () => {
     await seedGroup('g', [OWNER, MEMBER2, SHADOW, SHADOW2]);
     await seedMember('g', OWNER);

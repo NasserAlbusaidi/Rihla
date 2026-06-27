@@ -90,7 +90,12 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
     // Honor the same write-lock as firestore.rules (Admin SDK bypasses rules),
     // mirroring joinGroupByInviteCode/addShadowMember: soft-deleted or
     // delete-quiesced groups are indistinguishable from missing groups.
-    if (group.isDeleted === true || group.deletingInProgress === true) {
+    if (
+      group.isDeleted === true
+      || group.deletingInProgress === true
+      || group.claimingInProgress === true
+      || group.accountDeletionInProgress === true
+    ) {
       throw new HttpsError('not-found', 'Group not found.');
     }
 
@@ -159,7 +164,12 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
         throw new HttpsError('not-found', 'Group not found.');
       }
       const freshGroup = freshGroupSnap.data() ?? {};
-      if (freshGroup.isDeleted === true || freshGroup.deletingInProgress === true) {
+      if (
+        freshGroup.isDeleted === true
+        || freshGroup.deletingInProgress === true
+        || freshGroup.claimingInProgress === true
+        || freshGroup.accountDeletionInProgress === true
+      ) {
         throw new HttpsError('not-found', 'Group not found.');
       }
       if (freshGroup.createdBy !== uid) {

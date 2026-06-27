@@ -57,6 +57,9 @@ export const listUnclaimedShadows = onCall<ListUnclaimedShadowsInput, Promise<Li
     if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
       throw new HttpsError('not-found', 'Group not found.');
     }
+    if (groupData.claimingInProgress === true || groupData.accountDeletionInProgress === true) {
+      return { shadows: [] };
+    }
 
     const memberIds = getMemberIds(groupData);
     // Same claimable predicate as requestClaimShadow:97-101 — applied across every

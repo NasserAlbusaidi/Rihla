@@ -171,8 +171,7 @@ function rewriteString(value: unknown, originalName: string | undefined): unknow
 
 function rewriteMetadata(value: unknown, uid: string, tombstoneId: string, originalName?: string): unknown {
   if (typeof value === 'string') {
-    if (value === uid) return tombstoneId;
-    return rewriteString(value, originalName);
+    return rewriteString(value.split(uid).join(tombstoneId), originalName);
   }
   if (Array.isArray(value)) {
     return value.map((entry) => rewriteMetadata(entry, uid, tombstoneId, originalName));
@@ -214,12 +213,17 @@ function expenseUpdates(
   data: DocumentData,
   uid: string,
   tombstoneId: string,
+  originalName?: string,
 ): { updates: DocumentData; touched: boolean } {
   const updates: DocumentData = {};
   let touched = false;
 
   if (data.createdBy === uid) {
     updates.createdBy = deletedUserSentinel;
+    touched = true;
+  }
+  if (data.lastEditedBy === uid) {
+    updates.lastEditedBy = deletedUserSentinel;
     touched = true;
   }
   if (data.payerParticipantId === uid) {
@@ -243,11 +247,17 @@ function expenseUpdates(
     updates.splitDistribution = distribution.value;
     touched = true;
   }
+  const splitExplanation = rewriteMetadata(data.splitExplanation, uid, tombstoneId, originalName);
+  if (hasChanged(data.splitExplanation, splitExplanation)) {
+    updates.splitExplanation = splitExplanation;
+    touched = true;
+  }
 
   if (touched) {
     updates.receiptUrl = null;
     updates.note = null;
     updates.description = null;
+    updates.deleteAccountScrubAt = FieldValue.serverTimestamp();
   }
   return { updates, touched };
 }
@@ -350,6 +360,82 @@ function skippedGroup(): GroupCascadeResult {
   };
 }
 
+async function acquireAccountDeletionGroupMarker(
+  db: Firestore,
+  groupRef: DocumentReference,
+  uid: string,
+): Promise<boolean> {
+  const auditRef = db.doc(`${deletionAuditCollection}/${uid}`);
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const groupSnap = await tx.get(groupRef);
+    const auditSnap = await tx.get(auditRef);
+    if (!groupSnap.exists) return false;
+    const groupData = groupSnap.data() ?? {};
+    const memberIds = asStringArray(groupData.memberIds, `groups/${groupRef.id}.memberIds`);
+    if (!memberIds.includes(uid)) return false;
+    if (
+      groupData.deletingInProgress === true
+      || groupData.claimingInProgress === true
+      || (
+        groupData.accountDeletionInProgress === true
+        && groupData.accountDeletionUid !== uid
+      )
+    ) {
+      throw new HttpsError('aborted', 'Group is temporarily locked.');
+    }
+    const auditData = auditSnap.data() ?? {};
+    const firstFailedAt = auditData.firstFailedAt instanceof Timestamp
+      ? auditData.firstFailedAt
+      : now;
+    const attemptCount = typeof auditData.attemptCount === 'number'
+      ? auditData.attemptCount
+      : 0;
+    tx.set(auditRef, {
+      uid,
+      status: 'failed',
+      cascadeFailed: FieldValue.arrayUnion(groupRef.id),
+      firstFailedAt,
+      lastAttemptAt: now,
+      attemptCount: attemptCount + 1,
+      expiresAt: Timestamp.fromMillis(now.toMillis() + resolveAuditTtlMs()),
+    }, { merge: true });
+    tx.update(groupRef, {
+      accountDeletionInProgress: true,
+      accountDeletionUid: uid,
+      accountDeletionLockedAt: now,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
+  });
+}
+
+// #714 P1 #4: clear the accountDeletion freeze this uid acquired. Guarded on
+// accountDeletionUid===uid so it never clears a different uid's deletion (or a
+// re-acquired marker for a different run); a same-uid deletionReaper overlap is
+// benign (both converge). Phase C clears the freeze itself on the applied happy
+// path — this covers every OTHER exit (Phase A/B/C throw, Phase A skip, Phase C
+// no-op) so an interrupted cascade never leaves the group write-frozen.
+async function releaseAccountDeletionGroupMarker(
+  db: Firestore,
+  groupRef: DocumentReference,
+  uid: string,
+): Promise<void> {
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(groupRef);
+    if (!snap.exists) return;
+    const data = snap.data() ?? {};
+    if (data.accountDeletionInProgress === true && data.accountDeletionUid === uid) {
+      tx.update(groupRef, {
+        accountDeletionInProgress: FieldValue.delete(),
+        accountDeletionUid: FieldValue.delete(),
+        accountDeletionLockedAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
+}
+
 // #46: scrub one group in two phases. Phase B stages all child-doc scrubs into a
 // per-group batch and flushes; Phase C retires the member identity inside a
 // transaction. Critically, NONE of the three identity-visibility writes (tombstone
@@ -358,7 +444,10 @@ function skippedGroup(): GroupCascadeResult {
 // intact (display name still resolvable), and no partial tombstone (retry reuses the
 // same deterministic id). On any throw the handler isolates this group into
 // cascadeFailed without aborting the others.
-async function processGroup(
+//
+// #714 P1 #4: `processGroup` wraps this so the accountDeletion freeze is released on
+// every failure/skip exit; this inner body runs AFTER the marker is acquired.
+async function cascadeGroupAfterMarker(
   db: Firestore,
   groupRef: DocumentReference,
   uid: string,
@@ -419,7 +508,12 @@ async function processGroup(
 
     const expensesSnap = await eventDoc.ref.collection('expenses').get();
     for (const expenseDoc of expensesSnap.docs) {
-      const { updates, touched } = expenseUpdates(expenseDoc.data(), uid, tombstoneId);
+      const { updates, touched } = expenseUpdates(
+        expenseDoc.data(),
+        uid,
+        tombstoneId,
+        originalName,
+      );
       if (touched) {
         await writer.update(expenseDoc.ref, updates);
         expensesScrubbed += 1;
@@ -502,6 +596,9 @@ async function processGroup(
 
     const groupUpdate: DocumentData = {
       memberIds: replaceUid(currentMemberIds, uid, tombstoneId).values,
+      accountDeletionInProgress: FieldValue.delete(),
+      accountDeletionUid: FieldValue.delete(),
+      accountDeletionLockedAt: FieldValue.delete(),
       updatedAt: FieldValue.serverTimestamp(),
     };
     if (gData.createdBy === uid) {
@@ -541,6 +638,38 @@ async function processGroup(
   };
 }
 
+// #714 P1 #4: acquire the accountDeletion freeze, run the cascade, and GUARANTEE the
+// freeze is released on every exit. Phase C clears it on the applied happy path; a
+// throw (Phase B torn batch, Phase C conflict) or a skip (group vanished / uid raced
+// out / Phase C no-op) would otherwise leave the group write-frozen for innocent
+// co-members until the same uid's deletionReaper converges (24h) — so we release here.
+async function processGroup(
+  db: Firestore,
+  groupRef: DocumentReference,
+  uid: string,
+): Promise<GroupCascadeResult> {
+  const acquired = await acquireAccountDeletionGroupMarker(db, groupRef, uid);
+  if (!acquired) return skippedGroup();
+
+  let result: GroupCascadeResult;
+  try {
+    result = await cascadeGroupAfterMarker(db, groupRef, uid);
+  } catch (error) {
+    await releaseAccountDeletionGroupMarker(db, groupRef, uid).catch((releaseError) => {
+      logger.error('deleteAccount: accountDeletion freeze release after group failure also failed', {
+        uid,
+        groupId: groupRef.id,
+        error: releaseError instanceof Error ? releaseError.message : String(releaseError),
+      });
+    });
+    throw error;
+  }
+  if (result.skipped) {
+    await releaseAccountDeletionGroupMarker(db, groupRef, uid);
+  }
+  return result;
+}
+
 async function deleteDocIfExists(ref: DocumentReference): Promise<boolean> {
   const snap = await ref.get();
   if (!snap.exists) return false;
@@ -564,16 +693,64 @@ async function writeDeletionAuditMarker(
     const prev = (await tx.get(ref)).data();
     const firstFailedAt = prev && isTimestamp(prev.firstFailedAt) ? prev.firstFailedAt : now;
     const attemptCount = prev && typeof prev.attemptCount === 'number' ? prev.attemptCount : 0;
+    const prevCascadeFailed = Array.isArray(prev?.cascadeFailed)
+      ? prev.cascadeFailed.filter((entry): entry is string => typeof entry === 'string')
+      : [];
+    const alreadyMarkedThisAttempt =
+      cascadeFailed.length > 0
+      && cascadeFailed.some((entry) => prevCascadeFailed.includes(entry));
     tx.set(ref, {
       uid,
       status: 'failed',
       cascadeFailed,
       firstFailedAt,
-      lastAttemptAt: now,
-      attemptCount: attemptCount + 1,
+      lastAttemptAt: alreadyMarkedThisAttempt && isTimestamp(prev?.lastAttemptAt)
+        ? prev.lastAttemptAt
+        : now,
+      attemptCount: alreadyMarkedThisAttempt ? attemptCount : attemptCount + 1,
       expiresAt: Timestamp.fromMillis(now.toMillis() + resolveAuditTtlMs()),
     });
   });
+}
+
+function addCascadeFailure(cascadeFailed: string[], id: string): void {
+  if (!cascadeFailed.includes(id)) cascadeFailed.push(id);
+}
+
+async function scrubClaimStateForDeletingUid(
+  db: Firestore,
+  uid: string,
+  cascadeFailed: string[],
+): Promise<void> {
+  const requests = await db.collectionGroup('claimRequests')
+    .where('requesterUid', '==', uid)
+    .get();
+  for (const doc of requests.docs) {
+    const groupId = doc.ref.parent.parent?.id ?? 'claimRequests';
+    const data = doc.data();
+    if (data.status === 'claiming') {
+      addCascadeFailure(cascadeFailed, groupId);
+      continue;
+    }
+    try {
+      await doc.ref.delete();
+    } catch (error) {
+      addCascadeFailure(cascadeFailed, groupId);
+      logger.error('deleteAccount claim request delete failed', {
+        uid,
+        groupId,
+        requestId: doc.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const locks = await db.collectionGroup('claimShadowLocks')
+    .where('claimerUid', '==', uid)
+    .get();
+  for (const doc of locks.docs) {
+    addCascadeFailure(cascadeFailed, doc.ref.parent.parent?.id ?? 'claimShadowLocks');
+  }
 }
 
 // #76: shared per-uid deletion cascade, called by BOTH the deleteAccount callable
@@ -664,6 +841,21 @@ export async function runAccountDeletionCascade(
         error: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  // #714 P1 #1: scrubClaimStateForDeletingUid runs two collectionGroup queries that
+  // need COLLECTION_GROUP indexes (added in firestore.indexes.json). Wrap it like the
+  // fcm_tokens/joinAttempts deletes below so a query failure (missing index, transient)
+  // degrades to partialCascade — auth user preserved, retryable — instead of aborting
+  // the whole cascade BEFORE the Auth-delete gate for every user (incl. zero-claim ones).
+  try {
+    await scrubClaimStateForDeletingUid(db, uid, cascadeFailed);
+  } catch (error) {
+    if (!cascadeFailed.includes('claimState')) cascadeFailed.push('claimState');
+    logger.error('deleteAccount claim-state scrub failed', {
+      uid,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   // #46: scrub identity residue before the Auth-delete gate, and fold these

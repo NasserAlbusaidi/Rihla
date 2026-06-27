@@ -4,6 +4,7 @@ import {
   DocumentReference,
   FieldValue,
   Firestore,
+  Timestamp,
 } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
@@ -60,6 +61,22 @@ export interface ClaimShadowOutput {
   shadowMemberId: string;
   claimerUid: string;
   alreadyClaimed: boolean;
+  completedByThisLock: boolean;
+}
+
+export interface ClaimShadowLockToken {
+  refPath: string;
+  groupId: string;
+  shadowMemberId: string;
+  claimerUid: string;
+  requestId: string;
+  lockedBy: string;
+  lockedAtMs: number;
+}
+
+export interface ClaimShadowEngineOptions {
+  lock?: ClaimShadowLockToken;
+  resumeExistingLock?: boolean;
 }
 
 // Stamped on every re-keyed expense so expenseAuditLogger skips the phantom
@@ -71,6 +88,150 @@ const CLAIM_REKEY_FIELD = 'claimRekeyAt';
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+function timestampMillis(value: unknown): number | null {
+  if (value instanceof Timestamp) return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  return null;
+}
+
+function claimLockMatches(data: DocumentData | undefined, token: ClaimShadowLockToken): boolean {
+  return data?.groupId === token.groupId
+    && data?.shadowMemberId === token.shadowMemberId
+    && data?.claimerUid === token.claimerUid
+    && data?.requestId === token.requestId
+    && data?.lockedBy === token.lockedBy
+    && timestampMillis(data?.lockedAt) === token.lockedAtMs;
+}
+
+async function markClaimMutationStarted(
+  db: Firestore,
+  groupRef: DocumentReference,
+  token: ClaimShadowLockToken,
+): Promise<void> {
+  const lockRef = db.doc(token.refPath);
+  const requestRef = groupRef.collection('claimRequests').doc(token.requestId);
+  const mutationStartedAt = Timestamp.now();
+  await db.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    const lockSnap = await tx.get(lockRef);
+    const requestSnap = await tx.get(requestRef);
+    const groupData = groupSnap.data() ?? {};
+    if (
+      !groupSnap.exists
+      || groupData.claimingInProgress !== true
+      || timestampMillis(groupData.claimLockedAt) !== token.lockedAtMs
+    ) {
+      throw new HttpsError('aborted', 'Claim reservation is no longer active.');
+    }
+    if (!lockSnap.exists || !claimLockMatches(lockSnap.data(), token)) {
+      throw new HttpsError('aborted', 'Claim lock is no longer active.');
+    }
+    const requestData = requestSnap.data() ?? {};
+    if (
+      !requestSnap.exists
+      || requestData.status !== 'claiming'
+      || requestData.requesterUid !== token.claimerUid
+      || requestData.shadowMemberId !== token.shadowMemberId
+      || timestampMillis(requestData.claimingAt) !== token.lockedAtMs
+    ) {
+      throw new HttpsError('aborted', 'Claim request is no longer active.');
+    }
+    tx.update(requestRef, { claimMutationStartedAt: mutationStartedAt });
+    tx.update(lockRef, { mutationStartedAt, updatedAt: mutationStartedAt });
+    tx.update(groupRef, {
+      claimMutationStartedAt: mutationStartedAt,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
+// #714 P1 #3: ATOMIC finalize — terminal request status + lock delete + freeze clear
+// in ONE transaction, so a crash can never leave `status:'claimed'` with a live lock +
+// `claimingInProgress` freeze (the permafreeze the two-step `update`-then-`release`
+// produced). Used by BOTH decideClaimRequest's success path and the reaper's resume.
+// P1-A (Gate): the request-status write is guarded on still-`claiming` so a late finalize
+// on a lock that outlived a re-decided request cannot resurrect it to 'claimed'; the
+// lock delete + freeze clear stay token-matched-unconditional so they always converge.
+export async function finalizeClaimAndRelease(
+  db: Firestore,
+  groupRef: DocumentReference,
+  requestRef: DocumentReference,
+  token: ClaimShadowLockToken,
+  decidedBy: string,
+): Promise<void> {
+  const lockRef = db.doc(token.refPath);
+  await db.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    const lockSnap = await tx.get(lockRef);
+    const requestSnap = await tx.get(requestRef);
+    if (requestSnap.exists && requestSnap.data()?.status === 'claiming') {
+      tx.update(requestRef, {
+        status: 'claimed',
+        decidedBy,
+        decidedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    if (lockSnap.exists && claimLockMatches(lockSnap.data(), token)) {
+      tx.delete(lockRef);
+    }
+    const groupData = groupSnap.data() ?? {};
+    if (
+      groupSnap.exists
+      && groupData.claimingInProgress === true
+      && timestampMillis(groupData.claimLockedAt) === token.lockedAtMs
+    ) {
+      tx.update(groupRef, {
+        claimingInProgress: FieldValue.delete(),
+        claimLockedAt: FieldValue.delete(),
+        claimMutationStartedAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
+}
+
+function rekeyIdentityValue(
+  value: unknown,
+  shadowId: string,
+  claimerUid: string,
+): { value: unknown; changed: boolean } {
+  if (value === shadowId) return { value: claimerUid, changed: true };
+  if (Array.isArray(value)) {
+    let changed = false;
+    const next = value.map((item) => {
+      const rewritten = rekeyIdentityValue(item, shadowId, claimerUid);
+      changed ||= rewritten.changed;
+      return rewritten.value;
+    });
+    return { value: next, changed };
+  }
+  if (value != null && typeof value === 'object') {
+    let changed = false;
+    const next: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      const nextKey = key === shadowId ? claimerUid : key;
+      const rewritten = rekeyIdentityValue(item, shadowId, claimerUid);
+      changed ||= nextKey !== key || rewritten.changed;
+      next[nextKey] = rewritten.value;
+    }
+    return { value: next, changed };
+  }
+  return { value, changed: false };
+}
+
+function participantIdsContain(value: unknown, uid: string): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => participantIdsContain(item, uid));
+  }
+  if (value != null && typeof value === 'object') {
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      if (key === 'participantIds' && asStringArray(item).includes(uid)) return true;
+      if (participantIdsContain(item, uid)) return true;
+    }
+  }
+  return false;
 }
 
 // Per-expense re-key. Returns the field updates (incl. the audit-skip sentinel)
@@ -98,6 +259,11 @@ function expenseRekey(
   const distribution = mergeUidMapKey(data.splitDistribution, shadowId, claimerUid);
   if (distribution?.changed) {
     updates.splitDistribution = distribution.value;
+    touched = true;
+  }
+  const splitExplanation = rekeyIdentityValue(data.splitExplanation, shadowId, claimerUid);
+  if (splitExplanation.changed) {
+    updates.splitExplanation = splitExplanation.value;
     touched = true;
   }
   // Defensive (legacy/Admin docs only — a shadow has no client and is never an
@@ -175,6 +341,11 @@ async function rekeyActivityLogs(
       updates.targetParticipantId = claimerUid;
       touched = true;
     }
+    const metadata = rekeyIdentityValue(data.metadata, shadowId, claimerUid);
+    if (metadata.changed) {
+      updates.metadata = metadata.value;
+      touched = true;
+    }
     if (touched) await writer.update(doc.ref, updates);
   }
 }
@@ -203,6 +374,7 @@ function claimerInLiveEventSlot(
       if (e.scope === 'custom' && asStringArray(e.customSplitParticipants).includes(claimerUid)) {
         return true;
       }
+      if (participantIdsContain(e.splitExplanation, claimerUid)) return true;
       const nonEqually =
         e.splitMode === 'shares' || e.splitMode === 'exact' || e.splitMode === 'percent';
       const dist = e.splitDistribution;
@@ -404,6 +576,7 @@ export async function claimShadowEngine(
   groupRef: DocumentReference,
   shadowMemberId: string,
   claimerUid: string,
+  options: ClaimShadowEngineOptions = {},
 ): Promise<ClaimShadowOutput> {
   const groupId = groupRef.id;
 
@@ -442,7 +615,19 @@ export async function claimShadowEngine(
         'A prior claim left an inconsistent balance and was not finalized.',
       );
     }
-    return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true };
+    // #714 P1 #2: under a reaper resume, a clean idempotent-gone shadow means THIS
+    // lock's claim already COMMITTED (Phase C retired the shadow + balance is correct)
+    // and only the finalize was lost to a crash. The lock is per-shadow + CAS-exclusive
+    // and every shadow-retiring callable gates on claimingInProgress, so no other agent
+    // could have retired it while this lock holds — so completedByThisLock is sound, and
+    // the reaper finalizes+releases instead of leaving the group frozen forever.
+    return {
+      groupId,
+      shadowMemberId,
+      claimerUid,
+      alreadyClaimed: true,
+      completedByThisLock: options.resumeExistingLock === true,
+    };
   }
   // Claimable predicate: a LIVE placeholder. A tombstoned shadow (Part 4) is NOT
   // claimable — no honest path tombstones a shadow (it has no auth account to call
@@ -491,6 +676,10 @@ export async function claimShadowEngine(
       claimerUid,
     });
     throw new HttpsError('internal', 'Claim simulation was inconsistent and was not attempted.');
+  }
+
+  if (options.lock) {
+    await markClaimMutationStarted(db, groupRef, options.lock);
   }
 
   // ---- Phase B: idempotent batched child re-keys ----
@@ -611,12 +800,22 @@ export async function claimShadowEngine(
         'A prior claim left an inconsistent balance and was not finalized.',
       );
     }
-    return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true };
+    // #714 P1 #2: same reasoning as the Phase-A idempotent path — a resume that finds
+    // the shadow cleanly de-referenced is this lock's own committed claim. (Unreachable
+    // on a resume in practice: while the lock holds, no callable can retire the shadow
+    // between Phase A and Phase C; kept symmetric so the field is never falsely false.)
+    return {
+      groupId,
+      shadowMemberId,
+      claimerUid,
+      alreadyClaimed: true,
+      completedByThisLock: options.resumeExistingLock === true,
+    };
   }
 
   // ---- Part 3 post-commit: shadow-reference scan + advisory drift (#558). ----
   await assertExactParity(db, groupRef, simNet, shadowMemberId, claimerUid);
 
   logger.info('claimShadow re-keyed', { groupId, shadowMemberId, claimerUid });
-  return { groupId, shadowMemberId, claimerUid, alreadyClaimed: false };
+  return { groupId, shadowMemberId, claimerUid, alreadyClaimed: false, completedByThisLock: false };
 }

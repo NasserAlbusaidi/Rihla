@@ -27,10 +27,10 @@ import {
 // which onDocumentCreated would miss — defeating the discoverability goal.
 //
 // Two branches, mutually exclusive:
-//   A (creator)   before.status !== 'pending' && after.status === 'pending'
+//   A (creator)   before.status ∉ {pending, claiming} && after.status === 'pending'
 //                 → NOTIFY creator. Fires on create (∅→pending) and re-open
 //                   (declined→pending).
-//   B (requester) before.status === 'pending' && after ∈ {claimed, declined}
+//   B (requester) before.status ∈ {pending, claiming} && after ∈ {claimed, declined}
 //                 → NOTIFY requester with the decision copy.
 // Everything else — the no-op pending→pending re-write, any delete (after absent),
 // and re-writes that touch neither edge — returns. A claimed doc can never reopen
@@ -67,11 +67,13 @@ export const claimRequestNotifier = onDocumentWritten(
 
     const gid = event.params.gid;
     const afterStatus = asString(after?.status);
-    const beforeWasPending = before?.status === 'pending';
+    const beforeStatus = asString(before?.status);
+    const beforeWasPending = beforeStatus === 'pending';
+    const beforeWasClaiming = beforeStatus === 'claiming';
 
     // Branch A (#560) — request ARRIVES at pending (create or declined→re-open):
     // notify the CREATOR.
-    if (afterStatus === 'pending' && !beforeWasPending) {
+    if (afterStatus === 'pending' && !beforeWasPending && !beforeWasClaiming) {
       const requesterUid = asString(after?.requesterUid);
       const { createdBy, name } = await resolveGroup(gid);
 
@@ -95,7 +97,10 @@ export const claimRequestNotifier = onDocumentWritten(
     }
 
     // Branch B (#565) — creator DECIDES a pending request: notify the REQUESTER.
-    if (beforeWasPending && (afterStatus === 'claimed' || afterStatus === 'declined')) {
+    if (
+      (beforeWasPending || beforeWasClaiming)
+      && (afterStatus === 'claimed' || afterStatus === 'declined')
+    ) {
       const requesterUid = asString(after?.requesterUid);
       if (requesterUid.length === 0) return;
 
