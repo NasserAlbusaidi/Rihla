@@ -10,7 +10,8 @@ import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https
 import { logger } from 'firebase-functions/v2';
 import '../admin';
 import { validId } from './shared/ids';
-import { claimShadowEngine } from './claimShadow';
+import { claimShadowEngine, finalizeClaimAndRelease } from './claimShadow';
+import { refreshGroupBalanceAggregate } from '../triggers/balanceAggregator';
 
 // #278 claim/merge PR8 (D1). The group CREATOR approves or declines a pending
 // claim request. This is the impersonation gate: the raw claimShadow onCall was
@@ -337,6 +338,12 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
     // run — but their membership + balance are already correct, so only the
     // advisory label lags (a self-correcting false-negative; money is never wrong).
     if (result.alreadyClaimed) {
+      // #714: this two-step (decline-then-release) stays NON-atomic on purpose — the
+      // alreadyClaimed path returns from the engine BEFORE markClaimMutationStarted, so a
+      // crash here leaves an UN-mutation-marked lock the reaper's resetPreMutationReservation
+      // clears regardless of request status. (The engine's `!retired` mutation-marked
+      // alreadyClaimed return is UNREACHABLE while this lock holds — every shadow-retiring
+      // callable gates on claimingInProgress — so it can't reach this block mutation-marked.)
       await requestRef.update({
         status: 'declined',
         decidedBy: uid,
@@ -355,12 +362,23 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
       );
     }
 
-    await requestRef.update({
-      status: 'claimed',
-      decidedBy: uid,
-      decidedAt: FieldValue.serverTimestamp(),
-    });
-    await compareReleaseClaimReservation(db, groupRef, token);
+    // #714 P1 #3: ATOMIC finalize (request status + lock delete + freeze clear in ONE
+    // tx). The prior two-step `update`-then-`compareRelease` could crash between and
+    // strand a 'claimed' request with a live lock + claimingInProgress freeze — which
+    // the reaper's status==='claiming' resume guard cannot recover (group-wide outage).
+    await finalizeClaimAndRelease(db, groupRef, requestRef, token, uid);
+    // #714 P2-1: every claim-time write hit the balanceAggregator freeze early-return,
+    // so the home-hero cache is pre-claim until refreshed. Best-effort now that the
+    // freeze is cleared — the claim already converged; a stale cache self-heals.
+    try {
+      await refreshGroupBalanceAggregate(db, groupId, Date.now());
+    } catch (error) {
+      logger.warn('decideClaimRequest aggregate refresh after claim failed (continuing)', {
+        groupId,
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     logger.info('claim request approved', { uid, groupId, requestId });
     return { requestId, status: 'claimed', alreadyClaimed: false };

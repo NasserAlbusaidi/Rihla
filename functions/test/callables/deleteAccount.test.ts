@@ -528,6 +528,26 @@ describe('deleteAccount', () => {
     expect(marker?.cascadeFailed).toContain('claimGroup');
   });
 
+  // #714 P1 #1: the two collectionGroup scrub queries need COLLECTION_GROUP indexes
+  // (added to firestore.indexes.json). The emulator ignores indexes, so simulate the
+  // prod FAILED_PRECONDITION: it must degrade to partialCascade (auth user preserved,
+  // 'claimState' recorded), NOT abort the whole cascade before the Auth-delete gate.
+  test('#714 a claim-state scrub query failure degrades to partialCascade (auth preserved)', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    jest.spyOn(db, 'collectionGroup').mockImplementation(() => {
+      throw new Error('FAILED_PRECONDITION: The query requires an index.');
+    });
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+
+    // Auth user preserved → the still-valid session can retry the (idempotent) cascade.
+    await expect(getAuth().getUser(deletedUid)).resolves.toMatchObject({ uid: deletedUid });
+    const marker = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+    expect(marker?.cascadeFailed).toContain('claimState');
+  });
+
   test('user with no groups still deletes global docs and auth user', async () => {
     const db = getFirestore();
     await seedAuthUser();
@@ -788,6 +808,10 @@ describe('deleteAccount', () => {
     // [P1] group stays query-visible AND old member survives (so retry resolves the name).
     expect(((await db.doc('groups/big').get()).data()?.memberIds as string[])).toContain(deletedUid);
     expect((await db.doc(`groups/big/members/${deletedUid}`).get()).exists).toBe(true);
+    // #714 P1 #4: the accountDeletionInProgress freeze (acquired before Phase B) MUST be
+    // released when Phase B throws, or every co-member's writes to this group are frozen
+    // group-wide until the same uid's deletionReaper converges.
+    expect((await db.doc('groups/big').get()).data()?.accountDeletionInProgress).toBeUndefined();
 
     // ---- retry (real commit, default batch limit) ----
     delete process.env.DELETE_ACCOUNT_BATCH_LIMIT;

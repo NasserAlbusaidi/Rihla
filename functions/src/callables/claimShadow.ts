@@ -147,6 +147,51 @@ async function markClaimMutationStarted(
   });
 }
 
+// #714 P1 #3: ATOMIC finalize — terminal request status + lock delete + freeze clear
+// in ONE transaction, so a crash can never leave `status:'claimed'` with a live lock +
+// `claimingInProgress` freeze (the permafreeze the two-step `update`-then-`release`
+// produced). Used by BOTH decideClaimRequest's success path and the reaper's resume.
+// P1-A (Gate): the request-status write is guarded on still-`claiming` so a late finalize
+// on a lock that outlived a re-decided request cannot resurrect it to 'claimed'; the
+// lock delete + freeze clear stay token-matched-unconditional so they always converge.
+export async function finalizeClaimAndRelease(
+  db: Firestore,
+  groupRef: DocumentReference,
+  requestRef: DocumentReference,
+  token: ClaimShadowLockToken,
+  decidedBy: string,
+): Promise<void> {
+  const lockRef = db.doc(token.refPath);
+  await db.runTransaction(async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    const lockSnap = await tx.get(lockRef);
+    const requestSnap = await tx.get(requestRef);
+    if (requestSnap.exists && requestSnap.data()?.status === 'claiming') {
+      tx.update(requestRef, {
+        status: 'claimed',
+        decidedBy,
+        decidedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    if (lockSnap.exists && claimLockMatches(lockSnap.data(), token)) {
+      tx.delete(lockRef);
+    }
+    const groupData = groupSnap.data() ?? {};
+    if (
+      groupSnap.exists
+      && groupData.claimingInProgress === true
+      && timestampMillis(groupData.claimLockedAt) === token.lockedAtMs
+    ) {
+      tx.update(groupRef, {
+        claimingInProgress: FieldValue.delete(),
+        claimLockedAt: FieldValue.delete(),
+        claimMutationStartedAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
+}
+
 function rekeyIdentityValue(
   value: unknown,
   shadowId: string,
@@ -570,7 +615,19 @@ export async function claimShadowEngine(
         'A prior claim left an inconsistent balance and was not finalized.',
       );
     }
-    return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true, completedByThisLock: false };
+    // #714 P1 #2: under a reaper resume, a clean idempotent-gone shadow means THIS
+    // lock's claim already COMMITTED (Phase C retired the shadow + balance is correct)
+    // and only the finalize was lost to a crash. The lock is per-shadow + CAS-exclusive
+    // and every shadow-retiring callable gates on claimingInProgress, so no other agent
+    // could have retired it while this lock holds — so completedByThisLock is sound, and
+    // the reaper finalizes+releases instead of leaving the group frozen forever.
+    return {
+      groupId,
+      shadowMemberId,
+      claimerUid,
+      alreadyClaimed: true,
+      completedByThisLock: options.resumeExistingLock === true,
+    };
   }
   // Claimable predicate: a LIVE placeholder. A tombstoned shadow (Part 4) is NOT
   // claimable — no honest path tombstones a shadow (it has no auth account to call
@@ -743,7 +800,17 @@ export async function claimShadowEngine(
         'A prior claim left an inconsistent balance and was not finalized.',
       );
     }
-    return { groupId, shadowMemberId, claimerUid, alreadyClaimed: true, completedByThisLock: false };
+    // #714 P1 #2: same reasoning as the Phase-A idempotent path — a resume that finds
+    // the shadow cleanly de-referenced is this lock's own committed claim. (Unreachable
+    // on a resume in practice: while the lock holds, no callable can retire the shadow
+    // between Phase A and Phase C; kept symmetric so the field is never falsely false.)
+    return {
+      groupId,
+      shadowMemberId,
+      claimerUid,
+      alreadyClaimed: true,
+      completedByThisLock: options.resumeExistingLock === true,
+    };
   }
 
   // ---- Part 3 post-commit: shadow-reference scan + advisory drift (#558). ----

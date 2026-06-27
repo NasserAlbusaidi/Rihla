@@ -4,9 +4,11 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import '../admin';
 import {
   claimShadowEngine,
+  finalizeClaimAndRelease,
   type ClaimShadowLockToken,
 } from '../callables/claimShadow';
 import { timestampMillis } from '../callables/groupNetBalance';
+import { refreshGroupBalanceAggregate } from '../triggers/balanceAggregator';
 
 const DEFAULT_GRACE_MS = 60 * 60 * 1000;
 const DEFAULT_BATCH = 50;
@@ -57,34 +59,6 @@ function lockMatches(data: FirebaseFirestore.DocumentData | undefined, token: Cl
     && data?.requestId === token.requestId
     && data?.lockedBy === token.lockedBy
     && timestampMillis(data?.lockedAt) === token.lockedAtMs;
-}
-
-async function releaseReservation(
-  groupRef: FirebaseFirestore.DocumentReference,
-  token: ClaimShadowLockToken,
-): Promise<void> {
-  const db = groupRef.firestore;
-  const lockRef = db.doc(token.refPath);
-  await db.runTransaction(async (tx) => {
-    const groupSnap = await tx.get(groupRef);
-    const lockSnap = await tx.get(lockRef);
-    if (lockSnap.exists && lockMatches(lockSnap.data(), token)) {
-      tx.delete(lockRef);
-    }
-    const groupData = groupSnap.data() ?? {};
-    if (
-      groupSnap.exists
-      && groupData.claimingInProgress === true
-      && timestampMillis(groupData.claimLockedAt) === token.lockedAtMs
-    ) {
-      tx.update(groupRef, {
-        claimingInProgress: FieldValue.delete(),
-        claimLockedAt: FieldValue.delete(),
-        claimMutationStartedAt: FieldValue.delete(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-    }
-  });
 }
 
 async function resetPreMutationReservation(
@@ -193,12 +167,20 @@ async function processLock(doc: FirebaseFirestore.QueryDocumentSnapshot): Promis
     });
     return 'left';
   }
-  await requestRef.update({
-    status: 'claimed',
-    decidedBy: token.lockedBy,
-    decidedAt: FieldValue.serverTimestamp(),
-  });
-  await releaseReservation(groupRef, token);
+  // #714 P1 #3: ATOMIC finalize (status + lock delete + freeze clear in one tx) so a
+  // crash here can never leave a 'claimed' request with a live lock + group freeze.
+  await finalizeClaimAndRelease(groupRef.firestore, groupRef, requestRef, token, token.lockedBy);
+  // #714 P2-1: the display aggregate is stale (every claim-time write hit the
+  // balanceAggregator freeze early-return); refresh it now that the freeze is cleared.
+  // Best-effort — the claim already converged and a stale cache self-heals via the reconciler.
+  try {
+    await refreshGroupBalanceAggregate(groupRef.firestore, token.groupId, Date.now());
+  } catch (error) {
+    logger.warn('claimShadowLockReaper aggregate refresh after resume failed (continuing)', {
+      groupId: token.groupId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   return 'resumed';
 }
 

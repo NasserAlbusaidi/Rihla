@@ -169,4 +169,49 @@ describe('claimShadowLockReaper (#710)', () => {
       isShadow: false,
     });
   });
+
+  // #714 P1 #2/#3: the claim COMMITTED (Phase C retired the shadow, balance correct)
+  // but the instance died before decideClaimRequest's finalize ran — so the lock +
+  // claimingInProgress freeze persist while the shadow is already gone. The reaper's
+  // engine resume hits the idempotent already-gone path; it must recognize THIS lock
+  // completed the claim (completedByThisLock) and finalize+release, NOT log "ambiguous"
+  // and leave the whole group frozen forever.
+  test('mutation-marked reservation whose claim already committed (shadow gone) finalizes and clears the freeze', async () => {
+    const mutationStartedAt = Timestamp.fromDate(new Date('2026-02-01T00:01:00.000Z'));
+    // Post-Phase-C state: memberIds already swapped, shadow member doc deleted,
+    // CLAIMER live, event re-keyed — i.e. no shadow reference survives anywhere.
+    await seedGroup({ memberIds: [OWNER, CLAIMER] });
+    await seedMember(OWNER);
+    await seedMember(CLAIMER, { displayName: 'Ali', isShadow: false });
+    await getFirestore().doc('groups/g/events/e1').set({
+      id: 'e1', groupId: 'g', name: 'e1', type: 'trip', createdBy: OWNER,
+      participantIds: [OWNER, CLAIMER],
+      participantNames: { [OWNER]: 'Owner', [CLAIMER]: 'Ali' },
+      modules: { ledger: true }, isDeleted: false, deletedAt: null,
+      createdAt: new Date('2026-01-04T00:00:00.000Z'),
+    });
+    await getFirestore().doc('groups/g/events/e1/expenses/x1').set({
+      id: 'x1', eventId: 'e1', createdBy: OWNER, payerParticipantId: OWNER,
+      amountFils: 12000, currency: 'OMR', description: 'expense', scope: 'global',
+      customSplitParticipants: [], splitMode: 'equally', splitDistribution: {},
+      isDeleted: false, deletedAt: null, createdAt: '2026-01-06T00:00:00.000Z',
+    });
+    const rid = await seedClaimReservation(mutationStartedAt);
+
+    await wrapped({});
+
+    expect((await requestDoc(rid)).status).toBe('claimed');
+    expect(await lockExists()).toBe(false);
+    const group = await groupDoc();
+    expect(group.claimingInProgress).toBeUndefined();
+    expect(group.claimLockedAt).toBeUndefined();
+    expect(group.claimMutationStartedAt).toBeUndefined();
+    expect(group.memberIds).toEqual([OWNER, CLAIMER]);
+    // The committed claim is untouched — no double re-key, claimer stays live.
+    expect((await getFirestore().doc(`groups/g/members/${SHADOW}`).get()).exists).toBe(false);
+    expect((await getFirestore().doc(`groups/g/members/${CLAIMER}`).get()).data()).toMatchObject({
+      userId: CLAIMER,
+      isShadow: false,
+    });
+  });
 });

@@ -489,6 +489,11 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER, SHADOW]);
     expect(await memberDoc('g', SHADOW)).toBeDefined();
     expect(await memberDocCount('g')).toBe(3);
+    // #714 P1-B (Gate): a pre-mutation reject must also tear down the CAS-created lock
+    // and the group freeze (resetPreMutationClaimReservation), else the group stays
+    // write-frozen on a rejected approval.
+    expect((await getFirestore().doc(`groups/g/claimShadowLocks/${SHADOW}`).get()).exists).toBe(false);
+    expect((await groupDoc('g')).claimingInProgress).toBeUndefined();
   });
 
   test('D10. double-approve → second sees status != pending → failed-precondition (engine idempotency = no double-merge)', async () => {
