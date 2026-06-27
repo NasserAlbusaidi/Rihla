@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-// Tool scripts in `tool/` are not packaged — import relatively.
+// Tool scripts in `tool/` are not packaged; import relatively.
 import '../../tool/first_100_summary.dart' as first100;
 import '../../tool/first_100_tracker_patch.dart' as tracker_patch;
 
