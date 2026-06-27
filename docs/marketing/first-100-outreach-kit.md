@@ -17,6 +17,8 @@ Use alongside:
   once the first 10 warm champion asks are in motion.
 - `short-video-content-kit.md` for ready-to-record Reels, TikTok, WhatsApp
   Status scripts, and tracked captions.
+- `tool/first_100_launch_packet.dart` to generate the private first-10 Play
+  upload file, outreach messages, and send checklist in one step.
 - `tool/first_100_messages.dart` to generate slot-specific DM copy with tracked
   links from the cohort tracker.
 
@@ -46,6 +48,16 @@ Generate the next message batch instead of hand-editing links:
 ```bash
 dart tool/first_100_messages.dart --count=10 --language=en
 dart tool/first_100_messages.dart --count=10 --language=ar
+```
+
+For the first 10 private champions, prefer one launch packet so Play upload,
+messages, and checklist stay in sync:
+
+```bash
+export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"
+dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv \
+  --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" \
+  --output-dir=/tmp/rihla-first-10-launch-packet
 ```
 
 For closed-test outreach, inject the private Play Console opt-in link into the

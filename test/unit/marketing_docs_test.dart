@@ -27,7 +27,9 @@ void main() {
 
     expect(commandCenter, contains('short-video-content-kit.md'));
     expect(commandCenter, contains('tool/first_100_messages.dart'));
+    expect(commandCenter, contains('tool/first_100_launch_packet.dart'));
     expect(outreachKit, contains('tool/first_100_messages.dart'));
+    expect(outreachKit, contains('tool/first_100_launch_packet.dart'));
     expect(commandCenter, contains('--play-opt-in-link'));
     expect(outreachKit, contains('--play-opt-in-link'));
     expect(outreachKit, contains('RIHLA_PLAY_OPT_IN_LINK'));
@@ -75,6 +77,11 @@ void main() {
     expect(hitList, contains('Sultan Qaboos University'));
     expect(hitList, contains('GUtech'));
     expect(hitList, contains('Oman Tourism College'));
-    expect(hitList, contains('https://support.google.com/googleplay/android-developer/answer/9845334'));
+    expect(
+      hitList,
+      contains(
+        'https://support.google.com/googleplay/android-developer/answer/9845334',
+      ),
+    );
   });
 }
