@@ -18,7 +18,7 @@ Use alongside:
 - `short-video-content-kit.md` for ready-to-record Reels, TikTok, WhatsApp
   Status scripts, and tracked captions.
 - `tool/first_100_launch_packet.dart` to generate the private first-10 Play
-  upload file, outreach messages, and send checklist in one step.
+  upload file, outreach messages, send sheet, and checklist in one step.
 - `tool/first_100_launch_packet.dart --write-roster-template=...` to start a
   private roster from the next empty public tracker slots without committing
   champion names or Google Play emails.
@@ -82,6 +82,10 @@ Omit `--include-existing-testers=...` only for the first Play upload when there
 is no active tester file yet. After each upload, copy the generated
 `play-testers.csv` to `~/Desktop/rihla-active-play-testers.csv` so the next
 batch does not remove earlier testers from closed testing.
+
+Use `/tmp/rihla-first-10-launch-packet/send-sheet.md` when sending the batch.
+It gives each slot's channel, tracked link, message anchor, and WhatsApp draft
+link without exposing tester emails.
 
 For closed-test outreach, inject the private Play Console opt-in link into the
 generated message after the tester is added:

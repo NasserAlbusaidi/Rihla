@@ -64,7 +64,13 @@ slot,champion,google_play_email,language,segment,use_case,contact_channel
     );
     expect(launchPacket.checklist, contains('Date: 2026-06-27'));
     expect(launchPacket.checklist, contains('Upload `play-testers.csv`'));
-    expect(launchPacket.checklist, contains('Send `outreach-messages.md`'));
+    expect(launchPacket.checklist, contains('Use `send-sheet.md`'));
+    expect(launchPacket.sendSheet, contains('# Rihla First-100 Send Sheet'));
+    expect(launchPacket.sendSheet, contains('| 1 | Aisha | WhatsApp |'));
+    expect(launchPacket.sendSheet, contains('https://wa.me/?text='));
+    expect(launchPacket.sendSheet, contains('outreach-messages.md#slot-2'));
+    expect(launchPacket.sendSheet, isNot(contains('AISHA@GMAIL.COM')));
+    expect(launchPacket.sendSheet, isNot(contains('khalid@example.com')));
   });
 
   test('can include already-active Play testers in the upload CSV', () {
@@ -114,6 +120,10 @@ slot,champion,google_play_email,language,segment,use_case,contact_channel
     expect(
       File('${tempDir.path}/checklist.md').readAsStringSync(),
       contains('Upload `play-testers.csv`'),
+    );
+    expect(
+      File('${tempDir.path}/send-sheet.md').readAsStringSync(),
+      contains('| 1 | Aisha | WhatsApp |'),
     );
   });
 

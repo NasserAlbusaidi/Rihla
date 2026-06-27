@@ -40,6 +40,8 @@ void main() {
     expect(outreachKit, contains('--write-roster-template'));
     expect(commandCenter, contains('--play-opt-in-link'));
     expect(outreachKit, contains('--play-opt-in-link'));
+    expect(commandCenter, contains('send-sheet.md'));
+    expect(outreachKit, contains('send-sheet.md'));
     expect(outreachKit, contains('RIHLA_PLAY_OPT_IN_LINK'));
     expect(commandCenter, isNot(contains('still unshipped')));
     expect(commandCenter, isNot(contains('prioritize `#368`')));

@@ -1,8 +1,8 @@
 // tool/first_100_launch_packet.dart
 //
 // Builds a private first-100 launch packet from a local roster CSV. The output
-// contains Play tester emails, paste-ready outreach messages, and an operator
-// checklist. Keep the input and generated output outside git.
+// contains Play tester emails, paste-ready outreach messages, a send sheet, and
+// an operator checklist. Keep the input and generated output outside git.
 //
 // Run via:
 //   dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10.csv \
@@ -30,11 +30,13 @@ class LaunchPacket {
   LaunchPacket({
     required this.playTesterCsv,
     required this.outreachMessages,
+    required this.sendSheet,
     required this.checklist,
   });
 
   final String playTesterCsv;
   final String outreachMessages;
+  final String sendSheet;
   final String checklist;
 }
 
@@ -105,6 +107,7 @@ LaunchPacket buildLaunchPacket(
     entries,
     playOptInLink: playOptInLink,
   );
+  final sendSheet = _renderSendSheet(entries, playOptInLink: playOptInLink);
   final checklist = _renderChecklist(
     entries,
     today: today,
@@ -115,6 +118,7 @@ LaunchPacket buildLaunchPacket(
   return LaunchPacket(
     playTesterCsv: email_exporter.renderPlayTesterCsv(emailExport),
     outreachMessages: outreachMessages,
+    sendSheet: sendSheet,
     checklist: checklist,
   );
 }
@@ -201,6 +205,7 @@ Future<void> writeLaunchPacket(LaunchPacket packet, String outputDir) async {
   await File(
     '${directory.path}/outreach-messages.md',
   ).writeAsString(packet.outreachMessages);
+  await File('${directory.path}/send-sheet.md').writeAsString(packet.sendSheet);
   await File('${directory.path}/checklist.md').writeAsString(packet.checklist);
 }
 
@@ -272,19 +277,7 @@ String _renderOutreachMessages(
   final buffer = StringBuffer('# Rihla First-100 Launch Messages\n\n');
 
   for (final entry in entries) {
-    final row = <String, String>{
-      'slot': entry.slot,
-      'segment': entry.segment,
-      'use_case': entry.useCase,
-      'contact_channel': entry.contactChannel,
-      'first_contact_date': '',
-    };
-    final built = messages.buildOutreachMessages(
-      [row],
-      count: 1,
-      language: entry.language,
-      playOptInLink: playOptInLink,
-    );
+    final built = _buildMessage(entry, playOptInLink: playOptInLink);
 
     buffer
       ..writeln('## Slot ${entry.slot} - ${entry.champion}')
@@ -293,14 +286,87 @@ String _renderOutreachMessages(
       ..writeln('- Use case: ${entry.useCase}')
       ..writeln('- Channel: ${entry.contactChannel}')
       ..writeln('- Language: ${entry.language}')
-      ..writeln('- Trackable link: ${built.single.link}')
+      ..writeln('- Trackable link: ${built.link}')
       ..writeln()
       ..writeln('```text')
-      ..writeln(built.single.body)
+      ..writeln(built.body)
       ..writeln('```')
       ..writeln();
   }
   return buffer.toString();
+}
+
+String _renderSendSheet(
+  List<LaunchRosterEntry> entries, {
+  required String playOptInLink,
+}) {
+  final buffer = StringBuffer()
+    ..writeln('# Rihla First-100 Send Sheet')
+    ..writeln()
+    ..writeln(
+      'Use after `play-testers.csv` is uploaded and the Play opt-in link opens.',
+    )
+    ..writeln()
+    ..writeln(
+      '| Slot | Champion | Channel | Language | Tracked link | Message | Send action |',
+    )
+    ..writeln('|---:|---|---|---|---|---|---|');
+
+  for (final entry in entries) {
+    final built = _buildMessage(entry, playOptInLink: playOptInLink);
+    final messageLink = 'outreach-messages.md#slot-${entry.slot}';
+    final sendAction = _sendAction(entry, built.body);
+
+    final cells = [
+      entry.slot,
+      entry.champion,
+      entry.contactChannel,
+      entry.language,
+      '[Link](${built.link})',
+      '[Copy]($messageLink)',
+      sendAction,
+    ].map(_markdownCell).join(' | ');
+
+    buffer.writeln('| $cells |');
+  }
+
+  buffer
+    ..writeln()
+    ..writeln(
+      'After sending, set `first_contact_date` and next-day `follow_up_date` in the private tracker.',
+    );
+  return buffer.toString();
+}
+
+messages.OutreachMessage _buildMessage(
+  LaunchRosterEntry entry, {
+  required String playOptInLink,
+}) {
+  final row = <String, String>{
+    'slot': entry.slot,
+    'segment': entry.segment,
+    'use_case': entry.useCase,
+    'contact_channel': entry.contactChannel,
+    'first_contact_date': '',
+  };
+
+  return messages
+      .buildOutreachMessages(
+        [row],
+        count: 1,
+        language: entry.language,
+        playOptInLink: playOptInLink,
+      )
+      .single;
+}
+
+String _sendAction(LaunchRosterEntry entry, String body) {
+  if (!entry.contactChannel.toLowerCase().contains('whatsapp')) {
+    return 'Copy into ${entry.contactChannel}';
+  }
+
+  final query = Uri(queryParameters: {'text': body}).query;
+  return '[Open WhatsApp draft](https://wa.me/?$query)';
 }
 
 String _renderChecklist(
@@ -328,7 +394,7 @@ String _renderChecklist(
     ..writeln()
     ..writeln('1. Upload `play-testers.csv` to the Play Console tester list.')
     ..writeln('2. Confirm the Play tester opt-in link still opens.')
-    ..writeln('3. Send `outreach-messages.md` one champion at a time.')
+    ..writeln('3. Use `send-sheet.md` to send one champion message at a time.')
     ..writeln('4. Set `tester_added=yes` after Play access is confirmed.')
     ..writeln('5. Set `first_contact_date=$date` after each message is sent.')
     ..writeln('6. Set next-day follow-up dates in the private tracker.')
@@ -337,6 +403,8 @@ String _renderChecklist(
 
   return buffer.toString();
 }
+
+String _markdownCell(String value) => value.replaceAll('|', r'\|');
 
 String _csvCell(String value) {
   if (!value.contains(',') && !value.contains('"') && !value.contains('\n')) {
