@@ -33,6 +33,10 @@ void main() {
     expect(outreachKit, contains('tool/first_100_followups.dart'));
     expect(commandCenter, contains('tool/first_100_roster_check.dart'));
     expect(outreachKit, contains('tool/first_100_roster_check.dart'));
+    expect(commandCenter, contains('tool/first_100_tracker_patch.dart'));
+    expect(outreachKit, contains('tool/first_100_tracker_patch.dart'));
+    expect(commandCenter, contains('rihla-first-100-tracker.csv'));
+    expect(outreachKit, contains('rihla-first-100-tracker.csv'));
     expect(commandCenter, contains('tool/play_acquisition_summary.dart'));
     expect(outreachKit, contains('tool/play_acquisition_summary.dart'));
     expect(outreachKit, contains('tool/first_100_launch_packet.dart'));

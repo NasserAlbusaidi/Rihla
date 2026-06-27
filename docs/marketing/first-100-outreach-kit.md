@@ -25,6 +25,9 @@ Use alongside:
 - `tool/first_100_roster_check.dart` to validate the filled private roster
   before Play upload or launch-packet generation without printing names or
   emails.
+- `tool/first_100_tracker_patch.dart` to apply the private roster to
+  `~/Desktop/rihla-first-100-tracker.csv` after sending the first batch without
+  carrying Google Play tester emails into the tracker.
 - `tool/first_100_followups.dart` to generate slot-based follow-up prompts for
   due tracker rows without exposing champion names.
 - `tool/play_acquisition_summary.dart` to summarize weekly Play Console
@@ -76,6 +79,14 @@ dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv \
   --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" \
   --include-existing-testers="$HOME/Desktop/rihla-active-play-testers.csv" \
   --output-dir=/tmp/rihla-first-10-launch-packet
+
+dart tool/first_100_tracker_patch.dart \
+  docs/marketing/first-100-cohort-tracker.csv \
+  "$HOME/Desktop/rihla-first-10-roster.csv" \
+  --today=YYYY-MM-DD \
+  --mark-tester-added \
+  --mark-contacted \
+  --output="$HOME/Desktop/rihla-first-100-tracker.csv"
 ```
 
 Omit `--include-existing-testers=...` only for the first Play upload when there
@@ -86,6 +97,10 @@ batch does not remove earlier testers from closed testing.
 Use `/tmp/rihla-first-10-launch-packet/send-sheet.md` when sending the batch.
 It gives each slot's channel, tracked link, message anchor, and WhatsApp draft
 link without exposing tester emails.
+
+Run `tool/first_100_tracker_patch.dart` only after the batch is actually sent.
+The private tracker can contain champion names, but it must stay outside git and
+must not contain Google Play tester emails.
 
 For closed-test outreach, inject the private Play Console opt-in link into the
 generated message after the tester is added:
