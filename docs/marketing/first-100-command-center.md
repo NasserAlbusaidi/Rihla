@@ -47,6 +47,9 @@ Verified this session:
   Status scripts with tracked install and alpha access links.
 - `public-channel-hit-list.md` now maps permission-first public/community
   outreach targets for the second wave after the first 10 warm asks.
+- `play-store-aso-conversion-plan.md` now turns Play Store visibility, custom
+  listings, SEO expansion, and listing experiments into a measured loop tied to
+  the first-100 tracker.
 
 Known growth blocker:
 
@@ -163,6 +166,10 @@ asks.
 Use `public-channel-hit-list.md` only after the first 10 warm asks are sent or
 when you have moderator/organizer permission. Public channels should supplement
 the champion loop, not replace it.
+
+Use `play-store-aso-conversion-plan.md` when the first warm outreach batch is in
+motion and Play Console has enough Store listing visitors to compare conversion
+changes. Do not run listing experiments before named champion outreach starts.
 
 ## Messages To Send Today
 
