@@ -19,6 +19,9 @@ Use alongside:
   Status scripts, and tracked captions.
 - `tool/first_100_launch_packet.dart` to generate the private first-10 Play
   upload file, outreach messages, and send checklist in one step.
+- `tool/first_100_launch_packet.dart --write-roster-template=...` to start a
+  private roster from the next empty public tracker slots without committing
+  champion names or Google Play emails.
 - `tool/first_100_messages.dart` to generate slot-specific DM copy with tracked
   links from the cohort tracker.
 
@@ -54,6 +57,9 @@ For the first 10 private champions, prefer one launch packet so Play upload,
 messages, and checklist stay in sync:
 
 ```bash
+dart tool/first_100_launch_packet.dart \
+  --write-roster-template="$HOME/Desktop/rihla-first-10-roster.csv"
+
 export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"
 dart tool/first_100_launch_packet.dart ~/Desktop/rihla-first-10-roster.csv \
   --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK" \

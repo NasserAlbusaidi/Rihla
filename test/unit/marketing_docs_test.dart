@@ -30,6 +30,8 @@ void main() {
     expect(commandCenter, contains('tool/first_100_launch_packet.dart'));
     expect(outreachKit, contains('tool/first_100_messages.dart'));
     expect(outreachKit, contains('tool/first_100_launch_packet.dart'));
+    expect(commandCenter, contains('--write-roster-template'));
+    expect(outreachKit, contains('--write-roster-template'));
     expect(commandCenter, contains('--play-opt-in-link'));
     expect(outreachKit, contains('--play-opt-in-link'));
     expect(outreachKit, contains('RIHLA_PLAY_OPT_IN_LINK'));

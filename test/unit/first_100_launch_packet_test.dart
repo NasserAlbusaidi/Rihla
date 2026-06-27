@@ -6,6 +6,33 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../tool/first_100_launch_packet.dart' as packet;
 
 void main() {
+  test('builds a blank launch roster template from tracker slots', () {
+    final template = packet.buildLaunchRosterTemplate('''
+slot,champion,segment,use_case,contact_channel,tester_added,first_contact_date,follow_up_date,group_created,invite_sent,installs_reported,joined_count,expenses_count,settlements_count,activated_group,top_blocker,feedback,next_action
+1,,Travel crews,Salalah/weekend/trip expenses,WhatsApp,no,,,no,no,0,0,0,0,no,,,fill champion name and send first ask
+2,Aisha,Travel crews,Camping/chalet/road trip,WhatsApp,no,,,no,no,0,0,0,0,no,,,fill champion name and send first ask
+3,,Dinner / majlis groups,Restaurant bill split,Instagram DM,no,,,no,no,0,0,0,0,no,,,fill champion name and send first ask
+''');
+
+    expect(
+      template,
+      startsWith(
+        'slot,champion,google_play_email,language,segment,use_case,contact_channel\n',
+      ),
+    );
+    expect(
+      template,
+      contains('1,,,en,Travel crews,Salalah/weekend/trip expenses,WhatsApp\n'),
+    );
+    expect(
+      template,
+      contains(
+        '3,,,en,Dinner / majlis groups,Restaurant bill split,Instagram DM\n',
+      ),
+    );
+    expect(template, isNot(contains('Aisha')));
+  });
+
   test('builds a private launch packet for mixed-language champions', () {
     final launchPacket = packet.buildLaunchPacket(
       '''
@@ -92,5 +119,21 @@ slot,champion,google_play_email,language,segment,use_case,contact_channel
 ''', playOptInLink: 'https://play.google.com/apps/testing/com.safar.safar'),
       throwsArgumentError,
     );
+  });
+
+  test('writes a launch roster template to a private output file', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'rihla-launch-template-',
+    );
+    addTearDown(() => tempDir.delete(recursive: true));
+    final outputPath = '${tempDir.path}/first-10.csv';
+
+    await packet.writeLaunchRosterTemplate('''
+slot,champion,segment,use_case,contact_channel,tester_added,first_contact_date,follow_up_date,group_created,invite_sent,installs_reported,joined_count,expenses_count,settlements_count,activated_group,top_blocker,feedback,next_action
+1,,Travel crews,Salalah/weekend/trip expenses,WhatsApp,no,,,no,no,0,0,0,0,no,,,fill champion name and send first ask
+''', outputPath);
+
+    expect(File(outputPath).readAsStringSync(), contains('google_play_email'));
+    expect(File(outputPath).readAsStringSync(), contains('Salalah/weekend'));
   });
 }
