@@ -45,9 +45,11 @@ Verified this session:
 
 Known growth blocker:
 
-- `#368` Android Play Install Referrer capture is still unshipped. Until it ships,
-  tell invite recipients to return to the WhatsApp invite link after installing
-  if the group code is not pre-filled.
+- The tracker still has no named champions. The next constraint is not SEO copy;
+  it is getting the first 10 real people added to Play testing, opted in,
+  installed, and using one real shared bill.
+- Because Rihla is still on a controlled Play alpha track, every closed-test DM
+  must include the private Play opt-in link before the tracked landing-page link.
 
 ## North-Star Numbers
 
@@ -108,11 +110,14 @@ performance.
 5. Update the private tester roster.
 6. Run `dart tool/export_play_tester_emails.dart ~/Desktop/rihla-first-100-play-testers.csv --output=/tmp/rihla-play-testers.csv`.
 7. Upload `/tmp/rihla-play-testers.csv` to Play closed testing if required.
-8. Send the opt-in instructions from `closed-test-access-kit.md`.
-9. Send `/alpha` or `/ar/alpha` if they need the Google Play access steps.
-10. Generate the next slot-specific message batch:
-   `dart tool/first_100_messages.dart --count=10 --language=en`
-   or `dart tool/first_100_messages.dart --count=10 --language=ar`.
+8. Export the private opt-in link:
+   `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
+9. Generate the next slot-specific message batch with the closed-test opt-in
+   step included:
+   `dart tool/first_100_messages.dart --count=10 --language=en --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`
+   or `dart tool/first_100_messages.dart --count=10 --language=ar --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`.
+10. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
+   steps explained separately.
 11. Send the personal ask from the generated batch or
    `first-100-outreach-kit.md`.
 12. Follow up within 24 hours with one concrete ask: create group, invite people,
@@ -132,7 +137,7 @@ Use these targets to decide whether the first cohort is healthy.
 | Contacted -> tester added | 70% | Tester access is unclear; send direct access instructions. |
 | Tester added -> installed | 75% | Play access/link friction; move toward open testing or clearer links. |
 | Installed -> group created/joined | 65% | First-run/empty-state unclear; improve the champion script and app entry path. |
-| Invite sent -> invitee joined | 60% | Prioritize `#368` and tighten invite page copy. |
+| Invite sent -> invitee joined | 60% | Inspect install-referrer behavior and tighten invite page copy. |
 | Group joined -> first expense | 60% | Prioritize first-expense speed (`#245`) and champion coaching. |
 
 ## Day-1 Execution
@@ -174,7 +179,7 @@ Arabic:
 https://rihla-safar.web.app/ar?utm_source=whatsapp&utm_medium=dm&utm_campaign=first_100_ar&utm_content=champion_slot_XX
 ```
 
-Invite-install caveat until `#368` ships:
+Invite-install fallback:
 
 ```text
 If you install from a group invite and the code is not filled automatically, go
@@ -187,8 +192,8 @@ back to the WhatsApp invite link and tap it again after installing.
   direct asks.
 - If 20 champions are contacted but fewer than 8 groups are created: the ask is
   too vague or tester access is blocking.
-- If groups are created but invitees do not join: prioritize `#368` before more
-  landing-page polish.
+- If groups are created but invitees do not join: inspect the invite/referrer
+  handoff before more landing-page polish.
 - If users join but do not add expenses: prioritize first-expense flow and
   champion coaching over new acquisition.
 - If 60 activated users happen before 100 installs: ask those champions for two

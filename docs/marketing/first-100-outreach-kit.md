@@ -46,6 +46,19 @@ dart tool/first_100_messages.dart --count=10 --language=en
 dart tool/first_100_messages.dart --count=10 --language=ar
 ```
 
+For closed-test outreach, inject the private Play Console opt-in link into the
+generated message after the tester is added:
+
+```bash
+export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"
+dart tool/first_100_messages.dart --count=10 --language=en \
+  --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"
+```
+
+Keep the real `RIHLA_PLAY_OPT_IN_LINK` out of git and send it only to approved
+testers. The generated message will put the tester opt-in step before the
+tracked landing-page link.
+
 ## Operating Rule
 
 Do not ask people to "try the app" in the abstract. Ask them to use Rihla for one real shared bill with a real group.

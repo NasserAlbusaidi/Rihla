@@ -25,12 +25,14 @@ For each slot:
 6. Send the Play opt-in link before the public landing link.
 7. Send `https://rihla-safar.web.app/alpha` or
    `https://rihla-safar.web.app/ar/alpha` if they need the access steps.
-8. Generate the slot-specific messages:
-   `dart tool/first_100_messages.dart --count=10 --language=en`
-   or `dart tool/first_100_messages.dart --count=10 --language=ar`.
-9. Paste the generated slot-specific message into the DM.
-10. Set `first_contact_date` to the send date.
-11. Set `follow_up_date` to the next day.
+8. Export the private Play tester link for the current batch:
+   `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
+9. Generate the slot-specific messages with the opt-in step included:
+   `dart tool/first_100_messages.dart --count=10 --language=en --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`
+   or `dart tool/first_100_messages.dart --count=10 --language=ar --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`.
+10. Paste the generated slot-specific message into the DM.
+11. Set `first_contact_date` to the send date.
+12. Set `follow_up_date` to the next day.
 
 Do not send the message until the person can actually access the Play listing.
 

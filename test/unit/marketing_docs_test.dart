@@ -28,6 +28,11 @@ void main() {
     expect(commandCenter, contains('short-video-content-kit.md'));
     expect(commandCenter, contains('tool/first_100_messages.dart'));
     expect(outreachKit, contains('tool/first_100_messages.dart'));
+    expect(commandCenter, contains('--play-opt-in-link'));
+    expect(outreachKit, contains('--play-opt-in-link'));
+    expect(outreachKit, contains('RIHLA_PLAY_OPT_IN_LINK'));
+    expect(commandCenter, isNot(contains('still unshipped')));
+    expect(commandCenter, isNot(contains('prioritize `#368`')));
     expect(outreachKit, contains('short-video-content-kit.md'));
     expect(outreachKit, isNot(contains('DM for access')));
   });
