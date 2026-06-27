@@ -43,6 +43,9 @@ Verified this session:
 - `tool/first_100_launch_packet.dart` now turns a private first-10 roster into a
   Play upload CSV, paste-ready DMs, and a launch checklist in one private output
   folder.
+- `tool/first_100_launch_packet.dart --write-roster-template=...` now exports
+  the first empty tracker slots into a blank private roster template so
+  champion names and Google Play emails stay outside git.
 - `short-video-content-kit.md` now gives ready-to-record Reels/TikTok/WhatsApp
   Status scripts with tracked install and alpha access links.
 - `public-channel-hit-list.md` now maps permission-first public/community
@@ -111,11 +114,13 @@ performance.
 
 ## Daily Operating Loop
 
-1. Pick 10 empty tracker rows.
-2. Replace the placeholder with a real champion name.
-3. Ask for the Google account they use in Play if they are not already a tester.
-4. Add their segment, real use case, and channel.
-5. Update the private tester roster.
+1. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD`.
+2. Generate the private roster template from the next empty tracker rows:
+   `dart tool/first_100_launch_packet.dart --write-roster-template="$HOME/Desktop/rihla-first-10-roster.csv"`.
+3. Fill the generated private roster with 10 real champion names and Google Play
+   emails. Keep this file out of git.
+4. Ask for the Google account they use in Play if they are not already a tester.
+5. Confirm or adjust each row's language, segment, real use case, and channel.
 6. Export the private opt-in link:
    `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
 7. Build the private launch packet:
@@ -158,6 +163,10 @@ install from the Play alpha.
 Use `tool/first_100_messages.dart` only for ad hoc single-language batches. The
 preferred first-10 path is `tool/first_100_launch_packet.dart` because it keeps
 the Play upload, opt-in link, messages, and checklist together.
+
+Use `tool/first_100_launch_packet.dart --write-roster-template=...` before the
+first private batch. It copies the next empty public tracker slots and leaves
+`champion` and `google_play_email` blank so private data is filled locally only.
 
 Use `short-video-content-kit.md` for the first week of short-form posts. Treat
 content as support for direct outreach, not a replacement for named champion

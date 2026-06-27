@@ -13,6 +13,7 @@ import 'dart:io';
 
 import 'export_play_tester_emails.dart' as email_exporter;
 import 'first_100_messages.dart' as messages;
+import 'first_100_summary.dart' as first100;
 
 const requiredLaunchRosterColumns = [
   'slot',
@@ -52,6 +53,40 @@ class LaunchRosterEntry {
   final String segment;
   final String useCase;
   final String contactChannel;
+}
+
+String buildLaunchRosterTemplate(String trackerCsv, {int count = 10}) {
+  final rows = first100.parseTrackerCsv(trackerCsv);
+  final buffer = StringBuffer()..writeln(requiredLaunchRosterColumns.join(','));
+
+  for (final row
+      in rows
+          .where((row) => (row['champion'] ?? '').trim().isEmpty)
+          .take(count)) {
+    buffer.writeln(
+      [
+        row['slot'] ?? '',
+        '',
+        '',
+        'en',
+        row['segment'] ?? '',
+        row['use_case'] ?? '',
+        row['contact_channel'] ?? '',
+      ].map(_csvCell).join(','),
+    );
+  }
+
+  return buffer.toString();
+}
+
+Future<void> writeLaunchRosterTemplate(
+  String trackerCsv,
+  String outputPath, {
+  int count = 10,
+}) async {
+  await File(
+    outputPath,
+  ).writeAsString(buildLaunchRosterTemplate(trackerCsv, count: count));
 }
 
 LaunchPacket buildLaunchPacket(
@@ -166,11 +201,17 @@ Future<void> writeLaunchPacket(LaunchPacket packet, String outputDir) async {
 Future<void> main(List<String> args) async {
   String? inputPath;
   String? outputDir;
+  String? templateOutputPath;
   var playOptInLink = Platform.environment['RIHLA_PLAY_OPT_IN_LINK'];
+  var templateCount = 10;
 
   for (final arg in args) {
     if (arg.startsWith('--output-dir=')) {
       outputDir = arg.substring('--output-dir='.length);
+    } else if (arg.startsWith('--write-roster-template=')) {
+      templateOutputPath = arg.substring('--write-roster-template='.length);
+    } else if (arg.startsWith('--template-count=')) {
+      templateCount = int.parse(arg.substring('--template-count='.length));
     } else if (arg.startsWith('--play-opt-in-link=')) {
       playOptInLink = arg.substring('--play-opt-in-link='.length);
     } else if (!arg.startsWith('--')) {
@@ -178,10 +219,25 @@ Future<void> main(List<String> args) async {
     }
   }
 
+  if (templateOutputPath != null) {
+    final trackerPath = inputPath ?? first100.defaultTrackerPath;
+    final trackerCsv = await File(trackerPath).readAsString();
+    await writeLaunchRosterTemplate(
+      trackerCsv,
+      templateOutputPath,
+      count: templateCount,
+    );
+    stderr.writeln('Wrote launch roster template to $templateOutputPath');
+    return;
+  }
+
   if (inputPath == null || outputDir == null || playOptInLink == null) {
     stderr.writeln(
       'Usage: dart tool/first_100_launch_packet.dart <private-roster.csv> '
-      '--play-opt-in-link=<https-url> --output-dir=<private-output-dir>',
+      '--play-opt-in-link=<https-url> --output-dir=<private-output-dir>\n'
+      '   or: dart tool/first_100_launch_packet.dart '
+      '[tracker.csv] --write-roster-template=<private-roster.csv> '
+      '[--template-count=10]',
     );
     exit(64);
   }
@@ -261,6 +317,13 @@ String _renderChecklist(
     ..writeln();
 
   return buffer.toString();
+}
+
+String _csvCell(String value) {
+  if (!value.contains(',') && !value.contains('"') && !value.contains('\n')) {
+    return value;
+  }
+  return '"${value.replaceAll('"', '""')}"';
 }
 
 List<List<String>> _parseCsv(String source) {
