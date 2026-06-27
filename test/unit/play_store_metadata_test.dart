@@ -37,4 +37,47 @@ void main() {
       expect(file.readAsStringSync().runes.length, lessThanOrEqualTo(4000));
     }
   });
+
+  test(
+    'Play listing titles and short descriptions stay within visible limits',
+    () {
+      final titles = [
+        File('fastlane/metadata/android/en-US/title.txt'),
+        File('fastlane/metadata/android/ar/title.txt'),
+      ];
+      final shortDescriptions = [
+        File('fastlane/metadata/android/en-US/short_description.txt'),
+        File('fastlane/metadata/android/ar/short_description.txt'),
+      ];
+
+      for (final file in titles) {
+        expect(
+          file.readAsStringSync().trim().runes.length,
+          lessThanOrEqualTo(30),
+        );
+      }
+      for (final file in shortDescriptions) {
+        expect(
+          file.readAsStringSync().trim().runes.length,
+          lessThanOrEqualTo(80),
+        );
+      }
+    },
+  );
+
+  test('Play listing keeps localized screenshot sets and feature graphic', () {
+    final englishScreenshots = Directory(
+      'fastlane/metadata/android/en-US/images/phoneScreenshots',
+    ).listSync().whereType<File>().toList(growable: false);
+    final arabicScreenshots = Directory(
+      'fastlane/metadata/android/ar/images/phoneScreenshots',
+    ).listSync().whereType<File>().toList(growable: false);
+    final featureGraphic = File(
+      'fastlane/metadata/android/en-US/images/featureGraphic.png',
+    );
+
+    expect(englishScreenshots, hasLength(greaterThanOrEqualTo(4)));
+    expect(arabicScreenshots, hasLength(greaterThanOrEqualTo(4)));
+    expect(featureGraphic.existsSync(), isTrue);
+  });
 }

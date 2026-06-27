@@ -84,4 +84,53 @@ void main() {
       ),
     );
   });
+
+  test('ASO conversion plan is linked and grounded in official guidance', () {
+    final commandCenter = File(
+      'docs/marketing/first-100-command-center.md',
+    ).readAsStringSync();
+    final asoPlan = File(
+      'docs/marketing/play-store-aso-conversion-plan.md',
+    ).readAsStringSync();
+
+    expect(commandCenter, contains('play-store-aso-conversion-plan.md'));
+    expect(asoPlan, contains('first-100-cohort-tracker.csv'));
+    expect(asoPlan, contains('Store listing visitors'));
+    expect(asoPlan, contains('First-time installers'));
+    expect(asoPlan, contains('Do not start a Play experiment'));
+    expect(asoPlan, contains('Variant A: current local wedge'));
+    expect(asoPlan, contains('Variant B: invite-first group wedge'));
+    expect(
+      asoPlan,
+      contains(
+        'https://support.google.com/googleplay/android-developer/answer/9866151',
+      ),
+    );
+    expect(
+      asoPlan,
+      contains(
+        'https://play.google.com/console/about/store-listing-experiments/',
+      ),
+    );
+    expect(
+      asoPlan,
+      contains(
+        'https://support.google.com/googleplay/android-developer/answer/9867158',
+      ),
+    );
+    expect(
+      asoPlan,
+      contains(
+        'https://developers.google.com/search/docs/fundamentals/seo-starter-guide',
+      ),
+    );
+    expect(
+      asoPlan,
+      contains(
+        'https://developers.google.com/search/docs/specialty/international/localized-versions',
+      ),
+    );
+    expect(asoPlan, isNot(contains('keyword stuffing')));
+    expect(asoPlan, isNot(contains('buy installs')));
+  });
 }
