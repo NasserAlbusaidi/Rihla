@@ -40,8 +40,9 @@
 
   <h2>How do I delete a single expense?</h2>
   <p>
-    Open the expense from the Ledger tab and tap the delete action. Only the
-    person who originally added the expense can edit or delete it.
+    Open the expense from the Ledger tab and tap the delete action. Any
+    member of the event can edit or delete a shared expense, and every
+    change is recorded in the group&apos;s activity log.
   </p>
 
   <h2>How do I delete all of my data?</h2>
@@ -60,9 +61,9 @@
   <h2>Is my data encrypted?</h2>
   <p>
     Data in transit uses HTTPS to Firebase. Data at rest is encrypted by
-    Firebase / Google Cloud. The local SQLite cache on your device is not
-    separately encrypted — it relies on the operating system&apos;s
-    full-device encryption.
+    Firebase / Google Cloud. Rihla&apos;s offline data is held in the
+    Firestore SDK&apos;s on-device cache, which is not separately encrypted
+    — it relies on the operating system&apos;s full-device encryption.
   </p>
 
   <h2>Contact</h2>
