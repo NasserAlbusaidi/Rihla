@@ -46,6 +46,8 @@ void main() {
       expect(doc, contains('tool/first_100_roster_check.dart'));
       expect(doc, contains('tool/first_100_tracker_patch.dart'));
       expect(doc, contains('tool/play_acquisition_summary.dart'));
+      expect(doc, contains('tool/first_100_champion_sourcing.dart'));
+      expect(doc, contains('rihla-first-10-candidates.csv'));
       expect(doc, contains('rihla-first-100-tracker.csv'));
       expect(doc, contains('--write-roster-template'));
       expect(doc, contains('send-sheet.md'));

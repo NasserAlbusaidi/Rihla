@@ -20,6 +20,9 @@ Use alongside:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` to start a
   private roster from the next empty public tracker slots without committing
   champion names.
+- `tool/first_100_champion_sourcing.dart` to turn blank tracker slots into a
+  private candidate worksheet, confirm Android/live-bill readiness, and write
+  the private roster for ready candidates.
 - `tool/first_100_roster_check.dart` to validate the filled private roster
   before launch-packet generation without printing champion names.
 - `tool/first_100_tracker_patch.dart` to apply the private roster to
@@ -65,11 +68,23 @@ For the first 10 private champions, prefer one launch packet so the outreach
 messages, send sheet, and checklist stay in sync:
 
 ```bash
+# When the roster is still blank, source candidates first: write a private
+# candidate worksheet, fill names + readiness fields (Android, group size, live
+# shared bill, priority), then promote ready candidates into the launch roster.
+dart tool/first_100_champion_sourcing.dart \
+  --write-template="$HOME/Desktop/rihla-first-10-candidates.csv"
+
+dart tool/first_100_champion_sourcing.dart \
+  "$HOME/Desktop/rihla-first-10-candidates.csv" \
+  --write-roster="$HOME/Desktop/rihla-first-10-roster.csv"
+
+# If the first 10 names are already chosen, this blank-roster path is still
+# available instead of sourcing:
 dart tool/first_100_launch_packet.dart \
   --write-roster-template="$HOME/Desktop/rihla-first-10-roster.csv"
 
-# Fill champion names, language, segment, use case, and channel in the private
-# CSV before running this command.
+# Fill or confirm champion names, language, segment, use case, and channel in
+# the private CSV before running this command.
 dart tool/first_100_roster_check.dart \
   "$HOME/Desktop/rihla-first-10-roster.csv"
 

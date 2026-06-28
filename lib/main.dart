@@ -227,6 +227,8 @@ class _SafarAppState extends ConsumerState<SafarApp> {
               handleInitialMessage: handleInitialMessage,
             );
           },
+          onStepError: (error, stack) =>
+              Sentry.captureException(error, stackTrace: stack),
         ),
       );
     });

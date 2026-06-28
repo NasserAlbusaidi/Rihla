@@ -44,6 +44,9 @@ Verified this session:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` now exports
   the first empty tracker slots into a blank private roster template so champion
   names stay outside git.
+- `tool/first_100_champion_sourcing.dart` now turns the next empty tracker slots
+  into a private candidate worksheet, checks Android/live-bill readiness without
+  printing names, and writes the private launch roster once candidates are ready.
 - `tool/first_100_roster_check.dart` now checks a filled private roster before
   generating the launch packet without printing champion names.
 - `tool/first_100_tracker_patch.dart` now applies a filled private roster to a
@@ -123,18 +126,39 @@ performance.
 ## Daily Operating Loop
 
 1. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD`.
-2. Optionally note which champions you will contact next from the segment quotas
-   and the next empty tracker rows.
-3. Personalize the slot message from "Messages To Send Today" and send it with
+2. Generate the private candidate worksheet from the next empty tracker rows:
+
+   ```bash
+   dart tool/first_100_champion_sourcing.dart \
+     --write-template="$HOME/Desktop/rihla-first-10-candidates.csv"
+   ```
+
+3. Fill `~/Desktop/rihla-first-10-candidates.csv` with real warm candidates:
+   name, relationship, language, Android likelihood, group size, live shared
+   bill, and priority. Use `yes` for Android/live-bill readiness and `1`, `2`,
+   or `3` for priority. Keep this file out of git.
+4. Screen candidates and write the launch roster:
+
+   ```bash
+   dart tool/first_100_champion_sourcing.dart \
+     "$HOME/Desktop/rihla-first-10-candidates.csv" \
+     --write-roster="$HOME/Desktop/rihla-first-10-roster.csv"
+   ```
+
+   The terminal summary prints only counts and ready slot numbers; candidate
+   names go only into the private roster file. (If the first 10 names are already
+   chosen, you can skip sourcing and write a blank roster directly with
+   `dart tool/first_100_launch_packet.dart --write-roster-template=...`.)
+5. Personalize the slot message from "Messages To Send Today" and send it with
    the champion's tracked landing link.
-4. Log `first_contact_date` and `follow_up_date` for each champion you contacted.
-5. Follow up within 24 hours with one concrete ask: create group, invite people,
+6. Log `first_contact_date` and `follow_up_date` for each champion you contacted.
+7. Follow up within 24 hours with one concrete ask: create group, invite people,
    or add first expense.
-6. Record the exact blocker in the tracker, not a vague note.
-7. Generate due follow-ups:
+8. Record the exact blocker in the tracker, not a vague note.
+9. Generate due follow-ups:
    `dart tool/first_100_followups.dart --today=YYYY-MM-DD`.
-8. Re-run `dart tool/first_100_summary.dart --today=YYYY-MM-DD` and use its
-   recommended next action for the next batch.
+10. Re-run `dart tool/first_100_summary.dart --today=YYYY-MM-DD` and use its
+    recommended next action for the next batch.
 
 Do not send a generic broadcast until at least 20 personal asks have been sent.
 
@@ -185,6 +209,22 @@ the paste-ready messages, send sheet, and checklist together.
 Use `tool/first_100_launch_packet.dart --write-roster-template=...` before the
 first private batch. It copies the next empty public tracker slots and leaves
 `champion` blank so private data is filled locally only.
+
+Use `tool/first_100_champion_sourcing.dart` when the roster is still blank:
+
+```bash
+dart tool/first_100_champion_sourcing.dart \
+  --write-template="$HOME/Desktop/rihla-first-10-candidates.csv"
+
+dart tool/first_100_champion_sourcing.dart \
+  "$HOME/Desktop/rihla-first-10-candidates.csv" \
+  --write-roster="$HOME/Desktop/rihla-first-10-roster.csv"
+```
+
+Fill candidate names and readiness fields in the private candidate worksheet
+before writing the launch roster. The command prints only counts and slot
+numbers in terminal output. A candidate is treated as ready only when Android,
+group size, and a live shared bill are confirmed.
 
 Use `tool/first_100_roster_check.dart ~/Desktop/rihla-first-10-roster.csv`
 before generating the launch packet. It reports only slot numbers and issue
