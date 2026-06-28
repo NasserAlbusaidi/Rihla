@@ -165,9 +165,9 @@ void main() {
   test('landing page routes typed invite codes to the join fallback', () {
     final page = File('hosting/index.html').readAsStringSync();
 
-    expect(page, contains('id="invite-code-form"'));
-    expect(page, contains('id="landing-invite-code"'));
-    expect(page, contains(r'window.location.href = `/join/${code}`'));
+    expect(page, contains('id="inviteForm"'));
+    expect(page, contains('id="code"'));
+    expect(page, contains("window.location.assign('/join/' + code)"));
     expect(page, contains('pattern="[A-Za-z0-9]{6}"'));
   });
 
@@ -180,8 +180,8 @@ void main() {
     expect(arabic, contains('<html lang="ar" dir="rtl">'));
     expect(arabic, contains('hreflang="ar"'));
     expect(arabic, contains('قسّم الفواتير'));
-    expect(arabic, contains('id="invite-code-form"'));
-    expect(arabic, contains(r'window.location.href = `/join/${code}`'));
+    expect(arabic, contains('id="inviteForm"'));
+    expect(arabic, contains("window.location.assign('/join/' + code)"));
   });
 
   test('public site exposes sitemap and robots files for crawlers', () {
@@ -198,12 +198,10 @@ void main() {
       sitemap,
       contains('<loc>https://rihla-safar.web.app/ar/split-bills-oman</loc>'),
     );
-    expect(sitemap, contains('<loc>https://rihla-safar.web.app/alpha</loc>'));
-    expect(
-      sitemap,
-      contains('<loc>https://rihla-safar.web.app/ar/alpha</loc>'),
-    );
     expect(sitemap, contains('<loc>https://rihla-safar.web.app/privacy</loc>'));
+    // public-launch: the alpha pages are retired and must not be advertised
+    // to crawlers any more.
+    expect(sitemap, isNot(contains('/alpha</loc>')));
     expect(robots, contains('User-agent: *'));
     expect(
       robots,
@@ -232,24 +230,22 @@ void main() {
     expect(arabic, contains('"@type": "FAQPage"'));
   });
 
-  test('public site has Android alpha access pages', () {
+  test('retired Android alpha pages are noindex redirects to the live app', () {
     final english = File('hosting/alpha.html').readAsStringSync();
     final arabic = File('hosting/ar/alpha.html').readAsStringSync();
     final join = File('hosting/join.html').readAsStringSync();
 
-    expect(english, contains('Rihla Android Alpha Access'));
-    expect(english, contains('href="https://rihla-safar.web.app/ar/alpha"'));
-    expect(english, contains('Request tester access'));
-    expect(english, contains('mailto:nasserbusaidi@gmail.com'));
-    expect(english, contains('Rihla%20Android%20alpha%20access'));
-    expect(english, contains('same account that was added to the tester list'));
-    expect(arabic, contains('<html lang="ar" dir="rtl">'));
-    expect(arabic, contains('الوصول إلى Rihla Android Alpha'));
-    expect(arabic, contains('href="https://rihla-safar.web.app/alpha"'));
-    expect(arabic, contains('اطلب وصول التجربة'));
-    expect(arabic, contains('mailto:nasserbusaidi@gmail.com'));
-    expect(join, contains('Rihla Android alpha access'));
-    expect(join, contains('href="/alpha"'));
+    // public-launch: the app is free and public, so the old alpha / tester
+    // access pages are retired to noindex redirects — not real pages.
+    for (final stub in [english, arabic]) {
+      expect(stub, contains('name="robots" content="noindex"'));
+      expect(stub, contains('http-equiv="refresh"'));
+      expect(stub, isNot(contains('tester')));
+    }
+    expect(english, contains('url=/'));
+    expect(arabic, contains('url=/ar'));
+    // The join page must no longer point at a retired alpha page.
+    expect(join, isNot(contains('href="/alpha"')));
   });
 
   test('landing pages preserve campaign source into Play referrer', () {
@@ -259,8 +255,6 @@ void main() {
       'hosting/ar.html',
       'hosting/split-bills-oman.html',
       'hosting/ar/split-bills-oman.html',
-      'hosting/alpha.html',
-      'hosting/ar/alpha.html',
     ];
 
     expect(campaignScript, contains('utm_source'));
@@ -275,43 +269,25 @@ void main() {
     }
   });
 
-  test('alpha access mailto requests preserve campaign source', () {
-    final campaignScript = File('hosting/campaign.js').readAsStringSync();
-    final english = File('hosting/alpha.html').readAsStringSync();
-    final arabic = File('hosting/ar/alpha.html').readAsStringSync();
-
-    expect(english, contains('data-alpha-access-mailto'));
-    expect(arabic, contains('data-alpha-access-mailto'));
-    expect(
-      campaignScript,
-      contains('a[data-alpha-access-mailto][href^="mailto:"]'),
-    );
-    expect(campaignScript, contains('Campaign source:'));
-    expect(campaignScript, contains('decodeURIComponent(body)'));
-    expect(campaignScript, contains('encodeURIComponent(nextBody)'));
-    expect(campaignScript, contains("url.protocol !== 'mailto:'"));
-  });
-
-  test('landing pages explain Play alpha access fallback', () {
-    final englishPages = [
+  test('landing pages use public-launch framing (no alpha/tester access)', () {
+    final pages = [
       'hosting/index.html',
+      'hosting/ar.html',
       'hosting/split-bills-oman.html',
-    ];
-    final arabicPages = ['hosting/ar.html', 'hosting/ar/split-bills-oman.html'];
+      'hosting/ar/split-bills-oman.html',
+    ].map((path) => File(path).readAsStringSync());
 
-    for (final pagePath in englishPages) {
-      final page = File(pagePath).readAsStringSync();
-
-      expect(page, contains('Android alpha'));
-      expect(page, contains('Google Play'));
-      expect(page, contains('href="/alpha"'));
-    }
-    for (final pagePath in arabicPages) {
-      final page = File(pagePath).readAsStringSync();
-
-      expect(page, contains('Android alpha'));
-      expect(page, contains('Google Play'));
-      expect(page, contains('href="/ar/alpha"'));
+    for (final page in pages) {
+      // The app is live and public — every landing page points at Google Play
+      // and must not carry retired alpha / tester-access framing.
+      expect(
+        page,
+        contains('play.google.com/store/apps/details?id=com.safar.safar'),
+      );
+      expect(page, isNot(contains('href="/alpha"')));
+      expect(page, isNot(contains('href="/ar/alpha"')));
+      expect(page, isNot(contains('Android alpha')));
+      expect(page, isNot(contains('tester access')));
     }
   });
 

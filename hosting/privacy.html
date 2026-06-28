@@ -1,146 +1,165 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Privacy Policy — Rihla</title>
   <meta name="description" content="Privacy policy for Rihla, the group trip planning mobile app.">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/_styles.css">
 </head>
 <body>
-  <main class="wrap">
-    <header class="brand">
-      <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
-        <span class="logo">R</span>
-        <span class="name">Rihla</span>
-      </a>
-    </header>
+<a class="skip" href="#main">Skip to content</a>
 
-    <h1>Privacy Policy</h1>
-    <p class="subtitle">Last updated: 14 May 2026</p>
+<main id="main" class="wrap doc">
+  <header class="doc-head">
+    <a class="brand" href="/" aria-label="Rihla home">
+      <span class="wordmark"><span>Rihla</span><span class="flourish"></span></span>
+    </a>
+  </header>
 
-    <p>
-      This policy explains what Rihla collects, why, and what control you have
-      over it. Rihla is operated as an individual project by the developer
-      listed at the bottom of this page.
-    </p>
+  <h1>Privacy Policy</h1>
+  <p class="doc-sub">Last updated: 14 May 2026</p>
 
-    <h2>1. Anonymous by default, optional recovery email</h2>
-    <p>
-      Rihla does not require an email address, password, phone number, or any
-      other identifier on first launch. The app creates an anonymous session in
-      Firebase Authentication. If you choose to link an email in Settings, that
-      email is attached to the same Firebase user only so you can recover the
-      same Rihla identity on a new or reset device.
-    </p>
+  <p>
+    This policy explains what Rihla collects, why, and what control you have
+    over it. Rihla is operated as an individual project by the developer
+    listed at the bottom of this page.
+  </p>
 
-    <h2>2. What we collect</h2>
-    <ul>
-      <li>
-        <strong>Anonymous user ID.</strong> A random identifier issued by
-        Firebase Authentication when the app first runs. Stored on your device
-        and on our backend so we can fetch your groups and expenses.
-      </li>
-      <li>
-        <strong>Optional recovery email.</strong> If you choose to link an
-        email, Firebase Authentication stores it so email-link recovery can
-        return you to the same anonymous UID. Rihla does not use it for
-        marketing.
-      </li>
-      <li>
-        <strong>Display name.</strong> The name you enter when creating or
-        joining a group. Visible to the other members of that group. You choose
-        this — it does not have to be your real name.
-      </li>
-      <li>
-        <strong>Group &amp; expense data.</strong> Group names, event names,
-        currencies, expense amounts, descriptions, notes, categories,
-        settlements, and any optional receipt photos you attach. Visible to
-        members of the same group.
-      </li>
-      <li>
-        <strong>Push notification token.</strong> A Firebase Cloud Messaging
-        (FCM) token so the app can notify you when something happens in a group
-        you are part of. You can disable notifications in your device settings
-        at any time.
-      </li>
-      <li>
-        <strong>Crash &amp; error reports.</strong> When the app crashes or
-        encounters an unexpected error, technical details (stack trace, device
-        model, OS version) are sent to Sentry so we can fix it. These reports
-        do not include your group data or display name.
-      </li>
-    </ul>
+  <h2>1. Anonymous by default, optional recovery email</h2>
+  <p>
+    Rihla does not require an email address, password, phone number, or any
+    other identifier on first launch. The app creates an anonymous session in
+    Firebase Authentication. If you choose to link an email in Settings, that
+    email is attached to the same Firebase user only so you can recover the
+    same Rihla identity on a new or reset device.
+  </p>
 
-    <p>
-      Rihla does not collect your contacts, location, advertising identifier,
-      microphone, or camera (other than when you explicitly attach a receipt
-      photo).
-    </p>
+  <h2>2. What we collect</h2>
+  <ul>
+    <li>
+      <strong>Anonymous user ID.</strong> A random identifier issued by
+      Firebase Authentication when the app first runs. Stored on your device
+      and on our backend so we can fetch your groups and expenses.
+    </li>
+    <li>
+      <strong>Optional recovery email.</strong> If you choose to link an
+      email, Firebase Authentication stores it so email-link recovery can
+      return you to the same anonymous UID. Rihla does not use it for
+      marketing.
+    </li>
+    <li>
+      <strong>Display name.</strong> The name you enter when creating or
+      joining a group. Visible to the other members of that group. You choose
+      this — it does not have to be your real name.
+    </li>
+    <li>
+      <strong>Group &amp; expense data.</strong> Group names, event names,
+      currencies, expense amounts, descriptions, notes, categories,
+      settlements, and any optional receipt photos you attach. Visible to
+      members of the same group.
+    </li>
+    <li>
+      <strong>Push notification token.</strong> A Firebase Cloud Messaging
+      (FCM) token so the app can notify you when something happens in a group
+      you are part of. You can disable notifications in your device settings
+      at any time.
+    </li>
+    <li>
+      <strong>Crash &amp; error reports.</strong> When the app crashes or
+      encounters an unexpected error, technical details (stack trace, device
+      model, OS version) are sent to Sentry so we can fix it. These reports
+      do not include your group data or display name.
+    </li>
+  </ul>
 
-    <h2>3. How data is used</h2>
-    <p>
-      Group and expense data is used only to operate the app — keeping your
-      groups in sync across the people you share them with. A linked email is
-      used only to send and complete recovery links. We do not sell any data. We
-      do not run ads. We do not use your data to train machine learning models.
-    </p>
+  <p>
+    Rihla does not collect your contacts, location, advertising identifier,
+    microphone, or camera (other than when you explicitly attach a receipt
+    photo).
+  </p>
 
-    <h2>4. Where data is stored</h2>
-    <p>
-      Data is stored in Google Firebase (Cloud Firestore, Cloud Functions, FCM)
-      under the project <code>rihla-safar</code>. Firebase runs on Google Cloud
-      infrastructure. Their privacy and security documentation is available at
-      <a href="https://firebase.google.com/support/privacy" rel="noopener">firebase.google.com/support/privacy</a>.
-      Crash reports are stored in Sentry —
-      <a href="https://sentry.io/privacy/" rel="noopener">sentry.io/privacy</a>.
-    </p>
+  <h2>3. How data is used</h2>
+  <p>
+    Group and expense data is used only to operate the app — keeping your
+    groups in sync across the people you share them with. A linked email is
+    used only to send and complete recovery links. We do not sell any data. We
+    do not run ads. We do not use your data to train machine learning models.
+  </p>
 
-    <h2>5. How long data is kept</h2>
-    <p>
-      Group, event, and expense data is kept for as long as the group exists.
-      Soft-deleted records (expenses you removed inside a group) are retained
-      so other members can see the history. A linked recovery email is kept
-      until the Firebase user is deleted. If you want everything attached to
-      your Rihla identity removed, see <a href="/delete-data">Delete your data</a>.
-    </p>
+  <h2>4. Where data is stored</h2>
+  <p>
+    Data is stored in Google Firebase (Cloud Firestore, Cloud Functions, FCM)
+    under the project <code>rihla-safar</code>. Firebase runs on Google Cloud
+    infrastructure. Their privacy and security documentation is available at
+    <a href="https://firebase.google.com/support/privacy" rel="noopener">firebase.google.com/support/privacy</a>.
+    Crash reports are stored in Sentry —
+    <a href="https://sentry.io/privacy/" rel="noopener">sentry.io/privacy</a>.
+  </p>
 
-    <h2>6. Children</h2>
-    <p>
-      Rihla is not directed at children under 13. If you believe a child has
-      submitted data through the app, please contact us and we will remove it.
-    </p>
+  <h2>5. How long data is kept</h2>
+  <p>
+    Group, event, and expense data is kept for as long as the group exists.
+    Soft-deleted records (expenses you removed inside a group) are retained
+    so other members can see the history. A linked recovery email is kept
+    until the Firebase user is deleted. If you want everything attached to
+    your Rihla identity removed, see <a href="/delete-data">Delete your data</a>.
+  </p>
 
-    <h2>7. Your rights</h2>
-    <p>
-      Because Rihla does not collect any identifying information, the practical
-      mechanism for exercising data rights is to request deletion. See
-      <a href="/delete-data">Delete your data</a>.
-    </p>
+  <h2>6. Children</h2>
+  <p>
+    Rihla is not directed at children under 13. If you believe a child has
+    submitted data through the app, please contact us and we will remove it.
+  </p>
 
-    <h2>8. Changes</h2>
-    <p>
-      If this policy changes materially, the &ldquo;Last updated&rdquo; date at
-      the top of the page will change. Significant changes will also be
-      announced in the app.
-    </p>
+  <h2>7. Your rights</h2>
+  <p>
+    Because Rihla does not collect any identifying information, the practical
+    mechanism for exercising data rights is to request deletion. See
+    <a href="/delete-data">Delete your data</a>.
+  </p>
 
-    <h2>9. Contact</h2>
-    <p>
-      For privacy questions or deletion requests, email
-      <a href="mailto:nasserbusaidi@gmail.com">nasserbusaidi@gmail.com</a>.
-    </p>
+  <h2>8. Changes</h2>
+  <p>
+    If this policy changes materially, the &ldquo;Last updated&rdquo; date at
+    the top of the page will change. Significant changes will also be
+    announced in the app.
+  </p>
 
-    <footer class="nav">
-      <a href="/">Home</a>
-      <span class="sep">·</span>
-      <a href="/terms">Terms</a>
-      <span class="sep">·</span>
-      <a href="/delete-data">Delete data</a>
-      <span class="sep">·</span>
-      <a href="/help">Help</a>
-      <div class="copyright">© 2026 Rihla. All rights reserved.</div>
-    </footer>
-  </main>
+  <h2>9. Contact</h2>
+  <p>
+    For privacy questions or deletion requests, email
+    <a href="mailto:nasserbusaidi@gmail.com">nasserbusaidi@gmail.com</a>.
+  </p>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <a class="brand" href="/" aria-label="Rihla home">
+          <span class="wordmark"><span>Rihla</span><span class="flourish"></span></span>
+        </a>
+        <p>Split group expenses with friends across Oman &amp; the GCC.</p>
+      </div>
+      <nav aria-label="Footer">
+        <ul class="foot-links">
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/terms">Terms</a></li>
+          <li><a href="/delete-data">Delete data</a></li>
+          <li><a href="/help">Help</a></li>
+          <li><a href="/ar" lang="ar" hreflang="ar">العربية</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <span>Built in Oman, for the GCC.</span>
+      <span>© 2026 Rihla</span>
+    </div>
+  </div>
+</footer>
 </body>
 </html>
