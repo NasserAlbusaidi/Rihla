@@ -284,6 +284,12 @@ footer.site-foot .wrap{padding-block:56px;}
 [dir="rtl"] body{font-family:var(--font-arabic);}
 [dir="rtl"] h1,[dir="rtl"] h2,[dir="rtl"] h3,[dir="rtl"] .serif,
 [dir="rtl"] .ucard h3,[dir="rtl"] .nrow h3,[dir="rtl"] .doc h2{font-family:var(--font-arabic);font-style:normal;}
+/* Arabic must not fall back to the Latin serif/mono faces — pull the eyebrows,
+   labels, pull-quote and narrative numerals onto Reem Kufi and drop Latin tracking.
+   (.qchip / .r-amount / .status-bar stay mono — they are genuinely Latin.) */
+[dir="rtl"] .eyebrow,[dir="rtl"] .uppercase-label,[dir="rtl"] .section-header .label,
+[dir="rtl"] .quote blockquote,[dir="rtl"] .quote blockquote em,
+[dir="rtl"] .nrow .num{font-family:var(--font-arabic);font-style:normal;letter-spacing:normal;}
 [dir="rtl"] .hl::after,[dir="rtl"] .hero h1 .it{font-style:normal;}
 [dir="rtl"] .eyebrow::before{margin-left:0;}
 
