@@ -1,0 +1,482 @@
+--------- beginning of main
+06-26 09:27:43.500  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+06-26 09:27:43.500  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+06-26 09:27:43.500  1319 28487 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+06-26 09:27:43.500  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+06-26 09:27:43.503 28319 28430 D BtGatt.GattService: onScanResult to scannerId: 8- eventType=0x10, addressType=1, address=3A2CAF_A, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-33, periodicAdvInt=0x0
+06-26 09:27:43.523 10066 10066 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color,raw:input tap 980 2160'
+06-26 09:27:43.541  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+06-26 09:27:43.541  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+06-26 09:27:43.615 11127 11127 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:43.616 11127 11128 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:43.620  1552  3157 D InputDispatcher: Inject motion (11127/2000): action=0x0, time=20040793000000, f=0x0, d=0 dsdx=1.000000 dtdx=0.000000
+06-26 09:27:43.624  1552  2388 I InputDispatcher: Delivering touch to (2736): action: 0x4, f=0x0, d=0, 'f36d2f0', t=1 
+06-26 09:27:43.625  1552  2388 I InputDispatcher: Delivering touch to (5180): action: 0x0, f=0x0, d=0, '58c9d2d', t=1 +(0,-93)
+--------- beginning of system
+06-26 09:27:43.625  1552  2388 D PowerManagerService: UserActivityStateListenerState: 1
+06-26 09:27:43.626  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: ViewPostIme pointer 0
+06-26 09:27:43.626  1552  1983 I GestureDetector: obtain mCurrentDownEvent. id: -632426457 caller: com.android.server.wm.SystemGesturesPointerEventListener.onPointerEvent:203 com.android.server.wm.PointerEventDispatcher.onInputEvent:53 android.view.InputEventReceiver.dispatchInputEvent:285 
+06-26 09:27:43.627  1552  1983 I GestureDetector: obtain mCurrentDownEvent. id: -632426457 caller: com.android.server.wm.SystemPerformancePointerEventListener.onPointerEvent:89 com.android.server.wm.PointerEventDispatcher.onInputEvent:53 android.view.InputEventReceiver.dispatchInputEvent:285 
+06-26 09:27:43.627  5180  5180 I GestureDetector: obtain mCurrentDownEvent. id: -632426457 caller: com.samsung.android.honeyboard.textboard.f0.z.c.a.onTouch:2 com.samsung.android.honeyboard.textboard.f0.z.f.d.n:3 com.samsung.android.honeyboard.textboard.f0.z.f.a.i:15 
+06-26 09:27:43.627  4678  4678 I SemDvfsHyPerManager: acquire hyper - TABoost/4678@17, type = 1090523139
+06-26 09:27:43.628  1340  1386 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 11023877  [4678 / 17]    HINT :      list : [TABoost / 30] [TIMEOUT / 1500] 
+06-26 09:27:43.629  5180  5180 I HBD     : c ATL SoundAndVibrationKeyA
+06-26 09:27:43.630  5180  5180 I HBD     : a sound is off 
+06-26 09:27:43.630  5180  5180 I HBD     : a [PF_KL] OTE none 0 7 11 3499792 (1, NONE) 
+06-26 09:27:43.631  1552  3157 D InputDispatcher: Inject motion (11127/2000): action=0x1, time=20040793000000, f=0x0, d=0 dsdx=1.000000 dtdx=0.000000
+06-26 09:27:43.631  1552  2388 I InputDispatcher: Delivering touch to (5180): action: 0x1, f=0x0, d=0, '58c9d2d', t=1 +(0,-93)
+06-26 09:27:43.632  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: ViewPostIme pointer 1
+06-26 09:27:43.632  5180  5180 I GestureDetector: obtain mCurrentMotionEventRaw. action: 1 id: -32622169
+06-26 09:27:43.633  5180  5180 I HBD     : c ATL EnterKeyA
+06-26 09:27:43.633  1552  2800 D VibratorManagerService: vibrate - uid: 10141, opPkg: com.samsung.android.honeyboard, effect: Mono{mEffect=Composed{segments=[SemHaptic{mType=50075}], repeat=-1, mMagnitudeType=TYPE_TOUCH}}, attrs: VibrationAttributes: Usage=TOUCH Audio Usage= USAGE_ASSISTANCE_SONIFICATION tags= Flags=0, reason: null, token: android.os.BinderProxy@da25d59
+06-26 09:27:43.633  1552  2800 D VibratorManagerService: converted usage = TOUCH(18)
+06-26 09:27:43.634  1552  2800 D VibratorManagerService: semColorfulVibrate : EFFECT_CLICK_FUNCTION(51), repeat: -1, usage: TOUCH(18), magnitude: 4000
+06-26 09:27:43.634  1552  2800 D VibratorManagerService: Starting vibrate for vibration  73
+06-26 09:27:43.634  5180  5180 I HBD     : h4 wordSeparator:RET 
+06-26 09:27:43.634  5180  5180 I HBD     : l0 EBD key t 0 
+06-26 09:27:43.636  5180  5180 I HBD     : a [PF_KL] OTE none 1 13 16 3463281 (1, NONE) 
+06-26 09:27:43.637 10456 10456 I IMM_LC  : hsifw() - flag : 0
+06-26 09:27:43.637 10456 10456 I IMM_LC  : hsifw() - mService.hideSoftInput
+06-26 09:27:43.637  1552  2350 D SemHapticStep: sepIndex=51, intensity=4000, repeat=false
+06-26 09:27:43.637  1552  2350 D SemHapticStep: Turning on vibrator 0 for ms
+06-26 09:27:43.637  1552  2350 I VibratorController: vibratorPerformHapticEngine started
+06-26 09:27:43.638   672   684 I servicemanager: Could not find android.hardware.vibrator.IVibrator/default in the VINTF manifest.
+06-26 09:27:43.638  1552  2350 D VibratorController: vibratorPerformHapticEngine duration (7).
+06-26 09:27:43.638  1552  2350 D VibratorController: vibratorPerformHapticEngine amplitude (10000).
+06-26 09:27:43.638  1552  2350 D VibratorController: vibratorPerformHapticEngine frequency (2050).
+06-26 09:27:43.638  1552  2350 D VibratorController: vibratorPerformHapticEngine overdriving (0).
+06-26 09:27:43.638  1384  1384 E SecVibrator-HAL2.2_A: sehPerformHapticEngine : 4 7 4000 2050 0
+06-26 09:27:43.638  1552  3157 D InputMethodManagerService: hideSoftInput
+06-26 09:27:43.638  1552  3157 V InputMethodManagerService: Client requesting input be hidden
+06-26 09:27:43.638  1552  3157 I InputMethodManagerService: Calling com.android.server.inputmethod.IInputMethodInvoker@bdddb59.hideSoftInput(0, android.os.Binder@873965d, null) for reason: HIDE_SOFT_INPUT
+06-26 09:27:43.639  1384  1384 E SecVibrator-HAL2.2_A: >> writeNode node:/timed_output/vibrator/enable val:1
+06-26 09:27:43.641  1552  1983 I GestureDetector: obtain mCurrentMotionEventRaw. action: 1 id: -32622169
+06-26 09:27:43.641  1552  1983 I GestureDetector: obtain mCurrentMotionEventRaw. action: 1 id: -32622169
+06-26 09:27:43.641  1384  1384 E SecVibrator-HAL2.2_A: << writeNode node OK 2
+06-26 09:27:43.641  1384  1384 E SecVibrator-HAL2.2_A: sehPerformHapticEngine OK
+06-26 09:27:43.642  5180  5180 I InputMethod: hideSoftInput(), flags : 0
+06-26 09:27:43.642  5180  5180 I HBD     : HoneyBoardService onFinishInputView finishingInput= false
+06-26 09:27:43.642  5180  5180 I DecorView: notifyKeepScreenOnChanged: keepScreenOn=false
+06-26 09:27:43.644  5180  5180 I HBD     : a [UpdatePolicy] [post] a: 3 cl: 65538 kit: [0/0] vt: 0 ir: 1 
+06-26 09:27:43.644  5180  5180 I HBD     : c processFinishInputView 
+06-26 09:27:43.645  5180 10735 I HBD     : i [SKE_LM] learnInDynamicModel,  false
+06-26 09:27:43.645  5180  5180 I HBD     : d1 stopRunningTimers 
+06-26 09:27:43.645  5180  5180 I HBD     : a [PF_EN] saveUserData() 0 
+06-26 09:27:43.645  5180 10735 I HBD     : i [SKE_LM] learnInDynamicModel,  true
+06-26 09:27:43.645  1552  3157 I InputMethodBindingController: setCurrentMethodNotVisible: mVisibleBound=true, mHasConnection=true, caller = com.android.server.inputmethod.InputMethodManagerService.hideCurrentInputLocked:4339 com.android.server.inputmethod.InputMethodManagerService.hideSoftInput:4277 com.android.internal.view.IInputMethodManager$Stub.onTransact:488 com.android.server.inputmethod.InputMethodManagerService.onTransact:2285 android.os.Binder.execTransactInternal:1316 android.os.Binder.execTransact:1280 <bottom of call stack> <bottom of call stack> <bottom of call stack> <bottom of call stack> 
+06-26 09:27:43.645  1552  3157 D InputMethodBindingController: unbindVisibleConnection mVisibleConnection : com.android.server.inputmethod.InputMethodBindingController$1@75f365d
+06-26 09:27:43.645  5180  5180 I HBD     : l0 EBD reset pbc:0 pdc:0 
+06-26 09:27:43.646  5180 10735 I HBD     : i [SKE_LM] saveDynamicModel,  false ,  true
+06-26 09:27:43.646  5180  5180 I HBD     : e unbindCurrentHoneyBoard : text_board 
+06-26 09:27:43.646  5180  5180 I HBD     : a onUnbind 
+06-26 09:27:43.646  5180  5180 I HBD     : e expression state[false], searchState[0] 
+06-26 09:27:43.647  5180  5180 I HBD     : a clear BaseLanguageRepo 
+06-26 09:27:43.648  1552  2529 D ConnectivityService:  Removing from current network [102 WIFI], leaving 149 requests.
+06-26 09:27:43.648  1552  3157 I ActivityManager: Changes in 10141 5 to 7, 15 to 0
+06-26 09:27:43.649  5180  5180 I HBD     : b Grammarly stop session 2 ms 
+06-26 09:27:43.649  1610  4904 I CameraService: onUidStateChanged: uid=10141, procState is changed. (5 -> 7)
+06-26 09:27:43.649  1552  2800 D InputMethodManagerService: isImeSwitcherDisabledPackage : false
+06-26 09:27:43.650  5180  5180 I HBD     : HoneyBoardService [PF_CL][onFinishInputView]  7 ms 
+06-26 09:27:43.650  1552  2800 I InputMethodManagerService: setImeWindowStatus: vis=0, backDisposition=0
+06-26 09:27:43.650  5180  5180 I HBD     : HoneyBoardService onWindowHidden 
+06-26 09:27:43.650  5180  5180 I HBD     : HoneyBoardService [PF_CL][onWindowHidden]  0 ms 
+06-26 09:27:43.650  1552  2800 I InputMethodManagerService: applyImeVisibility: setVisible=false, IsClientNull=false
+06-26 09:27:43.650  5180  5180 I DecorView: notifyKeepScreenOnChanged: keepScreenOn=false
+06-26 09:27:43.653  4724  4724 I CocktailBarUiHandler: onReceive: action = ResponseAxT9Info sipVisibility = 0
+06-26 09:27:43.653  3201  9443 I TouchInteractionService: onActiveNavBarRegionChanges, region : SkRegion((0,2274,388,2278)(389,2274,690,2278)(691,2274,961,2278)(0,2278,388,2400)(389,2278,690,2400)(691,2278,961,2400)(966,2278,1080,2400))
+06-26 09:27:43.653  2736  2736 V Navbar.Store: ----handleEvent(0) OnUpdateRemoteViewContainer(leftContainer=android.widget.LinearLayout{2b0b231 I.E...... ......I. 0,0-118,126 #7f0b04f6 app:id/left_remoteview}, rightContainer=android.widget.LinearLayout{e6cfd16 I.E...... ......I. 962,0-1080,126 #7f0b07aa app:id/right_remoteview}, contextualButtonVisible=false, darkIntensity=0.0) [Module] SamsungNavigationBarView
+06-26 09:27:43.653  2736  2736 V Navbar.Store: ------[Band]REMOTE_VIEW_PACK_SET_REMOTEVIEW_CONTAINER
+06-26 09:27:43.653  2736  2736 V Navbar.Store: --------apply(0) UpdateRemoteViewContainer
+06-26 09:27:43.653  2736  2736 V Navbar.Store: --------apply(0) UpdateRemoteViewDarkIntensity
+06-26 09:27:43.654 10456 10456 D InsetsController: controlAnimationUnchecked: Added types=8 animType=1 host=com.safar.safar/com.safar.safar.MainActivity from=android.view.InsetsController.applyAnimation:1576 android.view.InsetsController.applyAnimation:1557 android.view.InsetsController.hide:1093 
+06-26 09:27:43.654 10456 10456 D InsetsSourceConsumer: setRequestedVisible: visible=false, type=19, host=com.safar.safar/com.safar.safar.MainActivity, from=android.view.InsetsSourceConsumer.hide:257 android.view.ImeInsetsSourceConsumer.hide:88 android.view.ImeInsetsSourceConsumer.hide:94 android.view.InsetsController.hideDirectly:1593 android.view.InsetsController.controlAnimationUnchecked:1234 android.view.InsetsController.applyAnimation:1576 android.view.InsetsController.applyAnimation:1557 android.view.InsetsController.hide:1093 android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:6765 android.view.ViewRootImpl$ViewRootHandler.handleMessage:6697 
+06-26 09:27:43.655  2736  2736 V Navbar.Store: handleEvent(0) OnUpdateSysUiStateFlag(noArguments=true) [Module] SamsungNavigationBarView
+06-26 09:27:43.656  2736  2736 V Navbar.Store: --[Band]GESTURE_PACK_UPDATE_SYSTEMUI_STATE_FLAG
+06-26 09:27:43.656  2736  2736 V Navbar.Store: --[Band] (afterAction) GESTURE_PACK_UPDATE_SYSTEMUI_STATE_FLAG
+06-26 09:27:43.656  2736  2736 V Navbar.Store: handleEvent(0) OnNavBarIconHintChanged(iconHint=0) [Module] NavigationBar
+06-26 09:27:43.656  2736  2736 V Navbar.Store: --[Band]SETUPWIZARD_PACK_SET_NAVBAR_ICON_HINT
+06-26 09:27:43.656  2736  2736 V Navbar.Store: --[Band]VIS_PACK_REEVAULATE_NAVBAR
+06-26 09:27:43.656  2736  2736 V Navbar.Store: ----apply(0) ReevaluateNavBar
+06-26 09:27:43.657  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: performTraversals params={(0,0)(fillxfill) gr=BOTTOM CENTER_VERTICAL sim={adjust=pan} ty=INPUT_METHOD fmt=TRANSPARENT wanim=0x7f1301aa preferredMinDisplayRefreshRate=60.0 receive insets ignoring z-order
+06-26 09:27:43.657  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fl=81800108
+06-26 09:27:43.657  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   pfl=12000000
+06-26 09:27:43.657  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   bhv=DEFAULT
+06-26 09:27:43.657  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fitTypes=STATUS_BARS NAVIGATION_BARS
+06-26 09:27:43.657  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fitSides=LEFT TOP RIGHT
+06-26 09:27:43.657  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fitIgnoreVis dimDuration=150 naviIconColor=0}
+06-26 09:27:43.657  3201  9443 I TouchInteractionService: onActiveNavBarRegionChanges, region : SkRegion((0,2274,388,2400)(389,2274,690,2400)(691,2274,961,2400))
+06-26 09:27:43.657  3201  9443 I TouchInteractionService: onSystemUiStateChanged, stateFlags : 131072 |allow_gesture|
+06-26 09:27:43.658  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: performTraversals mFirst=false windowShouldResize=false viewVisibilityChanged=false mForceNextWindowRelayout=false params={(0,0)(fillxfill) gr=BOTTOM CENTER_VERTICAL sim={adjust=pan} ty=INPUT_METHOD fmt=TRANSPARENT wanim=0x7f1301aa preferredMinDisplayRefreshRate=60.0 receive insets ignoring z-order
+06-26 09:27:43.658  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fl=81800108
+06-26 09:27:43.658  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   pfl=12000000
+06-26 09:27:43.658  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   bhv=DEFAULT
+06-26 09:27:43.658  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fitTypes=STATUS_BARS NAVIGATION_BARS
+06-26 09:27:43.658  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fitSides=LEFT TOP RIGHT
+06-26 09:27:43.658  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]:   fitIgnoreVis dimDuration=150 naviIconColor=0}
+06-26 09:27:43.658  1552  2800 D InsetsSourceProvider: updateVisibility: serverVisible=true, clientVisible=false, source=InsetsSource: {mType=ITYPE_IME, mFrame=[0,1409][1080,2400], mVisibleFrame=[0,1409][1080,2400], mVisible=false, mInsetsRoundedCornerFrame=false}, controlTarget=Window{8abfef4 u0 com.safar.safar/com.safar.safar.MainActivity}, from=com.android.server.wm.ImeInsetsSourceProvider.updateVisibility:98 com.android.server.wm.InsetsSourceProvider.setClientVisible:536 com.android.server.wm.InsetsSourceProvider.updateClientVisibility:518 com.android.server.wm.ImeInsetsSourceProvider.updateClientVisibility:114 com.android.server.wm.InsetsStateController.onInsetsModified:250 com.android.server.wm.InsetsPolicy.onInsetsModified:555 com.android.server.wm.Session.updateRequestedVisibilities:752 android.view.IWindowSession$Stub.onTransact:1184 com.android.server.wm.Session.onTransact:188 android.os.Binder.execTransactInternal:1321 
+06-26 09:27:43.658  3201  3201 I RecentsAnimationDeviceState: setSystemUiFlags, stateFlags : 131072
+06-26 09:27:43.658  3201  3201 I TouchInteractionService: onSystemUiFlagsChanged, lastSysUIFlags : 1441792
+06-26 09:27:43.658  1552  2800 I WindowManager: Reparenting to leash, surface=Surface(name=f36d2f0 NavigationBar0)/@0x4f84d1a, leashParent=Surface(name=WindowToken{c94a6d type=2019 android.os.BinderProxy@11f2097})/@0x152f04b
+06-26 09:27:43.659  5180 11133 I HBD     : d1 requestCursorUpdates(0),  12
+06-26 09:27:43.659  1452  2231 I SurfaceFlinger: id=717 createSurf, flag=24000, Surface(name=f36d2f0 NavigationBar0)/@0x4f84d1a - animation-leash of insets_animation#717
+06-26 09:27:43.660  1552  2800 D WindowManager: makeSurface duration=1 leash=Surface(name=Surface(name=f36d2f0 NavigationBar0)/@0x4f84d1a - animation-leash of insets_animation)/@0x9f58bd2
+06-26 09:27:43.660  1552  2800 D WindowManager: updateSystemBarAttributes: displayId=0, win=Window{8abfef4 u0 com.safar.safar/com.safar.safar.MainActivity}, navColorWin=Window{8abfef4 u0 com.safar.safar/com.safar.safar.MainActivity}, focusedCanBeNavColorWin=false, behavior=1, appearance=0, statusBarAppearanceRegions=[AppearanceRegion{ bounds=[0,0][1080,2400]}], requestedVisibilities=ITYPE_IME: invisible, from=com.android.server.wm.InsetsStateController.onInsetsModified:256 com.android.server.wm.InsetsPolicy.onInsetsModified:555 com.android.server.wm.Session.updateRequestedVisibilities:752 
+06-26 09:27:43.662  4678  4678 I SemDvfsHyPerManager: acquire hyper - BaseTABoost/4678@16, type = 1090523139
+06-26 09:27:43.662  1340  1386 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 11019181  [4678 / 16]    HINT :      list : [TABoost / 1] 
+06-26 09:27:43.662 10456 10467 I ViewRootImpl@ebebf5d[MainActivity]: Resizing android.view.ViewRootImpl@f6d581e: frame = [0,0][1080,2400] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:43.663  2736  2757 I ViewRootImpl@68b04c4[StatusBar]: Resizing android.view.ViewRootImpl@195a930: frame = [0,0][1080,93] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:43.663  1552  4810 V WindowManager: Relayout Window{58c9d2d u0 InputMethod}: viewVisibility=0 req=1080x2307 d0
+06-26 09:27:43.663  2736  7200 I ViewRootImpl@3f1d3cb[NavigationBar0]: Resizing android.view.ViewRootImpl@d862654: frame = [0,2274][1080,2400] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:43.663  4724  4806 I ViewRootImpl@af3303d[CocktailBarService]: Resizing android.view.ViewRootImpl@48b3d7e: frame = [1013,373][1080,715] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:43.663  4724  4724 I ViewRootImpl@af3303d[CocktailBarService]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[1013,373][1080,715] display=[0,0][1080,2274] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:43.665  1552  4810 V WindowManager: Relayout hash=58c9d2d, pid=5180, syncId=-1: mAttrs={(0,0)(fillxfill) gr=BOTTOM CENTER_VERTICAL sim={adjust=pan} ty=INPUT_METHOD fmt=TRANSPARENT wanim=0x7f1301aa preferredMinDisplayRefreshRate=60.0 receive insets ignoring z-order
+06-26 09:27:43.665  1552  4810 V WindowManager:   fl=81800108
+06-26 09:27:43.665  1552  4810 V WindowManager:   pfl=12000000
+06-26 09:27:43.665  1552  4810 V WindowManager:   bhv=DEFAULT
+06-26 09:27:43.665  1552  4810 V WindowManager:   fitTypes=STATUS_BARS NAVIGATION_BARS
+06-26 09:27:43.665  1552  4810 V WindowManager:   fitSides=LEFT TOP RIGHT
+06-26 09:27:43.665  1552  4810 V WindowManager:   fitIgnoreVis dimDuration=150 naviIconColor=0}
+06-26 09:27:43.666  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: updateBlastSurfaceIfNeeded mBlastBufferQueue=0xb40000779a373700 isSameSurfaceControl=true
+06-26 09:27:43.666  5180  5180 I BLASTBufferQueue: update, w= 1080 h= 2307 mName = ViewRootImpl@f74e7dc[InputMethod] mNativeObject= 0xb40000779a373700 sc.mNativeObject= 0xb4000076f990dc40 format= -2 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:2898 android.view.ViewRootImpl.relayoutWindow:9847 android.view.ViewRootImpl.performTraversals:3884 android.view.ViewRootImpl.doTraversal:3116 android.view.ViewRootImpl$TraversalRunnable.run:10885 android.view.Choreographer$CallbackRecord.run:1301 
+06-26 09:27:43.667  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: Relayout returned: old=(0,93,1080,2400) new=(0,93,1080,2400) req=(1080,2307)0 dur=8 res=0x1 s={true 0xb40000784a51b800} ch=false seqId=0
+06-26 09:27:43.669  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: reportNextDraw android.view.ViewRootImpl.performTraversals:4438 android.view.ViewRootImpl.doTraversal:3116 android.view.ViewRootImpl$TraversalRunnable.run:10885 android.view.Choreographer$CallbackRecord.run:1301 android.view.Choreographer$CallbackRecord.run:1309 
+06-26 09:27:43.669  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: Setup new sync id=21
+06-26 09:27:43.669  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: Setting syncFrameCallback
+06-26 09:27:43.669  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: registerCallbacksForSync syncBuffer=false
+06-26 09:27:43.670 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e8a0f00 mBlastBufferQueue=0xb40000779a248000 fn= 67 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.672 10456 10456 D InsetsController: onStateChanged: InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 93 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(501, 0 - 579, 93), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.625} cutoutSpec={M 0,0 H -14.85714285714286 V 35.42857142857143 H 14.85714285714286 V 0 H 0 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=84, center=Point(84, 84)}, RoundedCorner{position=TopRight, radius=84, center=Point(996, 84)}, RoundedCorner{position=BottomRight, radius=84, center=Point(996, 2316)}, RoundedCorner{position=BottomLeft, radius=84, center=Point(84, 2316)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2400), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(964, 0 - 1080, 93) rotation=0}, mSources= { InsetsSource: {mType=ITYPE_STATUS_BAR, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_NAVIGATION_BAR, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_LEFT_GESTURES, mFrame=[0,0][0,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_GESTURES, mFrame=[1080,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_MANDATORY_GESTURES, mFrame=[0,0][1080,125], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_MANDATORY_GESTURES, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_LEFT_DISPLAY_CUTOUT, mFrame=[0,0][-100000,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_DISPLAY_CUTOUT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_DISPLAY_CUTOUT, mFrame=[100000,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_DISPLAY_CUTOUT, mFrame=[0,100000][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_TAPPABLE_ELEMENT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_TAPPABLE_ELEMENT, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_IME, mFrame=[0,1409][1080,2400], mVisibleFrame=[0,1409][1080,2400], mVisible=false, mInsetsRoundedCornerFrame=false} } host=com.safar.safar/com.safar.safar.MainActivity from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:6740
+06-26 09:27:43.672  3201  9443 I TouchInteractionService: onActiveNavBarRegionChanges, region : SkRegion((0,2274,388,2400)(389,2274,690,2400)(691,2274,961,2400))
+06-26 09:27:43.672  2736  2736 V Navbar.Store: ----NavBarStates canUseNavBarBackgroundFrame: false
+06-26 09:27:43.672 10456 10456 I ViewRootImpl@ebebf5d[MainActivity]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:43.674  2736  2736 I ViewRootImpl@68b04c4[StatusBar]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,93] display=[0,0][1080,2400] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:43.675  2736  2736 D InsetsController: onStateChanged: InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 93 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(501, 0 - 579, 93), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.625} cutoutSpec={M 0,0 H -14.85714285714286 V 35.42857142857143 H 14.85714285714286 V 0 H 0 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=84, center=Point(84, 84)}, RoundedCorner{position=TopRight, radius=84, center=Point(996, 84)}, RoundedCorner{position=BottomRight, radius=84, center=Point(996, 2316)}, RoundedCorner{position=BottomLeft, radius=84, center=Point(84, 2316)}]}  mRoundedCornerFrame=Rect(0, 0 - 0, 0), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(964, 0 - 1080, 93) rotation=0}, mSources= { InsetsSource: {mType=ITYPE_LEFT_GESTURES, mFrame=[0,0][0,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_GESTURES, mFrame=[1080,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_MANDATORY_GESTURES, mFrame=[0,0][1080,125], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_MANDATORY_GESTURES, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_LEFT_DISPLAY_CUTOUT, mFrame=[0,0][-100000,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_DISPLAY_CUTOUT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_DISPLAY_CUTOUT, mFrame=[100000,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_DISPLAY_CUTOUT, mFrame=[0,100000][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_TAPPABLE_ELEMENT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_TAPPABLE_ELEMENT, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_IME, mFrame=[0,1409][1080,2400], mVisibleFrame=[0,1409][1080,2400], mVisible=false, mInsetsRoundedCornerFrame=false} } host=NavigationBar0 from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:6727
+06-26 09:27:43.675  2736  2736 I ViewRootImpl@3f1d3cb[NavigationBar0]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,2274][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:43.680  5180 24629 I ViewRootImpl@f74e7dc[InputMethod]: Received frameDrawingCallback syncResult=0 frameNum=7.
+06-26 09:27:43.680  5180 24629 I ViewRootImpl@f74e7dc[InputMethod]: Setting up sync and frameCommitCallback
+06-26 09:27:43.682  5180  6474 I ViewRootImpl@f74e7dc[InputMethod]: Received frameCommittedCallback lastAttemptedDrawFrameNum=7 didProduceBuffer=true
+06-26 09:27:43.683  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: onSyncComplete
+06-26 09:27:43.683  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: setupSync seqId=0 mSyncId=21 fn=7 caller=android.view.ViewRootImpl$$ExternalSyntheticLambda11.accept:6 android.window.SurfaceSyncer.lambda$setupSync$1$android-window-SurfaceSyncer:128 android.window.SurfaceSyncer$$ExternalSyntheticLambda1.accept:8 android.window.SurfaceSyncer$SyncSet.checkIfSyncIsComplete:382 android.window.SurfaceSyncer$SyncSet.markSyncReady:359 android.window.SurfaceSyncer.markSyncReady:151 android.view.ViewRootImpl.performTraversals:4503 
+06-26 09:27:43.684  5180  5180 I HBD     : HoneyBoardService onTrimMemory 20
+06-26 09:27:43.684  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: reportDrawFinished seqId=0 mSyncId=-1 fn=7 mSurfaceChangedTransaction=0xb40000779a3d6000
+06-26 09:27:43.684  5180  5180 I HBD     : o Init expand button state by global layout listener 
+06-26 09:27:43.686 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e894e00 mBlastBufferQueue=0xb40000779a248000 fn= 68 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.689  1552  4810 D WindowManager: finishDrawingWindow: Window{58c9d2d u0 InputMethod} mDrawState=HAS_DRAWN seqId=0
+06-26 09:27:43.692  1319 28466 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+06-26 09:27:43.704 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e894400 mBlastBufferQueue=0xb40000779a248000 fn= 69 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.720 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000778df76e00 mBlastBufferQueue=0xb40000779a248000 fn= 70 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.737 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000770e327e00 mBlastBufferQueue=0xb40000779a248000 fn= 71 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.745  1552  2350 D VibratorManagerService: Vibration 73 finished with status FINISHED
+06-26 09:27:43.745  1552  2350 D VibratorManagerService: Reporting vibration 73 finished with status FINISHED
+06-26 09:27:43.745  1552  2350 D VibratorManagerService: Vibration for uid=10141 and with attrs=VibrationAttributes: Usage=TOUCH Audio Usage= USAGE_ASSISTANCE_SONIFICATION tags= Flags=0 ended with status FINISHED
+06-26 09:27:43.745  1384  1384 E SecVibrator-HAL2.2_A: >> writeNode node:/timed_output/vibrator/enable val:0
+06-26 09:27:43.746  1384  1384 E SecVibrator-HAL2.2_A: << writeNode node OK 2
+06-26 09:27:43.747  1552  2350 D VibratorManagerService: VibrationThread released after finished vibration
+06-26 09:27:43.747  1552  2350 D VibratorManagerService: Processing VibrationThread released callback
+06-26 09:27:43.753 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e894100 mBlastBufferQueue=0xb40000779a248000 fn= 72 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.771 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000770e327f00 mBlastBufferQueue=0xb40000779a248000 fn= 73 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.786  5180  5180 I HBD     : l0 EBD ex 
+06-26 09:27:43.787 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb4000075ebd73500 mBlastBufferQueue=0xb40000779a248000 fn= 74 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.788  5180 24634 I HBD     : l0 EBD tb start :1 
+06-26 09:27:43.788  5180 24634 I HBD     : a [SKE_LM] disableTags : id:ar_SA
+06-26 09:27:43.789  5180 10735 I HBD     : i [SKE_LM] writeDynamicModel
+06-26 09:27:43.804 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000770e327600 mBlastBufferQueue=0xb40000779a248000 fn= 75 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.809  5180 24634 I HBD     : a [SKE_LM] disableTags : id:ar_SA
+06-26 09:27:43.810  5180 24634 I HBD     : l0 EBD tb end :1 
+06-26 09:27:43.811  5180  5180 I HBD     : e1 [SCV] (9) 13 23 23 2 7 7 4 6 3 
+06-26 09:27:43.820 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e894500 mBlastBufferQueue=0xb40000779a248000 fn= 76 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.837 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb4000075ebd73800 mBlastBufferQueue=0xb40000779a248000 fn= 77 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.854 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb4000075ebd73400 mBlastBufferQueue=0xb40000779a248000 fn= 78 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.870 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb4000075ebd73b00 mBlastBufferQueue=0xb40000779a248000 fn= 79 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.887 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000770e327100 mBlastBufferQueue=0xb40000779a248000 fn= 80 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.888  1552  4810 D InputMethodManagerService: isImeSwitcherDisabledPackage : false
+06-26 09:27:43.902 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb4000075ebd73100 mBlastBufferQueue=0xb40000779a248000 fn= 81 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.919 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000784a520e00 mBlastBufferQueue=0xb40000779a248000 fn= 82 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.927  1552  1552 I GestureDetector: handleMessage TAP
+06-26 09:27:43.927  1552  1983 I GestureDetector: handleMessage TAP
+06-26 09:27:43.937 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e894600 mBlastBufferQueue=0xb40000779a248000 fn= 83 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.953  4724  4724 I Utils   : isCurrentUser current = 0, ownerId = 0
+06-26 09:27:43.954  4724  4724 I TrayVisibilityController: getComputedTrayVisible : keyguardState = 1
+06-26 09:27:43.954  4724  4724 I TrayVisibilityController: updateTrayVisible: State=1 visible=1 mCurrentVisible=1 specificMode=0
+06-26 09:27:43.954  4724  4724 I TrayStateController: onNotifyUpdateTray: state=0
+06-26 09:27:43.954 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e894f00 mBlastBufferQueue=0xb40000779a248000 fn= 84 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.972 10456 10554 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000779e894100 mBlastBufferQueue=0xb40000779a248000 fn= 85 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.986 10456 10456 D InsetsController: cancelAnimation of types: 8, animType: 1, host: com.safar.safar/com.safar.safar.MainActivity, from:android.view.InsetsController.notifyFinished:1375 android.view.InsetsAnimationControlImpl.applyChangeInsets:285 android.view.InsetsController.lambda$new$3$android-view-InsetsController:674 
+06-26 09:27:43.986 10456 10456 I IMM_LC  : notifyImeHidden: mService.hideSoftInput
+06-26 09:27:43.986  1552  3157 D InputMethodManagerService: hideSoftInput
+06-26 09:27:43.987  1552  3157 V InputMethodManagerService: Client requesting input be hidden
+06-26 09:27:43.987  1552  3157 V InputMethodManagerService: hideCurrentInputLocked : canceled, shouldHideSoftInput=false, mInputShown=false, mImeWindowVis=0
+06-26 09:27:43.987  1552  3157 I InputMethodBindingController: setCurrentMethodNotVisible: mVisibleBound=false, mHasConnection=true, caller = com.android.server.inputmethod.InputMethodManagerService.hideCurrentInputLocked:4339 com.android.server.inputmethod.InputMethodManagerService.hideSoftInput:4277 com.android.internal.view.IInputMethodManager$Stub.onTransact:488 com.android.server.inputmethod.InputMethodManagerService.onTransact:2285 android.os.Binder.execTransactInternal:1316 android.os.Binder.execTransact:1280 <bottom of call stack> <bottom of call stack> <bottom of call stack> <bottom of call stack> 
+06-26 09:27:43.988  5180  5180 I InputMethodService: removeImeSurface
+06-26 09:27:43.988 10456 10456 D InputMethodManager: startInputInner - Id : 0
+06-26 09:27:43.988 10456 10456 I InputMethodManager: startInputInner - mService.startInputOrWindowGainedFocus
+06-26 09:27:43.989  1552  3157 D InputMethodManagerService: mDesktopModeManager null!
+06-26 09:27:43.989  1552  3157 V InputMethodManagerService: getDisplayIdOfInputMethodWindowToBeAdded: displayId=0
+06-26 09:27:43.989  1552  3157 D InputMethodManagerService: isImeSwitcherDisabledPackage : false
+06-26 09:27:43.989  1552  3157 D InputMethodManagerService: shouldShowImeSwitcherLocked : checking vis : 3
+06-26 09:27:43.989  1552  3157 D InputMethodManagerService: checkDisplayOfStartInputAndUpdateKeyboard: displayId=0, mFocusedDisplayId=0
+06-26 09:27:43.990  1552  3157 D InputTransport: Input channel constructed: 'ClientS', fd=915
+06-26 09:27:43.990  1552  3157 D InputTransport: Input channel destroyed: 'ClientS', fd=915
+06-26 09:27:43.990  5180  5180 I MSHandlerLifeCycle: check: return. pkg=com.samsung.android.honeyboard isActivity=false callers=com.android.internal.policy.DecorView.setVisibility:4411 android.app.Dialog.hide:767 android.inputmethodservice.InputMethodService.removeImeSurface:1290 android.inputmethodservice.InputMethodService.scheduleImeSurfaceRemoval:1279 android.inputmethodservice.InputMethodService.-$$Nest$mscheduleImeSurfaceRemoval:0 
+06-26 09:27:43.990  5180  5180 I MSHandlerLifeCycle: removeMultiSplitHandler: no exist. decor=DecorView@4aead98[InputMethod]
+06-26 09:27:43.990  1452  1452 D SurfaceFlinger: Display 4630947232161729153 HWC layers:
+06-26 09:27:43.990  1452  1452 D SurfaceFlinger:      DEVICE | 0xb400007dc4a883c0 | 0102 | RGBA_8888    |    0.0    0.0 1080.0 2274.0 |    0    0 1080 2274 | SurfaceView[com.safar.safar/com.safar.safar.MainActivity]@0(BLAST)#710
+06-26 09:27:43.990  1452  1452 D SurfaceFlinger:      DEVICE | 0xb400007ddc05c380 | 0100 | RGBA_8888    |    0.0    0.0 1080.0 2400.0 |    0    0 1080 2400 | com.safar.safar/com.safar.safar.MainActivity$_10456#705
+06-26 09:27:43.990  1452  1452 D SurfaceFlinger:      DEVICE | 0xb400007ddc05c690 | 0100 | RGBA_8888    |    0.0    0.0 1080.0   93.0 |    0    0 1080   93 | StatusBar$_2736#97
+06-26 09:27:43.990  1452  1452 D SurfaceFlinger:      DEVICE | 0xb400007dc4a87470 | 0100 | RGBA_8888    |    0.0    0.0   67.0  342.0 | 1013  373 1080  715 | com.samsung.android.app.cocktailbars[...]service.CocktailBarService$_4724#679
+06-26 09:27:43.990  1452  1452 D SurfaceFlinger:      DEVICE | 0xb400007ddc05c4d0 | 0100 | RGBA_8888    |    0.0    0.0 1080.0  126.0 |    0 2274 1080 2400 | NavigationBar0$_2736#92
+06-26 09:27:43.990  1452  1452 D SurfaceFlinger: 
+06-26 09:27:43.991  5180  5180 I HBD     : HoneyBoardService [IMI] onStartInput - caller pid : 10456 , caller uid : 10402 
+06-26 09:27:43.991  5180  5180 I HBD     : j updateConfigs 
+06-26 09:27:43.991  5180  5180 I HBD     : j isEnabledNightMode : true 
+06-26 09:27:43.991  5180  5180 I HBD     : a IC have been binding, RemoteInputConnection{idHash=#bf1326d} 
+06-26 09:27:43.991  5180  5180 I HBD     : h [EditorInputType]setPrivateImeOptionsToTable privateImeOptions ( null )
+06-26 09:27:43.991  5180  5180 I HBD     : b incognitoMode : false 
+06-26 09:27:43.991  5180  5180 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+06-26 09:27:43.991  5180  5180 I HBD     : h getDefaultInputRange : UNKNOWN 
+06-26 09:27:43.991 10456 10553 I ViewRootImpl@ebebf5d[MainActivity]: mWNT: t=0xb40000778df76e00 mBlastBufferQueue=0xb40000779a248000 fn= 86 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0$android-view-SyncRtSurfaceTransactionApplier:69 android.view.SyncRtSurfaceTransactionApplier$$ExternalSyntheticLambda0.onFrameDraw:4 
+06-26 09:27:43.991  5180  5180 I HBD     : h getDefaultInputRange : UNKNOWN 
+06-26 09:27:43.991  5180  5180 I HBD     : h getDefaultInputRange : UNKNOWN 
+06-26 09:27:43.993  5180  5180 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+06-26 09:27:43.993  5180  5180 I HBD     : b update cached prediction status : false 
+06-26 09:27:43.993  5180  5180 I HBD     : h getDefaultInputRange : UNKNOWN 
+06-26 09:27:43.993  5180  5180 I HBD     : a currentState : 0 
+06-26 09:27:43.993  5180  5180 I HBD     : a [UpdatePolicy] [post] a: 0 cl: 65538 kit: [0/0] vt: 0 ir: 1 
+06-26 09:27:43.993  5180  5180 I HBD     : a [NRIC] resetNoResponseState 
+06-26 09:27:43.993  5180  5180 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+06-26 09:27:43.993  5180  5180 I HBD     : b update cached prediction status : false 
+06-26 09:27:43.994  5180  5180 I HBD     : HoneyBoardService [PF_OP][onStartInput]  3 ms 
+06-26 09:27:44.006  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: performTraversals mFirst=false windowShouldResize=false viewVisibilityChanged=true mForceNextWindowRelayout=false params=null
+06-26 09:27:44.007  1552  4810 V WindowManager: Relayout Window{58c9d2d u0 InputMethod}: viewVisibility=8 req=1080x2307 d0
+06-26 09:27:44.007  1552  4810 E WindowManager: win=Window{58c9d2d u0 InputMethod} destroySurfaces: appStopped=true cleanupOnResume=false win.mWindowRemovalAllowed=false win.mRemoveOnExit=false win.mViewVisibility=8 caller=com.android.server.wm.WindowManagerService.tryStartExitingAnimation:3009 com.android.server.wm.WindowManagerService.relayoutWindow:2720 com.android.server.wm.Session.relayout:274 android.view.IWindowSession$Stub.onTransact:779 com.android.server.wm.Session.onTransact:188 android.os.Binder.execTransactInternal:1316 android.os.Binder.execTransact:1280 
+06-26 09:27:44.008  1552  4810 I WindowManager: Destroying surface Surface(name=InputMethod$_5180)/@0xe92c3a0 called by com.android.server.wm.WindowStateAnimator.destroySurface:942 com.android.server.wm.WindowStateAnimator.destroySurfaceLocked:536 com.android.server.wm.WindowState.destroySurfaceUnchecked:4306 com.android.server.wm.WindowState.destroySurface:4280 com.android.server.wm.WindowManagerService.tryStartExitingAnimation:3009 com.android.server.wm.WindowManagerService.relayoutWindow:2720 com.android.server.wm.Session.relayout:274 android.view.IWindowSession$Stub.onTransact:779 
+06-26 09:27:44.012 10456 10915 I ViewRootImpl@ebebf5d[MainActivity]: Resizing android.view.ViewRootImpl@f6d581e: frame = [0,0][1080,2400] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:44.012  2736  2757 I ViewRootImpl@68b04c4[StatusBar]: Resizing android.view.ViewRootImpl@195a930: frame = [0,0][1080,93] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:44.012  2736  2736 I ViewRootImpl@68b04c4[StatusBar]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,93] display=[0,0][1080,2400] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:44.012 10456 10456 D InsetsController: onStateChanged: InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 93 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(501, 0 - 579, 93), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.625} cutoutSpec={M 0,0 H -14.85714285714286 V 35.42857142857143 H 14.85714285714286 V 0 H 0 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=84, center=Point(84, 84)}, RoundedCorner{position=TopRight, radius=84, center=Point(996, 84)}, RoundedCorner{position=BottomRight, radius=84, center=Point(996, 2316)}, RoundedCorner{position=BottomLeft, radius=84, center=Point(84, 2316)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2400), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(964, 0 - 1080, 93) rotation=0}, mSources= { InsetsSource: {mType=ITYPE_STATUS_BAR, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_NAVIGATION_BAR, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_LEFT_GESTURES, mFrame=[0,0][0,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_GESTURES, mFrame=[1080,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_MANDATORY_GESTURES, mFrame=[0,0][1080,125], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_MANDATORY_GESTURES, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_LEFT_DISPLAY_CUTOUT, mFrame=[0,0][-100000,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_DISPLAY_CUTOUT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_DISPLAY_CUTOUT, mFrame=[100000,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_DISPLAY_CUTOUT, mFrame=[0,100000][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_TAPPABLE_ELEMENT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_TAPPABLE_ELEMENT, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_IME, mFrame=[0,0][0,0], mVisibleFrame=[0,1409][1080,2400], mVisible=false, mInsetsRoundedCornerFrame=false} } host=com.safar.safar/com.safar.safar.MainActivity from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:6727
+06-26 09:27:44.012  4724  4806 I ViewRootImpl@af3303d[CocktailBarService]: Resizing android.view.ViewRootImpl@48b3d7e: frame = [1013,373][1080,715] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:44.012 10456 10456 I ViewRootImpl@ebebf5d[MainActivity]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:44.012  4724  4724 I ViewRootImpl@af3303d[CocktailBarService]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[1013,373][1080,715] display=[0,0][1080,2274] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:44.013  2736  2757 I ViewRootImpl@3f1d3cb[NavigationBar0]: Resizing android.view.ViewRootImpl@d862654: frame = [0,2274][1080,2400] reportDraw = false forceLayout = false syncSeqId = 0
+06-26 09:27:44.013  2736  2736 D InsetsController: onStateChanged: InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 93 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(501, 0 - 579, 93), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.625} cutoutSpec={M 0,0 H -14.85714285714286 V 35.42857142857143 H 14.85714285714286 V 0 H 0 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=84, center=Point(84, 84)}, RoundedCorner{position=TopRight, radius=84, center=Point(996, 84)}, RoundedCorner{position=BottomRight, radius=84, center=Point(996, 2316)}, RoundedCorner{position=BottomLeft, radius=84, center=Point(84, 2316)}]}  mRoundedCornerFrame=Rect(0, 0 - 0, 0), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(964, 0 - 1080, 93) rotation=0}, mSources= { InsetsSource: {mType=ITYPE_LEFT_GESTURES, mFrame=[0,0][0,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_GESTURES, mFrame=[1080,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_MANDATORY_GESTURES, mFrame=[0,0][1080,125], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_MANDATORY_GESTURES, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_LEFT_DISPLAY_CUTOUT, mFrame=[0,0][-100000,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_DISPLAY_CUTOUT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_DISPLAY_CUTOUT, mFrame=[100000,0][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_DISPLAY_CUTOUT, mFrame=[0,100000][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_TAPPABLE_ELEMENT, mFrame=[0,0][1080,93], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_TAPPABLE_ELEMENT, mFrame=[0,2274][1080,2400], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_IME, mFrame=[0,0][0,0], mVisibleFrame=[0,1409][1080,2400], mVisible=false, mInsetsRoundedCornerFrame=false} } host=NavigationBar0 from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:6727
+06-26 09:27:44.013  2736  2736 I ViewRootImpl@3f1d3cb[NavigationBar0]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,2274][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+06-26 09:27:44.014  1552  4810 V WindowManager: Relayout hash=58c9d2d, pid=5180, syncId=-1: mAttrs={(0,0)(fillxfill) gr=BOTTOM CENTER_VERTICAL sim={adjust=pan} ty=INPUT_METHOD fmt=TRANSPARENT wanim=0x7f1301aa preferredMinDisplayRefreshRate=60.0 receive insets ignoring z-order
+06-26 09:27:44.014  1552  4810 V WindowManager:   fl=81800108
+06-26 09:27:44.014  1552  4810 V WindowManager:   pfl=12000000
+06-26 09:27:44.014  1552  4810 V WindowManager:   bhv=DEFAULT
+06-26 09:27:44.014  1552  4810 V WindowManager:   fitTypes=STATUS_BARS NAVIGATION_BARS
+06-26 09:27:44.014  1552  4810 V WindowManager:   fitSides=LEFT TOP RIGHT
+06-26 09:27:44.014  1552  4810 V WindowManager:   fitIgnoreVis dimDuration=150 naviIconColor=0}
+06-26 09:27:44.014  1452  1452 I SurfaceFlinger: Setting desired display mode specs: {defaultModeId=0, allowGroupSwitching=false, primaryRange=[0.00 Hz, 120.00 Hz], appRequestRange=[0.00 Hz, 120.00 Hz]}
+06-26 09:27:44.017  5180  5180 I ViewRootImpl@f74e7dc[InputMethod]: Relayout returned: old=(0,93,1080,2400) new=(0,93,1080,2400) req=(1080,2307)8 dur=9 res=0x2 s={false 0x0} ch=true seqId=0
+06-26 09:27:44.018  1452  1452 I Layer   : id=716 removedFromDrawingState InputMethod$_5180#716 (116)
+06-26 09:27:44.018  1452  1452 I SurfaceFlinger: id=716 Removed InputMethod$_5180#716 (116)
+06-26 09:27:44.019  1452  1452 I Layer   : id=716 Destroyed InputMethod$_5180#716
+06-26 09:27:44.130  1336  9713 I sensors-hal: handle_sns_std_sensor_event:310, [SSC_LIGHT] P(OFF) [9,9,9] br:32, mode:1
+06-26 09:27:44.264 10066 10066 I adbd    : adbd service requested 'exec:screencap '-p''
+06-26 09:27:44.389  1552  4810 I EDMNativeHelperService: isScreenCaptureEnabled
+06-26 09:27:44.389  1552  4810 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+06-26 09:27:44.390 11140 11140 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+06-26 09:27:44.390 11140 11140 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:44.423   672   684 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+06-26 09:27:44.493  1552  1991 D SGM:GameManager: identifyForegroundApp. com.safar.safar, mCurrentUserId: 0, callerUserId: 0
+06-26 09:27:44.493  1552  1991 D SGM:PkgDataHelper: getGamePkgData(). com.safar.safar
+06-26 09:27:44.493  1552  1991 D SGM:SemGameManager: isForegroundGame(), ret=false
+06-26 09:27:44.494  1552 11144 D TspStateManager: wrote command: cmd=1,45,7,15,720, type=1
+06-26 09:27:44.494  1552 11143 D TspStateManager: wrote command: cmd=0, type=5
+06-26 09:27:44.496  1377  1377 I sysinput:Touch: writeInformation:248, OK
+06-26 09:27:44.496  1552  2403 D SysinputHAL_V1_3(V1_2): runTspCmdNoRead(1): set_grip_data,1,45,7,15,720(0)
+06-26 09:27:44.497  1377  1377 I sysinput:Touch: writeInformation:248, OK
+06-26 09:27:44.497  1552  2403 D SysinputHAL_V1_3(V1_2): runTspCmdNoRead(1): set_sip_mode,0(0)
+06-26 09:27:44.597  1552  4318 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 1798, isSameBssidAndFreq true
+06-26 09:27:44.599  1552  2586 I SemWifiLinkQualityMonitor: Link Qos query: inf. ms / 0 Mbps
+06-26 09:27:44.600  2736  2736 D NetworkController.WifiSignalController: notifyListener: visible=true, connected=true, inetCondition=1, isDefault=true, wifiTestReported=true, receivedInetCondition=-1, hideDuringMobileSwitching=false
+06-26 09:27:44.601  2736  2809 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true
+06-26 09:27:44.643 10066 10066 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color,raw:input tap 540 1568'
+06-26 09:27:44.695 11147 11147 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:44.696 11147 11148 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:44.698  1552  4810 D InputDispatcher: Inject motion (11147/2000): action=0x0, time=20041871000000, f=0x0, d=0 dsdx=1.000000 dtdx=0.000000
+06-26 09:27:44.699  1552  2388 I InputDispatcher: Delivering touch to (2736): action: 0x4, f=0x0, d=0, 'f36d2f0', t=1 
+06-26 09:27:44.699  1552  2388 I InputDispatcher: Delivering touch to (10456): action: 0x0, f=0x0, d=0, '8abfef4', t=1 
+06-26 09:27:44.700 10456 10456 I ViewRootImpl@ebebf5d[MainActivity]: ViewPostIme pointer 0
+06-26 09:27:44.700  1552  1983 I GestureDetector: obtain mCurrentDownEvent. id: -472174706 caller: com.android.server.wm.SystemGesturesPointerEventListener.onPointerEvent:203 com.android.server.wm.PointerEventDispatcher.onInputEvent:53 android.view.InputEventReceiver.dispatchInputEvent:285 
+06-26 09:27:44.700  1552  1983 I GestureDetector: obtain mCurrentDownEvent. id: -472174706 caller: com.android.server.wm.SystemPerformancePointerEventListener.onPointerEvent:89 com.android.server.wm.PointerEventDispatcher.onInputEvent:53 android.view.InputEventReceiver.dispatchInputEvent:285 
+06-26 09:27:44.701  4678  4678 I SemDvfsHyPerManager: acquire hyper - TABoost/4678@17, type = 1090523139
+06-26 09:27:44.701  1552  4810 D InputDispatcher: Inject motion (11147/2000): action=0x1, time=20041871000000, f=0x0, d=0 dsdx=1.000000 dtdx=0.000000
+06-26 09:27:44.701  1552  2388 I InputDispatcher: Delivering touch to (10456): action: 0x1, f=0x0, d=0, '8abfef4', t=1 
+06-26 09:27:44.701  1340  1386 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 11023877
+06-26 09:27:44.701  1340  1386 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 11023877  [4678 / 17]    HINT :      list : [TABoost / 30] [TIMEOUT / 1500] 
+06-26 09:27:44.702 10456 10456 I ViewRootImpl@ebebf5d[MainActivity]: ViewPostIme pointer 1
+06-26 09:27:44.702  1552  1983 I GestureDetector: obtain mCurrentMotionEventRaw. action: 1 id: -62454972
+06-26 09:27:44.702  1552  1983 I GestureDetector: obtain mCurrentMotionEventRaw. action: 1 id: -62454972
+06-26 09:27:44.792 10456 10615 I PlayCore: UID: [10402]  PID: [10456] IntegrityService : requestIntegrityToken(IntegrityTokenRequest{nonce=AV3SJPuVKk3owj1GhRvp5lAjQjds3FTapp96WuQrBKRAWv9jz8xKVmgtkdxFlE3kW-0PSH59VtCo3tJMFPViYyeAYlXWzdMTlVvHckS60HvFiYqypVVukBTkAMxDFuMuHwjXBJvscA7zPVdS_L2rPYxi8NESalwnTb9olSHpSbQ5IJc=, cloudProjectNumber=231518921973, network=null})
+06-26 09:27:44.792 10456 10584 I PlayCore: UID: [10402]  PID: [10456] IntegrityService : Initiate binding to the service.
+06-26 09:27:44.801 10456 10456 I PlayCore: UID: [10402]  PID: [10456] IntegrityService : ServiceConnectionImpl.onServiceConnected(ComponentInfo{com.android.vending/com.google.android.finsky.integrityservice.IntegrityService})
+06-26 09:27:44.802 10456 10584 I PlayCore: UID: [10402]  PID: [10456] IntegrityService : linkToDeath
+06-26 09:27:44.820   744   744 W keymaster_tee: [WRN]start nwd_generate_key
+06-26 09:27:44.829   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_generate_key() returns 0
+06-26 09:27:44.829   744   744 W keymaster_tee: [WRN]ret OK PARAMS: A3 P2 D6 NAR1 S256 2026.06.26,09:27:44.820 
+06-26 09:27:44.829   744   744 W keymaster_tee: [WRN]start nwd_attest_key
+06-26 09:27:44.843   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_key_attest() returns 0
+06-26 09:27:44.843   744   744 E keymaster_tee: [[31mERR[0m]Unexpected title ignore.. title: TEE
+06-26 09:27:44.844   744   744 W keymaster_tee: [WRN]nwd_attest_key GAK ret 0
+06-26 09:27:44.844   742  8389 I keystore2: keystore2::security_level: In generate_key. 10227, Some("integrity.api.key.alias")
+06-26 09:27:44.844   742  8389 E DEVROOT#CIF:  VFI_appendVndFile start
+06-26 09:27:44.845  1370  1398 I DEVROOT#VND:  communicate start cmd:0xCD29, length:160
+06-26 09:27:44.846  1370  1398 I DEVROOT#VND:  cmd [CD29] start...
+06-26 09:27:44.853  1370  1398 I DEVROOT#VND:  cmd [CD29] end...[0]
+06-26 09:27:44.855  1370  1398 I DEVROOT#VND:  communicate end 0 / length : 0
+06-26 09:27:44.855   742  8389 E DEVROOT#CIF:  VFI_appendVndFile end (0)
+06-26 09:27:44.858   742  8389 I keystore2: keystore2::database: In store_new_key "integrity.api.key.alias", uid=10227, cert=true, cert_chain=true rebound=true
+06-26 09:27:44.864 24484 11152 I Finsky  : [308] Integrity key attestation record generated successfully.
+06-26 09:27:44.873  1336  1336 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns
+06-26 09:27:44.873  1336  1336 I sensors-hal: batch:336, android.sensor.linear_acceleration/101, period=20000000, max_latency=0 request completed
+06-26 09:27:44.874  1336  1336 I sensors-hal: activate:252, android.sensor.linear_acceleration/101 en=1
+06-26 09:27:44.874   742 11155 I keystore2: keystore2::gc: In process_one_key: Trying to invalidate key blob. Km(Not Support)
+06-26 09:27:44.874  1336  1336 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false
+06-26 09:27:44.879  1336  1336 I sensors-hal: activate:270, android.sensor.linear_acceleration/101 en=1 completed
+06-26 09:27:44.879  7485  7523 D SensorManager: registerListener :: 101, linear_acceleration, 20000, 0, 
+06-26 09:27:44.880  1336  1336 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns
+06-26 09:27:44.880  1336  1336 I sensors-hal: batch:336, android.sensor.rotation_vector/111, period=20000000, max_latency=0 request completed
+06-26 09:27:44.881  1336  1336 I sensors-hal: activate:252, android.sensor.rotation_vector/111 en=1
+06-26 09:27:44.881  1336  1336 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false
+06-26 09:27:44.888  1336  1336 I sensors-hal: activate:270, android.sensor.rotation_vector/111 en=1 completed
+06-26 09:27:44.888  7485  7523 D SensorManager: registerListener :: 111, Rotation Vector  Non-wakeup, 20000, 0, 
+06-26 09:27:44.891   742  8389 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10228, 39
+06-26 09:27:44.892   742  2719 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10228, 39
+06-26 09:27:44.893   742  2719 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10228, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.B116482914439016090\")"
+06-26 09:27:44.893   742  2719 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10228, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.A116482914439016090\")"
+06-26 09:27:44.894   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_add_rng_entropy() returns 0
+06-26 09:27:44.895   744   744 W keymaster_tee: [WRN]start nwd_generate_key
+06-26 09:27:44.899   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_generate_key() returns 0
+06-26 09:27:44.899   744   744 W keymaster_tee: [WRN]ret OK PARAMS: A3 P2 D6 NAR1 S256 2026.06.26,09:27:44.895 
+06-26 09:27:44.899   744   744 W keymaster_tee: [WRN]start nwd_attest_key
+06-26 09:27:44.909   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_key_attest() returns 0
+06-26 09:27:44.909   744   744 E keymaster_tee: [[31mERR[0m]Unexpected title ignore.. title: TEE
+06-26 09:27:44.909   744   744 W keymaster_tee: [WRN]nwd_attest_key GAK ret 0
+06-26 09:27:44.909   742  8389 I keystore2: keystore2::security_level: In generate_key. 10228, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A116482914439016090")
+06-26 09:27:44.909   742  8389 W samsung_keystore_utils: ExceptionLoggingCase unstable.c7202ece89390c490b1b94d5b71225e1.A11648291443901609098
+06-26 09:27:44.911   742  8389 I keystore2: keystore2::database: In store_new_key "unstable.c7202ece89390c490b1b94d5b71225e1.A116482914439016090", uid=10228, cert=true, cert_chain=true rebound=false
+06-26 09:27:44.921   742  8389 I keystore2: keystore2::service: In delete_key. 10228, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A116482914439016090")
+06-26 09:27:44.930   742 11155 I keystore2: keystore2::gc: In process_one_key: Trying to invalidate key blob. Km(Not Support)
+06-26 09:27:44.956   742  8389 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In delete_key: Trying to unbind the key. 10228, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.B116482914439016090\")"
+06-26 09:27:44.992  1336 11157 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk
+06-26 09:27:45.001  1552  1552 I GestureDetector: handleMessage TAP
+06-26 09:27:45.001  1552  1983 I GestureDetector: handleMessage TAP
+06-26 09:27:45.050  1336 11160 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: QUALCOMM build                   : 3dad7f8ed7, I593c16c433
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: Build Date                       : 10/01/21
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: OpenGL ES Shader Compiler Version: EV031.32.02.02
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: Local Branch                     : 
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: Remote Branch                    : refs/tags/AU_LINUX_ANDROID_LA.UM.9.1.R1.11.00.00.604.073
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: Remote Branch                    : NONE
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: Reconstruct Branch               : NOTHING
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: Build Config                     : S P 10.0.7 AArch64
+06-26 09:27:45.175  7485  7523 I AdrenoGLES-0: Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+06-26 09:27:45.180  7485  7523 I AdrenoGLES-0: PFP: 0x016ee190, ME: 0x00000000
+06-26 09:27:45.228 10066 10066 I adbd    : adbd service requested 'exec:screencap '-p''
+06-26 09:27:45.242  1552  2627 D NetdEventListenerService: DNS Requested by : 102, 10228
+06-26 09:27:45.250  7485  7523 W libc    : Access denied finding property "persist.adb.tls_server.enable"
+06-26 09:27:45.250  7485  7523 W libc    : Access denied finding property "service.adb.tls.port"
+06-26 09:27:45.338 24484  7483 D DGInternalHandle: maybeAddInteractionEvents(): The EventCollector is not initialized. This means that the client hasn't intended to collect any interaction events so far.
+06-26 09:27:45.351  1552  4810 I EDMNativeHelperService: isScreenCaptureEnabled
+06-26 09:27:45.351  1552  4810 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+06-26 09:27:45.352 11166 11166 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+06-26 09:27:45.352 11166 11166 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:45.383   672   684 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+06-26 09:27:45.560  1552  4810 D SensorService: Calling activate off 111
+06-26 09:27:45.561  1336  1336 I sensors-hal: activate:252, android.sensor.rotation_vector/111 en=0
+06-26 09:27:45.561  1336  1336 I sensors-hal: deactivate:300, disconnect qmi to disable sensor
+06-26 09:27:45.561  1336  1336 I sensors-hal: activate:270, android.sensor.rotation_vector/111 en=0 completed
+06-26 09:27:45.562  7485  7523 D SensorManager: unregisterListener
+06-26 09:27:45.562  1552  3157 D SensorService: Calling activate off 101
+06-26 09:27:45.562  1336  1336 I sensors-hal: activate:252, android.sensor.linear_acceleration/101 en=0
+06-26 09:27:45.563  1336  1336 I sensors-hal: deactivate:300, disconnect qmi to disable sensor
+06-26 09:27:45.563  1336  1336 I sensors-hal: activate:270, android.sensor.linear_acceleration/101 en=0 completed
+06-26 09:27:45.563  7485  7523 D SensorManager: unregisterListener
+06-26 09:27:45.564   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:596:Error 0xffffffff: apps_std getenv failed: ADSP_LIBRARY_PATH Unknown error -1
+06-26 09:27:45.564   748  1365 I sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:777: Successfully opened file /mnt/vendor/persist/sensors/registry/temp.json
+06-26 09:27:45.564   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.564   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.565   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.565   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.565   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.566   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.568   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.568   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.570   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:596:Error 0xffffffff: apps_std getenv failed: ADSP_LIBRARY_PATH Unknown error -1
+06-26 09:27:45.570   748  1365 I sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:777: Successfully opened file /mnt/vendor/persist/sensors/registry/temp.json
+06-26 09:27:45.570   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.570   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.571   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.571   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.571   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.571   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.572   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:27:45.572   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:27:45.684   736   736 D io_stats: !@   8,0 r 1135163 33832728 w 943846 65107728 d 0 0 f 0 0 iot 372500 0 th 0 0 0 pt 0 inp 0 0 20042.858
+06-26 09:27:45.862 24484 24518 I Finsky  : [84] requestIntegrityToken() finished for com.safar.safar.
+06-26 09:27:45.863 10456 10915 I PlayCore: UID: [10402]  PID: [10456] OnRequestIntegrityTokenCallback : onRequestIntegrityToken
+06-26 09:27:45.864 10456 10584 I PlayCore: UID: [10402]  PID: [10456] IntegrityService : Unbind from service.
+06-26 09:27:46.203  1340 11150 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 11023877
+06-26 09:27:46.416 10456 10621 W FirebaseContextProvider: Error getting App Check token. Error: O1.j: Error returned from API. code: 403 body: App attestation failed.
+06-26 09:27:46.653  1552  1571 W System  : A resource failed to call close. 
+06-26 09:27:47.040 10456 10559 W FirebaseContextProvider: Error getting App Check token. Error: O1.j: Too many attempts.
+06-26 09:27:47.589 10066 10066 I adbd    : adbd service requested 'exec:screencap '-p''
+06-26 09:27:47.612  1552  4318 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 1799, isSameBssidAndFreq true
+06-26 09:27:47.616  2736  2736 D NetworkController.WifiSignalController: notifyListener: visible=true, connected=true, inetCondition=1, isDefault=true, wifiTestReported=true, receivedInetCondition=-1, hideDuringMobileSwitching=false
+06-26 09:27:47.616  1552  2586 I SemWifiLinkQualityMonitor: Link Qos Query: 0.020 ms / 406.128 Mbps (866 / 0.010 / 1.044)
+06-26 09:27:47.621  2736  2809 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true
+06-26 09:27:47.685   736   736 D io_stats: !@   8,0 r 1135163 33832728 w 943863 65107812 d 0 0 f 0 0 iot 372510 0 th 0 0 0 pt 0 inp 0 0 20044.858
+06-26 09:27:47.701  1552  2222 D PowerManagerService: UserActivityStateListenerState: 0
+06-26 09:27:47.748  1552  3157 I EDMNativeHelperService: isScreenCaptureEnabled
+06-26 09:27:47.749  1552  3157 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+06-26 09:27:47.749 11175 11175 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+06-26 09:27:47.750 11175 11175 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:47.799   672   684 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+06-26 09:27:48.450  1336  9713 I sensors-hal: handle_sns_std_sensor_event:310, [SSC_LIGHT] P(OFF) [9,9,9] br:32, mode:1
+06-26 09:27:48.463 10001 10001 I wpa_supplicant: Heartbeat 1679
+06-26 09:27:48.726  4678  4678 I SDHMS:LOAD: type: LoadsFreqs, value: 0:11:3:1075584:2841600:825600:982655:2419200:710400:257:257:257
+06-26 09:27:49.283  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+06-26 09:27:49.283  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+06-26 09:27:49.285  1319 28487 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+06-26 09:27:49.285  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+06-26 09:27:49.292 28319 28430 D BtGatt.GattService: onScanResult to scannerId: 8- eventType=0x10, addressType=1, address=3A2CAF_A, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-34, periodicAdvInt=0x0
+06-26 09:27:49.328  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+06-26 09:27:49.328  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+06-26 09:27:49.479  1319 28466 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+06-26 09:27:49.572  3558 10687 I NearbyMediums: Found Fast Ble Advertisements :
+06-26 09:27:49.572  3558 10687 I NearbyMediums: BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x43 0x41 0x33 0x5a 0x11 0x32 0x24 0x71 0xdb 0x44 0xb1 0x24 0xa9 0x37 0x2d 0x5a 0x2c 0xa3 0x25 0x9f 0x50 0x2e ], deviceToken=[ 0x74 0xcd ], rxAdvertisement=null } : 3 times.
+06-26 09:27:49.572  3558 10687 I NearbyMediums: Total 3 fast advertisements from 1 unique advertisers.
+06-26 09:27:49.572  3558 10687 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing, NearbyConnections.TxAdvertisement}
+06-26 09:27:49.686   736   736 D io_stats: !@   8,0 r 1135163 33832728 w 943869 65107836 d 0 0 f 0 0 iot 372520 0 th 0 0 0 pt 0 inp 0 0 20046.860
+06-26 09:27:49.793  2821 10003 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 31 up
+06-26 09:27:50.629  1552  4318 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 1800, isSameBssidAndFreq true
+06-26 09:27:50.631  1552  2586 I SemWifiLinkQualityMonitor: Link Qos Query: 0.019 ms / 426.357 Mbps (866 / 0.009 / 1.044)
+06-26 09:27:50.631  2736  2736 D NetworkController.WifiSignalController: notifyListener: visible=true, connected=true, inetCondition=1, isDefault=true, wifiTestReported=true, receivedInetCondition=-1, hideDuringMobileSwitching=false
+06-26 09:27:50.633  2736  2809 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true
+06-26 09:27:51.215  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+06-26 09:27:51.216  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+06-26 09:27:51.217  1319 28487 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+06-26 09:27:51.217  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+06-26 09:27:51.223 28319 28430 D BtGatt.GattService: onScanResult to scannerId: 8- eventType=0x10, addressType=1, address=3A2CAF_A, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-36, periodicAdvInt=0x0
+06-26 09:27:51.259  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+06-26 09:27:51.259  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+06-26 09:27:51.410  1319 28466 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+06-26 09:27:51.690   736   736 D io_stats: !@   8,0 r 1135163 33832728 w 943888 65108148 d 0 0 f 0 0 iot 372530 0 th 0 0 0 pt 0 inp 0 0 20048.863
+06-26 09:27:52.086  1336  9791 I sensors-hal: handle_sns_client_event:217, auto_rotation_event_2: mode:255, type:1:0/0.055,0.050,9.840, ar:0
+06-26 09:27:52.768  1336  9713 I sensors-hal: handle_sns_std_sensor_event:310, [SSC_LIGHT] P(OFF) [9,9,9] br:32, mode:1
+06-26 09:27:53.054 10066 10066 I adbd    : adbd service requested 'exec:screencap '-p''
+06-26 09:27:53.152  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+06-26 09:27:53.152  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+06-26 09:27:53.152  1319 28487 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+06-26 09:27:53.153  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+06-26 09:27:53.157 28319 28430 D BtGatt.GattService: onScanResult to scannerId: 8- eventType=0x10, addressType=1, address=3A2CAF_A, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-33, periodicAdvInt=0x0
+06-26 09:27:53.194  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+06-26 09:27:53.194  1319 28487 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+06-26 09:27:53.220  1552  3157 I EDMNativeHelperService: isScreenCaptureEnabled
+06-26 09:27:53.221  1552  3157 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+06-26 09:27:53.222 11180 11180 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+06-26 09:27:53.222 11180 11180 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:27:53.277   672   684 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+06-26 09:27:53.345  1319 28466 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+06-26 09:27:53.499 10066 10066 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-t' '1800''
