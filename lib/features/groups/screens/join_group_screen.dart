@@ -31,9 +31,11 @@ enum _JoinStep { form, picker, waiting }
 
 /// Screen for joining a group via a 6-character invite code.
 ///
-/// Auto-uppercases input (D-13), enforces 6-char limit (D-19), and
-/// auto-submits when 6 characters are entered. Single step — no name
-/// claiming after join (D-12).
+/// Auto-uppercases input (D-13), enforces 6-char limit (D-19), restricts to the
+/// invite alphabet (#293 — no ambiguous I/O/0/1), and auto-submits ONCE on the
+/// first complete code (#293 — corrections then need a deliberate Join tap so a
+/// stream of mistypes can't burn the server's 5/hr lockout). Single step — no
+/// name claiming after join (D-12).
 ///
 /// Saffron sibling of [CreateGroupScreen]: warm-paper layout, italic mood
 /// header, underlined inputs, primary CTA pinned to the bottom of the form.
@@ -49,7 +51,12 @@ class JoinGroupScreen extends ConsumerStatefulWidget {
 class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   final _codeController = TextEditingController();
   final _nameController = TextEditingController();
-  bool _didInitName = false;
+
+  // #293: the invite code auto-submits once on first completion. After that —
+  // e.g. while correcting a mistyped hand-relayed code — further completions
+  // require a deliberate Join tap, so a stream of corrections can't burn the
+  // server's 5/hr join lockout one silent auto-fire at a time.
+  bool _autoSubmitted = false;
 
   // #278 PR9 — claim flow state.
   _JoinStep _step = _JoinStep.form;
@@ -332,12 +339,10 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(groupLoadingProvider);
-    final deviceName = ref.watch(settingsProvider).deviceName;
 
-    if (!_didInitName) {
-      _nameController.text = deviceName;
-      _didInitName = true;
-    }
+    // #293: do NOT pre-fill the name from the device-wide deviceName — a casual
+    // nickname from one group would silently load into another group's ledger.
+    // Joining is an explicit identity choice; the field starts blank.
 
     return Scaffold(
       key: GroupKeys.joinScreen,
@@ -399,7 +404,10 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
           controller: _codeController,
           onChanged: (value) {
             setState(() {});
-            if (value.length == 6) _onSubmit();
+            if (value.length == 6 && !_autoSubmitted) {
+              _autoSubmitted = true;
+              _onSubmit();
+            }
           },
         ),
         const SizedBox(height: 26),
@@ -581,7 +589,8 @@ class _InviteCodeField extends StatelessWidget {
             letterSpacing: 8,
           ),
           decoration: InputDecoration(
-            hintText: 'ABC123',
+            // #293: example uses only invite-alphabet chars (no I/O/0/1).
+            hintText: 'ABC234',
             counterText: '',
             filled: true,
             fillColor: colors.selectionFill,
@@ -592,14 +601,20 @@ class _InviteCodeField extends StatelessWidget {
             hintStyle: AppTypography.mono(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              // textMuted-decorative-justified: hint "ABC123" is placeholder text that disappears on input; never read as functional content.
+              // textMuted-decorative-justified: hint "ABC234" is placeholder text that disappears on input; never read as functional content.
               color: colors.textMuted,
               letterSpacing: 8,
             ),
           ),
           maxLength: 6,
           inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+            // #293: restrict to the invite alphabet — exclude the ambiguous
+            // I, O, 0 and 1 that group_provider._generateInviteCode never emits.
+            // A glyph-confusion mistype then can't be entered, so it can't
+            // auto-submit a guaranteed-invalid code that burns the 5/hr lockout.
+            FilteringTextInputFormatter.allow(
+              RegExp(r'[A-HJ-NP-Za-hj-np-z2-9]'),
+            ),
             LengthLimitingTextInputFormatter(6),
             _UpperCaseTextFormatter(),
           ],
