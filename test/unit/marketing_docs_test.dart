@@ -33,6 +33,10 @@ void main() {
     expect(outreachKit, contains('tool/first_100_followups.dart'));
     expect(commandCenter, contains('tool/first_100_roster_check.dart'));
     expect(outreachKit, contains('tool/first_100_roster_check.dart'));
+    expect(commandCenter, contains('tool/first_100_champion_sourcing.dart'));
+    expect(outreachKit, contains('tool/first_100_champion_sourcing.dart'));
+    expect(commandCenter, contains('rihla-first-10-candidates.csv'));
+    expect(outreachKit, contains('rihla-first-10-candidates.csv'));
     expect(commandCenter, contains('tool/first_100_access_requests.dart'));
     expect(outreachKit, contains('tool/first_100_access_requests.dart'));
     expect(commandCenter, contains('rihla-first-10-access-requests.md'));

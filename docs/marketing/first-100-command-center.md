@@ -49,6 +49,9 @@ Verified this session:
 - `tool/first_100_launch_packet.dart --write-roster-template=...` now exports
   the first empty tracker slots into a blank private roster template so
   champion names and Google Play emails stay outside git.
+- `tool/first_100_champion_sourcing.dart` now turns the next empty tracker slots
+  into a private candidate worksheet, checks Android/live-bill readiness without
+  printing names, and writes the private launch roster once candidates are ready.
 - `tool/first_100_roster_check.dart` now checks a filled private roster before
   Play upload or message generation without printing champion names or tester
   emails.
@@ -132,11 +135,31 @@ performance.
 ## Daily Operating Loop
 
 1. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD`.
-2. Generate the private roster template from the next empty tracker rows:
+2. Generate the private candidate worksheet from the next empty tracker rows:
+
+   ```bash
+   dart tool/first_100_champion_sourcing.dart \
+     --write-template="$HOME/Desktop/rihla-first-10-candidates.csv"
+   ```
+
+3. Fill `~/Desktop/rihla-first-10-candidates.csv` with real warm candidates:
+   name, relationship, language, Android likelihood, group size, live shared
+   bill, and priority. Use `yes` for Android/live-bill readiness and `1`, `2`,
+   or `3` for priority. Keep this file out of git.
+4. Check the private candidate worksheet and write the launch roster:
+
+   ```bash
+   dart tool/first_100_champion_sourcing.dart \
+     "$HOME/Desktop/rihla-first-10-candidates.csv" \
+     --write-roster="$HOME/Desktop/rihla-first-10-roster.csv"
+   ```
+
+   The terminal summary prints only counts and ready slot numbers. It writes
+   candidate names only into the private roster file.
+5. If the first 10 names are already chosen and no sourcing screen is needed,
+   generate the older blank roster template directly:
    `dart tool/first_100_launch_packet.dart --write-roster-template="$HOME/Desktop/rihla-first-10-roster.csv"`.
-3. Fill the generated private roster with 10 real champion names, language,
-   segment, real use case, and channel. Keep this file out of git.
-4. Generate access-request messages for named champions who still need to send
+6. Generate access-request messages for named champions who still need to send
    their Google Play email:
 
    ```bash
@@ -145,14 +168,14 @@ performance.
      --output=/tmp/rihla-first-10-access-requests.md
    ```
 
-5. Send `/tmp/rihla-first-10-access-requests.md`, then fill each
+7. Send `/tmp/rihla-first-10-access-requests.md`, then fill each
    `google_play_email` in the private roster as replies come in.
-6. Confirm or adjust each row's language, segment, real use case, and channel.
-7. Check the private roster before Play upload or message generation:
+8. Confirm or adjust each row's language, segment, real use case, and channel.
+9. Check the private roster before Play upload or message generation:
    `dart tool/first_100_roster_check.dart ~/Desktop/rihla-first-10-roster.csv`.
-8. Export the private opt-in link:
+10. Export the private opt-in link:
    `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
-9. Build the private launch packet, preserving already-active testers if this
+11. Build the private launch packet, preserving already-active testers if this
    is not the first Play upload:
 
    ```bash
@@ -162,13 +185,13 @@ performance.
      --output-dir=/tmp/rihla-first-10-launch-packet
    ```
 
-10. Upload `/tmp/rihla-first-10-launch-packet/play-testers.csv` to Play closed
+12. Upload `/tmp/rihla-first-10-launch-packet/play-testers.csv` to Play closed
    testing if required, then copy that generated file to
    `~/Desktop/rihla-active-play-testers.csv` as the next batch's active list.
-11. Send messages from `/tmp/rihla-first-10-launch-packet/send-sheet.md`,
+13. Send messages from `/tmp/rihla-first-10-launch-packet/send-sheet.md`,
    using `/tmp/rihla-first-10-launch-packet/outreach-messages.md` as the full
    message source.
-12. Patch the private tracker copy after the batch is sent:
+14. Patch the private tracker copy after the batch is sent:
 
    ```bash
    dart tool/first_100_tracker_patch.dart \
@@ -182,16 +205,16 @@ performance.
 
    Keep `~/Desktop/rihla-first-100-tracker.csv` out of git. It may contain
    champion names, but it must not contain Google Play tester emails.
-13. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
+15. Send `/alpha` or `/ar/alpha` only when they need the Google Play access
    steps explained separately.
-14. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
+16. Use `/tmp/rihla-first-10-launch-packet/checklist.md` to update the private
    tracker after each response.
-15. Follow up within 24 hours with one concrete ask: create group, invite people,
+17. Follow up within 24 hours with one concrete ask: create group, invite people,
    or add first expense.
-16. Record the exact blocker in the tracker, not a vague note.
-17. Generate due follow-ups:
+18. Record the exact blocker in the tracker, not a vague note.
+19. Generate due follow-ups:
     `dart tool/first_100_followups.dart --today=YYYY-MM-DD`.
-18. Run
+20. Run
     `dart tool/first_100_summary.dart "$HOME/Desktop/rihla-first-100-tracker.csv" --today=YYYY-MM-DD`
     and use its recommended next action for the next batch.
 
@@ -248,6 +271,21 @@ the Play upload, opt-in link, messages, and checklist together.
 Use `tool/first_100_launch_packet.dart --write-roster-template=...` before the
 first private batch. It copies the next empty public tracker slots and leaves
 `champion` and `google_play_email` blank so private data is filled locally only.
+
+Use `tool/first_100_champion_sourcing.dart` when the roster is still blank:
+
+```bash
+dart tool/first_100_champion_sourcing.dart \
+  --write-template="$HOME/Desktop/rihla-first-10-candidates.csv"
+
+dart tool/first_100_champion_sourcing.dart \
+  "$HOME/Desktop/rihla-first-10-candidates.csv" \
+  --write-roster="$HOME/Desktop/rihla-first-10-roster.csv"
+```
+
+Fill candidate names and readiness fields in the private candidate worksheet
+before writing the launch roster. The command prints only counts and slot
+numbers in terminal output.
 
 Use `tool/first_100_access_requests.dart` after champion names are filled but
 before Play emails are complete. It writes
