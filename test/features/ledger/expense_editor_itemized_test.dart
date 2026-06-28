@@ -139,40 +139,38 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder howCard() => find.byKey(const Key('split_mode_card'));
+  // #485: the itemized state shows on the Split card's keyed summary line, and
+  // the weights sheet opens from the card's mode segment (an itemized expense is
+  // persisted as exact, so "Exact" reopens it on the itemized tab).
+  Finder summary() => find.byKey(const Key('split_card_summary'));
 
-  testWidgets('reopening an itemized expense shows the Itemized How card',
+  Future<void> openHow(WidgetTester tester) async {
+    final exact = find.text('Exact');
+    await tester.ensureVisible(exact);
+    await tester.tap(exact);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('reopening an itemized expense shows the Itemized summary',
       (tester) async {
     await pumpEditor(tester, _itemizedExpense());
 
-    // The How card reads "Itemized" + the item count, not "Exact".
+    // The summary reads "Itemized" + the item count. (A broken itemized→exact
+    // regression would render "amounts vary" here, failing the checks below.)
     expect(
-      find.descendant(of: howCard(), matching: find.text('Itemized')),
+      find.descendant(of: summary(), matching: find.text('Itemized')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: howCard(), matching: find.text('4 items')),
+      find.descendant(of: summary(), matching: find.text('4 items')),
       findsOneWidget,
-    );
-    expect(
-      find.descendant(of: howCard(), matching: find.text('Exact')),
-      findsNothing,
     );
   });
 
   testWidgets('opening How on an itemized expense preselects the itemized tab',
       (tester) async {
     await pumpEditor(tester, _itemizedExpense());
-
-    // Tap the How section's "Customise" action.
-    await tester.tap(find.descendant(
-      of: find.ancestor(
-        of: find.text('How'),
-        matching: find.byType(Column),
-      ).first,
-      matching: find.text('Customise'),
-    ).first);
-    await tester.pumpAndSettle();
+    await openHow(tester);
 
     // The sheet opened on the Itemized tab with the seeded rows.
     expect(find.byKey(const Key('itemized_label_0')), findsOneWidget);
@@ -182,38 +180,30 @@ void main() {
   });
 
   testWidgets(
-      'switching to Equally and applying clears the itemized How card',
+      'switching to Equally and applying clears the itemized summary',
       (tester) async {
     await pumpEditor(tester, _itemizedExpense());
+    await openHow(tester);
 
-    // Open the How sheet.
-    await tester.tap(find.descendant(
-      of: find.ancestor(
-        of: find.text('How'),
-        matching: find.byType(Column),
-      ).first,
-      matching: find.text('Customise'),
-    ).first);
-    await tester.pumpAndSettle();
-
-    // Switch to the plain Equal mode and apply (chip label = splitModeEqually).
-    await tester.tap(find.text('Equal'));
+    // Inside the sheet, switch to the plain Equal tab and apply. The card's mode
+    // segment also shows "Equal" (behind the sheet), so target the sheet's tab
+    // via .last.
+    await tester.tap(find.text('Equal').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('split_sheet_apply')));
     await tester.pumpAndSettle();
 
-    // The How card is no longer itemized — it reverts to the equal label, and
-    // "Itemized" / the item-count subtitle are gone.
+    // The summary is no longer itemized — it reverts to the equal "each" line.
     expect(
-      find.descendant(of: howCard(), matching: find.text('Itemized')),
+      find.descendant(of: summary(), matching: find.text('Itemized')),
       findsNothing,
     );
     expect(
-      find.descendant(of: howCard(), matching: find.text('4 items')),
+      find.descendant(of: summary(), matching: find.text('4 items')),
       findsNothing,
     );
     expect(
-      find.descendant(of: howCard(), matching: find.text('Equal')),
+      find.descendant(of: summary(), matching: find.textContaining('each')),
       findsOneWidget,
     );
   });
@@ -222,18 +212,7 @@ void main() {
       (tester) async {
     await pumpEditor(tester, _itemizedExpenseWithAdjustment());
 
-    Future<void> openHow() async {
-      await tester.tap(find.descendant(
-        of: find.ancestor(
-          of: find.text('How'),
-          matching: find.byType(Column),
-        ).first,
-        matching: find.text('Customise'),
-      ).first);
-      await tester.pumpAndSettle();
-    }
-
-    await openHow();
+    await openHow(tester);
     // The seeded adjustment row is present → initialAdjustments threading works.
     expect(find.byKey(const Key('itemized_adjustment_0')), findsOneWidget);
     final apply = tester.widget<ElevatedButton>(
@@ -244,7 +223,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Reopen — the adjustment survived apply (bridge no longer drops it).
-    await openHow();
+    await openHow(tester);
     expect(find.byKey(const Key('itemized_adjustment_0')), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();

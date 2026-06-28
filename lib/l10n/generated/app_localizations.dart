@@ -1853,14 +1853,44 @@ abstract class AppLocalizations {
   /// No description provided for @editorScopeCustom.
   ///
   /// In en, this message translates to:
-  /// **'Custom'**
+  /// **'Some people'**
   String get editorScopeCustom;
 
   /// No description provided for @editorScopePersonal.
   ///
   /// In en, this message translates to:
-  /// **'Personal'**
+  /// **'Just me'**
   String get editorScopePersonal;
+
+  /// No description provided for @editorSplit.
+  ///
+  /// In en, this message translates to:
+  /// **'Split'**
+  String get editorSplit;
+
+  /// No description provided for @editorWhoSplits.
+  ///
+  /// In en, this message translates to:
+  /// **'Who splits'**
+  String get editorWhoSplits;
+
+  /// No description provided for @editorSplitModeExactShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact'**
+  String get editorSplitModeExactShort;
+
+  /// No description provided for @editorSplitModePercentShort.
+  ///
+  /// In en, this message translates to:
+  /// **'%'**
+  String get editorSplitModePercentShort;
+
+  /// No description provided for @editorSplitAddsUpTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds up to {amount}'**
+  String editorSplitAddsUpTo(String amount);
 
   /// No description provided for @editorReceiptOptional.
   ///

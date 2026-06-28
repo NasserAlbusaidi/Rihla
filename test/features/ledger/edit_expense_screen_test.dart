@@ -407,16 +407,16 @@ void main() {
       await tester.tap(find.text('Open edit'));
       await tester.pumpAndSettle();
 
-      // Open the "How" split sheet (the second "Customise" — after "Split
-      // between") and switch to an Equal split, then Apply.
-      final howCustomise = find.text('Customise').last;
-      await tester.ensureVisible(howCustomise);
+      // #485: open the weights sheet from the Split card's mode segment. The
+      // seeded expense is itemized (persisted as exact), so "Exact" reopens it.
+      final exact = find.text('Exact');
+      await tester.ensureVisible(exact);
       await tester.pumpAndSettle();
-      await tester.tap(howCustomise);
+      await tester.tap(exact);
       await tester.pumpAndSettle();
-      // The segmented control labels come from splitModeDisplayName — Equally
-      // renders as "Equal" (splitModeEqually), not "Equally".
-      await tester.tap(find.text('Equal'));
+      // Switch to the plain Equal split (the card's mode segment also shows
+      // "Equal", so target the sheet's tab via .last), then Apply.
+      await tester.tap(find.text('Equal').last);
       await tester.pump();
       await tester.tap(find.byKey(const Key('split_sheet_apply')));
       await tester.pumpAndSettle();

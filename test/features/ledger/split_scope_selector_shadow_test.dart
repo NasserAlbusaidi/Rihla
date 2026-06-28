@@ -1,25 +1,22 @@
-import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
-import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
-import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/widgets/split_scope_selector.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// #278 — a placeholder ("shadow") member who has not joined yet must be
-/// marked as such in the split pickers, where they appear as a participant.
-/// The shadow flag lives on [GroupMember.isShadow]; the picker rows are built
-/// from event data, so the flag is threaded by matching on `userId`.
+/// marked as such in the custom ("Some people") roster, where they appear as a
+/// participant. The shadow flag lives on [GroupMember.isShadow]; the rows are
+/// built from event data, so the flag is threaded by matching on `userId`.
 void main() {
   testWidgets(
     'custom participant picker shows the shadow marker for a shadow member',
     (tester) async {
-      await _pumpSelector(tester, scope: ExpenseScope.custom);
+      await _pumpSelector(tester);
 
       // Omar is a shadow member → the "Shadow Profile" subtitle renders.
       expect(find.text('Shadow Profile'), findsOneWidget);
@@ -30,17 +27,13 @@ void main() {
   );
 }
 
-Future<void> _pumpSelector(
-  WidgetTester tester, {
-  required ExpenseScope scope,
-}) async {
+Future<void> _pumpSelector(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        currentUserProvider.overrideWithValue(
-          MockUser(uid: 'uid-yasmin', isAnonymous: true),
-        ),
-        groupMembersProvider('group-1').overrideWith((ref) => Stream.value(_members)),
+        groupMembersProvider(
+          'group-1',
+        ).overrideWith((ref) => Stream.value(_members)),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
@@ -49,14 +42,10 @@ Future<void> _pumpSelector(
         home: Scaffold(
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: SplitScopeSelector(
+            child: CustomParticipantSelector(
               event: _event,
-              scope: scope,
-              onScopeChanged: (_) {},
               customSplitParticipants: const {},
               onCustomSplitChanged: (_) {},
-              selectedPayerId: null,
-              onPayerChanged: (_) {},
             ),
           ),
         ),

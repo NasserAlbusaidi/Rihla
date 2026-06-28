@@ -1061,10 +1061,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorScopeSubGroup => 'تقسيم المجموعة';
 
   @override
-  String get editorScopeCustom => 'مخصص';
+  String get editorScopeCustom => 'بعض الأشخاص';
 
   @override
-  String get editorScopePersonal => 'شخصي';
+  String get editorScopePersonal => 'أنا فقط';
+
+  @override
+  String get editorSplit => 'التقسيم';
+
+  @override
+  String get editorWhoSplits => 'من يشارك التقسيم';
+
+  @override
+  String get editorSplitModeExactShort => 'محدّد';
+
+  @override
+  String get editorSplitModePercentShort => '٪';
+
+  @override
+  String editorSplitAddsUpTo(String amount) {
+    return 'المجموع $amount';
+  }
 
   @override
   String get editorReceiptOptional => 'الإيصال (اختياري)';

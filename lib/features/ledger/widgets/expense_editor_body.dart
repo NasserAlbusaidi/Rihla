@@ -1,5 +1,4 @@
 import 'package:decimal/decimal.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,11 +11,9 @@ import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/currency_display_name.dart';
-import '../../../core/utils/expense_scope_display_name.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/localized_name_validators.dart';
-import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_avatar.dart';
@@ -31,12 +28,11 @@ import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../models/split_explanation.dart';
 import '../providers/category_provider.dart';
-import '../providers/expense_provider.dart';
 import '../utils/expense_provenance.dart';
 import '../utils/ledger_categories.dart';
 import '../utils/localized_category_name.dart';
 import 'custom_split_sheet.dart';
-import 'split_scope_selector.dart';
+import 'split_card.dart';
 
 enum ExpenseEditorMode { add, edit }
 
@@ -435,58 +431,50 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _openCustomiseSheet(Event event) async {
-    HapticService.lightClick();
-    // Participant-resolved identity (NOT raw uid) so a seeded self-entry always
-    // satisfies firestore.rules `customSplitParticipants.hasOnly(participants)`.
-    final currentParticipantId = ref
-        .read(
-          currentEventParticipantProvider((
-            groupId: widget.groupId,
-            eventId: widget.eventId,
-          )),
-        )
-        ?.id;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return _SplitCustomiseSheet(
-          event: event,
-          initialScope: _scope,
-          initialCustomSplit: _customSplitParticipants,
-          initialPayerId: _selectedPayerId,
-          currentParticipantId: currentParticipantId,
-          onApply:
-              ({
-                required ExpenseScope scope,
-                required Set<String> custom,
-                required String? payerId,
-              }) {
-                setState(() {
-                  final scopeChanged = scope != _scope;
-                  final customChanged = !_setEquals(
-                    custom,
-                    _customSplitParticipants,
-                  );
-                  _scope = scope;
-                  _customSplitParticipants
-                    ..clear()
-                    ..addAll(custom);
-                  _selectedPayerId = payerId;
-                  // Distribution is keyed by participant id; if the participant
-                  // set changed, the stored distribution is stale and would
-                  // confuse the balance calculator. Reset to equal in that case.
-                  if (scopeChanged || customChanged) {
-                    _splitMode = SplitMode.equally;
-                    _splitDistribution = null;
-                  }
-                });
-              },
-        );
-      },
-    );
+  /// #485: scope is now picked inline on the Split card. Switching it reseeds a
+  /// fresh custom split to "just me" (#247, deselectable) and resets any stored
+  /// distribution — the participant set changed, so a keyed distribution is
+  /// stale and would confuse the balance calculator.
+  void _handleScopeChange(ExpenseScope scope, String? currentParticipantId) {
+    if (scope == _scope) return;
+    HapticService.selection();
+    setState(() {
+      _customSplitParticipants = seedCustomSplitOnScopeChange(
+        newScope: scope,
+        current: _customSplitParticipants,
+        currentParticipantId: currentParticipantId,
+      );
+      _scope = scope;
+      _resetSplitToEqual();
+    });
+  }
+
+  /// #485: toggling who's in a custom split lives inline now. Any change to the
+  /// participant set invalidates a keyed distribution, so reset to equal.
+  void _handleCustomSplitChange(Set<String> custom) {
+    if (_setEquals(custom, _customSplitParticipants)) return;
+    setState(() {
+      _customSplitParticipants = custom;
+      _resetSplitToEqual();
+    });
+  }
+
+  void _resetSplitToEqual() {
+    _splitMode = SplitMode.equally;
+    _splitDistribution = null;
+    _splitExplanation = null;
+  }
+
+  /// #485: the Split card's mode segment. Equal applies inline; the weighted
+  /// modes open the existing weights sheet seeded with the requested mode.
+  void _handlePickMode(Event event, SplitMode mode) {
+    if (mode == SplitMode.equally) {
+      if (_splitMode == SplitMode.equally) return;
+      HapticService.selection();
+      setState(_resetSplitToEqual);
+      return;
+    }
+    _openSplitModeSheet(event, requestedMode: mode);
   }
 
   /// #280: dedicated "who paid" picker, reachable from the Paid-by section —
@@ -535,7 +523,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     });
   }
 
-  Future<void> _openSplitModeSheet(Event event) async {
+  /// [requestedMode] (#485): when the user taps a specific weighted mode on the
+  /// Split card's segment, open the sheet already on that tab; null reopens at
+  /// the current mode. Switching to a different mode starts that tab fresh (a
+  /// shares-weight distribution is not valid exact amounts).
+  Future<void> _openSplitModeSheet(
+    Event event, {
+    SplitMode? requestedMode,
+  }) async {
     HapticService.lightClick();
     final amount = Decimal.tryParse(_amount) ?? Decimal.zero;
     final ids = _splitParticipantIds(event);
@@ -543,6 +538,8 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _showSnack(context.l10n.editorPickAtLeastTwoPeople);
       return;
     }
+    final mode = requestedMode ?? _splitMode;
+    final sameMode = mode == _splitMode;
     // #289: distinguish two same-named members in the custom-split sheet.
     final displayNames = MemberNameResolver.disambiguateEventParticipants(
       event,
@@ -579,13 +576,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       total: amount,
       currency: effectiveCurrency,
       participants: participants,
-      initialMode: _splitMode,
-      initialDistribution: _splitDistribution,
-      // #203 S2: reopen the itemized tab from the stored metadata.
-      initialItems: _splitExplanation?.items,
+      initialMode: mode,
+      initialDistribution: sameMode ? _splitDistribution : null,
+      // #203 S2: reopen the itemized tab from the stored metadata (only when
+      // staying in the same mode; a mode switch starts that tab fresh).
+      initialItems: sameMode ? _splitExplanation?.items : null,
       // #605: reopen the bill-level adjustments too.
-      initialAdjustments: _splitExplanation?.adjustments,
-      initialItemized: _splitExplanation != null,
+      initialAdjustments: sameMode ? _splitExplanation?.adjustments : null,
+      initialItemized: sameMode ? _splitExplanation != null : false,
     );
 
     if (result == null || !mounted) return;
@@ -740,49 +738,29 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       ),
                     ),
                     if (event != null) ...[
+                      // #485: one Split card — single payer control, plain-
+                      // language scope, inline mode segment, real per-person
+                      // figures (#242). Replaces the former Paid-by / Split-
+                      // between / How sections and the duplicate payer picker.
                       _Section(
-                        title: context.l10n.editorPaidBy,
-                        // #280: change the payer directly here, not only via the
-                        // buried Split-between → Customise sheet.
-                        action: context.l10n.editorChange,
-                        onAction: () => _openPayerSheet(event),
-                        child: _PaidByCard(
-                          displayNames: _disambiguatedNames(event),
+                        title: context.l10n.editorSplit,
+                        child: SplitCard(
                           event: event,
-                          payerId: _selectedPayerId ?? currentParticipant?.id,
-                          onTap: () => _openPayerSheet(event),
-                        ),
-                      ),
-                      _Section(
-                        title: context.l10n.editorSplitBetween,
-                        action: context.l10n.editorCustomise,
-                        onAction: () => _openCustomiseSheet(event),
-                        child: _SplitPreviewCard(
                           displayNames: _disambiguatedNames(event),
-                          event: event,
                           amount: Decimal.tryParse(_amount) ?? Decimal.zero,
                           currency: effectiveCurrency,
                           scope: _scope,
                           payerId: _selectedPayerId ?? currentParticipant?.id,
+                          selfId: currentParticipant?.id,
                           customSplitParticipants: _customSplitParticipants,
                           splitMode: _splitMode,
                           splitDistribution: _splitDistribution,
-                        ),
-                      ),
-                      _Section(
-                        title: context.l10n.editorHow,
-                        action: _splitParticipantIds(event).length < 2
-                            ? null
-                            : context.l10n.editorCustomise,
-                        onAction: _splitParticipantIds(event).length < 2
-                            ? null
-                            : () => _openSplitModeSheet(event),
-                        child: _SplitModeCard(
-                          key: const Key('split_mode_card'),
-                          mode: _splitMode,
-                          isItemized: _splitExplanation != null,
-                          itemCount: _splitExplanation?.items.length ?? 0,
-                          eligibleCount: _splitParticipantIds(event).length,
+                          splitExplanation: _splitExplanation,
+                          onChangePayer: () => _openPayerSheet(event),
+                          onScopeChanged: (scope) =>
+                              _handleScopeChange(scope, currentParticipant?.id),
+                          onCustomSplitChanged: _handleCustomSplitChange,
+                          onPickMode: (mode) => _handlePickMode(event, mode),
                         ),
                       ),
                       _Section(
@@ -1287,16 +1265,9 @@ class _ExpenseProvenanceByline extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.child,
-    this.action,
-    this.onAction,
-  });
+  const _Section({required this.title, required this.child});
 
   final String title;
-  final String? action;
-  final VoidCallback? onAction;
   final Widget child;
 
   @override
@@ -1308,38 +1279,13 @@ class _Section extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: AppTypography.sans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: context.colors.textPrimary,
-                    ),
-                  ),
-                ),
-                if (action != null)
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onAction,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: context.spacing.space4,
-                        horizontal: context.spacing.space4,
-                      ),
-                      child: Text(
-                        action!,
-                        style: AppTypography.sans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: context.colors.primaryDark,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+            child: Text(
+              title,
+              style: AppTypography.sans(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: context.colors.textPrimary,
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -1482,470 +1428,13 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-class _PaidByCard extends StatelessWidget {
-  const _PaidByCard({
-    required this.displayNames,
-    required this.event,
-    required this.payerId,
-    this.onTap,
-  });
-
-  /// #289 disambiguation map, computed once by the parent and shared with the
-  /// split-preview/provenance consumers (#627 follow-up) — recomputing it here
-  /// per amount keystroke is the redundancy this removes.
-  final Map<String, String> displayNames;
-  final Event event;
-  final String? payerId;
-  // #280: tap the card (or the section's "Change" action) to pick the payer.
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final effectivePayerId = payerId ?? event.participantIds.firstOrNull;
-    // #289: distinguish two same-named members in the "Paid by" attribution.
-    final payerName =
-        displayNames[effectivePayerId] ??
-        event.participantNames[effectivePayerId] ??
-        context.l10n.editorSelectedPayer;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: _CardShell(
-          child: _InfoRow(
-            leading: RAvatar(name: payerName, size: 32),
-            title: payerName,
-            subtitle: context.l10n.editorSelectedPaidFullAmount,
-            trailing: DirectionalIcon(
-              Iconsax.arrow_right_3,
-              size: 18,
-              color: context.colors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// #627 (+ follow-up) perf seam. [debugEditorNameMapComputes] counts how often
-/// the editor recomputes the SHARED disambiguation name map — hoisted to
-/// `_ExpenseEditorBodyState._disambiguatedNames` and fed to the paid-by,
-/// provenance, and split-preview consumers, so it computes once per event change
-/// rather than per keystroke per consumer. [debugSplitPreviewOwedComputes] counts
-/// the `_SplitPreviewCard` `allocateExpenseOwed` allocation. Tests assert a pure
-/// amount keystroke recomputes `owed` but NOT the name map (the win). Reset in
-/// test `setUp`; production never reads these.
+/// #627 perf seam: counts how often the editor recomputes the SHARED
+/// disambiguation name map (`_disambiguatedNames`), shared with the paid-by
+/// and split consumers. Tests assert a pure amount keystroke does NOT recompute
+/// it. Reset in test `setUp`; production never reads it. (The owed-allocation
+/// counter moved to `split_card.dart` with the per-person figures.)
 @visibleForTesting
 int debugEditorNameMapComputes = 0;
-@visibleForTesting
-int debugSplitPreviewOwedComputes = 0;
-
-class _SplitPreviewCard extends StatefulWidget {
-  const _SplitPreviewCard({
-    required this.displayNames,
-    required this.event,
-    required this.amount,
-    required this.currency,
-    required this.scope,
-    required this.payerId,
-    required this.customSplitParticipants,
-    required this.splitMode,
-    required this.splitDistribution,
-  });
-
-  /// #289 disambiguation map, computed once by the parent and shared (#627
-  /// follow-up). Event-derived, so it refreshes with the event instance; the
-  /// owed memo below still tracks the money inputs separately.
-  final Map<String, String> displayNames;
-  final Event event;
-  final Decimal amount;
-  final String currency;
-  final ExpenseScope scope;
-  final String? payerId;
-  final Set<String> customSplitParticipants;
-  final SplitMode splitMode;
-  final Map<String, Decimal>? splitDistribution;
-
-  @override
-  State<_SplitPreviewCard> createState() => _SplitPreviewCardState();
-}
-
-/// #627: the parent `setState`s `_amount` on every keystroke, so this card is
-/// rebuilt per digit. The `allocateExpenseOwed` allocation is memoized here and
-/// recomputed only when its actual inputs change, so a pure amount edit
-/// re-allocates `owed` (it must — the figures change). The disambiguation name
-/// map is no longer memoized here: it is event-derived and shared by sibling
-/// cards, so the parent owns the single memo and passes it in as `displayNames`
-/// (#627 follow-up).
-class _SplitPreviewCardState extends State<_SplitPreviewCard> {
-  Map<String, Decimal>? _owed;
-
-  /// True for shares/exact/percent splits with a distribution — the per-tile
-  /// amounts vary, so the preview must allocate them via [BalanceCalculator]
-  /// rather than show the equal figure (#242). Mirrors the calculateBalances
-  /// gate and `ledger_day_card._isNonEqualSplit`.
-  bool get _isNonEqual =>
-      widget.splitMode != SplitMode.equally &&
-      widget.splitDistribution != null &&
-      widget.splitDistribution!.isNotEmpty;
-
-  List<String> get _splitParticipantIds {
-    switch (widget.scope) {
-      case ExpenseScope.global:
-        return widget.event.participantIds;
-      case ExpenseScope.custom:
-        // #247: preview the persisted custom set verbatim (no payer insert),
-        // mirroring BalanceCalculator's empty→global fallback so the preview
-        // equals the ledger for every custom set, including empty.
-        return widget.customSplitParticipants.isEmpty
-            ? widget.event.participantIds
-            : widget.customSplitParticipants.toList();
-      case ExpenseScope.personal:
-        return widget.payerId != null ? [widget.payerId!] : const [];
-      case ExpenseScope.subGroup:
-        return widget.event.participantIds;
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _recomputeOwed();
-  }
-
-  @override
-  void didUpdateWidget(_SplitPreviewCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_owedInputsChanged(oldWidget)) {
-      _recomputeOwed();
-    }
-  }
-
-  /// True when ANY input to `allocateExpenseOwed` changed. `participantIds` is
-  /// covered by the event identity check; the rest are compared by value
-  /// (`mapEquals`/`setEquals` deep-compare, safe even if a value-equal instance
-  /// arrives). Missing any input here would display a stale owed figure.
-  bool _owedInputsChanged(_SplitPreviewCard oldWidget) {
-    return !identical(widget.event, oldWidget.event) ||
-        widget.amount != oldWidget.amount ||
-        widget.splitMode != oldWidget.splitMode ||
-        widget.scope != oldWidget.scope ||
-        widget.currency != oldWidget.currency ||
-        widget.payerId != oldWidget.payerId ||
-        !mapEquals(widget.splitDistribution, oldWidget.splitDistribution) ||
-        !setEquals(
-          widget.customSplitParticipants,
-          oldWidget.customSplitParticipants,
-        );
-  }
-
-  void _recomputeOwed() {
-    if (!_isNonEqual) {
-      _owed = null;
-      return;
-    }
-    debugSplitPreviewOwedComputes++;
-    // #242 WYSIWYG: for shares/exact/percent, show each person's REAL owed
-    // amount by allocating through the same pure helper calculateBalances uses,
-    // so the preview equals what gets persisted. `onFallback: null` keeps a
-    // transient/forged split silent (no Sentry). Equal splits keep `each`.
-    _owed = BalanceCalculator.allocateExpenseOwed(
-      amount: widget.amount,
-      splitMode: widget.splitMode,
-      splitDistribution: widget.splitDistribution,
-      scope: widget.scope,
-      customSplitParticipants: widget.customSplitParticipants.toList(),
-      payerId: widget.payerId ?? '',
-      participantIds: widget.event.participantIds,
-      currency: widget.currency,
-      onFallback: null,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ids = _splitParticipantIds;
-    final count = ids.length;
-    final displayNames = widget.displayNames;
-    final each = count == 0
-        ? Decimal.zero
-        : (widget.amount / Decimal.fromInt(count)).toDecimal(
-            scaleOnInfinitePrecision: 3,
-          );
-    final owed = _owed;
-    final colors = context.colors;
-    final l10n = context.l10n;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-      child: _CardShell(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 2,
-                    children: [
-                      Text(
-                        // With fewer than two people there is no split, so show
-                        // just the scope — not "{scope} · 1 way", which reads as
-                        // a finished split beside the "pick ≥2" hint (#152).
-                        count >= 2
-                            ? l10n.editorSplitSummary(
-                                expenseScopeDisplayName(widget.scope, l10n),
-                                count,
-                              )
-                            : expenseScopeDisplayName(widget.scope, l10n),
-                        style: AppTypography.sans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      if (count >= 2)
-                        Text(
-                          // Non-equal splits have no single "each" figure.
-                          owed != null
-                              ? l10n.editorAmountsVary
-                              : l10n.editorEachAmount(
-                                  AppFormatters.formatCurrency(
-                                    each,
-                                    widget.currency,
-                                  ),
-                                ),
-                          style: AppTypography.sans(
-                            fontSize: 12,
-                            color: colors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (widget.scope == ExpenseScope.global)
-                  Text(
-                    l10n.editorEventDefault,
-                    style: AppTypography.mono(
-                      fontSize: 9,
-                      letterSpacing: 1.6,
-                      color: colors.textPrimary.withValues(alpha: 0.45),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            if (count == 0)
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  vertical: context.spacing.space12,
-                ),
-                child: Text(
-                  l10n.editorTapCustomiseSplit,
-                  style: AppTypography.sans(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  ),
-                ),
-              )
-            else
-              SizedBox(
-                height: 88,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  itemCount: ids.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final id = ids[index];
-                    final name =
-                        displayNames[id] ??
-                        widget.event.participantNames[id] ??
-                        l10n.editorMemberFallback;
-                    final firstName = MemberNameResolver.compactDisambiguated(
-                      name,
-                    );
-                    return _ParticipantSplitTile(
-                      name: name,
-                      firstName: firstName,
-                      // Real per-person owed for non-equal modes (#242); the
-                      // `?? 0` is defensive — distribution.keys always covers
-                      // the participant set in the happy path.
-                      share: owed != null ? (owed[id] ?? Decimal.zero) : each,
-                      currency: widget.currency,
-                      isPayer: id == widget.payerId,
-                    );
-                  },
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ParticipantSplitTile extends StatelessWidget {
-  const _ParticipantSplitTile({
-    required this.name,
-    required this.firstName,
-    required this.share,
-    required this.currency,
-    required this.isPayer,
-  });
-
-  final String name;
-  final String firstName;
-  final Decimal share;
-  final String currency;
-  final bool isPayer;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      width: 78,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-      decoration: BoxDecoration(
-        color: colors.cardSoft,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isPayer ? colors.primary.withValues(alpha: 0.55) : colors.rule,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          RAvatar(name: name, size: 28),
-          Text(
-            firstName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.sans(
-              fontSize: 11,
-              color: colors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          // Wrapped LTR so the amount can't bidi-reorder in Arabic, and scaled
-          // to fit the fixed tile instead of truncating to an unreadable
-          // ellipsis (#151). Currency notation (symbol vs code) is #144.
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: Text(
-                AppFormatters.formatCurrency(share, currency),
-                maxLines: 1,
-                softWrap: false,
-                style: AppTypography.mono(
-                  fontSize: 11,
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SplitModeCard extends StatelessWidget {
-  const _SplitModeCard({
-    super.key,
-    required this.mode,
-    required this.eligibleCount,
-    this.isItemized = false,
-    this.itemCount = 0,
-  });
-
-  final SplitMode mode;
-  final int eligibleCount;
-
-  /// #203 S2: when true this split is itemized (persisted AS exact). The card
-  /// shows the "Itemized" label + item count instead of the plain mode name.
-  final bool isItemized;
-  final int itemCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final disabled = eligibleCount < 2;
-    final l10n = context.l10n;
-    final title = isItemized
-        ? l10n.editorSplitItemized
-        : splitModeDisplayName(mode, l10n);
-    final subtitle = disabled
-        ? l10n.editorPickAtLeastTwoToSplit
-        : isItemized
-        ? l10n.itemizedNItems(itemCount)
-        : switch (mode) {
-            SplitMode.equally => l10n.editorSplitEvenly(eligibleCount),
-            SplitMode.shares => l10n.editorWeightedByShares,
-            SplitMode.exact => l10n.editorPerPersonAmounts,
-            SplitMode.percent => l10n.editorPerPersonPercents,
-          };
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-      child: _CardShell(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: colors.selectionFill,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                Iconsax.percentage_square,
-                size: 18,
-                color: colors.primary,
-              ),
-            ),
-            SizedBox(width: context.spacing.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTypography.sans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: AppTypography.sans(
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _WhereCard extends StatelessWidget {
   const _WhereCard({required this.event});
@@ -2053,13 +1542,9 @@ class _DeleteCard extends StatelessWidget {
 }
 
 class _CardShell extends StatelessWidget {
-  const _CardShell({
-    required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
-  });
+  const _CardShell({required this.child});
 
   final Widget child;
-  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -2069,7 +1554,7 @@ class _CardShell extends StatelessWidget {
         borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
         boxShadow: context.shadows.raised,
       ),
-      padding: padding,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: child,
     );
   }
@@ -2147,15 +1632,6 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
-
-// ──────────────────────────────────────────────────────────── Customise sheet
-
-typedef _SplitApply =
-    void Function({
-      required ExpenseScope scope,
-      required Set<String> custom,
-      required String? payerId,
-    });
 
 /// #280: single-choice "who paid" picker. Tap a participant to select and
 /// close, returning the chosen id via [Navigator.pop]. Render-only names
@@ -2267,155 +1743,6 @@ class _PayerOption extends StatelessWidget {
       trailing: selected
           ? Icon(Iconsax.tick_circle, color: colors.primary, size: 20)
           : null,
-    );
-  }
-}
-
-class _SplitCustomiseSheet extends StatefulWidget {
-  const _SplitCustomiseSheet({
-    required this.event,
-    required this.initialScope,
-    required this.initialCustomSplit,
-    required this.initialPayerId,
-    required this.currentParticipantId,
-    required this.onApply,
-  });
-
-  final Event event;
-  final ExpenseScope initialScope;
-  final Set<String> initialCustomSplit;
-  final String? initialPayerId;
-  final String? currentParticipantId;
-  final _SplitApply onApply;
-
-  @override
-  State<_SplitCustomiseSheet> createState() => _SplitCustomiseSheetState();
-}
-
-class _SplitCustomiseSheetState extends State<_SplitCustomiseSheet> {
-  late ExpenseScope _scope;
-  late Set<String> _custom;
-  String? _payerId;
-
-  @override
-  void initState() {
-    super.initState();
-    _scope = widget.initialScope == ExpenseScope.subGroup
-        ? ExpenseScope.global
-        : widget.initialScope;
-    _custom = Set<String>.from(widget.initialCustomSplit);
-    _payerId = widget.initialPayerId;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colors.scaffoldBackground,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.rule,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        context.l10n.editorCustomiseSplit,
-                        style: AppTypography.sans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        widget.onApply(
-                          scope: _scope,
-                          custom: _custom,
-                          payerId: _payerId,
-                        );
-                        Navigator.of(context).pop();
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        foregroundColor: colors.textOnPrimary,
-                        minimumSize: const Size(64, 40),
-                        padding: EdgeInsetsDirectional.fromSTEB(
-                          context.spacing.space16,
-                          9,
-                          context.spacing.space16,
-                          11,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            context.spacing.radiusSmall,
-                          ),
-                        ),
-                        textStyle:
-                            AppTypography.sans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              height: 1.22,
-                            ).copyWith(
-                              leadingDistribution: TextLeadingDistribution.even,
-                            ),
-                      ),
-                      child: Text(context.l10n.commonApply),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: SplitScopeSelector(
-                    event: widget.event,
-                    scope: _scope,
-                    onScopeChanged: (s) => setState(() {
-                      // #247: default a fresh custom split to "just me"
-                      // (deselectable); never re-seed an existing set.
-                      _custom = seedCustomSplitOnScopeChange(
-                        newScope: s,
-                        current: _custom,
-                        currentParticipantId: widget.currentParticipantId,
-                      );
-                      _scope = s;
-                    }),
-                    customSplitParticipants: _custom,
-                    onCustomSplitChanged: (s) => setState(() {
-                      _custom = s;
-                    }),
-                    selectedPayerId: _payerId,
-                    onPayerChanged: (id) => setState(() => _payerId = id),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

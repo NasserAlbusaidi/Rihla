@@ -32,8 +32,11 @@ void main() {
     expect(find.text('AMOUNT · OMR'), findsOneWidget);
     expect(find.text('Description'), findsOneWidget);
     expect(find.text('Category'), findsOneWidget);
+    // #485: one "Split" card — "Paid by" is now its inline field label, and the
+    // "Split between" / "How" sections collapsed into it.
+    expect(find.text('Split'), findsOneWidget);
     expect(find.text('Paid by'), findsOneWidget);
-    expect(find.text('Split between'), findsOneWidget);
+    expect(find.text('Who splits'), findsOneWidget);
     expect(find.text('Where'), findsOneWidget);
   });
 
