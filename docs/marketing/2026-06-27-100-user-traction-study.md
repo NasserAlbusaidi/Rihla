@@ -1,5 +1,17 @@
 # Rihla 100-User Traction Study
 
+> **UPDATE (2026-06-28):** Rihla v1.6.3 is now LIVE in public production on Google
+> Play at 100% rollout — anyone can install directly from the public listing (or the
+> landing-page Play CTA). There is no closed-testing/alpha track, no tester
+> allow-list, and no Play opt-in step. Any closed-test-access framing below
+> (request-access fallback, `/alpha` pages, tester-email roster, "contacted ->
+> tester added" funnel) is **superseded**: the access step is gone, so the funnel
+> collapses to "contacted -> installed". Keep using the `utm_*` trackable landing
+> links — they still carry attribution into the Play install referrer. Also: the
+> Android install-referrer attribution loop (#368), referenced below as a P0 /
+> "next issue", has already **SHIPPED as #724**. The rest of this file is retained
+> as a point-in-time record from 2026-06-27.
+
 Date: 2026-06-27
 
 Goal: get the first 100 real users to install Rihla, join or create a group, and use it for a real shared-expense moment.

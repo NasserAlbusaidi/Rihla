@@ -15,7 +15,7 @@ or invitee taps a link.
 | English short description | `Split group bills, see who owes who, settle up offline - no signup.` | Strong local conversion promise; keep under the Play short-description limit. |
 | English full description | Leads with Oman/Gulf, friend groups, WhatsApp, no signup, and offline use. | Good enough for warm traffic; optimize only with Play Console evidence. |
 | Arabic listing | Localized title, short description, full description, and screenshots. | Essential for Oman/GCC trust; keep Arabic copy human, not literal translation. |
-| Screenshots | Four English and four Arabic phone screenshots. | Enough for alpha; next improvement should make the first two frames show the core loop. |
+| Screenshots | Four English and four Arabic phone screenshots. | Enough to ship; next improvement should make the first two frames show the core loop. |
 | Website SEO | English, Arabic, Oman split-bills pages, sitemap, robots, `hreflang`, and Play CTAs. | Supports trust and invite conversion; not the main source of the first 100. |
 | First-100 tracker | `docs/marketing/first-100-cohort-tracker.csv` has 40 segment slots and no real names yet. | Do not optimize store copy before named outreach starts. |
 
@@ -32,7 +32,9 @@ or invitee taps a link.
 ## Do This Before Any Store Experiment
 
 1. Fill at least 10 real champion rows in `first-100-cohort-tracker.csv`.
-2. Add those testers to the Play alpha list.
+2. Confirm those champions installed from the public Play listing. The tracker's
+   `tester_added` column now means "confirmed installed from Play" (the column
+   name stays because the Dart tools depend on it).
 3. Send the launch-packet messages from `tool/first_100_launch_packet.dart`.
 4. Confirm the listing has at least 100 Store listing visitors or 30 first-time
    installer attempts in Play Console.
@@ -47,13 +49,13 @@ or invitee taps a link.
    - Search terms, when available
    - Install source or campaign/referrer where available
 
-Do not start a Play experiment before the visitor floor is met. A tiny alpha
+Do not start a Play experiment before the visitor floor is met. A tiny early
 sample will produce noise and can slow down the real work: contacting champions
 and getting them to create groups.
 
 ## Weekly Measurement Loop
 
-Run this once per week while the app remains in alpha:
+Run this once per week while you are still chasing the first 100 users:
 
 1. Run `dart tool/first_100_summary.dart --today=YYYY-MM-DD`.
 2. Export or manually record Play Console metrics for the same date range.
@@ -158,7 +160,7 @@ to send directly to a champion.
 - Keep offline wording accurate: Firestore offline persistence supports offline
   reads and queued writes; do not imply multi-device conflict-free realtime sync
   while offline.
-- Do not mention public reviews while the app is still alpha/closed testing.
+- Only reference public reviews once the listing actually has them.
 
 ## Operator Checklist
 

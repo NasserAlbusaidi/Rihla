@@ -22,41 +22,35 @@ respectfully.
   `https://rihla-safar.web.app/?utm_source=community&utm_medium=post&utm_campaign=first_100_public&utm_content=CHANNEL_SLUG`
 - For Arabic-first groups, use:
   `https://rihla-safar.web.app/ar?utm_source=community&utm_medium=post&utm_campaign=first_100_public_ar&utm_content=CHANNEL_SLUG`
-- If the app is still on Play alpha/closed testing, the post must route people
-  to `/alpha` or collect Google Play emails first. Do not send people straight
-  to a Play link that will look unavailable.
+- The tracked link routes straight to the public Play listing, so a post can
+  send people to install directly. No tester list, opt-in link, or Google
+  account to collect.
 
-## Source-Backed Constraints
+## Availability
 
-Google Play closed testing is still a funnel constraint, not just a marketing
-detail. Google's Play Console help says testers need eligible Google accounts,
-closed tests are available only to the configured tester list or group, and
-testers may need an opt-in link when the app is not discoverable by search.
+Rihla is live in public production on Google Play at 100% rollout. Anyone can
+install it directly from the public Play listing — there is no closed-testing
+track, no tester allow-list, no opt-in link, and no Google account to collect.
+A public-channel post can route people straight to the tracked link, which
+carries attribution into the Play install referrer.
 
-Operational implication: every public channel post should be framed as
-"limited Android alpha access" and should ask for a small real-group test, not
-promise instant public availability.
-
-Sources:
-
-- Google Play testing setup:
-  https://support.google.com/googleplay/android-developer/answer/9845334
-- Google Play closed testing overview:
-  https://play.google.com/console/about/closed-testing/
+Operational implication: every public channel post still asks for a small real-
+group test and honest feedback — that is the value, not access. Keep it
+permission-first and wave-2.
 
 ## Priority Channels
 
 | Priority | Channel | Source | Why it fits Rihla | First action | Message angle | Tracking slug |
 |---:|---|---|---|---|---|---|
 | 1 | Warm personal WhatsApp groups | Private, not in repo | Highest trust and fastest path to real groups. | Fill tracker slots 1-10 with real names. | "Use this for one real shared bill this week." | `warm_whatsapp_01` |
-| 2 | InterNations Muscat | https://www.internations.org/muscat-expats | Expat groups often split dinners, trips, and shared outings. | Join, attend or message event organizer, ask whether an alpha tester ask is allowed. | "No signup bill splitter for Muscat dinners and trips." | `internations_muscat` |
-| 3 | Eventbrite Muscat events | https://www.eventbrite.com/d/oman/muscat/ | Event organizers and attendees create repeated group outings. | Pick 5 relevant social, tech, travel, student, or networking events and message organizers. | "Free alpha tool for groups who split event, dinner, or travel costs." | `eventbrite_muscat` |
+| 2 | InterNations Muscat | https://www.internations.org/muscat-expats | Expat groups often split dinners, trips, and shared outings. | Join, attend or message event organizer, ask whether a tester ask is allowed. | "No signup bill splitter for Muscat dinners and trips." | `internations_muscat` |
+| 3 | Eventbrite Muscat events | https://www.eventbrite.com/d/oman/muscat/ | Event organizers and attendees create repeated group outings. | Pick 5 relevant social, tech, travel, student, or networking events and message organizers. | "Free tool for groups who split event, dinner, or travel costs." | `eventbrite_muscat` |
 | 4 | Meetup Oman social/networking groups | https://www.meetup.com/topics/socialnetwork/om/ | Meetup communities already gather strangers for recurring social plans. | Contact group organizers before posting. | "Try it at the next group meal or activity." | `meetup_oman_social` |
-| 5 | r/Oman | https://www.reddit.com/r/Oman/ | Broad Oman community with locals, expats, and travel/life questions. | Ask moderators whether an alpha-feedback post is acceptable. | "Oman-built Android alpha looking for 20 real group testers." | `reddit_oman` |
+| 5 | r/Oman | https://www.reddit.com/r/Oman/ | Broad Oman community with locals, expats, and travel/life questions. | Ask moderators whether a feedback post is acceptable. | "Oman-built Android app looking for 20 real group testers." | `reddit_oman` |
 | 6 | r/omantravel / Oman travel discussions | https://www.reddit.com/r/omantravel/ | Travel groups have a strong split-expense use case. | Ask moderators or comment only where app mention directly answers a split-cost need. | "For Salalah, camping, road trips, and group bookings." | `reddit_omantravel` |
 | 7 | Sultan Qaboos University student groups | https://www.squ.edu.om/student-affairs/Home | SQU has many student societies and activity groups; student groups create trips, events, and shared purchases. | Reach known students or society leads, not random public emails. | "Use it for club outings, project expenses, and group meals." | `squ_student_groups` |
 | 8 | SQU Economics / Business student groups | https://www.squ.edu.om/economics/Student/Students-groups | Business and finance groups are naturally aligned with expense tracking. | Ask a student lead to run a 5-person beta in one event. | "Finance-minded beta: settle one event without spreadsheets." | `squ_business_groups` |
-| 9 | SQU Information Technology Society | https://www.squ.edu.om/student-affairs/Information-technology-IT-society | Tech students can give sharper product feedback and bring Android users. | Ask for alpha testers with Android phones and real group use cases. | "Local Flutter/Firebase app alpha seeking product feedback." | `squ_it_society` |
+| 9 | SQU Information Technology Society | https://www.squ.edu.om/student-affairs/Information-technology-IT-society | Tech students can give sharper product feedback and bring Android users. | Ask for testers with Android phones and real group use cases. | "Local Flutter/Firebase app seeking product feedback." | `squ_it_society` |
 | 10 | GUtech student clubs | https://www.gutech.edu.om/student-campus-life/ | GUtech student clubs cover academics, media, community service, arts, cultural, and environmental interests. | Contact Registration and Student Affairs or a known club member. | "Use for club event purchases and group meals." | `gutech_clubs` |
 | 11 | MCBS student clubs | https://www.mcbs.edu.om/student-life/student-clubs/ | MCBS lists active clubs and campus groups; student clubs are likely group-spend settings. | Ask one club lead for 3 Android testers. | "One club, one real event, one shared bill." | `mcbs_student_clubs` |
 | 12 | MCBS International Club | https://www.mcbs.edu.om/student-life/student-clubs/international-club-2/ | Cross-cultural and international student groups often coordinate group outings. | Ask before contacting named people; keep outreach permission-based. | "Arabic/English no-signup split bills for mixed groups." | `mcbs_international` |
@@ -68,8 +62,7 @@ Sources:
 Day 1:
 
 - Fill the first 10 warm champion slots.
-- Add those Google Play emails to the tester list.
-- Send generated Day-1 messages using `--play-opt-in-link`.
+- Send the generated Day-1 messages, each with the champion's tracked link.
 
 Day 2:
 
@@ -85,13 +78,13 @@ Day 3:
 Day 4:
 
 - Draft a moderator request for r/Oman and r/omantravel.
-- Ask for permission to post an alpha-feedback thread, not an ad.
+- Ask for permission to post a feedback thread, not an ad.
 
 Day 5:
 
 - Follow up with warm champions who installed but did not create a group.
-- If fewer than 7 people installed, stop public posting and fix Play access
-  friction first.
+- If fewer than 7 people installed, stop public posting and fix the warm-funnel
+  install friction first.
 
 Day 6:
 
@@ -109,25 +102,24 @@ Day 7:
 English:
 
 ```text
-Hi, I am testing Rihla, an Android alpha app built in Oman for splitting group
+Hi, I am testing Rihla, an Android app built in Oman for splitting group
 expenses with friends. It is useful for trips, dinners, student clubs, and
 roommate/shared bills.
 
-Would it be acceptable to post a short alpha-tester request here? I am looking
-for a few Android users who can test it with one real group bill and send honest
-feedback. I will keep it clearly labeled as alpha access and will not spam the
-group.
+Would it be acceptable to post a short request for testers here? I am looking
+for a few Android users who can try it with one real group bill and send honest
+feedback. I will keep it short and will not spam the group.
 ```
 
 Arabic:
 
 ```text
-مرحبًا، أختبر تطبيق Rihla على Android alpha. التطبيق مخصص لتقسيم مصاريف
+مرحبًا، أختبر تطبيق Rihla على Android. التطبيق مخصص لتقسيم مصاريف
 المجموعات مثل الرحلات، العشاء، أنشطة الطلاب، أو مصاريف السكن المشترك.
 
 هل مسموح أن أنشر طلبًا قصيرًا لمختبرين للتطبيق؟ أبحث عن عدد قليل من مستخدمي
-Android يجربونه مع فاتورة مجموعة حقيقية ويرسلون ملاحظات صريحة. سأوضح أنه وصول
-alpha ولن أكرر النشر.
+Android يجربونه مع فاتورة مجموعة حقيقية ويرسلون ملاحظات صريحة. سأبقي المنشور
+قصيرًا ولن أكرر النشر.
 ```
 
 ## Approved Post Copy
@@ -135,32 +127,32 @@ alpha ولن أكرر النشر.
 English:
 
 ```text
-Oman Android alpha testers wanted.
+Oman Android testers wanted.
 
 I am testing Rihla, a no-signup app for splitting shared expenses with friends.
 Best use case: a trip, dinner, groceries, fuel, roommate bill, or club event
 where one person pays and everyone needs to settle clearly.
 
 I am looking for people who can use it with one real group this week:
-1. get added to the Google Play alpha
+1. install Rihla from Google Play
 2. create one group
 3. invite 2+ people
 4. add one real shared expense
 5. tell me what blocked or confused you
 
-Access: TRACKED_LINK
+Install: TRACKED_LINK
 ```
 
 Arabic:
 
 ```text
-أبحث عن مختبرين في عمان لتطبيق Rihla على Android alpha.
+أبحث عن مختبرين في عمان لتطبيق Rihla على Android.
 
 Rihla يساعدك على تقسيم مصاريف المجموعة بدون تسجيل: رحلة، عشاء، مشتريات، بترول،
 فاتورة سكن مشترك، أو فعالية طلابية.
 
 أحتاج أشخاص يجربونه مع مجموعة حقيقية هذا الأسبوع:
-1. أضيف حسابك إلى Google Play alpha
+1. تثبّت Rihla من Google Play
 2. تنشئ مجموعة
 3. تدعو شخصين أو أكثر
 4. تضيف مصروفًا حقيقيًا مشتركًا
@@ -174,11 +166,11 @@ Rihla يساعدك على تقسيم مصاريف المجموعة بدون تس
 - `first_contact_date`: set only when a human is contacted or a public post is
   made.
 - `contact_channel`: use `community:<slug>` for public-channel leads.
-- `tester_added`: set to `yes` only after the Play tester list includes the
-  person.
+- `tester_added`: set to `yes` only after the person has installed Rihla from
+  Google Play. Column name is kept for the tooling; it now means "confirmed
+  installed".
 - `top_blocker`: use exact values such as `moderator denied`, `no Android`,
-  `wrong Google account`, `opt-in link not opened`, `installed no group`, or
-  `joined no expense`.
+  `installed no group`, or `joined no expense`.
 - A public channel is worth repeating only if it produces at least one activated
   group, not just clicks.
 
