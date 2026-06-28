@@ -1,0 +1,346 @@
+--------- beginning of main
+06-26 09:03:25.666 10066 10066 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color,raw:input tap 540 1568'
+06-26 09:03:25.745  8390  8390 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:03:25.746  8390  8391 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:03:25.749  1552  5431 D InputDispatcher: Inject motion (8390/2000): action=0x0, time=18582922000000, f=0x0, d=0 dsdx=1.000000 dtdx=0.000000
+06-26 09:03:25.750  1552  2388 I InputDispatcher: Delivering touch to (2736): action: 0x4, f=0x0, d=0, 'f36d2f0', t=1 
+06-26 09:03:25.750  1552  2388 I InputDispatcher: Delivering touch to (7313): action: 0x0, f=0x0, d=0, '6dd5a54', t=1 
+06-26 09:03:25.751  1552  1983 I GestureDetector: obtain mCurrentDownEvent. id: -132981713 caller: com.android.server.wm.SystemGesturesPointerEventListener.onPointerEvent:203 com.android.server.wm.PointerEventDispatcher.onInputEvent:53 android.view.InputEventReceiver.dispatchInputEvent:285 
+06-26 09:03:25.751  7313  7313 I ViewRootImpl@a116888[MainActivity]: ViewPostIme pointer 0
+06-26 09:03:25.751  1552  1983 I GestureDetector: obtain mCurrentDownEvent. id: -132981713 caller: com.android.server.wm.SystemPerformancePointerEventListener.onPointerEvent:89 com.android.server.wm.PointerEventDispatcher.onInputEvent:53 android.view.InputEventReceiver.dispatchInputEvent:285 
+--------- beginning of system
+06-26 09:03:25.753  1552  2388 D PowerManagerService: UserActivityStateListenerState: 1
+06-26 09:03:25.754  1552  5431 D InputDispatcher: Inject motion (8390/2000): action=0x1, time=18582922000000, f=0x0, d=0 dsdx=1.000000 dtdx=0.000000
+06-26 09:03:25.754  4678  4678 I SemDvfsHyPerManager: acquire hyper - TABoost/4678@17, type = 1090523139
+06-26 09:03:25.755  1340  1386 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 11023877  [4678 / 17]    HINT :      list : [TABoost / 30] [TIMEOUT / 1500] 
+06-26 09:03:25.755  1552  2388 I InputDispatcher: Delivering touch to (7313): action: 0x1, f=0x0, d=0, '6dd5a54', t=1 
+06-26 09:03:25.756  1552  1983 I GestureDetector: obtain mCurrentMotionEventRaw. action: 1 id: -313688435
+06-26 09:03:25.756  7313  7313 I ViewRootImpl@a116888[MainActivity]: ViewPostIme pointer 1
+06-26 09:03:25.756  1552  1983 I GestureDetector: obtain mCurrentMotionEventRaw. action: 1 id: -313688435
+06-26 09:03:25.875  1336  6211 I sensors-hal: handle_sns_std_sensor_event:310, [SSC_LIGHT] P(OFF) [8,8,7] br:27, mode:1
+06-26 09:03:25.973  7313  7556 I PlayCore: UID: [10367]  PID: [7313] IntegrityService : requestIntegrityToken(IntegrityTokenRequest{nonce=AV3SJPvDATMGReST-h-L6rqK2JN9W3Cxfl6OUEqt3ujtGR8n36qEMLGTGTKrebT8PGb0lyAnJtaFuUxkw2GLLkKw4Tpq-_pjC6TszST-Oc1T54LJmivA0Hkr7VcfdtUBAD0eB1o_PG9A1hKu_6rP3NA_gnRS2vFoufkQay1xHePWP_0=, cloudProjectNumber=231518921973, network=null})
+06-26 09:03:25.973  7313  7476 I PlayCore: UID: [10367]  PID: [7313] IntegrityService : Initiate binding to the service.
+06-26 09:03:25.976  1552  2843 I ActivityManager: Changes in 10227 19 to 3, 0 to 8
+06-26 09:03:25.985  7313  7313 I PlayCore: UID: [10367]  PID: [7313] IntegrityService : ServiceConnectionImpl.onServiceConnected(ComponentInfo{com.android.vending/com.google.android.finsky.integrityservice.IntegrityService})
+06-26 09:03:25.985  7313  7476 I PlayCore: UID: [10367]  PID: [7313] IntegrityService : linkToDeath
+06-26 09:03:25.999 24484 24513 W Finsky  : [79] PSR is not cached, using PackageManager instead.
+06-26 09:03:26.001  1552  2843 I AppOps  : updateUidProcState uid: 10228 procState: 3 capability:15
+06-26 09:03:26.005   744   744 W keymaster_tee: [WRN]start nwd_generate_key
+06-26 09:03:26.015   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_generate_key() returns 0
+06-26 09:03:26.015   744   744 W keymaster_tee: [WRN]ret OK PARAMS: A3 P2 D6 NAR1 S256 2026.06.26,09:03:26.005 
+06-26 09:03:26.017   744   744 W keymaster_tee: [WRN]start nwd_attest_key
+06-26 09:03:26.031   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_key_attest() returns 0
+06-26 09:03:26.032   744   744 E keymaster_tee: [[31mERR[0m]Unexpected title ignore.. title: TEE
+06-26 09:03:26.032   744   744 W keymaster_tee: [WRN]nwd_attest_key GAK ret 0
+06-26 09:03:26.032   742 14987 I keystore2: keystore2::security_level: In generate_key. 10227, Some("integrity.api.key.alias")
+06-26 09:03:26.032   742 14987 E DEVROOT#CIF:  VFI_appendVndFile start
+06-26 09:03:26.034  1370  1398 I DEVROOT#VND:  communicate start cmd:0xCD29, length:155
+06-26 09:03:26.034  1370  1398 I DEVROOT#VND:  cmd [CD29] start...
+06-26 09:03:26.037  1370  1398 I DEVROOT#VND:  cmd [CD29] end...[0]
+06-26 09:03:26.040  1370  1398 I DEVROOT#VND:  communicate end 0 / length : 0
+06-26 09:03:26.041   742 14987 E DEVROOT#CIF:  VFI_appendVndFile end (0)
+06-26 09:03:26.047   742 14987 I keystore2: keystore2::database: In store_new_key "integrity.api.key.alias", uid=10227, cert=true, cert_chain=true rebound=true
+06-26 09:03:26.052  1552  1983 I GestureDetector: handleMessage TAP
+06-26 09:03:26.052  1552  1552 I GestureDetector: handleMessage TAP
+06-26 09:03:26.052 24484  8396 I Finsky  : [197] Integrity key attestation record generated successfully.
+06-26 09:03:26.055  1336  1336 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns
+06-26 09:03:26.055  1336  1336 I sensors-hal: batch:336, android.sensor.linear_acceleration/101, period=20000000, max_latency=0 request completed
+06-26 09:03:26.056  1336  1336 I sensors-hal: activate:252, android.sensor.linear_acceleration/101 en=1
+06-26 09:03:26.056  1336  1336 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false
+06-26 09:03:26.060   742  8399 I keystore2: keystore2::gc: In process_one_key: Trying to invalidate key blob. Km(Not Support)
+06-26 09:03:26.060  1336  1336 I sensors-hal: activate:270, android.sensor.linear_acceleration/101 en=1 completed
+06-26 09:03:26.061  7485  7958 D SensorManager: registerListener :: 101, linear_acceleration, 20000, 0, 
+06-26 09:03:26.062  1336  1336 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns
+06-26 09:03:26.062  1336  1336 I sensors-hal: batch:336, android.sensor.rotation_vector/111, period=20000000, max_latency=0 request completed
+06-26 09:03:26.062  1336  1336 I sensors-hal: activate:252, android.sensor.rotation_vector/111 en=1
+06-26 09:03:26.062  1336  1336 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false
+06-26 09:03:26.065  1336  1336 I sensors-hal: activate:270, android.sensor.rotation_vector/111 en=1 completed
+06-26 09:03:26.066  7485  7958 D SensorManager: registerListener :: 111, Rotation Vector  Non-wakeup, 20000, 0, 
+06-26 09:03:26.069   742 14987 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10228, 39
+06-26 09:03:26.069   742 14987 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10228, 39
+06-26 09:03:26.070   742 14987 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10228, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.B-4025983901884170504\")"
+06-26 09:03:26.071   742 14987 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10228, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.A-4025983901884170504\")"
+06-26 09:03:26.074   744   744 W keymaster_tee: [WRN]start nwd_generate_key
+06-26 09:03:26.078   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_generate_key() returns 0
+06-26 09:03:26.078   744   744 W keymaster_tee: [WRN]ret OK PARAMS: A3 P2 D6 NAR1 S256 2026.06.26,09:03:26.074 
+06-26 09:03:26.079   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_add_rng_entropy() returns 0
+06-26 09:03:26.079   744   744 W keymaster_tee: [WRN]start nwd_attest_key
+06-26 09:03:26.085   744   744 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:254) swd_key_attest() returns 0
+06-26 09:03:26.086   744   744 E keymaster_tee: [[31mERR[0m]Unexpected title ignore.. title: TEE
+06-26 09:03:26.086   744   744 W keymaster_tee: [WRN]nwd_attest_key GAK ret 0
+06-26 09:03:26.086   742 14987 I keystore2: keystore2::security_level: In generate_key. 10228, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A-4025983901884170504")
+06-26 09:03:26.086   742 14987 W samsung_keystore_utils: ExceptionLoggingCase unstable.c7202ece89390c490b1b94d5b71225e1.A-4025983901884170504
+06-26 09:03:26.086   742 14987 I keystore2: keystore2::database: In store_new_key "unstable.c7202ece89390c490b1b94d5b71225e1.A-4025983901884170504", uid=10228, cert=true, cert_chain=true rebound=false
+06-26 09:03:26.093   742 14987 I keystore2: keystore2::service: In delete_key. 10228, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A-4025983901884170504")
+06-26 09:03:26.095   742  8399 I keystore2: keystore2::gc: In process_one_key: Trying to invalidate key blob. Km(Not Support)
+06-26 09:03:26.102   742 14987 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In delete_key: Trying to unbind the key. 10228, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.B-4025983901884170504\")"
+06-26 09:03:26.192  1336  8401 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk
+06-26 09:03:26.199  3558  3558 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.play.integrity.api.service.IntegrityApiDisplayListenerApiService.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiServiceNoInstantApps }
+06-26 09:03:26.231  1336  8404 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk
+06-26 09:03:26.282 10066 10066 I adbd    : adbd service requested 'exec:screencap '-p''
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: QUALCOMM build                   : 3dad7f8ed7, I593c16c433
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: Build Date                       : 10/01/21
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: OpenGL ES Shader Compiler Version: EV031.32.02.02
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: Local Branch                     : 
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: Remote Branch                    : refs/tags/AU_LINUX_ANDROID_LA.UM.9.1.R1.11.00.00.604.073
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: Remote Branch                    : NONE
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: Reconstruct Branch               : NOTHING
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: Build Config                     : S P 10.0.7 AArch64
+06-26 09:03:26.315  7485  7958 I AdrenoGLES-0: Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+06-26 09:03:26.320  7485  7958 I AdrenoGLES-0: PFP: 0x016ee190, ME: 0x00000000
+06-26 09:03:26.379  1552  2627 D NetdEventListenerService: DNS Requested by : 102, 10228
+06-26 09:03:26.387  7485  7958 W libc    : Access denied finding property "persist.adb.tls_server.enable"
+06-26 09:03:26.387  7485  7958 W libc    : Access denied finding property "service.adb.tls.port"
+06-26 09:03:26.397  1552  2843 I EDMNativeHelperService: isScreenCaptureEnabled
+06-26 09:03:26.398  1552  2843 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+06-26 09:03:26.398  8410  8410 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+06-26 09:03:26.398  8410  8410 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:03:26.427   672   683 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+06-26 09:03:26.447 24484  7483 D DGInternalHandle: maybeAddInteractionEvents(): The EventCollector is not initialized. This means that the client hasn't intended to collect any interaction events so far.
+06-26 09:03:26.570   736   736 D io_stats: !@   8,0 r 1100660 33353240 w 926157 64729644 d 0 0 f 0 0 iot 362210 0 th 0 0 0 pt 0 inp 0 0 18583.743
+06-26 09:03:26.665  1552  4788 D SensorService: Calling activate off 111
+06-26 09:03:26.666  1336  1336 I sensors-hal: activate:252, android.sensor.rotation_vector/111 en=0
+06-26 09:03:26.668  1336  1336 I sensors-hal: deactivate:300, disconnect qmi to disable sensor
+06-26 09:03:26.668  1336  1336 I sensors-hal: activate:270, android.sensor.rotation_vector/111 en=0 completed
+06-26 09:03:26.669  7485  7958 D SensorManager: unregisterListener
+06-26 09:03:26.669   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:596:Error 0xffffffff: apps_std getenv failed: ADSP_LIBRARY_PATH Unknown error -1
+06-26 09:03:26.670   748  1365 I sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:777: Successfully opened file /mnt/vendor/persist/sensors/registry/temp.json
+06-26 09:03:26.670   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.670   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.670  1552  5431 D SensorService: Calling activate off 101
+06-26 09:03:26.670  1336  1336 I sensors-hal: activate:252, android.sensor.linear_acceleration/101 en=0
+06-26 09:03:26.670  1336  1336 I sensors-hal: deactivate:300, disconnect qmi to disable sensor
+06-26 09:03:26.671  1336  1336 I sensors-hal: activate:270, android.sensor.linear_acceleration/101 en=0 completed
+06-26 09:03:26.671  7485  7958 D SensorManager: unregisterListener
+06-26 09:03:26.673   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.673   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.675   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.675   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.676   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.676   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.676   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:596:Error 0xffffffff: apps_std getenv failed: ADSP_LIBRARY_PATH Unknown error -1
+06-26 09:03:26.676   748  1365 I sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/apps_std_imp.c:777: Successfully opened file /mnt/vendor/persist/sensors/registry/temp.json
+06-26 09:03:26.677   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.677   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.677   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.677   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.677   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.677   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.678   748  1365 W sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:753:Warning: wakelock_control_kernel_pm: kernel does not support PM management (Invalid request code)
+06-26 09:03:26.678   748  1365 E sscrpcd : vendor/qcom/proprietary/commonsys-intf/adsprpc/src/fastrpc_apps_user.c:759: Error 0xffffffff: wakelock_control_kernel_pm PM control failed for domain 2, dev 8 with timeout 5 (errno Invalid request code)
+06-26 09:03:26.728  1552  4318 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 1336, isSameBssidAndFreq true
+06-26 09:03:26.729  1552  2586 I SemWifiLinkQualityMonitor: Link Qos Query: 0.019 ms / 423.604 Mbps (866 / 0.006 / 1.235)
+06-26 09:03:26.800  4992 10073 D BluetoothGatt: setCharacteristicNotification() - uuid: 6a4ecd28-667b-11e3-949a-0800200c9a66 enable: false
+06-26 09:03:26.809  4992  4992 D BluetoothGatt: cancelOpen() - device: C65AB1_D
+06-26 09:03:26.811 28319 28498 D BtGatt.GattService: clientDisconnect(com.garmin.android.apps.connectmobile) - address=C65AB1_D, connId=6, clientIf: 6
+06-26 09:03:26.813 28319 28491 I bt_stack: [INFO:bta_gattc_main.cc(314)] bta_gattc_sm_execute: State 0x02, Event 0x1f08
+06-26 09:03:26.813 28319 28491 W bt_bta_gattc: bta_gattc_close
+06-26 09:03:26.813 28319 28491 W bt_stack: conn_id=6
+06-26 09:03:26.814 28319 28491 I bt_stack: [INFO:eatt_impl.h(647)] disconnect c65ab1
+06-26 09:03:26.814 28319 28491 W bt_stack: [WARNING:eatt_impl.h(651)] disconnect no eatt device found
+06-26 09:03:26.814 28319 28491 W bt_bta_gattc: bta_gattc_process_api_open_cancel
+06-26 09:03:26.814 28319 28491 W bt_bta_gattc: Cancel GATT client background connection
+06-26 09:03:26.814 28319 28491 W bt_bta_gattc: bta_gattc_cancel_bk_conn
+06-26 09:03:26.814 28319 28491 W bt_stack: [WARNING:gatt_api.cc(1322)] GATT_CancelConnect: gatt_if:6, address: c65ab1, direct:0
+06-26 09:03:26.814 28319 28491 W bt_stack: attempt to remove non-existing gatt_if=6
+06-26 09:03:26.814 28319 28491 W bt_stack: background_connect_remove :: app_id=6, address=c65ab1
+06-26 09:03:26.814 28319 28491 W bt_stack: BTM_AcceptlistRemove
+06-26 09:03:26.814 28319 28430 D BtGatt.GattService: onDisconnected() - clientIf=6, connId=6, status=0, address=C65AB1_D
+06-26 09:03:26.814 28319 28491 W bt_stack: IgnoreLeConnectionFrom xx:xx:xx:xx:79:ad
+06-26 09:03:26.814 28319 28463 W bt_stack: Unknown device being removed from acceptlist:xx:xx:xx:xx:79:ad[RANDOM_DEVICE_ADDRESS]
+06-26 09:03:26.814 28319 28463 W bt_stack: Ignore Le connection from remote:xx:xx:xx:xx:79:ad[RANDOM_DEVICE_ADDRESS]
+06-26 09:03:26.814 28319 28463 W bt_stack: cancel_connection_and_remove_device_from_background_connection_list c6:5a:b1
+06-26 09:03:26.814 28319 28463 W bt_stack: remove_device_from_background_connection_list c6:5a:b1
+06-26 09:03:26.814 28319 28463 W bt_stack: cancel_connect c6:5a:b1
+06-26 09:03:26.814 28319 28463 W bt_stack: Device not in acceptlist and cannot be removed:79:ad[RANDOM_DEVICE_ADDRESS]
+06-26 09:03:26.814 28319 28430 D BtGatt.GattService: onDisconnected() - removing permit for address=C65AB1_D
+06-26 09:03:26.815  4992  6830 D BluetoothGatt: onClientConnectionState() - status=0 clientIf=6 device=C65AB1_D
+06-26 09:03:26.816  4992  4992 D BluetoothGatt: close()
+06-26 09:03:26.817  4992  4992 D BluetoothGatt: unregisterApp() - mClientIf=6
+06-26 09:03:26.818 28319 28498 D BtGatt.GattService: unregisterClient(com.garmin.android.apps.connectmobile) - clientIf=6
+06-26 09:03:26.819 28319 28498 D BtGatt.ContextMap: remove() - id: 6
+06-26 09:03:26.819 28319 28498 E BtGatt.ContextMap: remove() - removed: 6
+06-26 09:03:26.819 28319 28491 W bt_bta_gattc: bta_gattc_deregister
+06-26 09:03:26.819 28319 28491 I bt_stack: [INFO:gatt_api.cc(1111)] GATT_Deregister gatt_if=6
+06-26 09:03:26.819 28319 28491 W bt_stack: attempt to remove non-existing gatt_if=6
+06-26 09:03:26.819 28319 28491 W bt_stack: on_app_deregistered :: app_id=6
+06-26 09:03:26.819 28319 28491 I bt_stack: [INFO:gatt_api.cc(1164)] Initialize tGATT_REG
+06-26 09:03:27.107 24484 24513 I Finsky  : [79] requestIntegrityToken() finished for com.safar.safar.
+06-26 09:03:27.108  7313  7603 I PlayCore: UID: [10367]  PID: [7313] OnRequestIntegrityTokenCallback : onRequestIntegrityToken
+06-26 09:03:27.108  7313  7476 I PlayCore: UID: [10367]  PID: [7313] IntegrityService : Unbind from service.
+06-26 09:03:27.117  1552  4788 I AppOps  : updateUidProcState uid: 10228 procState: 5 capability:15
+06-26 09:03:27.117  1552  4788 I ActivityManager: Changes in 10227 3 to 10, 8 to 0
+06-26 09:03:27.142 10001 10001 I wpa_supplicant: Heartbeat 1533
+06-26 09:03:27.256  1340  8393 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 11023877
+06-26 09:03:27.613  7313  7566 W FirebaseContextProvider: Error getting App Check token. Error: O1.j: Error returned from API. code: 403 body: App attestation failed.
+06-26 09:03:27.634 10066 10066 I adbd    : adbd service requested 'exec:screencap '-p''
+06-26 09:03:27.782  1552  4788 I EDMNativeHelperService: isScreenCaptureEnabled
+06-26 09:03:27.783  1552  4788 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+06-26 09:03:27.783  8424  8424 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+06-26 09:03:27.784  8424  8424 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:03:27.813 28319 28491 W l2c_link: TODO: Remove this callback into bcm_sec_disconnect
+06-26 09:03:27.814 28319 28463 W bt_stack: disconnect_le
+06-26 09:03:27.814 28319 28463 W bt_stack: remove_device_from_background_connection_list c6:5a:b1
+06-26 09:03:27.815  1319  1319 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+06-26 09:03:27.816  1319  1319 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+06-26 09:03:27.816  1319  1319 I vendor.qti.bluetooth@1.0-ibs_handler: DeviceWakeUp: Writing IBS_WAKE_IND
+06-26 09:03:27.819  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_ACK: 0xFC
+06-26 09:03:27.820  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Signal wack_cond_
+06-26 09:03:27.820  1319  1319 D vendor.qti.bluetooth@1.0-ibs_handler: DeviceWakeUp: Unblocked from waiting for FC, pthread_cond_timedwait ret = 0
+06-26 09:03:27.821  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+06-26 09:03:27.821  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+06-26 09:03:27.840   672   683 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+06-26 09:03:27.843 28319 28463 W bt_stack: on_le_disconnect Handle : 0xc, Reason : 22
+06-26 09:03:27.843 28319 28491 E bt_stack: Unable to find sco connection
+06-26 09:03:27.843 28319 28463 W bt_stack: le_impl::remove() handle=0x0c addr=c6:5a:b1
+06-26 09:03:27.843 28319 28463 W bt_stack: [Current Device list in background_connections_ set]
+06-26 09:03:27.843 28319 28463 W bt_stack: #1 e1:85:ac:01:8f:63[RANDOM_DEVICE_ADDRESS]
+06-26 09:03:27.843 28319 28491 W l2c_link: l2c_link_hci_disc_comp lcb_is_free is 1
+06-26 09:03:27.844 28319 28491 W bt_stack: gatt_le_connect_cback  connected : 0, reason : 22
+06-26 09:03:27.844 28319 28491 W gatt_utils: gatt_cleanup_upon_disc
+06-26 09:03:27.844 28319 28491 W gatt_utils: gatt_cleanup_upon_disc :: GATT_CH_CLOSE
+06-26 09:03:27.844 28319 28491 W btm_acl : NotifyAclLinkDown() xx:xx:xx:xx:79:ad link_up_issued is 1
+06-26 09:03:27.844 28319 28491 W bt_btm_sec: Disconnection complete device:xx:xx:xx:xx:79:ad name: state:IDLE reason:Local Terminated Connection sec_req:6
+06-26 09:03:27.844 28319 28491 E bta_gattc_main: Ignore unknown conn ID: 3
+06-26 09:03:27.844 28319 28491 E bta_gattc_main: Ignore unknown conn ID: 4
+06-26 09:03:27.844 28319 28491 E bta_gattc_main: Ignore unknown conn ID: 5
+06-26 09:03:27.844 28319 28491 E bta_gattc_main: Ignore unknown conn ID: 7
+06-26 09:03:27.845 28319 28430 W BatteryService: getBatteryService(): service is NULL
+06-26 09:03:27.846 28319 28430 V BluetoothDatabase: getProfileConnectionPolicy: device XX:XX:XX:F4:79:AD profile=HEADSET, connectionPolicy=-1
+06-26 09:03:27.846 28319 28430 V BluetoothDatabase: getProfileConnectionPolicy: device XX:XX:XX:F4:79:AD profile=A2DP, connectionPolicy=-1
+06-26 09:03:27.846 28319 28430 V BluetoothDatabase: getProfileConnectionPolicy: device XX:XX:XX:F4:79:AD profile=HID_HOST, connectionPolicy=-1
+06-26 09:03:27.846 28319 28430 V BluetoothDatabase: getProfileConnectionPolicy: device XX:XX:XX:F4:79:AD profile=PAN, connectionPolicy=-1
+06-26 09:03:27.846 28319 28430 V BluetoothDatabase: getProfileConnectionPolicy: device XX:XX:XX:F4:79:AD profile=HEARING_AID, connectionPolicy=-1
+06-26 09:03:27.852  1552  2621 I BluetoothDeviceBatteryManager: action: android.bluetooth.device.action.ACL_DISCONNECTED
+06-26 09:03:27.852  1552  3001 I SLocation: DeviceStatusNotiManager - received action : android.bluetooth.device.action.ACL_DISCONNECTED
+06-26 09:03:27.856 28319 28319 D BluetoothPbapService: action: android.bluetooth.device.action.ACL_DISCONNECTED
+06-26 09:03:27.856 12918 12918 V BluetoothEventManager: onReceive :: android.bluetooth.device.action.ACL_DISCONNECTED
+06-26 09:03:27.856 28319 28319 E SapService: ignore BLE disconnection!
+06-26 09:03:27.853  2736  2809 V BluetoothEventManager: onReceive :: android.bluetooth.device.action.ACL_DISCONNECTED
+06-26 09:03:27.859  2736  2809 D BluetoothController: updateConnected = 0mConnectionState = 0
+06-26 09:03:27.860  2736  2736 D Tile.BluetoothTile: onBluetoothStateChange = true
+06-26 09:03:27.861 28319 28430 D BluetoothUtils: getBtEnabledContainers(): btContainers = []
+06-26 09:03:27.861 28319 28430 D BluetoothDataManager: BluetoothDataManager :: notifyDisconnectReason() is called!!!
+06-26 09:03:27.861  1552  1552 I CompanionDevice_PresenceMonitor: onDevice_Gone() id=4, source=bt
+06-26 09:03:27.862  1552  2621 I BluetoothDeviceBatteryManager: # Alias(HRMPro+:177162) / Address(C65AB1_D)
+06-26 09:03:27.863 28319 28430 D BluetoothUtils: getBtEnabledContainers(): btContainers = []
+06-26 09:03:27.863 28319 28430 E BluetoothRemoteDevices: Remote class is UNCATEGORIZED
+06-26 09:03:27.864  2736  2809 D Tile.BluetoothTile:  handleUpdateState enabled = true connected = false connecting = false changedState =false bluetoothState = 12 enabledChanging = false state = BooleanState[spec=Bluetooth,icon=ResourceIcon[resId=0x7f0809bd],iconSupplier=null,label=Bluetooth,secondaryLabel=null,contentDescription=Bluetooth,On,stateDescription=null,dualLabelContentDescription=null,expandedAccessibilityClassName=null,disabledByPolicy=false,dualTarget=true,isTransient=false,state=2,slash="null",sideViewCustomDrawable=null,tileClassName=null,value=true,forceExpandIcon=false]
+06-26 09:03:27.864 12918 12918 V BluetoothEventManager: onReceive :: android.bluetooth.device.action.NAME_CHANGED
+06-26 09:03:27.864 12918 12918 I BluetoothAdapter: STATE_ON
+06-26 09:03:27.865  2736  2809 V BluetoothEventManager: onReceive :: android.bluetooth.device.action.NAME_CHANGED
+06-26 09:03:27.865  2736  2809 I BluetoothAdapter: STATE_ON
+06-26 09:03:27.867  1552  2621 I BluetoothDeviceBatteryManager: # BatteryLevel : -1
+06-26 09:03:27.870 12918 12918 D CachedBluetoothDeviceManager: onDeviceNameUpdated :: skip same name update
+06-26 09:03:27.878 28319 28497 D BluetoothAdapterService: getBondedDevices, remove custom devices: 
+06-26 09:03:27.882  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+06-26 09:03:27.884 20583 20583 I acgp    : onReceive
+06-26 09:03:27.887 28319 28337 D BluetoothAdapterService: getBondedDevices, remove custom devices: 
+06-26 09:03:27.890 20583 20726 I advw    : (REDACTED) bluetoothConnectionStateChanged. Action: %s
+06-26 09:03:27.891 28319 28337 D BluetoothAdapterService: getBondedDevices, remove custom devices: 
+06-26 09:03:27.895  2736  2809 D CachedBluetoothDeviceManager: onDeviceNameUpdated :: skip same name update
+06-26 09:03:27.898  3558  8428 I Nearby  : (REDACTED) is blocked device type %s, isAuto=%s, isIot=%s, isLatchsky=%s, isChinaWearable=%s, isTv=%s, isWearable=%s (supportWearOs=%s), isChromeOsDevice=%s (supportChromeOs=%s)
+06-26 09:03:27.899  5991  5991 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.unregisterNetworkCallback(ConnectivityManager.java:5579)] [com.google.android.apps.auto.components.connectivity.impl.ConnectivityEventHandlerImpl.d(SourceFile:27)] [com.google.android.apps.auto.components.connectivity.impl.ConnectivityEventHandlerImpl$ConnectivityEventBroadcastReceiver.c(SourceFile:115)] [kuk.b(SourceFile:173)] [mai.onReceive(SourceFile:97)] [android.app.ActivityThread.handleReceiver(ActivityThread.java:4894)] [android.app.ActivityThread.-$$Nest$mhandleReceiver(ActivityThread.java:0)] [android.app.ActivityThread$H.handleMessage(ActivityThread.java:2420)]
+06-26 09:03:27.909  3558  3558 I NearbyDiscovery: (REDACTED) DiscoveryService onStartCommand action: %s
+06-26 09:03:27.910  3558  3558 I NearbyDiscovery: (REDACTED) onAclChange: state=%s, transport=%s, %s
+06-26 09:03:27.921 20583 20726 I adut    : Deinitializing Gemini service client
+06-26 09:03:27.921 20583 20726 I aduz    : Deinitializing PhoneMediaHandler
+06-26 09:03:27.924  6326  7690 I Rubin   : [94] w7.f.b(SourceFile:6) : checkForUI = false isGdprAffected = true isCMSFeatureSupported = false
+06-26 09:03:27.931  3558  3558 D WearableService: Creating wearable service asynchronously.
+06-26 09:03:27.937  3558  6403 D WearableService: onGetService: waiting for onCreate to be completed.
+06-26 09:03:27.956  3558 12406 I Wear_Controller: Wearable module requires a companion app to be installed.
+06-26 09:03:27.956  3558 12406 I WearableService: Wearable Services not starting. Wear is not available on this device: MISSING_COMPANION_APP
+06-26 09:03:27.956  3558  6403 W WearableService: onGetService: Wear is not available on this device. Calling package: com.google.android.googlequicksearchbox
+06-26 09:03:27.957 20583 20732 W GoogleApiManager: Not showing notification since connectionResult is not user-facing: ConnectionResult{statusCode=API_UNAVAILABLE, resolution=null, message=null, clientMethodKey=null}
+06-26 09:03:27.975  4992  4992 I BluetoothAdapter: STATE_ON
+06-26 09:03:27.977  4992  4992 D BluetoothGatt: connect() - device: C65AB1_D, auto: true
+06-26 09:03:27.977  4992  4992 D BluetoothGatt: registerApp()
+06-26 09:03:27.977  4992  4992 D BluetoothGatt: registerApp() - UUID=11562b5b-517a-4e4b-ada4-15390597e4f1
+06-26 09:03:27.978 28319 28337 D BtGatt.GattService: registerClient(com.garmin.android.apps.connectmobile) - UUID=11562b5b-517a-4e4b-ada4-15390597e4f1
+06-26 09:03:27.979 28319 28337 D BtGatt.ContextMap: add() - appUid: 10328, appPid: 4992, appName: com.garmin.android.apps.connectmobile
+06-26 09:03:27.979 28319 28491 W bt_bta_gattc: bta_gattc_register :: state: 2, uuid=11562b5b-517a-4e4b-ada4-15390597e4f1
+06-26 09:03:27.979 28319 28491 W bt_bta_gattc: Registered GATT client interface 6 with uuid=11562b5b-517a-4e4b-ada4-15390597e4f1, starting it on main thread
+06-26 09:03:27.979 28319 28491 W bt_bta_gattc: client_if=6
+06-26 09:03:27.979 28319 28430 D BtGatt.GattService: onClientRegistered() - UUID=11562b5b-517a-4e4b-ada4-15390597e4f1, clientIf=6
+06-26 09:03:27.980  4992  6830 D BluetoothGatt: onClientRegistered() - status=0 clientIf=6
+06-26 09:03:27.982 28319 28337 D BtGatt.GattService: clientConnect(com.garmin.android.apps.connectmobile) - address = C65AB1_D, isDirect=false transport =2 set own addr = false own addr type:0, clientIf: 6, opportunistic=false, phy: 1
+06-26 09:03:27.983 28319 28491 W bt_btm_ble: BTM_SecAddBleDevice :: dev_type=0x2
+06-26 09:03:27.983 28319 28491 W bt_bta_gattc: bta_gattc_process_api_open
+06-26 09:03:27.983 28319 28491 W bt_bta_gattc: bta_gattc_init_bk_conn
+06-26 09:03:27.984 28319 28491 W bt_stack: [WARNING:gatt_api.cc(1238)] GATT_Connect
+06-26 09:03:27.984 28319 28491 W bt_stack: Starting background connect gatt_if=6 address=c65ab1
+06-26 09:03:27.984 28319 28491 W bt_stack: Adding to accept list device:xx:xx:xx:xx:79:ad
+06-26 09:03:27.984 28319 28491 W bt_stack: background_connect_add :: app_id=6, address=c65ab1
+06-26 09:03:27.984 28319 28491 W bt_stack: BTM_AcceptlistAdd
+06-26 09:03:27.984 28319 28491 W bt_stack: AcceptLeConnectionFrom xx:xx:xx:xx:79:ad
+06-26 09:03:27.984 28319 28491 E bt_stack: p_tcb is null
+06-26 09:03:27.984 28319 28463 W bt_stack: Allow Le connection from remote:xx:xx:xx:xx:79:ad[RANDOM_DEVICE_ADDRESS]
+06-26 09:03:27.984 28319 28491 W bt_bta_gattc: Not a connected remote device yet
+06-26 09:03:27.984 28319 28463 W bt_stack: add_device_to_background_connection_list c6:5a:b1
+06-26 09:03:27.984 28319 28463 W bt_stack: create_le_connection :: address : c6:5a:b1, add_to_connect_list : 1, is_direct : 0
+06-26 09:03:27.984 28319 28463 W bt_stack: add_device_to_connect_list c6:5a:b1 :: Send command after register
+06-26 09:03:27.984 28319 28463 W bt_stack: Deferred until filter accept list updated create connection state ConnectabilityState::ARMED
+06-26 09:03:27.984 28319 28463 W bt_stack: pause_registered_clients()
+06-26 09:03:27.984 28319 28463 W bt_stack: le_impl :: OnPause()
+06-26 09:03:27.984 28319 28463 W bt_stack: le_impl :: Try to disarm connectability
+06-26 09:03:27.985 28319 28463 W bt_stack: disarm_connectability()
+06-26 09:03:27.985 28319 28463 W bt_stack: Pause Background Connection
+06-26 09:03:27.985 28319 28463 W bt_stack: le_scanning_manager :: OnPause()
+06-26 09:03:27.985 28319 28463 W bt_stack: Stop LeSetExtendedScan
+06-26 09:03:27.985 28319 28463 W bt_stack: le_scanning_manager :: OnPause() - call AckPause
+06-26 09:03:27.985 28319 28463 W bt_stack: le_advertising_manager :: OnPause()
+06-26 09:03:27.985 28319 28463 W bt_stack: le_advertising_manager :: OnPause() - advertising_sets is not empty
+06-26 09:03:27.985 28319 28463 W bt_stack: le_advertising_manager :: OnPause() - Disable LeSetExtendedAdvertising
+06-26 09:03:27.985 28319 28463 W bt_stack: le_advertising_manager :: OnPause() - call AckPause
+06-26 09:03:27.985 28319 28463 W bt_stack: pause_registered_clients()
+06-26 09:03:27.986 28319 28463 W bt_stack: le_address_manager :: ack_pause()
+06-26 09:03:27.986 28319 28463 W bt_stack: le_address_manager :: ack_pause() - make sure all client paused. Return
+06-26 09:03:27.986 28319 28463 W bt_stack: le_address_manager :: ack_pause()
+06-26 09:03:27.986 28319 28463 W bt_stack: le_address_manager :: ack_pause() - make sure all client paused. Return
+06-26 09:03:27.986  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+06-26 09:03:27.986  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+06-26 09:03:27.990 28319 28463 W bt_stack: on_le_enhanced_connection_complete()
+06-26 09:03:27.990 28319 28463 W bt_stack: on_le_enhanced_connection_complete :: Role is central. Set connectability to DISARMED
+06-26 09:03:27.990 28319 28463 W bt_stack: on_le_enhanced_connection_complete :: pause_connection : 1
+06-26 09:03:27.990 28319 28463 W bt_stack: on_le_connection_canceled_on_pause(). Set connectability to DISARMED
+06-26 09:03:27.990 28319 28463 W bt_stack: le_address_manager :: ack_pause()
+06-26 09:03:27.990 28319 28463 W bt_stack: le_address_manager :: ack_pause() - handle_next_command
+06-26 09:03:27.990 28319 28463 W bt_stack: handle_next_command()
+06-26 09:03:28.009 28319 28463 W bt_stack: Received command complete with op_code LE_ADD_DEVICE_TO_FILTER_ACCEPT_LIST
+06-26 09:03:28.010 28319 28463 W bt_stack: handle_next_command()
+06-26 09:03:28.012 28319 28463 W bt_stack: Received command complete with op_code LE_ADD_DEVICE_TO_FILTER_ACCEPT_LIST
+06-26 09:03:28.012 28319 28463 W bt_stack: le_impl :: OnResume()
+06-26 09:03:28.012 28319 28463 W bt_stack: le_impl :: OnResume - Try arm connectability
+06-26 09:03:28.012 28319 28463 W bt_stack: arm_connectability()
+06-26 09:03:28.012 28319 28463 W bt_stack: le_impl :: check_for_unregister()
+06-26 09:03:28.012 28319 28463 W bt_stack: le_scanning_manager :: OnResume()
+06-26 09:03:28.012 28319 28463 W bt_stack: Start LeSetExtendedScan
+06-26 09:03:28.012 28319 28463 W bt_stack: le_scanning_manager :: OnResume() - call AckResume
+06-26 09:03:28.012 28319 28463 W bt_stack: le_advertising_manager :: OnResume()
+06-26 09:03:28.012 28319 28463 W bt_stack: le_advertising_manager :: OnResume() - Enable LeSetExtendedAdvertising
+06-26 09:03:28.012 28319 28463 W bt_stack: le_advertising_manager :: OnResume() - call AckResume
+06-26 09:03:28.012 28319 28463 W bt_stack: le_address_manager :: ack_resume()
+06-26 09:03:28.013 28319 28463 W bt_stack: le_address_manager :: ack_resume()
+06-26 09:03:28.013 28319 28463 W bt_stack: le_address_manager :: ack_resume()
+06-26 09:03:28.016 28319 28463 E bt_stack: on_extended_create_connection :: Command status is success. Set ConnectabilityState to ARMED
+06-26 09:03:28.058  1319 28487 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+06-26 09:03:28.145  7313  7576 W FirebaseContextProvider: Error getting App Check token. Error: O1.j: Too many attempts.
+06-26 09:03:28.570   736   736 D io_stats: !@   8,0 r 1100662 33353252 w 926195 64729824 d 0 0 f 0 0 iot 362240 0 th 0 0 0 pt 0 inp 0 0 18585.744
+06-26 09:03:28.666  1552  2399 I HqmInfo::HqmManagerService: MSG_TYPE:MSG_TYPE_PROCESS_LOG_BY_HQM
+06-26 09:03:28.753  1552  2222 D PowerManagerService: UserActivityStateListenerState: 0
+06-26 09:03:29.017  1319 28489 I vendor.qti.bluetooth@1.0-ibs_handler: DeviceSleep: TX Awake, Sending SLEEP_IND
+06-26 09:03:29.018  1319 28489 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+06-26 09:03:29.179  1319 28466 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+06-26 09:03:29.755  1552  4318 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 1337, isSameBssidAndFreq true
+06-26 09:03:29.757  1552  2586 I SemWifiLinkQualityMonitor: Link Qos Query: 0.016 ms / 492.356 Mbps (866 / 0.007 / 1.000)
+06-26 09:03:30.196  1336  6211 I sensors-hal: handle_sns_std_sensor_event:310, [SSC_LIGHT] P(OFF) [8,8,8] br:27, mode:1
+06-26 09:03:30.832  2821 10003 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 31 up
+06-26 09:03:31.041 10066 10066 I adbd    : adbd service requested 'exec:screencap '-p''
+06-26 09:03:31.195  3558  8373 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+06-26 09:03:31.195  3558  8373 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing, NearbyConnections.TxAdvertisement}
+06-26 09:03:31.201  1552  2843 I EDMNativeHelperService: isScreenCaptureEnabled
+06-26 09:03:31.202  1552  2843 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+06-26 09:03:31.202  8439  8439 W ProcessState: Extra binder thread started, but 0 threads requested. Do not use *startThreadPool when zero threads are requested.
+06-26 09:03:31.202  8439  8439 W libc    : Access denied finding property "sys.perf.boostopt"
+06-26 09:03:31.263   672   683 I servicemanager: Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest.
+06-26 09:03:31.469 10066 10066 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-t' '1200''

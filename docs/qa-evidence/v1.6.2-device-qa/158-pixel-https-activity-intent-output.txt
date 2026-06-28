@@ -1,0 +1,2 @@
+Starting: Intent { act=android.intent.action.VIEW dat=https://rihla-safar.web.app/... pkg=com.safar.safar }
+Error: Activity not started, unable to resolve Intent { act=android.intent.action.VIEW dat=https://rihla-safar.web.app/... flg=0x10000000 xflg=0x4 pkg=com.safar.safar }
