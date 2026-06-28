@@ -612,6 +612,24 @@
       "currency": {}
     }
   },
+  "ledgerEmptyFirstExpenseCamping": "The first {currency} you log will set the camping total. We'll split it equally between everyone camping.",
+  "@ledgerEmptyFirstExpenseCamping": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
+  "ledgerEmptyFirstExpenseOuting": "The first {currency} you log will set the outing total. We'll split it equally between everyone on the outing.",
+  "@ledgerEmptyFirstExpenseOuting": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
+  "ledgerEmptyFirstExpenseEvent": "The first {currency} you log will set the event total. We'll split it equally between everyone in the group.",
+  "@ledgerEmptyFirstExpenseEvent": {
+    "placeholders": {
+      "currency": {}
+    }
+  },
   "ledgerCouldNotLoadEventTitle": "Could not load event",
   "ledgerCouldNotLoadLedgerTitle": "Couldn't load ledger",
   "ledgerEventNotFoundTitle": "Event not found",
@@ -1534,6 +1552,9 @@
   "eventBreakdownOwesYou": "owes you",
   "eventBreakdownYouOwe": "you owe",
   "eventTripTotal": "Trip total",
+  "eventTotalLabelCamping": "Camping total",
+  "eventTotalLabelOuting": "Outing total",
+  "eventTotalLabelEvent": "Event total",
   "eventExpenseCountInline": "· {count, plural, =1{1 expense} other{{count} expenses}}",
   "@eventExpenseCountInline": {
     "placeholders": {

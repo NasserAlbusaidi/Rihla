@@ -559,6 +559,21 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String ledgerEmptyFirstExpenseCamping(Object currency) {
+    return 'أول $currency تسجّله سيحدد إجمالي التخييم. سنقسمه بالتساوي بين كل من في المخيّم.';
+  }
+
+  @override
+  String ledgerEmptyFirstExpenseOuting(Object currency) {
+    return 'أول $currency تسجّله سيحدد إجمالي النزهة. سنقسمه بالتساوي بين كل من في النزهة.';
+  }
+
+  @override
+  String ledgerEmptyFirstExpenseEvent(Object currency) {
+    return 'أول $currency تسجّله سيحدد إجمالي الفعالية. سنقسمه بالتساوي بين كل أفراد المجموعة.';
+  }
+
+  @override
   String get ledgerCouldNotLoadEventTitle => 'تعذّر تحميل الفعالية';
 
   @override
@@ -2171,6 +2186,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get eventTripTotal => 'إجمالي الرحلة';
+
+  @override
+  String get eventTotalLabelCamping => 'إجمالي التخييم';
+
+  @override
+  String get eventTotalLabelOuting => 'إجمالي النزهة';
+
+  @override
+  String get eventTotalLabelEvent => 'إجمالي الفعالية';
 
   @override
   String eventExpenseCountInline(int count) {

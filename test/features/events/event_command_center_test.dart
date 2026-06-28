@@ -81,6 +81,32 @@ void main() {
     },
   );
 
+  testWidgets(
+    '#689: ledger strip overline speaks the event type (camping → Camping total)',
+    (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+        type: EventType.camping,
+      );
+      final expense = _expense(
+        id: 'x1',
+        eventId: event.id,
+        payer: 'uid-1',
+        amount: Decimal.parse('10.000'),
+      );
+
+      await tester.pumpWidget(
+        _wrap(event: event, expenses: [expense], balances: _settledBalances),
+      );
+      await tester.pumpAndSettle();
+
+      // _Overline uppercases its label for the mono caption styling.
+      expect(find.text('CAMPING TOTAL'), findsOneWidget);
+      expect(find.text('TRIP TOTAL'), findsNothing);
+    },
+  );
+
   testWidgets('you-are-owed state — sage hero with per-row breakdown', (
     tester,
   ) async {
@@ -683,11 +709,15 @@ Future<void> _pumpEventHubRouter(
   await tester.pumpAndSettle();
 }
 
-Event _event({required DateTime startDate, required DateTime endDate}) {
+Event _event({
+  required DateTime startDate,
+  required DateTime endDate,
+  EventType type = EventType.trip,
+}) {
   return Event(
     id: 'event-1',
     name: 'Marrakech',
-    type: EventType.trip,
+    type: type,
     groupId: 'group-1',
     createdBy: 'uid-1',
     participantIds: const ['uid-1', 'uid-2'],

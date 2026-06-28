@@ -1136,6 +1136,24 @@ abstract class AppLocalizations {
   /// **'The first {currency} you log will set the trip total. We\'ll split it equally between everyone on the trip.'**
   String ledgerEmptyStateFirstExpenseBody(Object currency);
 
+  /// No description provided for @ledgerEmptyFirstExpenseCamping.
+  ///
+  /// In en, this message translates to:
+  /// **'The first {currency} you log will set the camping total. We\'ll split it equally between everyone camping.'**
+  String ledgerEmptyFirstExpenseCamping(Object currency);
+
+  /// No description provided for @ledgerEmptyFirstExpenseOuting.
+  ///
+  /// In en, this message translates to:
+  /// **'The first {currency} you log will set the outing total. We\'ll split it equally between everyone on the outing.'**
+  String ledgerEmptyFirstExpenseOuting(Object currency);
+
+  /// No description provided for @ledgerEmptyFirstExpenseEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'The first {currency} you log will set the event total. We\'ll split it equally between everyone in the group.'**
+  String ledgerEmptyFirstExpenseEvent(Object currency);
+
   /// No description provided for @ledgerCouldNotLoadEventTitle.
   ///
   /// In en, this message translates to:
@@ -3635,6 +3653,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trip total'**
   String get eventTripTotal;
+
+  /// No description provided for @eventTotalLabelCamping.
+  ///
+  /// In en, this message translates to:
+  /// **'Camping total'**
+  String get eventTotalLabelCamping;
+
+  /// No description provided for @eventTotalLabelOuting.
+  ///
+  /// In en, this message translates to:
+  /// **'Outing total'**
+  String get eventTotalLabelOuting;
+
+  /// No description provided for @eventTotalLabelEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Event total'**
+  String get eventTotalLabelEvent;
 
   /// No description provided for @eventExpenseCountInline.
   ///
