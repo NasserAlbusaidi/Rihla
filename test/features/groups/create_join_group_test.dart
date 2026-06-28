@@ -603,29 +603,9 @@ void main() {
       expect(find.text('Your name'), findsOneWidget);
     });
 
-    testWidgets('pre-fills display name from settings', (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'settings_device_name': 'Test User',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            groupLoadingProvider.overrideWith((ref) => false),
-            groupErrorProvider.overrideWith((ref) => null),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: const JoinGroupScreen(),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.text('Test User'), findsOneWidget);
-    });
+    // #293: the join name field no longer pre-fills from the device-wide name
+    // (it bled a casual nickname into another group's ledger). The blank-field
+    // behavior is pinned by '#293: name field is blank on a fresh join' below.
 
     testWidgets('renders Invite code label', (tester) async {
       await tester.pumpWidget(await buildJoinScreen());
@@ -659,7 +639,9 @@ void main() {
       expect(find.text('اسمك'), findsOneWidget);
       expect(find.text('رمز الدعوة'), findsOneWidget);
 
-      await tester.enterText(find.byType(TextFormField).last, 'ABC123');
+      // Valid-alphabet 6-char code (no I/O/0/1) so the first-completion
+      // auto-submit fires; the blank name then surfaces the name-empty error.
+      await tester.enterText(find.byType(TextFormField).last, 'ABCD23');
       await tester.pumpAndSettle();
 
       expect(find.text('لا يمكن أن يكون الاسم فارغًا.'), findsOneWidget);
@@ -707,22 +689,24 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('renders ABC123 hint text in code input', (tester) async {
+    testWidgets('renders ABC234 hint text in code input', (tester) async {
       await tester.pumpWidget(await buildJoinScreen());
       await tester.pump();
-      expect(find.text('ABC123'), findsOneWidget);
+      // #293: the hint uses only invite-alphabet chars (no I/O/0/1).
+      expect(find.text('ABC234'), findsOneWidget);
     });
 
     testWidgets('code input uppercases typed text', (tester) async {
       await tester.pumpWidget(await buildJoinScreen());
       await tester.pump();
 
-      // The code field is the last TextFormField on the screen
+      // The code field is the last TextFormField on the screen. '23' avoids the
+      // now-excluded digit '1' (#293) and stays under 6 chars (no auto-submit).
       final codeField = find.byType(TextFormField).last;
-      await tester.enterText(codeField, 'abc12');
+      await tester.enterText(codeField, 'abc23');
       await tester.pump();
 
-      expect(find.text('ABC12'), findsOneWidget);
+      expect(find.text('ABC23'), findsOneWidget);
     });
 
     testWidgets('rate-limited join shows the callable message', (tester) async {
@@ -763,7 +747,10 @@ void main() {
       );
       await tester.pump();
 
-      await tester.enterText(find.byType(TextFormField).last, 'ABC123');
+      // #293: name no longer pre-fills, so type it; valid-alphabet code lets the
+      // first-completion auto-submit fire and reach the (throwing) join callable.
+      await tester.enterText(find.byType(TextFormField).first, 'Joiner');
+      await tester.enterText(find.byType(TextFormField).last, 'ABCD23');
       await tester.pumpAndSettle();
 
       expect(find.text('Too many attempts. Try again later.'), findsOneWidget);
@@ -818,7 +805,10 @@ void main() {
       );
       await tester.pump();
 
-      await tester.enterText(find.byType(TextFormField).last, 'ABC123');
+      // #293: type the (no-longer-prefilled) name + a valid-alphabet code so the
+      // first-completion auto-submit reaches the collision-throwing callable.
+      await tester.enterText(find.byType(TextFormField).first, 'Joiner');
+      await tester.enterText(find.byType(TextFormField).last, 'ABCD23');
       await tester.pumpAndSettle();
 
       expect(
@@ -835,6 +825,155 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgets(
+      '#293: name field is blank on a fresh join (no device-name bleed)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Booboo',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupLoadingProvider.overrideWith((ref) => false),
+              groupErrorProvider.overrideWith((ref) => null),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const JoinGroupScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // The saved device name must NOT silently pre-load into the join name
+        // field — it would carry the wrong persona into another group's ledger.
+        expect(find.text('Booboo'), findsNothing);
+        final nameField = tester.widget<TextFormField>(
+          find.byType(TextFormField).first,
+        );
+        expect(nameField.controller!.text, isEmpty);
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Test User',
+        });
+      },
+    );
+
+    testWidgets('#293: invite field rejects ambiguous chars I/O/0/1', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': ''});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupLoadingProvider.overrideWith((ref) => false),
+            groupErrorProvider.overrideWith((ref) => null),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const JoinGroupScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final codeField = find.byType(TextFormField).last;
+      // The invite alphabet excludes I, O, 0 and 1 (group_provider
+      // _generateInviteCode). Typing them must be filtered so a glyph-confusion
+      // mistype can never be entered — and so can never auto-submit a
+      // guaranteed-invalid code that burns the 5/hr join lockout.
+      await tester.enterText(codeField, 'ABO0I1');
+      await tester.pump();
+      expect(tester.widget<TextFormField>(codeField).controller!.text, 'AB');
+
+      // Valid-alphabet chars still pass through and uppercase (5 chars: no
+      // auto-submit).
+      await tester.enterText(codeField, 'abcd2');
+      await tester.pump();
+      expect(
+        tester.widget<TextFormField>(codeField).controller!.text,
+        'ABCD2',
+      );
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Test User',
+      });
+    });
+
+    testWidgets(
+      '#293: auto-submit fires at most once; a corrected code needs a Join tap',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({'settings_device_name': ''});
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+        var joinCount = 0;
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupLoadingProvider.overrideWith((ref) => false),
+              groupErrorProvider.overrideWith((ref) => null),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-joiner',
+                  joinGroupCallableOverride:
+                      ({required inviteCode, required displayName}) async {
+                        joinCount++;
+                        throw FirebaseFunctionsException(
+                          code: 'not-found',
+                          message: 'Invalid invite code.',
+                        );
+                      },
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const JoinGroupScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // Name + a complete code → auto-submits exactly once.
+        await tester.enterText(find.byType(TextFormField).first, 'Joiner');
+        await tester.enterText(find.byType(TextFormField).last, 'ABCD23');
+        await tester.pumpAndSettle();
+        expect(joinCount, 1);
+
+        // Correcting the code (a different complete value) must NOT
+        // auto-resubmit and burn another 5/hr attempt — only a deliberate Join
+        // tap may.
+        await tester.enterText(find.byType(TextFormField).last, 'ABCD24');
+        await tester.pumpAndSettle();
+        expect(joinCount, 1);
+
+        // The manual Join button still works. (Clear the floating error
+        // snackbar from the failed auto-submit first — it overlaps the button.)
+        ScaffoldMessenger.of(
+          tester.element(find.byType(JoinGroupScreen)),
+        ).clearSnackBars();
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.joinGroupButton));
+        await tester.pumpAndSettle();
+        expect(joinCount, 2);
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Test User',
+        });
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------

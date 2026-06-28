@@ -101,7 +101,10 @@ void main() {
   }
 
   Future<void> enterCode(WidgetTester tester) async {
-    await tester.enterText(find.byType(TextFormField).last, 'ABC123');
+    // #293: the name no longer pre-fills, so type it; the invite alphabet
+    // excludes I/O/0/1 so use a valid 6-char code that auto-submits on completion.
+    await tester.enterText(find.byType(TextFormField).first, 'Joiner');
+    await tester.enterText(find.byType(TextFormField).last, 'ABCD23');
     await tester.pumpAndSettle();
   }
 
@@ -216,7 +219,7 @@ void main() {
 
     verify(
       () => fns.requestClaimShadow(
-        inviteCode: 'ABC123',
+        inviteCode: 'ABCD23',
         shadowMemberId: 's1',
         displayName: 'Joiner',
       ),

@@ -91,7 +91,7 @@ void main() {
       expect(PendingGateIntent.read(sp), isNotNull);
     });
 
-    testWidgets('no marker → unchanged behavior (name seeded from settings)', (
+    testWidgets('#293: join name is NOT seeded from settings (no persona bleed)', (
       tester,
     ) async {
       SharedPreferences.setMockInitialValues({
@@ -103,7 +103,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final fields = find.byType(TextField);
-      expect(fieldText(tester, fields.at(0)), 'DeviceName');
+      // #293: the device name must NOT pre-load into the join name field — a
+      // casual nickname would silently carry into another group's ledger.
+      expect(fieldText(tester, fields.at(0)), isEmpty);
       expect(fieldText(tester, fields.at(1)), isEmpty);
     });
   });
