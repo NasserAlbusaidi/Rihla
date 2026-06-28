@@ -277,23 +277,17 @@ void main() {
         ),
       );
 
-      // Open the "Split between" customise sheet (a 2+ participant global split
-      // shows two "Customise" actions; the first is Split between).
-      final customise = find.text('Customise').first;
-      await tester.ensureVisible(customise);
-      await tester.tap(customise);
-      await tester.pumpAndSettle();
-
-      // Switch to Custom scope: the current participant is seeded as the sole
-      // (deselectable) selection.
-      await tester.tap(find.text('Custom'));
+      // #485: scope is picked inline on the Split card. Tap "Some people"
+      // (custom): the current participant is seeded as the sole (deselectable)
+      // selection — no separate Customise sheet / Apply step anymore.
+      final somePeople = find.text('Some people');
+      await tester.ensureVisible(somePeople);
+      await tester.tap(somePeople);
       await tester.pumpAndSettle();
       expect(find.text('1 selected'), findsOneWidget);
 
-      // Apply, then save: the seeded self must persist into the write payload —
-      // the calculator splits over exactly this set.
-      await tester.tap(find.text('Apply'));
-      await tester.pumpAndSettle();
+      // Save: the seeded self must persist into the write payload — the
+      // calculator splits over exactly this set.
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
@@ -364,12 +358,16 @@ void main() {
     'single-person custom split keeps the non-equal split gate disabled (#247)',
     (tester) async {
       // custom {Layla}, payer Yasmin → _splitParticipantIds is [Layla] (no
-      // payer insert) → length 1 → the "How" customise action stays disabled,
-      // leaving only the "Split between" action. Re-adding the payer insert
-      // would wrongly re-enable a non-equal split over a single person.
+      // payer insert) → length 1 → the Split card shows the "pick at least two"
+      // gate (#152) and disables the mode segment, never a finished split.
+      // Re-adding the payer insert would wrongly re-enable a non-equal split
+      // over a single person.
       await pumpEditor(tester, initial: customExpense(const ['uid-layla']));
 
-      expect(find.text('Customise'), findsOneWidget);
+      expect(
+        find.text('Pick at least two people to split.'),
+        findsOneWidget,
+      );
     },
   );
 

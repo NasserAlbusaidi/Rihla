@@ -1032,10 +1032,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorScopeSubGroup => 'Group split';
 
   @override
-  String get editorScopeCustom => 'Custom';
+  String get editorScopeCustom => 'Some people';
 
   @override
-  String get editorScopePersonal => 'Personal';
+  String get editorScopePersonal => 'Just me';
+
+  @override
+  String get editorSplit => 'Split';
+
+  @override
+  String get editorWhoSplits => 'Who splits';
+
+  @override
+  String get editorSplitModeExactShort => 'Exact';
+
+  @override
+  String get editorSplitModePercentShort => '%';
+
+  @override
+  String editorSplitAddsUpTo(String amount) {
+    return 'Adds up to $amount';
+  }
 
   @override
   String get editorReceiptOptional => 'RECEIPT (OPTIONAL)';

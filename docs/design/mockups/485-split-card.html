@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rihla — #485 one Split card (before → better)</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  .audit-block { max-width: 1280px; margin: 0 auto var(--s32);
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--r-card); padding: var(--s24); }
+  .audit-head { display:flex; align-items:baseline; gap:var(--s12); flex-wrap:wrap; margin-bottom:var(--s8); }
+  .audit-num { font-family:var(--font-mono); font-weight:600; font-size:13px; color:#1c1a17;
+    background:var(--primary); padding:3px 10px; border-radius:var(--r-pill); }
+  .audit-title { color:#F3EEE2; font-size:20px; font-weight:600; margin:0; }
+  .audit-sev { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.4px; padding:3px 9px; border-radius:var(--r-pill); }
+  .sev-clarity { background:#fdf0d8; color:#7a5305; border:1px solid var(--amber); }
+  .audit-desc { color:#C7C1B3; font-size:14px; max-width:980px; margin:var(--s8) 0 var(--s16); line-height:1.55; }
+  .audit-desc code { background:rgba(255,255,255,.06); padding:1px 6px; border-radius:5px; font-size:12.5px; color:#E8C89A; }
+
+  .ba-row { display:flex; flex-wrap:wrap; gap:var(--s32); align-items:flex-start; }
+  .ba { width:360px; }
+  .ba-cap { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:14px; font-weight:600; }
+  .ba-tag { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.6px; padding:3px 9px; border-radius:var(--r-pill); }
+  .ba-now  .ba-tag { background:var(--rust); color:#fff; }
+  .ba-now  .ba-cap { color:#E7A793; }
+  .ba-next .ba-tag { background:var(--sage); color:#fff; }
+  .ba-next .ba-cap { color:#A9C0A2; }
+  .ba-now  .phone { box-shadow:0 0 0 2px rgba(168,75,51,.85), var(--shadow-floating); }
+  .ba-next .phone { box-shadow:0 0 0 2px rgba(92,122,87,.9), var(--shadow-floating); }
+  .ba-note { color:#ADA797; font-size:12.5px; margin-top:10px; line-height:1.5; }
+  .ba-note b { color:#D9D3C5; }
+  .arrow-col { display:flex; align-items:center; align-self:stretch; color:var(--primary); font-size:30px; }
+
+  .pin { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
+    border-radius:var(--r-pill); background:var(--rust); color:#fff; font-family:var(--font-mono);
+    font-size:11px; font-weight:700; padding:0 5px; vertical-align:middle; }
+  .anno { background:#f7e3dc; border:1px solid var(--rust); border-radius:var(--r-input);
+    padding:8px 10px; font-size:11.5px; color:var(--rust-text); line-height:1.45; display:flex; gap:7px; }
+  .anno .pin { flex:none; margin-top:1px; }
+  .good { background:#e8efe4; border:1px solid var(--sage); border-radius:var(--r-input);
+    padding:8px 10px; font-size:11.5px; color:var(--sage-text); line-height:1.45; }
+
+  /* inline segmented control (who / how) */
+  .seg { display:flex; gap:4px; background:var(--card-soft); border:1px solid var(--border);
+    border-radius:var(--r-input); padding:3px; }
+  .seg .opt { flex:1; text-align:center; font-size:12px; font-weight:600; color:var(--ink-3);
+    padding:7px 4px; border-radius:10px; cursor:pointer; white-space:nowrap; }
+  .seg .opt.on { background:var(--card); color:var(--ink); box-shadow:var(--shadow-raised); }
+  .field-label { font-family:var(--font-mono); font-size:10.5px; letter-spacing:1px; text-transform:uppercase;
+    color:var(--ink-3); margin:0 0 6px; }
+  .split-row { display:flex; align-items:center; gap:10px; padding:9px 0; }
+  .split-row .nm { flex:1; min-width:0; }
+  .split-row .nm .t { font-size:14px; font-weight:600; color:var(--ink); }
+  .split-row .nm .s { font-size:11.5px; color:var(--ink-3); margin-top:1px; }
+  .split-row.me { background:var(--saffron-tint); border-radius:10px; margin:0 -8px; padding-left:8px; padding-right:8px; }
+  .divider-soft { height:1px; background:var(--rule); margin:8px 0; }
+
+  .spec { max-width:1280px; margin:0 auto var(--s32); background:var(--paper); border-radius:var(--r-card); padding:var(--s24); }
+  .spec h3 { margin:0 0 12px; font-size:16px; color:var(--ink); }
+  .spec ol { margin:0; padding-left:20px; color:var(--ink-2); font-size:13.5px; line-height:1.7; }
+  .spec ol b { color:var(--ink); }
+  .spec code { background:rgba(0,0,0,.05); padding:1px 6px; border-radius:5px; font-size:12px; color:#7a5305; }
+  .spec .gate { margin-top:14px; padding:10px 12px; background:#e8efe4; border:1px solid var(--sage); border-radius:var(--r-input); font-size:12.5px; color:var(--sage-text); }
+</style>
+</head>
+<body>
+
+<div class="page-head wrap">
+  <h1><span class="saffron">Rihla</span> · #485 — collapse the split editor into one card</h1>
+  <p>The per-person <b style="color:#E8DFC9">numbers</b> are already correct (#242 shipped). What's left is purely
+     <b style="color:#E8DFC9">information architecture</b>: the everyday "add expense" flow stacks the one concept —
+     <i>who fronted it, who it divides between, and how</i> — across <b style="color:#E8DFC9">three titled sections and three sheets</b>,
+     and there are <b style="color:#E8DFC9">two separate payer pickers</b> for one field. This unifies them into a single
+     <b style="color:#E8DFC9">Split</b> card. No money math, rules, routing, or schema change — <span class="audit-sev sev-clarity">clarity</span> only.</p>
+</div>
+
+<section class="audit-block">
+  <div class="audit-head">
+    <span class="audit-num">#485</span>
+    <h2 class="audit-title">One Split card · one payer control</h2>
+    <span class="audit-sev sev-clarity">clarity</span>
+  </div>
+  <p class="audit-desc">NOW renders <code>_Section</code> ×3 — <b>Paid by</b> (→ <code>_PayerPickerSheet</code>),
+    <b>Split between</b> (→ <code>_SplitCustomiseSheet</code>, which buries a <b>second</b> payer dropdown
+    <code>_PayerSelector</code>), <b>How</b> (→ <code>showCustomSplitSheet</code>). BETTER folds all three into one card:
+    payer inline, who-splits + how as segmented controls, real per-person figures, an "adds up to" footer.</p>
+
+  <div class="ba-row">
+    <!-- NOW -->
+    <div class="ba ba-now">
+      <div class="ba-cap"><span class="ba-tag">NOW</span> Three sections · two payer pickers</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn">✕</div><div class="title sans">Add expense</div><button class="btn sm">Add</button></div>
+          <div class="content tight">
+            <div class="center" style="padding:6px 0 2px">
+              <div class="uppercase-label" style="font-size:9px">AMOUNT · OMR</div>
+              <div class="r-amount hero neu" style="margin-top:2px"><span class="ccy" style="font-size:18px">OMR</span>48<span class="dec">.000</span></div>
+              <div style="height:3px;width:120px;background:var(--primary);margin:6px auto 0;border-radius:9px"></div>
+            </div>
+            <div class="field"><div class="input">Dinner at Bait Al Luban</div></div>
+            <div class="chip-row"><span class="chip selected">🍽 Food</span><span class="chip">🛏 Lodging</span><span class="chip">🚕 Transit</span></div>
+
+            <div class="section-header"><span class="label">PAID BY</span><span class="see-all">Change</span></div>
+            <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+              <div class="avatar sm av-3">N</div><div class="row-body"><div class="row-title" style="font-size:14px">You</div><div class="row-sub">Selected · paid the full amount</div></div><span class="chevron">›</span>
+            </div>
+
+            <div class="section-header"><span class="label">SPLIT BETWEEN</span><span class="see-all">Customise</span></div>
+            <div class="card soft">
+              <div class="between"><span class="tiny mono" style="color:var(--ink-3)">EVERYONE · 4 WAYS</span><span class="pill-tag">EVENT DEFAULT</span></div>
+              <div class="row" style="gap:10px;margin-top:10px">
+                <div class="col center"><div class="avatar sm av-1">A</div><div class="tiny">Ahmed</div><div class="tiny mono" style="color:var(--ink-3)">12.000</div></div>
+                <div class="col center"><div class="avatar sm av-2">S</div><div class="tiny">Sara</div><div class="tiny mono" style="color:var(--ink-3)">12.000</div></div>
+                <div class="col center"><div class="avatar sm av-4">K</div><div class="tiny">Khalid</div><div class="tiny mono" style="color:var(--ink-3)">12.000</div></div>
+                <div class="col center"><div class="avatar sm av-3">N</div><div class="tiny">You</div><div class="tiny mono" style="color:var(--ink-3)">12.000</div></div>
+              </div>
+            </div>
+
+            <div class="section-header"><span class="label">HOW</span><span class="see-all">Customise</span></div>
+            <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+              <div class="chip glyph">%</div><div class="row-body"><div class="row-title" style="font-size:14px">Equal</div><div class="row-sub">Split evenly across 4 ways.</div></div><span class="chevron">›</span>
+            </div>
+
+            <div class="anno"><span class="pin">1</span><div><b>Three sections, three sheets</b> for one concept. The "How" sheet and "Split between" sheet are reached separately.</div></div>
+            <div class="anno"><span class="pin">2</span><div>Open <b>Split between → Customise</b> and there's a <b>second</b> "who paid" dropdown (<code>_PayerSelector</code>) — a stock-Material dropdown, the app's only one — that also sets the payer. Set it one place, it disagrees with the other.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">→</div>
+
+    <!-- BETTER -->
+    <div class="ba ba-next">
+      <div class="ba-cap"><span class="ba-tag">BETTER</span> One Split card</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn">✕</div><div class="title sans">Add expense</div><button class="btn sm">Add</button></div>
+          <div class="content tight">
+            <div class="center" style="padding:6px 0 2px">
+              <div class="uppercase-label" style="font-size:9px">AMOUNT · OMR</div>
+              <div class="r-amount hero neu" style="margin-top:2px"><span class="ccy" style="font-size:18px">OMR</span>48<span class="dec">.000</span></div>
+              <div style="height:3px;width:120px;background:var(--primary);margin:6px auto 0;border-radius:9px"></div>
+            </div>
+            <div class="field"><div class="input">Dinner at Bait Al Luban</div></div>
+            <div class="chip-row"><span class="chip selected">🍽 Food</span><span class="chip">🛏 Lodging</span><span class="chip">🚕 Transit</span></div>
+
+            <div class="section-header"><span class="label">SPLIT</span><span class="pill-tag">EVENT DEFAULT</span></div>
+            <div class="card">
+              <!-- payer: single inline control -->
+              <p class="field-label">Paid by</p>
+              <div class="row" style="justify-content:space-between;margin-bottom:14px;cursor:pointer">
+                <span class="row" style="gap:8px"><span class="avatar sm av-3">N</span><span style="font-weight:600;font-size:14px">You</span></span>
+                <span class="chip sm" style="padding:5px 11px">Change</span>
+              </div>
+
+              <!-- who splits: scope segmented control, plain language -->
+              <p class="field-label">Who splits</p>
+              <div class="seg" style="margin-bottom:14px">
+                <div class="opt on">Everyone</div><div class="opt">Some people</div><div class="opt">Just me</div>
+              </div>
+
+              <!-- how: mode segmented control -->
+              <p class="field-label">How</p>
+              <div class="seg" style="margin-bottom:6px">
+                <div class="opt on">Equal</div><div class="opt">Shares</div><div class="opt">Exact</div><div class="opt">%</div>
+              </div>
+
+              <div class="divider-soft"></div>
+
+              <!-- per-person rows, real figures, payer marked, own row highlighted -->
+              <div class="split-row"><div class="avatar sm av-1">A</div><div class="nm"><div class="t">Ahmed</div></div><span class="r-amount neu">12<span class="dec">.000</span></span></div>
+              <div class="split-row"><div class="avatar sm av-2">S</div><div class="nm"><div class="t">Sara</div></div><span class="r-amount neu">12<span class="dec">.000</span></span></div>
+              <div class="split-row"><div class="avatar sm av-4">K</div><div class="nm"><div class="t">Khalid</div></div><span class="r-amount neu">12<span class="dec">.000</span></span></div>
+              <div class="split-row me"><div class="avatar sm av-3">N</div><div class="nm"><div class="t">You</div><div class="s">paid · owe nothing net</div></div><span class="r-amount neu">12<span class="dec">.000</span></span></div>
+
+              <div class="good" style="margin-top:12px">✓ Adds up to <b>OMR&nbsp;48.000</b></div>
+            </div>
+            <div class="ba-note">Payer, who-splits, mode, and every person's real share — one card, top to bottom. Tapping <b>Shares / Exact / %</b> opens the existing weights sheet (no money-logic change); the figures it returns render straight back into these rows.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BETTER: custom (some people) state -->
+    <div class="ba ba-next">
+      <div class="ba-cap"><span class="ba-tag">BETTER</span> "Some people" — inline chooser</div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="app-bar"><div class="icon-btn">✕</div><div class="title sans">Add expense</div><button class="btn sm">Add</button></div>
+          <div class="content tight">
+            <div class="center" style="padding:6px 0 2px">
+              <div class="uppercase-label" style="font-size:9px">AMOUNT · OMR</div>
+              <div class="r-amount hero neu" style="margin-top:2px"><span class="ccy" style="font-size:18px">OMR</span>48<span class="dec">.000</span></div>
+              <div style="height:3px;width:120px;background:var(--primary);margin:6px auto 0;border-radius:9px"></div>
+            </div>
+            <div class="field"><div class="input">Dinner at Bait Al Luban</div></div>
+            <div class="chip-row"><span class="chip selected">🍽 Food</span><span class="chip">🛏 Lodging</span><span class="chip">🚕 Transit</span></div>
+
+            <div class="section-header"><span class="label">SPLIT</span></div>
+            <div class="card">
+              <p class="field-label">Paid by</p>
+              <div class="row" style="justify-content:space-between;margin-bottom:14px">
+                <span class="row" style="gap:8px"><span class="avatar sm av-3">N</span><span style="font-weight:600;font-size:14px">You</span></span>
+                <span class="chip sm" style="padding:5px 11px">Change</span>
+              </div>
+              <p class="field-label">Who splits</p>
+              <div class="seg" style="margin-bottom:10px">
+                <div class="opt">Everyone</div><div class="opt on">Some people</div><div class="opt">Just me</div>
+              </div>
+              <!-- selectable roster appears only for "some people" -->
+              <div class="card soft" style="padding:6px 4px;margin-bottom:14px">
+                <div class="split-row" style="padding:7px 8px"><div class="avatar sm av-1">A</div><div class="nm"><div class="t">Ahmed</div></div><span class="chip sm selected" style="padding:3px 8px">✓</span></div>
+                <div class="split-row" style="padding:7px 8px"><div class="avatar sm av-2">S</div><div class="nm"><div class="t">Sara</div></div><span class="chip sm selected" style="padding:3px 8px">✓</span></div>
+                <div class="split-row" style="padding:7px 8px;opacity:.55"><div class="avatar sm av-4">K</div><div class="nm"><div class="t">Khalid</div></div><span class="chip sm" style="padding:3px 8px">＋</span></div>
+                <div class="split-row me" style="padding:7px 8px"><div class="avatar sm av-3">N</div><div class="nm"><div class="t">You</div></div><span class="chip sm selected" style="padding:3px 8px">✓</span></div>
+              </div>
+              <p class="field-label">How</p>
+              <div class="seg" style="margin-bottom:6px">
+                <div class="opt on">Equal</div><div class="opt">Shares</div><div class="opt">Exact</div><div class="opt">%</div>
+              </div>
+              <div class="divider-soft"></div>
+              <div class="split-row"><div class="avatar sm av-1">A</div><div class="nm"><div class="t">Ahmed</div></div><span class="r-amount neu">16<span class="dec">.000</span></span></div>
+              <div class="split-row"><div class="avatar sm av-2">S</div><div class="nm"><div class="t">Sara</div></div><span class="r-amount neu">16<span class="dec">.000</span></span></div>
+              <div class="split-row me"><div class="avatar sm av-3">N</div><div class="nm"><div class="t">You</div><div class="s">paid · owe nothing net</div></div><span class="r-amount neu">16<span class="dec">.000</span></span></div>
+              <div class="good" style="margin-top:12px">✓ Adds up to <b>OMR&nbsp;48.000</b> · split 3 ways</div>
+            </div>
+            <div class="ba-note">The roster appears only when <b>Some people</b> is selected — that's the current <code>_CustomParticipantSelector</code>, moved inline. <b>Just me</b> hides it and shows a single own-row.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="spec">
+  <h3>Interaction spec (single source of truth)</h3>
+  <ol>
+    <li><b>One "Split" card</b> replaces the three <code>_Section</code>s (Paid by / Split between / How). Category strip stays above it; "Where" (event · date) stays as its own section below.</li>
+    <li><b>Paid by — one control.</b> Inline row at the top of the card: avatar + name + a "Change" affordance, tapping anywhere on the row opens the existing <code>_PayerPickerSheet</code> (#280). <b>Delete the second payer picker</b> — remove <code>_PayerSelector</code> from <code>SplitScopeSelector</code> and stop threading <code>payerId</code> through the customise flow.</li>
+    <li><b>Who splits — scope segmented control</b> in plain language: <b>Everyone</b> (global) · <b>Some people</b> (custom) · <b>Just me</b> (personal). Selecting "Some people" reveals the existing <code>_CustomParticipantSelector</code> roster inline; the other two hide it. (New l10n values for the three labels — the <code>editorScope*</code> keys today read "Everyone / Custom / Personal".)</li>
+    <li><b>How — mode segmented control:</b> Equal · Shares · Exact · %. <b>Equal</b> needs no further input. <b>Shares / Exact / %</b> open the existing <code>showCustomSplitSheet</code> for the weights — its returned distribution flows straight into the rows. Mode is reflected in the segmented control. (Itemized stays reachable inside that sheet, displayed as Exact.)</li>
+    <li><b>Per-person rows</b> reuse <code>_SplitPreviewCard</code>'s <code>allocateExpenseOwed</code> figures verbatim (#242) — real owed per person, the payer marked, <b>your own row highlighted</b>. Rendered as a vertical list (not the horizontal strip) so names + amounts read top-to-bottom.</li>
+    <li><b>Reconciliation footer:</b> "✓ Adds up to {total}" — sum of the rendered shares, which by construction equals the amount.</li>
+    <li><b>Sub-two-people guard</b> unchanged: with &lt;2 eligible people the rows collapse to the "pick at least two people to split" hint and the mode control is disabled (same as today's <code>_SplitModeCard</code> disabled state).</li>
+  </ol>
+  <div class="gate"><b>Gate:</b> IA/layout + copy only. No <code>BalanceCalculator</code> / <code>firestore.rules</code> / routing / schema change — the per-person numbers (#242) and the weights sheet are reused untouched. <b>Gate-exempt.</b></div>
+</div>
+
+</body>
+</html>

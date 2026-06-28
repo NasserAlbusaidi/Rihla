@@ -885,8 +885,18 @@
   "editorExpenseDeleted": "Expense deleted",
   "editorScopeGlobal": "Everyone",
   "editorScopeSubGroup": "Group split",
-  "editorScopeCustom": "Custom",
-  "editorScopePersonal": "Personal",
+  "editorScopeCustom": "Some people",
+  "editorScopePersonal": "Just me",
+  "editorSplit": "Split",
+  "editorWhoSplits": "Who splits",
+  "editorSplitModeExactShort": "Exact",
+  "editorSplitModePercentShort": "%",
+  "editorSplitAddsUpTo": "Adds up to {amount}",
+  "@editorSplitAddsUpTo": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
   "editorReceiptOptional": "RECEIPT (OPTIONAL)",
   "editorReceiptUploading": "Uploading receipt...",
   "editorReceiptAttached": "Receipt attached",

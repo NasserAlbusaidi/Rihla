@@ -16,8 +16,11 @@ void main() {
         expenseScopeDisplayName(ExpenseScope.subGroup, l10n),
         'Group split',
       );
-      expect(expenseScopeDisplayName(ExpenseScope.custom, l10n), 'Custom');
-      expect(expenseScopeDisplayName(ExpenseScope.personal, l10n), 'Personal');
+      expect(
+        expenseScopeDisplayName(ExpenseScope.custom, l10n),
+        'Some people',
+      );
+      expect(expenseScopeDisplayName(ExpenseScope.personal, l10n), 'Just me');
     });
 
     test('returns Arabic labels distinct from English labels', () async {

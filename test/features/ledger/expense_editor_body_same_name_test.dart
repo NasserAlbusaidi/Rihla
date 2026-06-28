@@ -94,4 +94,20 @@ void main() {
     // Non-colliding member still collapses to a clean first name in the tile.
     expect(find.text('Omar'), findsOneWidget);
   });
+
+  testWidgets('the payer picker list disambiguates two members named Ahmed',
+      (tester) async {
+    // #485 made `_PayerPickerSheet` the single payer control — and the actual
+    // SELECTION surface for collisions. It must show both Ahmeds disambiguated,
+    // never two identical "Ahmed" rows (the mis-attribution the retired dropdown
+    // guarded). Regression: rendering raw participantNames here.
+    await pumpEditor(tester);
+
+    await tester.tap(find.text('Change'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ahmed (#aaaa)'), findsWidgets);
+    expect(find.text('Ahmed (#bbbb)'), findsWidgets);
+    expect(find.text('Ahmed'), findsNothing);
+  });
 }

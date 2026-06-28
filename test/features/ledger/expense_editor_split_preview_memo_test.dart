@@ -14,6 +14,7 @@ import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
 import 'package:safar/features/ledger/widgets/expense_editor_body.dart';
+import 'package:safar/features/ledger/widgets/split_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

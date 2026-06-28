@@ -242,8 +242,11 @@ void main() {
       expect(find.text('USD 5.00'), findsWidgets);
       expect(find.textContaining('OMR'), findsNothing);
 
-      // The custom-split sheet header (:453) also inherits the picked currency.
-      await tester.tap(find.widgetWithText(GestureDetector, 'Customise').last);
+      // #485: the weights sheet (opened from the card's "Shares" mode segment)
+      // also inherits the picked currency in its header.
+      final shares = find.text('Shares');
+      await tester.ensureVisible(shares);
+      await tester.tap(shares);
       await tester.pumpAndSettle();
       expect(
         find.textContaining('USD', findRichText: true),

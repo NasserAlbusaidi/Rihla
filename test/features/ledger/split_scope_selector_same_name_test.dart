@@ -1,20 +1,19 @@
-import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
-import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
-import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/widgets/split_scope_selector.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-/// #289 — two members named "Ahmed" must be distinguishable in the split
-/// pickers, where money is attributed (who paid / who is in the split).
+/// #289 — two members named "Ahmed" must be distinguishable in the custom
+/// ("Some people") roster, where money is attributed. The payer picker's own
+/// disambiguation is covered by expense_editor_body_same_name_test.dart (#485
+/// retired the second, in-roster payer dropdown).
 void main() {
   testWidgets('custom participant picker disambiguates two same-named members',
       (tester) async {
-    await _pumpSelector(tester, scope: ExpenseScope.custom);
+    await _pumpSelector(tester);
 
     expect(find.text('Ahmed (#aaaa)'), findsOneWidget);
     expect(find.text('Ahmed (#bbbb)'), findsOneWidget);
@@ -23,30 +22,11 @@ void main() {
     // Non-colliding member stays bare.
     expect(find.text('Sara Said'), findsOneWidget);
   });
-
-  testWidgets('payer dropdown disambiguates two same-named members',
-      (tester) async {
-    await _pumpSelector(tester, scope: ExpenseScope.global);
-
-    await tester.tap(find.byType(DropdownButton<String>));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ahmed (#aaaa)'), findsWidgets);
-    expect(find.text('Ahmed (#bbbb)'), findsWidgets);
-  });
 }
 
-Future<void> _pumpSelector(
-  WidgetTester tester, {
-  required ExpenseScope scope,
-}) async {
+Future<void> _pumpSelector(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [
-        currentUserProvider.overrideWithValue(
-          MockUser(uid: 'uid-sara-3333', isAnonymous: true),
-        ),
-      ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -54,14 +34,10 @@ Future<void> _pumpSelector(
         home: Scaffold(
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: SplitScopeSelector(
+            child: CustomParticipantSelector(
               event: _event,
-              scope: scope,
-              onScopeChanged: (_) {},
               customSplitParticipants: const {},
               onCustomSplitChanged: (_) {},
-              selectedPayerId: null,
-              onPayerChanged: (_) {},
             ),
           ),
         ),
