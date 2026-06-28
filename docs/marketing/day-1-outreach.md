@@ -10,31 +10,19 @@ Use this with:
 - `first-100-cohort-tracker.csv`
 - `first-100-command-center.md`
 - `first-100-outreach-kit.md`
-- `closed-test-access-kit.md`
 
 ## Before Sending
 
 For each slot:
 
 1. Replace the blank `champion` cell with a real person.
-2. Ask for the Google account they use in the Play Store.
-3. Add them to the Play closed-testing access list if the app is still closed.
-4. Update the private tester roster, then export the Play upload file with
-   `dart tool/export_play_tester_emails.dart ~/Desktop/rihla-first-100-play-testers.csv --output=/tmp/rihla-play-testers.csv`.
-5. Upload the generated file to the Play Console tester list.
-6. Send the Play opt-in link before the public landing link.
-7. Send `https://rihla-safar.web.app/alpha` or
-   `https://rihla-safar.web.app/ar/alpha` if they need the access steps.
-8. Export the private Play tester link for the current batch:
-   `export RIHLA_PLAY_OPT_IN_LINK="PASTE_PLAY_CONSOLE_OPT_IN_LINK"`.
-9. Generate the slot-specific messages with the opt-in step included:
-   `dart tool/first_100_messages.dart --count=10 --language=en --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`
-   or `dart tool/first_100_messages.dart --count=10 --language=ar --play-opt-in-link="$RIHLA_PLAY_OPT_IN_LINK"`.
-10. Paste the generated slot-specific message into the DM.
-11. Set `first_contact_date` to the send date.
-12. Set `follow_up_date` to the next day.
-
-Do not send the message until the person can actually access the Play listing.
+2. Generate the slot-specific messages:
+   `dart tool/first_100_messages.dart --count=10 --language=en`
+   or `dart tool/first_100_messages.dart --count=10 --language=ar`.
+3. Personalize the generated message and paste it into the DM with the
+   trackable slot link.
+4. Set `first_contact_date` to the send date.
+5. Set `follow_up_date` to the next day.
 
 ## Day-1 Slots
 
@@ -53,9 +41,6 @@ Do not send the message until the person can actually access the Play listing.
 
 ## Message: English Slots
 
-If the champion is not already a tester, send the access message from
-`closed-test-access-kit.md` first. Then send:
-
 ```text
 Can you use Rihla for one real shared bill this week?
 
@@ -69,9 +54,6 @@ If you install from a group invite and the code is not filled automatically, go 
 ```
 
 ## Message: Arabic Slots
-
-إذا لم يكن الشخص مضافًا كمختبر، أرسل رسالة الوصول من
-`closed-test-access-kit.md` أولًا. ثم أرسل:
 
 ```text
 ممكن تستخدم Rihla لمصاريف مجموعة حقيقية هذا الأسبوع؟
@@ -119,17 +101,17 @@ Arabic:
 
 After each send:
 
-- `tester_added`: `yes` only after Play access is confirmed.
+- `tester_added`: `yes` once they confirm they installed from Play.
 - `first_contact_date`: send date.
 - `follow_up_date`: next-day follow-up date.
 - `group_created`: `yes` only after the champion confirms it.
 - `invite_sent`: `yes` only after they share the group invite.
 - `installs_reported`, `joined_count`, `expenses_count`, `settlements_count`:
   use reported numbers or verified backend/store evidence.
-- `top_blocker`: write the exact blocker, for example `Play access`, `invite code lost after install`, `did not know what expense to add`, or `no Android phone`.
+- `top_blocker`: write the exact blocker, for example `install failed`, `invite code lost after install`, `did not know what expense to add`, or `no Android phone`.
 
 Day 1 is successful if at least 10 personal asks are sent and at least 7 people
-can access the Play listing.
+installed or replied positively.
 
 ## End-Of-Day Summary
 
@@ -140,4 +122,4 @@ dart tool/first_100_summary.dart --today=2026-06-27
 ```
 
 Use the output to update `first-100-command-center.md`. The report does not
-print private champion names or tester emails.
+print private champion names or contact details.

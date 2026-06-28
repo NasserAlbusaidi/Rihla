@@ -2,22 +2,35 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+// Closed-alpha tokens that must never return to the operating docs now that
+// v1.6.3 is in public production (2026-06-28). See closed-test-access-kit.md.
+const _closedAlphaTokens = <String>[
+  '--play-opt-in-link',
+  'RIHLA_PLAY_OPT_IN_LINK',
+  '--include-existing-testers',
+  'tool/export_play_tester_emails.dart',
+  'tool/first_100_access_requests.dart',
+];
+
 void main() {
-  test('short-video kit points posts to alpha and tracked install pages', () {
+  test('short-video kit points posts to the public Play listing, not alpha', () {
     final kit = File(
       'docs/marketing/short-video-content-kit.md',
     ).readAsStringSync();
 
-    expect(kit, contains('https://rihla-safar.web.app/alpha'));
-    expect(kit, contains('https://rihla-safar.web.app/ar/alpha'));
+    expect(kit, contains('Install from the public Play'));
     expect(kit, contains('utm_source=instagram'));
     expect(kit, contains('utm_medium=video'));
     expect(kit, contains('video_10'));
     expect(kit, contains('dart tool/first_100_summary.dart'));
     expect(kit, isNot(contains('Download my app and let me know')));
+    // Public production: the closed-test /alpha access pages are not an install
+    // path anymore.
+    expect(kit, isNot(contains('rihla-safar.web.app/alpha')));
+    expect(kit, isNot(contains('rihla-safar.web.app/ar/alpha')));
   });
 
-  test('operating docs link the short-video kit', () {
+  test('operating docs reference live tools and cross-link, no closed-alpha steps', () {
     final commandCenter = File(
       'docs/marketing/first-100-command-center.md',
     ).readAsStringSync();
@@ -25,39 +38,29 @@ void main() {
       'docs/marketing/first-100-outreach-kit.md',
     ).readAsStringSync();
 
-    expect(commandCenter, contains('short-video-content-kit.md'));
-    expect(commandCenter, contains('tool/first_100_messages.dart'));
-    expect(commandCenter, contains('tool/first_100_launch_packet.dart'));
-    expect(outreachKit, contains('tool/first_100_messages.dart'));
-    expect(commandCenter, contains('tool/first_100_followups.dart'));
-    expect(outreachKit, contains('tool/first_100_followups.dart'));
-    expect(commandCenter, contains('tool/first_100_roster_check.dart'));
-    expect(outreachKit, contains('tool/first_100_roster_check.dart'));
-    expect(commandCenter, contains('tool/first_100_access_requests.dart'));
-    expect(outreachKit, contains('tool/first_100_access_requests.dart'));
-    expect(commandCenter, contains('rihla-first-10-access-requests.md'));
-    expect(outreachKit, contains('rihla-first-10-access-requests.md'));
-    expect(commandCenter, contains('tool/first_100_tracker_patch.dart'));
-    expect(outreachKit, contains('tool/first_100_tracker_patch.dart'));
-    expect(commandCenter, contains('rihla-first-100-tracker.csv'));
-    expect(outreachKit, contains('rihla-first-100-tracker.csv'));
-    expect(commandCenter, contains('tool/play_acquisition_summary.dart'));
-    expect(outreachKit, contains('tool/play_acquisition_summary.dart'));
-    expect(outreachKit, contains('tool/first_100_launch_packet.dart'));
-    expect(commandCenter, contains('--write-roster-template'));
-    expect(outreachKit, contains('--write-roster-template'));
-    expect(commandCenter, contains('--play-opt-in-link'));
-    expect(outreachKit, contains('--play-opt-in-link'));
-    expect(commandCenter, contains('send-sheet.md'));
-    expect(outreachKit, contains('send-sheet.md'));
-    expect(outreachKit, contains('RIHLA_PLAY_OPT_IN_LINK'));
+    for (final doc in [commandCenter, outreachKit]) {
+      expect(doc, contains('short-video-content-kit.md'));
+      expect(doc, contains('tool/first_100_messages.dart'));
+      expect(doc, contains('tool/first_100_launch_packet.dart'));
+      expect(doc, contains('tool/first_100_followups.dart'));
+      expect(doc, contains('tool/first_100_roster_check.dart'));
+      expect(doc, contains('tool/first_100_tracker_patch.dart'));
+      expect(doc, contains('tool/play_acquisition_summary.dart'));
+      expect(doc, contains('rihla-first-100-tracker.csv'));
+      expect(doc, contains('--write-roster-template'));
+      expect(doc, contains('send-sheet.md'));
+      // The closed-alpha access funnel was removed; it must not creep back.
+      for (final token in _closedAlphaTokens) {
+        expect(doc, isNot(contains(token)), reason: '$token must stay out');
+      }
+    }
+
     expect(commandCenter, isNot(contains('still unshipped')));
     expect(commandCenter, isNot(contains('prioritize `#368`')));
-    expect(outreachKit, contains('short-video-content-kit.md'));
     expect(outreachKit, isNot(contains('DM for access')));
   });
 
-  test('access docs include private Play tester email export workflow', () {
+  test('closed-test access kit is an obsolete tombstone pointing to the live loop', () {
     final accessKit = File(
       'docs/marketing/closed-test-access-kit.md',
     ).readAsStringSync();
@@ -65,15 +68,15 @@ void main() {
       'docs/marketing/first-100-command-center.md',
     ).readAsStringSync();
 
-    expect(accessKit, contains('tool/export_play_tester_emails.dart'));
-    expect(accessKit, contains('tool/first_100_access_requests.dart'));
-    expect(accessKit, contains('rihla-first-10-access-requests.md'));
-    expect(accessKit, contains('~/Desktop/rihla-first-100-play-testers.csv'));
-    expect(accessKit, contains('--include-existing='));
-    expect(accessKit, contains('/tmp/rihla-play-testers.csv'));
-    expect(accessKit, contains('UTF-8 without a BOM'));
-    expect(commandCenter, contains('tool/export_play_tester_emails.dart'));
-    expect(commandCenter, contains('--include-existing-testers='));
+    expect(accessKit, contains('OBSOLETE'));
+    expect(accessKit, contains('public production'));
+    expect(accessKit, contains('first-100-command-center.md'));
+    expect(accessKit, contains('day-1-outreach.md'));
+    // The closed-test export workflow is gone from both the kit and the hub.
+    expect(accessKit, isNot(contains('tool/export_play_tester_emails.dart')));
+    expect(accessKit, isNot(contains('--include-existing')));
+    expect(commandCenter, isNot(contains('tool/export_play_tester_emails.dart')));
+    expect(commandCenter, isNot(contains('--include-existing-testers=')));
   });
 
   test('public channel hit list is linked and permission-first', () {
@@ -99,12 +102,6 @@ void main() {
     expect(hitList, contains('Sultan Qaboos University'));
     expect(hitList, contains('GUtech'));
     expect(hitList, contains('Oman Tourism College'));
-    expect(
-      hitList,
-      contains(
-        'https://support.google.com/googleplay/android-developer/answer/9845334',
-      ),
-    );
   });
 
   test('ASO conversion plan is linked and grounded in official guidance', () {
