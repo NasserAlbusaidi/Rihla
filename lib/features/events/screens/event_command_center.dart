@@ -30,6 +30,7 @@ import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../providers/event_provider.dart';
 import '../utils/event_display.dart';
+import '../utils/event_type_copy.dart';
 
 /// Per-event hub — V5R "dots" direction.
 ///
@@ -209,6 +210,7 @@ class _Content extends ConsumerWidget {
                     (currency: c, total: totals[c]!),
                 ],
                 count: expenses.length,
+                eventType: event.type,
                 onTap: () {
                   HapticService.lightClick();
                   GoRouter.of(
@@ -655,6 +657,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
   const _LedgerSummaryStrip({
     required this.totals,
     required this.count,
+    required this.eventType,
     required this.onTap,
   });
 
@@ -662,6 +665,7 @@ class _LedgerSummaryStrip extends StatelessWidget {
   /// A single-currency event renders exactly as the old flat total did.
   final List<({String currency, Decimal total})> totals;
   final int count;
+  final EventType eventType;
   final VoidCallback onTap;
 
   @override
@@ -686,7 +690,9 @@ class _LedgerSummaryStrip extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Overline(label: context.l10n.eventTripTotal),
+                    _Overline(
+                      label: eventTypeTotalLabel(eventType, context.l10n),
+                    ),
                     SizedBox(height: context.spacing.space4),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.end,

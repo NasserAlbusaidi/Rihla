@@ -557,6 +557,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String ledgerEmptyFirstExpenseCamping(Object currency) {
+    return 'The first $currency you log will set the camping total. We\'ll split it equally between everyone camping.';
+  }
+
+  @override
+  String ledgerEmptyFirstExpenseOuting(Object currency) {
+    return 'The first $currency you log will set the outing total. We\'ll split it equally between everyone on the outing.';
+  }
+
+  @override
+  String ledgerEmptyFirstExpenseEvent(Object currency) {
+    return 'The first $currency you log will set the event total. We\'ll split it equally between everyone in the group.';
+  }
+
+  @override
   String get ledgerCouldNotLoadEventTitle => 'Could not load event';
 
   @override
@@ -2117,6 +2132,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventTripTotal => 'Trip total';
+
+  @override
+  String get eventTotalLabelCamping => 'Camping total';
+
+  @override
+  String get eventTotalLabelOuting => 'Outing total';
+
+  @override
+  String get eventTotalLabelEvent => 'Event total';
 
   @override
   String eventExpenseCountInline(int count) {

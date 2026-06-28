@@ -17,6 +17,7 @@ import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
+import '../../events/utils/event_type_copy.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/ledger_keys.dart';
@@ -285,6 +286,10 @@ class _Body extends ConsumerWidget {
               if (hasExpenses)
                 SliverToBoxAdapter(
                   child: LedgerTripCaption(
+                    label: eventTypeTotalLabel(
+                      event.type,
+                      context.l10n,
+                    ).toUpperCase(),
                     totals: [
                       for (final c in sortedGccFirst(eventTotal.keys))
                         (currency: c, total: eventTotal[c]!),
@@ -334,7 +339,10 @@ class _Body extends ConsumerWidget {
                             actionLabel: context.l10n.ledgerClearFilters,
                             onAction: () => onCategoryFilter(null),
                           )
-                        : _EmptyStateBody(currency: currency),
+                        : _EmptyStateBody(
+                            currency: currency,
+                            eventType: event.type,
+                          ),
                   ),
                 )
               else
@@ -543,9 +551,10 @@ class _CoverHeader extends StatelessWidget {
 // ──────────────────────────── Empty-state body
 
 class _EmptyStateBody extends StatelessWidget {
-  const _EmptyStateBody({required this.currency});
+  const _EmptyStateBody({required this.currency, required this.eventType});
 
   final String currency;
+  final EventType eventType;
 
   @override
   Widget build(BuildContext context) {
@@ -570,7 +579,7 @@ class _EmptyStateBody extends StatelessWidget {
           ),
           SizedBox(height: context.spacing.space8),
           Text(
-            context.l10n.ledgerEmptyStateFirstExpenseBody(currency),
+            eventTypeFirstExpenseBody(eventType, context.l10n, currency),
             textAlign: TextAlign.center,
             style: AppTypography.sans(
               fontSize: 13,
