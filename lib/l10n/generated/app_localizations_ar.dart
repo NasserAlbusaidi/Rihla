@@ -3033,6 +3033,9 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get groupSettleUpAcrossEventsLabel => 'عبر الفعاليات';
+
+  @override
   String errorPageNotFound(Object location) {
     return 'الصفحة غير موجودة: $location';
   }

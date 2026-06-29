@@ -5046,6 +5046,12 @@ abstract class AppLocalizations {
   /// **'Event ...{suffix}'**
   String groupSettleUpEventLabelFallback(Object suffix);
 
+  /// Label for the residual row in a group settle-up per-event breakdown — the cross-event portion of the transfer that isn't attributable to a single event (#752).
+  ///
+  /// In en, this message translates to:
+  /// **'Across events'**
+  String get groupSettleUpAcrossEventsLabel;
+
   /// Fallback errorBuilder text shown by GoRouter when the requested location does not match any route.
   ///
   /// In en, this message translates to:

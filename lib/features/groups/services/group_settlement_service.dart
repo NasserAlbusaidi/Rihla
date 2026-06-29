@@ -62,6 +62,7 @@ class GroupSettlementService extends FirestoreRepository {
     String? note,
     String? payerName,
     String? recipientName,
+    String? groupSettleUpId,
   }) async {
     if (createdBy.isEmpty) {
       throw ArgumentError.value(
@@ -90,6 +91,9 @@ class GroupSettlementService extends FirestoreRepository {
       'settledAt': now.toIso8601String(),
       'createdBy': createdBy,
     };
+    // Omit the key when null so legacy/standalone group settlements keep the
+    // existing shape (#752; rules guard `!('x' in data) ||`).
+    if (groupSettleUpId != null) data['groupSettleUpId'] = groupSettleUpId;
     try {
       await _settlementsRef(groupId).doc(id).set(data);
     } on FirebaseException catch (e) {

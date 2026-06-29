@@ -33,6 +33,13 @@ class Settlement {
   /// to OMR in [fromFirestore], so the label can never disagree with the scale.
   final String currency;
 
+  /// Links this settlement to a group-level settle-up (#752). When a group
+  /// transfer is decomposed into per-event settlement docs + a residual group
+  /// doc, every doc of that one logical settle-up shares this id so the group
+  /// history can surface them (and a fast-follow can correct them atomically).
+  /// Null on legacy docs and on directly-recorded event settlements.
+  final String? groupSettleUpId;
+
   const Settlement({
     required this.id,
     required this.tripId,
@@ -49,6 +56,7 @@ class Settlement {
     this.groupId,
     this.createdBy = '',
     this.currency = 'OMR',
+    this.groupSettleUpId,
   });
 
   factory Settlement.fromJson(Map<String, dynamic> json) {
@@ -134,6 +142,7 @@ class Settlement {
       groupId: groupId,
       createdBy: data['createdBy'] as String? ?? '',
       currency: currency,
+      groupSettleUpId: data['groupSettleUpId'] as String?,
     );
   }
 }

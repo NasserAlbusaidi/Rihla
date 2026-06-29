@@ -1752,6 +1752,90 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
+  describe('#752 group-settlement decompose: event-settlement authz + groupSettleUpId link', () => {
+    // validEventSettlementCreate now gates on isGroupMember (was
+    // isEventParticipant), so a group-level settle-up decomposed into per-event
+    // docs — written by a group member who is NOT a participant of the event —
+    // is accepted. The counterparties STILL must be event participants.
+    test('group member who is NOT an event participant CAN create an event settlement between two participants', async () => {
+      await addGroupMember('peer', 'Peer'); // peer ∈ g1.memberIds, NOT in eRelax.participantIds
+      await seedEvent('eRelax', { participantIds: ['owner', 'member'] });
+      const peer = testEnv.authenticatedContext('peer').firestore();
+      await assertSucceeds(peer.doc('groups/g1/events/eRelax/settlements/setRelax').set(
+        validSettlement({
+          id: 'setRelax',
+          eventId: 'eRelax',
+          createdBy: 'peer',
+          payerParticipantId: 'owner',
+          recipientParticipantId: 'member',
+          payerName: 'Owner',
+          recipientName: 'Member',
+        }),
+      ));
+    });
+
+    test('a NON-member still cannot create an event settlement', async () => {
+      await seedEvent('eRelax', { participantIds: ['owner', 'member'] });
+      const stranger = testEnv.authenticatedContext('stranger').firestore(); // NOT in g1.memberIds
+      await assertFails(stranger.doc('groups/g1/events/eRelax/settlements/setX').set(
+        validSettlement({
+          id: 'setX',
+          eventId: 'eRelax',
+          createdBy: 'stranger',
+          payerParticipantId: 'owner',
+          recipientParticipantId: 'member',
+        }),
+      ));
+    });
+
+    test('counterparties must STILL be event participants (party gate unchanged)', async () => {
+      await addGroupMember('peer', 'Peer');
+      await seedEvent('eRelax', { participantIds: ['owner', 'member'] });
+      const peer = testEnv.authenticatedContext('peer').firestore();
+      // peer is a group member but NOT an eRelax participant — using it as a
+      // counterparty must still fail.
+      await assertFails(peer.doc('groups/g1/events/eRelax/settlements/setBad').set(
+        validSettlement({
+          id: 'setBad',
+          eventId: 'eRelax',
+          createdBy: 'peer',
+          payerParticipantId: 'owner',
+          recipientParticipantId: 'peer', // NOT an eRelax participant
+        }),
+      ));
+    });
+
+    test('event settlement carrying a string groupSettleUpId is accepted', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setLink').set(
+        validSettlement({ id: 'setLink', groupSettleUpId: 'su-abc' }),
+      ));
+    });
+
+    test('event settlement carrying a non-string groupSettleUpId is rejected', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1/settlements/setLinkBad').set(
+        validSettlement({ id: 'setLinkBad', groupSettleUpId: 123 }),
+      ));
+    });
+
+    test('group settlement carrying a string groupSettleUpId is accepted', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/settlements/gsetLink').set(
+        validGroupSettlement({ id: 'gsetLink', groupSettleUpId: 'su-xyz' }),
+      ));
+    });
+
+    test('settlement with the groupSettleUpId key omitted is still accepted', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      // validSettlement() carries NO groupSettleUpId key — pins the
+      // `!('groupSettleUpId' in data) || ...` guard against a direct-access regression.
+      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNoLink').set(
+        validSettlement({ id: 'setNoLink' }),
+      ));
+    });
+  });
+
   test('event settlement creator cannot update own record', async () => {
     await seedEventSettlement();
     const owner = testEnv.authenticatedContext('owner').firestore();

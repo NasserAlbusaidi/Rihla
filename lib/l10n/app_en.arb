@@ -2115,6 +2115,11 @@
     }
   },
 
+  "groupSettleUpAcrossEventsLabel": "Across events",
+  "@groupSettleUpAcrossEventsLabel": {
+    "description": "Label for the residual row in a group settle-up per-event breakdown — the cross-event portion of the transfer that isn't attributable to a single event (#752)."
+  },
+
   "errorPageNotFound": "Page not found: {location}",
   "@errorPageNotFound": {
     "description": "Fallback errorBuilder text shown by GoRouter when the requested location does not match any route.",

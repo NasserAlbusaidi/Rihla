@@ -13,8 +13,12 @@ import 'package:decimal/decimal.dart';
 /// NON-DECOMPOSITION (per bucket): [netByCurrency] is NOT the sum of
 /// [perEventNetByCurrency] slices. The drill-down universe is
 /// `event.participantIds` only (former financial actors appear in net, never
-/// in a slice), group-scope settlements fold into net only, and
-/// out-of-universe drops differ. Never reconcile one from the other.
+/// in a slice) and out-of-universe drops differ. A group settle-up decomposes
+/// into per-event event settlements + a residual group settlement (#752), so a
+/// group settle-up's per-event portions DO land in slices now; only the
+/// residual GROUP settlement folds into net only. Reconciliation still fails
+/// (residual + participantIds-only universe) — never reconcile one from the
+/// other.
 class GroupBalanceAggregate {
   const GroupBalanceAggregate({
     required this.netByCurrency,
