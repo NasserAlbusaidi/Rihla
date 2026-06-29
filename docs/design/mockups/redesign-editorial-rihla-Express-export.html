@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rihla — Split the bill. Settle up. Stay friends.</title>
+<meta name="description" content="Rihla is a free Android app for splitting group expenses with friends in Oman and the GCC. No signup, Arabic & English, multi-currency, works offline." />
+<meta name="hz:slide-selector" content=".page" />
+<meta name="hz:canvas-width" content="1200" />
+<meta name="hz:canvas-height" content="3917" />
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap");
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:#E9DEC9;
+    display:flex;
+    justify-content:center;
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:#211B16;
+    line-height:1.6;
+    font-size:17px;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  /* ---------- Fixed canvas root ---------- */
+  .page{
+    position:relative;
+    width:1200px;
+    height:3917px;
+    overflow:hidden;
+    margin:0 auto;
+    background:#F4ECDD;
+  }
+  .page::before{
+    content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;
+    background-image:radial-gradient(rgba(33,27,22,.045) 1px,transparent 1px);
+    background-size:22px 22px;
+  }
+
+  .wrap{width:100%;max-width:1200px;margin-inline:auto;padding-inline:48px;}
+  main,header,footer,section{position:relative;z-index:1;}
+
+  a{color:inherit;text-decoration:none;}
+  img{max-width:100%;display:block;}
+  p{font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  h1,h2,h3{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:600;line-height:1.04;letter-spacing:-.01em;margin:0;}
+
+  .skip{position:absolute;inset-inline-start:-999px;top:0;background:#211B16;color:#F4ECDD;padding:10px 16px;border-radius:0 0 10px 0;z-index:50;}
+
+  .eyebrow{
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:600;font-size:.74rem;letter-spacing:.16em;
+    text-transform:uppercase;color:#9E3E22;
+    display:inline-flex;align-items:center;gap:.6em;
+  }
+  .eyebrow::before{content:"";width:26px;height:0;border-top:1.5px dotted #BC4F2E;}
+
+  /* ---------- Header ---------- */
+  .site-head{padding-block:22px;}
+  .head-row{display:flex;align-items:center;justify-content:space-between;gap:20px;}
+  .brand{display:inline-flex;align-items:center;gap:12px;}
+  .glyph{
+    width:42px;height:42px;flex:none;border-radius:12px;
+    background:#211B16;color:#F4ECDD;display:grid;place-items:center;
+    box-shadow:0 6px 18px rgba(33,27,22,.18);
+  }
+  .glyph svg{width:24px;height:24px;}
+  .wordmark{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:600;font-size:1.5rem;letter-spacing:-.01em;}
+  .wordmark span{color:#BC4F2E;}
+  .head-actions{display:flex;align-items:center;gap:10px;}
+  .lang-toggle{
+    font-weight:600;font-size:.95rem;padding:9px 16px;border:1.5px solid #211B16;
+    border-radius:999px;
+  }
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:.6em;
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:600;font-size:1rem;
+    padding:15px 26px;border-radius:999px;border:1.5px solid transparent;cursor:pointer;
+  }
+  .btn-primary{background:#BC4F2E;color:#fff;box-shadow:0 10px 26px rgba(188,79,46,.32);}
+  .btn-ghost{background:transparent;border-color:#211B16;color:#211B16;}
+  .btn svg{width:20px;height:20px;flex:none;}
+
+  /* ---------- Hero ---------- */
+  .hero{padding-top:60px;padding-bottom:108px;}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;}
+  .hero-copy{max-width:38ch;}
+  .hero h1{
+    font-size:75.6px;margin-block:22px 20px;letter-spacing:-.02em;
+  }
+  .hero h1 em{font-style:italic;color:#BC4F2E;font-weight:500;}
+  .hero h1 .u{
+    background:linear-gradient(transparent 62%,rgba(206,139,51,.42) 62%);
+    padding-inline:.04em;
+  }
+  .hero-sub{font-size:1.12rem;color:#5A4F44;margin:0 0 30px;}
+
+  .cta-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
+
+  .invite{
+    margin-top:30px;padding:20px 22px;background:#FBF6EC;
+    border:1.5px solid #DBCDB4;border-radius:18px;
+    box-shadow:0 10px 30px rgba(33,27,22,.06);max-width:430px;
+  }
+  .invite-label{font-weight:600;font-size:.96rem;margin:0 0 12px;display:flex;align-items:center;gap:.5em;}
+  .invite-label .dot{width:7px;height:7px;border-radius:50%;background:#2E4A3A;}
+  .invite-form{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .invite-input{
+    flex:1 1 150px;min-width:0;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:600;font-size:1.05rem;
+    letter-spacing:.22em;text-transform:uppercase;
+    padding:13px 16px;border:1.5px solid #DBCDB4;border-radius:12px;
+    background:#F4ECDD;color:#211B16;text-align:start;
+  }
+  .invite-input::placeholder{color:#A99C86;letter-spacing:.22em;}
+  .invite-btn{background:#211B16;color:#F4ECDD;border:none;padding-inline:22px;border-radius:12px;font-weight:600;cursor:pointer;}
+  .invite-error{
+    margin:11px 0 0;font-size:.88rem;color:#B0492A;font-weight:600;min-height:1.1em;
+    display:none;
+  }
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:26px;list-style:none;padding:0;}
+  .chips li{
+    font-size:.82rem;font-weight:600;color:#5A4F44;
+    padding:7px 14px;background:#FBF6EC;border:1.5px solid #DBCDB4;border-radius:999px;
+    display:inline-flex;align-items:center;gap:.5em;
+  }
+  .chips li::before{content:"";width:6px;height:6px;border-radius:50%;background:#CE8B33;}
+
+  /* ---------- Phone mock ---------- */
+  .hero-media{display:flex;justify-content:center;position:relative;}
+  .hero-media::before{
+    content:"رحلة";font-family:"Fraunces",Georgia,"Times New Roman",serif;font-size:156px;
+    color:rgba(188,79,46,.08);position:absolute;inset-block-start:-8%;inset-inline-end:-4%;
+    z-index:0;line-height:1;pointer-events:none;font-weight:600;
+  }
+  .phone{
+    position:relative;z-index:1;width:330px;background:#211B16;
+    border-radius:42px;padding:13px;box-shadow:0 36px 80px rgba(33,27,22,.32);
+    transform:rotate(-1.6deg);
+  }
+  .phone-screen{background:#F4ECDD;border-radius:31px;overflow:hidden;}
+  .ph-top{
+    background:#2E4A3A;color:#F4ECDD;padding:24px 22px 26px;
+  }
+  .ph-eyebrow{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;opacity:.78;font-weight:600;}
+  .ph-title{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-size:1.42rem;margin:5px 0 16px;font-weight:600;}
+  .ph-balance-card{background:rgba(255,255,255,.1);border:1px solid rgba(244,236,221,.22);border-radius:14px;padding:14px 16px;}
+  .ph-balance-card .lab{font-size:.72rem;opacity:.8;letter-spacing:.04em;}
+  .ph-net{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-size:1.9rem;font-weight:600;margin-top:3px;color:#E0B25A;}
+  .ph-list{padding:18px 18px 8px;}
+  .ph-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px dashed #DBCDB4;}
+  .ph-row:last-child{border-bottom:none;}
+  .ph-av{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.92rem;color:#fff;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .ph-av.a{background:#BC4F2E;}
+  .ph-av.b{background:#CE8B33;}
+  .ph-av.c{background:#2E4A3A;}
+  .ph-name{font-weight:600;font-size:.96rem;line-height:1.2;}
+  .ph-meta{font-size:.76rem;color:#5A4F44;}
+  .ph-amt{margin-inline-start:auto;text-align:end;font-weight:700;font-size:.96rem;font-variant-numeric:tabular-nums;}
+  .ph-amt.pos{color:#2E6B4F;}
+  .ph-amt.neg{color:#B0492A;}
+  .ph-amt small{display:block;font-weight:500;font-size:.68rem;color:#5A4F44;}
+  .ph-settle{margin:8px 18px 20px;}
+  .ph-settle button{
+    width:100%;background:#BC4F2E;color:#fff;border:none;border-radius:13px;
+    padding:14px;font-weight:600;font-size:1rem;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;align-items:center;justify-content:center;gap:.5em;
+  }
+  .ph-hint{font-size:.74rem;color:#5A4F44;text-align:center;margin:0 0 18px;display:flex;align-items:center;justify-content:center;gap:.4em;}
+
+  /* ---------- Section frame ---------- */
+  section.band{padding-block:108px;}
+  .sec-head{max-width:30ch;margin-bottom:56px;}
+  .sec-head h2{font-size:49.6px;margin-top:14px;}
+  .sec-head p{color:#5A4F44;margin-top:14px;font-size:1.08rem;}
+
+  /* dotted route divider */
+  .route{display:flex;align-items:center;gap:14px;color:#BC4F2E;margin-block:6px;}
+  .route::after{content:"";flex:1;border-top:2px dotted #DBCDB4;}
+  .route .pin{width:10px;height:10px;border-radius:50%;background:#BC4F2E;flex:none;box-shadow:0 0 0 4px rgba(188,79,46,.16);}
+
+  /* ---------- Use-cases ---------- */
+  .uses{background:#EFE5D2;}
+  .use-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  .use-card{
+    background:#FBF6EC;border:1.5px solid #DBCDB4;border-radius:18px;
+    padding:30px 26px;
+    display:flex;flex-direction:column;
+  }
+  .use-ic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;margin-bottom:20px;}
+  .use-ic.t{background:rgba(188,79,46,.12);color:#BC4F2E;}
+  .use-ic.d{background:rgba(206,139,51,.16);color:#CE8B33;}
+  .use-ic.r{background:rgba(46,74,58,.12);color:#2E4A3A;}
+  .use-ic svg{width:26px;height:26px;}
+  .use-card h3{font-size:1.42rem;}
+  .use-card p{color:#5A4F44;margin:10px 0 0;font-size:1rem;}
+  .use-link{
+    margin-top:18px;font-weight:600;color:#BC4F2E;display:inline-flex;align-items:center;gap:.4em;
+  }
+  .use-link svg{width:16px;height:16px;}
+
+  /* ---------- Why / numbered narrative ---------- */
+  .why-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:60px;align-items:start;}
+  .why-list{list-style:none;padding:0;margin:0;}
+  .why-item{display:flex;gap:22px;padding-block:24px;border-top:1.5px dotted #DBCDB4;}
+  .why-item:first-child{border-top:none;padding-top:0;}
+  .why-num{
+    font-family:"Fraunces",Georgia,"Times New Roman",serif;font-size:1.6rem;font-weight:600;color:#BC4F2E;
+    flex:none;width:54px;
+  }
+  .why-body h3{font-size:1.32rem;margin-bottom:6px;}
+  .why-body p{color:#5A4F44;margin:0;font-size:1rem;}
+
+  .pull{
+    align-self:start;position:relative;
+    background:#211B16;color:#F4ECDD;border-radius:18px;
+    padding:40px 34px;box-shadow:0 24px 60px rgba(33,27,22,.24);
+  }
+  .pull .q{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-size:31.2px;font-style:italic;font-weight:500;line-height:1.28;}
+  .pull .q span{color:#E0B25A;}
+  .pull .by{margin-top:22px;display:flex;align-items:center;gap:12px;font-size:.9rem;color:rgba(244,236,221,.72);}
+  .pull .by .pin{width:9px;height:9px;border-radius:50%;background:#BC4F2E;}
+  .pull .ccy{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;}
+  .pull .ccy span{font-size:.74rem;font-weight:600;padding:6px 11px;border:1px solid rgba(244,236,221,.26);border-radius:999px;color:rgba(244,236,221,.9);}
+
+  /* ---------- Final CTA ---------- */
+  .final{
+    background:
+      radial-gradient(120% 140% at 100% 0%,rgba(206,139,51,.22),transparent 55%),
+      #BC4F2E;
+    color:#fff;border-radius:32px;
+    padding:84px 60px;
+    text-align:center;position:relative;overflow:hidden;
+  }
+  .final::before{
+    content:"";position:absolute;inset-block-start:-40%;inset-inline-start:-10%;
+    width:60%;height:180%;
+    background-image:radial-gradient(rgba(255,255,255,.14) 1.4px,transparent 1.4px);
+    background-size:26px 26px;opacity:.5;pointer-events:none;
+  }
+  .final .inner{position:relative;z-index:1;max-width:34ch;margin-inline:auto;}
+  .final h2{font-size:52.8px;}
+  .final p{margin:18px auto 30px;font-size:1.1rem;color:rgba(255,255,255,.92);}
+  .final .btn-light{background:#fff;color:#9E3E22;box-shadow:0 14px 32px rgba(33,27,22,.26);}
+
+  /* ---------- Footer ---------- */
+  footer{padding-block:54px 40px;border-top:1.5px dotted #DBCDB4;margin-top:108px;}
+  .foot-row{display:flex;flex-wrap:wrap;gap:24px;justify-content:space-between;align-items:center;}
+  .foot-nav{display:flex;flex-wrap:wrap;gap:8px 26px;list-style:none;padding:0;margin:0;}
+  .foot-nav a{color:#5A4F44;font-weight:500;}
+  .foot-meta{color:#5A4F44;font-size:.9rem;display:flex;align-items:center;gap:10px;}
+  .made{display:inline-flex;align-items:center;gap:.5em;font-size:.85rem;color:#5A4F44;margin-top:14px;}
+  .made .pin{width:8px;height:8px;border-radius:50%;background:#2E4A3A;}
+</style>
+</head>
+<body>
+<div class="page" data-canvas-width="1200" data-canvas-height="3917">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap head-row">
+    <a class="brand" href="/" aria-label="Rihla home">
+      <span class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="5.5" r="2"/>
+          <path d="M7.4 17.1C12 14 11 9 16.6 6.9" stroke-dasharray="1.3 2.4"/>
+        </svg>
+      </span>
+      <span class="wordmark">Rihla<span>.</span></span>
+    </a>
+    <div class="head-actions">
+      <a class="lang-toggle" href="/ar" lang="ar" hreflang="ar">العربية</a>
+      <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=com.safar.safar">Get the app</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">Now free on Google Play</span>
+        <h1>Split the bill. <em>Settle up.</em> <span class="u">Stay friends.</span></h1>
+        <p class="hero-sub">Friends in Oman &amp; the GCC track shared expenses, see exactly who owes who, and settle up across trips, dinners, and roommate bills. No signup. Arabic &amp; English. Offline-ready.</p>
+
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=com.safar.safar">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.2v17c0 .5.2.9.5 1.2L13 13 3.6 2.3zM14.4 11.9l2.7-2.7-9.9-5.7c-.3-.2-.6-.2-.9-.1l8.1 8.5zM18.3 9.8l-3.1 3.1 3.1 3.1 2.9-1.7c.9-.5.9-1.8 0-2.3l-2.9-1.7v-.5zM14.4 14.1l-8.1 8.5c.3.1.6.1.9-.1l9.9-5.7-2.7-2.7z"/></svg>
+            Get it on Google Play
+          </a>
+        </div>
+
+        <form class="invite" novalidate>
+          <p class="invite-label"><span class="dot" aria-hidden="true"></span> Have an invite code?</p>
+          <div class="invite-form">
+            <label for="invite-code" class="visually-hidden" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Six-character invite code</label>
+            <input class="invite-input" id="invite-code" name="invite-code" type="text"
+                   inputmode="latin" autocomplete="off" spellcheck="false"
+                   placeholder="ABC123" maxlength="6" pattern="[A-Za-z0-9]{6}"
+                   aria-describedby="invite-error" />
+            <button class="invite-btn" type="button">Open invite</button>
+          </div>
+          <p class="invite-error" id="invite-error" role="alert">Enter a 6-character code (letters and numbers).</p>
+        </form>
+
+        <ul class="chips" aria-label="Highlights">
+          <li>No signup</li>
+          <li>WhatsApp invites</li>
+          <li>OMR-friendly</li>
+          <li>Works offline</li>
+        </ul>
+      </div>
+
+      <!-- Phone mock -->
+      <div class="hero-media">
+        <div class="phone" role="img" aria-label="The Rihla app showing a group balance: Ahmed owes you OMR 4.250, you owe Sara OMR 1.500, and a Settle up button suggesting the fewest transfers.">
+          <div class="phone-screen">
+            <div class="ph-top">
+              <span class="ph-eyebrow">Salalah Weekend · 4 people</span>
+              <h2 class="ph-title">Group balance</h2>
+              <div class="ph-balance-card">
+                <div class="lab">You are owed, overall</div>
+                <div class="ph-net">OMR 2.750</div>
+              </div>
+            </div>
+            <div class="ph-list">
+              <div class="ph-row">
+                <span class="ph-av a" aria-hidden="true">A</span>
+                <div>
+                  <div class="ph-name">Ahmed</div>
+                  <div class="ph-meta">owes you</div>
+                </div>
+                <div class="ph-amt pos">+OMR 4.250<small>2 expenses</small></div>
+              </div>
+              <div class="ph-row">
+                <span class="ph-av b" aria-hidden="true">S</span>
+                <div>
+                  <div class="ph-name">Sara</div>
+                  <div class="ph-meta">you owe</div>
+                </div>
+                <div class="ph-amt neg">−OMR 1.500<small>Dinner · Mutrah</small></div>
+              </div>
+              <div class="ph-row">
+                <span class="ph-av c" aria-hidden="true">K</span>
+                <div>
+                  <div class="ph-name">Khalid</div>
+                  <div class="ph-meta">all square</div>
+                </div>
+                <div class="ph-amt">OMR 0.000</div>
+              </div>
+            </div>
+            <div class="ph-settle">
+              <button type="button">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                Settle up · 2 transfers
+              </button>
+            </div>
+            <p class="ph-hint">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+              Fewest transfers to make everyone even
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USE CASES -->
+  <section class="band uses" aria-labelledby="uses-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="route"><span class="pin" aria-hidden="true"></span></div>
+        <span class="eyebrow">Where Rihla earns its keep</span>
+        <h2 id="uses-h">Use it when the money gets shared</h2>
+        <p>One app for every time the bill lands in the middle of the table.</p>
+      </div>
+
+      <div class="use-grid">
+        <article class="use-card">
+          <div class="use-ic t" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/><path d="M9 4v13M15 7v13"/></svg>
+          </div>
+          <h3>Trips &amp; weekends</h3>
+          <p>Fuel to Salalah, the chalet, the dhow cruise — log it as you go and let everyone chip in fairly.</p>
+          <a class="use-link" href="/split-bills-oman">Split bills in Oman
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </article>
+
+        <article class="use-card">
+          <div class="use-ic d" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v7a3 3 0 0 0 6 0V3M8 10v11M16 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/></svg>
+          </div>
+          <h3>Dinners &amp; gatherings</h3>
+          <p>One person pays the whole table; Rihla splits it cleanly so nobody’s doing maths over dessert.</p>
+        </article>
+
+        <article class="use-card">
+          <div class="use-ic r" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+          </div>
+          <h3>Roommates &amp; shared bills</h3>
+          <p>Rent, groceries, the internet — a persistent group that keeps the running tab honest, month after month.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section class="band" aria-labelledby="why-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Why Rihla</span>
+        <h2 id="why-h">Built for how the GCC actually splits</h2>
+      </div>
+
+      <div class="why-grid">
+        <ol class="why-list">
+          <li class="why-item">
+            <span class="why-num" aria-hidden="true">01</span>
+            <div class="why-body">
+              <h3>One crew, many trips</h3>
+              <p>Persistent groups hold every dinner, weekend, and shared bill inside them — no starting over each time, and balances carry across events.</p>
+            </div>
+          </li>
+          <li class="why-item">
+            <span class="why-num" aria-hidden="true">02</span>
+            <div class="why-body">
+              <h3>The fewest transfers</h3>
+              <p>Settlement optimization works out the smallest set of payments to make everyone even — fewer “send me half and I’ll send you the rest” messages.</p>
+            </div>
+          </li>
+          <li class="why-item">
+            <span class="why-num" aria-hidden="true">03</span>
+            <div class="why-body">
+              <h3>Arabic &amp; English, properly</h3>
+              <p>Full right-to-left support — not a bolted-on translation. Switch languages and the whole app mirrors the way it should.</p>
+            </div>
+          </li>
+          <li class="why-item">
+            <span class="why-num" aria-hidden="true">04</span>
+            <div class="why-body">
+              <h3>Real Gulf money</h3>
+              <p>OMR with three decimals done right, plus AED, SAR, QAR, USD, EUR and GBP — each group keeps its own currency.</p>
+            </div>
+          </li>
+          <li class="why-item">
+            <span class="why-num" aria-hidden="true">05</span>
+            <div class="why-body">
+              <h3>Works with no signal</h3>
+              <p>Add expenses in the desert, on the plane, anywhere — Rihla saves them offline and syncs the moment you’re back online.</p>
+            </div>
+          </li>
+        </ol>
+
+        <aside class="pull" aria-label="In short">
+          <p class="q">“Create a group, share a <span>WhatsApp invite</span>, and you’re tracking the trip — no accounts, no logins, no fuss.”</p>
+          <div class="by"><span class="pin" aria-hidden="true"></span> The whole setup, start to finish</div>
+          <div class="ccy" aria-label="Supported currencies">
+            <span>OMR</span><span>AED</span><span>SAR</span><span>QAR</span><span>USD</span><span>EUR</span><span>GBP</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="band" aria-labelledby="final-h" style="padding-block:0;">
+    <div class="wrap">
+      <div class="final">
+        <div class="inner">
+          <h2 id="final-h">Start with your next shared bill.</h2>
+          <p>Make the group now, drop the invite in the chat, and let Rihla keep everyone square — free, on Android.</p>
+          <a class="btn btn-light" href="https://play.google.com/store/apps/details?id=com.safar.safar">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.2v17c0 .5.2.9.5 1.2L13 13 3.6 2.3zM14.4 11.9l2.7-2.7-9.9-5.7c-.3-.2-.6-.2-.9-.1l8.1 8.5zM18.3 9.8l-3.1 3.1 3.1 3.1 2.9-1.7c.9-.5.9-1.8 0-2.3l-2.9-1.7v-.5zM14.4 14.1l-8.1 8.5c.3.1.6.1.9-.1l9.9-5.7-2.7-2.7z"/></svg>
+            Get it on Google Play
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-row">
+      <a class="brand" href="/" aria-label="Rihla home">
+        <span class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="5.5" r="2"/>
+            <path d="M7.4 17.1C12 14 11 9 16.6 6.9" stroke-dasharray="1.3 2.4"/>
+          </svg>
+        </span>
+        <span class="wordmark">Rihla<span>.</span></span>
+      </a>
+      <nav aria-label="Footer">
+        <ul class="foot-nav">
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/terms">Terms</a></li>
+          <li><a href="/delete-data">Delete data</a></li>
+          <li><a href="/help">Help</a></li>
+          <li><a href="/ar" lang="ar" hreflang="ar">العربية</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="foot-row" style="margin-top:24px;">
+      <span class="made"><span class="pin" aria-hidden="true"></span> Built in Oman, for the GCC.</span>
+      <span class="foot-meta">© 2026 Rihla.</span>
+    </div>
+  </div>
+</footer>
+</div>
+</body>
+</html>

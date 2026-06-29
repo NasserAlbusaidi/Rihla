@@ -1,0 +1,61 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Use-case cards</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap");
+
+  :root{
+    --paper:#F4ECDD; --paper-2:#EFE5D2; --card:#FBF6EC;
+    --ink:#211B16; --ink-soft:#5A4F44; --line:#DBCDB4;
+    --terra:#BC4F2E; --terra-deep:#9E3E22; --ochre:#CE8B33;
+    --palm:#2E4A3A; --gold:#E0B25A; --pos:#2E6B4F; --neg:#B0492A;
+    --radius:18px;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.04;letter-spacing:-.01em;}
+  a{color:inherit;text-decoration:none;}
+  svg{display:block;}
+  .ds-frame{min-height:100vh;display:flex;flex-direction:column;gap:26px;}
+  .ds-cap{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);}
+
+  body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);
+    line-height:1.6;font-size:17px;-webkit-font-smoothing:antialiased;padding:44px;}
+
+  .use-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  .use-card{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:30px 26px;display:flex;flex-direction:column;}
+  .use-ic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;margin-bottom:20px;}
+  .use-ic svg{width:26px;height:26px;}
+  .use-ic.t{background:rgba(188,79,46,.12);color:var(--terra);}
+  .use-ic.d{background:rgba(206,139,51,.16);color:var(--ochre);}
+  .use-ic.r{background:rgba(46,74,58,.12);color:var(--palm);}
+  .use-card h3{font-size:1.42rem;}
+  .use-card p{color:var(--ink-soft);margin-top:10px;font-size:1rem;}
+  .use-link{margin-top:18px;font-weight:600;color:var(--terra);display:inline-flex;align-items:center;gap:.4em;}
+  @media(max-width:760px){.use-grid{grid-template-columns:1fr;}}
+  
+</style>
+</head>
+<body>
+
+  <div class="ds-frame">
+    <span class="ds-cap">Use-case cards — icon, title, body, optional link</span>
+    <div class="use-grid">
+      <article class="use-card"><div class="use-ic t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7z"/><path d="M9 4v13M15 7v13"/></svg></div><h3>Trips &amp; weekends</h3>
+        <p>Fuel to Salalah, the chalet, the dhow cruise — log it as you go and let everyone chip in fairly.</p>
+        <a class="use-link">Split bills in Oman <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></article>
+      <article class="use-card"><div class="use-ic d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v7a3 3 0 0 0 6 0V3M8 10v11M16 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/></svg></div><h3>Dinners &amp; gatherings</h3>
+        <p>One person pays the whole table; Rihla splits it cleanly so nobody’s doing maths over dessert.</p></article>
+      <article class="use-card"><div class="use-ic r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></div><h3>Roommates &amp; bills</h3>
+        <p>Rent, groceries, the internet — a persistent group that keeps the running tab honest.</p></article>
+    </div>
+  </div>
+  
+</body>
+</html>

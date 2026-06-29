@@ -1,0 +1,52 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pull-quote card</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap");
+
+  :root{
+    --paper:#F4ECDD; --paper-2:#EFE5D2; --card:#FBF6EC;
+    --ink:#211B16; --ink-soft:#5A4F44; --line:#DBCDB4;
+    --terra:#BC4F2E; --terra-deep:#9E3E22; --ochre:#CE8B33;
+    --palm:#2E4A3A; --gold:#E0B25A; --pos:#2E6B4F; --neg:#B0492A;
+    --radius:18px;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.04;letter-spacing:-.01em;}
+  a{color:inherit;text-decoration:none;}
+  svg{display:block;}
+  .ds-frame{min-height:100vh;display:flex;flex-direction:column;gap:26px;}
+  .ds-cap{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);}
+
+  body{font-family:var(--sans);background:var(--paper);color:var(--ink);
+    line-height:1.6;font-size:17px;-webkit-font-smoothing:antialiased;padding:44px;}
+
+  body{display:flex;align-items:center;}
+  .pull{background:var(--ink);color:var(--paper);border-radius:var(--radius);padding:40px 34px;
+    box-shadow:0 24px 60px rgba(33,27,22,.24);max-width:460px;}
+  .pull .q{font-family:var(--serif);font-size:1.9rem;font-style:italic;font-weight:500;line-height:1.28;}
+  .pull .q span{color:var(--gold);}
+  .pull .by{margin-top:22px;display:flex;align-items:center;gap:12px;font-size:.9rem;color:rgba(244,236,221,.72);}
+  .pull .by .pin{width:9px;height:9px;border-radius:50%;background:var(--terra);}
+  .pull .ccy{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;}
+  .pull .ccy span{font-size:.74rem;font-weight:600;padding:6px 11px;border:1px solid rgba(244,236,221,.26);border-radius:999px;color:rgba(244,236,221,.9);}
+  
+</style>
+</head>
+<body>
+
+  <aside class="pull">
+    <p class="q">“Create a group, share a <span>WhatsApp invite</span>, and you’re tracking the trip — no accounts, no logins, no fuss.”</p>
+    <div class="by"><span class="pin"></span> The whole setup, start to finish</div>
+    <div class="ccy"><span>OMR</span><span>AED</span><span>SAR</span><span>QAR</span><span>USD</span><span>EUR</span><span>GBP</span></div>
+  </aside>
+  
+</body>
+</html>
