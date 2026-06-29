@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../groups/providers/group_balance_provider.dart';
+import '../../ledger/models/expense_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/providers/ledger_view_provider.dart';
 import '../models/event_recap.dart';
@@ -16,8 +17,9 @@ import 'event_provider.dart';
 final eventRecapProvider = Provider.family<EventRecap, EventRef>((ref, eventRef) {
   final event = ref.watch(eventDetailProvider(eventRef)).valueOrNull;
   final view = ref.watch(ledgerViewProvider(eventRef));
-  final expenseCount =
-      ref.watch(eventExpensesProvider(eventRef)).valueOrNull?.length ?? 0;
+  final expenses =
+      ref.watch(eventExpensesProvider(eventRef)).valueOrNull ??
+      const <Expense>[];
   final uid = ref.watch(currentUserIdProvider);
 
   // Null/loading/soft-deleted event → empty recap; the screen renders a
@@ -35,6 +37,11 @@ final eventRecapProvider = Provider.family<EventRecap, EventRef>((ref, eventRef)
       userShareByCurrency: {},
       userSettledByCurrency: {},
       userNetByCurrency: {},
+      biggestExpenseByCurrency: {},
+      payerTotalsByCurrency: {},
+      categoryTotalsByCurrency: {},
+      participantNetsByCurrency: {},
+      isSettledByCurrency: {},
       isEmpty: true,
     );
   }
@@ -45,9 +52,10 @@ final eventRecapProvider = Provider.family<EventRecap, EventRef>((ref, eventRef)
     startDate: event.startDate,
     endDate: event.endDate,
     participantIds: event.participantIds,
-    expenseCount: expenseCount,
+    expenseCount: expenses.length,
     totalSpentByCurrency: view.eventTotal,
     balances: view.balances,
+    expenses: expenses,
     uid: uid,
   );
 });

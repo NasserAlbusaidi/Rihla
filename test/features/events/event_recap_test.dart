@@ -17,12 +17,33 @@ void main() {
         netBalance: d(net),
       );
 
+  Expense expense(
+    String id, {
+    required String payer,
+    required String amount,
+    String currency = 'OMR',
+    String? categoryId,
+    String? description,
+  }) =>
+      Expense(
+        id: id,
+        tripId: 'event-1',
+        payerParticipantId: payer,
+        amount: d(amount),
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 1, 1),
+        currency: currency,
+        categoryId: categoryId,
+        description: description,
+      );
+
   EventRecap build({
     String eventName = 'Trip',
     List<String> participantIds = const ['a', 'b'],
     int expenseCount = 1,
     Map<String, Decimal> total = const {},
     Map<String, List<UserBalance>> balances = const {},
+    List<Expense> expenses = const [],
     String? uid = 'a',
   }) =>
       EventRecap.from(
@@ -34,6 +55,7 @@ void main() {
         expenseCount: expenseCount,
         totalSpentByCurrency: total,
         balances: balances,
+        expenses: expenses,
         uid: uid,
       );
 
@@ -193,6 +215,207 @@ void main() {
         },
       );
       expect(r.participantCount, 2); // not 3
+    });
+  });
+
+  // Slice 2 (#721) — full money summary projection.
+  // Spec: docs/plans/2026-06-29-721-recap-full-summary.md (Gate-clean, 0 P1s).
+  group('EventRecap.from — Slice 2 full summary', () {
+    test('S1. biggest expense = max amount per currency', () {
+      final r = build(
+        expenseCount: 2,
+        total: {'OMR': d('225')},
+        balances: {
+          'OMR': [ub('a', '225', '112.5', '112.5'), ub('b', '0', '112.5', '-112.5')],
+        },
+        expenses: [
+          expense('e1', payer: 'a', amount: '180', categoryId: 'accommodation'),
+          expense('e2', payer: 'a', amount: '45', categoryId: 'activities'),
+        ],
+      );
+      expect(r.biggestExpenseByCurrency['OMR']!.amount, d('180'));
+      expect(r.biggestExpenseByCurrency['OMR']!.expenseId, 'e1');
+    });
+
+    test('S2. biggest expense tie → lower expenseId wins (determinism)', () {
+      final r = build(
+        total: {'OMR': d('100')},
+        balances: {'OMR': [ub('a', '100', '100', '0')]},
+        expenses: [
+          expense('e9', payer: 'a', amount: '50'),
+          expense('e2', payer: 'a', amount: '50'),
+        ],
+      );
+      expect(r.biggestExpenseByCurrency['OMR']!.expenseId, 'e2');
+    });
+
+    test('S3. category totals bucket by categoryId, sorted desc', () {
+      final r = build(
+        expenseCount: 3,
+        total: {'OMR': d('380.5')},
+        balances: {'OMR': [ub('a', '380.5', '380.5', '0')]},
+        expenses: [
+          expense('e1', payer: 'a', amount: '120.5', categoryId: 'food'),
+          expense('e2', payer: 'a', amount: '180', categoryId: 'accommodation'),
+          expense('e3', payer: 'a', amount: '80', categoryId: 'transport'),
+        ],
+      );
+      final cats = r.categoryTotalsByCurrency['OMR']!;
+      expect(cats.map((c) => c.categoryId).toList(),
+          ['accommodation', 'food', 'transport']);
+      expect(cats.first.total, d('180'));
+    });
+
+    test('S4. null categoryId → "other" bucket', () {
+      final r = build(
+        total: {'OMR': d('30')},
+        balances: {'OMR': [ub('a', '30', '30', '0')]},
+        expenses: [expense('e1', payer: 'a', amount: '30', categoryId: null)],
+      );
+      expect(r.categoryTotalsByCurrency['OMR']!.single.categoryId, 'other');
+    });
+
+    test('S5. unsupported currency expense → OMR bucket (fence parity)', () {
+      final r = build(
+        total: {'OMR': d('10')},
+        balances: {'OMR': [ub('a', '10', '10', '0')]},
+        expenses: [
+          expense('e1', payer: 'a', amount: '10', currency: 'XYZ', categoryId: 'food'),
+        ],
+      );
+      expect(r.categoryTotalsByCurrency.containsKey('XYZ'), isFalse);
+      expect(r.categoryTotalsByCurrency['OMR']!.single.categoryId, 'food');
+      expect(r.biggestExpenseByCurrency.containsKey('XYZ'), isFalse);
+      expect(r.biggestExpenseByCurrency['OMR']!.amount, d('10'));
+    });
+
+    test('S6. category sum == total spent per currency (decomposition)', () {
+      final r = build(
+        expenseCount: 3,
+        total: {'OMR': d('380.5')},
+        balances: {'OMR': [ub('a', '380.5', '380.5', '0')]},
+        expenses: [
+          expense('e1', payer: 'a', amount: '120.5', categoryId: 'food'),
+          expense('e2', payer: 'a', amount: '180', categoryId: 'accommodation'),
+          expense('e3', payer: 'a', amount: '80', categoryId: 'transport'),
+        ],
+      );
+      final sum = r.categoryTotalsByCurrency['OMR']!
+          .fold(Decimal.zero, (s, c) => s + c.total);
+      expect(sum, r.totalSpentByCurrency['OMR']);
+    });
+
+    test('S7. payer totals desc, zero-paid excluded', () {
+      final r = build(
+        total: {'OMR': d('340.5')},
+        balances: {
+          'OMR': [
+            ub('a', '250', '113.5', '136.5'),
+            ub('b', '90.5', '113.5', '-23'),
+            ub('c', '0', '113.5', '-113.5'),
+          ],
+        },
+        expenses: [expense('e1', payer: 'a', amount: '340.5')],
+      );
+      final payers = r.payerTotalsByCurrency['OMR']!;
+      expect(payers.map((p) => p.participantId).toList(), ['a', 'b']);
+      expect(payers.first.amount, d('250'));
+    });
+
+    test('S8. participant nets include departed universe member', () {
+      final r = build(
+        participantIds: ['a', 'b'],
+        total: {'OMR': d('100')},
+        balances: {
+          'OMR': [
+            ub('a', '100', '50', '50'),
+            ub('b', '0', '25', '-25'),
+            ub('c', '0', '25', '-25'), // departed, not in participantIds
+          ],
+        },
+        expenses: [expense('e1', payer: 'a', amount: '100')],
+      );
+      final ids =
+          r.participantNetsByCurrency['OMR']!.map((n) => n.participantId).toSet();
+      expect(ids.contains('c'), isTrue);
+      expect(r.participantCount, 2); // count still excludes c
+    });
+
+    test('S9. participant nets: current user first', () {
+      final r = build(
+        uid: 'b',
+        total: {'OMR': d('100')},
+        balances: {'OMR': [ub('a', '100', '50', '50'), ub('b', '0', '50', '-50')]},
+        expenses: [expense('e1', payer: 'a', amount: '100')],
+      );
+      expect(r.participantNetsByCurrency['OMR']!.first.participantId, 'b');
+    });
+
+    test('S10. isSettled true iff all nets exactly zero', () {
+      final r = build(
+        total: {'OMR': d('100')},
+        balances: {'OMR': [ub('a', '100', '100', '0'), ub('b', '50', '50', '0')]},
+        expenses: [expense('e1', payer: 'a', amount: '100')],
+      );
+      expect(r.isSettledByCurrency['OMR'], isTrue);
+    });
+
+    test('S11. isSettled false on sub-tolerance residual (exact, not 0.001)', () {
+      final r = build(
+        total: {'OMR': d('100')},
+        balances: {
+          'OMR': [ub('a', '100', '99.9995', '0.0005'), ub('b', '0', '0.0005', '-0.0005')],
+        },
+        expenses: [expense('e1', payer: 'a', amount: '100')],
+      );
+      expect(r.isSettledByCurrency['OMR'], isFalse);
+    });
+
+    test('S12. multi-currency: breakdowns isolated, never cross-summed', () {
+      final r = build(
+        expenseCount: 2,
+        total: {'USD': d('100'), 'OMR': d('30')},
+        balances: {
+          'USD': [ub('a', '100', '50', '50'), ub('b', '0', '50', '-50')],
+          'OMR': [ub('a', '30', '30', '0')],
+        },
+        expenses: [
+          expense('e1', payer: 'a', amount: '100', currency: 'USD', categoryId: 'food'),
+          expense('e2', payer: 'a', amount: '30', currency: 'OMR', categoryId: 'transport'),
+        ],
+      );
+      expect(r.categoryTotalsByCurrency['USD']!.single.total, d('100'));
+      expect(r.categoryTotalsByCurrency['OMR']!.single.total, d('30'));
+      expect(r.biggestExpenseByCurrency['USD']!.amount, d('100'));
+      expect(r.biggestExpenseByCurrency['OMR']!.amount, d('30'));
+    });
+
+    test('S13. JPY (×1): integer-yen category totals', () {
+      final r = build(
+        total: {'JPY': d('1000')},
+        balances: {'JPY': [ub('a', '1000', '500', '500'), ub('b', '0', '500', '-500')]},
+        expenses: [
+          expense('e1', payer: 'a', amount: '1000', currency: 'JPY', categoryId: 'food'),
+        ],
+      );
+      expect(r.categoryTotalsByCurrency['JPY']!.single.total, d('1000'));
+    });
+
+    test('S14. settlement-only currency: balance present, no expense (Gate P1)', () {
+      // OMR expense + EUR settlement (a received) — EUR has balances, no expense.
+      final r = build(
+        total: {'OMR': d('10')},
+        balances: {
+          'OMR': [ub('a', '10', '10', '0')],
+          'EUR': [ub('a', '0', '0', '-50'), ub('b', '0', '0', '50')],
+        },
+        expenses: [expense('e1', payer: 'a', amount: '10')],
+      );
+      expect(r.categoryTotalsByCurrency.containsKey('EUR'), isFalse);
+      expect(r.biggestExpenseByCurrency.containsKey('EUR'), isFalse);
+      expect(r.payerTotalsByCurrency['EUR'], isEmpty); // key present, empty list
+      expect(r.participantNetsByCurrency['EUR']!.length, 2);
+      expect(r.isSettledByCurrency['EUR'], isFalse);
     });
   });
 }
