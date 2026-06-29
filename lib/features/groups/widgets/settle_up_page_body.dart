@@ -694,6 +694,97 @@ final Set<String> _correctionNoteSentinels = {
 bool _isCorrectionNote(String? note) =>
     note != null && _correctionNoteSentinels.contains(note);
 
+/// One rendered row of the settle-up payment history (#753).
+sealed class HistoryRow {
+  const HistoryRow();
+}
+
+/// An untagged settlement — a legacy/standalone group settlement or its
+/// single-doc correction. Rendered byte-identically to the pre-#753 history
+/// (its own one-tap correct, "Correction" label when the note matches).
+class SoloHistoryRow extends HistoryRow {
+  const SoloHistoryRow(this.settlement);
+  final Settlement settlement;
+}
+
+/// A regroup of every doc sharing one `groupSettleUpId` — the N event
+/// settlements + residual of one decomposed settle-up (#752/#753) collapsed into
+/// ONE row. [totalAmount] folds only the NON-correction docs (= the logical
+/// transfer A); [isCorrected] is true once a tagged reverse (correction note) is
+/// present — the atomic reverse means its presence implies the WHOLE settle-up
+/// was reversed, so it is the idempotency signal that hides the correct button.
+class LogicalHistoryRow extends HistoryRow {
+  const LogicalHistoryRow({
+    required this.groupSettleUpId,
+    required this.representative,
+    required this.totalAmount,
+    required this.isCorrected,
+    required this.settledAt,
+  });
+
+  final String groupSettleUpId;
+
+  /// The newest non-correction doc — source of payer/recipient/currency/ids.
+  final Settlement representative;
+  final Decimal totalAmount;
+  final bool isCorrected;
+  final DateTime settledAt;
+}
+
+/// Collapses a settle-up history into display rows. Untagged docs stay
+/// individual [SoloHistoryRow]s in the incoming (newest-first) order; each
+/// `groupSettleUpId`-tagged set becomes ONE [LogicalHistoryRow] positioned at
+/// its newest member. Input is assumed pre-sorted newest-first (the screen sorts
+/// the group-doc ∪ tagged-event-doc union by `settledAt` descending). Pure.
+@visibleForTesting
+List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
+  // Pre-group tagged members so a logical row sees ALL of its docs regardless
+  // of where each sits in the input order.
+  final tagged = <String, List<Settlement>>{};
+  for (final s in settlements) {
+    final id = s.groupSettleUpId;
+    if (id != null) (tagged[id] ??= <Settlement>[]).add(s);
+  }
+
+  final rows = <HistoryRow>[];
+  final seen = <String>{};
+  for (final s in settlements) {
+    final id = s.groupSettleUpId;
+    if (id == null) {
+      rows.add(SoloHistoryRow(s));
+      continue;
+    }
+    if (!seen.add(id)) continue; // already folded this logical set
+    final members = tagged[id]!;
+    final originals =
+        members.where((m) => !_isCorrectionNote(m.note)).toList();
+    if (originals.isEmpty) {
+      // Defensive: a tagged set with no non-correction doc (corruption / an
+      // orphaned reverse) — never a phantom logical row; render its members
+      // individually at this newest-first position.
+      rows.addAll(members.map(SoloHistoryRow.new));
+      continue;
+    }
+    final total = originals.fold<Decimal>(
+      Decimal.zero,
+      (sum, m) => sum + m.amount,
+    );
+    final settledAt = members
+        .map((m) => m.settledAt)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+    rows.add(
+      LogicalHistoryRow(
+        groupSettleUpId: id,
+        representative: originals.first,
+        totalAmount: total,
+        isCorrected: members.any((m) => _isCorrectionNote(m.note)),
+        settledAt: settledAt,
+      ),
+    );
+  }
+  return rows;
+}
+
 class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
     required this.settlement,
