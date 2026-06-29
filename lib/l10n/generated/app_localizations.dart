@@ -5393,6 +5393,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add an expense to see this event\'s recap.'**
   String get recapEmptyMessage;
+
+  /// Highlight-card label for the person who fronted the most cash in the event recap (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Top payer'**
+  String get recapTopPayer;
+
+  /// Highlight-card label for the single largest expense in the event recap (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Biggest expense'**
+  String get recapBiggestExpense;
+
+  /// Section label above the per-category spend breakdown in the recap (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'By category'**
+  String get recapByCategory;
+
+  /// Section label above the per-payer gross-spend breakdown in the recap (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Who paid'**
+  String get recapWhoPaid;
+
+  /// Section label above the per-person net-balance list in the recap (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Who\'s up / down'**
+  String get recapWhoUpDown;
+
+  /// Quiet trailing label on a recap net row when that person's balance is exactly zero (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'settled'**
+  String get recapSettledRow;
+
+  /// Suffix marking the current user's own row in recap lists, rendered as 'Name · you' (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'you'**
+  String get recapYouSuffix;
+
+  /// Title of the recap settlement-status card when no balances are outstanding (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone\'s settled up'**
+  String get recapSettledTitle;
+
+  /// Subtitle of the recap settlement-status card when everyone is settled (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'No outstanding balances in this event.'**
+  String get recapSettledSubtitle;
+
+  /// Title of the recap settlement-status card when balances remain unsettled (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding balances'**
+  String get recapOutstandingTitle;
+
+  /// Subtitle of the recap settlement-status card; {count} is the number of people who still owe (debtors only) (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 person still owes} other{{count} people still owe}}. Settle up from the ledger.'**
+  String recapOutstandingSubtitle(int count);
+
+  /// Note shown under the total-spent card when an event spans more than one currency, explaining buckets are never cross-summed (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Balances are kept per currency — they\'re never added together.'**
+  String get recapMultiCurrencyNote;
 }
 
 class _AppLocalizationsDelegate

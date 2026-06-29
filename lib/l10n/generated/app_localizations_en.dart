@@ -3177,4 +3177,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recapEmptyMessage => 'Add an expense to see this event\'s recap.';
+
+  @override
+  String get recapTopPayer => 'Top payer';
+
+  @override
+  String get recapBiggestExpense => 'Biggest expense';
+
+  @override
+  String get recapByCategory => 'By category';
+
+  @override
+  String get recapWhoPaid => 'Who paid';
+
+  @override
+  String get recapWhoUpDown => 'Who\'s up / down';
+
+  @override
+  String get recapSettledRow => 'settled';
+
+  @override
+  String get recapYouSuffix => 'you';
+
+  @override
+  String get recapSettledTitle => 'Everyone\'s settled up';
+
+  @override
+  String get recapSettledSubtitle => 'No outstanding balances in this event.';
+
+  @override
+  String get recapOutstandingTitle => 'Outstanding balances';
+
+  @override
+  String recapOutstandingSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people still owe',
+      one: '1 person still owes',
+    );
+    return '$_temp0. Settle up from the ledger.';
+  }
+
+  @override
+  String get recapMultiCurrencyNote =>
+      'Balances are kept per currency — they\'re never added together.';
 }
