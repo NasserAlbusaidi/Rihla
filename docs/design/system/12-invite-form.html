@@ -1,0 +1,58 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Invite-code form</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap");
+
+  :root{
+    --paper:#F4ECDD; --paper-2:#EFE5D2; --card:#FBF6EC;
+    --ink:#211B16; --ink-soft:#5A4F44; --line:#DBCDB4;
+    --terra:#BC4F2E; --terra-deep:#9E3E22; --ochre:#CE8B33;
+    --palm:#2E4A3A; --gold:#E0B25A; --pos:#2E6B4F; --neg:#B0492A;
+    --radius:18px;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.04;letter-spacing:-.01em;}
+  a{color:inherit;text-decoration:none;}
+  svg{display:block;}
+  .ds-frame{min-height:100vh;display:flex;flex-direction:column;gap:26px;}
+  .ds-cap{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);}
+
+  body{font-family:var(--sans);background:var(--paper);color:var(--ink);
+    line-height:1.6;font-size:17px;-webkit-font-smoothing:antialiased;padding:44px;}
+
+  .invite{padding:20px 22px;background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(33,27,22,.06);max-width:430px;}
+  .invite-label{font-weight:600;font-size:.96rem;margin-bottom:12px;display:flex;align-items:center;gap:.5em;}
+  .invite-label .dot{width:7px;height:7px;border-radius:50%;background:var(--palm);}
+  .invite-form{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .invite-input{flex:1 1 150px;min-width:0;font-family:var(--sans);font-weight:600;font-size:1.05rem;
+    letter-spacing:.22em;text-transform:uppercase;padding:13px 16px;border:1.5px solid var(--line);
+    border-radius:12px;background:var(--paper);color:var(--ink);}
+  .invite-input::placeholder{color:#A99C86;}
+  .invite-btn{background:var(--ink);color:var(--paper);border:none;padding-inline:22px;border-radius:12px;font-weight:600;cursor:pointer;}
+  
+</style>
+</head>
+<body>
+
+  <div class="ds-frame">
+    <span class="ds-cap">Invite-code entry (6 chars → /join/CODE)</span>
+    <div class="invite">
+      <p class="invite-label"><span class="dot"></span> Have an invite code?</p>
+      <div class="invite-form">
+        <input class="invite-input" placeholder="ABC123" maxlength="6" aria-label="Invite code" />
+        <button class="invite-btn" type="button">Open invite</button>
+      </div>
+    </div>
+  </div>
+  
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phone — group balance</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap");
+
+  :root{
+    --paper:#F4ECDD; --paper-2:#EFE5D2; --card:#FBF6EC;
+    --ink:#211B16; --ink-soft:#5A4F44; --line:#DBCDB4;
+    --terra:#BC4F2E; --terra-deep:#9E3E22; --ochre:#CE8B33;
+    --palm:#2E4A3A; --gold:#E0B25A; --pos:#2E6B4F; --neg:#B0492A;
+    --radius:18px;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.04;letter-spacing:-.01em;}
+  a{color:inherit;text-decoration:none;}
+  svg{display:block;}
+  .ds-frame{min-height:100vh;display:flex;flex-direction:column;gap:26px;}
+  .ds-cap{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);}
+
+  body{font-family:var(--sans);background:var(--paper);color:var(--ink);
+    line-height:1.6;font-size:17px;-webkit-font-smoothing:antialiased;padding:44px;}
+
+  body{display:flex;align-items:center;justify-content:center;}
+  .stage{position:relative;}
+  .stage::before{content:"رحلة";font-family:var(--serif);font-size:9rem;color:rgba(188,79,46,.08);
+    position:absolute;inset-block-start:-12%;inset-inline-end:-10%;z-index:0;line-height:1;font-weight:600;}
+  .phone{position:relative;z-index:1;width:330px;background:var(--ink);border-radius:42px;padding:13px;
+    box-shadow:0 36px 80px rgba(33,27,22,.32);transform:rotate(-1.6deg);}
+  .phone-screen{background:var(--paper);border-radius:31px;overflow:hidden;}
+  .ph-top{background:var(--palm);color:#F4ECDD;padding:24px 22px 26px;}
+  .ph-eyebrow{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;opacity:.78;font-weight:600;}
+  .ph-title{font-family:var(--serif);font-size:1.42rem;margin:5px 0 16px;font-weight:600;}
+  .ph-balance-card{background:rgba(255,255,255,.1);border:1px solid rgba(244,236,221,.22);border-radius:14px;padding:14px 16px;}
+  .ph-balance-card .lab{font-size:.72rem;opacity:.8;}
+  .ph-net{font-family:var(--serif);font-size:1.9rem;font-weight:600;margin-top:3px;color:var(--gold);}
+  .ph-list{padding:18px 18px 8px;}
+  .ph-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px dashed var(--line);}
+  .ph-row:last-child{border-bottom:none;}
+  .ph-av{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.92rem;color:#fff;}
+  .ph-av.a{background:var(--terra);} .ph-av.b{background:var(--ochre);} .ph-av.c{background:var(--palm);}
+  .ph-name{font-weight:600;font-size:.96rem;line-height:1.2;}
+  .ph-meta{font-size:.76rem;color:var(--ink-soft);}
+  .ph-amt{margin-inline-start:auto;text-align:end;font-weight:700;font-size:.96rem;font-variant-numeric:tabular-nums;}
+  .ph-amt.pos{color:var(--pos);} .ph-amt.neg{color:var(--neg);}
+  .ph-amt small{display:block;font-weight:500;font-size:.68rem;color:var(--ink-soft);}
+  .ph-settle{margin:8px 18px 20px;}
+  .ph-settle button{width:100%;background:var(--terra);color:#fff;border:none;border-radius:13px;padding:14px;
+    font-weight:600;font-size:1rem;font-family:var(--sans);display:flex;align-items:center;justify-content:center;gap:.5em;}
+  .ph-hint{font-size:.74rem;color:var(--ink-soft);text-align:center;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:.4em;}
+  
+</style>
+</head>
+<body>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="ph-top">
+          <span class="ph-eyebrow">Salalah Weekend · 4 people</span>
+          <h2 class="ph-title">Group balance</h2>
+          <div class="ph-balance-card"><div class="lab">You are owed, overall</div><div class="ph-net">OMR 2.750</div></div>
+        </div>
+        <div class="ph-list">
+          <div class="ph-row"><span class="ph-av a">A</span><div><div class="ph-name">Ahmed</div><div class="ph-meta">owes you</div></div><div class="ph-amt pos">+OMR 4.250<small>2 expenses</small></div></div>
+          <div class="ph-row"><span class="ph-av b">S</span><div><div class="ph-name">Sara</div><div class="ph-meta">you owe</div></div><div class="ph-amt neg">−OMR 1.500<small>Dinner · Mutrah</small></div></div>
+          <div class="ph-row"><span class="ph-av c">K</span><div><div class="ph-name">Khalid</div><div class="ph-meta">all square</div></div><div class="ph-amt">OMR 0.000</div></div>
+        </div>
+        <div class="ph-settle"><button type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Settle up · 2 transfers</button></div>
+        <p class="ph-hint">Fewest transfers to make everyone even</p>
+      </div>
+    </div>
+  </div>
+  
+</body>
+</html>

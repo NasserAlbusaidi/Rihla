@@ -1,0 +1,250 @@
+<!-- @dsCard group="Event UX" name="Event view A — tabbed (Expenses · Settle up · Activity)" subtitle="Expanded direction A · interactive tabs + collapsing header" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event view A — tabbed (Expenses · Settle up · Activity) · Rihla mockups</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+:root{
+  --primary:#D17B2C;--primary-dark:#B5641A;--saffron-soft:#F4DDB8;--saffron-tint:#FBEED5;
+  --paper:#F6F1E6;--paper-deep:#EFE8D7;--card:#FFFFFF;--card-soft:#FBF7EE;
+  --ink:#1B1A17;--ink-2:#3D3A33;--ink-3:#6B675D;--ink-4:#948F82;
+  --border:#EAE5D9;--rule-2:#D9D3C5;
+  --sage:#5C7A57;--sage-text:#3F5A3B;--rust-text:#7A2F1F;
+  --cat1:#C2693B;--cat2:#4F7B96;--cat3:#8C6A2F;--cat4:#6F7A3A;--cat5:#94517A;
+  --s4:4px;--s8:8px;--s12:12px;--s16:16px;--s20:20px;--s24:24px;
+  --r-card:20px;--r-pill:9999px;
+  --shadow-raised:0 4px 10px rgba(17,17,17,.05),0 2px 4px rgba(17,17,17,.03);
+  --shadow-float:0 10px 28px rgba(17,17,17,.10),0 4px 10px rgba(17,17,17,.04);
+  --font-sans:'Geist',system-ui,sans-serif;--font-mono:'Geist Mono',ui-monospace,monospace;
+  --font-serif:'Instrument Serif',Georgia,serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);background:var(--paper);color:var(--ink);
+  -webkit-font-smoothing:antialiased;line-height:1.45;padding:32px 20px 64px}
+.wrap{max-width:1000px;margin:0 auto}
+.page-head h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+.page-head .saffron{color:var(--primary)}
+.page-head p{color:var(--ink-3);font-size:14px;max-width:740px;margin-bottom:6px}
+.page-head code{font-family:var(--font-mono);font-size:12px;background:var(--paper-deep);padding:1px 5px;border-radius:5px}
+.layout{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start;margin-top:28px}
+.notes{flex:1;min-width:280px;max-width:380px}
+.notes h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2);margin:18px 0 8px}
+.notes p{font-size:13px;color:var(--ink-3);margin-bottom:8px;line-height:1.55}
+.notes b{color:var(--ink-2)}
+.notes code{font-family:var(--font-mono);font-size:11.5px;background:var(--paper-deep);padding:1px 5px;border-radius:5px}
+.notes .pill{display:inline-block;font-size:11px;font-weight:600;color:var(--sage-text);
+  background:#E4EDE1;border:1px solid #CFE0C9;border-radius:var(--r-pill);padding:3px 10px;margin-top:6px}
+/* phone */
+.phone{width:330px;background:var(--card);border-radius:36px;box-shadow:var(--shadow-float);
+  padding:10px;border:1px solid var(--border);flex:none}
+.screen{background:var(--paper);border-radius:28px;overflow:hidden;height:660px;display:flex;
+  flex-direction:column;position:relative}
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:11px 20px 6px;
+  font-size:12px;font-weight:600;color:var(--ink-2);flex:none}
+.status-bar .dots{letter-spacing:2px;font-size:10px}
+/* fixed top: header + tabs */
+.top{flex:none;background:var(--paper);padding:0 16px;z-index:5;
+  box-shadow:0 1px 0 var(--border)}
+.hrow{display:flex;align-items:center;justify-content:space-between;padding:6px 0 2px}
+.ic{width:34px;height:34px;border-radius:var(--r-pill);display:flex;align-items:center;
+  justify-content:center;font-size:19px;color:var(--ink-2);cursor:pointer}
+.htitle{text-align:center}
+.eyebrow{font-size:9px;font-weight:600;letter-spacing:.18em;color:var(--primary);text-transform:uppercase}
+.tname{font-size:16px;font-weight:700;letter-spacing:-.01em}
+/* balance block (collapses) */
+.balblock{overflow:hidden;transition:max-height .25s ease,opacity .2s ease,margin .25s ease;
+  max-height:80px;opacity:1;padding:6px 2px 12px}
+.top.collapsed .balblock{max-height:0;opacity:0;padding-top:0;padding-bottom:0}
+.balrow{display:flex;align-items:baseline;justify-content:space-between}
+.label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.amt{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.amt .ccy{font-size:.62em;font-weight:600;margin-right:3px;opacity:.7}
+.amt .dec{opacity:.55}
+.amt.big{font-size:28px}.amt.md{font-size:15px}.amt.sm{font-size:13px}
+.pos{color:var(--sage-text)}.neg{color:var(--rust-text)}.neu{color:var(--ink-2)}
+.compact{display:none;font-size:13px;margin-left:auto;margin-right:6px}
+.top.collapsed .compact{display:inline}
+/* tabs */
+.tabbar{display:flex;background:var(--paper-deep);border-radius:var(--r-pill);padding:3px;gap:2px;margin-bottom:12px}
+.tab{flex:1;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink-3);padding:8px 4px;
+  border-radius:var(--r-pill);cursor:pointer;border:none;background:none;font-family:inherit;transition:.15s}
+.tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow-raised)}
+/* scroll area */
+.body{flex:1;overflow-y:auto;padding:12px 16px 88px;scrollbar-width:thin}
+.body::-webkit-scrollbar{width:5px}.body::-webkit-scrollbar-thumb{background:var(--rule-2);border-radius:3px}
+.panel{display:none;flex-direction:column;gap:10px}
+.panel.show{display:flex}
+.day{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);padding:4px 4px 0}
+.card{background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow-raised);border:1px solid var(--border)}
+.card.flush{padding:4px 0}.card.pad{padding:14px 16px}
+.lrow{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border)}
+.lrow:last-child{border-bottom:none}
+.lrow .b{flex:1;min-width:0}
+.lrow .t{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .s{font-size:11px;color:var(--ink-3);margin-top:1px}
+.cat{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.av{width:30px;height:30px;border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:#fff;flex:none}
+.av.sm{width:26px;height:26px;font-size:10px}
+.av1{background:var(--cat1)}.av2{background:var(--cat2)}.av3{background:var(--cat3)}.av4{background:var(--cat4)}.av5{background:var(--cat5)}
+/* settle rows */
+.srow{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.srow:last-child{border-bottom:none}
+.srow .who{flex:1;min-width:0}
+.srow .ww{font-size:13px;font-weight:600}
+.srow .ws{font-size:11px;color:var(--ink-3);margin-top:1px}
+.act-btn{font-size:11.5px;font-weight:600;color:var(--primary);background:var(--saffron-tint);
+  border:1px solid var(--saffron-soft);padding:7px 12px;border-radius:var(--r-pill);cursor:pointer;white-space:nowrap}
+.arrow{color:var(--ink-4);font-size:13px}
+.summary{display:flex;align-items:center;gap:8px;background:var(--card-soft);border:1px solid var(--border);
+  border-radius:14px;padding:10px 13px;font-size:12px;color:var(--ink-2)}
+.summary .k{font-weight:700;color:var(--sage-text)}
+/* activity */
+.trow{display:flex;gap:11px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.trow:last-child{border-bottom:none}
+.tdot{width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:6px;flex:none}
+.tdot.g{background:var(--sage)}.tdot.n{background:var(--ink-4)}
+.ttx{font-size:12.5px;line-height:1.4}.ttx b{font-weight:600}
+.tmt{font-size:10px;color:var(--ink-4);margin-top:2px}
+.fab{position:absolute;right:16px;bottom:16px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:#fff;font-weight:600;font-size:13px;padding:13px 18px;border-radius:var(--r-pill);
+  box-shadow:var(--shadow-float);display:flex;align-items:center;gap:7px;z-index:6}
+.muted{color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <h1>Event view A — <span class="saffron">one screen, three tabs</span></h1>
+    <p>The event becomes a workspace: a pinned balance header, then <b>Expenses · Settle up · Activity</b>.
+       The three pages you used to drill into are now tab switches. <b>Tap the tabs, and scroll the Expenses
+       list — the header collapses to give the list room.</b> Replaces the <code>EventCommandCenter</code> hub.</p>
+  </div>
+
+  <div class="layout">
+    <!-- PHONE -->
+    <div class="phone">
+      <div class="screen">
+        <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+        <div class="top" id="top">
+          <div class="hrow">
+            <div class="ic">‹</div>
+            <div class="htitle"><div class="eyebrow">TRIP · JUL 4–18</div><div class="tname">Jebel Shams</div></div>
+            <span class="amt sm pos compact"><span class="ccy">OMR</span>12<span class="dec">.300</span></span>
+            <div class="ic">⋯</div>
+          </div>
+          <div class="balblock">
+            <div class="balrow">
+              <span class="label">Your balance</span>
+              <span class="label" style="color:var(--sage-text)">they owe you</span>
+            </div>
+            <div class="amt big pos" style="margin-top:2px"><span class="ccy">OMR</span>12<span class="dec">.300</span></div>
+          </div>
+          <div class="tabbar">
+            <button class="tab active" data-p="ex">Expenses</button>
+            <button class="tab" data-p="st">Settle up</button>
+            <button class="tab" data-p="ac">Activity</button>
+          </div>
+        </div>
+
+        <div class="body" id="body">
+          <!-- EXPENSES -->
+          <div class="panel show" id="p-ex">
+            <div class="day">Today</div>
+            <div class="card flush">
+              <div class="lrow"><div class="cat" style="background:#F2E2D5;color:var(--cat1)">🏠</div><div class="b"><div class="t">Sea-view chalet</div><div class="s">Ahmed paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>40<span class="dec">.000</span></span></div>
+              <div class="lrow"><div class="cat" style="background:#DCE6EC;color:var(--cat2)">🛒</div><div class="b"><div class="t">Groceries — Lulu</div><div class="s">Sara paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>17<span class="dec">.000</span></span></div>
+            </div>
+            <div class="day">Yesterday</div>
+            <div class="card flush">
+              <div class="lrow"><div class="cat" style="background:#ECE6D6;color:var(--cat3)">⛽</div><div class="b"><div class="t">Fuel · Muscat→Nizwa</div><div class="s">Khalid paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>22<span class="dec">.500</span></span></div>
+              <div class="lrow"><div class="cat" style="background:#E6EADD;color:var(--cat4)">🍽️</div><div class="b"><div class="t">Dinner — Bait Al Luban</div><div class="s">You paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>31<span class="dec">.800</span></span></div>
+              <div class="lrow"><div class="cat" style="background:#F2E2D5;color:var(--cat1)">☕</div><div class="b"><div class="t">Coffee — Tanuf</div><div class="s">Sara paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>4<span class="dec">.300</span></span></div>
+            </div>
+            <div class="day">Jul 5</div>
+            <div class="card flush">
+              <div class="lrow"><div class="cat" style="background:#ECE0EA;color:var(--cat5)">🎟️</div><div class="b"><div class="t">Park entry</div><div class="s">Ahmed paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>6<span class="dec">.000</span></span></div>
+              <div class="lrow"><div class="cat" style="background:#DCE6EC;color:var(--cat2)">🛒</div><div class="b"><div class="t">Water + snacks</div><div class="s">Layla paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>8<span class="dec">.200</span></span></div>
+              <div class="lrow"><div class="cat" style="background:#ECE6D6;color:var(--cat3)">⛽</div><div class="b"><div class="t">Diesel top-up</div><div class="s">Khalid paid · split 4 ways</div></div><span class="amt md neu"><span class="ccy">OMR</span>12<span class="dec">.000</span></span></div>
+            </div>
+          </div>
+
+          <!-- SETTLE UP -->
+          <div class="panel" id="p-st">
+            <div class="summary"><span class="k">3 payments</span><span>clear the whole trip — fewest transfers.</span></div>
+            <div class="card flush">
+              <div class="srow"><span class="av av1">AH</span><div class="who"><div class="ww">Ahmed → You</div><div class="ws">across 3 expenses</div></div><span class="amt md pos"><span class="ccy">OMR</span>6<span class="dec">.150</span></span><span class="act-btn">Mark received</span></div>
+              <div class="srow"><span class="av av2">SA</span><div class="who"><div class="ww">Sara → You</div><div class="ws">across 2 expenses</div></div><span class="amt md pos"><span class="ccy">OMR</span>4<span class="dec">.150</span></span><span class="act-btn">Mark received</span></div>
+              <div class="srow"><span class="av av3">KH</span><div class="who"><div class="ww">Khalid → You</div><div class="ws">across 2 expenses</div></div><span class="amt md pos"><span class="ccy">OMR</span>2<span class="dec">.000</span></span><span class="act-btn">Mark received</span></div>
+              <div class="srow"><span class="av av5">LA</span><div class="who"><div class="ww">Layla</div><div class="ws">all square</div></div><span class="amt md neu" style="opacity:.5">settled</span><span class="arrow">✓</span></div>
+            </div>
+            <div class="summary" style="background:var(--saffron-tint);border-color:var(--saffron-soft)">
+              <span>💬</span><span>Tap a person to <b>record</b> the payment or <b>remind them on WhatsApp</b>.</span>
+            </div>
+          </div>
+
+          <!-- ACTIVITY -->
+          <div class="panel" id="p-ac">
+            <div class="card pad">
+              <div class="trow"><div class="tdot"></div><div><div class="ttx"><b>You</b> added <b>Dinner — Bait Al Luban</b> · OMR 31.800</div><div class="tmt">yesterday · 21:04</div></div></div>
+              <div class="trow"><div class="tdot"></div><div><div class="ttx"><b>Khalid</b> edited <b>Fuel</b> · OMR 20.000 → 22.500</div><div class="tmt">yesterday · 18:20</div></div></div>
+              <div class="trow"><div class="tdot g"></div><div><div class="ttx"><b>Sara</b> settled <b>OMR 8.000</b> to you</div><div class="tmt">Jul 9 · 11:30</div></div></div>
+              <div class="trow"><div class="tdot"></div><div><div class="ttx"><b>Ahmed</b> added <b>Park entry</b> · OMR 6.000</div><div class="tmt">Jul 5 · 16:40</div></div></div>
+              <div class="trow"><div class="tdot n"></div><div><div class="ttx"><b>Layla</b> joined the trip</div><div class="tmt">Jul 5 · 09:10</div></div></div>
+              <div class="trow"><div class="tdot n"></div><div><div class="ttx"><b>You</b> created the event</div><div class="tmt">Jul 4 · 19:55</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fab" id="fab">+ Add expense</div>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="notes">
+      <h3>The three tabs</h3>
+      <p><b>Expenses</b> — the ledger is the home view (default tab): grouped by day, category icon, payer,
+         split note, amount. Search/filter lives here. This <i>replaces</i> the separate Ledger screen.</p>
+      <p><b>Settle up</b> — the optimized <b>who-pays-whom</b> plan, not a passive list. Each row = one real
+         transfer with its action: <code>Mark received</code> when you’re owed, <code>Mark paid → let them know</code>
+         when you owe (the WhatsApp notify from #367). “3 payments clear the trip” is the simplify-debts framing.</p>
+      <p><b>Activity</b> — the timeline / audit feed: adds, edits (#248 diff), settlements, joins.</p>
+      <span class="pill">No Gate — UI re-layout; routes stay for deep links</span>
+
+      <h3>Header behavior</h3>
+      <p>Balance is pinned on top; <b>scroll the Expenses list and it collapses</b> into the title row
+         (the small <code>OMR 12.300</code> appears beside the name), handing the list its space back.</p>
+
+      <h3>What it costs</h3>
+      <p>Keep <code>/ledger</code>, <code>/activity</code>, and the settle route alive (deep links still work);
+         the event screen embeds those same widgets as tab panels. The tabbing is presentation, so
+         <b>no money / route / schema surface</b> changes. Pairs cleanly with #245’s group→event collapse.</p>
+
+      <h3>Open for your call</h3>
+      <p>· Settle tab default action — <b>Mark received</b> vs lead with <b>Remind</b>?<br>
+         · Do we want a 4th <b>Recap</b> tab to appear only when a trip is closed (#202)?<br>
+         · Search/filter — inline in Expenses, or behind an icon?</p>
+    </div>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.tab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var p=btn.dataset.p;
+      document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('active',b===btn)});
+      ['ex','st','ac'].forEach(function(id){document.getElementById('p-'+id).classList.toggle('show',id===p)});
+      document.getElementById('body').scrollTop=0;
+      document.getElementById('top').classList.remove('collapsed');
+    });
+  });
+  var body=document.getElementById('body'),top=document.getElementById('top');
+  body.addEventListener('scroll',function(){
+    top.classList.toggle('collapsed',body.scrollTop>20);
+  });
+</script>
+</body>
+</html>

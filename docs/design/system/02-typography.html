@@ -1,0 +1,62 @@
+<!-- @dsCard group="Type" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Typography</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap");
+
+  :root{
+    --paper:#F4ECDD; --paper-2:#EFE5D2; --card:#FBF6EC;
+    --ink:#211B16; --ink-soft:#5A4F44; --line:#DBCDB4;
+    --terra:#BC4F2E; --terra-deep:#9E3E22; --ochre:#CE8B33;
+    --palm:#2E4A3A; --gold:#E0B25A; --pos:#2E6B4F; --neg:#B0492A;
+    --radius:18px;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.04;letter-spacing:-.01em;}
+  a{color:inherit;text-decoration:none;}
+  svg{display:block;}
+  .ds-frame{min-height:100vh;display:flex;flex-direction:column;gap:26px;}
+  .ds-cap{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);}
+
+  body{font-family:var(--sans);background:var(--paper);color:var(--ink);
+    line-height:1.6;font-size:17px;-webkit-font-smoothing:antialiased;padding:44px;}
+
+  .ds-frame{gap:22px;}
+  .disp{font-family:var(--serif);font-weight:600;font-size:4.4rem;line-height:1.02;letter-spacing:-.02em;}
+  .disp em{font-style:italic;color:var(--terra);font-weight:500;}
+  .disp .u{background:linear-gradient(transparent 62%,rgba(206,139,51,.42) 62%);padding-inline:.04em;}
+  .h2{font-family:var(--serif);font-weight:600;font-size:2.6rem;letter-spacing:-.01em;}
+  .lead{font-size:1.2rem;color:var(--ink-soft);max-width:46ch;}
+  .body{font-size:1.05rem;max-width:52ch;}
+  .eyebrow{font-weight:600;font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--terra-deep);
+    display:inline-flex;align-items:center;gap:.6em;}
+  .eyebrow::before{content:"";width:26px;border-top:1.5px dotted var(--terra);}
+  .scale{font-size:.8rem;color:var(--ink-soft);font-family:var(--sans);}
+  hr{border:none;border-top:1.5px dotted var(--line);margin:6px 0;}
+  
+</style>
+</head>
+<body>
+
+  <div class="ds-frame">
+    <span class="ds-cap">Fraunces (display serif) · Inter (body sans)</span>
+    <div class="disp">Split the bill. <em>Settle&nbsp;up.</em> <span class="u">Stay&nbsp;friends.</span></div>
+    <p class="scale">Display — Fraunces 600, clamp(2.7rem → 4.9rem)</p>
+    <hr>
+    <div class="h2">Use it when the money gets shared</div>
+    <p class="scale">Section heading — Fraunces 600, clamp(2rem → 3.1rem)</p>
+    <hr>
+    <span class="eyebrow">Now free on Google Play</span>
+    <p class="lead">Friends in Oman &amp; the GCC track shared expenses, see exactly who owes who, and settle up across trips, dinners, and roommate bills.</p>
+    <p class="body">Body copy is Inter at 17px / 1.6 with a muted ink. Numbers use tabular figures so balances line up: OMR&nbsp;2.750 · AED&nbsp;120.00 · −OMR&nbsp;1.500.</p>
+  </div>
+  
+</body>
+</html>

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rihla — Split the bill. Settle up. Stay friends.</title>
+<meta name="description" content="Rihla is a free Android app for splitting group expenses in Oman and the GCC. No signup, Arabic and English, multi-currency, works offline. Track who owes who across trips, dinners and roommate bills.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#05211D;
+    --surface:#0A312B;
+    --card:#0E3B33;
+    --card-2:#114A3F;
+    --line:rgba(157,196,186,.16);
+    --line-strong:rgba(157,196,186,.28);
+    --mint:#54F0BE;
+    --mint-deep:#1FD8A0;
+    --amber:#FFC368;
+    --ink:#EAF7F2;
+    --muted:#9DC4BA;
+    --muted-2:#7FA99E;
+    --neg:#FF8E72;
+    --radius:22px;
+    --radius-sm:14px;
+    --maxw:1200px;
+    --display:'Space Grotesk',system-ui,sans-serif;
+    --body:'Inter',system-ui,-apple-system,sans-serif;
+    --shadow:0 30px 60px -22px rgba(0,0,0,.65);
+    --shadow-mint:0 18px 40px -16px rgba(84,240,190,.45);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:var(--body);
+    background:var(--canvas);
+    color:var(--ink);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:-2;
+    background:
+      radial-gradient(900px 520px at 78% -8%, rgba(84,240,190,.18), transparent 60%),
+      radial-gradient(700px 600px at 0% 12%, rgba(31,216,160,.10), transparent 55%),
+      var(--canvas);
+  }
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+  h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em;line-height:1.04}
+  p{margin:0}
+  ::selection{background:var(--mint);color:#04201C}
+  :focus-visible{outline:3px solid var(--mint);outline-offset:3px;border-radius:6px}
+
+  .wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:24px}
+  .eyebrow{
+    font-family:var(--display);
+    font-size:.74rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--mint);
+  }
+
+  /* ---------- HEADER ---------- */
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+    background:linear-gradient(to bottom,rgba(5,33,29,.92),rgba(5,33,29,.62));
+    border-block-end:1px solid var(--line)}
+  .nav{display:flex;align-items:center;gap:18px;height:72px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;font-size:1.32rem;letter-spacing:-.02em}
+  .glyph{width:38px;height:38px;flex:none;border-radius:11px;
+    background:linear-gradient(150deg,var(--mint),var(--mint-deep));
+    display:grid;place-items:center;box-shadow:var(--shadow-mint)}
+  .glyph svg{width:22px;height:22px}
+  .nav-spacer{margin-inline-start:auto}
+  .nav-links{display:flex;align-items:center;gap:8px}
+  .lang-toggle{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 15px;border-radius:999px;border:1px solid var(--line-strong);
+    color:var(--ink);font-weight:600;font-size:.92rem;transition:border-color .2s,background .2s}
+  .lang-toggle:hover{background:var(--card);border-color:var(--mint)}
+  .nav-cta{
+    display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;
+    background:var(--mint);color:#04201C;font-weight:700;font-size:.92rem;
+    transition:transform .18s ease,box-shadow .2s}
+  .nav-cta:hover{transform:translateY(-2px);box-shadow:var(--shadow-mint)}
+
+  /* ---------- HERO ---------- */
+  .hero{padding-block:64px 40px}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:9px;
+    padding:7px 14px;border-radius:999px;border:1px solid var(--line-strong);
+    background:rgba(84,240,190,.07);margin-block-end:24px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--mint);
+    box-shadow:0 0 0 0 rgba(84,240,190,.6);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(84,240,190,.5)}70%{box-shadow:0 0 0 9px rgba(84,240,190,0)}100%{box-shadow:0 0 0 0 rgba(84,240,190,0)}}
+  h1{font-size:clamp(2.6rem,6.4vw,4.6rem);font-weight:700}
+  h1 .hl{color:var(--mint)}
+  .hero-sub{margin-block-start:24px;font-size:clamp(1.04rem,2.1vw,1.22rem);color:var(--muted);max-width:38ch}
+  .hero-actions{display:flex;flex-wrap:wrap;gap:14px;margin-block-start:34px;align-items:center}
+  .btn-play{
+    display:inline-flex;align-items:center;gap:12px;padding:15px 24px;border-radius:14px;
+    background:var(--mint);color:#04201C;font-weight:700;font-size:1.02rem;
+    box-shadow:var(--shadow-mint);transition:transform .18s ease,box-shadow .2s}
+  .btn-play:hover{transform:translateY(-3px) scale(1.01)}
+  .btn-play svg{width:24px;height:24px}
+  .btn-play small{display:block;font-size:.66rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.72;line-height:1}
+  .btn-play span{font-size:1.06rem;line-height:1.1}
+
+  /* invite form */
+  .invite{margin-block-start:30px;max-width:420px}
+  .invite-label{font-size:.86rem;font-weight:600;color:var(--muted);margin-block-end:9px;display:block}
+  .invite-row{display:flex;gap:10px}
+  .invite-input{
+    flex:1;min-width:0;padding:14px 16px;border-radius:13px;border:1px solid var(--line-strong);
+    background:var(--surface);color:var(--ink);font-family:var(--display);font-size:1.12rem;
+    font-weight:600;letter-spacing:.34em;text-transform:uppercase;transition:border-color .2s,box-shadow .2s}
+  .invite-input::placeholder{color:var(--muted-2);letter-spacing:.34em}
+  .invite-input:focus{outline:none;border-color:var(--mint);box-shadow:0 0 0 3px rgba(84,240,190,.22)}
+  .invite-btn{
+    padding:14px 20px;border-radius:13px;border:1px solid var(--mint);background:transparent;
+    color:var(--mint);font-weight:700;font-size:.96rem;cursor:pointer;white-space:nowrap;
+    transition:background .2s,color .2s}
+  .invite-btn:hover{background:var(--mint);color:#04201C}
+  .invite-error{display:none;margin-block-start:9px;font-size:.85rem;color:var(--amber);font-weight:500}
+  .invite-error.show{display:block}
+
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-block-start:32px}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;
+    background:var(--card);border:1px solid var(--line);font-size:.86rem;font-weight:500;color:var(--ink)}
+  .chip svg{width:15px;height:15px;color:var(--mint);flex:none}
+
+  /* ---------- PHONE MOCK ---------- */
+  .hero-media{display:flex;justify-content:center;position:relative}
+  .glow{position:absolute;inset:0;background:radial-gradient(closest-side,rgba(84,240,190,.22),transparent 70%);
+    filter:blur(20px);z-index:-1}
+  .phone{
+    width:316px;max-width:84vw;border-radius:42px;padding:13px;
+    background:linear-gradient(160deg,#15514490,#0c352d);
+    border:1px solid var(--line-strong);box-shadow:var(--shadow);
+    position:relative;animation:floaty 7s ease-in-out infinite}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  .screen{background:#072721;border-radius:31px;overflow:hidden;border:1px solid var(--line)}
+  .notch{position:absolute;inset-block-start:24px;inset-inline-start:50%;transform:translateX(-50%);
+    width:118px;height:26px;background:#04201c;border-radius:999px;z-index:3}
+  .scr-top{padding:30px 18px 14px;display:flex;align-items:flex-start;justify-content:space-between}
+  .scr-top .label{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+  .scr-top h3{font-family:var(--display);font-size:1.18rem;margin-block-start:5px;color:var(--ink)}
+  .scr-badge{font-size:.66rem;font-weight:700;color:var(--mint);background:rgba(84,240,190,.12);
+    padding:5px 9px;border-radius:8px;border:1px solid rgba(84,240,190,.25)}
+  .net-card{margin:4px 18px 16px;padding:16px;border-radius:18px;
+    background:linear-gradient(150deg,var(--card-2),var(--card));border:1px solid var(--line-strong)}
+  .net-card .cap{font-size:.72rem;color:var(--muted);font-weight:500}
+  .net-card .amt{font-family:var(--display);font-size:1.9rem;font-weight:700;color:var(--mint);margin-block-start:3px;letter-spacing:-.02em}
+  .net-card .sub{font-size:.74rem;color:var(--muted-2);margin-block-start:2px}
+  .rows{padding-inline:18px;display:flex;flex-direction:column;gap:9px}
+  .row{display:flex;align-items:center;gap:11px;padding:11px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid var(--line)}
+  .av{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;
+    font-family:var(--display);font-weight:700;font-size:.84rem;color:#04201c}
+  .av.a{background:linear-gradient(150deg,#54F0BE,#1FD8A0)}
+  .av.b{background:linear-gradient(150deg,#FFC368,#F7A23C);color:#3a2400}
+  .av.c{background:linear-gradient(150deg,#7FD4FF,#3FA9F5);color:#022640}
+  .row .who{flex:1;min-width:0}
+  .row .who b{font-size:.86rem;font-weight:600;display:block;color:var(--ink)}
+  .row .who small{font-size:.7rem;color:var(--muted-2)}
+  .row .val{font-family:var(--display);font-weight:700;font-size:.92rem;text-align:end;white-space:nowrap}
+  .val.pos{color:var(--mint)}
+  .val.neg{color:var(--neg)}
+  .scr-cta{margin:16px 18px 20px;padding:14px;border-radius:14px;background:var(--mint);color:#04201c;
+    text-align:center;font-family:var(--display);font-weight:700;font-size:.98rem;display:flex;align-items:center;justify-content:center;gap:9px}
+  .scr-cta svg{width:17px;height:17px}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding-block:72px}
+  .sec-head{max-width:620px;margin-block-end:44px}
+  .sec-head h2{font-size:clamp(1.9rem,4vw,2.8rem);font-weight:700}
+  .sec-head p{margin-block-start:14px;color:var(--muted);font-size:1.06rem}
+
+  .cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .ucard{padding:28px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line);
+    transition:transform .22s ease,border-color .22s,background .22s}
+  .ucard:hover{transform:translateY(-5px);border-color:var(--line-strong);background:var(--card-2)}
+  .ucard .ic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;margin-block-end:18px;
+    background:rgba(84,240,190,.12);border:1px solid rgba(84,240,190,.22)}
+  .ucard .ic svg{width:26px;height:26px;color:var(--mint)}
+  .ucard h3{font-size:1.28rem;font-weight:600}
+  .ucard p{margin-block-start:10px;color:var(--muted);font-size:.98rem}
+  .ucard .link{margin-block-start:16px;display:inline-flex;align-items:center;gap:7px;color:var(--mint);font-weight:600;font-size:.92rem}
+  .ucard .link svg{width:15px;height:15px;transition:transform .2s}
+  .ucard .link:hover svg{transform:translateX(4px)}
+
+  /* why */
+  .why{background:var(--surface);border-block:1px solid var(--line)}
+  .why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .why-grid .big{grid-column:span 1}
+  .bcard{padding:26px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line);height:100%}
+  .bcard.feature{grid-column:span 2;background:linear-gradient(150deg,var(--card-2),var(--card));border-color:var(--line-strong);
+    display:flex;flex-direction:column;justify-content:center}
+  .bcard .num{font-family:var(--display);font-size:.8rem;font-weight:700;color:var(--mint);letter-spacing:.1em}
+  .bcard h3{font-size:1.24rem;font-weight:600;margin-block-start:12px}
+  .bcard.feature h3{font-size:clamp(1.5rem,3vw,2rem)}
+  .bcard p{margin-block-start:10px;color:var(--muted);font-size:.98rem}
+  .pillrow{display:flex;flex-wrap:wrap;gap:9px;margin-block-start:18px}
+  .pill{padding:7px 13px;border-radius:999px;background:rgba(84,240,190,.1);border:1px solid rgba(84,240,190,.22);
+    font-family:var(--display);font-weight:600;font-size:.86rem;color:var(--ink)}
+
+  /* final cta */
+  .final{text-align:center}
+  .final-band{position:relative;overflow:hidden;border-radius:32px;padding:64px 28px;
+    background:linear-gradient(150deg,#0E443A,#0a302a);border:1px solid var(--line-strong)}
+  .final-band::before{content:"";position:absolute;inset-block-start:-40%;inset-inline-start:50%;transform:translateX(-50%);
+    width:520px;height:520px;background:radial-gradient(closest-side,rgba(84,240,190,.2),transparent 70%);filter:blur(10px)}
+  .final-band > *{position:relative}
+  .final-band h2{font-size:clamp(2rem,4.6vw,3.2rem);font-weight:700}
+  .final-band p{margin-block-start:14px;color:var(--muted);font-size:1.1rem;max-width:46ch;margin-inline:auto}
+  .final-band .btn-play{margin-block-start:30px}
+
+  /* footer */
+  footer{border-block-start:1px solid var(--line);padding-block:44px;margin-block-start:24px}
+  .foot{display:flex;flex-wrap:wrap;align-items:center;gap:20px;justify-content:space-between}
+  .foot-links{display:flex;flex-wrap:wrap;gap:22px}
+  .foot-links a{color:var(--muted);font-size:.92rem;font-weight:500;transition:color .2s}
+  .foot-links a:hover{color:var(--mint)}
+  .foot .copy{color:var(--muted-2);font-size:.9rem}
+  .foot .brand{font-size:1.1rem}
+  .foot .glyph{width:32px;height:32px;border-radius:9px}
+  .foot .glyph svg{width:18px;height:18px}
+
+  @media(max-width:920px){
+    .hero-grid{grid-template-columns:1fr;gap:48px;text-align:start}
+    .hero-media{order:-1}
+    .cards-3{grid-template-columns:1fr}
+    .why-grid{grid-template-columns:1fr}
+    .bcard.feature{grid-column:span 1}
+    .nav-links .nav-cta{display:none}
+  }
+  @media(max-width:560px){
+    .wrap{padding-inline:18px}
+    .invite-row{flex-direction:column}
+    .invite-btn{width:100%}
+    .foot{flex-direction:column;align-items:flex-start;gap:24px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main" style="position:absolute;inset-inline-start:-999px;top:0;background:var(--mint);color:#04201c;padding:10px 16px;border-radius:0 0 10px 0;z-index:99;font-weight:700" onfocus="this.style.insetInlineStart='0'" onblur="this.style.insetInlineStart='-999px'">Skip to content</a>
+
+<header>
+  <div class="wrap">
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="#" aria-label="Rihla home">
+        <span class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 19V6.5A2.5 2.5 0 0 1 8.5 4H14a4 4 0 0 1 0 8H8.5" stroke="#04201c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 12l5 7" stroke="#04201c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Rihla
+      </a>
+      <span class="nav-spacer"></span>
+      <div class="nav-links">
+        <a class="lang-toggle" href="/ar" hreflang="ar" lang="ar" aria-label="التبديل إلى العربية">العربية</a>
+        <a class="nav-cta" href="https://play.google.com/store/apps/details?id=com.safar.safar">Get the app</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="hero-h1">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="hero-eyebrow"><span class="dot" aria-hidden="true"></span><span class="eyebrow">Now free on Google Play</span></span>
+        <h1 id="hero-h1">Split the bill.<br>Settle up.<br><span class="hl">Stay friends.</span></h1>
+        <p class="hero-sub">Friends in Oman &amp; the GCC track shared spending, see exactly who owes who, and settle up across trips, dinners and roommate bills. No signup. Arabic &amp; English. Offline-ready.</p>
+
+        <div class="hero-actions">
+          <a class="btn-play" href="https://play.google.com/store/apps/details?id=com.safar.safar">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="#04201c"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.3v16.8c0 .6.2 1 .5 1.3l.1.1 9.4-9.4v-.2L3.6 2.3Z"/><path d="M16.6 15.3 13.6 12.3v-.2l3-3 .1.1 3.6 2c1 .6 1 1.5 0 2.1l-3.7 2Z"/><path d="m13.6 12.3-9.5 9.5c.3.4.9.4 1.5.1l11.1-6.3-3.1-3.3Z"/><path d="M13.6 11.9 4.1 2.4c.6-.3 1.2-.3 1.5.1l11.1 6.3-3.1 3.1Z"/></svg>
+            <span><small>Get it on</small>Google Play</span>
+          </a>
+        </div>
+
+        <form class="invite" id="inviteForm" novalidate>
+          <label class="invite-label" for="inviteCode">Have an invite code?</label>
+          <div class="invite-row">
+            <input class="invite-input" id="inviteCode" name="code" type="text" inputmode="latin"
+              placeholder="ABC123" maxlength="6" pattern="[A-Za-z0-9]{6}" autocomplete="off"
+              spellcheck="false" aria-describedby="inviteError">
+            <button class="invite-btn" type="submit">Open invite</button>
+          </div>
+          <p class="invite-error" id="inviteError" role="alert">Enter a 6-character code (letters and numbers).</p>
+        </form>
+
+        <div class="chips" aria-label="Highlights">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>No signup</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>WhatsApp invites</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>OMR-friendly</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Works offline</span>
+        </div>
+      </div>
+
+      <!-- PHONE MOCK -->
+      <div class="hero-media">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="phone" role="img" aria-label="Rihla group balance screen: net balance plus OMR 2.750. Ahmed owes you OMR 4.250, you owe Sara OMR 1.500, Khalid is settled. A Settle up button at the bottom.">
+          <span class="notch" aria-hidden="true"></span>
+          <div class="screen">
+            <div class="scr-top">
+              <div>
+                <span class="label">Group</span>
+                <h3>Salalah Trip</h3>
+              </div>
+              <span class="scr-badge">3 people</span>
+            </div>
+            <div class="net-card">
+              <span class="cap">Your net balance</span>
+              <div class="amt">+ OMR 2.750</div>
+              <div class="sub">Settle in 1 transfer to clear everyone</div>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="av a" aria-hidden="true">A</span>
+                <span class="who"><b>Ahmed</b><small>owes you</small></span>
+                <span class="val pos">OMR 4.250</span>
+              </div>
+              <div class="row">
+                <span class="av b" aria-hidden="true">S</span>
+                <span class="who"><b>Sara</b><small>you owe</small></span>
+                <span class="val neg">OMR 1.500</span>
+              </div>
+              <div class="row">
+                <span class="av c" aria-hidden="true">K</span>
+                <span class="who"><b>Khalid</b><small>all square</small></span>
+                <span class="val" style="color:var(--muted-2)">OMR 0.000</span>
+              </div>
+            </div>
+            <div class="scr-cta">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="#04201c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Settle up
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USE IT WHEN -->
+  <section aria-labelledby="use-h2">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Made for real life</span>
+        <h2 id="use-h2">Use it when the money gets shared</h2>
+        <p>One app for every time the group splits a bill — and nobody wants to be the one chasing it back.</p>
+      </div>
+      <div class="cards-3">
+        <article class="ucard">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12h13l-2.5-2.5M3 12l13 0M3 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12a7 7 0 0 1 14 0 7 7 0 0 1-14 0Z" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <h3>Trips &amp; weekends</h3>
+          <p>Fuel, the chalet, the boat, the big group dinner — log it as you go and split it fairly when you're back.</p>
+          <a class="link" href="/split-bills-oman">Split bills in Oman <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        </article>
+        <article class="ucard">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 3v18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3c-1.5 1-2 3-2 5s.5 4 2 5v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Dinners &amp; gatherings</h3>
+          <p>One person pays the table, everyone settles their share later — no awkward maths over the receipt.</p>
+        </article>
+        <article class="ucard">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11.5 12 4l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v10h14V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 20v-5h5v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Roommates &amp; shared bills</h3>
+          <p>Rent, groceries, internet and utilities in one ongoing group that always knows the running balance.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY RIHLA -->
+  <section class="why" aria-labelledby="why-h2">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Why Rihla</span>
+        <h2 id="why-h2">Built to be the easy one</h2>
+        <p>Everything you need to keep shared money honest — and nothing you have to sign up for.</p>
+      </div>
+      <div class="why-grid">
+        <article class="bcard feature">
+          <span class="num">01</span>
+          <h3>The fewest transfers to make everyone even</h3>
+          <p>Rihla untangles who-owes-who across the whole group and shows the shortest set of payments to clear every balance. No circular IOUs, no spreadsheet.</p>
+          <div class="pillrow">
+            <span class="pill">Settlement optimization</span>
+            <span class="pill">Clear in fewer taps</span>
+          </div>
+        </article>
+        <article class="bcard">
+          <span class="num">02</span>
+          <h3>Persistent groups</h3>
+          <p>One crew, many trips and dinners inside it. Your history and balances carry across every event.</p>
+        </article>
+        <article class="bcard">
+          <span class="num">03</span>
+          <h3>Arabic &amp; English</h3>
+          <p>Fully bilingual with proper right-to-left support — switch to العربية anytime, nothing breaks.</p>
+        </article>
+        <article class="bcard">
+          <span class="num">04</span>
+          <h3>Multi-currency</h3>
+          <p>OMR with true 3-decimal precision, plus AED, SAR, QAR, USD, EUR and GBP per group.</p>
+        </article>
+        <article class="bcard feature">
+          <span class="num">05</span>
+          <h3>Works offline, syncs later</h3>
+          <p>Add an expense in the desert, on a plane, or anywhere with no signal. Rihla saves it on your phone and syncs the moment you're back online — nothing lost.</p>
+          <div class="pillrow">
+            <span class="pill">No signup needed</span>
+            <span class="pill">WhatsApp invites</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final" aria-labelledby="final-h2">
+    <div class="wrap">
+      <div class="final-band">
+        <span class="eyebrow">Free on Google Play</span>
+        <h2 id="final-h2">Start with your next shared bill.</h2>
+        <p>Create a group, share a WhatsApp invite, add the first expense. That's the whole setup — and it's free.</p>
+        <a class="btn-play" href="https://play.google.com/store/apps/details?id=com.safar.safar">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="#04201c"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.3v16.8c0 .6.2 1 .5 1.3l.1.1 9.4-9.4v-.2L3.6 2.3Z"/><path d="M16.6 15.3 13.6 12.3v-.2l3-3 .1.1 3.6 2c1 .6 1 1.5 0 2.1l-3.7 2Z"/><path d="m13.6 12.3-9.5 9.5c.3.4.9.4 1.5.1l11.1-6.3-3.1-3.3Z"/><path d="M13.6 11.9 4.1 2.4c.6-.3 1.2-.3 1.5.1l11.1 6.3-3.1 3.1Z"/></svg>
+          <span><small>Get it on</small>Google Play</span>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#" aria-label="Rihla home">
+      <span class="glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 19V6.5A2.5 2.5 0 0 1 8.5 4H14a4 4 0 0 1 0 8H8.5" stroke="#04201c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 12l5 7" stroke="#04201c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      Rihla
+    </a>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/delete-data">Delete data</a>
+      <a href="/help">Help</a>
+      <a href="/ar" hreflang="ar" lang="ar">العربية</a>
+    </nav>
+    <span class="copy">© 2026 Rihla</span>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var form=document.getElementById('inviteForm');
+    var input=document.getElementById('inviteCode');
+    var err=document.getElementById('inviteError');
+    if(!form||!input) return;
+
+    input.addEventListener('input',function(){
+      var v=input.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+      input.value=v;
+      if(err.classList.contains('show')&&/^[A-Z0-9]{6}$/.test(v)){
+        err.classList.remove('show');
+        input.removeAttribute('aria-invalid');
+      }
+    });
+
+    form.addEventListener('submit',function(e){
+      e.preventDefault();
+      var code=input.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+      if(/^[A-Z0-9]{6}$/.test(code)){
+        err.classList.remove('show');
+        window.location.href='/join/'+code;
+      }else{
+        err.classList.add('show');
+        input.setAttribute('aria-invalid','true');
+        input.focus();
+      }
+    });
+  })();
+</script>
+</body>
+</html>
