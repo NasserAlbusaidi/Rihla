@@ -891,7 +891,14 @@ class _HistoryTile extends StatelessWidget {
               // reverse settlement (append-only). Shown only when a correction
               // driver is wired AND both party ids are present (the offset needs
               // both to target). Keyed on the newest tile for a stable test hook.
+              // #752: HIDDEN on a decomposed group settle-up (groupSettleUpId !=
+              // null) — the group-only onCorrect reverse would move the
+              // aggregate but NOT the event ledger, re-introducing the very
+              // divergence this fixes. Atomic logical-settle-up correction is
+              // PR2; until then, record a manual offsetting transfer. Legacy /
+              // standalone settlements (null id) keep one-tap correction.
               if (onCorrect != null &&
+                  settlement.groupSettleUpId == null &&
                   payerId != null &&
                   payerId.isNotEmpty &&
                   recipientId != null &&

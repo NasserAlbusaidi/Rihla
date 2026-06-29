@@ -219,6 +219,7 @@ Widget _wrap({
   required List<Event> events,
   required Group group,
   required List<Override> overrides,
+  List<Settlement> settlements = const <Settlement>[],
   String currentUid = 'uid-bob',
 }) {
   return ProviderScope(
@@ -226,7 +227,7 @@ Widget _wrap({
       groupDetailProvider(_groupId).overrideWith((_) => Stream.value(group)),
       groupBalancesProvider(_groupId).overrideWith((_) => AsyncValue.data(balances)),
       groupSettlementsProvider(_groupId)
-          .overrideWith((_) => Stream.value(const <Settlement>[])),
+          .overrideWith((_) => Stream.value(settlements)),
       groupEventsProvider(_groupId).overrideWith((_) => Stream.value(events)),
       currentUserIdProvider.overrideWithValue(currentUid),
       ...overrides,
@@ -472,6 +473,104 @@ void main() {
         expect(find.text('Across events'), findsOneWidget);
         expect(find.textContaining('Camping Weekend'), findsNothing);
         expect(find.textContaining('Road Trip'), findsNothing);
+      },
+    );
+  });
+
+  group('#752 group history unions tagged event settlements', () {
+    final settledBalances = (
+      balances: <String, List<UserBalance>>{
+        'OMR': [
+          _bal('uid-alice', 'Alice', '0'),
+          _bal('uid-bob', 'Bob', '0'),
+        ],
+      },
+      totalSpent: <String, Decimal>{'OMR': Decimal.zero},
+      eventCount: 1,
+      perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
+      memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+      memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+    );
+
+    Settlement taggedSettlement() => Settlement(
+          id: 'evt-set-1',
+          tripId: 'event-1',
+          payerParticipantId: 'uid-bob',
+          recipientParticipantId: 'uid-alice',
+          amount: Decimal.parse('7.750'),
+          settledAt: DateTime(2026, 4, 1),
+          payerName: 'Bob',
+          recipientName: 'Alice',
+          currency: 'OMR',
+          groupSettleUpId: 'su-1',
+        );
+
+    testWidgets(
+      'a single-event settle-up (0 group docs) still shows in group history via '
+      'its tagged event settlement, with the all-settled headline',
+      (tester) async {
+        await tester.pumpWidget(_wrap(
+          balances: settledBalances,
+          events: [_event1],
+          group: _group(),
+          overrides: [
+            groupTaggedEventSettlementsProvider(_groupId)
+                .overrideWithValue([taggedSettlement()]),
+          ],
+        ));
+        await tester.pumpAndSettle();
+
+        // Fully settled → "Everyone's even." headline (transferCount == 0)…
+        expect(find.textContaining("Everyone's even"), findsOneWidget);
+        // …and the payment did NOT vanish — it shows in history.
+        expect(find.textContaining('7.750'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'the one-tap correct button is HIDDEN on a tagged (decomposed) settlement '
+      '(reversing it would only move the aggregate, not the event ledger)',
+      (tester) async {
+        await tester.pumpWidget(_wrap(
+          balances: settledBalances,
+          events: [_event1],
+          group: _group(),
+          overrides: [
+            groupTaggedEventSettlementsProvider(_groupId)
+                .overrideWithValue([taggedSettlement()]),
+          ],
+        ));
+        await tester.pumpAndSettle();
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'the one-tap correct button IS shown on a legacy/standalone group '
+      'settlement (null groupSettleUpId) — today\'s correct path unchanged',
+      (tester) async {
+        final legacy = Settlement(
+          id: 'grp-set-legacy',
+          tripId: _groupId,
+          payerParticipantId: 'uid-bob',
+          recipientParticipantId: 'uid-alice',
+          amount: Decimal.parse('3.000'),
+          settledAt: DateTime(2026, 4, 2),
+          payerName: 'Bob',
+          recipientName: 'Alice',
+          scope: 'group',
+          groupId: _groupId,
+          currency: 'OMR',
+        );
+        await tester.pumpWidget(_wrap(
+          balances: settledBalances,
+          events: [_event1],
+          group: _group(),
+          settlements: [legacy],
+          overrides: const [],
+        ));
+        await tester.pumpAndSettle();
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
       },
     );
   });

@@ -23,6 +23,7 @@ import '../../events/models/event_type_config.dart';
 import '../../../core/constants/supported_currencies.dart';
 import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
+import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -93,9 +94,19 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final currentUid = ref.watch(currentUserIdProvider);
     final balancesAsync = ref.watch(groupBalancesProvider(widget.groupId));
     final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
-    final settlementsAsync = ref.watch(
-      groupSettlementsProvider(widget.groupId),
+    // #752: the group history UNIONS group-settlement docs with the
+    // groupSettleUpId-tagged EVENT settlements of decomposed settle-ups — else a
+    // single-event settle-up (0 group docs) would vanish from group history.
+    final taggedEventSettlements = ref.watch(
+      groupTaggedEventSettlementsProvider(widget.groupId),
     );
+    final settlementsAsync = ref
+        .watch(groupSettlementsProvider(widget.groupId))
+        .whenData(
+          (groupSettlements) =>
+              <Settlement>[...groupSettlements, ...taggedEventSettlements]
+                ..sort((a, b) => b.settledAt.compareTo(a.settledAt)),
+        );
     // #244: events whose money read hard-errored were silently zeroed in the
     // balance above; warn that this settle-up balance may be incomplete rather
     // than present a partial sum as authoritative.

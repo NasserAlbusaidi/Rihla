@@ -211,6 +211,35 @@ final groupFailedEventIdsProvider =
   return failed;
 });
 
+/// All non-deleted EVENT settlements across [groupId] that belong to a
+/// decomposed group settle-up (#752 — `groupSettleUpId != null`). The group
+/// settle-up history UNIONS these with the group-settlement docs so a
+/// single-event settle-up (which writes per-event docs + 0 group docs) still
+/// appears in group history instead of vanishing.
+///
+/// Iterates the SAME [groupEventsProvider] list and the SAME per-event
+/// [eventSettlementsProvider] instances the live balance provider watches — and
+/// since `eventSettlementsProvider` is a cached `StreamProvider.family`, this
+/// adds NO new Firestore listeners (it re-uses the already-open streams). A
+/// soft-deleted event never enters the events list, so its settlements never
+/// appear here.
+final groupTaggedEventSettlementsProvider =
+    Provider.family<List<Settlement>, String>((ref, groupId) {
+  final events =
+      ref.watch(groupEventsProvider(groupId)).valueOrNull ?? const <Event>[];
+  final tagged = <Settlement>[];
+  for (final event in events) {
+    final eventRef = (groupId: groupId, eventId: event.id);
+    final settlements =
+        ref.watch(eventSettlementsProvider(eventRef)).valueOrNull ??
+        const <Settlement>[];
+    for (final s in settlements) {
+      if (s.groupSettleUpId != null && !s.isDeleted) tagged.add(s);
+    }
+  }
+  return tagged;
+});
+
 /// Pure reduction from a group's events, members, and money records to a
 /// [GroupBalances]. Extracted from [groupBalancesProvider] (#104) so the live
 /// streaming path and the one-shot home path ([groupBalancesOnceProvider])
