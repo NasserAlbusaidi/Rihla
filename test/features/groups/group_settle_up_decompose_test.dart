@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/theme/app_theme.dart';
 
-import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -15,6 +14,7 @@ import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
+import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -45,6 +45,27 @@ final _event1 = Event(
   startDate: DateTime(2026, 3, 15),
   createdAt: DateTime(2026, 3, 10),
 );
+
+final _event2 = Event(
+  id: 'event-2',
+  name: 'Road Trip',
+  type: EventType.trip,
+  groupId: _groupId,
+  createdBy: 'uid-alice',
+  participantIds: const ['uid-alice', 'uid-bob'],
+  participantNames: const {'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  modules: const EventModules(),
+  startDate: DateTime(2026, 5, 2),
+  createdAt: DateTime(2026, 5, 1),
+);
+
+UserBalance _bal(String id, String name, String net) => UserBalance(
+      participantId: id,
+      displayName: name,
+      totalPaid: Decimal.zero,
+      totalOwed: Decimal.zero,
+      netBalance: Decimal.parse(net),
+    );
 
 /// Bob owes Alice 7.750 OMR, ALL of it earned in event-1 (single-event case).
 GroupBalances _balancesSingleEvent({String debtorId = 'uid-bob'}) => (
@@ -352,6 +373,105 @@ void main() {
         // Fell back to today's single atomic group settlement.
         expect(groupService.addCalls, hasLength(1));
         expect(groupService.addCalls.single.amount, Decimal.parse('7.750'));
+      },
+    );
+  });
+
+  group('#752 display breakdown == decomposed write (WYSIWYG)', () {
+    testWidgets(
+      'over-display fixed: offsetting cross-event nets show the CAPPED slice '
+      '(6), never the raw per-event overlap (10)',
+      (tester) async {
+        // bob: -10 in E1, +4 in E2; alice: +10 in E1, -4 in E2 → net debt 6.
+        final balances = (
+          balances: <String, List<UserBalance>>{
+            'OMR': [
+              _bal('uid-alice', 'Alice', '6.000'),
+              _bal('uid-bob', 'Bob', '-6.000'),
+            ],
+          },
+          totalSpent: <String, Decimal>{'OMR': Decimal.parse('14.000')},
+          eventCount: 2,
+          perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+            'uid-alice': {
+              'event-1': {'OMR': Decimal.parse('10.000')},
+              'event-2': {'OMR': Decimal.parse('-4.000')},
+            },
+            'uid-bob': {
+              'event-1': {'OMR': Decimal.parse('-10.000')},
+              'event-2': {'OMR': Decimal.parse('4.000')},
+            },
+          },
+          memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+          memberRawNames: <String, String>{
+            'uid-alice': 'Alice',
+            'uid-bob': 'Bob',
+          },
+        );
+
+        await tester.pumpWidget(_wrap(
+          balances: balances,
+          events: [_event1, _event2],
+          group: _group(),
+          overrides: const [],
+        ));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(GroupSettlementTile));
+        await tester.pumpAndSettle();
+
+        // E1 carries the whole capped transfer (6), E2 nothing, no residual.
+        expect(find.textContaining('Camping Weekend'), findsOneWidget);
+        expect(find.textContaining('Road Trip'), findsNothing);
+        expect(find.text('Across events'), findsNothing);
+        // The raw E1 overlap (10) must NOT be displayed anywhere.
+        expect(find.textContaining('10.000'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'pure cross-event debt (no shared event) shows ONLY the "Across events" '
+      'residual row',
+      (tester) async {
+        // bob owes in E1, alice is owed in E2 — no shared event → all residual.
+        final balances = (
+          balances: <String, List<UserBalance>>{
+            'OMR': [
+              _bal('uid-alice', 'Alice', '5.000'),
+              _bal('uid-bob', 'Bob', '-5.000'),
+            ],
+          },
+          totalSpent: <String, Decimal>{'OMR': Decimal.parse('5.000')},
+          eventCount: 2,
+          perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+            'uid-alice': {
+              'event-2': {'OMR': Decimal.parse('5.000')},
+            },
+            'uid-bob': {
+              'event-1': {'OMR': Decimal.parse('-5.000')},
+            },
+          },
+          memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+          memberRawNames: <String, String>{
+            'uid-alice': 'Alice',
+            'uid-bob': 'Bob',
+          },
+        );
+
+        await tester.pumpWidget(_wrap(
+          balances: balances,
+          events: [_event1, _event2],
+          group: _group(),
+          overrides: const [],
+        ));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(GroupSettlementTile));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Across events'), findsOneWidget);
+        expect(find.textContaining('Camping Weekend'), findsNothing);
+        expect(find.textContaining('Road Trip'), findsNothing);
       },
     );
   });

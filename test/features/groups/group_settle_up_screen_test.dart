@@ -1214,40 +1214,47 @@ void main() {
       expect(find.textContaining('Camping Weekend'), findsOneWidget);
     });
 
-    testWidgets('renders fallback label for unknown long event id', (
-      tester,
-    ) async {
-      const longEventId = 'missing-event-id-123456';
-      final balances = (
-        balances: _balancesOwed.balances,
-        totalSpent: _balancesOwed.totalSpent,
-        eventCount: _balancesOwed.eventCount,
-        perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
-          'uid-alice': {
-            longEventId: {'OMR': Decimal.parse('7.750')},
+    testWidgets(
+      'a breakdown entry whose event is not in the events list folds into the '
+      '"Across events" residual row (#752 — display matches the write, which '
+      'cannot target an off-list event)',
+      (tester) async {
+        const orphanEventId = 'missing-event-id-123456';
+        final balances = (
+          balances: _balancesOwed.balances,
+          totalSpent: _balancesOwed.totalSpent,
+          eventCount: _balancesOwed.eventCount,
+          perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+            'uid-alice': {
+              orphanEventId: {'OMR': Decimal.parse('7.750')},
+            },
+            'uid-bob': {
+              orphanEventId: {'OMR': Decimal.parse('-7.750')},
+            },
           },
-          'uid-bob': {
-            longEventId: {'OMR': Decimal.parse('-7.750')},
-          },
-        },
-        memberNames: _balancesOwed.memberNames,
-        memberRawNames: _balancesOwed.memberRawNames,
-      );
+          memberNames: _balancesOwed.memberNames,
+          memberRawNames: _balancesOwed.memberRawNames,
+        );
 
-      await tester.pumpWidget(
-        _wrap(
-          const GroupSettleUpScreen(groupId: _groupId),
-          balancesAsync: AsyncValue.data(balances),
-          currentUid: 'uid-bob',
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(balances),
+            // events intentionally omitted → orphanEventId not in eventOrder.
+            currentUid: 'uid-bob',
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(GroupSettlementTile));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byType(GroupSettlementTile));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Event ...123456'), findsOneWidget);
-    });
+        // The orphan event is NOT rendered as a per-event row…
+        expect(find.text('Event ...123456'), findsNothing);
+        // …it folds into the cross-event residual.
+        expect(find.text('Across events'), findsOneWidget);
+      },
+    );
 
     testWidgets('truncates long event names in breakdown labels', (
       tester,

@@ -2963,6 +2963,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get groupSettleUpAcrossEventsLabel => 'Across events';
+
+  @override
   String errorPageNotFound(Object location) {
     return 'Page not found: $location';
   }

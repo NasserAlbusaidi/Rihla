@@ -186,14 +186,17 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           suggestedAmount: suggestedAmount,
                           currency: currency,
                         ),
-                    buildBreakdown: (fromUserId, toUserId, currency) =>
-                        _buildPerEventBreakdown(
-                          fromUserId,
-                          toUserId,
-                          currency,
-                          balancesData,
-                          eventNameMap,
-                        ),
+                    buildBreakdown:
+                        (fromUserId, toUserId, currency, suggestedAmount) =>
+                            _buildPerEventBreakdown(
+                              fromUserId,
+                              toUserId,
+                              currency,
+                              suggestedAmount,
+                              eventOrder,
+                              balancesData,
+                              eventNameMap,
+                            ),
                     onRecordStepped: (steps) => _runSteppedSettle(
                       context,
                       group: group,
@@ -306,34 +309,47 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   }
 
   /// Per-event attribution for the [currency] bucket whose tile invoked it
-  /// (#382 PR-3): the breakdown is per-currency, so the pairwise
-  /// min-attribution below is per-bucket by construction — no cross-currency
-  /// netting, ever.
+  /// (#382 PR-3): the breakdown is per-currency, so the decomposition below is
+  /// per-bucket by construction — no cross-currency netting, ever.
+  ///
+  /// #752: this is the SAME [BalanceCalculator.decomposeGroupSettlement] call,
+  /// with the SAME [eventOrder], that the write uses — so the displayed rows
+  /// equal the written settlements (WYSIWYG). The allocator caps the total at
+  /// [suggestedAmount], fixing the old over-display (offsetting cross-event nets
+  /// once showed the raw per-event overlap, exceeding the actual transfer). The
+  /// cross-event remainder surfaces as one "Across events" residual row.
   Map<String, Decimal> _buildPerEventBreakdown(
     String fromUserId,
     String toUserId,
     String currency,
+    Decimal suggestedAmount,
+    List<String> eventOrder,
     GroupBalances balancesData,
     Map<String, ({String name, EventType type, DateTime date})> eventNameMap,
   ) {
+    final decomposition = BalanceCalculator.decomposeGroupSettlement(
+      payerPerEventNet:
+          balancesData.perEventBreakdown[fromUserId] ??
+          const <String, Map<String, Decimal>>{},
+      recipientPerEventNet:
+          balancesData.perEventBreakdown[toUserId] ??
+          const <String, Map<String, Decimal>>{},
+      currency: currency,
+      amount: suggestedAmount,
+      eventOrder: eventOrder,
+    );
+
     final result = <String, Decimal>{};
-    final fromBreakdown = balancesData.perEventBreakdown[fromUserId] ?? {};
-    final toBreakdown = balancesData.perEventBreakdown[toUserId] ?? {};
-
-    final allEventIds = {...fromBreakdown.keys, ...toBreakdown.keys};
-
-    for (final eventId in allEventIds) {
-      final fromNet = fromBreakdown[eventId]?[currency] ?? Decimal.zero;
-      final toNet = toBreakdown[eventId]?[currency] ?? Decimal.zero;
-
-      if (fromNet < Decimal.zero && toNet > Decimal.zero) {
-        final attribution = fromNet.abs() < toNet ? fromNet.abs() : toNet;
-        if (attribution > Decimal.zero) {
-          result[_buildEventLabel(eventId, eventNameMap)] = attribution;
-        }
+    for (final eventId in eventOrder) {
+      final slice = decomposition.perEvent[eventId];
+      if (slice != null && slice > Decimal.zero) {
+        result[_buildEventLabel(eventId, eventNameMap)] = slice;
       }
     }
-
+    if (decomposition.residual > Decimal.zero) {
+      result[context.l10n.groupSettleUpAcrossEventsLabel] =
+          decomposition.residual;
+    }
     return result;
   }
 
