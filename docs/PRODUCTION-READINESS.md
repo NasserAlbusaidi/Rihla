@@ -158,12 +158,25 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-27, `18306fc6`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-29, `26c5cdac`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-27 deploy ceremony the `backend-deployed` tag is `18306fc6`; prod
+    2026-06-29 deploy ceremony the `backend-deployed` tag is `26c5cdac`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#714 (#714, Closes #710)** — claimShadow **per-shadow locking**
+    Latest delta: **#752 PR1 (#754)** — decompose a group-level settle-up into
+    per-event settlement writes. `firestore.rules` **additive/permissive**: optional
+    `groupSettleUpId` link on settlements (guarded `!('groupSettleUpId' in data) ||
+    … is string` — `validSettlementCore` runs on EVERY create, a direct access on the
+    absent key would deny every keyless settle-up) + added to the event- and
+    group-settlement `hasOnly` allow-lists; `validEventSettlementCreate` writer gate
+    relaxed `isEventParticipant`→`isGroupMember` (counterparties STILL gated to event
+    participants) so a decomposed group settle-up + #595 settle-on-behalf are accepted
+    — nothing previously-allowed becomes denied. Server oracle UNTOUCHED (already folds
+    event settlements per-event + group settlements globally by collection path →
+    byte-for-byte aggregate parity). Rules + `functions/test/` only — no function
+    add/remove/logic change (all **28** updated in place). Client decompose half
+    shipped on `main`; the corrections flow is PR2 (#753 → #755, client-only, no deploy).
+    Prior delta: **#714 (#714, Closes #710)** — claimShadow **per-shadow locking**
     (the #710 follow-up to #558's parity backstop): per-shadow claim reservations
     with a `claiming` transient state, lock-token verification, mutation markers +
     compare-release, and a new scheduled `claimShadowLockReaper` (27 → **28
