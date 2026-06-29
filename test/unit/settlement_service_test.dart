@@ -209,5 +209,50 @@ void main() {
         },
       );
     });
+
+    group('groupSettleUpId field (#752)', () {
+      test('addSettlement writes groupSettleUpId when provided', () async {
+        final s = await service.addSettlement(
+          createdBy: 'uid',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('3.000'),
+          groupSettleUpId: 'su-123',
+        );
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('settlements')
+            .doc(s.id)
+            .get();
+        expect(snap.data()!['groupSettleUpId'], equals('su-123'));
+        expect(s.groupSettleUpId, equals('su-123'));
+      });
+
+      test('addSettlement omits groupSettleUpId key when null', () async {
+        final s = await service.addSettlement(
+          createdBy: 'uid',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('3.000'),
+        );
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('events')
+            .doc('e1')
+            .collection('settlements')
+            .doc(s.id)
+            .get();
+        expect(snap.data()!.containsKey('groupSettleUpId'), isFalse);
+        expect(s.groupSettleUpId, isNull);
+      });
+    });
   });
 }

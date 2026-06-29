@@ -152,4 +152,80 @@ void main() {
       },
     );
   });
+
+  group('groupSettleUpId field (#752)', () {
+    test('fromFirestore reads groupSettleUpId when present', () {
+      final s = Settlement.fromFirestore({
+        'id': 's1',
+        'eventId': 'e1',
+        'payerParticipantId': 'p1',
+        'recipientParticipantId': 'p2',
+        'amountFils': 1000,
+        'currency': 'OMR',
+        'settledAt': DateTime.now().toUtc().toIso8601String(),
+        'isDeleted': false,
+        'deletedAt': null,
+        'note': null,
+        'groupSettleUpId': 'su-9',
+      });
+      expect(s.groupSettleUpId, equals('su-9'));
+    });
+
+    test('fromFirestore groupSettleUpId is null when absent (legacy)', () {
+      final s = Settlement.fromFirestore({
+        'id': 's1',
+        'eventId': 'e1',
+        'payerParticipantId': 'p1',
+        'recipientParticipantId': 'p2',
+        'amountFils': 1000,
+        'currency': 'OMR',
+        'settledAt': DateTime.now().toUtc().toIso8601String(),
+        'isDeleted': false,
+        'deletedAt': null,
+        'note': null,
+      });
+      expect(s.groupSettleUpId, isNull);
+    });
+
+    test('addGroupSettlement writes groupSettleUpId when provided', () async {
+      final fakeDb = FakeFirebaseFirestore();
+      final service = GroupSettlementService.withFirestore(fakeDb);
+      final s = await service.addGroupSettlement(
+        createdBy: 'uid',
+        groupId: 'g1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amount: Decimal.parse('2.000'),
+        groupSettleUpId: 'su-7',
+      );
+      final snap = await fakeDb
+          .collection('groups')
+          .doc('g1')
+          .collection('settlements')
+          .doc(s.id)
+          .get();
+      expect(snap.data()!['groupSettleUpId'], equals('su-7'));
+      expect(s.groupSettleUpId, equals('su-7'));
+    });
+
+    test('addGroupSettlement omits groupSettleUpId key when null', () async {
+      final fakeDb = FakeFirebaseFirestore();
+      final service = GroupSettlementService.withFirestore(fakeDb);
+      final s = await service.addGroupSettlement(
+        createdBy: 'uid',
+        groupId: 'g1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amount: Decimal.parse('2.000'),
+      );
+      final snap = await fakeDb
+          .collection('groups')
+          .doc('g1')
+          .collection('settlements')
+          .doc(s.id)
+          .get();
+      expect(snap.data()!.containsKey('groupSettleUpId'), isFalse);
+      expect(s.groupSettleUpId, isNull);
+    });
+  });
 }
