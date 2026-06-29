@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
@@ -110,6 +111,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               date: e.startDate ?? e.createdAt,
             ),
         };
+    // #752: the deterministic event order shared by the displayed breakdown and
+    // the decomposed write — they MUST use the same order so displayed rows ==
+    // written rows (the allocator's per-event split is cap-exhaustion-order
+    // dependent; totals/residual are order-invariant).
+    final eventOrder = [
+      for (final e in eventsAsync.valueOrNull ?? <Event>[]) e.id,
+    ];
 
     return Scaffold(
       key: GroupKeys.settleUpScreen,
@@ -168,6 +176,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                         }) => _showRecordPaymentSheet(
                           context,
                           group: group,
+                          balancesData: balancesData,
+                          eventOrder: eventOrder,
                           settlement: settlement,
                           fromRawName: fromRawName,
                           toRawName: toRawName,
@@ -184,8 +194,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                           balancesData,
                           eventNameMap,
                         ),
-                    onRecordStepped: (steps) =>
-                        _runSteppedSettle(context, group: group, steps: steps),
+                    onRecordStepped: (steps) => _runSteppedSettle(
+                      context,
+                      group: group,
+                      balancesData: balancesData,
+                      eventOrder: eventOrder,
+                      steps: steps,
+                    ),
                     // #283: correct a recorded payment by recording its
                     // offsetting reverse (swap payer↔recipient, same amount +
                     // currency) through the group write path. logActivity:false
@@ -360,6 +375,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   Future<void> _runSteppedSettle(
     BuildContext context, {
     required Group group,
+    required GroupBalances balancesData,
+    required List<String> eventOrder,
     required List<SettleStepRequest> steps,
   }) async {
     if (steps.isEmpty) return;
@@ -382,6 +399,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       final outcome = await _showRecordPaymentSheet(
         context,
         group: group,
+        balancesData: balancesData,
+        eventOrder: eventOrder,
         settlement: step.settlement,
         fromRawName: step.fromRawName,
         toRawName: step.toRawName,
@@ -433,6 +452,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   Future<_StepOutcome> _showRecordPaymentSheet(
     BuildContext context, {
     required Group group,
+    required GroupBalances balancesData,
+    required List<String> eventOrder,
     required Map<String, dynamic> settlement,
     required String fromRawName,
     required String toRawName,
@@ -507,9 +528,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       return const _StepOutcome(_StepOutcomeKind.invalid);
     }
 
-    return _recordSettlement(
+    return _recordDecomposedSettlement(
       context,
       group: group,
+      balancesData: balancesData,
+      eventOrder: eventOrder,
       fromUserId: fromUserId,
       toUserId: toUserId,
       fromName: fromRawName,
@@ -520,6 +543,230 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       showSuccessSnackbar: showSuccessSnackbar,
       connectivity: connectivity,
     );
+  }
+
+  /// #752: record a group transfer by DECOMPOSING it into per-event settlement
+  /// writes (which the event ledgers read) + one residual group settlement —
+  /// instead of a single group settlement that only moved the aggregate. The
+  /// pure allocator ([BalanceCalculator.decomposeGroupSettlement]) is the SSOT
+  /// shared with the displayed breakdown (it is called with the SAME
+  /// [eventOrder]). Returns the aggregate [_StepOutcome] so the stepped walk can
+  /// decide whether to continue.
+  ///
+  /// Falls back to a single [GroupSettlementService.addGroupSettlement] (today's
+  /// atomic path) when the transfer can't be safely decomposed:
+  ///  - either party is NOT a live group member (`group.memberIds`): the
+  ///    residual group write requires both parties in `memberIds`, but event
+  ///    writes only require event participation, so a departed party (#249)
+  ///    would partial-persist event docs then hit permission-denied on the
+  ///    residual. The single group write fails atomically instead (today's
+  ///    behavior — you already cannot settle a departed member at the group
+  ///    level). Read from `group.memberIds` — the EXACT set the residual rule
+  ///    checks — not a member-subcollection stream that can diverge.
+  ///  - no per-event attribution at all (pure cross-event / no shared event):
+  ///    identical to today's single group settlement.
+  ///
+  /// Once-semantics: the N event writes + residual run as RAW writes; the
+  /// activity log and success/queued snackbar fire EXACTLY ONCE after the walk
+  /// (amount = A), and `ledgerRevisionProvider` is bumped per successful event
+  /// write (the home one-shot reads event settlements; bumping per-write keeps
+  /// home fresh even on a partial-failure walk).
+  Future<_StepOutcome> _recordDecomposedSettlement(
+    BuildContext context, {
+    required Group group,
+    required GroupBalances balancesData,
+    required List<String> eventOrder,
+    required String fromUserId,
+    required String toUserId,
+    required String fromName,
+    required String toName,
+    required Decimal amount,
+    required String currency,
+    String? note,
+    bool showSuccessSnackbar = true,
+    ConnectivityNotifier? connectivity,
+  }) async {
+    final decomposition = BalanceCalculator.decomposeGroupSettlement(
+      payerPerEventNet:
+          balancesData.perEventBreakdown[fromUserId] ??
+          const <String, Map<String, Decimal>>{},
+      recipientPerEventNet:
+          balancesData.perEventBreakdown[toUserId] ??
+          const <String, Map<String, Decimal>>{},
+      currency: currency,
+      amount: amount,
+      eventOrder: eventOrder,
+    );
+    final bothLiveMembers =
+        group.memberIds.contains(fromUserId) &&
+        group.memberIds.contains(toUserId);
+    // Fall back to today's atomic single group write (no decompose).
+    if (!bothLiveMembers || decomposition.perEvent.isEmpty) {
+      return _recordSettlement(
+        context,
+        group: group,
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        fromName: fromName,
+        toName: toName,
+        amount: amount,
+        currency: currency,
+        note: note,
+        showSuccessSnackbar: showSuccessSnackbar,
+        connectivity: connectivity,
+      );
+    }
+
+    final groupSettleUpId = const Uuid().v4();
+    final ConnectivityNotifier connectivityNotifier =
+        connectivity ?? ref.read(connectivityProvider.notifier);
+    final skipWait =
+        ref.read(connectivityProvider) != ConnectivityStatus.online;
+
+    try {
+      String actorName;
+      try {
+        actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+            ? ref.read(settingsProvider).deviceName
+            : fromName;
+      } catch (_) {
+        actorName = fromName;
+      }
+
+      String currentUid;
+      try {
+        currentUid = FirebaseConfig.currentUser?.uid ?? fromUserId;
+      } catch (_) {
+        currentUid = fromUserId;
+      }
+      if (currentUid.isEmpty) {
+        throw StateError(
+          'Cannot record group settlement without an authenticated user.',
+        );
+      }
+
+      final eventService = ref.read(settlementServiceProvider);
+      final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
+      var anyQueued = false;
+
+      // Events first, residual last — every intermediate state stays consistent
+      // (event ledgers + aggregate move together). A failed write throws → the
+      // catch stops the walk; recorded rows persist (append-only); re-entry
+      // recomputes the remainder from the live streams.
+      for (final eventId in eventOrder) {
+        final slice = decomposition.perEvent[eventId];
+        if (slice == null) continue;
+        final ack = await awaitServerAck(
+          eventService.addSettlement(
+            groupId: widget.groupId,
+            eventId: eventId,
+            payerParticipantId: fromUserId,
+            recipientParticipantId: toUserId,
+            amount: slice,
+            currency: currency,
+            createdBy: currentUid,
+            payerName: fromName,
+            recipientName: toName,
+            note: note,
+            groupSettleUpId: groupSettleUpId,
+          ),
+          skipWait: skipWait,
+        );
+        if (ack == WriteAck.queued) anyQueued = true;
+        // #752/#104: the home one-shot reads EVENT settlements — bump per
+        // successful event write so home stays fresh even on a partial walk.
+        ledgerRevision.state++;
+      }
+
+      if (decomposition.residual > Decimal.zero) {
+        final ack = await awaitServerAck(
+          ref
+              .read(groupSettlementServiceProvider)
+              .addGroupSettlement(
+                groupId: widget.groupId,
+                payerParticipantId: fromUserId,
+                recipientParticipantId: toUserId,
+                amount: decomposition.residual,
+                currency: currency,
+                note: note,
+                payerName: fromName,
+                recipientName: toName,
+                createdBy: currentUid,
+                groupSettleUpId: groupSettleUpId,
+              ),
+          skipWait: skipWait,
+        );
+        if (ack == WriteAck.queued) anyQueued = true;
+      }
+
+      // Connectivity note ONCE after the walk (#357/#412).
+      if (anyQueued) {
+        connectivityNotifier.noteQueuedWrite();
+      } else {
+        connectivityNotifier.noteLocalWrite();
+      }
+
+      // Activity log ONCE for the whole logical settle-up, amount = A (#282:
+      // name the OTHER party relative to the actor).
+      final counterpartyName = currentUid == toUserId ? fromName : toName;
+      ref
+          .read(groupActivityServiceProvider)
+          .logGroupEvent(
+            groupId: widget.groupId,
+            type: 'group_settlement',
+            actorId: currentUid,
+            actorName: actorName,
+            description:
+                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+            metadata: {
+              'amount': amount.toString(),
+              'recipientId': toUserId,
+              'currency': currency,
+            },
+          );
+
+      if (showSuccessSnackbar && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              anyQueued
+                  ? context.l10n.settleUpRecordedWillSync
+                  : context.l10n.settleUpRecorded,
+            ),
+            backgroundColor: context.colors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+      return _StepOutcome(
+        _StepOutcomeKind.recorded,
+        ack: anyQueued ? WriteAck.queued : WriteAck.acked,
+      );
+    } catch (e) {
+      // L4: error snackbar stays loud even during a walk; the caller breaks on a
+      // non-recorded outcome.
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              settlementWriteErrorMessage(
+                context.l10n,
+                classifySettlementWriteError(e),
+              ),
+            ),
+            backgroundColor: context.colors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+      return const _StepOutcome(_StepOutcomeKind.failed);
+    }
   }
 
   Future<_StepOutcome> _recordSettlement(

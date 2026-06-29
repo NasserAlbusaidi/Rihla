@@ -1079,6 +1079,7 @@ class _RecordingSettlementService extends SettlementService {
     String? payerName,
     String? recipientName,
     String? note,
+    String? groupSettleUpId,
   }) async {
     calls.add((
       payerParticipantId: payerParticipantId,
@@ -1117,6 +1118,7 @@ class _FailingSettlementService extends SettlementService {
     String? payerName,
     String? recipientName,
     String? note,
+    String? groupSettleUpId,
   }) {
     throw StateError('write failed');
   }
@@ -1137,6 +1139,7 @@ class _DeniedSettlementService extends SettlementService {
     String? payerName,
     String? recipientName,
     String? note,
+    String? groupSettleUpId,
   }) {
     throw FirebaseException(
       plugin: 'cloud_firestore',

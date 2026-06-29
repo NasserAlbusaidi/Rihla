@@ -303,6 +303,7 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
     String? note,
     String? payerName,
     String? recipientName,
+    String? groupSettleUpId,
   }) async {
     if (errorToThrow != null) {
       throw errorToThrow!;
