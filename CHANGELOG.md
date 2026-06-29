@@ -4,6 +4,37 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] — 2026-06-29
+
+Ledger and money-trust release. Group settle-ups now decompose into per-event
+settlements so cross-event and group balances reconcile exactly; the split
+editor is one card; and invite attribution survives Play Store installs. The
+decomposed settle-up Firestore rules are already live in production (`26c5cdac`)
+— no further backend deploy is required for this client.
+
+### Added
+- **Android install-referrer invite attribution (#724).** Joining via a Play
+  Store install link now attributes the invite on first launch, even when the
+  app is installed before the deep link is opened.
+
+### Changed
+- **Group settle-ups decompose into per-event writes (#752/#753).** Settling a
+  group balance writes one settlement per underlying event and corrects them
+  atomically, so per-event and group views stay consistent.
+- **One unified Split card (#485).** The ledger split editor collapses its three
+  sections and the duplicate payer picker into a single card.
+- **Per-event-type recap copy (#689).** Event recap nouns and empty-state copy
+  now match the event type.
+- **Cleaner join screen (#293).** The display-name field starts blank, the
+  invite-code field filters to the valid alphabet, and the form auto-submits
+  once.
+
+### Fixed
+- **Faster expense sync (#632).** Expense snapshot ticks deserialize only the
+  documents that changed instead of the whole collection.
+- **Hardened cold boot (#724/#741).** Cold-start steps are isolated so an early
+  failure can't disable account recovery.
+
 ## [1.6.3] — 2026-06-27
 
 Performance, ledger-category correctness, and offline-UX patch, plus backend
