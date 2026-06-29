@@ -25,6 +25,7 @@ import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
+import '../../ledger/utils/correction_note.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
@@ -58,6 +59,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   /// Keys for settlement tiles, used for auto-scroll when
   /// [widget.preSelectedMemberId] is set.
   final Map<int, GlobalKey> _tileKeys = {};
+
+  /// #753: logical settle-up ids whose atomic correction is mid-flight. The
+  /// synchronous add-before-await guards against a double-tap reversing the same
+  /// settle-up twice in the window before the reverse stream emits.
+  final Set<String> _correctingSettleUpIds = <String>{};
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +237,15 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                       note: context.l10n.settleUpCorrectionNote,
                       logActivity: false,
                     ),
+                    // #753: correct a DECOMPOSED settle-up — reverse all its
+                    // tagged docs atomically. Wiring this also switches the
+                    // history regroup on (the event screen leaves it null).
+                    onCorrectLogical: (groupSettleUpId) =>
+                        _correctLogicalSettleUp(
+                          context,
+                          group: group,
+                          groupSettleUpId: groupSettleUpId,
+                        ),
                   );
 
                   if (failedEventIds.isEmpty) return body;
@@ -931,6 +946,126 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         );
       }
       return const _StepOutcome(_StepOutcomeKind.failed);
+    }
+  }
+
+  /// #753: correct a DECOMPOSED group settle-up by reversing ALL of its tagged
+  /// docs (the N event settlements + the residual) in ONE atomic WriteBatch — so
+  /// the per-event ledgers and the aggregate re-open together, never partially.
+  /// The reverses carry the SAME groupSettleUpId + the correction-note sentinel,
+  /// so the logical history row flips to "corrected" and a re-tap is a no-op.
+  /// Append-only (B3): the originals stay; corrections are new offsetting rows.
+  Future<void> _correctLogicalSettleUp(
+    BuildContext context, {
+    required Group group,
+    required String groupSettleUpId,
+  }) async {
+    // Gather every live doc of this logical settle-up (group residual + tagged
+    // event docs) — the same lists that feed the history regroup.
+    final groupDocs =
+        ref.read(groupSettlementsProvider(widget.groupId)).valueOrNull ??
+            const <Settlement>[];
+    final taggedEventDocs =
+        ref.read(groupTaggedEventSettlementsProvider(widget.groupId));
+    final tagged = [
+      for (final s in [...groupDocs, ...taggedEventDocs])
+        if (s.groupSettleUpId == groupSettleUpId && !s.isDeleted) s,
+    ];
+
+    // In-flight guard (synchronous, before any await): closes the double-tap
+    // window the already-corrected guard (which needs the reverse stream to
+    // emit) cannot.
+    if (_correctingSettleUpIds.contains(groupSettleUpId)) return;
+    // Already corrected (re-entry after the reverse landed) → no-op.
+    if (tagged.any((s) => isCorrectionNote(s.note))) return;
+    final originals = [
+      for (final s in tagged)
+        if (!isCorrectionNote(s.note)) s,
+    ];
+    if (originals.isEmpty) return;
+
+    final correctedBy = ref.read(currentUserIdProvider);
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final successColor = context.colors.success;
+    final errorColor = context.colors.error;
+    if (correctedBy == null || correctedBy.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            settlementWriteErrorMessage(l10n, SettlementWriteErrorKind.unknown),
+          ),
+          backgroundColor: errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    _correctingSettleUpIds.add(groupSettleUpId);
+    final connectivityNotifier = ref.read(connectivityProvider.notifier);
+    final skipWait =
+        ref.read(connectivityProvider) != ConnectivityStatus.online;
+    try {
+      // One atomic WriteBatch — all reverses commit or none do (rules-checked +
+      // offline-queued atomically); a departed-party residual fails the WHOLE
+      // batch (clean), never a partial reversal (#753 §3c).
+      final ack = await awaitServerAck(
+        ref.read(settlementCorrectionServiceProvider).reverseLogicalSettleUp(
+              groupId: widget.groupId,
+              groupSettleUpId: groupSettleUpId,
+              originals: originals,
+              correctedBy: correctedBy,
+              correctionNote: l10n.settleUpCorrectionNote,
+            ),
+        skipWait: skipWait,
+      );
+      // The reverse includes EVENT settlements → the home one-shot reads them;
+      // bump after the ack RETURNS (acked OR queued) so home isn't stale offline.
+      ref.read(ledgerRevisionProvider.notifier).state++;
+      if (ack == WriteAck.queued) {
+        connectivityNotifier.noteQueuedWrite();
+      } else {
+        connectivityNotifier.noteLocalWrite();
+      }
+      // No activity log — a reversal must not surface as a fresh feed payment.
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              ack == WriteAck.queued
+                  ? l10n.settleUpRecordedWillSync
+                  : l10n.settleUpRecorded,
+            ),
+            backgroundColor: successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              settlementWriteErrorMessage(
+                l10n,
+                classifySettlementWriteError(e),
+              ),
+            ),
+            backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      _correctingSettleUpIds.remove(groupSettleUpId);
     }
   }
 }
