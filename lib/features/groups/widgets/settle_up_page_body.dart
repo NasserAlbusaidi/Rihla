@@ -6,7 +6,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -15,6 +14,7 @@ import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
+import '../../ledger/utils/correction_note.dart';
 import '../keys/group_keys.dart';
 import '../services/member_name_resolver.dart';
 import '../widgets/group_settlement_summary.dart';
@@ -739,21 +739,6 @@ class _PaymentHistorySection extends StatelessWidget {
   }
 }
 
-/// The app-authored correction-note sentinel
-/// ([AppLocalizations.settleUpCorrectionNote]) in EVERY supported locale. A
-/// reversing settlement (#283) carries this note in the CORRECTOR's locale, so
-/// recognizing it on read must not assume the viewer's locale matches. Computed
-/// once. (#567)
-final Set<String> _correctionNoteSentinels = {
-  for (final locale in AppLocalizations.supportedLocales)
-    lookupAppLocalizations(locale).settleUpCorrectionNote,
-};
-
-/// True when [note] marks a #283 reversing correction — so Payment history can
-/// render it as a correction rather than another (duplicate-looking) payment.
-bool _isCorrectionNote(String? note) =>
-    note != null && _correctionNoteSentinels.contains(note);
-
 /// One rendered row of the settle-up payment history (#753).
 sealed class HistoryRow {
   const HistoryRow();
@@ -817,7 +802,7 @@ List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
     if (!seen.add(id)) continue; // already folded this logical set
     final members = tagged[id]!;
     final originals =
-        members.where((m) => !_isCorrectionNote(m.note)).toList();
+        members.where((m) => !isCorrectionNote(m.note)).toList();
     if (originals.isEmpty) {
       // Defensive: a tagged set with no non-correction doc (corruption / an
       // orphaned reverse) — never a phantom logical row; render its members
@@ -837,7 +822,7 @@ List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
         groupSettleUpId: id,
         representative: originals.first,
         totalAmount: total,
-        isCorrected: members.any((m) => _isCorrectionNote(m.note)),
+        isCorrected: members.any((m) => isCorrectionNote(m.note)),
         settledAt: settledAt,
       ),
     );
@@ -969,7 +954,7 @@ class _HistoryTile extends StatelessWidget {
     // payment. Mark it with a reversal icon + label instead of the green tick.
     // #753: a corrected LOGICAL row reads the same way (its representative is an
     // original, so the note-based check alone would miss it).
-    final isCorrection = isCorrectedLogical || _isCorrectionNote(settlement.note);
+    final isCorrection = isCorrectedLogical || isCorrectionNote(settlement.note);
     final accent = isCorrection
         ? context.colors.textSecondary
         : context.colors.success;
