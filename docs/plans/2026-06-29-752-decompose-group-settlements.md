@@ -227,7 +227,7 @@ The per-currency stepping (`_runSteppedSettle`) is unchanged (each step is one c
 - Idempotency: a re-tapped correction must not double-reverse.
 - Live-membership at correction time (a party may depart between record and correct).
 
-**Tracked as a fast-follow issue (filed before PR1 merges) so it is not a Schrödinger's fix** (CLAUDE.md: a deferred fix lives in a named milestone, never a memory note).
+**Tracked as #753 (filed before PR1 merges) so it is not a Schrödinger's fix** (CLAUDE.md: a deferred fix lives in a named milestone, never a memory note). Milestone 1.7.0.
 
 ---
 
@@ -286,4 +286,4 @@ The per-currency stepping (`_runSteppedSettle`) is unchanged (each step is one c
 7. Docs: update CLAUDE.md balance-aggregate gotcha wording + `group_balance_aggregate_model.dart` comment (principle 6 caveat).
 8. `flutter analyze` clean, full suite, `tool/check_theme_purity.sh`, then `/automerge` (Gate-category → fresh-Opus review path). PR body carries `Refs #752` (PARTIAL — corrections deferred; keep #752 open re-scoped, and put `Refs #752` in the COMMIT message too, not just the PR body — squash-merge auto-closes from the commit body).
 
-**PR2 (fast-follow, own spec + Gate):** corrections-of-decomposed via atomic `WriteBatch` (§6). Filed as a new issue before PR1 merges.
+**PR2 (fast-follow, own spec + Gate):** corrections-of-decomposed via atomic `WriteBatch` (§6). Filed as **#753** (milestone 1.7.0) before PR1 merges.
