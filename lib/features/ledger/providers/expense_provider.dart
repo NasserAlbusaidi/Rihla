@@ -819,6 +819,75 @@ class BalanceCalculator {
     };
   }
 
+  /// Pure decomposition of a group transfer [amount] (payer→recipient, in
+  /// [currency]) into per-event attributions + a cross-event [residual] — the
+  /// SINGLE source of truth for BOTH the displayed breakdown and the written
+  /// settlements (#752, #242 WYSIWYG). Computed in integer subunits so
+  /// `Σ(perEvent) + residual == toSubunits(amount)` EXACTLY (whole-subunit,
+  /// [MoneySerializer]-quantized).
+  ///
+  /// Invariants (pinned by `decompose_group_settlement_test.dart`):
+  ///  - `residual >= 0` ALWAYS (never a negative/reverse settlement).
+  ///  - `perEvent[e] <= min(|payerNet_e|, recipientNet_e)` (never more than the
+  ///    event "earned") AND `Σ perEvent <= toSubunits(amount)`.
+  ///  - `Σ perEvent + residual == toSubunits(amount)`, exactly.
+  ///  - Deterministic given [eventOrder]; events absent from a party's
+  ///    breakdown contribute zero (skipped).
+  ///  - `amount <= 0` → `({}, 0)`.
+  ///
+  /// An event is attributable only where the payer OWES (`payerNet_e < 0`) and
+  /// the recipient is OWED (`recipientNet_e > 0`); the slice is capped at the
+  /// overlap `min(|payerNet_e|, recipientNet_e)` and at the unallocated
+  /// [remaining]. Cross-event debt (payer owes in E1, is owed in E2) and partial
+  /// settlements (`amount` < full suggested) both fall into [residual] by
+  /// construction — so the naive `Σ min(|fromNet|, toNet)` over-count (and its
+  /// negative residual) can never occur.
+  ///
+  /// [currency] MUST be the same bucket key used in [payerPerEventNet] /
+  /// [recipientPerEventNet] (both derive from the one balance computation, which
+  /// fences with `isSupported(c) ? c : 'OMR'`, preserving case). The map lookups
+  /// use it verbatim — do NOT `.toUpperCase()` it (the internal `isSupported`
+  /// fence only keeps the [MoneySerializer] calls from throwing).
+  static ({Map<String, Decimal> perEvent, Decimal residual})
+      decomposeGroupSettlement({
+    required Map<String, Map<String, Decimal>> payerPerEventNet,
+    required Map<String, Map<String, Decimal>> recipientPerEventNet,
+    required String currency,
+    required Decimal amount,
+    required List<String> eventOrder,
+  }) {
+    final cur = MoneySerializer.isSupported(currency) ? currency : 'OMR';
+    final perEvent = <String, Decimal>{};
+    var remaining = MoneySerializer.toSubunits(amount, cur);
+    if (remaining <= 0) {
+      return (perEvent: perEvent, residual: Decimal.zero);
+    }
+
+    for (final eventId in eventOrder) {
+      if (remaining <= 0) break;
+      final payerNet = MoneySerializer.toSubunits(
+        payerPerEventNet[eventId]?[cur] ?? Decimal.zero,
+        cur,
+      );
+      final recipientNet = MoneySerializer.toSubunits(
+        recipientPerEventNet[eventId]?[cur] ?? Decimal.zero,
+        cur,
+      );
+      if (payerNet < 0 && recipientNet > 0) {
+        final cap = (-payerNet) < recipientNet ? (-payerNet) : recipientNet;
+        final take = cap < remaining ? cap : remaining;
+        if (take > 0) {
+          perEvent[eventId] = MoneySerializer.fromSubunits(take, cur);
+          remaining -= take;
+        }
+      }
+    }
+    return (
+      perEvent: perEvent,
+      residual: MoneySerializer.fromSubunits(remaining, cur),
+    );
+  }
+
   static List<Map<String, dynamic>> calculateOptimalSettlements({
     required List<UserBalance> balances,
     Map<String, String>? userNames,
