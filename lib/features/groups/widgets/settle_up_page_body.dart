@@ -6,7 +6,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -15,6 +14,7 @@ import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
+import '../../ledger/utils/correction_note.dart';
 import '../keys/group_keys.dart';
 import '../services/member_name_resolver.dart';
 import '../widgets/group_settlement_summary.dart';
@@ -190,6 +190,16 @@ class SettleUpPageBody extends StatelessWidget {
   /// hides the affordance.
   final void Function(Settlement settlement)? onCorrect;
 
+  /// Optional "correct a DECOMPOSED settle-up" driver (#753). When non-null, the
+  /// history REGROUPS every `groupSettleUpId`-tagged set into one logical row
+  /// whose correct affordance hands back the `groupSettleUpId` so the screen can
+  /// reverse all N event docs + the residual atomically. The group screen wires
+  /// it; the event screen leaves it null → NO regroup (its `settlements` are
+  /// one-event-only, so a "logical" total there would be a misleading partial),
+  /// preserving the PR1 per-doc rendering. Distinct from [onCorrect] so the
+  /// shared single-`Settlement` contract stays untouched.
+  final void Function(String groupSettleUpId)? onCorrectLogical;
+
   const SettleUpPageBody({
     super.key,
     required this.subjectName,
@@ -204,6 +214,7 @@ class SettleUpPageBody extends StatelessWidget {
     this.preSelectedMemberId,
     this.onRecordStepped,
     this.onCorrect,
+    this.onCorrectLogical,
   });
 
   @override
@@ -305,6 +316,7 @@ class SettleUpPageBody extends StatelessWidget {
               displayNames: displayNames,
               subjectName: subjectName,
               onCorrect: onCorrect,
+              onCorrectLogical: onCorrectLogical,
             ),
           ],
         ],
@@ -648,6 +660,7 @@ class _PaymentHistorySection extends StatelessWidget {
     required this.displayNames,
     required this.subjectName,
     this.onCorrect,
+    this.onCorrectLogical,
   });
 
   final List<Settlement> settlements;
@@ -659,14 +672,24 @@ class _PaymentHistorySection extends StatelessWidget {
   /// #283: hands a recorded payment back for an offsetting correction.
   final void Function(Settlement settlement)? onCorrect;
 
+  /// #753: hands a `groupSettleUpId` back for an atomic logical correction.
+  /// Non-null ONLY on the group screen — it also switches on the regroup.
+  final void Function(String groupSettleUpId)? onCorrectLogical;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionLabel(label: context.l10n.settleUpPaymentHistory),
-        const SizedBox(height: 10),
-        for (var i = 0; i < settlements.length; i++)
+    // #753: regroup tagged settle-ups into one logical row ONLY on the group
+    // screen (where onCorrectLogical is wired). The event screen keeps the PR1
+    // per-doc rendering (its settlements are one-event-only; a regrouped "total"
+    // would be a misleading partial).
+    final children = <Widget>[
+      _SectionLabel(label: context.l10n.settleUpPaymentHistory),
+      const SizedBox(height: 10),
+    ];
+
+    if (onCorrectLogical == null) {
+      for (var i = 0; i < settlements.length; i++) {
+        children.add(
           _HistoryTile(
             settlement: settlements[i],
             displayNames: displayNames,
@@ -674,25 +697,138 @@ class _PaymentHistorySection extends StatelessWidget {
             index: i,
             onCorrect: onCorrect,
           ),
-      ],
+        );
+      }
+    } else {
+      final rows = groupSettlementHistory(settlements);
+      for (var i = 0; i < rows.length; i++) {
+        final row = rows[i];
+        switch (row) {
+          case SoloHistoryRow(:final settlement):
+            children.add(
+              _HistoryTile(
+                settlement: settlement,
+                displayNames: displayNames,
+                subjectName: subjectName,
+                index: i,
+                onCorrect: onCorrect,
+              ),
+            );
+          case LogicalHistoryRow():
+            children.add(
+              _HistoryTile(
+                settlement: row.representative,
+                displayNames: displayNames,
+                subjectName: subjectName,
+                index: i,
+                overrideAmount: row.totalAmount,
+                isCorrectedLogical: row.isCorrected,
+                onCorrectLogical: row.isCorrected
+                    ? null
+                    : () => onCorrectLogical!(row.groupSettleUpId),
+              ),
+            );
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
   }
 }
 
-/// The app-authored correction-note sentinel
-/// ([AppLocalizations.settleUpCorrectionNote]) in EVERY supported locale. A
-/// reversing settlement (#283) carries this note in the CORRECTOR's locale, so
-/// recognizing it on read must not assume the viewer's locale matches. Computed
-/// once. (#567)
-final Set<String> _correctionNoteSentinels = {
-  for (final locale in AppLocalizations.supportedLocales)
-    lookupAppLocalizations(locale).settleUpCorrectionNote,
-};
+/// One rendered row of the settle-up payment history (#753).
+sealed class HistoryRow {
+  const HistoryRow();
+}
 
-/// True when [note] marks a #283 reversing correction — so Payment history can
-/// render it as a correction rather than another (duplicate-looking) payment.
-bool _isCorrectionNote(String? note) =>
-    note != null && _correctionNoteSentinels.contains(note);
+/// An untagged settlement — a legacy/standalone group settlement or its
+/// single-doc correction. Rendered byte-identically to the pre-#753 history
+/// (its own one-tap correct, "Correction" label when the note matches).
+class SoloHistoryRow extends HistoryRow {
+  const SoloHistoryRow(this.settlement);
+  final Settlement settlement;
+}
+
+/// A regroup of every doc sharing one `groupSettleUpId` — the N event
+/// settlements + residual of one decomposed settle-up (#752/#753) collapsed into
+/// ONE row. [totalAmount] folds only the NON-correction docs (= the logical
+/// transfer A); [isCorrected] is true once a tagged reverse (correction note) is
+/// present — the atomic reverse means its presence implies the WHOLE settle-up
+/// was reversed, so it is the idempotency signal that hides the correct button.
+class LogicalHistoryRow extends HistoryRow {
+  const LogicalHistoryRow({
+    required this.groupSettleUpId,
+    required this.representative,
+    required this.totalAmount,
+    required this.isCorrected,
+    required this.settledAt,
+  });
+
+  final String groupSettleUpId;
+
+  /// The newest non-correction doc — source of payer/recipient/currency/ids.
+  final Settlement representative;
+  final Decimal totalAmount;
+  final bool isCorrected;
+  final DateTime settledAt;
+}
+
+/// Collapses a settle-up history into display rows. Untagged docs stay
+/// individual [SoloHistoryRow]s in the incoming (newest-first) order; each
+/// `groupSettleUpId`-tagged set becomes ONE [LogicalHistoryRow] positioned at
+/// its newest member. Input is assumed pre-sorted newest-first (the screen sorts
+/// the group-doc ∪ tagged-event-doc union by `settledAt` descending). Pure.
+@visibleForTesting
+List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
+  // Pre-group tagged members so a logical row sees ALL of its docs regardless
+  // of where each sits in the input order.
+  final tagged = <String, List<Settlement>>{};
+  for (final s in settlements) {
+    final id = s.groupSettleUpId;
+    if (id != null) (tagged[id] ??= <Settlement>[]).add(s);
+  }
+
+  final rows = <HistoryRow>[];
+  final seen = <String>{};
+  for (final s in settlements) {
+    final id = s.groupSettleUpId;
+    if (id == null) {
+      rows.add(SoloHistoryRow(s));
+      continue;
+    }
+    if (!seen.add(id)) continue; // already folded this logical set
+    final members = tagged[id]!;
+    final originals =
+        members.where((m) => !isCorrectionNote(m.note)).toList();
+    if (originals.isEmpty) {
+      // Defensive: a tagged set with no non-correction doc (corruption / an
+      // orphaned reverse) — never a phantom logical row; render its members
+      // individually at this newest-first position.
+      rows.addAll(members.map(SoloHistoryRow.new));
+      continue;
+    }
+    final total = originals.fold<Decimal>(
+      Decimal.zero,
+      (sum, m) => sum + m.amount,
+    );
+    final settledAt = members
+        .map((m) => m.settledAt)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+    rows.add(
+      LogicalHistoryRow(
+        groupSettleUpId: id,
+        representative: originals.first,
+        totalAmount: total,
+        isCorrected: members.any((m) => isCorrectionNote(m.note)),
+        settledAt: settledAt,
+      ),
+    );
+  }
+  return rows;
+}
 
 class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
@@ -701,6 +837,9 @@ class _HistoryTile extends StatelessWidget {
     required this.subjectName,
     required this.index,
     this.onCorrect,
+    this.overrideAmount,
+    this.isCorrectedLogical = false,
+    this.onCorrectLogical,
   });
 
   final Settlement settlement;
@@ -713,6 +852,16 @@ class _HistoryTile extends StatelessWidget {
   /// settlement after a confirmation dialog.
   final void Function(Settlement settlement)? onCorrect;
 
+  /// #753 logical-row overrides (set only when this tile renders a
+  /// [LogicalHistoryRow]). [overrideAmount] is the logical total A (shown +
+  /// confirmed instead of the representative doc's slice); [isCorrectedLogical]
+  /// forces the "Correction" treatment + hides the correct button (idempotency);
+  /// [onCorrectLogical] is the atomic logical-correction driver (used instead of
+  /// [onCorrect], which targets a single doc).
+  final Decimal? overrideAmount;
+  final bool isCorrectedLogical;
+  final VoidCallback? onCorrectLogical;
+
   /// Confirms then hands the original [settlement] to [onCorrect]. The dialog
   /// describes the REVERSE flow (the recipient pays the payer back) and reuses
   /// the tile's already-resolved [payerName]/[recipientName] locals.
@@ -723,7 +872,7 @@ class _HistoryTile extends StatelessWidget {
   ) async {
     final l10n = context.l10n;
     final amountStr = AppFormatters.formatCurrency(
-      settlement.amount,
+      overrideAmount ?? settlement.amount,
       settlement.currency,
     );
     final confirmed = await showDialog<bool>(
@@ -745,7 +894,14 @@ class _HistoryTile extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed == true) onCorrect!(settlement);
+    if (confirmed != true) return;
+    // #753: a logical row reverses the whole settle-up by id; a solo row hands
+    // back the single doc (#283).
+    if (onCorrectLogical != null) {
+      onCorrectLogical!();
+    } else {
+      onCorrect!(settlement);
+    }
   }
 
   /// Composes the plain-text receipt shared via [shareText] (#359). Built only
@@ -763,7 +919,10 @@ class _HistoryTile extends StatelessWidget {
       l10n.settleUpReceiptLine(
         payerName,
         recipientName,
-        AppFormatters.formatCurrency(settlement.amount, settlement.currency),
+        AppFormatters.formatCurrency(
+          overrideAmount ?? settlement.amount,
+          settlement.currency,
+        ),
       ),
       l10n.settleUpReceiptContext(dateStr, subjectName),
     ];
@@ -793,7 +952,9 @@ class _HistoryTile extends StatelessWidget {
     ).format(settlement.settledAt);
     // #567: a reversing correction must read as a correction, not as another
     // payment. Mark it with a reversal icon + label instead of the green tick.
-    final isCorrection = _isCorrectionNote(settlement.note);
+    // #753: a corrected LOGICAL row reads the same way (its representative is an
+    // original, so the note-based check alone would miss it).
+    final isCorrection = isCorrectedLogical || isCorrectionNote(settlement.note);
     final accent = isCorrection
         ? context.colors.textSecondary
         : context.colors.success;
@@ -878,7 +1039,7 @@ class _HistoryTile extends StatelessWidget {
               ),
               Text(
                 AppFormatters.formatCurrency(
-                  settlement.amount,
+                  overrideAmount ?? settlement.amount,
                   settlement.currency,
                 ),
                 style: TextStyle(
@@ -891,14 +1052,13 @@ class _HistoryTile extends StatelessWidget {
               // reverse settlement (append-only). Shown only when a correction
               // driver is wired AND both party ids are present (the offset needs
               // both to target). Keyed on the newest tile for a stable test hook.
-              // #752: HIDDEN on a decomposed group settle-up (groupSettleUpId !=
-              // null) — the group-only onCorrect reverse would move the
-              // aggregate but NOT the event ledger, re-introducing the very
-              // divergence this fixes. Atomic logical-settle-up correction is
-              // PR2; until then, record a manual offsetting transfer. Legacy /
-              // standalone settlements (null id) keep one-tap correction.
-              if (onCorrect != null &&
-                  settlement.groupSettleUpId == null &&
+              // #752/#753: a SOLO row keeps one-tap single-doc correction but
+              // ONLY when untagged (groupSettleUpId == null) — a tagged doc must
+              // not be piecemeal-corrected. A LOGICAL row (onCorrectLogical set)
+              // reverses the whole settle-up atomically and hides once corrected
+              // (isCorrectedLogical → onCorrectLogical passed null upstream).
+              if (((onCorrect != null && settlement.groupSettleUpId == null) ||
+                      onCorrectLogical != null) &&
                   payerId != null &&
                   payerId.isNotEmpty &&
                   recipientId != null &&

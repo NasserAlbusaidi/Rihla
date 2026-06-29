@@ -528,8 +528,8 @@ void main() {
     );
 
     testWidgets(
-      'the one-tap correct button is HIDDEN on a tagged (decomposed) settlement '
-      '(reversing it would only move the aggregate, not the event ledger)',
+      'a tagged (decomposed) settlement exposes the LOGICAL correct button '
+      '(#753 — PR1 hid it; PR2 reverses the whole settle-up atomically)',
       (tester) async {
         await tester.pumpWidget(_wrap(
           balances: settledBalances,
@@ -541,7 +541,7 @@ void main() {
           ],
         ));
         await tester.pumpAndSettle();
-        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
       },
     );
 
