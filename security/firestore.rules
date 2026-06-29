@@ -116,7 +116,13 @@ service cloud.firestore {
         && nullableString(data.note)
         && data.isDeleted is bool
         && (data.deletedAt == null || data.deletedAt is string)
-        && data.settledAt is string;
+        && data.settledAt is string
+        // #752 group-settle-up link. OPTIONAL — the client OMITS the key when
+        // null (it is not written as explicit null), so this MUST use the
+        // `!('x' in data) ||` guard. A direct `data.groupSettleUpId == ...`
+        // access on the absent key would deny EVERY keyless settlement write
+        // (i.e. all existing settle-ups), since this core runs on every create.
+        && (!('groupSettleUpId' in data) || data.groupSettleUpId is string);
     }
 
     function groupPath(groupId) {
@@ -749,7 +755,8 @@ service cloud.firestore {
               'recipientName',
               'isDeleted',
               'deletedAt',
-              'settledAt'
+              'settledAt',
+              'groupSettleUpId'
             ])
             && data.id == docId
             && data.eventId == eventId
@@ -766,8 +773,21 @@ service cloud.firestore {
           }
 
           function validEventSettlementCreate() {
+            // #752: writer need only be a group MEMBER (was isEventParticipant),
+            // so a group-level settle-up decomposed into per-event settlement
+            // docs — and #595 settle-on-behalf — are accepted. The counterparties
+            // are STILL gated to event participants (validEventSettlementBase
+            // payerParticipantId/recipientParticipantId in participants()). This
+            // matches the #595 "any member may record a transfer between two
+            // others" model and is no broader than today's group-settlement
+            // permission (any member may already create a group settlement
+            // between two members). It is NOT a strict subset — participants()
+            // can include a departed event-participant no longer in memberIds
+            // (#249) — but is safe: parties are real prior event participants,
+            // settlements are append-only + offset-correctable, and the rule is
+            // a shape-gate not a value-gate.
             return module == 'settlements'
-              && isEventParticipant(groupId, eventId)
+              && isGroupMember(groupId)
               && eventAllowsClientWrites(groupId, eventId)
               && validEventSettlementBase(request.resource.data)
               && validFreeText(request.resource.data.note)
@@ -939,7 +959,8 @@ service cloud.firestore {
             'recipientName',
             'isDeleted',
             'deletedAt',
-            'settledAt'
+            'settledAt',
+            'groupSettleUpId'
           ])
           && data.id == settlementId
           && data.groupId == groupId
