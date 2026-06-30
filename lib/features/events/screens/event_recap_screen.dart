@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/constants/supported_currencies.dart';
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -186,6 +187,77 @@ class EventRecapScreen extends ConsumerWidget {
         if (multi) _currencyHeader(context, ccy, recap.totalSpentByCurrency[ccy]),
         ..._currencyBlock(context, recap, roster, uid, ccy),
       ],
+
+      ..._settleCtaSection(context, recap, currencies),
+    ];
+  }
+
+  /// Actionable event-vs-group settle CTA (#721 deferred item — last piece of
+  /// #202). Shown ONCE (not per-currency) when ANY currency is outstanding,
+  /// using the same `isSettledByCurrency[ccy] ?? true` test each per-currency
+  /// status card uses (so CTA + status cards can never disagree). Navigation +
+  /// display only — reads the already-computed map, persists nothing. Both
+  /// routes already exist; pushed with absolute path strings (the established
+  /// convention), back returns to the recap. Settlements stay live after close
+  /// (#723/#766), so the CTA shows regardless of `event.isClosed`.
+  List<Widget> _settleCtaSection(
+    BuildContext context,
+    EventRecap recap,
+    List<String> currencies,
+  ) {
+    final anyOutstanding =
+        currencies.any((ccy) => !(recap.isSettledByCurrency[ccy] ?? true));
+    if (!anyOutstanding) return const [];
+    final c = context.colors;
+    return [
+      SizedBox(height: context.spacing.space24),
+      Container(
+        key: EventKeys.recapSettleCta,
+        width: double.infinity,
+        padding: EdgeInsetsDirectional.all(context.spacing.space20),
+        decoration: BoxDecoration(
+          color: c.cardSurface,
+          borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+          boxShadow: context.shadows.raised,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.recapSettleCtaTitle,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: c.textPrimary),
+            ),
+            SizedBox(height: context.spacing.space4),
+            Text(
+              context.l10n.recapSettleCtaBody,
+              style: TextStyle(fontSize: 13, color: c.textSecondary),
+            ),
+            SizedBox(height: context.spacing.space16),
+            FilledButton(
+              key: EventKeys.recapSettleEventButton,
+              onPressed: () {
+                HapticService.lightClick();
+                GoRouter.of(context)
+                    .push('/group/$groupId/event/$eventId/ledger/settle-up');
+              },
+              child: Text(context.l10n.recapSettleThisEvent),
+            ),
+            SizedBox(height: context.spacing.space8),
+            OutlinedButton(
+              key: EventKeys.recapSettleGroupButton,
+              onPressed: () {
+                HapticService.lightClick();
+                GoRouter.of(context).push('/group/$groupId/settle-up');
+              },
+              child: Text(context.l10n.recapSettleAtGroup),
+            ),
+          ],
+        ),
+      ),
     ];
   }
 

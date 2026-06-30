@@ -3403,8 +3403,21 @@ class AppLocalizationsAr extends AppLocalizations {
       one: 'شخص واحد لا يزال مدينًا',
       zero: 'لا أحد لا يزال مدينًا',
     );
-    return '$_temp0. سوِّ من السجل.';
+    return '$_temp0.';
   }
+
+  @override
+  String get recapSettleCtaTitle => 'جاهز للتسوية؟';
+
+  @override
+  String get recapSettleCtaBody =>
+      'سوِّ هذه الفعالية وحدها، أو صفِّ أرصدتك عبر المجموعة كاملة.';
+
+  @override
+  String get recapSettleThisEvent => 'تسوية هذه الفعالية';
+
+  @override
+  String get recapSettleAtGroup => 'تسوية على مستوى المجموعة';
 
   @override
   String get recapMultiCurrencyNote =>
