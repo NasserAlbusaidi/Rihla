@@ -435,6 +435,8 @@
   "currencyExplainerTitle": "كل عملة تُسوّى على حدة",
   "currencyExplainerBody": "لا نخترع أسعار صرف، لذا لا يمكن للريال العماني أن يلغي الدرهم الإماراتي. ستسجّل دفعة واحدة لكل عملة.",
   "currencyExplainerGotIt": "فهمت",
+  "settleScopeNoteEvent": "هذه تسوية أرصدة {eventName} فقط. المبالغ المستحقة في بقية المجموعة تُسوّى من تسوية المجموعة.",
+  "settleScopeNoteGroup": "هذا هو الرصيد الكامل للجميع عبر المجموعة بأكملها. تسجيل دفعة هنا لن يوازن دفتر كل فعالية على حدة — وهذا متوقع.",
   "settleUpPaymentHistory": "سجل الدفعات",
   "settleUpUnknown": "غير معروف",
   "settleUpPaidConnector": "دفع",

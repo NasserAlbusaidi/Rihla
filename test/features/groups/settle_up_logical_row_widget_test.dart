@@ -57,6 +57,7 @@ SettleUpPageBody _body({
   void Function(Settlement settlement)? onCorrect,
 }) =>
     SettleUpPageBody(
+      scope: SettleScope.group,
       subjectName: 'Beach House',
       buckets: [
         (
