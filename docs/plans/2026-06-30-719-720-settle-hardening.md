@@ -218,6 +218,8 @@ If the modal-mid-change proves intractable in a widget test, fall back to assert
 
 ## PR2 — #720: block the impossible former-member group write
 
+> ⚠️ **SUPERSEDED — do NOT implement this section.** The client-side `!bothLiveMembers` pre-block below was built (PR #772) and **rejected** at the auto-merge Gate refuter, then closed unmerged. It decides membership on the **lag-prone client `group.memberIds` snapshot** while settle targets come from `balancesData.balances` (not gated on memberIds) — so during the claim/merge re-key window it false-blocks a *genuine current member* and asserts a false "has left the group." **#720's actual resolution: forbid former-member group settlements (keep the rule), DEFER the check to the server; no code change.** The genuinely-departed case (rare² — leave/remove gate exit on net-zero) is already handled honestly by the #360 classifier (`_recordSettlement` → `permission-denied` → `settleUpRecordFailedDenied`). See the closed #720 for the full rationale.
+
 ### Task 4: split the `_recordDecomposedSettlement` pre-gate (TDD)
 
 **Files:**
