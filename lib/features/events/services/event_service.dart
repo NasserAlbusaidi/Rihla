@@ -200,6 +200,61 @@ class EventService extends FirestoreRepository {
     }
   }
 
+  /// Close an event (#723): freezes its spending (no new/edited expenses) while
+  /// settlements stay live. Partial `.update()` so the rules see a clean 3-key
+  /// diff (`validEventCloseToggle`). [closedBy] is the acting UID, pinned by the
+  /// rule to `request.auth.uid`.
+  Future<void> closeEvent({
+    required String groupId,
+    required String eventId,
+    required String closedBy,
+  }) async {
+    try {
+      await db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .update({
+            'isClosed': true,
+            'closedAt': FieldValue.serverTimestamp(),
+            'closedBy': closedBy,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+    } on FirebaseException catch (e) {
+      if (kDebugMode) {
+        debugPrint('EventService.closeEvent failed: ${e.code} ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
+  /// Reopen a closed event (#723): clears the close triple so expenses are
+  /// editable again. Admin-gated by `validEventCloseToggle`.
+  Future<void> reopenEvent({
+    required String groupId,
+    required String eventId,
+  }) async {
+    try {
+      await db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .update({
+            'isClosed': false,
+            'closedAt': null,
+            'closedBy': null,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+    } on FirebaseException catch (e) {
+      if (kDebugMode) {
+        debugPrint('EventService.reopenEvent failed: ${e.code} ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
   /// Update event metadata (name, dates, and/or description).
   ///
   /// Only non-null fields are updated. Always updates [updatedAt].

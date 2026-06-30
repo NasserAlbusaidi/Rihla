@@ -149,4 +149,47 @@ void main() {
       expect(data['name'], 'Beach Day'); // unchanged
     });
   });
+
+  group('EventService.closeEvent (#723)', () {
+    test('sets isClosed/closedBy/closedAt/updatedAt', () async {
+      final db = FakeFirebaseFirestore();
+      await _seedEvent(db);
+      final service = EventService.withFirestore(db);
+
+      await service.closeEvent(
+        groupId: _groupId,
+        eventId: _eventId,
+        closedBy: 'uid-creator',
+      );
+
+      final data = (await _eventRef(db).get()).data()!;
+      expect(data['isClosed'], isTrue);
+      expect(data['closedBy'], 'uid-creator');
+      expect(data['closedAt'], isNotNull);
+      expect(data['updatedAt'], isNotNull);
+      // close must not touch soft-delete state
+      expect(data['isDeleted'], isFalse);
+    });
+  });
+
+  group('EventService.reopenEvent (#723)', () {
+    test('clears isClosed/closedAt/closedBy and bumps updatedAt', () async {
+      final db = FakeFirebaseFirestore();
+      await _seedEvent(db);
+      final service = EventService.withFirestore(db);
+      await service.closeEvent(
+        groupId: _groupId,
+        eventId: _eventId,
+        closedBy: 'uid-creator',
+      );
+
+      await service.reopenEvent(groupId: _groupId, eventId: _eventId);
+
+      final data = (await _eventRef(db).get()).data()!;
+      expect(data['isClosed'], isFalse);
+      expect(data['closedAt'], isNull);
+      expect(data['closedBy'], isNull);
+      expect(data['updatedAt'], isNotNull);
+    });
+  });
 }
