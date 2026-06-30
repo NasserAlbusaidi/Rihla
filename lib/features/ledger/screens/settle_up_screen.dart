@@ -175,6 +175,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     // #249: member-id sets for the per-event balance universe. The universe
     // itself (and the name maps + participants derived from it) is built inside
     // the data callback below, where expenses/settlements are available.
+    // #773 DRIFT GUARD: `_freshOutstandingForPair` reconstructs this same
+    // universe basis for the pre-write revalidation cap — keep the two in sync.
     final allMemberIds = groupMembers.map((m) => m.userId).toSet();
     final liveMemberIds = groupMembers
         .where((m) => !m.isTombstone)
@@ -438,6 +440,65 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     }
   }
 
+  /// #773: the LIVE directed-pair outstanding for [currency], recomputed from a
+  /// FRESH read of the event ledger — or null when the data isn't available
+  /// (offline / still loading), in which case the caller skips revalidation
+  /// (safety add-on, never a new blocker). Reconstructs build()'s
+  /// universe→participants→`calculateBalances`; participant display names are
+  /// provably irrelevant to the net math (`calculateBalances` keys every bucket,
+  /// allocation, and output on `participant.id` — `displayName` feeds only the
+  /// output `UserBalance.displayName`, which `outstandingForPair` never reads),
+  /// so they're minimised to the id here. DRIFT GUARD: the universe basis must
+  /// match build()'s — if the `allMemberIds`/`liveMemberIds` derivation or the
+  /// `eventBalanceUniverse` call in build() (~L176-205) changes, mirror it here,
+  /// or the revalidation cap diverges from the suggestion it gates.
+  Decimal? _freshOutstandingForPair({
+    required String currency,
+    required String fromUserId,
+    required String toUserId,
+  }) {
+    final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
+    final event = ref.read(eventDetailProvider(eventRef)).valueOrNull;
+    final expenses = ref.read(eventExpensesProvider(eventRef)).valueOrNull;
+    if (event == null || expenses == null) return null;
+    final settlements =
+        ref.read(eventSettlementsProvider(eventRef)).valueOrNull ?? const [];
+    final groupMembers =
+        ref.read(groupMembersProvider(widget.groupId)).valueOrNull ?? const [];
+    final allMemberIds = groupMembers.map((m) => m.userId).toSet();
+    final liveMemberIds = groupMembers
+        .where((m) => !m.isTombstone)
+        .map((m) => m.userId)
+        .toSet();
+    final universe = eventBalanceUniverse(
+      event: event,
+      expenses: expenses,
+      settlements: settlements,
+      allMemberIds: allMemberIds,
+      liveMemberIds: liveMemberIds,
+    );
+    final participants = [
+      for (final id in universe)
+        Participant(
+          id: id,
+          tripId: event.id,
+          role: ParticipantRole.member,
+          joinedAt: event.createdAt,
+          displayName: id,
+        ),
+    ];
+    final bucketed = BalanceCalculator.calculateBalances(
+      expenses: expenses,
+      settlements: settlements,
+      participants: participants,
+    );
+    return BalanceCalculator.outstandingForPair(
+      bucket: bucketed[currency] ?? const <UserBalance>[],
+      fromUserId: fromUserId,
+      toUserId: toUserId,
+    );
+  }
+
   /// Drives one record sheet → validate → write. Returns the per-step
   /// [_StepOutcome] so the stepped walk can decide whether to continue (L3).
   /// On the single-tile path [stepLabel] is null and [showSuccessSnackbar] is
@@ -521,6 +582,36 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           ),
         ),
       );
+      return const _StepOutcome(_StepOutcomeKind.invalid);
+    }
+
+    // #773 (event mirror of #719 / #200 Scope 6): `suggestedAmount` was captured
+    // when the tile was tapped; the record sheet may have been open long enough
+    // for another device to pay or add an expense. Re-read the LIVE event
+    // balances and revalidate the directed-pair outstanding before writing — if
+    // it dropped below `editedAmount`, abort and force review-again rather than
+    // silently overpaying a stale debt. Data unavailable (offline / still
+    // loading) → skip; this is a safety add-on, never a new offline blocker. The
+    // event write takes one (from, to, amount) — no fresh-balance propagation
+    // like the group decompose (#719) needs.
+    final freshOutstanding = _freshOutstandingForPair(
+      currency: currency,
+      fromUserId: fromUserId,
+      toUserId: toUserId,
+    );
+    if (freshOutstanding != null && editedAmount > freshOutstanding) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.settleUpBalanceChangedReviewAgain(
+                AppFormatters.formatCurrency(freshOutstanding, currency),
+              ),
+            ),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
       return const _StepOutcome(_StepOutcomeKind.invalid);
     }
 
