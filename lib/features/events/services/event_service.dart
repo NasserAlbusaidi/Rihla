@@ -221,10 +221,11 @@ class EventService extends FirestoreRepository {
             'closedAt': FieldValue.serverTimestamp(),
             'closedBy': closedBy,
             'updatedAt': FieldValue.serverTimestamp(),
-            // #766: the frozen SPENDING half, captured opaque at close. Omitted
-            // when null (empty event / inputs unloaded) so the close write stays
-            // a 4-key diff. `validEventCloseToggle` accepts the 5th key bounded.
-            if (spendingSnapshot != null) 'spendingSnapshot': spendingSnapshot,
+            // #766: the frozen SPENDING half, captured opaque at close. The
+            // null-aware `?` omits the entry when null (empty event / inputs
+            // unloaded) so the close write stays a 4-key diff;
+            // `validEventCloseToggle` accepts the 5th key bounded.
+            'spendingSnapshot': ?spendingSnapshot,
           });
     } on FirebaseException catch (e) {
       if (kDebugMode) {
