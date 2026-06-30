@@ -93,6 +93,21 @@ void main() {
     uid: 'a',
   );
 
+  // a paid 100, share 50, b paid 0 share 50 → a net +50, b net -50 → OUTSTANDING.
+  EventRecap outstandingRecap() => EventRecap.from(
+    eventId: 'e1',
+    eventName: 'Jabal Trip',
+    startDate: null,
+    endDate: null,
+    participantIds: const ['a', 'b'],
+    expenseCount: 1,
+    totalSpentByCurrency: {'OMR': d('100')},
+    balances: {
+      'OMR': [ub('a', '100', '50', '50'), ub('b', '0', '50', '-50')],
+    },
+    uid: 'a',
+  );
+
   List<Override> overridesFor(
     EventRecap recap, {
     Map<String, String> roster = const {'a': 'Alice', 'b': 'Bob'},
@@ -366,6 +381,43 @@ void main() {
     // OMR settled (a net 0), EUR outstanding (a owes 50 → 1 debtor).
     expect(find.text("Everyone's settled up"), findsOneWidget);
     expect(find.textContaining('1 person still owes'), findsOneWidget);
+  });
+
+  // ── #721 deferred item: event-vs-group settle CTA ────────────────────────
+
+  testWidgets('outstanding event shows the settle CTA with both paths (#721)',
+      (tester) async {
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(outstandingRecap()),
+    );
+
+    expect(find.byKey(EventKeys.recapSettleCta), findsOneWidget);
+    expect(find.text('Settle this event'), findsOneWidget);
+    expect(find.text('Settle at group level'), findsOneWidget);
+  });
+
+  testWidgets('settled event hides the settle CTA (#721)', (tester) async {
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(settledRecap()),
+    );
+
+    expect(find.byKey(EventKeys.recapSettleCta), findsNothing);
+  });
+
+  testWidgets('settle CTA renders in Arabic (#721)', (tester) async {
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(outstandingRecap()),
+      locale: const Locale('ar'),
+    );
+
+    expect(find.byKey(EventKeys.recapSettleCta), findsOneWidget);
+    expect(find.text('تسوية هذه الفعالية'), findsOneWidget);
   });
 
   // ── #722 Slice 4: shareable recap card entry point ───────────────────────
