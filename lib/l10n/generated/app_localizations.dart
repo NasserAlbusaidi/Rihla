@@ -5630,6 +5630,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Balances are kept per currency — they\'re never added together.'**
   String get recapMultiCurrencyNote;
+
+  /// Tooltip/label for the share action on the recap screen that opens the shareable card (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Share recap'**
+  String get recapShareButton;
+
+  /// Primary button in the recap share preview sheet that exports + shares the card as a PNG (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Share image'**
+  String get recapShareCta;
+
+  /// Snackbar shown when capturing the recap card to a PNG fails (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the image. Please try again.'**
+  String get recapShareError;
+
+  /// Caption text that rides along with the shared recap image (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'{eventName} — our trip recap, tracked with Rihla'**
+  String recapShareText(String eventName);
+
+  /// Mono caption stamp on the recap share card's cover band; {month} is a localized month + year (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Rihla · Wrapped · {month}'**
+  String recapCardCaption(String month);
+
+  /// Recap share-card cover caption when the event has no dates (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Rihla · Wrapped'**
+  String get recapCardCaptionPlain;
+
+  /// Recap share-card stat label for the participant count (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get recapCardPeople;
+
+  /// Recap share-card stat label for the expense count (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get recapCardExpenses;
+
+  /// Recap share-card stat label: average spend per day of the trip (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Avg / day'**
+  String get recapCardAvgPerDay;
+
+  /// Recap share-card stat label: spend per person, used when the event has no dates (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Per person'**
+  String get recapCardPerPerson;
+
+  /// Recap share-card label for the person who paid the most (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Top spender'**
+  String get recapCardTopSpender;
+
+  /// Recap share-card label for the single largest expense (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Biggest splurge'**
+  String get recapCardBiggest;
+
+  /// Recap share-card label above the category breakdown bar (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'Where it went'**
+  String get recapCardWhereItWent;
+
+  /// Recap share-card status pill when every balance is settled (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'All settled'**
+  String get recapCardAllSettled;
+
+  /// Recap share-card status pill when balances are outstanding; {count} is the number of debtors (#722).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 still to settle} other{{count} still to settle}}'**
+  String recapCardStillToSettle(int count);
 }
 
 class _AppLocalizationsDelegate

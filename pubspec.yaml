@@ -92,6 +92,9 @@ dev_dependencies:
   # Mock the url_launcher platform interface in tests (#354 WhatsApp invite).
   url_launcher_platform_interface: ^2.3.2
   plugin_platform_interface: ^2.1.8
+  # Provide a temp dir for share_plus's XFile.fromData in the recap-share test
+  # (#722 — shareImage writes the PNG via getTemporaryDirectory).
+  path_provider_platform_interface: ^2.1.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

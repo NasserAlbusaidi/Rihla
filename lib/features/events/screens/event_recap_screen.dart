@@ -20,6 +20,7 @@ import '../models/event_model.dart';
 import '../models/event_recap.dart';
 import '../providers/event_provider.dart';
 import '../providers/event_recap_provider.dart';
+import '../widgets/recap_share_sheet.dart';
 
 /// On-demand event recap (#202 Slice 1 + #721 Slice 2): total spent, the current
 /// user's position, plus the full money summary — biggest expense, top payer,
@@ -60,16 +61,21 @@ class EventRecapScreen extends ConsumerWidget {
             // same memoized ledger pass the recap provider already watches.
             final view = ref.watch(ledgerViewProvider(eventRef));
             final uid = ref.watch(currentUserIdProvider);
-            return _wrap(context,
-                _content(context, recap, view.rosterDisplayNames, uid, event));
+            return _wrap(
+              context,
+              _content(context, recap, view.rosterDisplayNames, uid, event),
+              trailing: _shareButton(
+                  context, recap, view.rosterDisplayNames, event),
+            );
           },
         ),
       ),
     );
   }
 
-  /// Scrollable column with the standard back button + 24px gutters.
-  Widget _wrap(BuildContext context, List<Widget> children) {
+  /// Scrollable column with the standard header (back start, optional [trailing]
+  /// at the end — the share action on the data path) + 24px gutters.
+  Widget _wrap(BuildContext context, List<Widget> children, {Widget? trailing}) {
     return SingleChildScrollView(
       child: Padding(
         padding: EdgeInsetsDirectional.symmetric(
@@ -79,7 +85,13 @@ class EventRecapScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(height: context.spacing.space16),
-            _backButton(context),
+            Row(
+              children: [
+                _backButton(context),
+                const Spacer(),
+                ?trailing,
+              ],
+            ),
             SizedBox(height: context.spacing.space16),
             ...children,
             SizedBox(height: context.spacing.space24),
@@ -90,19 +102,38 @@ class EventRecapScreen extends ConsumerWidget {
   }
 
   Widget _backButton(BuildContext context) {
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: RIconButton(
-        key: EventKeys.recapBackButton,
-        variant: RIconButtonVariant.ghost,
-        icon: Directionality.of(context) == TextDirection.rtl
-            ? Iconsax.arrow_right
-            : Iconsax.arrow_left,
-        // Nested route → canPop() is always true; bare pop reaches the hub
-        // (#243 nested back-guard convention).
-        onTap: () {
-          if (GoRouter.of(context).canPop()) GoRouter.of(context).pop();
-        },
+    return RIconButton(
+      key: EventKeys.recapBackButton,
+      variant: RIconButtonVariant.ghost,
+      icon: Directionality.of(context) == TextDirection.rtl
+          ? Iconsax.arrow_right
+          : Iconsax.arrow_left,
+      // Nested route → canPop() is always true; bare pop reaches the hub
+      // (#243 nested back-guard convention).
+      onTap: () {
+        if (GoRouter.of(context).canPop()) GoRouter.of(context).pop();
+      },
+    );
+  }
+
+  /// Share action (#722) — opens the wrapped recap card preview. Only built on
+  /// the non-empty data path (the empty/loading/error states have no card).
+  Widget _shareButton(
+    BuildContext context,
+    EventRecap recap,
+    Map<String, String> roster,
+    Event event,
+  ) {
+    return RIconButton(
+      key: EventKeys.recapShareButton,
+      variant: RIconButtonVariant.ghost,
+      icon: Iconsax.export_1,
+      tooltip: context.l10n.recapShareButton,
+      onTap: () => showRecapShareSheet(
+        context,
+        recap: recap,
+        roster: roster,
+        eventType: event.type,
       ),
     );
   }

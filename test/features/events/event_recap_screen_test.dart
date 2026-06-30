@@ -368,6 +368,61 @@ void main() {
     expect(find.textContaining('1 person still owes'), findsOneWidget);
   });
 
+  // ── #722 Slice 4: shareable recap card entry point ───────────────────────
+
+  testWidgets('share action is present on the non-empty data path (#722)',
+      (tester) async {
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(settledRecap()),
+    );
+
+    expect(find.byKey(EventKeys.recapShareButton), findsOneWidget);
+  });
+
+  testWidgets('share action is hidden on the empty recap (#722)',
+      (tester) async {
+    final empty = EventRecap.from(
+      eventId: 'e1',
+      eventName: 'Jabal Trip',
+      startDate: null,
+      endDate: null,
+      participantIds: const ['a', 'b'],
+      expenseCount: 0,
+      totalSpentByCurrency: const {},
+      balances: const {},
+      uid: 'a',
+    );
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(empty),
+    );
+    // EmptyStateView entrance ticker → drain before asserting.
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(EventKeys.recapShareButton), findsNothing);
+  });
+
+  testWidgets('tapping share opens the recap share sheet (#722)',
+      (tester) async {
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(settledRecap()),
+    );
+
+    await tester.tap(find.byKey(EventKeys.recapShareButton));
+    // Modal route animates in — pump frames (NOT pumpAndSettle, the app's
+    // ConnectivityNotifier timer never settles under pumpRihlaApp).
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.byKey(EventKeys.recapShareSheet), findsOneWidget);
+    expect(find.byKey(EventKeys.recapShareConfirmButton), findsOneWidget);
+  });
+
   testWidgets('zero-amount expense bar does not NaN-crash (#721 Gate P2)', (
     tester,
   ) async {

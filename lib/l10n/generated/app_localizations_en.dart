@@ -3329,4 +3329,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get recapMultiCurrencyNote =>
       'Balances are kept per currency — they\'re never added together.';
+
+  @override
+  String get recapShareButton => 'Share recap';
+
+  @override
+  String get recapShareCta => 'Share image';
+
+  @override
+  String get recapShareError => 'Couldn\'t create the image. Please try again.';
+
+  @override
+  String recapShareText(String eventName) {
+    return '$eventName — our trip recap, tracked with Rihla';
+  }
+
+  @override
+  String recapCardCaption(String month) {
+    return 'Rihla · Wrapped · $month';
+  }
+
+  @override
+  String get recapCardCaptionPlain => 'Rihla · Wrapped';
+
+  @override
+  String get recapCardPeople => 'People';
+
+  @override
+  String get recapCardExpenses => 'Expenses';
+
+  @override
+  String get recapCardAvgPerDay => 'Avg / day';
+
+  @override
+  String get recapCardPerPerson => 'Per person';
+
+  @override
+  String get recapCardTopSpender => 'Top spender';
+
+  @override
+  String get recapCardBiggest => 'Biggest splurge';
+
+  @override
+  String get recapCardWhereItWent => 'Where it went';
+
+  @override
+  String get recapCardAllSettled => 'All settled';
+
+  @override
+  String recapCardStillToSettle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count still to settle',
+      one: '1 still to settle',
+    );
+    return '$_temp0';
+  }
 }

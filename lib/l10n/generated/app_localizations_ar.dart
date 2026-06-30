@@ -3409,4 +3409,65 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get recapMultiCurrencyNote =>
       'تُحفظ الأرصدة لكل عملة على حدة — لا تُجمع معًا أبدًا.';
+
+  @override
+  String get recapShareButton => 'مشاركة الملخّص';
+
+  @override
+  String get recapShareCta => 'مشاركة الصورة';
+
+  @override
+  String get recapShareError => 'تعذّر إنشاء الصورة. حاول مرة أخرى.';
+
+  @override
+  String recapShareText(String eventName) {
+    return '$eventName — ملخّص رحلتنا عبر رِحلة';
+  }
+
+  @override
+  String recapCardCaption(String month) {
+    return 'رِحلة · خلاصة · $month';
+  }
+
+  @override
+  String get recapCardCaptionPlain => 'رِحلة · خلاصة';
+
+  @override
+  String get recapCardPeople => 'الأشخاص';
+
+  @override
+  String get recapCardExpenses => 'المصاريف';
+
+  @override
+  String get recapCardAvgPerDay => 'المعدّل/يوم';
+
+  @override
+  String get recapCardPerPerson => 'لكل شخص';
+
+  @override
+  String get recapCardTopSpender => 'الأكثر إنفاقًا';
+
+  @override
+  String get recapCardBiggest => 'أكبر مصروف';
+
+  @override
+  String get recapCardWhereItWent => 'إلى أين ذهبت';
+
+  @override
+  String get recapCardAllSettled => 'تمت التسوية';
+
+  @override
+  String recapCardStillToSettle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count بانتظار التسوية',
+      many: '$count بانتظار التسوية',
+      few: '$count بانتظار التسوية',
+      two: 'اثنان بانتظار التسوية',
+      one: 'واحد بانتظار التسوية',
+      zero: 'لا شيء للتسوية',
+    );
+    return '$_temp0';
+  }
 }

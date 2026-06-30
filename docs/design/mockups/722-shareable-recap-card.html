@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#722 — Shareable recap card (PNG) · Rihla mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F1E6; --paper-deep:#EFE8D7; --card:#FFFFFF; --card-soft:#FBF7EE;
+    --saffron:#D17B2C; --saffron-dark:#B5641A; --saffron-tint:#FBEED5; --saffron-soft:#F4DDB8;
+    --ink:#1B1A17; --ink-2:#3D3A33; --ink-3:#6B675D; --ink-4:#948F82;
+    --sage:#5C7A57; --sage-text:#3F5A3B; --rust:#A84B33; --rust-text:#7A2F1F;
+    --cat1:#C2693B; --cat2:#4F7B96; --cat3:#8C6A2F; --cat4:#6F7A3A; --cat5:#94517A; --cat6:#4D5A6A;
+    /* CoverArt _trip palette */
+    --cv-sky:#E8B074; --cv-mid:#C2693B; --cv-land:#7A3F22; --cv-sun:#F5DCA0;
+    --r-card:20px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper-deep);color:var(--ink);font-family:'Geist',system-ui,sans-serif;padding:40px 24px 80px;line-height:1.45}
+  .mono{font-family:ui-monospace,'Geist Mono','SFMono-Regular',monospace;font-feature-settings:"tnum" 1}
+  .serif{font-family:'Instrument Serif',Georgia,serif;font-style:italic}
+  h1{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;font-size:34px;margin-bottom:4px}
+  h1 .s{color:var(--saffron)}
+  .lede{max-width:880px;color:var(--ink-3);font-size:14px;margin-bottom:8px}
+  .lede code{background:var(--card);border:1px solid rgba(27,26,23,.08);border-radius:5px;padding:1px 5px;font-family:ui-monospace,monospace;font-size:12px}
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 30px}
+  .pill{background:var(--saffron-tint);color:var(--saffron-dark);border:1px solid var(--saffron-soft);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+
+  .gallery{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:12px;align-items:center}
+  .state-label{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-3)}
+  .export-note{font-size:11px;color:var(--ink-4)}
+
+  /* ── The poster. 360 wide on screen = 1080 wide PNG at pixelRatio 3. Height
+       is content-driven (target ~4:5 ≈ 450), never fixed — so the footer can
+       never clip. ── */
+  .poster{
+    width:360px;min-height:450px;background:var(--paper);border-radius:var(--r-card);
+    overflow:hidden;box-shadow:0 18px 50px -12px rgba(27,26,23,.45);
+    display:flex;flex-direction:column;position:relative;
+  }
+  /* cover band ~32% */
+  .cover{height:146px;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,var(--cv-sky) 0%,var(--cv-mid) 100%);flex:none}
+  .cover .sun{position:absolute;width:40px;height:40px;border-radius:50%;
+    background:rgba(245,220,160,.85);top:18px;right:42px}
+  .cover .ridge{position:absolute;left:0;right:0;bottom:0;height:64px;
+    background:var(--cv-land);opacity:.55;
+    clip-path:polygon(0 42%,18% 20%,36% 34%,55% 52%,72% 28%,88% 14%,100% 40%,100% 100%,0 100%)}
+  .cover .near{position:absolute;left:0;right:0;bottom:0;height:42px;background:var(--cv-land);
+    clip-path:polygon(0 30%,25% 4%,50% 26%,75% 52%,100% 14%,100% 100%,0 100%)}
+  .cover .overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:14px 18px;
+    background:linear-gradient(180deg,rgba(27,26,23,0) 40%,rgba(27,26,23,.34) 100%)}
+  .cover-cap{font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.92);text-transform:uppercase}
+  .cover-title{font-family:'Instrument Serif',serif;font-style:italic;color:#fff;font-size:27px;line-height:1.04;margin-top:1px;
+    text-shadow:0 1px 8px rgba(0,0,0,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cover-sub{font-size:9.5px;letter-spacing:.6px;color:rgba(255,255,255,.85);margin-top:3px}
+
+  .body{flex:1;display:flex;flex-direction:column;padding:16px 18px 12px;min-height:0}
+  .ulabel{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3)}
+  /* RAmount-faithful tiers: ccy .42x@.78, whole 1x, dec .55x@.7 */
+  .amt{font-family:ui-monospace,'Geist Mono',monospace;font-feature-settings:"tnum" 1;color:var(--ink);white-space:nowrap}
+  .amt .ccy{font-size:.42em;opacity:.78;letter-spacing:.5px;font-weight:600}
+  .amt .dec{font-size:.55em;opacity:.7}
+  .hero{font-size:52px;line-height:1;margin-top:2px;font-weight:600;letter-spacing:-.5px}
+  .multi-note{font-size:11px;color:var(--ink-3);margin-top:5px}
+  .multi-note .amt{font-size:12px}
+
+  .stats{display:flex;gap:8px;margin-top:16px}
+  .stat{flex:1;background:var(--card-soft);border-radius:12px;padding:9px 10px;border:1px solid rgba(27,26,23,.05)}
+  .stat .ulabel{font-size:8px}
+  .stat .big{font-family:'Instrument Serif',serif;font-style:italic;font-size:21px;line-height:1;margin-top:3px;color:var(--ink)}
+  .stat .amt{font-size:13px;margin-top:5px;display:inline-block}
+
+  .divider{height:1px;background:rgba(27,26,23,.08);margin:14px 0}
+
+  .duo{display:flex;justify-content:space-between;gap:12px}
+  .duo .who{display:flex;align-items:center;gap:6px;margin-top:4px}
+  .duo .end{text-align:right;align-items:flex-end}
+  .av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:700;color:#fff;flex:none}
+  .av-1{background:var(--cat1)} .av-2{background:var(--cat2)} .av-3{background:var(--cat4)}
+  .av-4{background:var(--cat5)} .av-5{background:var(--cat6)}
+  .name{font-size:11.5px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+  .duo .amt{font-size:12px;margin-top:2px}
+
+  .where{margin-top:14px}
+  .seg{display:flex;height:11px;border-radius:999px;overflow:hidden;gap:2px;margin-top:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:7px;justify-content:flex-start}
+  .leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink-3)}
+  .leg .dot{width:7px;height:7px;border-radius:50%}
+
+  .foot{margin-top:16px;padding-top:13px;border-top:1px solid rgba(27,26,23,.06);display:flex;align-items:center;justify-content:space-between}
+  .status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px}
+  .status.ok{background:var(--saffron-tint);color:var(--sage-text);border:1px solid rgba(92,122,87,.3)}
+  .status.warn{background:var(--saffron-tint);color:var(--saffron-dark);border:1px solid var(--saffron-soft)}
+  .brand{display:flex;align-items:center;gap:5px}
+  .brand .wm{font-family:'Instrument Serif',serif;font-style:italic;font-size:17px;color:var(--ink)}
+  .brand .dot{width:4px;height:4px;border-radius:50%;background:var(--saffron)}
+
+  .peoplestack{display:flex;align-items:center;margin-top:13px}
+  .peoplestack .av{margin-left:-6px;border:2px solid var(--paper)}
+  .peoplestack .av:first-child{margin-left:0}
+  .peoplestack .more{font-size:10px;color:var(--ink-3);margin-left:7px}
+
+  /* spec sidebar */
+  .spec{max-width:1040px;margin-top:48px;background:var(--card);border:1px solid rgba(27,26,23,.08);border-radius:16px;padding:24px 28px}
+  .spec h2{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;font-size:24px;margin-bottom:6px}
+  .spec h3{font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--saffron-dark);margin:20px 0 8px}
+  .spec p,.spec li{font-size:13.5px;color:var(--ink-2);margin-bottom:6px}
+  .spec ul{padding-left:20px}
+  .spec code{background:var(--paper);border-radius:4px;padding:1px 5px;font-family:ui-monospace,monospace;font-size:12px}
+  .spec .map{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
+  .spec .map td{border-top:1px solid rgba(27,26,23,.08);padding:6px 8px;vertical-align:top}
+  .spec .map td:first-child{font-weight:600;white-space:nowrap;width:200px}
+  .spec .map code{font-size:11.5px}
+</style>
+</head>
+<body>
+
+<h1>#722 · Shareable recap card <span class="s">— PNG poster</span></h1>
+<p class="lede">Slice 4 of #202. A <code>RepaintBoundary</code> → PNG → <code>shareXFiles</code> "wrapped" poster behind a
+  <b>Share recap</b> action on the existing recap screen. Rendered on-screen in a preview sheet (WYSIWYG), captured at
+  <code>pixelRatio 3</code> → <b>1080×1350</b>, shared through a new <code>shareImage()</code> chokepoint that supplies a
+  non-zero <code>sharePositionOrigin</code> (the #308/#309 iOS trap). Pure display over <code>EventRecap</code> — no money
+  math, no schema, no rules. <b>Gate-exempt.</b></p>
+<div class="pillrow">
+  <span class="pill">Portrait 4:5 · 1080×1350</span>
+  <span class="pill">Primary-ccy hero + note</span>
+  <span class="pill">Full wrapped (Variant B)</span>
+  <span class="pill">No new dependency</span>
+</div>
+
+<div class="gallery">
+
+  <!-- ── STATE 1 · Settled, single currency ── -->
+  <div class="col">
+    <div class="state-label">A · Settled · single currency</div>
+    <div class="poster">
+      <div class="cover">
+        <div class="sun"></div><div class="ridge"></div><div class="near"></div>
+        <div class="overlay">
+          <div class="cover-cap mono">Rihla · Wrapped · Mar 2026</div>
+          <div class="cover-title">Wadi Shab Weekend</div>
+          <div class="cover-sub mono">12–14 Mar 2026 · 3 nights</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="ulabel">Total spent</div>
+        <div class="amt hero"><span class="ccy">OMR</span>142<span class="dec">.350</span></div>
+        <div class="stats">
+          <div class="stat"><div class="ulabel">People</div><div class="big">5</div></div>
+          <div class="stat"><div class="ulabel">Expenses</div><div class="big">6</div></div>
+          <div class="stat"><div class="ulabel">Avg / day</div><div class="amt"><span class="ccy">OMR</span>47<span class="dec">.450</span></div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="duo">
+          <div>
+            <div class="ulabel">Top spender</div>
+            <div class="who"><div class="av av-1">A</div><span class="name">Ahmed</span></div>
+            <div class="amt"><span class="ccy">OMR</span>88<span class="dec">.000</span></div>
+          </div>
+          <div class="end">
+            <div class="ulabel">Biggest splurge</div>
+            <div class="name" style="margin-top:4px">Boat &amp; guide</div>
+            <div class="amt"><span class="ccy">OMR</span>45<span class="dec">.000</span></div>
+          </div>
+        </div>
+        <div class="where">
+          <div class="ulabel">Where it went</div>
+          <div class="seg">
+            <span style="background:var(--cat1);width:37%"></span>
+            <span style="background:var(--cat3);width:34%"></span>
+            <span style="background:var(--cat4);width:29%"></span>
+          </div>
+          <div class="legend">
+            <span class="leg"><span class="dot" style="background:var(--cat1)"></span>Activities</span>
+            <span class="leg"><span class="dot" style="background:var(--cat3)"></span>Food</span>
+            <span class="leg"><span class="dot" style="background:var(--cat4)"></span>Stay</span>
+          </div>
+        </div>
+        <div class="foot">
+          <span class="status ok">✓ All settled</span>
+          <span class="brand"><span class="dot"></span><span class="wm">Rihla</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="export-note">exports as 1080×1350 PNG</div>
+  </div>
+
+  <!-- ── STATE 2 · Outstanding, single currency ── -->
+  <div class="col">
+    <div class="state-label">B · Outstanding · single currency</div>
+    <div class="poster">
+      <div class="cover" style="background:linear-gradient(180deg,#9CB8C9 0%,#D9B080 100%)">
+        <div class="sun" style="background:rgba(255,228,168,.85)"></div>
+        <div class="ridge" style="background:#7A8FA0"></div><div class="near" style="background:#7A8FA0"></div>
+        <div class="overlay">
+          <div class="cover-cap mono">Rihla · Wrapped · Apr 2026</div>
+          <div class="cover-title">Salalah Khareef Run</div>
+          <div class="cover-sub mono">3–7 Apr 2026 · 4 nights</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="ulabel">Total spent</div>
+        <div class="amt hero"><span class="ccy">OMR</span>318<span class="dec">.500</span></div>
+        <div class="stats">
+          <div class="stat"><div class="ulabel">People</div><div class="big">4</div></div>
+          <div class="stat"><div class="ulabel">Expenses</div><div class="big">11</div></div>
+          <div class="stat"><div class="ulabel">Avg / day</div><div class="amt"><span class="ccy">OMR</span>63<span class="dec">.700</span></div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="duo">
+          <div>
+            <div class="ulabel">Top spender</div>
+            <div class="who"><div class="av av-2">S</div><span class="name">Salim</span></div>
+            <div class="amt"><span class="ccy">OMR</span>176<span class="dec">.000</span></div>
+          </div>
+          <div class="end">
+            <div class="ulabel">Biggest splurge</div>
+            <div class="name" style="margin-top:4px">Chalet (2 nights)</div>
+            <div class="amt"><span class="ccy">OMR</span>120<span class="dec">.000</span></div>
+          </div>
+        </div>
+        <div class="where">
+          <div class="ulabel">Where it went</div>
+          <div class="seg">
+            <span style="background:var(--cat4);width:41%"></span>
+            <span style="background:var(--cat3);width:31%"></span>
+            <span style="background:var(--cat1);width:18%"></span>
+            <span style="background:var(--cat2);width:10%"></span>
+          </div>
+          <div class="legend">
+            <span class="leg"><span class="dot" style="background:var(--cat4)"></span>Stay</span>
+            <span class="leg"><span class="dot" style="background:var(--cat3)"></span>Food</span>
+            <span class="leg"><span class="dot" style="background:var(--cat1)"></span>Activities</span>
+            <span class="leg"><span class="dot" style="background:var(--cat2)"></span>Transport</span>
+          </div>
+        </div>
+        <div class="foot">
+          <span class="status warn">⚠ 2 still to settle</span>
+          <span class="brand"><span class="dot"></span><span class="wm">Rihla</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="export-note">exports as 1080×1350 PNG</div>
+  </div>
+
+  <!-- ── STATE 3 · Settled, multi-currency ── -->
+  <div class="col">
+    <div class="state-label">C · Multi-currency · no dates</div>
+    <div class="poster">
+      <div class="cover" style="background:linear-gradient(180deg,#A8BA8A 0%,#6F7A3A 100%)">
+        <div class="sun" style="background:rgba(224,229,208,.85)"></div>
+        <div class="ridge" style="background:#3F5A3B"></div><div class="near" style="background:#3F5A3B"></div>
+        <div class="overlay">
+          <div class="cover-cap mono">Rihla · Wrapped</div>
+          <div class="cover-title">Euro Trip 2026</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="ulabel">Total spent</div>
+        <div class="amt hero"><span class="ccy">EUR</span>1,240<span class="dec">.00</span></div>
+        <div class="multi-note">+ <span class="amt"><span class="ccy">GBP</span>320<span class="dec">.00</span></span> · <span class="amt"><span class="ccy">OMR</span>85<span class="dec">.500</span></span></div>
+        <div class="stats">
+          <div class="stat"><div class="ulabel">People</div><div class="big">3</div></div>
+          <div class="stat"><div class="ulabel">Expenses</div><div class="big">22</div></div>
+          <div class="stat"><div class="ulabel">Per&nbsp;person</div><div class="amt"><span class="ccy">EUR</span>413<span class="dec">.33</span></div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="duo">
+          <div>
+            <div class="ulabel">Top spender</div>
+            <div class="who"><div class="av av-3">M</div><span class="name">Maryam</span></div>
+            <div class="amt"><span class="ccy">EUR</span>610<span class="dec">.00</span></div>
+          </div>
+          <div class="end">
+            <div class="ulabel">Biggest splurge</div>
+            <div class="name" style="margin-top:4px">Eurail passes</div>
+            <div class="amt"><span class="ccy">EUR</span>280<span class="dec">.00</span></div>
+          </div>
+        </div>
+        <div class="where">
+          <div class="ulabel">Where it went · EUR</div>
+          <div class="seg">
+            <span style="background:var(--cat2);width:44%"></span>
+            <span style="background:var(--cat3);width:30%"></span>
+            <span style="background:var(--cat4);width:16%"></span>
+            <span style="background:var(--cat5);width:10%"></span>
+          </div>
+          <div class="legend">
+            <span class="leg"><span class="dot" style="background:var(--cat2)"></span>Transport</span>
+            <span class="leg"><span class="dot" style="background:var(--cat3)"></span>Food</span>
+            <span class="leg"><span class="dot" style="background:var(--cat4)"></span>Stay</span>
+            <span class="leg"><span class="dot" style="background:var(--cat5)"></span>Other</span>
+          </div>
+        </div>
+        <div class="foot">
+          <span class="status ok">✓ All settled</span>
+          <span class="brand"><span class="dot"></span><span class="wm">Rihla</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="export-note">hero = group currency · others as note · per-person replaces avg/day when undated</div>
+  </div>
+
+</div>
+
+<!-- ── Spec sidebar (doubles as the Flutter build contract) ── -->
+<div class="spec">
+  <h2>Build contract</h2>
+  <p>The card is a pure <code>StatelessWidget</code> (<code>RecapShareCard</code>) that takes plain data — no Riverpod,
+     no Firestore. It reads <code>context.colors/spacing/l10n</code> like any screen because it renders in the live tree
+     (the preview sheet), so fonts/theme/Directionality are already in scope. Every money value is INBOUND display from
+     already-correct <code>EventRecap</code> output; nothing here feeds a write.</p>
+
+  <h3>Element → data map (hero currency = group currency, GCC-first fallback)</h3>
+  <table class="map">
+    <tr><td>Cover band art</td><td><code>CoverPalette.forEventType(event.type)</code> — the same procedural <code>CoverArt</code> as the hub.</td></tr>
+    <tr><td>Caption</td><td><code>Rihla · Wrapped</code> + <code>· {MON YYYY}</code> from <code>startDate ?? endDate</code> (omit if both null).</td></tr>
+    <tr><td>Title</td><td><code>recap.eventName</code> (serif italic, 1 line, ellipsis).</td></tr>
+    <tr><td>Sub</td><td><code>startDate</code>–<code>endDate</code> range + nights; omit if no dates.</td></tr>
+    <tr><td>Hero total</td><td><code>recap.totalSpentByCurrency[hero]</code> via <code>RAmount</code>.</td></tr>
+    <tr><td>Multi note</td><td>other currencies in <code>totalSpentByCurrency</code> (GCC-first), <code>+ {amt} · {amt}</code>; never cross-summed.</td></tr>
+    <tr><td>Stat · People</td><td><code>recap.participantCount</code> (live roster).</td></tr>
+    <tr><td>Stat · Expenses</td><td><code>recap.expenseCount</code>.</td></tr>
+    <tr><td>Stat 3 · Avg/day</td><td><code>heroTotal ÷ inclusiveDays</code> when both dates exist; <b>else</b> Per&nbsp;person = <code>heroTotal ÷ participantCount</code>. Display-only Decimal division, currency-rounded for render — never persisted.</td></tr>
+    <tr><td>Top spender</td><td><code>recap.payerTotalsByCurrency[hero].first</code> → name via roster.</td></tr>
+    <tr><td>Biggest splurge</td><td><code>recap.biggestExpenseByCurrency[hero]</code> → description, else category name.</td></tr>
+    <tr><td>Where it went</td><td><code>recap.categoryTotalsByCurrency[hero]</code> — top 3, remainder folded into "Other"; colors via <code>categoryColorForId</code>.</td></tr>
+    <tr><td>Status pill</td><td><code>recap.isSettledByCurrency[hero]</code> → "All settled" (sage) / "{k} still to settle" (saffron, k = debtors in hero ccy).</td></tr>
+    <tr><td>Brand</td><td>"Rihla" wordmark (Instrument Serif italic) + saffron dot.</td></tr>
+  </table>
+
+  <h3>Degradation (the card never throws)</h3>
+  <ul>
+    <li>No expenses → recap <code>isEmpty</code>; the Share action is hidden (nothing to wrap).</li>
+    <li>No dates → drop caption month + sub line; stat 3 becomes Per&nbsp;person.</li>
+    <li>0–1 categories → bar collapses to a single segment; ≤4 legend chips max.</li>
+    <li>Long names → 1-line ellipsis (title, payer, biggest).</li>
+    <li>Multi-currency → only the hero block's breakdown shows; note carries the rest.</li>
+  </ul>
+
+  <h3>Plumbing</h3>
+  <ul>
+    <li><b>Entry:</b> a share icon in the recap screen header (top row, end side) → <code>showModalBottomSheet</code> preview (no router/deep-link surface).</li>
+    <li><b>Preview:</b> the card at fixed 360×450 inside a <code>FittedBox</code> (scales to fit), wrapped in <code>RepaintBoundary</code>; a "Share image" CTA + close.</li>
+    <li><b>Capture:</b> <code>boundary.toImage(pixelRatio: 3)</code> → PNG bytes (awaits a frame if <code>debugNeedsPaint</code>).</li>
+    <li><b>Share:</b> new <code>shareImage(context, bytes, fileName:'rihla_recap.png', text:…)</code> in <code>share_helper.dart</code> → <code>Share.shareXFiles([XFile.fromData(bytes, mimeType:'image/png')], fileNameOverrides:['rihla_recap.png'], sharePositionOrigin: _shareOrigin(context))</code>. share_plus 10.1.4 writes the in-memory bytes to a temp file itself — <b>no path_provider</b>.</li>
+  </ul>
+</div>
+
+</body>
+</html>
