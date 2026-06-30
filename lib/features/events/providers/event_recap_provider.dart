@@ -46,6 +46,23 @@ final eventRecapProvider = Provider.family<EventRecap, EventRef>((ref, eventRef)
     );
   }
 
+  // #766 (Slice 6): a CLOSED event with a captured snapshot serves the frozen
+  // SPENDING half from the snapshot while settlement stays LIVE (from
+  // view.balances). Open events, and closed-but-unsnapshotted legacy/empty
+  // events, fall through to the fully-live projection below.
+  final snapshot = event.spendingSnapshot;
+  if (event.isClosed && snapshot != null) {
+    return EventRecap.fromSnapshot(
+      snapshot: snapshot,
+      eventId: event.id,
+      eventName: event.name,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      balances: view.balances,
+      uid: uid,
+    );
+  }
+
   return EventRecap.from(
     eventId: event.id,
     eventName: event.name,
