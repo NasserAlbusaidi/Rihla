@@ -176,6 +176,16 @@ class _Content extends ConsumerWidget {
                   ).push('/group/$groupId/event/$eventId/recap'),
           ),
         ),
+        // #723: read-only banner once the event is closed.
+        if (event.isClosed)
+          SliverToBoxAdapter(
+            child: _ClosedBanner(
+              closedByName: event.closedBy == null
+                  ? null
+                  : (participantDisplayNames[event.closedBy] ??
+                        event.participantNames[event.closedBy]),
+            ),
+          ),
         const SliverToBoxAdapter(child: OfflineBanner()),
         SliverPadding(
           padding: const EdgeInsetsDirectional.fromSTEB(20, 28, 20, 0),
@@ -184,6 +194,7 @@ class _Content extends ConsumerWidget {
               state: state,
               lines: myLines,
               breakdown: breakdown,
+              isClosed: event.isClosed,
               onAddExpense: () {
                 HapticService.lightClick();
                 GoRouter.of(
@@ -360,6 +371,7 @@ class _BalanceHero extends StatelessWidget {
     required this.breakdown,
     required this.onAddExpense,
     required this.onSettleWith,
+    this.isClosed = false,
   });
 
   final _HubState state;
@@ -367,6 +379,9 @@ class _BalanceHero extends StatelessWidget {
   final List<_BreakdownEntry> breakdown;
   final VoidCallback onAddExpense;
   final void Function(String otherUid) onSettleWith;
+
+  /// #723: when the event is closed, the Add-expense button is disabled.
+  final bool isClosed;
 
   @override
   Widget build(BuildContext context) {
@@ -399,7 +414,7 @@ class _BalanceHero extends StatelessWidget {
             height: 48,
             child: FilledButton.icon(
               key: EventKeys.addExpenseChip,
-              onPressed: onAddExpense,
+              onPressed: isClosed ? null : onAddExpense,
               icon: const Icon(Iconsax.add, size: 18),
               label: Text(context.l10n.eventAddExpense),
               style: FilledButton.styleFrom(
@@ -792,7 +807,8 @@ class _RecentExpensesSection extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         if (isEmpty)
-          _AddFirstExpenseCard(onTap: onAddFirst)
+          // #723: no adding on a closed event.
+          _AddFirstExpenseCard(onTap: event.isClosed ? null : onAddFirst)
         else
           _RecentList(
             expenses: expenses.take(3).toList(),
@@ -964,62 +980,106 @@ class _RecentRow extends StatelessWidget {
   }
 }
 
-class _AddFirstExpenseCard extends StatelessWidget {
-  const _AddFirstExpenseCard({required this.onTap});
+/// #723: thin read-only strip shown on a closed event — "Closed by {name} ·
+/// spending frozen". Mirrors the OfflineBanner pattern.
+class _ClosedBanner extends StatelessWidget {
+  const _ClosedBanner({this.closedByName});
 
-  final VoidCallback onTap;
+  final String? closedByName;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.cardSurface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
+    final name = closedByName;
+    final text = (name != null && name.isNotEmpty)
+        ? context.l10n.eventClosedBannerBy(name)
+        : context.l10n.eventClosedBanner;
+    return Container(
+      key: EventKeys.closedBanner,
+      width: double.infinity,
+      color: colors.textPrimary.withValues(alpha: 0.04),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 10, 20, 10),
+      child: Row(
+        children: [
+          Icon(Iconsax.lock, size: 14, color: colors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTypography.sans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddFirstExpenseCard extends StatelessWidget {
+  const _AddFirstExpenseCard({required this.onTap});
+
+  /// Null disables the card (#723: dimmed + non-tappable when the event is
+  /// closed).
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Opacity(
+      opacity: onTap == null ? 0.4 : 1,
+      child: Material(
+        color: colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        child: _DashedBorderBox(
-          radius: 16,
-          // textMuted-decorative-justified: dashed-border stroke is decorative, not text contrast
-          color: colors.textMuted,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: colors.selectionFill,
-                    borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: _DashedBorderBox(
+            radius: 16,
+            // textMuted-decorative-justified: dashed-border stroke is decorative, not text contrast
+            color: colors.textMuted,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colors.selectionFill,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Iconsax.add, size: 18, color: colors.primary),
                   ),
-                  child: Icon(Iconsax.add, size: 18, color: colors.primary),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.eventAddFirstExpenseTitle,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.l10n.eventAddFirstExpenseTitle,
+                          style: AppTypography.sans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        context.l10n.eventAddFirstExpenseBody,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
+                        const SizedBox(height: 2),
+                        Text(
+                          context.l10n.eventAddFirstExpenseBody,
+                          style: AppTypography.sans(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

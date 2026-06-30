@@ -89,6 +89,15 @@ class Event {
   final DateTime? updatedAt;
   final String? description;
 
+  /// #723 close lifecycle — mirrors soft-delete (`isDeleted`+`deletedAt`).
+  /// [isClosed] is the load-bearing, immediately-readable gate (offline-safe,
+  /// unlike a pending [closedAt] serverTimestamp); [closedAt]/[closedBy] are
+  /// display metadata for the "Closed by … · spending frozen" banner. A closed
+  /// event stays visible and keeps contributing to balances — closed ≠ deleted.
+  final bool isClosed;
+  final DateTime? closedAt;
+  final String? closedBy;
+
   const Event({
     required this.id,
     required this.name,
@@ -105,6 +114,9 @@ class Event {
     required this.createdAt,
     this.updatedAt,
     this.description,
+    this.isClosed = false,
+    this.closedAt,
+    this.closedBy,
   });
 
   /// Deserializes an Event from a Firestore document snapshot.
@@ -150,6 +162,9 @@ class Event {
       description: data['description'] is String
           ? data['description'] as String
           : null,
+      isClosed: data['isClosed'] == true,
+      closedAt: dateOrNull(data['closedAt']),
+      closedBy: data['closedBy'] is String ? data['closedBy'] as String : null,
     );
   }
 
@@ -175,10 +190,17 @@ class Event {
       'serverCreatedAt': FieldValue.serverTimestamp(),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'description': description,
+      'isClosed': isClosed,
+      'closedAt': closedAt != null ? Timestamp.fromDate(closedAt!) : null,
+      'closedBy': closedBy,
     };
   }
 
   /// Creates a copy with updated fields (immutable pattern).
+  ///
+  /// Note: the `?? this` idiom cannot null-out [closedAt]/[closedBy], so reopen
+  /// (which clears them) goes through `EventService.reopenEvent`'s partial
+  /// `.update()`, never `copyWith` (#723).
   Event copyWith({
     String? name,
     DateTime? startDate,
@@ -190,6 +212,9 @@ class Event {
     DateTime? deletedAt,
     DateTime? updatedAt,
     String? description,
+    bool? isClosed,
+    DateTime? closedAt,
+    String? closedBy,
   }) {
     return Event(
       id: id,
@@ -207,6 +232,9 @@ class Event {
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       description: description ?? this.description,
+      isClosed: isClosed ?? this.isClosed,
+      closedAt: closedAt ?? this.closedAt,
+      closedBy: closedBy ?? this.closedBy,
     );
   }
 

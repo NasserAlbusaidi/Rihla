@@ -9,17 +9,21 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 /// Sticky bottom bar with ink-primary "Add expense" and ghost "Settle up".
 ///
 /// Settle button dims to 0.4 opacity when [settleEnabled] is false (zero balance).
+/// Add button dims/disables when [addEnabled] is false (#723: closed event —
+/// settle stays live so the two gates are independent).
 class LedgerStickyCta extends StatelessWidget {
   const LedgerStickyCta({
     super.key,
     required this.onAddExpense,
     required this.onSettleUp,
     required this.settleEnabled,
+    this.addEnabled = true,
   });
 
   final VoidCallback onAddExpense;
   final VoidCallback onSettleUp;
   final bool settleEnabled;
+  final bool addEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +45,9 @@ class LedgerStickyCta extends StatelessWidget {
           children: [
             Expanded(
               child: _PrimaryCta(
+                enabled: addEnabled,
                 onTap: () {
+                  if (!addEnabled) return;
                   HapticService.medium();
                   onAddExpense();
                 },
@@ -66,35 +72,39 @@ class LedgerStickyCta extends StatelessWidget {
 }
 
 class _PrimaryCta extends StatelessWidget {
-  const _PrimaryCta({required this.onTap});
+  const _PrimaryCta({required this.onTap, this.enabled = true});
   final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.textPrimary,
-      borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-      child: InkWell(
-        onTap: onTap,
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: Material(
+        color: colors.textPrimary,
         borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-        child: SizedBox(
-          height: 48,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Iconsax.add, size: 16, color: colors.scaffoldBackground),
-              const SizedBox(width: 8),
-              Text(
-                context.l10n.ledgerAddExpense,
-                style: AppTypography.sans(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: colors.scaffoldBackground,
-                  letterSpacing: 0.1,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Iconsax.add, size: 16, color: colors.scaffoldBackground),
+                const SizedBox(width: 8),
+                Text(
+                  context.l10n.ledgerAddExpense,
+                  style: AppTypography.sans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: colors.scaffoldBackground,
+                    letterSpacing: 0.1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

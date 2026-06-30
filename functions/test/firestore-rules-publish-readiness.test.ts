@@ -97,6 +97,11 @@ describe('Publish readiness Firestore rules', () => {
       serverCreatedAt: new Date(),
       updatedAt: null,
       description: null,
+      // #723: the create-path producer (Event.toFirestoreMap) writes the close
+      // triple; validEventCreate whitelists them (all born false/null).
+      isClosed: false,
+      closedAt: null,
+      closedBy: null,
       ...overrides,
     };
   }
@@ -1260,6 +1265,180 @@ describe('Publish readiness Firestore rules', () => {
       deletedAt: null,
       updatedAt: new Date(),
     }));
+  });
+
+  describe('#723 event close lifecycle', () => {
+    test('admin (event creator) can close the event', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('group creator can close an event they did not create', async () => {
+      await seedEvent('e2', {
+        createdBy: 'member',
+        participantIds: ['member'],
+        participantNames: { member: 'Member' },
+      });
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e2').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('non-admin participant cannot close the event', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'member',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('close with closedBy != caller is rejected', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'member',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('close bundling an unrelated key (name) is rejected', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        name: 'Sneaky rename',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('close without a closedAt timestamp is rejected', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: null,
+        closedBy: 'owner',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('admin can close an event with a departed participant (#249 / [P2])', async () => {
+      // 'member' leaves the group (drops out of memberIds) but stays an event
+      // participant. Close must still succeed — the close path must NOT re-run
+      // participantIds.hasOnly(groupMembers()).
+      await updateSeedGroup({ memberIds: ['owner'] });
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('admin can reopen a closed event', async () => {
+      await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        isClosed: false,
+        closedAt: null,
+        closedBy: null,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('non-admin cannot reopen a closed event', async () => {
+      await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1').update({
+        isClosed: false,
+        closedAt: null,
+        closedBy: null,
+        updatedAt: new Date(),
+      }));
+    });
+
+    // NOTE: there is no "reopen a never-closed event" negative test — on a
+    // never-closed event the close triple is already false/null/null, so a
+    // reopen-shaped write diffs to ['updatedAt'] only and is a harmless no-op
+    // metadata bump (legitimately allowed by the light path). The reopen guard
+    // (before.isClosed must be present + true) is exercised by the close/reopen
+    // round-trip tests above.
+
+    test('participant can still rename a closed event (meta edits stay allowed)', async () => {
+      await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1').update({
+        name: 'Renamed after close',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('closed event REJECTS expense create', async () => {
+      await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1/expenses/expClosed').set(
+        validExpense({ id: 'expClosed' }),
+      ));
+    });
+
+    test('closed event REJECTS expense update', async () => {
+      await seedExpense({ id: 'expEdit' });
+      await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1/expenses/expEdit').update({
+        amountFils: 20000,
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('closed event REJECTS expense soft-delete', async () => {
+      await seedExpense({ id: 'expDel' });
+      await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1/expenses/expDel').update({
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('closed event STILL ACCEPTS settlement create (settlements stay live)', async () => {
+      await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setClosed').set(
+        validSettlement({ id: 'setClosed' }),
+      ));
+    });
+
+    test('open event still accepts expense create (no regression)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expOpen').set(
+        validExpense({ id: 'expOpen' }),
+      ));
+    });
+
+    test('event born closed is rejected; born open is accepted', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e-born-closed').set(
+        validEvent({ createdBy: 'owner', isClosed: true, closedAt: new Date(), closedBy: 'owner' }),
+      ));
+      await assertSucceeds(owner.doc('groups/g1/events/e-born-open').set(
+        validEvent({ createdBy: 'owner' }),
+      ));
+    });
   });
 
   // #528: positiveInt caps amountFils at Number.MAX_SAFE_INTEGER (2^53-1). The

@@ -2166,6 +2166,56 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get eventClose => 'Close event';
+
+  @override
+  String get eventReopen => 'Reopen event';
+
+  @override
+  String get eventCloseQuestion => 'Close this event?';
+
+  @override
+  String get eventCloseBody =>
+      'Spending will be frozen — no new or edited expenses. You can still settle up, and you can reopen the event later.';
+
+  @override
+  String get eventCloseConfirm => 'Close event';
+
+  @override
+  String get eventReopenQuestion => 'Reopen this event?';
+
+  @override
+  String get eventReopenBody => 'Expenses can be added and edited again.';
+
+  @override
+  String get eventReopenConfirm => 'Reopen';
+
+  @override
+  String eventCloseFailed(Object error) {
+    return 'Failed to close event: $error';
+  }
+
+  @override
+  String eventReopenFailed(Object error) {
+    return 'Failed to reopen event: $error';
+  }
+
+  @override
+  String eventClosedBannerBy(Object name) {
+    return 'Closed by $name · spending frozen';
+  }
+
+  @override
+  String get eventClosedBanner => 'Closed · spending frozen';
+
+  @override
+  String get editorEventClosedTitle => 'Event closed';
+
+  @override
+  String get editorEventClosedMessage =>
+      'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.';
+
+  @override
   String get eventAddExpense => 'Add expense';
 
   @override

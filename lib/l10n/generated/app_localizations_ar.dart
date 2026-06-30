@@ -2220,6 +2220,56 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get eventClose => 'إغلاق الفعالية';
+
+  @override
+  String get eventReopen => 'إعادة فتح الفعالية';
+
+  @override
+  String get eventCloseQuestion => 'إغلاق هذه الفعالية؟';
+
+  @override
+  String get eventCloseBody =>
+      'سيتم تجميد الإنفاق — لا يمكن إضافة مصروفات جديدة أو تعديلها. لا يزال بإمكانك التسوية، ويمكنك إعادة فتح الفعالية لاحقًا.';
+
+  @override
+  String get eventCloseConfirm => 'إغلاق الفعالية';
+
+  @override
+  String get eventReopenQuestion => 'إعادة فتح هذه الفعالية؟';
+
+  @override
+  String get eventReopenBody => 'يمكن إضافة المصروفات وتعديلها مرة أخرى.';
+
+  @override
+  String get eventReopenConfirm => 'إعادة فتح';
+
+  @override
+  String eventCloseFailed(Object error) {
+    return 'تعذّر إغلاق الفعالية: $error';
+  }
+
+  @override
+  String eventReopenFailed(Object error) {
+    return 'تعذّر إعادة فتح الفعالية: $error';
+  }
+
+  @override
+  String eventClosedBannerBy(Object name) {
+    return 'أُغلقت بواسطة $name · الإنفاق مُجمّد';
+  }
+
+  @override
+  String get eventClosedBanner => 'مُغلقة · الإنفاق مُجمّد';
+
+  @override
+  String get editorEventClosedTitle => 'الفعالية مُغلقة';
+
+  @override
+  String get editorEventClosedMessage =>
+      'هذه الفعالية مُغلقة والإنفاق مُجمّد. أعد فتحها من الإعدادات لإضافة المصروفات أو تعديلها.';
+
+  @override
   String get eventAddExpense => 'إضافة مصروف';
 
   @override

@@ -92,6 +92,8 @@ Event _makeEvent({
   DateTime? endDate,
   String createdBy = 'uid-creator',
   String? description,
+  bool isClosed = false,
+  String? closedBy,
 }) {
   return Event(
     id: id,
@@ -106,6 +108,9 @@ Event _makeEvent({
     endDate: endDate,
     createdAt: DateTime(2026, 3, 1),
     description: description,
+    isClosed: isClosed,
+    closedAt: isClosed ? DateTime(2026, 5, 1) : null,
+    closedBy: closedBy,
   );
 }
 
@@ -423,6 +428,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #723: the danger section gained a Close/Reopen tile above Delete, so the
+      // delete tile can sit below the fold — scroll it in before tapping.
+      await tester.ensureVisible(find.text('Delete event'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Delete event'));
       await tester.pumpAndSettle();
 
@@ -603,6 +612,106 @@ void main() {
       );
       expect(find.textContaining('Bad state: boom'), findsNothing);
       expect(find.byKey(EventKeys.dangerSection), findsOneWidget);
+    });
+
+    testWidgets('#723 close tile shown for open event, reopen when closed', (
+      tester,
+    ) async {
+      final service = _MockEventService();
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(
+        _wrapDangerSection(
+          prefs: prefs,
+          event: _makeEvent(),
+          eventService: service,
+          activityService: activityService,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Close event'), findsOneWidget);
+      expect(find.text('Reopen event'), findsNothing);
+
+      await tester.pumpWidget(
+        _wrapDangerSection(
+          prefs: prefs,
+          event: _makeEvent(isClosed: true, closedBy: 'uid-creator'),
+          eventService: service,
+          activityService: activityService,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Reopen event'), findsOneWidget);
+      expect(find.text('Close event'), findsNothing);
+    });
+
+    testWidgets('#723 confirming close calls closeEvent', (tester) async {
+      final event = _makeEvent();
+      final service = _MockEventService();
+      when(
+        () => service.closeEvent(
+          groupId: any(named: 'groupId'),
+          eventId: any(named: 'eventId'),
+          closedBy: any(named: 'closedBy'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        _wrapDangerSection(
+          prefs: prefs,
+          event: event,
+          eventService: service,
+          activityService: _RecordingGroupActivityService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(EventKeys.closeEventTile));
+      await tester.pumpAndSettle();
+      expect(find.text('Close this event?'), findsOneWidget);
+
+      await tester.tap(find.byKey(EventKeys.closeEventConfirmButton));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => service.closeEvent(
+          groupId: event.groupId,
+          eventId: event.id,
+          closedBy: any(named: 'closedBy'),
+        ),
+      ).called(1);
+    });
+
+    testWidgets('#723 confirming reopen calls reopenEvent', (tester) async {
+      final event = _makeEvent(isClosed: true, closedBy: 'uid-creator');
+      final service = _MockEventService();
+      when(
+        () => service.reopenEvent(
+          groupId: any(named: 'groupId'),
+          eventId: any(named: 'eventId'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        _wrapDangerSection(
+          prefs: prefs,
+          event: event,
+          eventService: service,
+          activityService: _RecordingGroupActivityService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(EventKeys.closeEventTile));
+      await tester.pumpAndSettle();
+      expect(find.text('Reopen this event?'), findsOneWidget);
+
+      await tester.tap(find.byKey(EventKeys.closeEventConfirmButton));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => service.reopenEvent(groupId: event.groupId, eventId: event.id),
+      ).called(1);
     });
 
     testWidgets('Save Changes button calls updateEvent on tap', (tester) async {

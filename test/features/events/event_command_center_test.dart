@@ -262,7 +262,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('YOU OWE'), findsOneWidget);
-      expect(find.textContaining('you owe', findRichText: true), findsOneWidget);
+      expect(
+        find.textContaining('you owe', findRichText: true),
+        findsOneWidget,
+      );
     },
   );
 
@@ -323,6 +326,32 @@ void main() {
     expect(find.text('AddExpenseRoute:event-1'), findsOneWidget);
   });
 
+  testWidgets('#723 closed event shows banner and disables add-expense', (
+    tester,
+  ) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+      isClosed: true,
+      closedBy: 'uid-1',
+    );
+
+    await _pumpEventHubRouter(tester, event);
+
+    // Banner present, resolving closedBy -> name.
+    expect(find.byKey(EventKeys.closedBanner), findsOneWidget);
+    expect(find.textContaining('spending frozen'), findsOneWidget);
+
+    // Add-expense button is disabled (tapping does not route to /add).
+    final button = tester.widget<FilledButton>(
+      find.byKey(EventKeys.addExpenseChip),
+    );
+    expect(button.onPressed, isNull);
+    await tester.tap(find.byKey(EventKeys.addExpenseChip));
+    await tester.pumpAndSettle();
+    expect(find.text('AddExpenseRoute:event-1'), findsNothing);
+  });
+
   testWidgets('settings button routes to the event settings path', (
     tester,
   ) async {
@@ -362,8 +391,16 @@ void main() {
           buckets: {
             'OMR': _settledBalances,
             'USD': [
-              _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('-15.00')),
-              _balance(uid: 'uid-2', name: 'Nasser', net: Decimal.parse('15.00')),
+              _balance(
+                uid: 'uid-1',
+                name: 'Mona',
+                net: Decimal.parse('-15.00'),
+              ),
+              _balance(
+                uid: 'uid-2',
+                name: 'Nasser',
+                net: Decimal.parse('15.00'),
+              ),
             ],
           },
         ),
@@ -385,92 +422,106 @@ void main() {
       );
     });
 
-    testWidgets('mixed signs — both bucket lines render, no tri-state overline', (
-      tester,
-    ) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
+    testWidgets(
+      'mixed signs — both bucket lines render, no tri-state overline',
+      (tester) async {
+        final event = _event(
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 1, 3),
+        );
+        final expense = _expense(
+          id: 'x1',
+          eventId: event.id,
+          payer: 'uid-1',
+          amount: Decimal.parse('10.000'),
+        );
 
-      await tester.pumpWidget(
-        _wrap(
-          event: event,
-          expenses: [expense],
-          buckets: {
-            'OMR': _userOwedBalances,
-            'USD': [
-              _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('-15.00')),
-              _balance(uid: 'uid-2', name: 'Nasser', net: Decimal.parse('15.00')),
-            ],
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          _wrap(
+            event: event,
+            expenses: [expense],
+            buckets: {
+              'OMR': _userOwedBalances,
+              'USD': [
+                _balance(
+                  uid: 'uid-1',
+                  name: 'Mona',
+                  net: Decimal.parse('-15.00'),
+                ),
+                _balance(
+                  uid: 'uid-2',
+                  name: 'Nasser',
+                  net: Decimal.parse('15.00'),
+                ),
+              ],
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('YOU ARE OWED'), findsNothing);
-      expect(find.text('YOU OWE'), findsNothing);
-      expect(find.text('All settled'), findsNothing);
-      final hero = find.byKey(EventKeys.spendingHero);
-      expect(
-        find.descendant(of: hero, matching: find.textContaining('10.000')),
-        findsWidgets,
-      );
-      expect(
-        find.descendant(of: hero, matching: find.textContaining('USD')),
-        findsWidgets,
-      );
-      expect(
-        find.textContaining('owes you', findRichText: true),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('you owe', findRichText: true),
-        findsOneWidget,
-      );
-    });
+        expect(find.text('YOU ARE OWED'), findsNothing);
+        expect(find.text('YOU OWE'), findsNothing);
+        expect(find.text('All settled'), findsNothing);
+        final hero = find.byKey(EventKeys.spendingHero);
+        expect(
+          find.descendant(of: hero, matching: find.textContaining('10.000')),
+          findsWidgets,
+        );
+        expect(
+          find.descendant(of: hero, matching: find.textContaining('USD')),
+          findsWidgets,
+        );
+        expect(
+          find.textContaining('owes you', findRichText: true),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('you owe', findRichText: true),
+          findsOneWidget,
+        );
+      },
+    );
 
-    testWidgets('L13: sub-tolerance residual is NOT settled (exact-zero gate)', (
-      tester,
-    ) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
+    testWidgets(
+      'L13: sub-tolerance residual is NOT settled (exact-zero gate)',
+      (tester) async {
+        final event = _event(
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 1, 3),
+        );
+        final expense = _expense(
+          id: 'x1',
+          eventId: event.id,
+          payer: 'uid-1',
+          amount: Decimal.parse('10.000'),
+        );
 
-      await tester.pumpWidget(
-        _wrap(
-          event: event,
-          expenses: [expense],
-          buckets: {
-            'OMR': [
-              _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('0.0005')),
-              _balance(
-                uid: 'uid-2',
-                name: 'Nasser',
-                net: Decimal.parse('-0.0005'),
-              ),
-            ],
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          _wrap(
+            event: event,
+            expenses: [expense],
+            buckets: {
+              'OMR': [
+                _balance(
+                  uid: 'uid-1',
+                  name: 'Mona',
+                  net: Decimal.parse('0.0005'),
+                ),
+                _balance(
+                  uid: 'uid-2',
+                  name: 'Nasser',
+                  net: Decimal.parse('-0.0005'),
+                ),
+              ],
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('All settled'), findsNothing);
-      expect(find.text('YOU ARE OWED'), findsOneWidget);
-    });
+        expect(find.text('All settled'), findsNothing);
+        expect(find.text('YOU ARE OWED'), findsOneWidget);
+      },
+    );
 
     testWidgets('roster dot lights from any non-zero bucket', (tester) async {
       final event = _event(
@@ -493,7 +544,11 @@ void main() {
             'OMR': _settledBalances,
             'USD': [
               _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('-7.00')),
-              _balance(uid: 'uid-2', name: 'Nasser', net: Decimal.parse('7.00')),
+              _balance(
+                uid: 'uid-2',
+                name: 'Nasser',
+                net: Decimal.parse('7.00'),
+              ),
             ],
           },
         ),
@@ -536,7 +591,11 @@ void main() {
             ],
             'USD': [
               _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('-7.00')),
-              _balance(uid: 'uid-2', name: 'Nasser', net: Decimal.parse('7.00')),
+              _balance(
+                uid: 'uid-2',
+                name: 'Nasser',
+                net: Decimal.parse('7.00'),
+              ),
             ],
           },
         ),
@@ -594,9 +653,9 @@ Widget _wrap({
       eventDetailProvider(
         eventRef,
       ).overrideWith((_) => Stream<Event?>.value(event)),
-      groupDetailProvider(
-        event.groupId,
-      ).overrideWith((_) => Stream<Group?>.value(_group.copyWith(currency: currency))),
+      groupDetailProvider(event.groupId).overrideWith(
+        (_) => Stream<Group?>.value(_group.copyWith(currency: currency)),
+      ),
       eventExpensesProvider(
         eventRef,
       ).overrideWith((_) => Stream.value(expenses)),
@@ -713,6 +772,8 @@ Event _event({
   required DateTime startDate,
   required DateTime endDate,
   EventType type = EventType.trip,
+  bool isClosed = false,
+  String? closedBy,
 }) {
   return Event(
     id: 'event-1',
@@ -726,6 +787,9 @@ Event _event({
     startDate: startDate,
     endDate: endDate,
     createdAt: startDate,
+    isClosed: isClosed,
+    closedAt: isClosed ? DateTime(2026, 5, 1) : null,
+    closedBy: closedBy,
   );
 }
 
