@@ -9,6 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
@@ -32,6 +34,10 @@ import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockSettlementService extends Mock implements SettlementService {}
+
+class _MockUrlLauncher extends Mock
+    with MockPlatformInterfaceMixin
+    implements UrlLauncherPlatform {}
 
 void main() {
   const groupId = 'group-1';
@@ -400,6 +406,10 @@ void main() {
       expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
       // createdBy is the writer (Carol) — identity is orthogonal to direction.
       expect(snap.docs.first.data()['createdBy'], equals('carol'));
+      // #367: settle-on-behalf (currentUid is NEITHER party) never nudges —
+      // the gate is currentUid == fromUserId, not merely != toUserId. This is
+      // the third-party case that distinguishes the two formulations.
+      expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
     },
   );
 
@@ -750,6 +760,9 @@ void main() {
       ),
       findsNothing,
     );
+    // #367 honesty guard: a FAILED write must not offer to tell the creditor
+    // "I've sent you …" — the gate is outcome.kind == recorded.
+    expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
   });
 
   testWidgets('permission-denied shows the not-allowed message, not network (#360)', (
@@ -782,6 +795,8 @@ void main() {
       ),
       findsNothing,
     );
+    // #367 honesty guard: a permission-denied write must not nudge.
+    expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
   });
 
   testWidgets(
@@ -1046,6 +1061,177 @@ void main() {
         expect(service.calls[1].currency, 'USD');
         expect(service.calls[1].payerParticipantId, 'alice');
         expect(service.calls[1].recipientParticipantId, 'bob');
+      },
+    );
+  });
+
+  // #367: after the DEBTOR records a payment they made on the single-tile path,
+  // a post-record nudge offers to notify the creditor over WhatsApp. Gated to
+  // the paying perspective + single-tile path — creditor-records (#282),
+  // settle-on-behalf (#595), and the stepped walk never nudge.
+  group('#367 WhatsApp settle notify', () {
+    final twoBucketExpenses = [
+      Expense(
+        id: 'expense-omr',
+        tripId: eventId,
+        payerParticipantId: 'alice',
+        amount: Decimal.parse('20.000'),
+        currency: 'OMR',
+        description: 'Dinner',
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 5, 16),
+        createdBy: 'alice',
+      ),
+      Expense(
+        id: 'expense-usd',
+        tripId: eventId,
+        payerParticipantId: 'alice',
+        amount: Decimal.parse('80.00'),
+        currency: 'USD',
+        description: 'Hotel',
+        scope: ExpenseScope.global,
+        createdAt: DateTime(2026, 5, 16),
+        createdBy: 'alice',
+      ),
+    ];
+
+    testWidgets(
+      'debtor single-tile record offers the nudge with the EVENT-scoped, '
+      'past-tense message (for {event} in {group})',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+
+        // Default currentUid = bob, who owes alice 10.000 → bob is the debtor.
+        await tester.pumpWidget(buildScreen(fakeDb));
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(GroupKeys.settleUpRecordPaymentButton),
+        );
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleNotifySheet), findsOneWidget);
+        // Past tense, recipient = the creditor (Alice), event AND group named.
+        expect(
+          find.textContaining("Hey Alice, I've sent you OMR 10.000 for "
+              'Beach Trip in Trip.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'tapping WhatsApp launches a numberless whatsapp://send carrying the '
+      'message; never falls back when WhatsApp is installed',
+      (tester) async {
+        registerFallbackValue(const LaunchOptions());
+        final launcher = _MockUrlLauncher();
+        UrlLauncherPlatform.instance = launcher;
+        when(() => launcher.canLaunch(any())).thenAnswer((_) async => true);
+        when(
+          () => launcher.launchUrl(any(), any()),
+        ).thenAnswer((_) async => true);
+
+        final fakeDb = FakeFirebaseFirestore();
+        await tester.pumpWidget(buildScreen(fakeDb));
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(GroupKeys.settleUpRecordPaymentButton),
+        );
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.settleNotifyWhatsAppButton));
+        await tester.pumpAndSettle();
+
+        final launched = verify(
+          () => launcher.launchUrl(captureAny(), any()),
+        ).captured.single as String;
+        expect(launched, startsWith('whatsapp://send?text='));
+        expect(Uri.decodeQueryComponent(launched), contains('Beach Trip'));
+      },
+    );
+
+    testWidgets('Not now dismisses the nudge without launching WhatsApp', (
+      tester,
+    ) async {
+      registerFallbackValue(const LaunchOptions());
+      final launcher = _MockUrlLauncher();
+      UrlLauncherPlatform.instance = launcher;
+      when(() => launcher.canLaunch(any())).thenAnswer((_) async => true);
+      when(
+        () => launcher.launchUrl(any(), any()),
+      ).thenAnswer((_) async => true);
+
+      final fakeDb = FakeFirebaseFirestore();
+      await tester.pumpWidget(buildScreen(fakeDb));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleNotifyNotNowButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
+      verifyNever(() => launcher.launchUrl(any(), any()));
+    });
+
+    testWidgets('#282: the CREDITOR recording a received payment sees NO nudge', (
+      tester,
+    ) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // Alice is the creditor (bob owes her). She records the receipt — the
+      // debtor-only nudge must not appear for her.
+      await tester.pumpWidget(buildScreen(fakeDb, currentUid: 'alice'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
+    });
+
+    testWidgets(
+      'a stepped multi-currency walk does NOT nudge (single-tile only)',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+
+        // Bob (debtor) owes alice across OMR + USD → one stepped card.
+        await tester.pumpWidget(
+          buildScreen(fakeDb, expensesStream: Stream.value(twoBucketExpenses)),
+        );
+        await tester.pumpAndSettle();
+
+        final card = find.byKey(const ValueKey('settle-stepped-alice'));
+        await tester.ensureVisible(card);
+        await tester.tap(card);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        // Aggregate summary snackbar, never the per-step WhatsApp nudge.
+        expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
       },
     );
   });

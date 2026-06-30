@@ -1258,6 +1258,52 @@
       "amount": {}
     }
   },
+  "settleNotifySheetTitle": "Paid — let {name} know?",
+  "@settleNotifySheetTitle": {
+    "description": "Title of the post-record nudge sheet (#367). Fires after a debtor records a settlement they made, offering to notify the creditor via WhatsApp. Past tense — the payment is already recorded.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settleNotifySheetBody": "Recorded — send a quick heads-up?",
+  "@settleNotifySheetBody": {
+    "description": "Sub-line under the #367 nudge title. Neutral wording; informing is optional and never a payment step."
+  },
+  "settleNotifyMessageLabel": "Message",
+  "@settleNotifyMessageLabel": {
+    "description": "Uppercase label above the WhatsApp message preview on the #367 nudge sheet."
+  },
+  "settleNotifyPickChat": "You choose who to send it to in WhatsApp.",
+  "@settleNotifyPickChat": {
+    "description": "Caption explaining the numberless #367 handoff — Rihla stores no phone numbers; the user picks the recipient in WhatsApp."
+  },
+  "settleNotifyNotNow": "Not now",
+  "@settleNotifyNotNow": {
+    "description": "Dismiss button on the #367 nudge sheet — declines to notify; the settlement is already recorded."
+  },
+  "settleNotifyWhatsApp": "WhatsApp",
+  "@settleNotifyWhatsApp": {
+    "description": "Confirm button on the #367 nudge sheet — opens WhatsApp prefilled with the message."
+  },
+  "settleNotifyMessageEvent": "Hey {recipientName}, I've sent you {amount} for {eventName} in {groupName}.",
+  "@settleNotifyMessageEvent": {
+    "description": "Prefilled WhatsApp message for an EVENT-level settle (#367). Past tense. {amount} carries the live/edited amount, per-currency formatted and kept LTR-Latin in Arabic. Scope names the event AND its group to disambiguate same-named events across two shared groups.",
+    "placeholders": {
+      "recipientName": {},
+      "amount": {},
+      "eventName": {},
+      "groupName": {}
+    }
+  },
+  "settleNotifyMessageGroup": "Hey {recipientName}, I've sent you {amount} for {groupName}.",
+  "@settleNotifyMessageGroup": {
+    "description": "Prefilled WhatsApp message for a GROUP-level settle (#367). Spans events, so it names only the group — never a single event. {amount} kept LTR-Latin in Arabic.",
+    "placeholders": {
+      "recipientName": {},
+      "amount": {},
+      "groupName": {}
+    }
+  },
   "settleUpNoteHint": "Add a note (optional)",
   "settleUpRecordsImmediately": "This records your payment to {name} immediately.",
   "@settleUpRecordsImmediately": {

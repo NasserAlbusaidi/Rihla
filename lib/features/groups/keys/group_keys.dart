@@ -96,6 +96,15 @@ abstract final class GroupKeys {
   static const settleUpCorrectButton =
       Key('group_settle_up_correct_button');
 
+  // #367: post-record WhatsApp notify nudge (debtor-only, single-tile path).
+  static const settleNotifySheet = Key('group_settle_notify_sheet');
+  static const settleNotifyMessagePreview =
+      Key('group_settle_notify_message_preview');
+  static const settleNotifyWhatsAppButton =
+      Key('group_settle_notify_whatsapp_button');
+  static const settleNotifyNotNowButton =
+      Key('group_settle_notify_not_now_button');
+
   // Phase 30 — Activity screen filter chip keys (added Wave 0; used by Plan 03 implementation)
   static const activityFilterAll = Key('group_activity_filter_all');
   static const activityFilterSettlements =

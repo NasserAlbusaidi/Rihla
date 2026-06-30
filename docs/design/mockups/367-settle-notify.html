@@ -1,0 +1,164 @@
+<!-- @dsCard group="Settle & Seal" name="#367 — WhatsApp settle-up notify (numberless)" subtitle="Post-record nudge · A sheet (pick) vs B snackbar · past-tense, scope-named" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#367 — WhatsApp settle-up notify (numberless) · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  :root { --wa-green:#25D366; --wa-text:#06351b; --wa-bubble:#dcf8c6; }
+  /* WhatsApp-style prefilled message preview bubble */
+  .wa-preview {
+    position: relative;
+    background: var(--wa-bubble);
+    color: #0b231a;
+    border-radius: 12px 12px 12px 4px;
+    padding: 10px 12px;
+    font-size: 13px; line-height: 1.45;
+    box-shadow: 0 1px 1px rgba(0,0,0,.08);
+    text-align: start;
+  }
+  .wa-preview .amt { font-family: var(--font-mono, monospace); font-weight: 700; direction: ltr; unicode-bidi: isolate; }
+  .wa-cap { font-size: 11px; color: var(--ink-4); margin-top: 6px; text-align: start; }
+  .scope-pill { display:inline-flex; align-items:center; gap:5px; background: var(--card-soft); border:1px solid var(--border);
+                border-radius: var(--r-pill); padding: 3px 9px; font-size: 11px; color: var(--ink-2); margin: 2px 4px 2px 0; }
+  .btn.whatsapp::before { content:'✆'; margin-inline-end:7px; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#367 · WhatsApp settle-up <span class="saffron">notify</span> <span class="tag">numberless · no PII</span></h1>
+  <p><b>Reshaped 2026-06-29.</b> Dropped IBAN + QR + stored numbers (the GCC settles by phone-number bank
+     transfer, not IBAN). Rihla stores <b>zero</b> phone numbers — a numberless <code>wa.me</code>/<code>whatsapp://send</code>
+     deep link opens WhatsApp with the message prefilled; the user picks the recipient from their own contacts.
+     <b>No schema, no rules → Gate-exempt.</b> The notify is pure courtesy — settlement stays one-sided
+     (recording it already moved the balance). Reuses <code>whatsapp_share.dart</code> (#354) +
+     <code>shareText</code> fallback. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#367</span>
+    <h2 class="issue-title">feat(settle-up): WhatsApp settle-up notify — numberless, no stored numbers</h2>
+    <span class="issue-meta">design · privacy · Gate-exempt · #708 Settle &amp; Seal (sequenced first)</span>
+  </div>
+  <p class="issue-desc">The flow is unchanged up to the existing <b>Mark paid</b> sheet. The settlement records
+     immediately (append-only, as today). <b>Then</b>, only when the viewer is the <b>debtor</b>
+     (<code>currentUid == fromUserId</code>), a small post-record nudge offers to let the creditor know.
+     The creditor-records (#282) and settle-on-behalf (#595) perspectives <b>show no nudge</b> — only the
+     person who actually paid informs. Copy is honest <b>past tense</b> because it fires <i>after</i>
+     recording.</p>
+  <p class="issue-rec"><b>Recommendation:</b> Variant A — a follow-up nudge sheet. It matches the handoff
+     spec's two-button <i>[Not now] [WhatsApp]</i> shape, and crucially it <b>shows the exact message before
+     it sends</b> (no surprise about what gets shared). The snackbar (B) can't preview the message and
+     inherits the action-snackbar auto-dismiss trap (#411).</p>
+
+  <div class="variant-row">
+
+    <!-- ==================== VARIANT A — Follow-up nudge sheet (PICK) ==================== -->
+    <div class="variant pick">
+      <div class="variant-label">A · Follow-up nudge sheet <span class="tag">pick</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+
+          <div class="scrim"></div>
+          <div class="sheet-wrap">
+            <div class="spacer"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+
+              <!-- Confirmed badge -->
+              <div class="center" style="margin-bottom:var(--s12)">
+                <span style="width:56px;height:56px;border-radius:var(--r-pill);background:var(--sage-soft,#e7efe3);
+                             color:var(--success,#4f7a4a);display:flex;align-items:center;justify-content:center;
+                             font-size:26px;margin:0 auto var(--s8)">✓</span>
+                <div class="sheet-title">Paid ✓ — let Mariam know?</div>
+                <div class="sheet-sub" style="margin-bottom:0">Recorded. Send her a quick heads-up?</div>
+              </div>
+
+              <!-- Message preview (exactly what WhatsApp will be prefilled with) -->
+              <div class="uppercase-label" style="margin-bottom:var(--s8)">Message</div>
+              <div class="wa-preview" style="margin-bottom:6px">
+                Hey Mariam, I&rsquo;ve sent you <span class="amt">OMR&nbsp;18.500</span> for Beach House in Summer Trip.
+              </div>
+              <div class="wa-cap">Event settle → <i>for {event} in {group}</i>. You pick the chat in WhatsApp.</div>
+
+              <div class="row" style="gap:10px;margin-top:var(--s16)">
+                <button class="btn secondary block">Not now</button>
+                <button class="btn whatsapp block">WhatsApp</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> after <code>_recordSettlement</code> succeeds and the writer is the
+         debtor, the caller shows this sheet. <b>WhatsApp</b> → <code>shareTextViaWhatsApp(msg, fallback:
+         shareText)</code> (the #354 chokepoint). <b>Not now</b> just dismisses. <b>Why pick:</b> previews the
+         message, reuses the sheet language + WhatsApp path, no schema. Hidden for creditor-records / on-behalf.</p>
+    </div>
+
+    <!-- ==================== VARIANT B — Action snackbar ==================== -->
+    <div class="variant">
+      <div class="variant-label">B · Action snackbar <span class="tag">lighter</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title">Settle up</div>
+            <div class="icon-btn center muted"> </div>
+          </div>
+          <div class="content tight">
+            <div class="section-header"><span class="label">You owe</span></div>
+            <div class="card flush">
+              <div class="list-row">
+                <span class="avatar av-5">M</span>
+                <div class="row-body">
+                  <div class="row-title">Mariam Al-Farsi</div>
+                  <div class="row-sub" style="color:var(--success,#4f7a4a)">Settled · just now</div>
+                </div>
+                <div class="row-trail"><span class="r-amount lg"><span class="ccy">OMR</span>0<span class="dec">.000</span></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating action snackbar -->
+          <div style="position:absolute;left:12px;right:12px;bottom:14px">
+            <div class="toast success" style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:14px;width:100%">
+              <span style="font-size:13px">Paid ✓ &middot; recorded</span>
+              <span class="chip whatsapp" style="font-weight:700">✆ Let Mariam know</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p class="variant-note"><b>What:</b> the existing success snackbar gains a <i>Let {name} know</i> WhatsApp
+         action. <b>Why not:</b> can't preview the message; an action-bearing snackbar defaults to
+         <code>persist:true</code> on Flutter ≥3.41 (#411) and the 8s window is short for a courtesy tap;
+         no room for the scope caption. Keep as fallback thinking only.</p>
+    </div>
+
+  </div>
+
+  <!-- Behaviour notes -->
+  <div class="card soft" style="padding:var(--s16);margin-top:var(--s8)">
+    <div class="uppercase-label" style="margin-bottom:var(--s8)">Message scope &amp; rules</div>
+    <div style="margin-bottom:10px">
+      <span class="scope-pill">Event settle → <b>&nbsp;for {event} in {group}</b></span>
+      <span class="scope-pill">Group settle → <b>&nbsp;for {group}</b></span>
+    </div>
+    <ul class="tiny" style="margin:0;padding-inline-start:18px;line-height:1.7;color:var(--ink-2)">
+      <li><b>Past tense, courtesy only:</b> &ldquo;Hey {name}, I&rsquo;ve sent you {amount} for {scope}.&rdquo; — fires after recording, never a payment step.</li>
+      <li><b>Amount = the live/edited amount</b> in the sheet (partial pays carry the edited figure), per-currency decimals incl. JPY×1. Amount stays LTR-Latin inside Arabic.</li>
+      <li><b>Debtor-only:</b> shown when <code>currentUid == fromUserId</code> (paying). Creditor-records (#282) &amp; settle-on-behalf (#595) → no nudge.</li>
+      <li><b>Scope naming</b> disambiguates the same event-name across two shared groups; group settle spans events so it never names one event.</li>
+      <li><b>Single-tile path only</b> for v1 — the stepped multi-currency walk shows its own aggregate snackbar; per-step WhatsApp nudges would be noisy and the message carries one amount/currency.</li>
+      <li><b>Fallback:</b> WhatsApp not installed → <code>shareText</code> OS share sheet (never a dead end).</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

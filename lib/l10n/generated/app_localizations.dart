@@ -2592,6 +2592,63 @@ abstract class AppLocalizations {
   /// **'{fromName} will still owe {toName} {amount} after this.'**
   String settleUpRemainingAfter(Object fromName, Object toName, Object amount);
 
+  /// Title of the post-record nudge sheet (#367). Fires after a debtor records a settlement they made, offering to notify the creditor via WhatsApp. Past tense — the payment is already recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid — let {name} know?'**
+  String settleNotifySheetTitle(Object name);
+
+  /// Sub-line under the #367 nudge title. Neutral wording; informing is optional and never a payment step.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded — send a quick heads-up?'**
+  String get settleNotifySheetBody;
+
+  /// Uppercase label above the WhatsApp message preview on the #367 nudge sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get settleNotifyMessageLabel;
+
+  /// Caption explaining the numberless #367 handoff — Rihla stores no phone numbers; the user picks the recipient in WhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'You choose who to send it to in WhatsApp.'**
+  String get settleNotifyPickChat;
+
+  /// Dismiss button on the #367 nudge sheet — declines to notify; the settlement is already recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get settleNotifyNotNow;
+
+  /// Confirm button on the #367 nudge sheet — opens WhatsApp prefilled with the message.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp'**
+  String get settleNotifyWhatsApp;
+
+  /// Prefilled WhatsApp message for an EVENT-level settle (#367). Past tense. {amount} carries the live/edited amount, per-currency formatted and kept LTR-Latin in Arabic. Scope names the event AND its group to disambiguate same-named events across two shared groups.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey {recipientName}, I\'ve sent you {amount} for {eventName} in {groupName}.'**
+  String settleNotifyMessageEvent(
+    Object recipientName,
+    Object amount,
+    Object eventName,
+    Object groupName,
+  );
+
+  /// Prefilled WhatsApp message for a GROUP-level settle (#367). Spans events, so it names only the group — never a single event. {amount} kept LTR-Latin in Arabic.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey {recipientName}, I\'ve sent you {amount} for {groupName}.'**
+  String settleNotifyMessageGroup(
+    Object recipientName,
+    Object amount,
+    Object groupName,
+  );
+
   /// No description provided for @settleUpNoteHint.
   ///
   /// In en, this message translates to:
