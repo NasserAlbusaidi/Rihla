@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 
 import '../../../core/services/money_serializer.dart';
 import '../../ledger/models/expense_model.dart';
+import 'spending_snapshot.dart';
 
 /// The single largest expense in one currency (#721 Slice 2). Display-only.
 /// `description` may be null/empty → the screen falls back to the category name.
@@ -203,10 +204,12 @@ class EventRecap {
         ),
     };
 
-    // ---- Slice 2: balance-driven maps (payer totals, nets, settled). ----
+    // ---- Slice 2: balance-driven maps. payerTotals is SPENDING-derived (frozen
+    // under fromSnapshot); the nets/isSettled collections are SETTLEMENT-live and
+    // shared with fromSnapshot via [_liveNetsAndSettled]. payerTotals is
+    // deliberately NOT in that helper — fromSnapshot takes it from the snapshot,
+    // never from live balances (#766 Gate). ----
     final payerTotals = <String, List<RecapPersonAmount>>{};
-    final participantNets = <String, List<RecapNet>>{};
-    final isSettled = <String, bool>{};
     balances.forEach((currency, bucket) {
       final payers = bucket
           .where((b) => b.totalPaid > Decimal.zero)
@@ -217,22 +220,8 @@ class EventRecap {
           return byAmt != 0 ? byAmt : x.participantId.compareTo(y.participantId);
         });
       payerTotals[currency] = List.unmodifiable(payers);
-
-      final nets = bucket
-          .map((b) => (participantId: b.participantId, net: b.netBalance))
-          .toList()
-        ..sort((x, y) {
-          if (uid != null) {
-            if (x.participantId == uid && y.participantId != uid) return -1;
-            if (y.participantId == uid && x.participantId != uid) return 1;
-          }
-          final byNet = y.net.compareTo(x.net); // desc (creditors first)
-          return byNet != 0 ? byNet : x.participantId.compareTo(y.participantId);
-        });
-      participantNets[currency] = List.unmodifiable(nets);
-
-      isSettled[currency] = bucket.every((b) => b.netBalance == Decimal.zero);
     });
+    final (participantNets, isSettled) = _liveNetsAndSettled(balances, uid);
 
     return EventRecap(
       eventId: eventId,
@@ -252,6 +241,123 @@ class EventRecap {
       participantNetsByCurrency: Map.unmodifiable(participantNets),
       isSettledByCurrency: Map.unmodifiable(isSettled),
       isEmpty: expenseCount == 0,
+    );
+  }
+
+  /// LIVE settlement collection fields — `participantNets` (current-user-first,
+  /// then net desc) and `isSettled` (every net exactly zero) — over the current
+  /// [balances]. Shared by [from] and [fromSnapshot]. Deliberately does NOT
+  /// compute `payerTotals`: that is spending-derived and FROZEN under
+  /// [fromSnapshot], so it must never be sourced from live balances here (#766).
+  static (Map<String, List<RecapNet>>, Map<String, bool>) _liveNetsAndSettled(
+    Map<String, List<UserBalance>> balances,
+    String? uid,
+  ) {
+    final participantNets = <String, List<RecapNet>>{};
+    final isSettled = <String, bool>{};
+    balances.forEach((currency, bucket) {
+      final nets = bucket
+          .map((b) => (participantId: b.participantId, net: b.netBalance))
+          .toList()
+        ..sort((x, y) {
+          if (uid != null) {
+            if (x.participantId == uid && y.participantId != uid) return -1;
+            if (y.participantId == uid && x.participantId != uid) return 1;
+          }
+          final byNet = y.net.compareTo(x.net); // desc (creditors first)
+          return byNet != 0 ? byNet : x.participantId.compareTo(y.participantId);
+        });
+      participantNets[currency] = List.unmodifiable(nets);
+      isSettled[currency] = bucket.every((b) => b.netBalance == Decimal.zero);
+    });
+    return (participantNets, isSettled);
+  }
+
+  /// Recap of a CLOSED event (#202 Slice 6): the SPENDING half comes from the
+  /// frozen [snapshot]; the SETTLEMENT half is computed LIVE from [balances]
+  /// (payments keep happening after close). The four current-user maps preserve
+  /// the "share ONE key set" invariant ([userPaidByCurrency] doc) with frozen
+  /// `paid`/`share`, live `net`, and `settled` as the residual `net − paid +
+  /// share` — so `net == paid − share + settled` holds for every viewer by
+  /// construction, whether or not the live universe has drifted since close.
+  factory EventRecap.fromSnapshot({
+    required SpendingSnapshot snapshot,
+    required String eventId,
+    required String eventName,
+    required DateTime? startDate,
+    required DateTime? endDate,
+    required Map<String, List<UserBalance>> balances,
+    required String? uid,
+  }) {
+    final paid = <String, Decimal>{};
+    final share = <String, Decimal>{};
+    final settled = <String, Decimal>{};
+    final net = <String, Decimal>{};
+
+    if (uid != null) {
+      final liveNet = <String, Decimal>{};
+      balances.forEach((ccy, bucket) {
+        for (final b in bucket) {
+          if (b.participantId == uid) {
+            liveNet[ccy] = b.netBalance;
+            break;
+          }
+        }
+      });
+
+      Decimal frozenPaid(String ccy) {
+        for (final p
+            in snapshot.payerTotalsByCurrency[ccy] ?? const <RecapPersonAmount>[]) {
+          if (p.participantId == uid) return p.amount;
+        }
+        return Decimal.zero; // zero-paid payers are excluded from payerTotals
+      }
+
+      final ccys = <String>{
+        ...snapshot.totalSpentByCurrency.keys,
+        ...snapshot.owedByCurrency.keys,
+        ...balances.keys,
+      };
+      for (final ccy in ccys) {
+        final p = frozenPaid(ccy);
+        final s = snapshot.owedByCurrency[ccy]?[uid] ?? Decimal.zero;
+        final n = liveNet[ccy] ?? (p - s); // no live row → net = paid − share
+        final involved =
+            p != Decimal.zero || s != Decimal.zero || n != Decimal.zero;
+        if (!involved) continue;
+        paid[ccy] = p;
+        share[ccy] = s;
+        net[ccy] = n;
+        settled[ccy] = n - p + s; // residual; reconciles by construction
+      }
+    }
+
+    final (participantNets, isSettled) = _liveNetsAndSettled(balances, uid);
+
+    return EventRecap(
+      eventId: eventId,
+      eventName: eventName,
+      startDate: startDate,
+      endDate: endDate,
+      participantCount: snapshot.participantCount,
+      expenseCount: snapshot.expenseCount,
+      totalSpentByCurrency: Map.unmodifiable(snapshot.totalSpentByCurrency),
+      userPaidByCurrency: Map.unmodifiable(paid),
+      userShareByCurrency: Map.unmodifiable(share),
+      userSettledByCurrency: Map.unmodifiable(settled),
+      userNetByCurrency: Map.unmodifiable(net),
+      biggestExpenseByCurrency: Map.unmodifiable(snapshot.biggestExpenseByCurrency),
+      payerTotalsByCurrency: {
+        for (final e in snapshot.payerTotalsByCurrency.entries)
+          e.key: List.unmodifiable(e.value),
+      },
+      categoryTotalsByCurrency: {
+        for (final e in snapshot.categoryTotalsByCurrency.entries)
+          e.key: List.unmodifiable(e.value),
+      },
+      participantNetsByCurrency: participantNets,
+      isSettledByCurrency: isSettled,
+      isEmpty: snapshot.expenseCount == 0,
     );
   }
 }
