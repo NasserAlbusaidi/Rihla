@@ -158,12 +158,29 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-29, `26c5cdac`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-30, `90d67bb6`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-29 deploy ceremony the `backend-deployed` tag is `26c5cdac`; prod
+    2026-06-30 deploy ceremony the `backend-deployed` tag is `90d67bb6`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#752 PR1 (#754)** — decompose a group-level settle-up into
+    Latest delta: **#723 (#763)** — event close lifecycle (Slice 5 of #202).
+    `firestore.rules` adds `eventAcceptsExpenseWrites` which **REPLACES**
+    `eventAllowsClientWrites` in the TWO expense write paths only (folds
+    `isDeleted`-absent/false + `isClosed==false` into the SAME `eventData()`
+    `.get(key,default)` reference, so a closed event freezes expense
+    create/edit/soft-delete with no extra `get()` against the 1000-expression
+    ceiling); settlements keep the untouched `eventAllowsClientWrites` and **stay
+    writable after close** (the epic contract). New `validEventCloseToggle` (admin
+    close+reopen in one fn, cheap `diff().hasOnly(['isClosed','closedAt','closedBy',
+    'updatedAt'])` first, `closedBy` pinned to caller; deliberately skips
+    `validEventBase` so re-validating `participantIds.hasOnly(groupMembers())` can't
+    block closing an event with a departed participant #249). Schema-only model add
+    (`Event.isClosed/closedAt/closedBy`) with **zero money-math change** — no
+    provider/oracle/`recomputeNet` reads the close fields. Client close/reopen UI +
+    read-only gating + l10n shipped on `main` (not deploy-relevant). Rules-only — no
+    function add/remove/logic change (all **28** updated in place). 184 rules tests
+    pass (17 new incl. settlement-stays-live + departed-participant-close).
+    Prior delta: **#752 PR1 (#754)** — decompose a group-level settle-up into
     per-event settlement writes. `firestore.rules` **additive/permissive**: optional
     `groupSettleUpId` link on settlements (guarded `!('groupSettleUpId' in data) ||
     … is string` — `validSettlementCore` runs on EVERY create, a direct access on the
