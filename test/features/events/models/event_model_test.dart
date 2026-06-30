@@ -367,4 +367,136 @@ void main() {
       expect(s, contains('g1'));
     });
   });
+
+  group('Event close fields (#723)', () {
+    late FakeFirebaseFirestore db;
+    setUp(() => db = FakeFirebaseFirestore());
+
+    Event sample({
+      bool isClosed = false,
+      DateTime? closedAt,
+      String? closedBy,
+    }) =>
+        Event(
+          id: 'e1',
+          name: 'N',
+          type: EventType.trip,
+          groupId: 'g1',
+          createdBy: 'u1',
+          participantIds: const ['u1'],
+          participantNames: const {'u1': 'A'},
+          modules: const EventModules(),
+          createdAt: DateTime(2026, 3, 1),
+          isClosed: isClosed,
+          closedAt: closedAt,
+          closedBy: closedBy,
+        );
+
+    test('defaults: isClosed false, closedAt/closedBy null', () {
+      final e = sample();
+      expect(e.isClosed, isFalse);
+      expect(e.closedAt, isNull);
+      expect(e.closedBy, isNull);
+    });
+
+    test('fromDoc parses close fields', () async {
+      final snap = await _writeAndRead(db, {
+        'name': 'X',
+        'type': 'trip',
+        'groupId': 'g1',
+        'createdBy': 'u1',
+        'participantIds': const ['u1'],
+        'participantNames': const {'u1': 'A'},
+        'modules': const {'ledger': true},
+        'createdAt': '2026-03-01T00:00:00Z',
+        'isClosed': true,
+        'closedAt': Timestamp.fromDate(DateTime(2026, 5, 2)),
+        'closedBy': 'u1',
+      });
+      final e = Event.fromDoc(snap);
+      expect(e.isClosed, isTrue);
+      expect(e.closedAt, DateTime(2026, 5, 2));
+      expect(e.closedBy, 'u1');
+    });
+
+    test('fromDoc defaults close fields when keys absent (legacy doc)', () async {
+      final snap = await _writeAndRead(db, {
+        'name': 'X',
+        'type': 'trip',
+        'groupId': 'g1',
+        'createdBy': 'u1',
+        'participantIds': const ['u1'],
+        'participantNames': const {'u1': 'A'},
+        'modules': const {'ledger': true},
+        'createdAt': '2026-03-01T00:00:00Z',
+        // close keys intentionally omitted
+      });
+      final e = Event.fromDoc(snap);
+      expect(e.isClosed, isFalse);
+      expect(e.closedAt, isNull);
+      expect(e.closedBy, isNull);
+    });
+
+    test('fromDoc salvages wrong-typed close fields (TOTAL-PARSE)', () async {
+      final snap = await _writeAndRead(db, {
+        'name': 'X',
+        'type': 'trip',
+        'groupId': 'g1',
+        'createdBy': 'u1',
+        'participantIds': const ['u1'],
+        'participantNames': const {'u1': 'A'},
+        'modules': const {'ledger': true},
+        'createdAt': '2026-03-01T00:00:00Z',
+        'isClosed': 'yes', // not == true → false
+        'closedBy': 42, // wrong type → null
+      });
+      final e = Event.fromDoc(snap);
+      expect(e.isClosed, isFalse);
+      expect(e.closedBy, isNull);
+    });
+
+    test('toFirestoreMap serializes close fields', () {
+      final map = sample(
+        isClosed: true,
+        closedAt: DateTime(2026, 5, 2),
+        closedBy: 'u1',
+      ).toFirestoreMap();
+      expect(map['isClosed'], isTrue);
+      expect(map['closedAt'], isA<Timestamp>());
+      expect(map['closedBy'], 'u1');
+    });
+
+    test('toFirestoreMap serializes default close fields', () {
+      final map = sample().toFirestoreMap();
+      expect(map['isClosed'], isFalse);
+      expect(map['closedAt'], isNull);
+      expect(map['closedBy'], isNull);
+    });
+
+    test('copyWith overrides close fields, preserves others', () {
+      final closed = sample().copyWith(
+        isClosed: true,
+        closedAt: DateTime(2026, 5, 2),
+        closedBy: 'u1',
+      );
+      expect(closed.isClosed, isTrue);
+      expect(closed.closedAt, DateTime(2026, 5, 2));
+      expect(closed.closedBy, 'u1');
+      expect(closed.isDeleted, isFalse);
+      expect(closed.name, 'N');
+    });
+
+    test('round-trips through Firestore', () async {
+      final original = sample(
+        isClosed: true,
+        closedAt: DateTime(2026, 5, 2),
+        closedBy: 'u1',
+      );
+      await db.collection('events').doc('e1').set(original.toFirestoreMap());
+      final back = Event.fromDoc(await db.collection('events').doc('e1').get());
+      expect(back.isClosed, isTrue);
+      expect(back.closedAt, DateTime(2026, 5, 2));
+      expect(back.closedBy, 'u1');
+    });
+  });
 }
