@@ -2523,12 +2523,28 @@
   "@recapOutstandingTitle": {
     "description": "Title of the recap settlement-status card when balances remain unsettled (#721)."
   },
-  "recapOutstandingSubtitle": "{count, plural, =1{1 person still owes} other{{count} people still owe}}. Settle up from the ledger.",
+  "recapOutstandingSubtitle": "{count, plural, =1{1 person still owes} other{{count} people still owe}}.",
   "@recapOutstandingSubtitle": {
     "description": "Subtitle of the recap settlement-status card; {count} is the number of people who still owe (debtors only) (#721).",
     "placeholders": {
       "count": { "type": "int" }
     }
+  },
+  "recapSettleCtaTitle": "Ready to settle up?",
+  "@recapSettleCtaTitle": {
+    "description": "Title of the actionable settle-up CTA on the event recap screen, shown when balances are outstanding (#721)."
+  },
+  "recapSettleCtaBody": "Settle just this event, or net your balances across the whole group.",
+  "@recapSettleCtaBody": {
+    "description": "Explains the difference between event-level and group-level settlement on the recap CTA (#721)."
+  },
+  "recapSettleThisEvent": "Settle this event",
+  "@recapSettleThisEvent": {
+    "description": "Primary button on the recap settle CTA — opens event-level settle-up (#721)."
+  },
+  "recapSettleAtGroup": "Settle at group level",
+  "@recapSettleAtGroup": {
+    "description": "Secondary button on the recap settle CTA — opens group-level settle-up (#721)."
   },
   "recapMultiCurrencyNote": "Balances are kept per currency — they're never added together.",
   "@recapMultiCurrencyNote": {

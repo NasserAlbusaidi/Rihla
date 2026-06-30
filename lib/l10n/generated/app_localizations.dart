@@ -5622,8 +5622,32 @@ abstract class AppLocalizations {
   /// Subtitle of the recap settlement-status card; {count} is the number of people who still owe (debtors only) (#721).
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 person still owes} other{{count} people still owe}}. Settle up from the ledger.'**
+  /// **'{count, plural, =1{1 person still owes} other{{count} people still owe}}.'**
   String recapOutstandingSubtitle(int count);
+
+  /// Title of the actionable settle-up CTA on the event recap screen, shown when balances are outstanding (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to settle up?'**
+  String get recapSettleCtaTitle;
+
+  /// Explains the difference between event-level and group-level settlement on the recap CTA (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Settle just this event, or net your balances across the whole group.'**
+  String get recapSettleCtaBody;
+
+  /// Primary button on the recap settle CTA — opens event-level settle-up (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Settle this event'**
+  String get recapSettleThisEvent;
+
+  /// Secondary button on the recap settle CTA — opens group-level settle-up (#721).
+  ///
+  /// In en, this message translates to:
+  /// **'Settle at group level'**
+  String get recapSettleAtGroup;
 
   /// Note shown under the total-spent card when an event spans more than one currency, explaining buckets are never cross-summed (#721).
   ///

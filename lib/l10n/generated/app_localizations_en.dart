@@ -3323,8 +3323,21 @@ class AppLocalizationsEn extends AppLocalizations {
       other: '$count people still owe',
       one: '1 person still owes',
     );
-    return '$_temp0. Settle up from the ledger.';
+    return '$_temp0.';
   }
+
+  @override
+  String get recapSettleCtaTitle => 'Ready to settle up?';
+
+  @override
+  String get recapSettleCtaBody =>
+      'Settle just this event, or net your balances across the whole group.';
+
+  @override
+  String get recapSettleThisEvent => 'Settle this event';
+
+  @override
+  String get recapSettleAtGroup => 'Settle at group level';
 
   @override
   String get recapMultiCurrencyNote =>
