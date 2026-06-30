@@ -135,6 +135,7 @@ class EventRecapScreen extends ConsumerWidget {
         recap: recap,
         roster: roster,
         eventType: event.type,
+        eventRef: (groupId: groupId, eventId: eventId),
       ),
     );
   }

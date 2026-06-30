@@ -56,5 +56,59 @@ void main() {
         expect(page.docs, isEmpty);
       });
     });
+
+    group('fetchAllEventAuditLogs (#704 Trip Receipt)', () {
+      Future<void> seed(int n, {String type = 'UPDATE'}) async {
+        for (var i = 0; i < n; i++) {
+          final ts = DateTime.utc(2026, 1, 1).add(Duration(seconds: i));
+          await fakeFirestore
+              .collection('groups').doc(groupId)
+              .collection('events').doc(eventId)
+              .collection('activity_logs').doc('a${i.toString().padLeft(4, '0')}')
+              .set({
+                'id': 'a$i', 'eventId': eventId, 'category': 'MONEY',
+                'eventType': type, 'logText': 'log $i', 'actorId': 'u1',
+                'actorName': 'Alice', 'metadata': <String, dynamic>{},
+                'createdAt': ts.toIso8601String(),
+              });
+        }
+      }
+
+      test('returns every log newest-first; capHit false under the cap', () async {
+        await seed(60);
+        final res = await service.fetchAllEventAuditLogs(groupId, eventId);
+        expect(res.logs, hasLength(60));
+        expect(res.logs.first.id, 'a59'); // DESC — newest first
+        expect(res.capHit, isFalse);
+        // an OLD entry still surfaces (no silent truncation under the cap)
+        expect(res.logs.any((l) => l.id == 'a0'), isTrue);
+      });
+
+      test('cap keeps the most-recent and flags capHit (drops oldest)', () async {
+        await seed(3);
+        final res = await service.fetchAllEventAuditLogs(groupId, eventId, cap: 2);
+        expect(res.logs, hasLength(2));
+        expect(res.capHit, isTrue);
+        expect(res.logs.map((l) => l.id), ['a2', 'a1']); // newest two
+        expect(res.logs.any((l) => l.id == 'a0'), isFalse); // oldest dropped
+      });
+
+      test('skips a malformed doc instead of throwing', () async {
+        await seed(2);
+        await fakeFirestore
+            .collection('groups').doc(groupId)
+            .collection('events').doc(eventId)
+            .collection('activity_logs').doc('bad')
+            .set({'createdAt': DateTime.utc(2026, 1, 2).toIso8601String()}); // no id/category
+        final res = await service.fetchAllEventAuditLogs(groupId, eventId);
+        expect(res.logs, hasLength(2)); // the malformed doc is skipped
+      });
+
+      test('log-free event → empty, capHit false', () async {
+        final res = await service.fetchAllEventAuditLogs('g', 'none');
+        expect(res.logs, isEmpty);
+        expect(res.capHit, isFalse);
+      });
+    });
   });
 }

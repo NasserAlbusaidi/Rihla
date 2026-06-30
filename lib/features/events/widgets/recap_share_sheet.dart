@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/types/event_ref.dart';
 import '../../../core/utils/share_helper.dart';
 import '../../../core/utils/widget_to_image.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../models/event_recap.dart';
+import '../providers/trip_receipt_provider.dart';
+import '../utils/trip_receipt_csv.dart';
 import 'recap_share_card.dart';
 
 /// Opens the #722 share-recap preview: the [RecapShareCard] poster (WYSIWYG, in
@@ -22,6 +26,7 @@ Future<void> showRecapShareSheet(
   required EventRecap recap,
   required Map<String, String> roster,
   required EventType eventType,
+  required EventRef eventRef,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -32,28 +37,32 @@ Future<void> showRecapShareSheet(
       recap: recap,
       roster: roster,
       eventType: eventType,
+      eventRef: eventRef,
     ),
   );
 }
 
-class _RecapShareSheet extends StatefulWidget {
+class _RecapShareSheet extends ConsumerStatefulWidget {
   const _RecapShareSheet({
     required this.recap,
     required this.roster,
     required this.eventType,
+    required this.eventRef,
   });
 
   final EventRecap recap;
   final Map<String, String> roster;
   final EventType eventType;
+  final EventRef eventRef;
 
   @override
-  State<_RecapShareSheet> createState() => _RecapShareSheetState();
+  ConsumerState<_RecapShareSheet> createState() => _RecapShareSheetState();
 }
 
-class _RecapShareSheetState extends State<_RecapShareSheet> {
+class _RecapShareSheetState extends ConsumerState<_RecapShareSheet> {
   final GlobalKey _cardKey = GlobalKey();
   bool _busy = false;
+  bool _csvBusy = false;
 
   Future<void> _share() async {
     if (_busy) return;
@@ -83,6 +92,26 @@ class _RecapShareSheetState extends State<_RecapShareSheet> {
     }
   }
 
+  Future<void> _exportCsv() async {
+    if (_csvBusy) return;
+    final receipt = ref.read(tripReceiptProvider(widget.eventRef)).value;
+    if (receipt == null) return; // gated on AsyncData; defensive
+    setState(() => _csvBusy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final l10n = context.l10n;
+    try {
+      final csv = tripReceiptToCsv(receipt, l10n);
+      await shareCsv(context, csv);
+      if (mounted) navigator.pop();
+    } catch (_) {
+      if (mounted) navigator.pop();
+      _showError(messenger, l10n.recapShareError);
+    } finally {
+      if (mounted) setState(() => _csvBusy = false);
+    }
+  }
+
   void _showError(ScaffoldMessengerState messenger, String message) {
     messenger.showSnackBar(
       // No action → auto-dismisses; explicit duration per the #411 snackbar trap.
@@ -94,6 +123,9 @@ class _RecapShareSheetState extends State<_RecapShareSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = context.spacing;
+    final csvReady = ref
+        .watch(tripReceiptProvider(widget.eventRef))
+        .maybeWhen(data: (r) => !r.isEmpty, orElse: () => false);
     return SafeArea(
       key: EventKeys.recapShareSheet,
       child: SingleChildScrollView(
@@ -137,6 +169,22 @@ class _RecapShareSheetState extends State<_RecapShareSheet> {
               isLoading: _busy,
               label: context.l10n.recapShareCta,
               icon: Iconsax.export_1,
+            ),
+            SizedBox(height: s.space8),
+            // Secondary: the full data proof pack (#704). Disabled until the
+            // receipt resolves (AsyncData) so a one-shot CSV never exports a
+            // partially-loaded snapshot.
+            TextButton.icon(
+              key: EventKeys.recapExportCsvButton,
+              onPressed: (_csvBusy || !csvReady) ? null : _exportCsv,
+              icon: _csvBusy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Iconsax.document_download),
+              label: Text(context.l10n.recapExportCsvButton),
             ),
           ],
         ),

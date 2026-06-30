@@ -3435,6 +3435,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get recapShareCta => 'مشاركة الصورة';
 
   @override
+  String get recapExportCsvButton => 'تصدير السجل (CSV)';
+
+  @override
   String get recapShareError => 'تعذّر إنشاء الصورة. حاول مرة أخرى.';
 
   @override

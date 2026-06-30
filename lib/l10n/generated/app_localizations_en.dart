@@ -3355,6 +3355,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapShareCta => 'Share image';
 
   @override
+  String get recapExportCsvButton => 'Export ledger (CSV)';
+
+  @override
   String get recapShareError => 'Couldn\'t create the image. Please try again.';
 
   @override

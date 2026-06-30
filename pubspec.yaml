@@ -58,6 +58,7 @@ dependencies:
 
   # Export
   share_plus: ^10.1.4
+  csv: ^6.0.0
   shared_preferences: ^2.5.4
   package_info_plus: ^8.2.1
 

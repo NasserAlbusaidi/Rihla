@@ -2564,6 +2564,10 @@
   "@recapShareCta": {
     "description": "Primary button in the recap share preview sheet that exports + shares the card as a PNG (#722)."
   },
+  "recapExportCsvButton": "Export ledger (CSV)",
+  "@recapExportCsvButton": {
+    "description": "Secondary button in the recap share sheet that exports the full Trip Receipt proof pack (expenses, allocations, settlements, corrections, balances) as a CSV file (#704)."
+  },
   "recapShareError": "Couldn't create the image. Please try again.",
   "@recapShareError": {
     "description": "Snackbar shown when capturing the recap card to a PNG fails (#722)."
