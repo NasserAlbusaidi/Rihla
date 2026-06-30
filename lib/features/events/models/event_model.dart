@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/utils/firestore_parse.dart';
+import 'spending_snapshot.dart';
 
 /// Enum representing the five supported event types.
 ///
@@ -98,6 +99,14 @@ class Event {
   final DateTime? closedAt;
   final String? closedBy;
 
+  /// #766 (Slice 6 of #202) — the frozen SPENDING half of the recap, captured
+  /// at close and cleared on reopen. OPAQUE & display-only: never read by the
+  /// oracle / any Function (same contract as splitExplanation). Written ONLY by
+  /// `EventService.closeEvent`'s partial update — deliberately NOT in
+  /// [toFirestoreMap], so it never enters the create payload (which `validEventCreate`
+  /// `keys().hasOnly` would reject). Null on an open or legacy event.
+  final SpendingSnapshot? spendingSnapshot;
+
   const Event({
     required this.id,
     required this.name,
@@ -117,6 +126,7 @@ class Event {
     this.isClosed = false,
     this.closedAt,
     this.closedBy,
+    this.spendingSnapshot,
   });
 
   /// Deserializes an Event from a Firestore document snapshot.
@@ -165,6 +175,12 @@ class Event {
       isClosed: data['isClosed'] == true,
       closedAt: dateOrNull(data['closedAt']),
       closedBy: data['closedBy'] is String ? data['closedBy'] as String : null,
+      // #766: opaque blob; TOTAL-PARSE inside SpendingSnapshot.fromMap never
+      // throws, so a malformed snapshot can't error the events stream.
+      spendingSnapshot: data['spendingSnapshot'] is Map
+          ? SpendingSnapshot.fromMap(
+              Map<String, dynamic>.from(data['spendingSnapshot'] as Map))
+          : null,
     );
   }
 
@@ -235,6 +251,9 @@ class Event {
       isClosed: isClosed ?? this.isClosed,
       closedAt: closedAt ?? this.closedAt,
       closedBy: closedBy ?? this.closedBy,
+      // #766: no copyWith param (set only via closeEvent's partial update), but
+      // MUST be passed through or copyWith silently drops it to the null default.
+      spendingSnapshot: spendingSnapshot,
     );
   }
 

@@ -540,6 +540,18 @@ service cloud.firestore {
                 && request.resource.data.deletedAt is timestamp));
         }
 
+        // #766 — spendingSnapshot is an OPAQUE display-only blob (the frozen
+        // SPENDING half of the recap, written on close, DELETEd on reopen). The
+        // oracle / recomputeNet / every Function NEVER read it (same contract as
+        // splitExplanation). Guard type + a generous top-level entry-count cap
+        // only; content is intentionally unvalidated — the 1 MB doc limit is the
+        // real payload backstop. Absent (every non-close update, and reopen's
+        // FieldValue.delete) passes via !hasAny.
+        function spendingSnapshotBounded(d) {
+          return !d.keys().hasAny(['spendingSnapshot'])
+            || (d.spendingSnapshot is map && d.spendingSnapshot.size() <= 16);
+        }
+
         // #723 close lifecycle (close + reopen folded into ONE function).
         //
         // Cheap diff-gate FIRST so a non-toggle update (rename, participant edit,
@@ -552,12 +564,15 @@ service cloud.firestore {
         // re-running the base re-asserts participantIds.hasOnly(groupMembers()),
         // which would permanently block closing any event with a departed
         // participant (#249) — the exact post-trip closeout case. The
-        // diff().hasOnly([4 keys]) already pins every other field immutable, so the
+        // diff().hasOnly([5 keys]) already pins every other field immutable, so the
         // base re-check is both redundant and harmful. Mirrors validSoftDelete.
+        // #766: spendingSnapshot joins the allow-list (close writes it, reopen
+        // DELETEs it) + a cheap opaque bounds check, both after the diff gate.
         function validEventCloseToggle() {
           return request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['isClosed', 'closedAt', 'closedBy', 'updatedAt'])
+              .hasOnly(['isClosed', 'closedAt', 'closedBy', 'updatedAt', 'spendingSnapshot'])
             && request.resource.data.updatedAt is timestamp
+            && spendingSnapshotBounded(request.resource.data)
             && requesterIsEventAdmin()
             && eventAllowsClientWrites(groupId, eventId)
             && (

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/events/models/spending_snapshot.dart';
 
 Future<DocumentSnapshot> _writeAndRead(
   FakeFirebaseFirestore db,
@@ -497,6 +499,94 @@ void main() {
       expect(back.isClosed, isTrue);
       expect(back.closedAt, DateTime(2026, 5, 2));
       expect(back.closedBy, 'u1');
+    });
+  });
+
+  group('Event spendingSnapshot (#766)', () {
+    late FakeFirebaseFirestore db;
+    setUp(() => db = FakeFirebaseFirestore());
+
+    const baseData = {
+      'name': 'X',
+      'type': 'trip',
+      'groupId': 'g1',
+      'createdBy': 'u1',
+      'participantIds': ['u1'],
+      'participantNames': {'u1': 'A'},
+      'modules': {'ledger': true},
+      'createdAt': '2026-03-01T00:00:00Z',
+    };
+
+    const snapMap = {
+      'v': 1,
+      'participantCount': 2,
+      'expenseCount': 3,
+      'totals': {'OMR': 100000},
+      'biggest': {
+        'OMR': {'id': 'e1', 'amt': 50000, 'payer': 'u1'}
+      },
+      'payers': {
+        'OMR': [
+          {'id': 'u1', 'amt': 100000}
+        ]
+      },
+      'categories': {
+        'OMR': [
+          {'cat': 'food', 'amt': 100000}
+        ]
+      },
+      'owed': {
+        'OMR': {'u1': 50000}
+      },
+    };
+
+    Event sample({SpendingSnapshot? spendingSnapshot}) => Event(
+          id: 'e1',
+          name: 'N',
+          type: EventType.trip,
+          groupId: 'g1',
+          createdBy: 'u1',
+          participantIds: const ['u1'],
+          participantNames: const {'u1': 'A'},
+          modules: const EventModules(),
+          createdAt: DateTime(2026, 3, 1),
+          spendingSnapshot: spendingSnapshot,
+        );
+
+    test('default spendingSnapshot is null', () {
+      expect(sample().spendingSnapshot, isNull);
+    });
+
+    test('fromDoc parses spendingSnapshot when present', () async {
+      final snap = await _writeAndRead(db, {...baseData, 'spendingSnapshot': snapMap});
+      final e = Event.fromDoc(snap);
+      expect(e.spendingSnapshot, isNotNull);
+      expect(e.spendingSnapshot!.participantCount, 2);
+      expect(e.spendingSnapshot!.totalSpentByCurrency['OMR'], Decimal.parse('100'));
+      expect(e.spendingSnapshot!.owedByCurrency['OMR']!['u1'], Decimal.parse('50'));
+    });
+
+    test('fromDoc → null when key absent (open/legacy event)', () async {
+      final snap = await _writeAndRead(db, baseData);
+      expect(Event.fromDoc(snap).spendingSnapshot, isNull);
+    });
+
+    test('fromDoc → null when wrong type (TOTAL-PARSE, no throw)', () async {
+      final snap = await _writeAndRead(db, {...baseData, 'spendingSnapshot': 'garbage'});
+      expect(Event.fromDoc(snap).spendingSnapshot, isNull);
+    });
+
+    test('toFirestoreMap OMITS spendingSnapshot (validEventCreate keys().hasOnly safe)', () {
+      final map = sample(spendingSnapshot: SpendingSnapshot.fromMap(snapMap)).toFirestoreMap();
+      expect(map.containsKey('spendingSnapshot'), isFalse);
+    });
+
+    test('copyWith preserves spendingSnapshot (not silently dropped to null)', () {
+      final e = sample(spendingSnapshot: SpendingSnapshot.fromMap(snapMap));
+      final renamed = e.copyWith(name: 'changed');
+      expect(renamed.name, 'changed');
+      expect(renamed.spendingSnapshot, isNotNull);
+      expect(renamed.spendingSnapshot!.participantCount, 2);
     });
   });
 }

@@ -1439,6 +1439,69 @@ describe('Publish readiness Firestore rules', () => {
         validEvent({ createdBy: 'owner' }),
       ));
     });
+
+    // ── #766 spendingSnapshot (frozen SPENDING half; opaque, display-only) ──
+    test('#766 close WITH a bounded spendingSnapshot map is accepted', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        updatedAt: new Date(),
+        spendingSnapshot: { v: 1, participantCount: 2, totals: { OMR: 100000 } },
+      }));
+    });
+
+    test('#766 close with an oversized spendingSnapshot (>16 keys) is rejected', async () => {
+      const big: Record<string, unknown> = {};
+      for (let i = 0; i < 17; i++) big[`k${i}`] = i;
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        updatedAt: new Date(),
+        spendingSnapshot: big,
+      }));
+    });
+
+    test('#766 close with a non-map spendingSnapshot is rejected', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e1').update({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        updatedAt: new Date(),
+        spendingSnapshot: 'not-a-map',
+      }));
+    });
+
+    test('#766 reopen that DELETEs spendingSnapshot is accepted', async () => {
+      await updateSeedEvent({
+        isClosed: true,
+        closedAt: new Date(),
+        closedBy: 'owner',
+        spendingSnapshot: { v: 1, participantCount: 2 },
+      });
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        isClosed: false,
+        closedAt: null,
+        closedBy: null,
+        updatedAt: new Date(),
+        spendingSnapshot: deleteSentinel(),
+      }));
+    });
+
+    test('#766 writing spendingSnapshot WITHOUT a close transition is rejected (close-only)', async () => {
+      // Admin, open event, no isClosed change → no valid close/reopen branch, and
+      // spendingSnapshot is absent from the light/admin allow-lists.
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e1').update({
+        spendingSnapshot: { v: 1 },
+        updatedAt: new Date(),
+      }));
+    });
   });
 
   // #528: positiveInt caps amountFils at Number.MAX_SAFE_INTEGER (2^53-1). The

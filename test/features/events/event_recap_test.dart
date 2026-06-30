@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/features/events/models/event_recap.dart';
+import 'package:safar/features/events/models/spending_snapshot.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 
 /// Slice 1 of #202 — pure `EventRecap.from` money-projection table.
@@ -416,6 +417,98 @@ void main() {
       expect(r.payerTotalsByCurrency['EUR'], isEmpty); // key present, empty list
       expect(r.participantNetsByCurrency['EUR']!.length, 2);
       expect(r.isSettledByCurrency['EUR'], isFalse);
+    });
+  });
+
+  group('EventRecap.fromSnapshot (Slice 6 #766)', () {
+    // Close-time recap: a paid 100 / owed 50 / net +50; b paid 0 / owed 50 /
+    // net -50. Unsettled at close.
+    SpendingSnapshot closeSnapshot() {
+      final closeBalances = {
+        'OMR': [ub('a', '100', '50', '50'), ub('b', '0', '50', '-50')],
+      };
+      final recap = EventRecap.from(
+        eventId: 'event-1',
+        eventName: 'Trip',
+        startDate: null,
+        endDate: null,
+        participantIds: const ['a', 'b'],
+        expenseCount: 1,
+        totalSpentByCurrency: {'OMR': d('100')},
+        balances: closeBalances,
+        expenses: [expense('e1', payer: 'a', amount: '100', categoryId: 'food')],
+        uid: 'a',
+      );
+      return SpendingSnapshot.from(recap: recap, balances: closeBalances);
+    }
+
+    EventRecap fromSnap(
+            SpendingSnapshot snap, Map<String, List<UserBalance>> live, String? uid) =>
+        EventRecap.fromSnapshot(
+          snapshot: snap,
+          eventId: 'event-1',
+          eventName: 'Trip',
+          startDate: null,
+          endDate: null,
+          balances: live,
+          uid: uid,
+        );
+
+    test('frozen spending from snapshot + live settlement from balances', () {
+      // Post-close: b settled 50 to a → both nets now 0 (live).
+      final live = {
+        'OMR': [ub('a', '100', '50', '0'), ub('b', '0', '50', '0')],
+      };
+      final r = fromSnap(closeSnapshot(), live, 'a');
+      // Frozen spending:
+      expect(r.totalSpentByCurrency['OMR'], d('100'));
+      expect(r.participantCount, 2);
+      expect(r.expenseCount, 1);
+      expect(r.userPaidByCurrency['OMR'], d('100'));
+      expect(r.userShareByCurrency['OMR'], d('50'));
+      expect(r.payerTotalsByCurrency['OMR']!.first.amount, d('100'));
+      expect(r.biggestExpenseByCurrency['OMR']!.expenseId, 'e1');
+      // Live settlement:
+      expect(r.userNetByCurrency['OMR'], d('0'));
+      expect(r.isSettledByCurrency['OMR'], isTrue);
+      // a received 50 → settled -50; net == paid - share + settled.
+      expect(r.userSettledByCurrency['OMR'], d('-50'));
+      expect(r.userNetByCurrency['OMR'],
+          r.userPaidByCurrency['OMR']! -
+              r.userShareByCurrency['OMR']! +
+              r.userSettledByCurrency['OMR']!);
+    });
+
+    test('every viewer reconciles (viewer b: not in frozen payers)', () {
+      final live = {
+        'OMR': [ub('a', '100', '50', '0'), ub('b', '0', '50', '0')],
+      };
+      final r = fromSnap(closeSnapshot(), live, 'b');
+      expect(r.userPaidByCurrency['OMR'], d('0')); // frozen: b paid nothing
+      expect(r.userShareByCurrency['OMR'], d('50')); // frozen: b owed 50
+      expect(r.userNetByCurrency['OMR'], d('0')); // live: settled
+      expect(r.userSettledByCurrency['OMR'], d('50')); // b gave 50 → +50
+      expect(r.userNetByCurrency['OMR'],
+          r.userPaidByCurrency['OMR']! -
+              r.userShareByCurrency['OMR']! +
+              r.userSettledByCurrency['OMR']!);
+    });
+
+    test('spending FROZEN even when live balances drift (identity axis)', () {
+      // Live recomputation drifts a's paid/net (participant churn after close).
+      // Frozen spending must NOT follow; live settlement must.
+      final drifted = {
+        'OMR': [ub('a', '999', '50', '200')],
+      };
+      final r = fromSnap(closeSnapshot(), drifted, 'a');
+      // Frozen — unchanged by the drift:
+      expect(r.userPaidByCurrency['OMR'], d('100'));
+      expect(r.payerTotalsByCurrency['OMR']!.first.amount, d('100'));
+      expect(r.totalSpentByCurrency['OMR'], d('100'));
+      expect(r.participantCount, 2);
+      // Live — follows the drift:
+      expect(r.userNetByCurrency['OMR'], d('200'));
+      expect(r.participantNetsByCurrency['OMR']!.length, 1);
     });
   });
 }

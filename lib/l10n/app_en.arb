@@ -2444,6 +2444,17 @@
   "@recapTotalSpent": {
     "description": "Section label for total event spend in the recap (#202)."
   },
+  "recapSpendingFrozen": "Spending frozen · closed {date}",
+  "@recapSpendingFrozen": {
+    "description": "Caption under the recap title once an event is closed and its spending snapshot is captured; settlement stays live (#766).",
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "recapSpendingFrozenNoDate": "Spending frozen",
+  "@recapSpendingFrozenNoDate": {
+    "description": "Dateless variant of recapSpendingFrozen for the brief window where closedAt (a server timestamp) has not resolved yet (#766)."
+  },
   "recapYouTitle": "You",
   "@recapYouTitle": {
     "description": "Section label for the current user's money summary in the recap (#202)."

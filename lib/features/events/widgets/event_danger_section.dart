@@ -16,9 +16,12 @@ import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
+import '../../ledger/providers/ledger_view_provider.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
+import '../models/spending_snapshot.dart';
 import '../providers/event_provider.dart';
+import '../providers/event_recap_provider.dart';
 
 /// Danger zone section for EventSettingsScreen.
 ///
@@ -331,13 +334,33 @@ class EventDangerSection extends ConsumerWidget {
 
   Future<void> _executeClose(BuildContext context, WidgetRef ref) async {
     final uid = FirebaseConfig.currentUser?.uid ?? '';
+    final eventRef = (groupId: groupId, eventId: eventId);
     try {
+      // #766: capture the frozen SPENDING half at close. Make sure the ledger
+      // has loaded first so the snapshot reflects the real spend, not a cold
+      // false-empty view. The section already subscribes this stream in build;
+      // bounded so an offline stall can't hang the close (on timeout we fall
+      // through → recap stays live, recoverable by reopen+close).
+      try {
+        await ref
+            .read(eventExpensesProvider(eventRef).future)
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {}
+      final recap = ref.read(eventRecapProvider(eventRef));
+      final view = ref.read(ledgerViewProvider(eventRef));
+      final snapshot = recap.isEmpty
+          ? null
+          : SpendingSnapshot.from(recap: recap, balances: view.balances).toMap();
+
       final connectivity = ref.read(connectivityProvider.notifier);
       final connectivityStatus = ref.read(connectivityProvider);
       final outcome = await awaitServerAck(
-        ref
-            .read(eventServiceProvider)
-            .closeEvent(groupId: groupId, eventId: eventId, closedBy: uid),
+        ref.read(eventServiceProvider).closeEvent(
+              groupId: groupId,
+              eventId: eventId,
+              closedBy: uid,
+              spendingSnapshot: snapshot,
+            ),
         skipWait: connectivityStatus != ConnectivityStatus.online,
       );
       if (outcome == WriteAck.acked) {

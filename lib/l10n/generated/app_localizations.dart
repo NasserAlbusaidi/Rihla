@@ -5505,6 +5505,18 @@ abstract class AppLocalizations {
   /// **'Total spent'**
   String get recapTotalSpent;
 
+  /// Caption under the recap title once an event is closed and its spending snapshot is captured; settlement stays live (#766).
+  ///
+  /// In en, this message translates to:
+  /// **'Spending frozen · closed {date}'**
+  String recapSpendingFrozen(String date);
+
+  /// Dateless variant of recapSpendingFrozen for the brief window where closedAt (a server timestamp) has not resolved yet (#766).
+  ///
+  /// In en, this message translates to:
+  /// **'Spending frozen'**
+  String get recapSpendingFrozenNoDate;
+
   /// Section label for the current user's money summary in the recap (#202).
   ///
   /// In en, this message translates to:

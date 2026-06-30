@@ -208,6 +208,7 @@ class EventService extends FirestoreRepository {
     required String groupId,
     required String eventId,
     required String closedBy,
+    Map<String, dynamic>? spendingSnapshot,
   }) async {
     try {
       await db
@@ -220,6 +221,11 @@ class EventService extends FirestoreRepository {
             'closedAt': FieldValue.serverTimestamp(),
             'closedBy': closedBy,
             'updatedAt': FieldValue.serverTimestamp(),
+            // #766: the frozen SPENDING half, captured opaque at close. The
+            // null-aware `?` omits the entry when null (empty event / inputs
+            // unloaded) so the close write stays a 4-key diff;
+            // `validEventCloseToggle` accepts the 5th key bounded.
+            'spendingSnapshot': ?spendingSnapshot,
           });
     } on FirebaseException catch (e) {
       if (kDebugMode) {
@@ -246,6 +252,10 @@ class EventService extends FirestoreRepository {
             'closedAt': null,
             'closedBy': null,
             'updatedAt': FieldValue.serverTimestamp(),
+            // #766: clear the frozen snapshot so the recap goes fully live again.
+            // DELETE (not null) — an explicit null fails the opaque `is map`
+            // rules guard; deletion removes the key so `!hasAny` passes.
+            'spendingSnapshot': FieldValue.delete(),
           });
     } on FirebaseException catch (e) {
       if (kDebugMode) {

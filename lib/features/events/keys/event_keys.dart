@@ -41,4 +41,5 @@ abstract final class EventKeys {
   static const recapScreen = Key('event_recap_screen');
   static const recapBackButton = Key('event_recap_back_button');
   static const recapButton = Key('event_recap_button');
+  static const recapFrozenCaption = Key('event_recap_frozen_caption');
 }
