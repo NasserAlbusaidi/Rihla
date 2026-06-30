@@ -27,6 +27,7 @@ void main() {
             data: const MediaQueryData(disableAnimations: true),
             child: Scaffold(
               body: SettleUpPageBody(
+                scope: SettleScope.group,
                 subjectName: 'Camp',
                 buckets: [
                   (

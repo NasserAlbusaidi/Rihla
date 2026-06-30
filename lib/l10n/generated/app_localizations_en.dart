@@ -1465,6 +1465,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currencyExplainerGotIt => 'Got it';
 
   @override
+  String settleScopeNoteEvent(String eventName) {
+    return 'This settles balances for $eventName only. Money owed across the rest of the group is settled from the group\'s Settle up.';
+  }
+
+  @override
+  String get settleScopeNoteGroup =>
+      'This is everyone\'s complete balance across the whole group. Recording a payment here won\'t even out each event\'s own ledger — that\'s expected.';
+
+  @override
   String get settleUpPaymentHistory => 'Payment history';
 
   @override

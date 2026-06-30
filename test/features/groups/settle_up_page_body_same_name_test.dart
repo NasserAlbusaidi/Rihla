@@ -40,6 +40,7 @@ void main() {
       await tester.pumpWidget(
         _host(
           SettleUpPageBody(
+            scope: SettleScope.group,
             subjectName: 'Test Crew',
             buckets: [
               (
@@ -121,6 +122,7 @@ void main() {
       await tester.pumpWidget(
         _host(
           SettleUpPageBody(
+            scope: SettleScope.group,
             subjectName: 'Test Crew',
             buckets: [
               (

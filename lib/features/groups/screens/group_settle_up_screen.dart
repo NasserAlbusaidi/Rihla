@@ -174,6 +174,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                   ];
 
                   final body = SettleUpPageBody(
+                    scope: SettleScope.group,
                     subjectName: group.name,
                     buckets: buckets,
                     rawNames: balancesData.memberRawNames,

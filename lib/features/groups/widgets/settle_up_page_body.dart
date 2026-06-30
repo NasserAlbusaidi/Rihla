@@ -21,6 +21,11 @@ import '../widgets/group_settlement_summary.dart';
 import 'all_settled_state.dart';
 import 'currency_buckets_explainer.dart';
 import 'group_settlement_tile.dart';
+import 'settle_scope_note.dart';
+
+// Re-exported so every SettleUpPageBody caller gets [SettleScope] (#717) without
+// a second import.
+export 'settle_scope_note.dart' show SettleScope;
 
 /// One currency bucket's settle-up data (#382 PR-1). [balances] and
 /// [optimalSettlements] MUST come from the same bucket; [currency] labels
@@ -122,6 +127,11 @@ steppedSettlePairs({
 /// bucket (#382) — a single-bucket group stays pixel-identical to the
 /// pre-bucketing layout, while mixed-currency groups render separate sections.
 class SettleUpPageBody extends StatelessWidget {
+  /// Which ledger this settle-up surface acts on (#717) — drives the persistent
+  /// scope note. Event surface = `event` (covers this event only); group surface
+  /// = `group` (whole-group balance; event ledgers stay as they are).
+  final SettleScope scope;
+
   /// Label shown after "Optimized to minimise the number of payments across …"
   /// — group name on the group screen, event name on the event screen.
   final String subjectName;
@@ -202,6 +212,7 @@ class SettleUpPageBody extends StatelessWidget {
 
   const SettleUpPageBody({
     super.key,
+    required this.scope,
     required this.subjectName,
     required this.buckets,
     required this.rawNames,
@@ -293,6 +304,9 @@ class SettleUpPageBody extends StatelessWidget {
             transferCount: totalTransfers,
             subjectName: subjectName,
           ),
+          // #717: persistent scope note — what a recorded payment here covers
+          // (this event only vs the whole-group balance). Display-only.
+          SettleScopeNote(scope: scope, subjectName: subjectName),
           // #382 PR-5 L9: one-time "each currency settles separately" card,
           // shown only with ≥2 buckets. The widget self-gates on the seen flag.
           if (buckets.length >= 2)

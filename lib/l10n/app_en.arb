@@ -1178,6 +1178,20 @@
   "@currencyExplainerGotIt": {
     "description": "Dismiss button on the one-time settle-up currencies-don't-net explainer (#382 PR-5); tapping it hides the card for good."
   },
+  "settleScopeNoteEvent": "This settles balances for {eventName} only. Money owed across the rest of the group is settled from the group's Settle up.",
+  "@settleScopeNoteEvent": {
+    "description": "Persistent scope note (#717) on the event-scoped settle-up screen. Clarifies that recording a payment here only covers this one event's ledger, not the whole-group balance.",
+    "placeholders": {
+      "eventName": {
+        "type": "String",
+        "example": "Salalah road trip"
+      }
+    }
+  },
+  "settleScopeNoteGroup": "This is everyone's complete balance across the whole group. Recording a payment here won't even out each event's own ledger — that's expected.",
+  "@settleScopeNoteGroup": {
+    "description": "Persistent scope note (#717) on the group-scoped settle-up screen. Clarifies that this is the complete whole-group balance and that recording a payment will not change individual event ledgers (the per-event drill-down is participants-only by design)."
+  },
   "settleUpPaymentHistory": "Payment history",
   "settleUpUnknown": "Unknown",
   "settleUpPaidConnector": "paid",

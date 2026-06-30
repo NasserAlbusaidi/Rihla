@@ -33,6 +33,7 @@ SettleUpPageBody _bodyWithHistory({
   List<Settlement>? settlements,
 }) {
   return SettleUpPageBody(
+    scope: SettleScope.group,
     subjectName: 'Beach House',
     buckets: [
       (

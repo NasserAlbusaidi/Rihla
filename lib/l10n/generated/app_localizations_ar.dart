@@ -1515,6 +1515,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get currencyExplainerGotIt => 'فهمت';
 
   @override
+  String settleScopeNoteEvent(String eventName) {
+    return 'هذه تسوية أرصدة $eventName فقط. المبالغ المستحقة في بقية المجموعة تُسوّى من تسوية المجموعة.';
+  }
+
+  @override
+  String get settleScopeNoteGroup =>
+      'هذا هو الرصيد الكامل للجميع عبر المجموعة بأكملها. تسجيل دفعة هنا لن يوازن دفتر كل فعالية على حدة — وهذا متوقع.';
+
+  @override
   String get settleUpPaymentHistory => 'سجل الدفعات';
 
   @override

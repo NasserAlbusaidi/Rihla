@@ -170,6 +170,7 @@ void main() {
         tester.element(find.byType(GroupSettleUpScreen)),
       );
 
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
       await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Record correction'));
@@ -214,6 +215,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // First correction — holds in-flight on the open gate (online ⇒ awaited).
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
       await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
       await tester.pump();
       await tester.pump();
@@ -222,6 +224,7 @@ void main() {
       expect(correction.calls, hasLength(1));
 
       // Second correction while the first is still pending → guarded no-op.
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
       await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
       await tester.pump();
       await tester.pump();

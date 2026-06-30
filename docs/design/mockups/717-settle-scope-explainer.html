@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#717 — Event-level settle-up scope explainer · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* local overrides — layout only, no colour literals */
+  .scope-note {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px 14px; border-radius: 14px;
+    background: var(--card-soft); border: 1px solid var(--border);
+    font-size: 12.5px; line-height: 1.45; color: var(--ink-2);
+  }
+  .scope-note .ico { font-size: 15px; color: var(--primary-dark); flex: none; line-height: 1.2; }
+  .scope-note b { color: var(--ink); font-weight: 700; }
+  .copy-panel { border: 1px dashed var(--border); border-radius: 12px; padding: 14px 16px;
+    background: var(--card-soft); margin-top: 12px; }
+  .copy-panel h4 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; font-weight: 600; }
+  .copy-opt { font-size: 13px; color: var(--ink-2); padding: 7px 0; border-top: 1px solid var(--border); line-height: 1.5; }
+  .copy-opt:first-of-type { border-top: 0; }
+  .copy-opt .tag-pick { display:inline-block; font-family: var(--font-mono); font-size: 10px;
+    color: var(--primary-dark); border: 1px solid var(--primary); border-radius: var(--r-pill);
+    padding: 1px 7px; margin-inline-start: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>#717 · Event-level settle-up scope explainer</h1>
+  <p>Settlements carry <code>scope: 'event' | 'group'</code>. A <b>group</b>-scoped settlement clears someone's
+     <i>whole-group net across every event</i> — but each event's own ledger keeps showing the full owe (the
+     per-event drill-down is <code>participantIds</code>-only by design). Nothing on either settle surface says
+     so, so a user can't tell what a payment covered. This adds a calm, <b>persistent</b> scope note pinned at
+     the top of the shared <code>SettleUpPageBody</code>, with copy that differs by which surface you're on.
+     <b>Display-only — no balance math, no rules, no schema (gate-exempt).</b> The confirm-sheet / persisted-snapshot
+     half lives in the gated sibling #718. <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#717</span>
+    <h2 class="issue-title">money/ux: event-level settle-up scope explainer (Scope 4 of #200)</h2>
+    <span class="issue-meta">P2 · money · design · cluster:settlement-ux · gate-exempt</span>
+  </div>
+  <p class="issue-desc">A single <code>SettleScopeNote</code> widget, rendered right under the
+     <code>_SettlementIntro</code> headline (the same slot the one-time <code>CurrencyBucketsExplainer</code>
+     uses), driven by a new <code>scope</code> flag the two callers already know
+     (<code>settle_up_screen.dart</code> = event, <code>group_settle_up_screen.dart</code> = group). Unlike the
+     currency card it is <b>not</b> dismissible — scope is context that matters every visit, not a one-time
+     lesson. Two copy states, both calm and non-alarming.</p>
+
+  <div class="variant-row">
+
+    <!-- ============================ EVENT SURFACE ============================ -->
+    <div class="variant pick" style="width:340px">
+      <div class="variant-label">Event settle-up <span class="tag">scope: event</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Settle up</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content tight">
+            <div class="serif" style="font-size:25px;color:var(--ink);line-height:1.06">1 transfer settles this event</div>
+            <div class="tiny muted" style="margin-top:-4px">Optimised to minimise payments across Salalah road trip</div>
+
+            <!-- pinned scope note (NEW) -->
+            <div class="scope-note">
+              <span class="ico">ⓘ</span>
+              <span>This settles balances for <b>Salalah road trip</b> only. Money owed across the rest of the
+                    group is settled from the group's Settle up.</span>
+            </div>
+
+            <div class="card raised" style="margin-top:2px">
+              <div class="row between">
+                <div class="row">
+                  <span class="avatar sm av-1">A</span>
+                  <span class="r-amount neg" style="margin:0 8px">&rarr;</span>
+                  <span class="avatar sm av-5">N</span>
+                </div>
+                <span class="r-amount neg"><span class="ccy">OMR</span>8.<span class="dec">500</span></span>
+              </div>
+              <div class="tiny muted" style="margin-top:10px">Ahmed Al-Balushi → you</div>
+              <button class="btn grad block sm" style="margin-top:12px">Record payment</button>
+            </div>
+
+            <div class="section-header"><span class="label">Each person's net · this event</span></div>
+            <div class="card flush">
+              <div class="list-row"><span class="row-lead"><span class="avatar sm av-1">A</span></span>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Ahmed Al-Balushi</div></div>
+                <span class="r-amount neg" style="font-size:13px"><span class="ccy">OMR</span>8.<span class="dec">500</span></span></div>
+              <div class="list-row"><span class="row-lead"><span class="avatar sm av-5">N</span></span>
+                <div class="row-body"><div class="row-title" style="font-size:14px">You</div></div>
+                <span class="r-amount pos" style="font-size:13px"><span class="ccy">OMR</span>8.<span class="dec">500</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Reassures, doesn't alarm.</b> The event surface is the common case; the note just
+         scopes it ("this event only") and points to where the rest is handled — so a user who settled here and
+         then sees a different number in the group screen isn't surprised.</p>
+    </div>
+
+    <!-- ============================ GROUP SURFACE ============================ -->
+    <div class="variant pick" style="width:340px">
+      <div class="variant-label">Group settle-up <span class="tag">scope: group</span></div>
+      <div class="phone tall">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center muted">‹</div>
+            <div class="title sans">Settle up</div>
+            <div class="icon-btn center muted"></div>
+          </div>
+          <div class="content tight">
+            <div class="serif" style="font-size:25px;color:var(--ink);line-height:1.06">2 transfers settle the group</div>
+            <div class="tiny muted" style="margin-top:-4px">Optimised to minimise payments across Salalah Squad</div>
+
+            <!-- pinned scope note (NEW) -->
+            <div class="scope-note">
+              <span class="ico">ⓘ</span>
+              <span>This is everyone's <b>complete balance across the whole group</b>. Recording a payment here
+                    won't even out each event's own ledger — that's expected.</span>
+            </div>
+
+            <div class="card raised" style="margin-top:2px">
+              <div class="row between">
+                <div class="row">
+                  <span class="avatar sm av-1">A</span>
+                  <span class="r-amount neg" style="margin:0 8px">&rarr;</span>
+                  <span class="avatar sm av-5">N</span>
+                </div>
+                <span class="r-amount neg"><span class="ccy">OMR</span>12.<span class="dec">500</span></span>
+              </div>
+              <div class="tiny muted" style="margin-top:10px">Ahmed Al-Balushi → you · covers 2 events</div>
+              <button class="btn grad block sm" style="margin-top:12px">Record payment</button>
+            </div>
+
+            <div class="section-header"><span class="label">Each person's net · whole group</span></div>
+            <div class="card flush">
+              <div class="list-row"><span class="row-lead"><span class="avatar sm av-1">A</span></span>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Ahmed Al-Balushi</div></div>
+                <span class="r-amount neg" style="font-size:13px"><span class="ccy">OMR</span>12.<span class="dec">500</span></span></div>
+              <div class="list-row"><span class="row-lead"><span class="avatar sm av-3">S</span></span>
+                <div class="row-body"><div class="row-title" style="font-size:14px">Sara Al-Harthi</div></div>
+                <span class="r-amount neu" style="font-size:13px"><span class="ccy">OMR</span>0.<span class="dec">000</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Names the trap directly.</b> The group surface is where the confusion lives:
+         a settled group can still show an uneven single-event ledger. The note says this is the complete
+         balance and that event ledgers won't change — pre-empting the "I paid, why does the event still show
+         I owe?" support question.</p>
+    </div>
+
+  </div>
+
+  <!-- COPY OPTIONS for sign-off -->
+  <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">
+    <div class="copy-panel" style="flex:1;min-width:300px">
+      <h4>Event copy — pick one</h4>
+      <div class="copy-opt">This settles balances for <b>{event}</b> only. Money owed across the rest of the
+        group is settled from the group's Settle up. <span class="tag-pick">A · recommended</span></div>
+      <div class="copy-opt">You're settling <b>{event}</b> only — not the whole group.</div>
+      <div class="copy-opt">Covers <b>{event}</b>. Other events settle separately.</div>
+    </div>
+    <div class="copy-panel" style="flex:1;min-width:300px">
+      <h4>Group copy — pick one</h4>
+      <div class="copy-opt">This is everyone's <b>complete balance across the whole group</b>. Recording a payment
+        here won't even out each event's own ledger — that's expected. <span class="tag-pick">A · recommended</span></div>
+      <div class="copy-opt">Settling the group won't necessarily even out each event's own ledger — that's expected.</div>
+      <div class="copy-opt">This is the whole-group total. Individual event ledgers stay as they are.</div>
+    </div>
+  </div>
+
+  <p class="issue-rec" style="margin-top:16px"><b>Build shape:</b> one new
+     <code>SettleScopeNote(scope:)</code> widget in <code>lib/features/groups/widgets/</code>, two l10n keys per
+     surface (title-less single paragraph, <code>{eventName}</code> placeholder on the event variant), inserted
+     under <code>_SettlementIntro</code> in <code>settle_up_page_body.dart</code> behind a new required
+     <code>SettleScope scope</code> field the two screens pass. Persistent (no seen-flag, no dismiss).
+     Theme-pure (<code>context.colors</code>/<code>spacing</code>, no colour literals). Widget test asserts the
+     event note shows the event name + "only", the group note shows the "complete balance" line, and the wrong
+     note never appears on the other surface.</p>
+</div>
+</body>
+</html>
