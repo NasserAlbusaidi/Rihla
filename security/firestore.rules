@@ -176,6 +176,24 @@ service cloud.firestore {
           || eventData(groupId, eventId).isDeleted == false);
     }
 
+    // #723: gate for EXPENSE writes only — group writable, event exists, event
+    // not soft-deleted AND not closed. Deliberately separate from the shared
+    // eventAllowsClientWrites (which SETTLEMENTS keep using) so settlements stay
+    // writable after close ("settlements stay live after close").
+    //
+    // It REPLACES eventAllowsClientWrites in the expense paths (does not stack on
+    // top): map.get(key, default) folds the not-deleted + not-closed checks into
+    // the SAME eventData() reference count as eventAllowsClientWrites's isDeleted
+    // check — so the heavy validExpenseUpdate path does not gain expressions and
+    // stays under the rules-engine 1000-expression ceiling. Absent-key-guarded so
+    // legacy events (no isDeleted/isClosed key) keep accepting writes.
+    function eventAcceptsExpenseWrites(groupId, eventId) {
+      return groupAllowsClientWrites(groupId)
+        && exists(eventPath(groupId, eventId))
+        && eventData(groupId, eventId).get('isDeleted', false) == false
+        && eventData(groupId, eventId).get('isClosed', false) == false;
+    }
+
     function isEventParticipant(groupId, eventId) {
       return signedIn()
         && exists(eventPath(groupId, eventId))
@@ -425,6 +443,14 @@ service cloud.firestore {
             && (data.serverCreatedAt == null || data.serverCreatedAt is timestamp)
             && (data.updatedAt == null || data.updatedAt is timestamp)
             && nullableString(data.description);
+          // #723 NOTE: the close triple (isClosed/closedAt/closedBy) is
+          // intentionally NOT re-validated here. validEventBase runs on the hot
+          // light+admin update paths (twice per update via validEventUpdateCommon);
+          // adding three more checks tipped the rules-engine 1000-expression
+          // ceiling. It is safe to omit: create validates the triple explicitly
+          // (born false/null), validEventCloseToggle validates it on close/reopen,
+          // and the light/admin diff allow-lists exclude the three keys, so no
+          // other path can mutate them.
         }
 
         function validEventCreate() {
@@ -445,12 +471,19 @@ service cloud.firestore {
               'createdAt',
               'serverCreatedAt',
               'updatedAt',
-              'description'
+              'description',
+              'isClosed',
+              'closedAt',
+              'closedBy'
             ])
             && request.resource.data.createdBy == request.auth.uid
             && request.auth.uid in request.resource.data.participantIds
             && request.resource.data.isDeleted == false
             && request.resource.data.deletedAt == null
+            // #723: events are born open.
+            && (!('isClosed' in request.resource.data) || request.resource.data.isClosed == false)
+            && (!('closedAt' in request.resource.data) || request.resource.data.closedAt == null)
+            && (!('closedBy' in request.resource.data) || request.resource.data.closedBy == null)
             && validEventBase(request.resource.data);
         }
 
@@ -507,9 +540,47 @@ service cloud.firestore {
                 && request.resource.data.deletedAt is timestamp));
         }
 
+        // #723 close lifecycle (close + reopen folded into ONE function).
+        //
+        // Cheap diff-gate FIRST so a non-toggle update (rename, participant edit,
+        // soft-delete) short-circuits here with zero document gets — keeping the
+        // event update OR-chain under the rules-engine 1000-expression ceiling.
+        // The expensive admin + group-writable checks run ONCE (shared by both
+        // shapes), and only for a genuine close/reopen-shaped write.
+        //
+        // Deliberately does NOT call validEventUpdateCommon / validEventBase:
+        // re-running the base re-asserts participantIds.hasOnly(groupMembers()),
+        // which would permanently block closing any event with a departed
+        // participant (#249) — the exact post-trip closeout case. The
+        // diff().hasOnly([4 keys]) already pins every other field immutable, so the
+        // base re-check is both redundant and harmful. Mirrors validSoftDelete.
+        function validEventCloseToggle() {
+          return request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['isClosed', 'closedAt', 'closedBy', 'updatedAt'])
+            && request.resource.data.updatedAt is timestamp
+            && requesterIsEventAdmin()
+            && eventAllowsClientWrites(groupId, eventId)
+            && (
+              // close: open/legacy -> closed (closedBy pinned to caller)
+              ((!('isClosed' in resource.data) || resource.data.isClosed == false)
+                && request.resource.data.isClosed == true
+                && request.resource.data.closedAt is timestamp
+                && request.resource.data.closedBy == request.auth.uid)
+              ||
+              // reopen: closed -> open (clears closedAt/closedBy). Requires the key
+              // present + true so a never-closed/legacy doc cleanly denies.
+              (('isClosed' in resource.data) && resource.data.isClosed == true
+                && request.resource.data.isClosed == false
+                && request.resource.data.closedAt == null
+                && request.resource.data.closedBy == null)
+            );
+        }
+
         allow read: if isGroupMember(groupId);
         allow create: if validEventCreate();
-        allow update: if validEventLightUpdate() || validEventAdminUpdate();
+        allow update: if validEventLightUpdate()
+          || validEventAdminUpdate()
+          || validEventCloseToggle();
         allow delete: if false;
 
         match /{module}/{docId} {
@@ -632,7 +703,7 @@ service cloud.firestore {
           function validExpenseCreate() {
             return module == 'expenses'
               && isEventParticipant(groupId, eventId)
-              && eventAllowsClientWrites(groupId, eventId)
+              && eventAcceptsExpenseWrites(groupId, eventId)
               && validExpenseBase(request.resource.data, true)
               && splitValuesNonNegative(request.resource.data)
               && splitExplanationBounded(request.resource.data)
@@ -688,7 +759,7 @@ service cloud.firestore {
             // expenseAuditLogger trigger (live since PR2) attributes each change.
             return module == 'expenses'
               && isEventParticipant(groupId, eventId)
-              && eventAllowsClientWrites(groupId, eventId)
+              && eventAcceptsExpenseWrites(groupId, eventId)
               && request.resource.data.createdBy == resource.data.createdBy
               && request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly([
