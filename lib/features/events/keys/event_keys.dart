@@ -42,4 +42,9 @@ abstract final class EventKeys {
   static const recapBackButton = Key('event_recap_back_button');
   static const recapButton = Key('event_recap_button');
   static const recapFrozenCaption = Key('event_recap_frozen_caption');
+
+  // Shareable recap card (#202 Slice 4 / #722)
+  static const recapShareButton = Key('event_recap_share_button');
+  static const recapShareSheet = Key('event_recap_share_sheet');
+  static const recapShareConfirmButton = Key('event_recap_share_confirm_button');
 }

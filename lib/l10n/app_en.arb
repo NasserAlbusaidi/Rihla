@@ -2533,5 +2533,74 @@
   "recapMultiCurrencyNote": "Balances are kept per currency — they're never added together.",
   "@recapMultiCurrencyNote": {
     "description": "Note shown under the total-spent card when an event spans more than one currency, explaining buckets are never cross-summed (#721)."
+  },
+  "recapShareButton": "Share recap",
+  "@recapShareButton": {
+    "description": "Tooltip/label for the share action on the recap screen that opens the shareable card (#722)."
+  },
+  "recapShareCta": "Share image",
+  "@recapShareCta": {
+    "description": "Primary button in the recap share preview sheet that exports + shares the card as a PNG (#722)."
+  },
+  "recapShareError": "Couldn't create the image. Please try again.",
+  "@recapShareError": {
+    "description": "Snackbar shown when capturing the recap card to a PNG fails (#722)."
+  },
+  "recapShareText": "{eventName} — our trip recap, tracked with Rihla",
+  "@recapShareText": {
+    "description": "Caption text that rides along with the shared recap image (#722).",
+    "placeholders": {
+      "eventName": { "type": "String" }
+    }
+  },
+  "recapCardCaption": "Rihla · Wrapped · {month}",
+  "@recapCardCaption": {
+    "description": "Mono caption stamp on the recap share card's cover band; {month} is a localized month + year (#722).",
+    "placeholders": {
+      "month": { "type": "String" }
+    }
+  },
+  "recapCardCaptionPlain": "Rihla · Wrapped",
+  "@recapCardCaptionPlain": {
+    "description": "Recap share-card cover caption when the event has no dates (#722)."
+  },
+  "recapCardPeople": "People",
+  "@recapCardPeople": {
+    "description": "Recap share-card stat label for the participant count (#722)."
+  },
+  "recapCardExpenses": "Expenses",
+  "@recapCardExpenses": {
+    "description": "Recap share-card stat label for the expense count (#722)."
+  },
+  "recapCardAvgPerDay": "Avg / day",
+  "@recapCardAvgPerDay": {
+    "description": "Recap share-card stat label: average spend per day of the trip (#722)."
+  },
+  "recapCardPerPerson": "Per person",
+  "@recapCardPerPerson": {
+    "description": "Recap share-card stat label: spend per person, used when the event has no dates (#722)."
+  },
+  "recapCardTopSpender": "Top spender",
+  "@recapCardTopSpender": {
+    "description": "Recap share-card label for the person who paid the most (#722)."
+  },
+  "recapCardBiggest": "Biggest splurge",
+  "@recapCardBiggest": {
+    "description": "Recap share-card label for the single largest expense (#722)."
+  },
+  "recapCardWhereItWent": "Where it went",
+  "@recapCardWhereItWent": {
+    "description": "Recap share-card label above the category breakdown bar (#722)."
+  },
+  "recapCardAllSettled": "All settled",
+  "@recapCardAllSettled": {
+    "description": "Recap share-card status pill when every balance is settled (#722)."
+  },
+  "recapCardStillToSettle": "{count, plural, =1{1 still to settle} other{{count} still to settle}}",
+  "@recapCardStillToSettle": {
+    "description": "Recap share-card status pill when balances are outstanding; {count} is the number of debtors (#722).",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
   }
 }

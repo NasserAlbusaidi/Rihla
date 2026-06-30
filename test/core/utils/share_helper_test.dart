@@ -1,7 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:safar/core/utils/share_helper.dart';
+
+/// Returns the host temp dir so `XFile.fromData` (via `share_plus`) can write
+/// the in-memory PNG without a real platform `path_provider` plugin.
+class _FakePathProvider extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
+  @override
+  Future<String?> getTemporaryPath() async => Directory.systemTemp.path;
+}
 
 /// shareText must ALWAYS pass a non-zero sharePositionOrigin. iOS/iPadOS throw
 /// `PlatformException(sharePositionOrigin: argument must be set)` on a zero
@@ -72,5 +84,74 @@ void main() {
 
     expect(args!['text'], 'hello world');
     expect(args['subject'], 'Subj');
+  });
+
+  // ── shareImage: the PNG-share chokepoint (recap card #722). ──────────────
+  // Uses method `shareFiles` (not `share`). The same non-zero-origin invariant
+  // applies — assert it on the wire, plus the png mime + overridden file name.
+
+  Future<Map<Object?, Object?>?> tapShareImage(
+    WidgetTester tester, {
+    String? text,
+  }) async {
+    PathProviderPlatform.instance = _FakePathProvider();
+
+    Map<Object?, Object?>? args;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      shareChannel,
+      (call) async {
+        if (call.method == 'shareFiles') {
+          args = call.arguments as Map<Object?, Object?>;
+        }
+        return '';
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        shareChannel,
+        null,
+      ),
+    );
+
+    late BuildContext ctx;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              ctx = context;
+              return const SizedBox(width: 200, height: 100);
+            },
+          ),
+        ),
+      ),
+    );
+
+    // A tiny but non-empty payload; share_plus writes it to a temp file.
+    final bytes = Uint8List.fromList(List<int>.generate(16, (i) => i));
+    // share_plus performs REAL file I/O (temp-file write) before invoking the
+    // channel — that completes only on the real event loop, so drive it under
+    // runAsync, not the default FakeAsync zone (else the channel never fires).
+    await tester.runAsync(() => shareImage(ctx, bytes, text: text));
+    return args;
+  }
+
+  testWidgets('shareImage forwards a non-zero share origin', (tester) async {
+    final args = await tapShareImage(tester);
+
+    expect(args, isNotNull);
+    expect((args!['originWidth'] as double) > 0, isTrue);
+    expect((args['originHeight'] as double) > 0, isTrue);
+  });
+
+  testWidgets('shareImage shares a png named rihla_recap.png with caption',
+      (tester) async {
+    final args = await tapShareImage(tester, text: 'Our trip recap');
+
+    final paths = (args!['paths'] as List).cast<String>();
+    final mimeTypes = (args['mimeTypes'] as List).cast<String>();
+    expect(paths.single, endsWith('rihla_recap.png'));
+    expect(mimeTypes.single, 'image/png');
+    expect(args['text'], 'Our trip recap');
   });
 }

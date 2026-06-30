@@ -972,5 +972,20 @@
   "recapSettledSubtitle": "لا أرصدة معلّقة في هذا الحدث.",
   "recapOutstandingTitle": "أرصدة معلّقة",
   "recapOutstandingSubtitle": "{count, plural, =0{لا أحد لا يزال مدينًا} =1{شخص واحد لا يزال مدينًا} =2{شخصان لا يزالان مدينين} few{{count} أشخاص لا يزالون مدينين} many{{count} شخصًا لا يزال مدينًا} other{{count} شخص لا يزال مدينًا}}. سوِّ من السجل.",
-  "recapMultiCurrencyNote": "تُحفظ الأرصدة لكل عملة على حدة — لا تُجمع معًا أبدًا."
+  "recapMultiCurrencyNote": "تُحفظ الأرصدة لكل عملة على حدة — لا تُجمع معًا أبدًا.",
+  "recapShareButton": "مشاركة الملخّص",
+  "recapShareCta": "مشاركة الصورة",
+  "recapShareError": "تعذّر إنشاء الصورة. حاول مرة أخرى.",
+  "recapShareText": "{eventName} — ملخّص رحلتنا عبر رِحلة",
+  "recapCardCaption": "رِحلة · خلاصة · {month}",
+  "recapCardCaptionPlain": "رِحلة · خلاصة",
+  "recapCardPeople": "الأشخاص",
+  "recapCardExpenses": "المصاريف",
+  "recapCardAvgPerDay": "المعدّل/يوم",
+  "recapCardPerPerson": "لكل شخص",
+  "recapCardTopSpender": "الأكثر إنفاقًا",
+  "recapCardBiggest": "أكبر مصروف",
+  "recapCardWhereItWent": "إلى أين ذهبت",
+  "recapCardAllSettled": "تمت التسوية",
+  "recapCardStillToSettle": "{count, plural, =0{لا شيء للتسوية} =1{واحد بانتظار التسوية} =2{اثنان بانتظار التسوية} few{{count} بانتظار التسوية} many{{count} بانتظار التسوية} other{{count} بانتظار التسوية}}"
 }

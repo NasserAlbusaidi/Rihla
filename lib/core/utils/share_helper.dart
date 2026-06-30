@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/widgets.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -13,6 +15,30 @@ import 'package:share_plus/share_plus.dart';
 Future<void> shareText(BuildContext context, String text, {String? subject}) {
   return Share.share(
     text,
+    subject: subject,
+    sharePositionOrigin: _shareOrigin(context),
+  );
+}
+
+/// Shares a PNG [bytes] image (e.g. a captured recap card) via the platform
+/// share sheet, always supplying a non-zero `sharePositionOrigin` — the same
+/// #308/#309 iOS trap as [shareText]. Do NOT call `Share.shareXFiles` directly.
+///
+/// The image is passed in-memory as an [XFile.fromData]; `share_plus` writes it
+/// to a temp file itself (no `path_provider` dependency here). [fileName] flows
+/// through `fileNameOverrides` so the temp file keeps a `.png` extension and
+/// iOS treats it as an image. Optional [text] rides along as the share caption.
+Future<void> shareImage(
+  BuildContext context,
+  Uint8List bytes, {
+  String fileName = 'rihla_recap.png',
+  String? text,
+  String? subject,
+}) {
+  return Share.shareXFiles(
+    [XFile.fromData(bytes, mimeType: 'image/png')],
+    fileNameOverrides: [fileName],
+    text: text,
     subject: subject,
     sharePositionOrigin: _shareOrigin(context),
   );

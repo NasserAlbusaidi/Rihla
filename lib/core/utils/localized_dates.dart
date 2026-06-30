@@ -27,6 +27,12 @@ String formatShortMonthDayYear(BuildContext context, DateTime date) {
   return DateFormat.yMMMd(localeNameOf(context)).format(date);
 }
 
+/// Localized month + year, e.g. "Mar 2026" / "مارس ٢٠٢٦". Used for the recap
+/// share-card caption stamp (#722).
+String formatMonthYear(BuildContext context, DateTime date) {
+  return DateFormat.yMMM(localeNameOf(context)).format(date);
+}
+
 String formatDateRangeShort(
   BuildContext context,
   DateTime? start,
