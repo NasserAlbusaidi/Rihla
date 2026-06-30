@@ -34,6 +34,7 @@ Widget _host(Widget body, {Locale? locale}) {
 
 SettleUpPageBody _bodyWithHistory() {
   return SettleUpPageBody(
+    scope: SettleScope.group,
     subjectName: 'Beach House',
     buckets: [
       (

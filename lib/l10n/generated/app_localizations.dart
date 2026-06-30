@@ -2486,6 +2486,18 @@ abstract class AppLocalizations {
   /// **'Got it'**
   String get currencyExplainerGotIt;
 
+  /// Persistent scope note (#717) on the event-scoped settle-up screen. Clarifies that recording a payment here only covers this one event's ledger, not the whole-group balance.
+  ///
+  /// In en, this message translates to:
+  /// **'This settles balances for {eventName} only. Money owed across the rest of the group is settled from the group\'s Settle up.'**
+  String settleScopeNoteEvent(String eventName);
+
+  /// Persistent scope note (#717) on the group-scoped settle-up screen. Clarifies that this is the complete whole-group balance and that recording a payment will not change individual event ledgers (the per-event drill-down is participants-only by design).
+  ///
+  /// In en, this message translates to:
+  /// **'This is everyone\'s complete balance across the whole group. Recording a payment here won\'t even out each event\'s own ledger — that\'s expected.'**
+  String get settleScopeNoteGroup;
+
   /// No description provided for @settleUpPaymentHistory.
   ///
   /// In en, this message translates to:

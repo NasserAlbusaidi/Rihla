@@ -204,6 +204,7 @@ void main() {
       await tester.pumpWidget(
         _host(
           SettleUpPageBody(
+            scope: SettleScope.group,
             subjectName: 'Test Crew',
             buckets: _twoBucketFixture(),
             rawNames: _rawNames,
@@ -247,6 +248,7 @@ void main() {
       await tester.pumpWidget(
         _host(
           SettleUpPageBody(
+            scope: SettleScope.group,
             subjectName: 'Test Crew',
             buckets: _twoBucketFixture(),
             rawNames: _rawNames,

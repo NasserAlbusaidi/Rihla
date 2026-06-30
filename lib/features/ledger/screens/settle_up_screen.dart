@@ -273,6 +273,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                       event.participantIds.contains(currentUid);
 
                   return SettleUpPageBody(
+                    scope: SettleScope.event,
                     subjectName: event.name,
                     buckets: buckets,
                     rawNames: userRawNames,

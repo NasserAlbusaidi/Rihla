@@ -171,6 +171,9 @@ abstract final class GroupKeys {
   static const claimWaiting = Key('group_join_claim_waiting');
   static const claimCheckAgainButton = Key('group_join_claim_check_again');
 
+  // #717: persistent settle-up scope note (event vs whole-group coverage).
+  static const settleScopeNote = Key('settle_scope_note');
+
   // #278 PR9: creator approve/decline of pending claim requests (group settings).
   static const claimRequestsSection = Key('group_settings_claim_requests');
   static Key claimApprove(String requestId) =>
