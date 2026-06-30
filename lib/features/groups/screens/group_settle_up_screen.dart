@@ -11,7 +11,10 @@ import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../core/utils/settle_notify.dart';
 import '../../../core/utils/settlement_write_error.dart';
+import '../../../core/utils/share_helper.dart';
+import '../../../core/utils/whatsapp_share.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -30,6 +33,7 @@ import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 import '../widgets/record_payment_sheet.dart';
+import '../widgets/settle_notify_sheet.dart';
 import '../widgets/settle_up_page_body.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 
@@ -570,7 +574,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       return const _StepOutcome(_StepOutcomeKind.invalid);
     }
 
-    return _recordDecomposedSettlement(
+    final outcome = await _recordDecomposedSettlement(
       context,
       group: group,
       balancesData: balancesData,
@@ -584,6 +588,55 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       currency: currency,
       showSuccessSnackbar: showSuccessSnackbar,
       connectivity: connectivity,
+    );
+
+    // #367: after the DEBTOR records a group-level payment THEY made on the
+    // single-tile path, offer to let the creditor know via WhatsApp. Same gate
+    // as the event screen: single-tile (stepLabel == null), paying perspective
+    // (creditor-records #282 / on-behalf #595 never nudge), clean record. A
+    // GROUP settle spans events, so the message names only the group.
+    if (stepLabel == null &&
+        currentUid == fromUserId &&
+        outcome.kind == _StepOutcomeKind.recorded &&
+        context.mounted) {
+      await _offerWhatsAppNotify(
+        context,
+        // Plain raw name for the greeting — the app-internal disambiguator
+        // suffix doesn't belong in a message sent TO that person.
+        recipientName: toRawName,
+        amount: editedAmount,
+        currency: currency,
+        groupName: group.name,
+      );
+    }
+    return outcome;
+  }
+
+  /// #367: present the post-record nudge and, if accepted, open WhatsApp
+  /// prefilled with the past-tense group-scoped message. Numberless; falls back
+  /// to the OS share sheet when WhatsApp isn't installed.
+  Future<void> _offerWhatsAppNotify(
+    BuildContext context, {
+    required String recipientName,
+    required Decimal amount,
+    required String currency,
+    required String groupName,
+  }) async {
+    final message = settleNotifyMessage(
+      l10n: context.l10n,
+      recipientName: recipientName,
+      amountDisplay: AppFormatters.formatCurrency(amount, currency),
+      groupName: groupName,
+    );
+    final wantsNotify = await showSettleNotifySheet(
+      context,
+      recipientName: recipientName,
+      message: message,
+    );
+    if (!wantsNotify || !context.mounted) return;
+    await shareViaWhatsApp(
+      message,
+      fallback: () => shareText(context, message),
     );
   }
 

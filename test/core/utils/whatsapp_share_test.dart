@@ -39,6 +39,65 @@ void main() {
     });
   });
 
+  group('whatsAppTextUri (general)', () {
+    test('builds a whatsapp://send deep link carrying the message as text', () {
+      final uri = whatsAppTextUri("Hey Mariam, I've sent you OMR 18.500.");
+
+      expect(uri.scheme, 'whatsapp');
+      expect(uri.host, 'send');
+      expect(uri.queryParameters['text'], "Hey Mariam, I've sent you OMR 18.500.");
+    });
+
+    test('matches the invite alias byte-for-byte', () {
+      const message = 'any text';
+      expect(whatsAppTextUri(message), whatsAppInviteUri(message));
+    });
+  });
+
+  group('shareViaWhatsApp (general)', () {
+    late _MockUrlLauncher launcher;
+
+    setUp(() {
+      launcher = _MockUrlLauncher();
+      UrlLauncherPlatform.instance = launcher;
+    });
+
+    test('launches WhatsApp prefilled and skips the fallback when installed',
+        () async {
+      when(() => launcher.canLaunch(any())).thenAnswer((_) async => true);
+      when(() => launcher.launchUrl(any(), any())).thenAnswer((_) async => true);
+      var fallbackCalls = 0;
+
+      await shareViaWhatsApp('settle msg', fallback: () async => fallbackCalls++);
+
+      final captured =
+          verify(() => launcher.launchUrl(captureAny(), any())).captured.single;
+      expect(captured, startsWith('whatsapp://send?text='));
+      expect(fallbackCalls, 0);
+    });
+
+    test('falls back to the share sheet when WhatsApp is not installed',
+        () async {
+      when(() => launcher.canLaunch(any())).thenAnswer((_) async => false);
+      var fallbackCalls = 0;
+
+      await shareViaWhatsApp('settle msg', fallback: () async => fallbackCalls++);
+
+      verifyNever(() => launcher.launchUrl(any(), any()));
+      expect(fallbackCalls, 1);
+    });
+
+    test('falls back when the launch throws', () async {
+      when(() => launcher.canLaunch(any())).thenAnswer((_) async => true);
+      when(() => launcher.launchUrl(any(), any())).thenThrow(Exception('boom'));
+      var fallbackCalls = 0;
+
+      await shareViaWhatsApp('settle msg', fallback: () async => fallbackCalls++);
+
+      expect(fallbackCalls, 1);
+    });
+  });
+
   group('shareInviteViaWhatsApp', () {
     late _MockUrlLauncher launcher;
 

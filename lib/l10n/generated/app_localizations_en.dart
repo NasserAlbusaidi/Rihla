@@ -1524,6 +1524,46 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleNotifySheetTitle(Object name) {
+    return 'Paid — let $name know?';
+  }
+
+  @override
+  String get settleNotifySheetBody => 'Recorded — send a quick heads-up?';
+
+  @override
+  String get settleNotifyMessageLabel => 'Message';
+
+  @override
+  String get settleNotifyPickChat =>
+      'You choose who to send it to in WhatsApp.';
+
+  @override
+  String get settleNotifyNotNow => 'Not now';
+
+  @override
+  String get settleNotifyWhatsApp => 'WhatsApp';
+
+  @override
+  String settleNotifyMessageEvent(
+    Object recipientName,
+    Object amount,
+    Object eventName,
+    Object groupName,
+  ) {
+    return 'Hey $recipientName, I\'ve sent you $amount for $eventName in $groupName.';
+  }
+
+  @override
+  String settleNotifyMessageGroup(
+    Object recipientName,
+    Object amount,
+    Object groupName,
+  ) {
+    return 'Hey $recipientName, I\'ve sent you $amount for $groupName.';
+  }
+
+  @override
   String get settleUpNoteHint => 'Add a note (optional)';
 
   @override

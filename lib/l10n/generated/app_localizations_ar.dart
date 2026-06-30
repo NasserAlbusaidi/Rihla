@@ -1574,6 +1574,45 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String settleNotifySheetTitle(Object name) {
+    return 'تم الدفع — هل تُعلِم $name؟';
+  }
+
+  @override
+  String get settleNotifySheetBody => 'تم التسجيل — أتريد إرسال تنبيه سريع؟';
+
+  @override
+  String get settleNotifyMessageLabel => 'الرسالة';
+
+  @override
+  String get settleNotifyPickChat => 'ستختار المُستلِم في واتساب.';
+
+  @override
+  String get settleNotifyNotNow => 'ليس الآن';
+
+  @override
+  String get settleNotifyWhatsApp => 'واتساب';
+
+  @override
+  String settleNotifyMessageEvent(
+    Object recipientName,
+    Object amount,
+    Object eventName,
+    Object groupName,
+  ) {
+    return 'مرحباً $recipientName، لقد أرسلت لك $amount مقابل $eventName في $groupName.';
+  }
+
+  @override
+  String settleNotifyMessageGroup(
+    Object recipientName,
+    Object amount,
+    Object groupName,
+  ) {
+    return 'مرحباً $recipientName، لقد أرسلت لك $amount مقابل $groupName.';
+  }
+
+  @override
   String get settleUpNoteHint => 'إضافة ملاحظة (اختياري)';
 
   @override

@@ -10,7 +10,10 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
+import '../../../core/utils/settle_notify.dart';
 import '../../../core/utils/settlement_write_error.dart';
+import '../../../core/utils/share_helper.dart';
+import '../../../core/utils/whatsapp_share.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -22,6 +25,7 @@ import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../groups/widgets/record_payment_sheet.dart';
+import '../../groups/widgets/settle_notify_sheet.dart';
 import '../../groups/widgets/settle_up_page_body.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
@@ -299,6 +303,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           toUserId: toUserId,
                           suggestedAmount: suggestedAmount,
                           currency: currency,
+                          // #367: scope for the post-record WhatsApp notify —
+                          // event settle names the event AND its group.
+                          eventName: event.name,
+                          groupName: group.name,
                         ),
                     onRecordStepped: _runSteppedSettle,
                     // #283/#598: correct a recorded payment by recording its
@@ -445,6 +453,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     required Decimal suggestedAmount,
     required String currency,
     String? stepLabel,
+    // #367: scope for the post-record WhatsApp notify. Only the single-tile
+    // forward-record path passes these; the stepped walk leaves them null (it
+    // never nudges — see the gate below).
+    String? eventName,
+    String? groupName,
     bool showSuccessSnackbar = true,
     StateController<int>? ledgerRevision,
     ConnectivityNotifier? connectivity,
@@ -510,7 +523,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       return const _StepOutcome(_StepOutcomeKind.invalid);
     }
 
-    return _recordSettlement(
+    final outcome = await _recordSettlement(
       context,
       fromUserId: fromUserId,
       toUserId: toUserId,
@@ -522,6 +535,62 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       showSuccessSnackbar: showSuccessSnackbar,
       ledgerRevision: ledgerRevision,
       connectivity: connectivity,
+    );
+
+    // #367: after the DEBTOR records a payment THEY made on the single-tile
+    // path, offer to let the creditor know via WhatsApp. Gated to: single-tile
+    // (stepLabel == null — the stepped walk shows its own aggregate snackbar and
+    // carries one amount/currency), the paying perspective (creditor-records
+    // #282 / settle-on-behalf #595 never nudge), and a clean record. The
+    // correction path (onCorrect) calls _recordSettlement directly, bypassing
+    // this method, so it never reaches here.
+    if (stepLabel == null &&
+        currentUid == fromUserId &&
+        outcome.kind == _StepOutcomeKind.recorded &&
+        context.mounted) {
+      await _offerWhatsAppNotify(
+        context,
+        // Plain raw name for the greeting — the app-internal disambiguator
+        // suffix ("(former member)" / "(2)") doesn't belong in a message sent
+        // TO that person; the user picks the actual chat in WhatsApp.
+        recipientName: toRawName,
+        amount: editedAmount,
+        currency: currency,
+        eventName: eventName,
+        groupName: groupName ?? '',
+      );
+    }
+    return outcome;
+  }
+
+  /// #367: present the post-record nudge and, if accepted, open WhatsApp
+  /// prefilled with the past-tense scoped message. Numberless — the user picks
+  /// the recipient in WhatsApp; WhatsApp-not-installed falls back to the OS share
+  /// sheet so the courtesy can never dead-end.
+  Future<void> _offerWhatsAppNotify(
+    BuildContext context, {
+    required String recipientName,
+    required Decimal amount,
+    required String currency,
+    String? eventName,
+    required String groupName,
+  }) async {
+    final message = settleNotifyMessage(
+      l10n: context.l10n,
+      recipientName: recipientName,
+      amountDisplay: AppFormatters.formatCurrency(amount, currency),
+      eventName: eventName,
+      groupName: groupName,
+    );
+    final wantsNotify = await showSettleNotifySheet(
+      context,
+      recipientName: recipientName,
+      message: message,
+    );
+    if (!wantsNotify || !context.mounted) return;
+    await shareViaWhatsApp(
+      message,
+      fallback: () => shareText(context, message),
     );
   }
 

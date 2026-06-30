@@ -883,6 +883,81 @@ void main() {
     });
 
     testWidgets(
+      '#367: a debtor group-level record offers the WhatsApp nudge with a '
+      'GROUP-scoped message (for {group} only — never an event name)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Bobby',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final settlementService = _RecordingGroupSettlementService();
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            currentUid: 'uid-bob', // bob owes alice → debtor
+            extraOverrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleNotifySheet), findsOneWidget);
+        final preview = tester.widget<Text>(
+          find.descendant(
+            of: find.byKey(GroupKeys.settleNotifyMessagePreview),
+            matching: find.byType(Text),
+          ),
+        );
+        // Group scope spans events → names only the group, no "{event} in".
+        expect(preview.data, "Hey Alice, I've sent you OMR 7.750 for Test Crew.");
+      },
+    );
+
+    testWidgets(
+      '#367: the CREDITOR recording a group-level receipt sees NO nudge', (
+        tester,
+      ) async {
+        final settlementService = _RecordingGroupSettlementService();
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            currentUid: 'uid-alice', // alice is owed → creditor
+            extraOverrides: [
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              groupActivityServiceProvider.overrideWithValue(activityService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
+      },
+    );
+
+    testWidgets(
       'recorded settlement carries the BUCKET currency, not group.currency '
       '(#382 PR-1)',
       (tester) async {
@@ -1130,6 +1205,8 @@ void main() {
         findsNothing,
       );
       expect(activityService.logCalls, isEmpty);
+      // #367 honesty guard: a FAILED write must not nudge.
+      expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
     });
 
     testWidgets('permission-denied shows the not-allowed message, not network (#360)', (
@@ -1175,6 +1252,8 @@ void main() {
         findsNothing,
       );
       expect(activityService.logCalls, isEmpty);
+      // #367 honesty guard: a permission-denied write must not nudge.
+      expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
     });
 
     testWidgets('renders with preSelectedMemberId without crashing', (
