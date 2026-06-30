@@ -158,28 +158,40 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-30, `90d67bb6`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-06-30, `65030ad9`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-30 deploy ceremony the `backend-deployed` tag is `90d67bb6`; prod
+    2026-06-30 deploy ceremony the `backend-deployed` tag is `65030ad9`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#723 (#763)** — event close lifecycle (Slice 5 of #202).
+    Latest delta: **#766 (#767)** — freeze spending snapshot at close (Slice 6 of
+    #202). `firestore.rules` `validEventCloseToggle` gains a 5th diff key
+    `spendingSnapshot` in its cheap `diff().hasOnly([…])` gate + a new
+    `spendingSnapshotBounded` opaque guard (`is map && size() <= 16`, mirroring
+    `splitExplanationBounded`) **after** the cheap diff gate — it never touches
+    `validEventBase`, so no 1000-expression-ceiling risk on the heaviest event
+    update. The blob is **opaque display-only** (the frozen SPENDING half of the
+    recap), written on close and DELETEd on reopen (`FieldValue.delete()`; null
+    would fail the `is map` guard); the oracle/`recomputeNet`/every Function NEVER
+    reads it (grep=0, splitExplanation-class). Light/admin allow-lists still
+    **exclude** `spendingSnapshot`, so it is writable ONLY via a genuine admin
+    close/reopen transition. Client half (`SpendingSnapshot` model,
+    `EventRecap.fromSnapshot`, `eventRecapProvider` freeze branch, capture-at-close,
+    "spending frozen" caption, `Event.spendingSnapshot` schema add — OMITTED from
+    `toFirestoreMap` so `validEventCreate keys().hasOnly` stays unbroken,
+    copyWith-preserved — en+ar l10n) shipped on `main` (not deploy-relevant).
+    Rules-only — no function add/remove/logic change (all **28** updated in place).
+    189 rules tests pass (5 new #766); full Flutter suite 2641/0.
+    Prior delta: **#723 (#763)** — event close lifecycle (Slice 5 of #202).
     `firestore.rules` adds `eventAcceptsExpenseWrites` which **REPLACES**
     `eventAllowsClientWrites` in the TWO expense write paths only (folds
     `isDeleted`-absent/false + `isClosed==false` into the SAME `eventData()`
     `.get(key,default)` reference, so a closed event freezes expense
     create/edit/soft-delete with no extra `get()` against the 1000-expression
     ceiling); settlements keep the untouched `eventAllowsClientWrites` and **stay
-    writable after close** (the epic contract). New `validEventCloseToggle` (admin
-    close+reopen in one fn, cheap `diff().hasOnly(['isClosed','closedAt','closedBy',
-    'updatedAt'])` first, `closedBy` pinned to caller; deliberately skips
-    `validEventBase` so re-validating `participantIds.hasOnly(groupMembers())` can't
-    block closing an event with a departed participant #249). Schema-only model add
-    (`Event.isClosed/closedAt/closedBy`) with **zero money-math change** — no
-    provider/oracle/`recomputeNet` reads the close fields. Client close/reopen UI +
-    read-only gating + l10n shipped on `main` (not deploy-relevant). Rules-only — no
-    function add/remove/logic change (all **28** updated in place). 184 rules tests
-    pass (17 new incl. settlement-stays-live + departed-participant-close).
+    writable after close** (the epic contract). `validEventCloseToggle` deliberately
+    skips `validEventBase` so re-validating `participantIds.hasOnly(groupMembers())`
+    can't block closing an event with a departed participant #249. Schema-only model
+    add (`Event.isClosed/closedAt/closedBy`) with **zero money-math change**.
     Prior delta: **#752 PR1 (#754)** — decompose a group-level settle-up into
     per-event settlement writes. `firestore.rules` **additive/permissive**: optional
     `groupSettleUpId` link on settlements (guarded `!('groupSettleUpId' in data) ||
