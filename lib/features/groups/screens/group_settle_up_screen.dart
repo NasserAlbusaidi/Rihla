@@ -575,10 +575,47 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       return const _StepOutcome(_StepOutcomeKind.invalid);
     }
 
+    // #719 (Scope 6 of #200): `suggestedAmount` + `balancesData` were captured
+    // when the tile was tapped; the record sheet may have been open long enough
+    // for another device to pay or add an expense. Re-read the LIVE balances and
+    // revalidate the directed-pair outstanding before writing. If it dropped
+    // below `editedAmount`, abort and force review-again rather than silently
+    // overpaying a stale debt. Offline / balances-unavailable → behave exactly as
+    // before (use the captured snapshot); this is a safety add-on, never a new
+    // offline blocker. When fresh data IS available we also decompose from it, so
+    // the write reflects current per-event nets — note the tile's last-rendered
+    // breakdown may then differ from the fresh write (aggregate stays capped at
+    // `editedAmount`; `eventOrder` is unchanged so the WYSIWYG order contract holds).
+    var writeBalances = balancesData;
+    final fresh = ref.read(groupBalancesProvider(widget.groupId)).valueOrNull;
+    if (fresh != null) {
+      final freshOutstanding = BalanceCalculator.outstandingForPair(
+        bucket: fresh.balances[currency] ?? const <UserBalance>[],
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+      );
+      if (editedAmount > freshOutstanding) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.l10n.settleUpBalanceChangedReviewAgain(
+                  AppFormatters.formatCurrency(freshOutstanding, currency),
+                ),
+              ),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        }
+        return const _StepOutcome(_StepOutcomeKind.invalid);
+      }
+      writeBalances = fresh;
+    }
+
     final outcome = await _recordDecomposedSettlement(
       context,
       group: group,
-      balancesData: balancesData,
+      balancesData: writeBalances,
       eventOrder: eventOrder,
       fromUserId: fromUserId,
       toUserId: toUserId,

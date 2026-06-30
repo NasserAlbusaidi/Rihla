@@ -2246,6 +2246,12 @@ abstract class AppLocalizations {
   /// **'Amount cannot exceed the outstanding balance of {amount}'**
   String settleUpAmountExceedsOutstanding(Object amount);
 
+  /// No description provided for @settleUpBalanceChangedReviewAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance changed while you were recording — it\'s now {amount}. Review and try again.'**
+  String settleUpBalanceChangedReviewAgain(Object amount);
+
   /// No description provided for @settleUpRecorded.
   ///
   /// In en, this message translates to:

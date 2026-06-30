@@ -395,6 +395,7 @@
   "settleUpAmountGreaterThanZero": "يجب أن يكون المبلغ أكبر من صفر",
   "settleUpEnterValidAmount": "الرجاء إدخال مبلغ صالح",
   "settleUpAmountExceedsOutstanding": "لا يمكن أن يتجاوز المبلغ الرصيد المستحق {amount}",
+  "settleUpBalanceChangedReviewAgain": "تغيّر الرصيد أثناء التسجيل — أصبح الآن {amount}. راجِع المبلغ وحاول مرة أخرى.",
   "settleUpRecorded": "تم تسجيل التسوية.",
   "settleUpCorrect": "تصحيح",
   "settleUpCorrectTitle": "تصحيح هذه الدفعة؟",
