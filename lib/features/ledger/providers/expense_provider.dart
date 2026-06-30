@@ -938,6 +938,36 @@ class BalanceCalculator {
     return settlements;
   }
 
+  /// #719: the current directed-pair outstanding in one currency [bucket] — how
+  /// much [fromUserId] can pay [toUserId] without overpaying either side =
+  /// `min(|fromNet|, toNet)`, clamped to `>= 0`. Conservative mirror of the
+  /// per-pair cap in [calculateOptimalSettlements]: that optimizer suggests at
+  /// most `min(remaining_debtor, remaining_creditor)` for a pair, and both
+  /// remainders only ever shrink from the full nets — so the suggestion is always
+  /// `<=` this value. Revalidating an edited amount against it therefore never
+  /// false-blocks an unchanged balance; it fires only when the live net actually
+  /// dropped below the amount being recorded. A party absent from the bucket is
+  /// treated as net 0 (settled). Single-currency by construction — never sum
+  /// across buckets. Pure.
+  static Decimal outstandingForPair({
+    required List<UserBalance> bucket,
+    required String fromUserId,
+    required String toUserId,
+  }) {
+    Decimal netFor(String uid) {
+      for (final b in bucket) {
+        if (b.participantId == uid) return b.netBalance;
+      }
+      return Decimal.zero;
+    }
+
+    final fromNet = netFor(fromUserId); // debtor when negative
+    final toNet = netFor(toUserId); // creditor when positive
+    final payable = fromNet < Decimal.zero ? fromNet.abs() : Decimal.zero;
+    final receivable = toNet > Decimal.zero ? toNet : Decimal.zero;
+    return payable < receivable ? payable : receivable;
+  }
+
   /// Per-currency expense totals (#382 PR-1). Keys are fence-validated like
   /// [calculateBalances] bucket keys (unsupported → OMR). Empty input → `{}`.
   static Map<String, Decimal> calculateTotalExpensesByCurrency(
