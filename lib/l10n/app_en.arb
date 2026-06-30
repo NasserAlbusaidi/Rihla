@@ -1611,6 +1611,35 @@
       "error": {}
     }
   },
+  "eventClose": "Close event",
+  "eventReopen": "Reopen event",
+  "eventCloseQuestion": "Close this event?",
+  "eventCloseBody": "Spending will be frozen — no new or edited expenses. You can still settle up, and you can reopen the event later.",
+  "eventCloseConfirm": "Close event",
+  "eventReopenQuestion": "Reopen this event?",
+  "eventReopenBody": "Expenses can be added and edited again.",
+  "eventReopenConfirm": "Reopen",
+  "eventCloseFailed": "Failed to close event: {error}",
+  "@eventCloseFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "eventReopenFailed": "Failed to reopen event: {error}",
+  "@eventReopenFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "eventClosedBannerBy": "Closed by {name} · spending frozen",
+  "@eventClosedBannerBy": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "eventClosedBanner": "Closed · spending frozen",
+  "editorEventClosedTitle": "Event closed",
+  "editorEventClosedMessage": "This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.",
   "eventAddExpense": "Add expense",
   "eventYourBalance": "Your balance",
   "eventYouAreOwed": "You are owed",

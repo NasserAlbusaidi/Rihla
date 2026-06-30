@@ -3687,6 +3687,90 @@ abstract class AppLocalizations {
   /// **'Failed to delete event: {error}'**
   String eventDeleteFailed(Object error);
 
+  /// No description provided for @eventClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close event'**
+  String get eventClose;
+
+  /// No description provided for @eventReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen event'**
+  String get eventReopen;
+
+  /// No description provided for @eventCloseQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Close this event?'**
+  String get eventCloseQuestion;
+
+  /// No description provided for @eventCloseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending will be frozen — no new or edited expenses. You can still settle up, and you can reopen the event later.'**
+  String get eventCloseBody;
+
+  /// No description provided for @eventCloseConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Close event'**
+  String get eventCloseConfirm;
+
+  /// No description provided for @eventReopenQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen this event?'**
+  String get eventReopenQuestion;
+
+  /// No description provided for @eventReopenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses can be added and edited again.'**
+  String get eventReopenBody;
+
+  /// No description provided for @eventReopenConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get eventReopenConfirm;
+
+  /// No description provided for @eventCloseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to close event: {error}'**
+  String eventCloseFailed(Object error);
+
+  /// No description provided for @eventReopenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to reopen event: {error}'**
+  String eventReopenFailed(Object error);
+
+  /// No description provided for @eventClosedBannerBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed by {name} · spending frozen'**
+  String eventClosedBannerBy(Object name);
+
+  /// No description provided for @eventClosedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed · spending frozen'**
+  String get eventClosedBanner;
+
+  /// No description provided for @editorEventClosedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Event closed'**
+  String get editorEventClosedTitle;
+
+  /// No description provided for @editorEventClosedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.'**
+  String get editorEventClosedMessage;
+
   /// No description provided for @eventAddExpense.
   ///
   /// In en, this message translates to:

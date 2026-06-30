@@ -32,6 +32,11 @@ abstract final class EventKeys {
   static const deleteEventConfirmButton = Key('event_delete_confirm_button');
   static const settingsButton = Key('event_settings_button');
 
+  // Close lifecycle (#723)
+  static const closeEventTile = Key('event_close_tile');
+  static const closeEventConfirmButton = Key('event_close_confirm_button');
+  static const closedBanner = Key('event_closed_banner');
+
   // Recap screen (#202 Slice 1)
   static const recapScreen = Key('event_recap_screen');
   static const recapBackButton = Key('event_recap_back_button');

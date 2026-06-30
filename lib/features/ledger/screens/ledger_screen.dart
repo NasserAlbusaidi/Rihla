@@ -393,6 +393,8 @@ class _Body extends ConsumerWidget {
         ),
         LedgerStickyCta(
           settleEnabled: !isSettled && hasExpenses,
+          // #723: closed event freezes spending; settle stays live.
+          addEnabled: !event.isClosed,
           onAddExpense: () => GoRouter.of(
             context,
           ).push('/group/$groupId/event/$eventId/ledger/add'),

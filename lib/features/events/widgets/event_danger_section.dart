@@ -75,6 +75,8 @@ class EventDangerSection extends ConsumerWidget {
               if (hasUnsettled) _buildBalanceWarning(context),
               if (hasUnsettled)
                 Divider(height: 1, color: context.colors.inputFill),
+              _buildCloseReopenTile(context, ref),
+              Divider(height: 1, color: context.colors.inputFill),
               _buildDeleteTile(context, ref, hasUnsettled),
             ],
           ),
@@ -122,6 +124,60 @@ class EventDangerSection extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// #723: Close (freeze spending, settlements stay live) / Reopen toggle.
+  /// Not destructive, so it reads neutral rather than error-red.
+  Widget _buildCloseReopenTile(BuildContext context, WidgetRef ref) {
+    final closed = event.isClosed;
+    return GestureDetector(
+      key: EventKeys.closeEventTile,
+      onTap: () {
+        HapticService.selection();
+        if (closed) {
+          _showReopenDialog(context, ref);
+        } else {
+          _showCloseDialog(context, ref);
+        }
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space16,
+          vertical: 10,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: context.colors.textPrimary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Icon(
+                  closed ? Iconsax.unlock : Iconsax.lock,
+                  size: 18,
+                  color: context.colors.textPrimary,
+                ),
+              ),
+            ),
+            SizedBox(width: context.spacing.space12),
+            Expanded(
+              child: Text(
+                closed ? context.l10n.eventReopen : context.l10n.eventClose,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.colors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -175,6 +231,161 @@ class EventDangerSection extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _showCloseDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          context.l10n.eventCloseQuestion,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: context.colors.textPrimary,
+          ),
+        ),
+        content: Text(
+          context.l10n.eventCloseBody,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: context.colors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              context.l10n.eventKeepEvent,
+              style: TextStyle(color: context.colors.textSecondary),
+            ),
+          ),
+          TextButton(
+            key: EventKeys.closeEventConfirmButton,
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              HapticService.medium();
+              _executeClose(context, ref);
+            },
+            child: Text(
+              context.l10n.eventCloseConfirm,
+              style: TextStyle(
+                color: context.colors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReopenDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          context.l10n.eventReopenQuestion,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: context.colors.textPrimary,
+          ),
+        ),
+        content: Text(
+          context.l10n.eventReopenBody,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: context.colors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              context.l10n.eventKeepEvent,
+              style: TextStyle(color: context.colors.textSecondary),
+            ),
+          ),
+          TextButton(
+            key: EventKeys.closeEventConfirmButton,
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              HapticService.medium();
+              _executeReopen(context, ref);
+            },
+            child: Text(
+              context.l10n.eventReopenConfirm,
+              style: TextStyle(
+                color: context.colors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _executeClose(BuildContext context, WidgetRef ref) async {
+    final uid = FirebaseConfig.currentUser?.uid ?? '';
+    try {
+      final connectivity = ref.read(connectivityProvider.notifier);
+      final connectivityStatus = ref.read(connectivityProvider);
+      final outcome = await awaitServerAck(
+        ref
+            .read(eventServiceProvider)
+            .closeEvent(groupId: groupId, eventId: eventId, closedBy: uid),
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite();
+      } else {
+        connectivity.noteQueuedWrite();
+      }
+    } catch (e, st) {
+      if (context.mounted) {
+        unawaited(Sentry.captureException(e, stackTrace: st));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.eventCloseFailed(friendlyMessageFor(context, e)),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _executeReopen(BuildContext context, WidgetRef ref) async {
+    try {
+      final connectivity = ref.read(connectivityProvider.notifier);
+      final connectivityStatus = ref.read(connectivityProvider);
+      final outcome = await awaitServerAck(
+        ref
+            .read(eventServiceProvider)
+            .reopenEvent(groupId: groupId, eventId: eventId),
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
+      if (outcome == WriteAck.acked) {
+        connectivity.noteLocalWrite();
+      } else {
+        connectivity.noteQueuedWrite();
+      }
+    } catch (e, st) {
+      if (context.mounted) {
+        unawaited(Sentry.captureException(e, stackTrace: st));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.eventReopenFailed(friendlyMessageFor(context, e)),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _showDeleteDialog(

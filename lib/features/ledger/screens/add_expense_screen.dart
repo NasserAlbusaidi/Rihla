@@ -9,6 +9,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/ledger_keys.dart';
@@ -151,6 +152,22 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           return _ErrorScaffold(
             title: context.l10n.editorCouldNotLoadExpenseTitle,
             message: context.l10n.editorCouldNotLoadExpenseMessage,
+          );
+        }
+        // #723: a closed event freezes spending — block the add editor (rules
+        // also reject). Optimistic: only fires once the event resolves closed.
+        final event = ref
+            .watch(
+              eventDetailProvider((
+                groupId: widget.groupId,
+                eventId: widget.eventId,
+              )),
+            )
+            .valueOrNull;
+        if (event != null && event.isClosed) {
+          return _ErrorScaffold(
+            title: context.l10n.editorEventClosedTitle,
+            message: context.l10n.editorEventClosedMessage,
           );
         }
         // #382 PR-6: derive the smart default (last-used-in-event → group

@@ -67,6 +67,14 @@ class EditExpenseScreen extends ConsumerWidget {
         final event = ref
             .watch(eventDetailProvider((groupId: groupId, eventId: eventId)))
             .valueOrNull;
+        // #723: a closed event is read-only — rules also reject the write, this
+        // is the UX guard so the editor never opens on frozen spending.
+        if (event != null && event.isClosed) {
+          return _ErrorScaffold(
+            title: context.l10n.editorEventClosedTitle,
+            message: context.l10n.editorEventClosedMessage,
+          );
+        }
         final canEdit =
             currentUid == null ||
             event == null ||
@@ -155,10 +163,12 @@ class EditExpenseScreen extends ConsumerWidget {
           // #203 S2: set the new metadata when it changed and is present;
           // orphan-delete it when it changed to absent (no longer itemized).
           // Untouched when unchanged, preserving the stored value.
-          splitExplanation: explanationChanged && payload.splitExplanation != null
+          splitExplanation:
+              explanationChanged && payload.splitExplanation != null
               ? payload.splitExplanation
               : null,
-          clearExplanation: explanationChanged && payload.splitExplanation == null,
+          clearExplanation:
+              explanationChanged && payload.splitExplanation == null,
           categoryId: payload.categoryId != original.categoryId
               ? payload.categoryId
               : null,
