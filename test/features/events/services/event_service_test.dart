@@ -170,6 +170,43 @@ void main() {
       // close must not touch soft-delete state
       expect(data['isDeleted'], isFalse);
     });
+
+    test('writes spendingSnapshot map when provided (#766)', () async {
+      final db = FakeFirebaseFirestore();
+      await _seedEvent(db);
+      final service = EventService.withFirestore(db);
+
+      await service.closeEvent(
+        groupId: _groupId,
+        eventId: _eventId,
+        closedBy: 'uid-creator',
+        spendingSnapshot: const {
+          'v': 1,
+          'participantCount': 2,
+          'totals': {'OMR': 100000},
+        },
+      );
+
+      final data = (await _eventRef(db).get()).data()!;
+      expect(data['isClosed'], isTrue);
+      expect(data['spendingSnapshot'], isA<Map>());
+      expect((data['spendingSnapshot'] as Map)['participantCount'], 2);
+    });
+
+    test('omits spendingSnapshot when not provided (#766)', () async {
+      final db = FakeFirebaseFirestore();
+      await _seedEvent(db);
+      final service = EventService.withFirestore(db);
+
+      await service.closeEvent(
+        groupId: _groupId,
+        eventId: _eventId,
+        closedBy: 'uid-creator',
+      );
+
+      final data = (await _eventRef(db).get()).data()!;
+      expect(data.containsKey('spendingSnapshot'), isFalse);
+    });
   });
 
   group('EventService.reopenEvent (#723)', () {
@@ -190,6 +227,30 @@ void main() {
       expect(data['closedAt'], isNull);
       expect(data['closedBy'], isNull);
       expect(data['updatedAt'], isNotNull);
+    });
+
+    test('deletes spendingSnapshot on reopen (#766)', () async {
+      final db = FakeFirebaseFirestore();
+      await _seedEvent(db);
+      final service = EventService.withFirestore(db);
+      await service.closeEvent(
+        groupId: _groupId,
+        eventId: _eventId,
+        closedBy: 'uid-creator',
+        spendingSnapshot: const {'v': 1, 'participantCount': 2},
+      );
+      // sanity: present right after close
+      expect(
+        ((await _eventRef(db).get()).data()!).containsKey('spendingSnapshot'),
+        isTrue,
+      );
+
+      await service.reopenEvent(groupId: _groupId, eventId: _eventId);
+
+      final data = (await _eventRef(db).get()).data()!;
+      // FieldValue.delete() removes the key entirely (null would fail the
+      // opaque `is map` rules guard on a future close).
+      expect(data.containsKey('spendingSnapshot'), isFalse);
     });
   });
 }
