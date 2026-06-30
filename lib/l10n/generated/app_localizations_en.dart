@@ -1255,6 +1255,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpFormerMemberBlocked(Object name) {
+    return '$name has left the group, so a group payment can\'t be recorded with them. Settle inside the relevant event ledger instead.';
+  }
+
+  @override
   String get settleUpRecorded => 'Settlement recorded.';
 
   @override

@@ -396,6 +396,7 @@
   "settleUpEnterValidAmount": "الرجاء إدخال مبلغ صالح",
   "settleUpAmountExceedsOutstanding": "لا يمكن أن يتجاوز المبلغ الرصيد المستحق {amount}",
   "settleUpBalanceChangedReviewAgain": "تغيّر الرصيد أثناء التسجيل — أصبح الآن {amount}. راجِع المبلغ وحاول مرة أخرى.",
+  "settleUpFormerMemberBlocked": "{name} غادر المجموعة، لذا لا يمكن تسجيل دفعة جماعية معه. سوِّ الحساب داخل سجل الفعالية المعنية بدلاً من ذلك.",
   "settleUpRecorded": "تم تسجيل التسوية.",
   "settleUpCorrect": "تصحيح",
   "settleUpCorrectTitle": "تصحيح هذه الدفعة؟",

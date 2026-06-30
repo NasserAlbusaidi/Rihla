@@ -1285,6 +1285,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String settleUpFormerMemberBlocked(Object name) {
+    return '$name غادر المجموعة، لذا لا يمكن تسجيل دفعة جماعية معه. سوِّ الحساب داخل سجل الفعالية المعنية بدلاً من ذلك.';
+  }
+
+  @override
   String get settleUpRecorded => 'تم تسجيل التسوية.';
 
   @override

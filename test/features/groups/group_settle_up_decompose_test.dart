@@ -306,8 +306,8 @@ void main() {
     );
 
     testWidgets(
-      'a settle-up involving a NON-member (departed #249) falls back to a single '
-      'group settlement — no partial-persist of event writes',
+      'a settle-up involving a NON-member (former member) is BLOCKED with a '
+      'message — no event or group writes (#720)',
       (tester) async {
         // Charlie has a balance but is NOT in group.memberIds → the residual
         // group write would be permission-denied, so decompose must not run.
@@ -369,11 +369,12 @@ void main() {
 
         await _recordFullAmount(tester);
 
-        // No event writes (would orphan if the residual were denied).
+        // #720: a group settlement is rules-gated to live group.memberIds, so a
+        // non-member party can't be settled at the group level. Never attempt
+        // the doomed write — block honestly, persist nothing.
         expect(eventService.addCalls, isEmpty);
-        // Fell back to today's single atomic group settlement.
-        expect(groupService.addCalls, hasLength(1));
-        expect(groupService.addCalls.single.amount, Decimal.parse('7.750'));
+        expect(groupService.addCalls, isEmpty);
+        expect(find.textContaining('has left the group'), findsOneWidget);
       },
     );
   });

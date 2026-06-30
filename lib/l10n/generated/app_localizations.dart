@@ -2252,6 +2252,12 @@ abstract class AppLocalizations {
   /// **'Balance changed while you were recording — it\'s now {amount}. Review and try again.'**
   String settleUpBalanceChangedReviewAgain(Object amount);
 
+  /// No description provided for @settleUpFormerMemberBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has left the group, so a group payment can\'t be recorded with them. Settle inside the relevant event ledger instead.'**
+  String settleUpFormerMemberBlocked(Object name);
+
   /// No description provided for @settleUpRecorded.
   ///
   /// In en, this message translates to:

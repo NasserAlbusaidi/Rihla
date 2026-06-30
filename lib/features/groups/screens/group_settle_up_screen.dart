@@ -733,8 +733,33 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final bothLiveMembers =
         group.memberIds.contains(fromUserId) &&
         group.memberIds.contains(toUserId);
-    // Fall back to today's atomic single group write (no decompose).
-    if (!bothLiveMembers || decomposition.perEvent.isEmpty) {
+    // #720 (Scope 7 of #200): a group settlement — the single-write fallback
+    // below AND the residual — is rules-gated to LIVE group.memberIds
+    // (firestore.rules validGroupSettlementBase, ~L1059). leaveGroup/removeMember
+    // already block exit with a non-zero net, so a departed member is
+    // structurally settled; but defend against a non-live counterparty ever
+    // reaching here (legacy/Admin removal) by never attempting the doomed write
+    // (it fails permission-denied with a confusing message). Block honestly.
+    // Decision: keep the rule, align the UI ("settle before you leave").
+    if (!bothLiveMembers) {
+      if (context.mounted) {
+        final departedName = group.memberIds.contains(toUserId)
+            ? fromName
+            : toName;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.settleUpFormerMemberBlocked(departedName),
+            ),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+      return const _StepOutcome(_StepOutcomeKind.invalid);
+    }
+    // Both live but no shared-event attribution (pure cross-event) → today's
+    // atomic single group write, byte-identical to pre-#752.
+    if (decomposition.perEvent.isEmpty) {
       return _recordSettlement(
         context,
         group: group,

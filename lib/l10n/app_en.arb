@@ -991,6 +991,12 @@
       "amount": {}
     }
   },
+  "settleUpFormerMemberBlocked": "{name} has left the group, so a group payment can't be recorded with them. Settle inside the relevant event ledger instead.",
+  "@settleUpFormerMemberBlocked": {
+    "placeholders": {
+      "name": {}
+    }
+  },
   "settleUpRecorded": "Settlement recorded.",
   "settleUpRecordedWillSync": "Settlement recorded — will sync when online.",
   "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",
