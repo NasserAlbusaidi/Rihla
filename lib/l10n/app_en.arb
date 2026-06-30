@@ -985,6 +985,12 @@
       "amount": {}
     }
   },
+  "settleUpBalanceChangedReviewAgain": "Balance changed while you were recording — it's now {amount}. Review and try again.",
+  "@settleUpBalanceChangedReviewAgain": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "settleUpRecorded": "Settlement recorded.",
   "settleUpRecordedWillSync": "Settlement recorded — will sync when online.",
   "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",

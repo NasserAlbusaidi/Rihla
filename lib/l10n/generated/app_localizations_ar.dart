@@ -1280,6 +1280,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String settleUpBalanceChangedReviewAgain(Object amount) {
+    return 'تغيّر الرصيد أثناء التسجيل — أصبح الآن $amount. راجِع المبلغ وحاول مرة أخرى.';
+  }
+
+  @override
   String get settleUpRecorded => 'تم تسجيل التسوية.';
 
   @override

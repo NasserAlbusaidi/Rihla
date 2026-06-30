@@ -1250,6 +1250,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpBalanceChangedReviewAgain(Object amount) {
+    return 'Balance changed while you were recording — it\'s now $amount. Review and try again.';
+  }
+
+  @override
   String get settleUpRecorded => 'Settlement recorded.';
 
   @override
