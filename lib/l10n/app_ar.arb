@@ -952,6 +952,8 @@
   "recapButtonTooltip": "ملخّص الرحلة",
   "recapPeopleExpenses": "{people, plural, =0{لا أشخاص} =1{شخص واحد} =2{شخصان} few{{people} أشخاص} many{{people} شخصًا} other{{people} شخص}} · {expenses, plural, =0{لا مصاريف} =1{مصروف واحد} =2{مصروفان} few{{expenses} مصاريف} many{{expenses} مصروفًا} other{{expenses} مصروف}}",
   "recapTotalSpent": "إجمالي الإنفاق",
+  "recapSpendingFrozen": "الإنفاق مجمّد · أُغلق في {date}",
+  "recapSpendingFrozenNoDate": "الإنفاق مجمّد",
   "recapYouTitle": "أنت",
   "recapYouPaid": "دفعت",
   "recapYourShare": "حصتك",

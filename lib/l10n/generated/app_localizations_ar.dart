@@ -3333,6 +3333,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get recapTotalSpent => 'إجمالي الإنفاق';
 
   @override
+  String recapSpendingFrozen(String date) {
+    return 'الإنفاق مجمّد · أُغلق في $date';
+  }
+
+  @override
+  String get recapSpendingFrozenNoDate => 'الإنفاق مجمّد';
+
+  @override
   String get recapYouTitle => 'أنت';
 
   @override

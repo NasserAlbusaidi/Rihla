@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/constants/supported_currencies.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
@@ -15,6 +16,7 @@ import '../../groups/providers/group_balance_provider.dart';
 import '../../ledger/providers/ledger_view_provider.dart';
 import '../../ledger/utils/ledger_categories.dart';
 import '../keys/event_keys.dart';
+import '../models/event_model.dart';
 import '../models/event_recap.dart';
 import '../providers/event_provider.dart';
 import '../providers/event_recap_provider.dart';
@@ -22,8 +24,9 @@ import '../providers/event_recap_provider.dart';
 /// On-demand event recap (#202 Slice 1 + #721 Slice 2): total spent, the current
 /// user's position, plus the full money summary — biggest expense, top payer,
 /// category & payer breakdowns, everyone's net, and a read-only settlement
-/// status. All per currency. Read-only, computed live from the ledger — no
-/// event-closure state or snapshot yet (that is Slice 5 / #723).
+/// status. All per currency. Read-only. Open events compute live from the
+/// ledger; a CLOSED event with a captured snapshot serves the FROZEN spending
+/// half (settlement stays live) and shows a "spending frozen" caption (#766).
 class EventRecapScreen extends ConsumerWidget {
   const EventRecapScreen({
     super.key,
@@ -58,7 +61,7 @@ class EventRecapScreen extends ConsumerWidget {
             final view = ref.watch(ledgerViewProvider(eventRef));
             final uid = ref.watch(currentUserIdProvider);
             return _wrap(context,
-                _content(context, recap, view.rosterDisplayNames, uid));
+                _content(context, recap, view.rosterDisplayNames, uid, event));
           },
         ),
       ),
@@ -109,6 +112,7 @@ class EventRecapScreen extends ConsumerWidget {
     EventRecap recap,
     Map<String, String> roster,
     String? uid,
+    Event event,
   ) {
     // Per-currency blocks span every balance ∪ expense currency, GCC-first.
     final currencies = sortedGccFirst({
@@ -138,6 +142,10 @@ class EventRecapScreen extends ConsumerWidget {
           color: context.colors.textSecondary,
         ),
       ),
+      // #766: a closed event with a captured snapshot serves frozen spending —
+      // surface that the spending story is locked (settlement stays live).
+      if (event.isClosed && event.spendingSnapshot != null)
+        _frozenCaption(context, event.closedAt),
       SizedBox(height: context.spacing.space24),
 
       _totalCard(context, recap, currencies, multi),
@@ -622,6 +630,35 @@ class EventRecapScreen extends ConsumerWidget {
           widthFactor: ratio.clamp(0.0, 1.0),
           child: Container(color: color),
         ),
+      ),
+    );
+  }
+
+  // #766: the closed-event "spending frozen" caption. [closedAt] is nullable —
+  // the server timestamp is unresolved during the offline-close window while
+  // isClosed + the snapshot are already readable — so the date is conditional
+  // (never closedAt!). Mirrors the hub _ClosedBanner's lock + textSecondary.
+  Widget _frozenCaption(BuildContext context, DateTime? closedAt) {
+    final text = closedAt != null
+        ? context.l10n.recapSpendingFrozen(
+            formatShortMonthDayYear(context, closedAt))
+        : context.l10n.recapSpendingFrozenNoDate;
+    return Padding(
+      key: EventKeys.recapFrozenCaption,
+      padding: EdgeInsetsDirectional.only(top: context.spacing.space8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Iconsax.lock, size: 13, color: context.colors.textSecondary),
+          SizedBox(width: context.spacing.space4),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                  fontSize: 12, color: context.colors.textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }

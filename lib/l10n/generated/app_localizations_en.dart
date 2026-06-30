@@ -3257,6 +3257,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapTotalSpent => 'Total spent';
 
   @override
+  String recapSpendingFrozen(String date) {
+    return 'Spending frozen · closed $date';
+  }
+
+  @override
+  String get recapSpendingFrozenNoDate => 'Spending frozen';
+
+  @override
   String get recapYouTitle => 'You';
 
   @override
