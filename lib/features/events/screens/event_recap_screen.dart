@@ -4,19 +4,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../../../core/constants/supported_currencies.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/r_icon_button.dart';
+import '../../groups/providers/group_balance_provider.dart';
+import '../../ledger/providers/ledger_view_provider.dart';
+import '../../ledger/utils/ledger_categories.dart';
 import '../keys/event_keys.dart';
 import '../models/event_recap.dart';
 import '../providers/event_provider.dart';
 import '../providers/event_recap_provider.dart';
 
-/// On-demand event recap (#202 Slice 1): total spent + the current user's
-/// paid / share / settlements / net, all per currency. Read-only, computed
-/// live from the ledger — no event-closure state or snapshot yet.
+/// On-demand event recap (#202 Slice 1 + #721 Slice 2): total spent, the current
+/// user's position, plus the full money summary — biggest expense, top payer,
+/// category & payer breakdowns, everyone's net, and a read-only settlement
+/// status. All per currency. Read-only, computed live from the ledger — no
+/// event-closure state or snapshot yet (that is Slice 5 / #723).
 class EventRecapScreen extends ConsumerWidget {
   const EventRecapScreen({
     super.key,
@@ -46,7 +53,12 @@ class EventRecapScreen extends ConsumerWidget {
             if (event == null) return _notFound(context);
             final recap = ref.watch(eventRecapProvider(eventRef));
             if (recap.isEmpty) return _empty(context);
-            return _wrap(context, _content(context, recap));
+            // Names resolved at the widget (the model carries only ids) via the
+            // same memoized ledger pass the recap provider already watches.
+            final view = ref.watch(ledgerViewProvider(eventRef));
+            final uid = ref.watch(currentUserIdProvider);
+            return _wrap(context,
+                _content(context, recap, view.rosterDisplayNames, uid));
           },
         ),
       ),
@@ -92,8 +104,19 @@ class EventRecapScreen extends ConsumerWidget {
     );
   }
 
-  List<Widget> _content(BuildContext context, EventRecap recap) {
-    final currencies = recap.userNetByCurrency.keys.toList();
+  List<Widget> _content(
+    BuildContext context,
+    EventRecap recap,
+    Map<String, String> roster,
+    String? uid,
+  ) {
+    // Per-currency blocks span every balance ∪ expense currency, GCC-first.
+    final currencies = sortedGccFirst({
+      ...recap.participantNetsByCurrency.keys,
+      ...recap.totalSpentByCurrency.keys,
+    });
+    final multi = currencies.length > 1;
+
     return [
       Text(
         recap.eventName,
@@ -117,37 +140,490 @@ class EventRecapScreen extends ConsumerWidget {
       ),
       SizedBox(height: context.spacing.space24),
 
-      // Total spent (per currency).
-      _sectionLabel(context, context.l10n.recapTotalSpent),
-      for (final entry in recap.totalSpentByCurrency.entries)
-        _amountRow(context, entry.key, entry.value, entry.key),
+      _totalCard(context, recap, currencies, multi),
 
-      // The current user's story (per currency), reconciling net = paid − share + settled.
-      if (currencies.isNotEmpty) ...[
+      for (final ccy in currencies) ...[
         SizedBox(height: context.spacing.space24),
-        _sectionLabel(context, context.l10n.recapYouTitle),
-        for (final ccy in currencies) ..._userBlock(context, recap, ccy),
+        if (multi) _currencyHeader(context, ccy, recap.totalSpentByCurrency[ccy]),
+        ..._currencyBlock(context, recap, roster, uid, ccy),
       ],
     ];
   }
 
-  /// One currency's user rows: paid / share / settlements (each only when
-  /// non-zero) + net (always), so a square-but-active spender is still shown.
-  List<Widget> _userBlock(BuildContext context, EventRecap recap, String ccy) {
-    final paid = recap.userPaidByCurrency[ccy] ?? Decimal.zero;
-    final share = recap.userShareByCurrency[ccy] ?? Decimal.zero;
-    final settled = recap.userSettledByCurrency[ccy] ?? Decimal.zero;
-    final net = recap.userNetByCurrency[ccy] ?? Decimal.zero;
-    return [
-      if (paid != Decimal.zero)
-        _amountRow(context, context.l10n.recapYouPaid, paid, ccy),
-      if (share != Decimal.zero)
-        _amountRow(context, context.l10n.recapYourShare, share, ccy),
-      if (settled != Decimal.zero)
-        _amountRow(context, context.l10n.recapSettlements, settled, ccy,
-            sign: true),
-      _amountRow(context, context.l10n.recapNet, net, ccy, sign: true),
-    ];
+  // ── Total + your-position card ──────────────────────────────────────────
+
+  Widget _totalCard(
+    BuildContext context,
+    EventRecap recap,
+    List<String> currencies,
+    bool multi,
+  ) {
+    final c = context.colors;
+    final children = <Widget>[_sectionLabel(context, context.l10n.recapTotalSpent)];
+
+    if (!multi) {
+      // Single currency: one hero total + the user's folded net/paid/share.
+      final ccy = currencies.isEmpty ? 'OMR' : currencies.first;
+      children.add(RAmount(
+        value: recap.totalSpentByCurrency[ccy] ?? Decimal.zero,
+        currency: ccy,
+        size: 30,
+        weight: FontWeight.w700,
+      ));
+      final net = recap.userNetByCurrency[ccy];
+      if (net != null) {
+        children.addAll([
+          Divider(height: context.spacing.space24, color: c.rule),
+          Row(children: [
+            Expanded(
+              child: Text(context.l10n.recapNet,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: c.textPrimary)),
+            ),
+            RAmount(value: net, currency: ccy, sign: true, size: 20),
+          ]),
+          SizedBox(height: context.spacing.space8),
+          _miniStat(context, context.l10n.recapYouPaid,
+              recap.userPaidByCurrency[ccy] ?? Decimal.zero, ccy),
+          _miniStat(context, context.l10n.recapYourShare,
+              recap.userShareByCurrency[ccy] ?? Decimal.zero, ccy),
+        ]);
+      }
+    } else {
+      // Multi currency: one row per currency, never cross-summed, + the note.
+      for (final ccy in currencies) {
+        if (!recap.totalSpentByCurrency.containsKey(ccy)) continue;
+        children.add(Padding(
+          padding: EdgeInsetsDirectional.only(top: context.spacing.space8),
+          child: Row(children: [
+            Expanded(
+              child: Text(ccy,
+                  style: TextStyle(fontSize: 14, color: c.textSecondary)),
+            ),
+            RAmount(
+              value: recap.totalSpentByCurrency[ccy]!,
+              currency: ccy,
+              showCurrency: false,
+              size: 18,
+              weight: FontWeight.w700,
+            ),
+          ]),
+        ));
+      }
+      children.addAll([
+        SizedBox(height: context.spacing.space12),
+        Text(context.l10n.recapMultiCurrencyNote,
+            style: TextStyle(fontSize: 12, color: c.textSecondary)),
+      ]);
+    }
+
+    return _card(context, Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    ), padding: EdgeInsetsDirectional.all(context.spacing.space20));
+  }
+
+  Widget _miniStat(
+      BuildContext context, String label, Decimal value, String ccy) {
+    return Padding(
+      padding: EdgeInsetsDirectional.only(top: context.spacing.space4),
+      child: Row(children: [
+        Expanded(
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 13, color: context.colors.textSecondary)),
+        ),
+        RAmount(value: value, currency: ccy, size: 13),
+      ]),
+    );
+  }
+
+  // ── Per-currency block ──────────────────────────────────────────────────
+
+  Widget _currencyHeader(BuildContext context, String ccy, Decimal? total) {
+    return Padding(
+      padding: EdgeInsetsDirectional.only(bottom: context.spacing.space8),
+      child: Row(children: [
+        Text(ccy,
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: context.colors.primary)),
+        if (total != null) ...[
+          Text('  ·  ',
+              style: TextStyle(
+                  fontSize: 13, color: context.colors.textSecondary)),
+          RAmount(value: total, currency: ccy, showCurrency: false, size: 13),
+        ],
+      ]),
+    );
+  }
+
+  List<Widget> _currencyBlock(
+    BuildContext context,
+    EventRecap recap,
+    Map<String, String> roster,
+    String? uid,
+    String ccy,
+  ) {
+    final payers = recap.payerTotalsByCurrency[ccy] ?? const <RecapPersonAmount>[];
+    final biggest = recap.biggestExpenseByCurrency[ccy];
+    final cats = recap.categoryTotalsByCurrency[ccy] ?? const <RecapCategoryTotal>[];
+    final nets = recap.participantNetsByCurrency[ccy] ?? const <RecapNet>[];
+    final settled = recap.isSettledByCurrency[ccy] ?? true;
+
+    final gap = SizedBox(height: context.spacing.space16);
+    final widgets = <Widget>[];
+
+    // Highlights — each card only when its data is present (never .first on []).
+    if (payers.isNotEmpty || biggest != null) {
+      widgets.add(_highlightsRow(context, payers, biggest, roster, ccy));
+      widgets.add(gap);
+    }
+    if (cats.isNotEmpty) {
+      widgets.add(_sectionLabel(context, context.l10n.recapByCategory));
+      widgets.add(_categoryCard(context, cats, ccy));
+      widgets.add(gap);
+    }
+    if (payers.isNotEmpty) {
+      widgets.add(_sectionLabel(context, context.l10n.recapWhoPaid));
+      widgets.add(_payerCard(context, payers, roster, uid, ccy));
+      widgets.add(gap);
+    }
+    if (nets.isNotEmpty) {
+      widgets.add(_sectionLabel(context, context.l10n.recapWhoUpDown));
+      widgets.add(_netsCard(context, nets, roster, uid, ccy));
+      widgets.add(gap);
+    }
+    widgets.add(_statusCard(context, settled, nets));
+    return widgets;
+  }
+
+  Widget _highlightsRow(
+    BuildContext context,
+    List<RecapPersonAmount> payers,
+    RecapExpenseRef? biggest,
+    Map<String, String> roster,
+    String ccy,
+  ) {
+    final cards = <Widget>[];
+    if (payers.isNotEmpty) {
+      final top = payers.first;
+      final name = roster[top.participantId] ?? context.l10n.ledgerSomeone;
+      cards.add(Expanded(
+        child: _highlightCard(
+          context,
+          label: context.l10n.recapTopPayer,
+          body: Row(children: [
+            RAvatar(name: name, size: 22),
+            SizedBox(width: context.spacing.space8),
+            Flexible(
+              child: Text(name,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.textPrimary)),
+            ),
+          ]),
+          amount: top.amount,
+          ccy: ccy,
+        ),
+      ));
+    }
+    if (biggest != null) {
+      final desc = biggest.description?.trim();
+      final label = (desc != null && desc.isNotEmpty)
+          ? desc
+          : categoryNameForId(biggest.categoryId, context.l10n);
+      cards.add(Expanded(
+        child: _highlightCard(
+          context,
+          label: context.l10n.recapBiggestExpense,
+          body: Text(label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: context.colors.textPrimary)),
+          amount: biggest.amount,
+          ccy: ccy,
+        ),
+      ));
+    }
+    // IntrinsicHeight bounds the Row's height so stretch equalizes both cards
+    // (a bare stretch in the vertically-unbounded scroll view → infinite height).
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < cards.length; i++) ...[
+            if (i > 0) SizedBox(width: context.spacing.space8),
+            cards[i],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _highlightCard(
+    BuildContext context, {
+    required String label,
+    required Widget body,
+    required Decimal amount,
+    required String ccy,
+  }) {
+    return _card(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _microLabel(context, label),
+          SizedBox(height: context.spacing.space8),
+          body,
+          SizedBox(height: context.spacing.space8),
+          RAmount(value: amount, currency: ccy, size: 13),
+        ],
+      ),
+      padding: EdgeInsetsDirectional.all(context.spacing.space12),
+    );
+  }
+
+  Widget _categoryCard(
+      BuildContext context, List<RecapCategoryTotal> cats, String ccy) {
+    final maxTotal = cats.first.total; // desc-sorted
+    return _card(context, Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < cats.length; i++) ...[
+          if (i > 0) SizedBox(height: context.spacing.space12),
+          Row(children: [
+            _dot(context, categoryColorForId(context.colors, cats[i].categoryId)),
+            SizedBox(width: context.spacing.space8),
+            Expanded(
+              child: Text(categoryNameForId(cats[i].categoryId, context.l10n),
+                  style: TextStyle(
+                      fontSize: 13, color: context.colors.textPrimary)),
+            ),
+            RAmount(value: cats[i].total, currency: ccy, size: 13),
+          ]),
+          SizedBox(height: context.spacing.space8),
+          _bar(
+            context,
+            ratio: maxTotal > Decimal.zero
+                ? cats[i].total.toDouble() / maxTotal.toDouble()
+                : 0,
+            color: categoryColorForId(context.colors, cats[i].categoryId),
+          ),
+        ],
+      ],
+    ));
+  }
+
+  Widget _payerCard(
+    BuildContext context,
+    List<RecapPersonAmount> payers,
+    Map<String, String> roster,
+    String? uid,
+    String ccy,
+  ) {
+    final maxPaid = payers.first.amount; // desc-sorted
+    return _card(context, Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < payers.length; i++) ...[
+          if (i > 0) SizedBox(height: context.spacing.space12),
+          Row(children: [
+            RAvatar(name: roster[payers[i].participantId] ?? '?', size: 22),
+            SizedBox(width: context.spacing.space8),
+            Expanded(child: _personName(context, payers[i].participantId, roster, uid)),
+            RAmount(value: payers[i].amount, currency: ccy, size: 13),
+          ]),
+          SizedBox(height: context.spacing.space8),
+          _bar(
+            context,
+            ratio: maxPaid > Decimal.zero
+                ? payers[i].amount.toDouble() / maxPaid.toDouble()
+                : 0,
+            color: context.colors.ink2,
+          ),
+        ],
+      ],
+    ));
+  }
+
+  Widget _netsCard(
+    BuildContext context,
+    List<RecapNet> nets,
+    Map<String, String> roster,
+    String? uid,
+    String ccy,
+  ) {
+    return _card(context, Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < nets.length; i++)
+          _netRow(context, nets[i], roster, uid, ccy),
+      ],
+    ), padding: EdgeInsetsDirectional.zero);
+  }
+
+  Widget _netRow(BuildContext context, RecapNet n, Map<String, String> roster,
+      String? uid, String ccy) {
+    final isYou = uid != null && n.participantId == uid;
+    final name = roster[n.participantId] ?? context.l10n.ledgerSomeone;
+    final isZero = n.net == Decimal.zero;
+    return Container(
+      color: isYou ? context.colors.cardSoft : null,
+      padding: EdgeInsetsDirectional.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: context.spacing.space12,
+      ),
+      child: Row(children: [
+        RAvatar(name: name, size: 28),
+        SizedBox(width: context.spacing.space12),
+        Expanded(child: _personName(context, n.participantId, roster, uid)),
+        if (isZero)
+          Text(context.l10n.recapSettledRow,
+              style: TextStyle(fontSize: 13, color: context.colors.textSecondary))
+        else
+          RAmount(value: n.net, currency: ccy, sign: true, size: 13),
+      ]),
+    );
+  }
+
+  Widget _personName(BuildContext context, String id, Map<String, String> roster,
+      String? uid) {
+    final name = roster[id] ?? context.l10n.ledgerSomeone;
+    final isYou = uid != null && id == uid;
+    return Text.rich(
+      TextSpan(children: [
+        TextSpan(text: name),
+        if (isYou)
+          TextSpan(
+            text: ' · ${context.l10n.recapYouSuffix}',
+            style: TextStyle(
+                fontWeight: FontWeight.w400, color: context.colors.textSecondary),
+          ),
+      ]),
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: context.colors.textPrimary),
+    );
+  }
+
+  Widget _statusCard(BuildContext context, bool settled, List<RecapNet> nets) {
+    final c = context.colors;
+    if (settled) {
+      return _statusBox(
+        context,
+        background: c.cardSoft,
+        accent: c.successText,
+        icon: Iconsax.tick_circle,
+        title: context.l10n.recapSettledTitle,
+        subtitle: context.l10n.recapSettledSubtitle,
+      );
+    }
+    final debtors = nets.where((n) => n.net < Decimal.zero).length;
+    return _statusBox(
+      context,
+      background: c.saffronTint,
+      accent: c.warning,
+      icon: Iconsax.warning_2,
+      title: context.l10n.recapOutstandingTitle,
+      subtitle: context.l10n.recapOutstandingSubtitle(debtors),
+    );
+  }
+
+  Widget _statusBox(
+    BuildContext context, {
+    required Color background,
+    required Color accent,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsetsDirectional.all(context.spacing.space16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+        border: Border.all(color: accent),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(children: [
+            Icon(icon, size: 16, color: accent),
+            SizedBox(width: context.spacing.space8),
+            Expanded(
+              child: Text(title,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.textPrimary)),
+            ),
+          ]),
+          SizedBox(height: context.spacing.space8),
+          Text(subtitle,
+              style: TextStyle(
+                  fontSize: 13, color: context.colors.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  // ── Small shared bits ───────────────────────────────────────────────────
+
+  Widget _card(BuildContext context, Widget child,
+      {EdgeInsetsGeometry? padding}) {
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      padding: padding ?? EdgeInsetsDirectional.all(context.spacing.space16),
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+        boxShadow: context.shadows.raised,
+      ),
+      child: child,
+    );
+  }
+
+  Widget _dot(BuildContext context, Color color) {
+    return Container(
+      width: 9,
+      height: 9,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+
+  Widget _bar(BuildContext context,
+      {required double ratio, required Color color}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: Container(
+        height: 6,
+        color: context.colors.rule2,
+        child: FractionallySizedBox(
+          alignment: AlignmentDirectional.centerStart,
+          widthFactor: ratio.clamp(0.0, 1.0),
+          child: Container(color: color),
+        ),
+      ),
+    );
   }
 
   Widget _sectionLabel(BuildContext context, String label) {
@@ -165,29 +641,16 @@ class EventRecapScreen extends ConsumerWidget {
     );
   }
 
-  Widget _amountRow(
-    BuildContext context,
-    String label,
-    Decimal value,
-    String currency, {
-    bool sign = false,
-  }) {
-    return Padding(
-      padding: EdgeInsetsDirectional.only(bottom: context.spacing.space8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: context.colors.textPrimary,
-              ),
-            ),
-          ),
-          RAmount(value: value, currency: currency, sign: sign, size: 15),
-        ],
+  // Small highlight-card label (sentence case so it stays l10n-faithful and
+  // case-neutral for scripts like Arabic that have no upper/lower distinction).
+  Widget _microLabel(BuildContext context, String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
+        color: context.colors.textSecondary,
       ),
     );
   }

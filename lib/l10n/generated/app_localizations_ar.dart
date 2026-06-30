@@ -3254,4 +3254,53 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get recapEmptyMessage => 'أضِف مصروفًا لرؤية ملخّص هذا الحدث.';
+
+  @override
+  String get recapTopPayer => 'الأكثر دفعًا';
+
+  @override
+  String get recapBiggestExpense => 'أكبر مصروف';
+
+  @override
+  String get recapByCategory => 'حسب الفئة';
+
+  @override
+  String get recapWhoPaid => 'من دفع';
+
+  @override
+  String get recapWhoUpDown => 'من له ومن عليه';
+
+  @override
+  String get recapSettledRow => 'مُسوّى';
+
+  @override
+  String get recapYouSuffix => 'أنت';
+
+  @override
+  String get recapSettledTitle => 'الجميع سدّدوا';
+
+  @override
+  String get recapSettledSubtitle => 'لا أرصدة معلّقة في هذا الحدث.';
+
+  @override
+  String get recapOutstandingTitle => 'أرصدة معلّقة';
+
+  @override
+  String recapOutstandingSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count شخص لا يزال مدينًا',
+      many: '$count شخصًا لا يزال مدينًا',
+      few: '$count أشخاص لا يزالون مدينين',
+      two: 'شخصان لا يزالان مدينين',
+      one: 'شخص واحد لا يزال مدينًا',
+      zero: 'لا أحد لا يزال مدينًا',
+    );
+    return '$_temp0. سوِّ من السجل.';
+  }
+
+  @override
+  String get recapMultiCurrencyNote =>
+      'تُحفظ الأرصدة لكل عملة على حدة — لا تُجمع معًا أبدًا.';
 }

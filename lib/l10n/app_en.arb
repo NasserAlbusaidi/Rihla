@@ -2382,5 +2382,56 @@
   "recapEmptyMessage": "Add an expense to see this event's recap.",
   "@recapEmptyMessage": {
     "description": "Empty-state body when an event has no expenses to recap (#202)."
+  },
+  "recapTopPayer": "Top payer",
+  "@recapTopPayer": {
+    "description": "Highlight-card label for the person who fronted the most cash in the event recap (#721)."
+  },
+  "recapBiggestExpense": "Biggest expense",
+  "@recapBiggestExpense": {
+    "description": "Highlight-card label for the single largest expense in the event recap (#721)."
+  },
+  "recapByCategory": "By category",
+  "@recapByCategory": {
+    "description": "Section label above the per-category spend breakdown in the recap (#721)."
+  },
+  "recapWhoPaid": "Who paid",
+  "@recapWhoPaid": {
+    "description": "Section label above the per-payer gross-spend breakdown in the recap (#721)."
+  },
+  "recapWhoUpDown": "Who's up / down",
+  "@recapWhoUpDown": {
+    "description": "Section label above the per-person net-balance list in the recap (#721)."
+  },
+  "recapSettledRow": "settled",
+  "@recapSettledRow": {
+    "description": "Quiet trailing label on a recap net row when that person's balance is exactly zero (#721)."
+  },
+  "recapYouSuffix": "you",
+  "@recapYouSuffix": {
+    "description": "Suffix marking the current user's own row in recap lists, rendered as 'Name · you' (#721)."
+  },
+  "recapSettledTitle": "Everyone's settled up",
+  "@recapSettledTitle": {
+    "description": "Title of the recap settlement-status card when no balances are outstanding (#721)."
+  },
+  "recapSettledSubtitle": "No outstanding balances in this event.",
+  "@recapSettledSubtitle": {
+    "description": "Subtitle of the recap settlement-status card when everyone is settled (#721)."
+  },
+  "recapOutstandingTitle": "Outstanding balances",
+  "@recapOutstandingTitle": {
+    "description": "Title of the recap settlement-status card when balances remain unsettled (#721)."
+  },
+  "recapOutstandingSubtitle": "{count, plural, =1{1 person still owes} other{{count} people still owe}}. Settle up from the ledger.",
+  "@recapOutstandingSubtitle": {
+    "description": "Subtitle of the recap settlement-status card; {count} is the number of people who still owe (debtors only) (#721).",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "recapMultiCurrencyNote": "Balances are kept per currency — they're never added together.",
+  "@recapMultiCurrencyNote": {
+    "description": "Note shown under the total-spent card when an event spans more than one currency, explaining buckets are never cross-summed (#721)."
   }
 }
