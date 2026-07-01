@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/trip_receipt.dart';
 import 'package:safar/features/events/utils/trip_receipt_csv.dart';
+import 'package:safar/features/events/utils/trip_receipt_format.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/l10n/generated/app_localizations_en.dart';
 

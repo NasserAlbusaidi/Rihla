@@ -981,6 +981,7 @@
   "recapShareButton": "مشاركة الملخّص",
   "recapShareCta": "مشاركة الصورة",
   "recapExportCsvButton": "تصدير السجل (CSV)",
+  "recapExportPdfButton": "تصدير السجل (PDF)",
   "recapShareError": "تعذّر إنشاء الصورة. حاول مرة أخرى.",
   "recapShareText": "{eventName} — ملخّص رحلتنا عبر رِحلة",
   "recapCardCaption": "رِحلة · خلاصة · {month}",

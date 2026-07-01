@@ -209,4 +209,61 @@ void main() {
     expect(paths.single, endsWith('rihla_trip_receipt.csv'));
     expect(mimeTypes.single, 'text/csv');
   });
+
+  // ── sharePdf: the Trip Receipt PDF chokepoint (#704 Slice B). Same shareFiles
+  // wire + non-zero-origin invariant; application/pdf mime + .pdf name. ──────
+
+  Future<Map<Object?, Object?>?> tapSharePdf(WidgetTester tester) async {
+    PathProviderPlatform.instance = _FakePathProvider();
+
+    Map<Object?, Object?>? args;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      shareChannel,
+      (call) async {
+        if (call.method == 'shareFiles') {
+          args = call.arguments as Map<Object?, Object?>;
+        }
+        return '';
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(shareChannel, null),
+    );
+
+    late BuildContext ctx;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              ctx = context;
+              return const SizedBox(width: 200, height: 100);
+            },
+          ),
+        ),
+      ),
+    );
+
+    // A tiny but non-empty payload standing in for the PDF bytes.
+    final bytes = Uint8List.fromList(List<int>.generate(32, (i) => i));
+    await tester.runAsync(() => sharePdf(ctx, bytes));
+    return args;
+  }
+
+  testWidgets('sharePdf forwards a non-zero share origin', (tester) async {
+    final args = await tapSharePdf(tester);
+    expect(args, isNotNull);
+    expect((args!['originWidth'] as double) > 0, isTrue);
+    expect((args['originHeight'] as double) > 0, isTrue);
+  });
+
+  testWidgets('sharePdf shares an application/pdf file named rihla_trip_receipt.pdf',
+      (tester) async {
+    final args = await tapSharePdf(tester);
+    final paths = (args!['paths'] as List).cast<String>();
+    final mimeTypes = (args['mimeTypes'] as List).cast<String>();
+    expect(paths.single, endsWith('rihla_trip_receipt.pdf'));
+    expect(mimeTypes.single, 'application/pdf');
+  });
 }

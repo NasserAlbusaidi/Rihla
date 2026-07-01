@@ -59,6 +59,10 @@ dependencies:
   # Export
   share_plus: ^10.1.4
   csv: ^6.0.0
+  # PDF proof pack (#704 Slice B) — document building only. Shared through the
+  # existing share_plus chokepoint (no `printing`), so export stays fully
+  # offline and never fetches a font from the network.
+  pdf: ">=3.12.0 <3.13.0" # 3.13 needs Dart >=3.12; this SDK is 3.11.x
   shared_preferences: ^2.5.4
   package_info_plus: ^8.2.1
 
@@ -132,6 +136,11 @@ flutter:
     - assets/fonts/OFL-GeistMono.txt
     - assets/fonts/OFL-ReemKufi.txt
     - assets/fonts/OFL-InstrumentSerif.txt
+    # Static Noto Sans Arabic (Regular) — loaded via rootBundle ONLY by the #704
+    # PDF proof pack for Arabic glyph fallback (the PDF renderer embeds it, the
+    # Flutter UI never uses it). Not declared under `fonts:` on purpose.
+    - assets/fonts/NotoSansArabic-Regular.ttf
+    - assets/fonts/OFL-NotoSansArabic.txt
 
   # Brand typography — bundled so first-launch branding works offline and never
   # hits the Google Fonts CDN (#103). Geist / Geist Mono are variable (wght

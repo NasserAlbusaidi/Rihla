@@ -67,6 +67,28 @@ Future<void> shareCsv(
   );
 }
 
+/// Shares a PDF [bytes] document (e.g. the Trip Receipt proof pack, #704 Slice
+/// B) via the platform share sheet, always supplying a non-zero
+/// `sharePositionOrigin` — the same #308/#309 iOS trap as [shareText]. Do NOT
+/// call `Share.shareXFiles` directly.
+///
+/// The bytes are passed in-memory as an [XFile.fromData]; `share_plus` writes
+/// them to a temp file itself. [fileName] flows through `fileNameOverrides` so
+/// the temp file keeps a `.pdf` extension and receivers treat it as a PDF.
+Future<void> sharePdf(
+  BuildContext context,
+  Uint8List bytes, {
+  String fileName = 'rihla_trip_receipt.pdf',
+  String? subject,
+}) {
+  return Share.shareXFiles(
+    [XFile.fromData(bytes, mimeType: 'application/pdf')],
+    fileNameOverrides: [fileName],
+    subject: subject,
+    sharePositionOrigin: _shareOrigin(context),
+  );
+}
+
 /// A non-zero anchor rect for the share popover. Prefers the caller's own
 /// render box (so the iPad popover points at the tapped control); falls back to
 /// a 1×1 rect at the screen centre when the box is unavailable, so iOS always

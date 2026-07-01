@@ -12,12 +12,13 @@ import 'package:safar/features/events/widgets/recap_share_card.dart';
 import 'package:safar/features/events/widgets/recap_share_sheet.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-// The sheet composes two already-unit-tested primitives — captureBoundaryPng
-// (widget_to_image_test: boundary → PNG bytes) and shareImage/shareCsv
+// The sheet composes already-unit-tested primitives — captureBoundaryPng
+// (widget_to_image_test: boundary → PNG bytes) and shareImage/shareCsv/sharePdf
 // (share_helper_test). This file covers the composition: the sheet renders the
-// card inside the capture boundary, a Share-image CTA, and a Trip-Receipt CSV
-// CTA that is gated on the receipt resolving (AsyncData). The tap→share path is
-// NOT driven here — it interleaves setState with temp-file I/O across zones.
+// card inside the capture boundary, a Share-image CTA, and the Trip-Receipt CSV
+// + PDF CTAs, both gated on the receipt resolving (AsyncData). The tap→share
+// path is NOT driven here — it interleaves setState with temp-file I/O across
+// zones.
 
 const _eventRef = (groupId: 'g1', eventId: 'e1');
 
@@ -132,19 +133,28 @@ void main() {
     expect(find.byKey(EventKeys.recapShareConfirmButton), findsOneWidget);
     expect(find.text('Share image'), findsOneWidget);
 
-    // #704 CSV CTA present and enabled on the data path.
+    // #704 CSV + PDF CTAs present and enabled on the data path.
     final csv = find.byKey(EventKeys.recapExportCsvButton);
     expect(csv, findsOneWidget);
     expect(find.text('Export ledger (CSV)'), findsOneWidget);
     expect(tester.widget<TextButton>(csv).onPressed, isNotNull);
+
+    final pdf = find.byKey(EventKeys.recapExportPdfButton);
+    expect(pdf, findsOneWidget);
+    expect(find.text('Export ledger (PDF)'), findsOneWidget);
+    expect(tester.widget<TextButton>(pdf).onPressed, isNotNull);
   });
 
-  testWidgets('CSV CTA is disabled while the receipt is still loading',
+  testWidgets('both export CTAs are disabled while the receipt is still loading',
       (tester) async {
     await _openSheet(tester, const AsyncValue.loading());
 
     final csv = find.byKey(EventKeys.recapExportCsvButton);
     expect(csv, findsOneWidget);
     expect(tester.widget<TextButton>(csv).onPressed, isNull);
+
+    final pdf = find.byKey(EventKeys.recapExportPdfButton);
+    expect(pdf, findsOneWidget);
+    expect(tester.widget<TextButton>(pdf).onPressed, isNull);
   });
 }
