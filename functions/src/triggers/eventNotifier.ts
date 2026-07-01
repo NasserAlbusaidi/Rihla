@@ -64,6 +64,7 @@ async function resolveActorName(gid: string, actorUid: string): Promise<string> 
 async function notifyEventCreated(
   gid: string,
   eid: string,
+  eventId: string,
   snap: { data(): DocumentData } | undefined,
 ): Promise<void> {
   if (!snap) return;
@@ -91,10 +92,16 @@ async function notifyEventCreated(
       body: eventBody(locale, actorName, eventName),
     }),
     { type: 'event', groupId: gid, eventId: eid },
+    { dedupeKey: `event:create:${gid}:${eid}:${eventId}` },
   );
 }
 
 export const eventNotifier = onDocumentCreated(
   'groups/{gid}/events/{eid}',
-  (event) => notifyEventCreated(event.params.gid, event.params.eid, event.data),
+  (event) => notifyEventCreated(
+    event.params.gid,
+    event.params.eid,
+    event.id,
+    event.data,
+  ),
 );

@@ -45,16 +45,27 @@ function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
 async function resolveGroup(
   gid: string,
-): Promise<{ createdBy: string; name: string }> {
+): Promise<{ createdBy: string; name: string; inviteCode: string; memberIds: string[] }> {
   try {
     const snap = await getFirestore().doc(`groups/${gid}`).get();
     const data = snap.data() ?? {};
-    return { createdBy: asString(data.createdBy), name: asString(data.name) };
+    return {
+      createdBy: asString(data.createdBy),
+      name: asString(data.name),
+      inviteCode: asString(data.inviteCode),
+      memberIds: asStringArray(data.memberIds),
+    };
   } catch (error) {
     logger.warn('claim notify: group lookup failed', { gid, error: String(error) });
-    return { createdBy: '', name: '' };
+    return { createdBy: '', name: '', inviteCode: '', memberIds: [] };
   }
 }
 
@@ -66,6 +77,7 @@ export const claimRequestNotifier = onDocumentWritten(
     const after = change?.after.exists ? change.after.data() : undefined;
 
     const gid = event.params.gid;
+    const dedupeKey = `claim:${gid}:${event.params.requestId}:${event.id}`;
     const afterStatus = asString(after?.status);
     const beforeStatus = asString(before?.status);
     const beforeWasPending = beforeStatus === 'pending';
@@ -92,6 +104,7 @@ export const claimRequestNotifier = onDocumentWritten(
           body: claimRequestBody(locale, requesterName, shadowName),
         }),
         { type: 'claim_request', groupId: gid },
+        { dedupeKey },
       );
       return;
     }
@@ -104,8 +117,9 @@ export const claimRequestNotifier = onDocumentWritten(
       const requesterUid = asString(after?.requesterUid);
       if (requesterUid.length === 0) return;
 
-      const { name } = await resolveGroup(gid);
+      const { name, inviteCode, memberIds } = await resolveGroup(gid);
       const shadowName = asString(after?.shadowDisplayName);
+      const routeability = memberIds.includes(requesterUid) ? 'member' : 'pre_join';
 
       await sendToUids(
         [requesterUid],
@@ -113,7 +127,14 @@ export const claimRequestNotifier = onDocumentWritten(
           title: claimDecideTitle(locale, name),
           body: claimDecideBody(locale, afterStatus, shadowName),
         }),
-        { type: 'claim_decided', groupId: gid },
+        {
+          type: 'claim_decided',
+          groupId: gid,
+          decision: afterStatus,
+          inviteCode,
+          routeability,
+        },
+        { dedupeKey },
       );
       return;
     }

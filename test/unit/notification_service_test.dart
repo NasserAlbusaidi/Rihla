@@ -467,6 +467,126 @@ void main() {
       expect(h.nav, ['/group/g9']);
     });
 
+    test(
+      'tapping a claim_request notification routes to group settings',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
+
+        opened.add(
+          const RemoteMessage(data: {'type': 'claim_request', 'groupId': 'g7'}),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(h.nav, ['/group/g7/settings']);
+      },
+    );
+
+    test(
+      'tapping a claimed claim_decided notification routes to the group',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
+
+        opened.add(
+          const RemoteMessage(
+            data: {
+              'type': 'claim_decided',
+              'groupId': 'g7',
+              'decision': 'claimed',
+            },
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(h.nav, ['/group/g7']);
+      },
+    );
+
+    test(
+      'tapping a declined claim_decided notification routes to the invite',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
+
+        opened.add(
+          const RemoteMessage(
+            data: {
+              'type': 'claim_decided',
+              'groupId': 'g7',
+              'decision': 'declined',
+              'inviteCode': 'ABC123',
+            },
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(h.nav, ['/join/ABC123']);
+      },
+    );
+
+    test(
+      'tapping a declined member-routeable claim_decided notification routes to the group',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
+
+        opened.add(
+          const RemoteMessage(
+            data: {
+              'type': 'claim_decided',
+              'groupId': 'g7',
+              'decision': 'declined',
+              'inviteCode': 'ABC123',
+              'routeability': 'member',
+            },
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(h.nav, ['/group/g7']);
+      },
+    );
+
+    test(
+      'tapping a declined claim_decided without inviteCode routes to join-group',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
+
+        opened.add(
+          const RemoteMessage(
+            data: {
+              'type': 'claim_decided',
+              'groupId': 'g7',
+              'decision': 'declined',
+            },
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(h.nav, ['/join-group']);
+      },
+    );
+
+    test('legacy claim_decided notification routes to join-group', () async {
+      final opened = StreamController<RemoteMessage>.broadcast();
+      addTearDown(opened.close);
+      final h = await boot(opened: opened.stream);
+
+      opened.add(
+        const RemoteMessage(data: {'type': 'claim_decided', 'groupId': 'g7'}),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(h.nav, ['/join-group']);
+    });
+
     test('unknown type or missing groupId does not route', () async {
       final opened = StreamController<RemoteMessage>.broadcast();
       addTearDown(opened.close);
@@ -478,6 +598,12 @@ void main() {
       opened.add(
         const RemoteMessage(data: {'type': 'settlement'}),
       ); // no groupId
+      opened.add(const RemoteMessage(data: {'type': 'claim_request'}));
+      opened.add(
+        const RemoteMessage(
+          data: {'type': 'claim_decided', 'decision': 'claimed'},
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
 
       expect(h.nav, isEmpty);

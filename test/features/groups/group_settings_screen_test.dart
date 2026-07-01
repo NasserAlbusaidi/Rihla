@@ -304,6 +304,47 @@ Widget _wrapBackNavigationTest({required SharedPreferences prefs}) {
   );
 }
 
+Widget _wrapDirectEntrySettingsBackFallbackTest({
+  required SharedPreferences prefs,
+}) {
+  final router = GoRouter(
+    initialLocation: '/group/group-1/settings',
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const Scaffold(body: Text('Home')),
+      ),
+      GoRoute(
+        path: '/group/:gid/settings',
+        builder: (context, state) =>
+            GroupSettingsScreen(groupId: state.pathParameters['gid']!),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      currentUserIdProvider.overrideWithValue('uid-creator'),
+      groupDetailProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testGroup)),
+      groupMembersProvider(
+        'group-1',
+      ).overrideWith((ref) => Stream.value(_testMembers)),
+      groupBalancesProvider(
+        'group-1',
+      ).overrideWith((ref) => AsyncValue.data(_zeroBalances)),
+    ],
+    child: MaterialApp.router(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
+  );
+}
+
 /// Pumps [GroupInfoSection] under a recording service so the ✎-opened
 /// [GroupEditSheet]'s `updateGroupIdentity` call can be asserted, and returns
 /// that service. The container is read eagerly so the recording service exists
@@ -428,12 +469,7 @@ class _IdentityRecordingService extends GroupService {
     int? inkIndex,
   }) async {
     await onSave?.call();
-    calls.add((
-      groupId: groupId,
-      name: name,
-      glyph: glyph,
-      inkIndex: inkIndex,
-    ));
+    calls.add((groupId: groupId, name: name, glyph: glyph, inkIndex: inkIndex));
   }
 }
 
@@ -540,6 +576,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('GroupDetail:group-1'), findsOneWidget);
+    });
+
+    testWidgets('direct-entry back button falls back to home without a stack', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrapDirectEntrySettingsBackFallbackTest(prefs: prefs),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settingsBackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
     });
 
     testWidgets('renders GroupInfoSection', (tester) async {
@@ -858,35 +908,34 @@ void main() {
       },
     );
 
-    testWidgets(
-      '#411: blocked-remove settle-up snackbar auto-dismisses',
-      (tester) async {
-        // On Flutter >=3.41 a SnackBar with an action defaults to persist: true
-        // and never times out (snack_bar.dart: persist = persist ?? action != null).
-        await tester.pumpWidget(
-          _wrapCreatorWithBalances(
-            const GroupSettingsScreen(groupId: 'group-1'),
-            prefs,
-          ),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('#411: blocked-remove settle-up snackbar auto-dismisses', (
+      tester,
+    ) async {
+      // On Flutter >=3.41 a SnackBar with an action defaults to persist: true
+      // and never times out (snack_bar.dart: persist = persist ?? action != null).
+      await tester.pumpWidget(
+        _wrapCreatorWithBalances(
+          const GroupSettingsScreen(groupId: 'group-1'),
+          prefs,
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
-        await tester.pumpAndSettle();
-        expect(
-          find.text('Settle up with Bob before removing them.'),
-          findsOneWidget,
-        );
+      await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Settle up with Bob before removing them.'),
+        findsOneWidget,
+      );
 
-        // Past the explicit 8s duration the timeout must dismiss it.
-        await tester.pump(const Duration(seconds: 9));
-        await tester.pumpAndSettle();
-        expect(
-          find.text('Settle up with Bob before removing them.'),
-          findsNothing,
-        );
-      },
-    );
+      // Past the explicit 8s duration the timeout must dismiss it.
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Settle up with Bob before removing them.'),
+        findsNothing,
+      );
+    });
 
     testWidgets(
       'delete navigates home even when group stream invalidates settings route',
@@ -986,38 +1035,39 @@ void main() {
       },
     );
 
-    testWidgets('member removal failure shows snackbar, no client activity log (#318)', (
-      tester,
-    ) async {
-      late _RemovingGroupService groupService;
-      final activityService = _RecordingGroupActivityService();
+    testWidgets(
+      'member removal failure shows snackbar, no client activity log (#318)',
+      (tester) async {
+        late _RemovingGroupService groupService;
+        final activityService = _RecordingGroupActivityService();
 
-      await tester.pumpWidget(
-        _wrapMembersSection(
-          prefs: prefs,
-          groupServiceBuilder: (ref) => groupService = _RemovingGroupService(
-            ref,
-            onRemove: ({required groupId, required userId}) {
-              throw StateError('write failed');
-            },
+        await tester.pumpWidget(
+          _wrapMembersSection(
+            prefs: prefs,
+            groupServiceBuilder: (ref) => groupService = _RemovingGroupService(
+              ref,
+              onRemove: ({required groupId, required userId}) {
+                throw StateError('write failed');
+              },
+            ),
+            activityService: activityService,
           ),
-          activityService: activityService,
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+        await tester.pumpAndSettle();
 
-      expect(
-        find.text('Failed to remove Bob: Bad state: write failed'),
-        findsOneWidget,
-      );
-      expect(groupService.removeCalls, [
-        (groupId: 'group-1', userId: 'uid-member'),
-      ]);
-      expect(activityService.logCalls, isEmpty);
-    });
+        expect(
+          find.text('Failed to remove Bob: Bad state: write failed'),
+          findsOneWidget,
+        );
+        expect(groupService.removeCalls, [
+          (groupId: 'group-1', userId: 'uid-member'),
+        ]);
+        expect(activityService.logCalls, isEmpty);
+      },
+    );
 
     testWidgets(
       'failed-precondition maps to settle-up snackbar with action routing to settle up (#318)',

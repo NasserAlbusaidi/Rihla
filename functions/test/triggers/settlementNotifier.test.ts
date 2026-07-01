@@ -9,21 +9,34 @@ import {
 const testEnv = functionsTest({ projectId: 'rihla-safar-test' });
 const wrapEvent = testEnv.wrap(eventSettlementNotifier);
 const wrapGroup = testEnv.wrap(groupSettlementNotifier);
+const FIRE_TIME = '2026-07-01T00:00:00.000Z';
 
 function eventSettlement(
   data: Record<string, unknown>,
   params: { gid: string; eid: string; settlementId: string },
+  id = 'evt-settlement-1',
 ) {
   const path = `groups/${params.gid}/events/${params.eid}/settlements/${params.settlementId}`;
-  return { data: testEnv.firestore.makeDocumentSnapshot(data, path), params };
+  return {
+    data: testEnv.firestore.makeDocumentSnapshot(data, path),
+    params,
+    id,
+    time: FIRE_TIME,
+  };
 }
 
 function groupSettlement(
   data: Record<string, unknown>,
   params: { gid: string; settlementId: string },
+  id = 'evt-group-settlement-1',
 ) {
   const path = `groups/${params.gid}/settlements/${params.settlementId}`;
-  return { data: testEnv.firestore.makeDocumentSnapshot(data, path), params };
+  return {
+    data: testEnv.firestore.makeDocumentSnapshot(data, path),
+    params,
+    id,
+    time: FIRE_TIME,
+  };
 }
 
 function mockSendEach(count: number): jest.Mock {
@@ -53,10 +66,9 @@ async function seedGroup(gid: string, name: string): Promise<void> {
 
 async function clearAll(): Promise<void> {
   const db = getFirestore();
-  for (const coll of ['fcm_tokens', 'groups']) {
-    const docs = await db.collection(coll).listDocuments();
-    await Promise.all(docs.map((d) => d.delete()));
-  }
+  await db.recursiveDelete(db.collection('fcm_tokens'));
+  await db.recursiveDelete(db.collection('groups'));
+  await db.recursiveDelete(db.collection('notificationDeliveries'));
 }
 
 beforeEach(async () => {
@@ -170,6 +182,22 @@ describe('eventSettlementNotifier', () => {
 
     expect(sendEach).not.toHaveBeenCalled();
   });
+
+  test('retrying the same Eventarc create event sends only once', async () => {
+    await seedGroup('g1', 'Trip');
+    await seedToken('recipient');
+    const sendEach = mockSendEach(1);
+    const event = eventSettlement(
+      { ...base, payerParticipantId: 'payer', recipientParticipantId: 'recipient', createdBy: 'payer' },
+      { gid: 'g1', eid: 'e1', settlementId: 's1' },
+      'evt-settlement-retry',
+    );
+
+    await wrapEvent(event);
+    await wrapEvent(event);
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('groupSettlementNotifier', () => {
@@ -186,5 +214,21 @@ describe('groupSettlementNotifier', () => {
     );
 
     expect(sendEach.mock.calls[0][0][0].data).toEqual({ type: 'settlement', groupId: 'g1' });
+  });
+
+  test('retrying the same Eventarc group settlement event sends only once', async () => {
+    await seedGroup('g1', 'Trip');
+    await seedToken('recipient');
+    const sendEach = mockSendEach(1);
+    const event = groupSettlement(
+      { ...base, payerParticipantId: 'payer', recipientParticipantId: 'recipient', createdBy: 'payer' },
+      { gid: 'g1', settlementId: 's1' },
+      'evt-group-settlement-retry',
+    );
+
+    await wrapGroup(event);
+    await wrapGroup(event);
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
   });
 });

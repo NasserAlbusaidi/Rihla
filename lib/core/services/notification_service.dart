@@ -291,6 +291,9 @@ class NotificationService with WidgetsBindingObserver {
   ///   ledger `/group/$gid/event/$eid/ledger`
   /// - a *group* `settlement` (no `eventId`, `groupSettlementNotifier`) and
   ///   `member_join` → the group hub `/group/$gid`
+  /// - `claim_request` → group settings `/group/$gid/settings`
+  /// - `claim_decided` → the group for claimed/current-member decisions, invite
+  ///   join route, or join-group fallback depending on the decision payload
   ///
   /// `expense`/`event` always carry a non-empty `eventId` (their triggers fire
   /// on `events/{eid}/…` paths); the `hasEvent` guard degrades any future
@@ -301,11 +304,42 @@ class NotificationService with WidgetsBindingObserver {
     if (type != 'settlement' &&
         type != 'member_join' &&
         type != 'expense' &&
-        type != 'event') {
+        type != 'event' &&
+        type != 'claim_request' &&
+        type != 'claim_decided') {
       return;
     }
     final groupId = data['groupId'];
     if (groupId is! String || groupId.isEmpty) return;
+
+    if (type == 'claim_request') {
+      _navigate('/group/$groupId/settings');
+      return;
+    }
+
+    if (type == 'claim_decided') {
+      final decision = data['decision'];
+      if (decision == 'claimed') {
+        _navigate('/group/$groupId');
+        return;
+      }
+      if (decision == 'declined') {
+        if (data['routeability'] == 'member') {
+          _navigate('/group/$groupId');
+          return;
+        }
+        final inviteCode = data['inviteCode'];
+        if (inviteCode is String && inviteCode.isNotEmpty) {
+          _navigate('/join/$inviteCode');
+        } else {
+          _navigate('/join-group');
+        }
+        return;
+      }
+      _navigate('/join-group');
+      return;
+    }
+
     final eventId = data['eventId'];
     final hasEvent = eventId is String && eventId.isNotEmpty;
     if (hasEvent) {
@@ -395,7 +429,8 @@ class NotificationService with WidgetsBindingObserver {
   Future<void> _recheckPermissionOnResume() async {
     try {
       final status = (await _getNotificationSettings()).authorizationStatus;
-      final granted = status == AuthorizationStatus.authorized ||
+      final granted =
+          status == AuthorizationStatus.authorized ||
           status == AuthorizationStatus.provisional;
       if (!granted) {
         // notDetermined shouldn't occur post opt-in; only a real denial flips
