@@ -8,6 +8,9 @@ const Map<String, List<String>> _fontLicenseAssets = {
   'assets/fonts/OFL-GeistMono.txt': ['Geist Mono'],
   'assets/fonts/OFL-ReemKufi.txt': ['Rihla Arabic Display'],
   'assets/fonts/OFL-InstrumentSerif.txt': ['Instrument Serif'],
+  // PDF-only face (#704 Slice B): embedded in the Trip Receipt PDF for Arabic
+  // glyph fallback, not a Flutter UI font — still bundled, so its license shows.
+  'assets/fonts/OFL-NotoSansArabic.txt': ['Noto Sans Arabic'],
 };
 
 /// Brand faces (Geist / Geist Mono / Instrument Serif plus a Reem Kufi Arabic

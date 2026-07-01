@@ -35,8 +35,15 @@ void main() {
     for (final file in dartFiles) {
       final lines = file.readAsLinesSync();
       for (var i = 0; i < lines.length; i++) {
+        // `pw.Alignment.*` (the `package:pdf` widgets alignment) is ABSOLUTE
+        // document layout — a generated PDF has no Directionality / RTL
+        // auto-mirroring, so right-aligning a numeric column is deliberate and
+        // locale-independent. Scrub that prefix so it isn't confused with the
+        // Flutter `Alignment` this guard exists to catch (#704 Slice B PDF). A
+        // bare `Alignment.centerLeft` still trips the guard.
+        final line = lines[i].replaceAll('pw.Alignment.', 'pdfAbsAlign_');
         for (final token in banned) {
-          if (lines[i].contains(token)) {
+          if (line.contains(token)) {
             offenders.add('${file.path}:${i + 1}  ->  ${lines[i].trim()}');
           }
         }

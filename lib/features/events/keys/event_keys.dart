@@ -48,6 +48,12 @@ abstract final class EventKeys {
   static const recapShareSheet = Key('event_recap_share_sheet');
   static const recapShareConfirmButton = Key('event_recap_share_confirm_button');
 
+  // Trip Receipt CSV export (#704 Slice A / #708)
+  static const recapExportCsvButton = Key('event_recap_export_csv_button');
+
+  // Trip Receipt PDF export (#704 Slice B / #708)
+  static const recapExportPdfButton = Key('event_recap_export_pdf_button');
+
   // Event-vs-group settle CTA (#202 / #721 deferred item)
   static const recapSettleCta = Key('event_recap_settle_cta');
   static const recapSettleEventButton = Key('event_recap_settle_event_button');
