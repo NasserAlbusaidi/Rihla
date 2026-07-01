@@ -13,11 +13,13 @@ void main() {
   ConnectivityNotifier makeNotifier({
     Future<bool?> Function()? probe,
     Future<void> Function()? pendingWritesBarrier,
+    void Function(String groupId)? markBalanceAggregateMayBeStale,
   }) {
     return ConnectivityNotifier(
       connectivityProbe: probe ?? () async => null,
       syncSignals: () => const Stream<bool>.empty(),
       pendingWritesBarrier: pendingWritesBarrier ?? () async {},
+      markBalanceAggregateMayBeStale: markBalanceAggregateMayBeStale,
     );
   }
 
@@ -289,10 +291,33 @@ void main() {
       expect(n.state, ConnectivityStatus.syncing);
     });
 
+    test('offline noteLocalWrite marks the supplied aggregate group dirty', () {
+      final marked = <String>[];
+      final n = makeNotifier(markBalanceAggregateMayBeStale: marked.add);
+      addTearDown(n.dispose);
+      n.setOffline();
+
+      n.noteLocalWrite(groupId: 'g1');
+
+      expect(marked, ['g1']);
+      expect(n.state, ConnectivityStatus.syncing);
+    });
+
     test('online → noteLocalWrite → stays online (gated on offline)', () {
       final n = makeNotifier();
       addTearDown(n.dispose);
       n.noteLocalWrite();
+      expect(n.state, ConnectivityStatus.online);
+    });
+
+    test('online noteLocalWrite does not mark aggregate freshness dirty', () {
+      final marked = <String>[];
+      final n = makeNotifier(markBalanceAggregateMayBeStale: marked.add);
+      addTearDown(n.dispose);
+
+      n.noteLocalWrite(groupId: 'g1');
+
+      expect(marked, isEmpty);
       expect(n.state, ConnectivityStatus.online);
     });
 
@@ -339,6 +364,17 @@ void main() {
       addTearDown(n.dispose);
       n.setOnline();
       n.noteQueuedWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+    });
+
+    test('noteQueuedWrite marks the supplied aggregate group dirty', () {
+      final marked = <String>[];
+      final n = makeNotifier(markBalanceAggregateMayBeStale: marked.add);
+      addTearDown(n.dispose);
+
+      n.noteQueuedWrite(groupId: 'g1');
+
+      expect(marked, ['g1']);
       expect(n.state, ConnectivityStatus.syncing);
     });
 

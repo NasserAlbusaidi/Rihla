@@ -834,9 +834,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
       // Connectivity note ONCE after the walk (#357/#412).
       if (anyQueued) {
-        connectivityNotifier.noteQueuedWrite();
+        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId);
       } else {
-        connectivityNotifier.noteLocalWrite();
+        connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
       }
 
       // Activity log ONCE for the whole logical settle-up, amount = A (#282:
@@ -971,10 +971,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       );
 
       if (outcome == WriteAck.acked) {
-        connectivityNotifier.noteLocalWrite(); // #357
+        connectivityNotifier.noteLocalWrite(groupId: widget.groupId); // #357
       } else {
-        connectivityNotifier
-            .noteQueuedWrite(); // #412: queued — force "will sync"
+        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
       }
 
       // #282: name the OTHER party relative to the actor. When the creditor
@@ -1055,9 +1054,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // event docs) — the same lists that feed the history regroup.
     final groupDocs =
         ref.read(groupSettlementsProvider(widget.groupId)).valueOrNull ??
-            const <Settlement>[];
-    final taggedEventDocs =
-        ref.read(groupTaggedEventSettlementsProvider(widget.groupId));
+        const <Settlement>[];
+    final taggedEventDocs = ref.read(
+      groupTaggedEventSettlementsProvider(widget.groupId),
+    );
     final tagged = [
       for (final s in [...groupDocs, ...taggedEventDocs])
         if (s.groupSettleUpId == groupSettleUpId && !s.isDeleted) s,
@@ -1088,7 +1088,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           ),
           backgroundColor: errorColor,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -1103,7 +1105,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       // offline-queued atomically); a departed-party residual fails the WHOLE
       // batch (clean), never a partial reversal (#753 §3c).
       final ack = await awaitServerAck(
-        ref.read(settlementCorrectionServiceProvider).reverseLogicalSettleUp(
+        ref
+            .read(settlementCorrectionServiceProvider)
+            .reverseLogicalSettleUp(
               groupId: widget.groupId,
               groupSettleUpId: groupSettleUpId,
               originals: originals,
@@ -1116,9 +1120,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       // bump after the ack RETURNS (acked OR queued) so home isn't stale offline.
       ref.read(ledgerRevisionProvider.notifier).state++;
       if (ack == WriteAck.queued) {
-        connectivityNotifier.noteQueuedWrite();
+        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId);
       } else {
-        connectivityNotifier.noteLocalWrite();
+        connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
       }
       // No activity log — a reversal must not surface as a fresh feed payment.
       if (context.mounted) {

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/app_bootstrap_provider.dart';
+import 'package:safar/core/providers/balance_aggregate_freshness_provider.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
@@ -62,6 +63,9 @@ void main() {
 
       // Materialize the leaves so there is something to tear down.
       container.read(authEmailLinkBootstrapProvider);
+      container
+          .read(balanceAggregateFreshnessProvider.notifier)
+          .markGroupDirty('g1');
       container.read(connectivityProvider);
       container.read(notificationServiceProvider);
       container.read(appBootstrapProvider);
@@ -72,10 +76,12 @@ void main() {
         'bootstrap': 1,
       });
       expect(container.read(cacheIsolationProvider), isFalse);
+      expect(container.read(balanceAggregateFreshnessProvider), contains('g1'));
 
       container.read(cacheIsolationControllerProvider).engageIsolation();
 
       expect(container.read(cacheIsolationProvider), isTrue);
+      expect(container.read(balanceAggregateFreshnessProvider), isEmpty);
       // Re-read to force any deferred rebuild after invalidation.
       container.read(authEmailLinkBootstrapProvider);
       container.read(connectivityProvider);

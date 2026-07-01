@@ -185,9 +185,9 @@ class EditExpenseScreen extends ConsumerWidget {
 
     ledgerRevision.state++; // #104: refresh home balance
     if (outcome == WriteAck.acked) {
-      connectivity.noteLocalWrite(); // #357
+      connectivity.noteLocalWrite(groupId: groupId); // #357
     } else {
-      connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+      connectivity.noteQueuedWrite(groupId: groupId); // #412: queued
     }
     HapticService.success();
 
@@ -272,9 +272,9 @@ class EditExpenseScreen extends ConsumerWidget {
     );
     ledgerRevision.state++; // #104: refresh home balance
     if (outcome == WriteAck.acked) {
-      connectivity.noteLocalWrite(); // #357
+      connectivity.noteLocalWrite(groupId: groupId); // #357
     } else {
-      connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+      connectivity.noteQueuedWrite(groupId: groupId); // #412: queued
     }
     HapticService.success();
     if (context.mounted) {

@@ -86,9 +86,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
       ledgerRevision.state++; // #104: refresh the one-shot home balance
       if (outcome == WriteAck.acked) {
-        connectivity.noteLocalWrite(); // #357: stale-offline correction
+        connectivity.noteLocalWrite(
+          groupId: widget.groupId,
+        ); // #357: stale-offline correction
       } else {
-        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+        connectivity.noteQueuedWrite(
+          groupId: widget.groupId,
+        ); // #412: queued — force "will sync"
       }
       if (!mounted) return;
       await _showSuccessDialog(

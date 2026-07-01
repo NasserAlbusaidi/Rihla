@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_config.dart';
+import 'balance_aggregate_freshness_provider.dart';
 
 /// Connectivity state
 enum ConnectivityStatus { online, offline, syncing }
@@ -28,7 +29,12 @@ typedef ConnectivityPendingWritesBarrier = Future<void> Function();
 /// Connectivity state provider
 final connectivityProvider =
     StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>((ref) {
-      return ConnectivityNotifier();
+      final aggregateFreshness = ref.read(
+        balanceAggregateFreshnessProvider.notifier,
+      );
+      return ConnectivityNotifier(
+        markBalanceAggregateMayBeStale: aggregateFreshness.markGroupDirty,
+      );
     });
 
 /// Connectivity state notifier — event-driven (#633).
@@ -59,6 +65,7 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   final ConnectivityProbe _connectivityProbe;
   final ConnectivitySyncSignals _syncSignals;
   final ConnectivityPendingWritesBarrier _pendingWritesBarrier;
+  final void Function(String groupId)? _markBalanceAggregateMayBeStale;
   StreamSubscription<bool>? _syncSub;
 
   /// Whether a server snapshot has been observed since the current
@@ -81,11 +88,13 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     ConnectivityProbe? connectivityProbe,
     ConnectivitySyncSignals? syncSignals,
     ConnectivityPendingWritesBarrier? pendingWritesBarrier,
+    void Function(String groupId)? markBalanceAggregateMayBeStale,
     bool startPeriodicChecks = true,
   }) : _connectivityProbe = connectivityProbe ?? _defaultConnectivityProbe,
        _syncSignals = syncSignals ?? _defaultSyncSignals,
        _pendingWritesBarrier =
            pendingWritesBarrier ?? _defaultPendingWritesBarrier,
+       _markBalanceAggregateMayBeStale = markBalanceAggregateMayBeStale,
        super(ConnectivityStatus.online) {
     try {
       WidgetsBinding.instance.addObserver(this);
@@ -222,8 +231,9 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   /// reconnect (#357). When already online the write commits immediately, so
   /// this is a no-op. The pending-write barrier resolves `syncing` back to
   /// `online` only after outstanding writes reach the backend.
-  void noteLocalWrite() {
+  void noteLocalWrite({String? groupId}) {
     if (state == ConnectivityStatus.offline) {
+      _markStaleAggregate(groupId);
       state = ConnectivityStatus.syncing;
       _beginPendingWriteReplayBarrier();
     }
@@ -235,9 +245,15 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   /// strong evidence of being offline. The SDK has the write queued; surface
   /// "Saved — will sync" regardless. The pending-write barrier resolves
   /// `syncing` back to `online` only after outstanding writes reach the backend.
-  void noteQueuedWrite() {
+  void noteQueuedWrite({String? groupId}) {
+    _markStaleAggregate(groupId);
     state = ConnectivityStatus.syncing;
     _beginPendingWriteReplayBarrier();
+  }
+
+  void _markStaleAggregate(String? groupId) {
+    if (groupId == null || groupId.isEmpty) return;
+    _markBalanceAggregateMayBeStale?.call(groupId);
   }
 
   void _beginPendingWriteReplayBarrier() {

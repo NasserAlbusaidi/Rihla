@@ -174,9 +174,13 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       final event = staged.event;
 
       if (outcome == WriteAck.acked) {
-        connectivity.noteLocalWrite(); // #357: stale-offline correction (no-op online)
+        connectivity.noteLocalWrite(
+          groupId: widget.groupId,
+        ); // #357: stale-offline correction
       } else {
-        connectivity.noteQueuedWrite(); // #412: queued — force "will sync"
+        connectivity.noteQueuedWrite(
+          groupId: widget.groupId,
+        ); // #412: queued — force "will sync"
       }
 
       // Log event_created activity (D-14) — fire-and-forget, no await
@@ -258,8 +262,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(eventLoadingProvider);
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
-    final groupName =
-        ref.watch(groupDetailProvider(widget.groupId)).valueOrNull?.name;
+    final groupName = ref
+        .watch(groupDetailProvider(widget.groupId))
+        .valueOrNull
+        ?.name;
 
     return Scaffold(
       key: EventKeys.createEventScreen,
@@ -424,7 +430,9 @@ class _TypeChipRow extends StatelessWidget {
           children: [
             for (final config in types)
               Padding(
-                padding: EdgeInsetsDirectional.only(end: context.spacing.space8),
+                padding: EdgeInsetsDirectional.only(
+                  end: context.spacing.space8,
+                ),
                 child: _TypeChip(
                   config: config,
                   selected: config.type == selectedType,

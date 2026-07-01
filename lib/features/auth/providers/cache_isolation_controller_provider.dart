@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/providers/app_bootstrap_provider.dart';
+import '../../../core/providers/balance_aggregate_freshness_provider.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/notification_service.dart';
@@ -39,6 +40,7 @@ class PlatformCacheIsolationController implements CacheIsolationController {
     // appBootstrapProvider would NOT dispose them — invalidate the leaves
     // directly (#45 §3.7 / R5 P2-1).
     _ref.invalidate(authEmailLinkBootstrapProvider);
+    _ref.invalidate(balanceAggregateFreshnessProvider);
     _ref.invalidate(connectivityProvider);
     _ref.invalidate(notificationServiceProvider);
     _ref.invalidate(appBootstrapProvider);
