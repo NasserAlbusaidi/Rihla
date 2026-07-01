@@ -10,10 +10,14 @@ void main() {
 
   // Default probe null + an empty sync-signal stream ⇒ construction touches no
   // live mechanism, so setter/state-machine tests stay deterministic.
-  ConnectivityNotifier makeNotifier({Future<bool?> Function()? probe}) {
+  ConnectivityNotifier makeNotifier({
+    Future<bool?> Function()? probe,
+    Future<void> Function()? pendingWritesBarrier,
+  }) {
     return ConnectivityNotifier(
       connectivityProbe: probe ?? () async => null,
       syncSignals: () => const Stream<bool>.empty(),
+      pendingWritesBarrier: pendingWritesBarrier ?? () async {},
     );
   }
 
@@ -48,51 +52,114 @@ void main() {
     });
   });
 
-  group('ConnectivityNotifier.checkConnectivity (init/resume one-shot probe)', () {
-    test('probe true → online', () async {
-      final n = makeNotifier(probe: () async => true);
-      addTearDown(n.dispose);
-      n.setOffline();
-      await n.checkConnectivity();
-      expect(n.state, ConnectivityStatus.online);
-    });
+  group(
+    'ConnectivityNotifier.checkConnectivity (init/resume one-shot probe)',
+    () {
+      test('probe true → online', () async {
+        final n = makeNotifier(probe: () async => true);
+        addTearDown(n.dispose);
+        n.setOffline();
+        await n.checkConnectivity();
+        expect(n.state, ConnectivityStatus.online);
+      });
 
-    test('probe false → offline', () async {
-      final n = makeNotifier(probe: () async => false);
-      addTearDown(n.dispose);
-      await n.checkConnectivity();
-      expect(n.state, ConnectivityStatus.offline);
-    });
+      test('probe false → offline', () async {
+        final n = makeNotifier(probe: () async => false);
+        addTearDown(n.dispose);
+        await n.checkConnectivity();
+        expect(n.state, ConnectivityStatus.offline);
+      });
 
-    test('probe null → state unchanged', () async {
-      final n = makeNotifier(probe: () async => null);
-      addTearDown(n.dispose);
-      n.setSyncing();
-      await n.checkConnectivity();
-      expect(n.state, ConnectivityStatus.syncing);
-    });
-  });
+      test('probe null → state unchanged', () async {
+        final n = makeNotifier(probe: () async => null);
+        addTearDown(n.dispose);
+        n.setSyncing();
+        await n.checkConnectivity();
+        expect(n.state, ConnectivityStatus.syncing);
+      });
+    },
+  );
 
   group('sync-signal listener (#633)', () {
     test(
-      'reconnect signal (isFromCache:false) resolves syncing → online '
-      'WITHOUT a probe (the #682 fix)',
+      'reconnect signal alone does NOT resolve queued-write syncing',
       () async {
         final signals = StreamController<bool>();
+        final pendingWrites = Completer<void>();
         addTearDown(signals.close);
         final n = ConnectivityNotifier(
           connectivityProbe: () async => null, // no probe interference
           syncSignals: () => signals.stream,
+          pendingWritesBarrier: () => pendingWrites.future,
         );
         addTearDown(n.dispose);
 
         n.noteQueuedWrite(); // a queued offline money-write
         expect(n.state, ConnectivityStatus.syncing);
 
-        signals.add(false); // server reached → the write replays
+        signals.add(false); // server reached, but money replay is unproven
+        await Future<void>.delayed(Duration.zero);
+
+        expect(n.state, ConnectivityStatus.syncing);
+      },
+    );
+
+    test(
+      'pending writes barrier resolves syncing → online without a probe',
+      () async {
+        final signals = StreamController<bool>();
+        final pendingWrites = Completer<void>();
+        addTearDown(signals.close);
+        final n = ConnectivityNotifier(
+          connectivityProbe: () async => null, // no probe interference
+          syncSignals: () => signals.stream,
+          pendingWritesBarrier: () => pendingWrites.future,
+        );
+        addTearDown(n.dispose);
+
+        n.noteQueuedWrite();
+        expect(n.state, ConnectivityStatus.syncing);
+
+        signals.add(false); // reachability only
+        await Future<void>.delayed(Duration.zero);
+        expect(n.state, ConnectivityStatus.syncing);
+
+        pendingWrites.complete(); // actual queued writes acknowledged
         await Future<void>.delayed(Duration.zero);
 
         expect(n.state, ConnectivityStatus.online);
+      },
+    );
+
+    test('pending writes barrier failure resolves syncing → offline', () async {
+      final pendingWrites = Completer<void>();
+      final n = makeNotifier(pendingWritesBarrier: () => pendingWrites.future);
+      addTearDown(n.dispose);
+
+      n.noteQueuedWrite();
+      expect(n.state, ConnectivityStatus.syncing);
+
+      pendingWrites.completeError(Exception('user changed'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(n.state, ConnectivityStatus.offline);
+    });
+
+    test(
+      'probe true does not clear syncing while writes are pending',
+      () async {
+        final pendingWrites = Completer<void>();
+        final n = makeNotifier(
+          probe: () async => true,
+          pendingWritesBarrier: () => pendingWrites.future,
+        );
+        addTearDown(n.dispose);
+
+        n.noteQueuedWrite();
+        await n.checkConnectivity();
+
+        expect(n.state, ConnectivityStatus.syncing);
+        pendingWrites.complete();
       },
     );
 
@@ -179,10 +246,12 @@ void main() {
 
     test('resumed re-runs the probe and re-subscribes', () async {
       var probeCalls = 0;
-      final n = makeNotifier(probe: () async {
-        probeCalls++;
-        return true;
-      });
+      final n = makeNotifier(
+        probe: () async {
+          probeCalls++;
+          return true;
+        },
+      );
       addTearDown(n.dispose);
 
       n.didChangeAppLifecycleState(AppLifecycleState.paused);
@@ -236,15 +305,23 @@ void main() {
       expect(n.state, ConnectivityStatus.syncing);
     });
 
-    test('syncing clears to online when the probe reconnects (AC3)', () async {
-      final n = makeNotifier(probe: () async => true);
-      addTearDown(n.dispose);
-      n.setOffline();
-      n.noteLocalWrite();
-      expect(n.state, ConnectivityStatus.syncing);
-      await n.checkConnectivity();
-      expect(n.state, ConnectivityStatus.online);
-    });
+    test(
+      'syncing clears to online when pending writes are acknowledged',
+      () async {
+        final pendingWrites = Completer<void>();
+        final n = makeNotifier(
+          probe: () async => true,
+          pendingWritesBarrier: () => pendingWrites.future,
+        );
+        addTearDown(n.dispose);
+        n.setOffline();
+        n.noteLocalWrite();
+        expect(n.state, ConnectivityStatus.syncing);
+        pendingWrites.complete();
+        await Future<void>.delayed(Duration.zero);
+        expect(n.state, ConnectivityStatus.online);
+      },
+    );
 
     test('syncing falls back to offline while still disconnected', () async {
       final n = makeNotifier(probe: () async => false);
@@ -273,14 +350,22 @@ void main() {
       expect(n.state, ConnectivityStatus.syncing);
     });
 
-    test('syncing resolves back to online via the probe (same as #357)', () async {
-      final n = makeNotifier(probe: () async => true);
-      addTearDown(n.dispose);
-      n.noteQueuedWrite();
-      expect(n.state, ConnectivityStatus.syncing);
-      await n.checkConnectivity();
-      expect(n.state, ConnectivityStatus.online);
-    });
+    test(
+      'syncing resolves back to online when pending writes are acknowledged',
+      () async {
+        final pendingWrites = Completer<void>();
+        final n = makeNotifier(
+          probe: () async => true,
+          pendingWritesBarrier: () => pendingWrites.future,
+        );
+        addTearDown(n.dispose);
+        n.noteQueuedWrite();
+        expect(n.state, ConnectivityStatus.syncing);
+        pendingWrites.complete();
+        await Future<void>.delayed(Duration.zero);
+        expect(n.state, ConnectivityStatus.online);
+      },
+    );
   });
 
   group('startPeriodicChecks seam', () {

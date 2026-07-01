@@ -1,9 +1,9 @@
-# #633 — Event-driven connectivity: drop the 60s forced-read probe, resolve `syncing` on actual replay
+# #633 — Event-driven connectivity: drop the 60s forced-read probe, resolve `syncing` on write replay
 
 > Re-scoped issue (2026-06-26). The rebuild/dedupe half is **not real** (#623 already fixed it). The real
 > work: replace the unconditional `Timer.periodic(60s)` forced `Source.server` probe with SDK signals, so
-> `syncing` ("Saved — will sync") resolves on the **actual reconnect/replay** instead of lagging up to 60s
-> (the #682 stale-probe-window bug class). Subsumes #682.
+> `syncing` ("Saved — will sync") resolves when Firestore confirms outstanding writes reached the backend
+> instead of lagging up to 60s (the #682 stale-probe-window bug class). Subsumes #682.
 
 ## Scope guard — single-file refactor, public API frozen
 
@@ -60,10 +60,11 @@ Remove `Timer.periodic(60s)` and `_startPeriodicCheck()`. No unconditional per-m
 
 ### 2. Persistent metadata listener (the new primary signal)
 Subscribe to `fcm_tokens/{uid}.snapshots(includeMetadataChanges: true)` — same owner-only doc, no broad
-perms, cheaper than a 60s forced GET. Map each emission:
+perms, cheaper than a 60s forced GET. This proves reachability only, not replay of arbitrary
+expense/settlement writes. Map each emission:
 
-- `metadata.isFromCache == false` → **server reached** → `state = online` (this is what **resolves
-  `syncing` on actual reconnect** — bounded by SDK reconnect latency, seconds, not 60s).
+- `metadata.isFromCache == false` → **server reached** → `state = online` only when no queued-write replay
+  barrier is active.
 - `metadata.isFromCache == true` → **offline**, but ONLY after a server snapshot has been seen in this
   subscription (`_sawServer` latch). The cold-start cache-first emission (`isFromCache:true` before any
   server contact) must **not** false-flip to offline — leave state unchanged and let the init probe / a
@@ -81,6 +82,18 @@ perms, cheaper than a 60s forced GET. Map each emission:
 - `_sawServer` is an instance latch **reset on every (re-)subscribe** (so each resume subscription ignores
   its own cache-first `isFromCache:true`).
 
+### 2b. Pending-write replay barrier (the `syncing` resolver)
+
+`noteLocalWrite()` (offline→syncing) and `noteQueuedWrite()` (unconditional→syncing) start
+`FirebaseFirestore.waitForPendingWrites()` through an injectable `ConnectivityPendingWritesBarrier`.
+Only that barrier clears queued-write `syncing` to `online`; a metadata server snapshot or one-shot probe
+does not. This preserves the `homeGroupBalanceProvider` contract: while queued expense/settlement writes
+may not have replayed, `ConnectivityStatus.syncing` keeps home on the once-path instead of trusting the
+server aggregate display cache.
+
+If the barrier errors during a user swap, `syncing` falls back to `offline`; cache isolation also invalidates
+`connectivityProvider`, so the old `fcm_tokens/{oldUid}` listener is disposed before the UID changes.
+
 ### 3. One-shot backstop probe on init + resume (sanctioned by acceptance)
 Keep the existing `_connectivityProbe()` (`Source.server` GET) but fire it **once** on construct (cold
 start) and once on `AppLifecycleState.resumed` — NOT on a loop. This gives prompt cold-start/resume offline
@@ -95,14 +108,15 @@ existing 3-way return (true/false/null; null = no change) is preserved.
 ### 5. Write-path signals unchanged
 `noteQueuedWrite()` (unconditional→syncing) stays the **fast** offline signal for the money paths: a write
 that times out at `kWriteAckTimeout` (5s) forces `syncing` immediately, so the *next* write `skipWait`s.
-The listener then flips `syncing→online` on reconnect. `noteLocalWrite()` (offline→syncing) unchanged.
+The pending-write barrier flips `syncing→online` after replay. `noteLocalWrite()` (offline→syncing)
+unchanged except that it also starts the barrier.
 
 ### Rejected alternatives
 - **`snapshotsInSync()` as the primary signal** — rejected: it fires after *every* local mutation (it's a
-  UI-consistency signal, not a network one) and doesn't distinguish online/offline. The metadata listener's
-  `isFromCache:false` reconnect emission already resolves `syncing`; `snapshotsInSync` adds noise, not
-  signal. (`hasPendingWrites` on `fcm_tokens` only tracks pending writes to *that* doc, not to expenses, so
-  it's not a general replay detector either.)
+  UI-consistency signal, not a network one) and doesn't distinguish online/offline. The metadata listener
+  covers reachability and `waitForPendingWrites()` covers replay; `snapshotsInSync` adds noise, not signal.
+  (`hasPendingWrites` on `fcm_tokens` only tracks pending writes to *that* doc, not to expenses, so it's not
+  a general replay detector either.)
 - **Keep the listener alive while backgrounded** — rejected: defeats the battery goal (radio wake). Cancel
   on pause, re-subscribe + probe on resume.
 - **Drop the one-shot probe entirely (listener-only)** — rejected: a cold-start-while-offline with no writes
@@ -119,6 +133,7 @@ typedef ConnectivitySyncSignals = Stream<bool> Function();
 ConnectivityNotifier({
   ConnectivityProbe? connectivityProbe,            // unchanged — one-shot init/resume probe
   ConnectivitySyncSignals? syncSignals,            // NEW — default = fcm_tokens metadata listener
+  ConnectivityPendingWritesBarrier? pendingWritesBarrier, // NEW — default = waitForPendingWrites()
   bool startPeriodicChecks = true,                 // unchanged name; now gates listener + init probe
 });
 ```
@@ -144,13 +159,14 @@ online  --listener isFromCache:true (after server seen) | probe false--> offline
 online  --noteQueuedWrite (write timed out)------------------------------> syncing
 offline --noteLocalWrite | noteQueuedWrite-------------------------------> syncing
 offline --listener isFromCache:false | probe true------------------------> online
-syncing --listener isFromCache:false (RECONNECT — the #682 fix) | probe true--> online
-syncing --listener isFromCache:true (after server seen) | probe false-----> offline
+syncing --pending writes acknowledged-------------------------------------> online
+syncing --pending writes rejected------------------------------------------> offline
 *       --probe null (no uid / no-app / non-network error)---------------> unchanged
 ```
 
-The only behavioral change: `syncing→online`/`offline` now also fires on the **listener** (seconds), not
-only the 60s probe. Every existing transition still exists.
+The behavioral change: `syncing→online` now fires on the pending-write barrier, not on the 60s probe or on
+an unrelated owner-doc server snapshot. Every existing explicit setter/probe transition remains available
+when no queued-write barrier is active.
 
 ## Verification principles (run at spec time — reported per Operating Contract)
 
@@ -175,8 +191,9 @@ only the 60s probe. Every existing transition still exists.
    read-source selection is unchanged (`.select((s)=>s==online)`: online→aggregate, offline/syncing→once-path).
    Oracle parity untouched (this file never computes balances).
 7. **Adversarial orthogonal axis.** Fix axis = connectivity-detection mechanism (timer→event). The worked
-   tests exercise orthogonal axes: **money-flow** (a queued money-write's `syncing` resolves to `online` on a
-   reconnect signal AND `homeGroupBalanceProvider` flips once-path→aggregate, #623 churn stays correct);
+   tests exercise orthogonal axes: **money-flow** (a queued money-write's `syncing` stays on the once-path
+   after a reachability-only signal, then resolves to `online` only after the pending-write barrier, and
+   #623 churn stays correct);
    **identity** (uid==null / no-app → listener can't build / probe null → safe no-crash, state sticky);
    **lifecycle/time** (pause cancels the listener → no background read; resume re-subscribes + one probe).
 
@@ -184,9 +201,10 @@ only the 60s probe. Every existing transition still exists.
 
 Rewrite/extend `test/core/providers/connectivity_provider_test.dart` (and `test/unit/connectivity_provider_test.dart`):
 
-1. **#682 fix (the defining RED test):** construct with an injected `syncSignals` `StreamController<bool>`;
-   `noteQueuedWrite()` → `syncing`; push `false` (reconnect) → state becomes `online` **without** any 60s
-   timer / `checkConnectivity` call. RED today (no listener seam exists; `syncing` only clears via probe).
+1. **#682 fix (the defining RED test):** construct with injected `syncSignals` and
+   `pendingWritesBarrier`; `noteQueuedWrite()` → `syncing`; push `false` (reachability) and verify it stays
+   `syncing`; complete the pending-write barrier → state becomes `online` **without** any 60s timer /
+   `checkConnectivity` call. RED today (no barrier seam exists; `syncing` only clears via probe).
 2. **online/offline via listener:** push `false`→online; after server-seen, push `true`→offline.
 3. **cold-start cache-first guard:** fresh notifier, push `true` first (no server seen) → stays `online`
    (no false-offline). Then `false`→online, then `true`→offline (server-seen latch works).
@@ -215,7 +233,7 @@ then the regression files, then `flutter analyze` + `bash tool/check_theme_purit
 | Acceptance bullet | Met by |
 |---|---|
 | No unconditional per-minute forced `Source.server` read | timer dropped (§1); only init/resume one-shot probe + a cheap persistent listen |
-| `syncing` resolves on actual reconnect/replay, small bound | listener `isFromCache:false`→online (§2); test 1 |
+| `syncing` resolves on actual write replay, small bound | pending-write barrier (§2b); test 1 |
 | `skipWait` + balance source correct across offline→online; once-path while offline/syncing | API + `.select((s)=>s==online)` frozen; #623 churn regression test |
 | Offline detection reliable — no false-online forcing a full-timeout wait | listener flip (seconds) + init/resume probe shrink the window; `noteQueuedWrite` 5s fallback remains for the brief SDK-detection window (existing safety net, not a regression) |
 | Tests model real offline via injected signals, not FakeFirebaseFirestore | injected `syncSignals` StreamController + `connectivityProbe` |

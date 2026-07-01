@@ -20,6 +20,11 @@ typedef ConnectivityProbe = Future<bool?> Function();
 /// instance (`FakeFirebaseFirestore` acks instantly and can't model this).
 typedef ConnectivitySyncSignals = Stream<bool> Function();
 
+/// Waits for Firestore writes that were outstanding when called to reach the
+/// backend. This is the only signal that clears a queued-write `syncing` state:
+/// a reachability probe alone does not prove money aggregates are fresh.
+typedef ConnectivityPendingWritesBarrier = Future<void> Function();
+
 /// Connectivity state provider
 final connectivityProvider =
     StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>((ref) {
@@ -34,11 +39,14 @@ final connectivityProvider =
 /// * A persistent metadata listener on the caller's owner-only
 ///   `fcm_tokens/{uid}` document (`snapshots(includeMetadataChanges: true)`)
 ///   flips state on `metadata.isFromCache`: a server snapshot (`false`) means
-///   online and **resolves the transient `syncing` state on the actual
-///   reconnect/replay** (previously this lagged up to 60s — #682). A
-///   cache snapshot (`true`) means offline, but only once a server snapshot has
-///   been seen in this subscription, so the cold-start cache-first emission
-///   never false-flips to offline.
+///   online only when there is no pending queued write; a cache snapshot
+///   (`true`) means offline, but only once a server snapshot has been seen in
+///   this subscription, so the cold-start cache-first emission never
+///   false-flips to offline.
+/// * Queued-write `syncing` is cleared by Firestore's
+///   `waitForPendingWrites()` barrier, not by the reachability listener alone.
+///   That keeps balance surfaces on the once-path until local writes have
+///   actually reached the backend.
 /// * A one-shot [ConnectivityProbe] fires on construct and on app-resume as a
 ///   backstop for prompt offline detection before the first write / before the
 ///   listener has seen the server. There is **no** periodic forced read.
@@ -50,12 +58,19 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     with WidgetsBindingObserver {
   final ConnectivityProbe _connectivityProbe;
   final ConnectivitySyncSignals _syncSignals;
+  final ConnectivityPendingWritesBarrier _pendingWritesBarrier;
   StreamSubscription<bool>? _syncSub;
 
   /// Whether a server snapshot has been observed since the current
   /// subscription started. Guards against treating the cold-start cache-first
   /// emission as an offline transition. Reset on every (re-)subscribe.
   bool _sawServer = false;
+
+  /// Monotonically increasing token for pending-write replay waits. Only the
+  /// latest wait may clear `syncing`; older completions can race with newer
+  /// queued writes and must be ignored.
+  int _pendingReplayGeneration = 0;
+  bool _hasPendingReplay = false;
 
   /// [startPeriodicChecks] gates the live connectivity mechanism (metadata
   /// listener + init probe). Production leaves it on; widget tests that mount a
@@ -65,9 +80,12 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   ConnectivityNotifier({
     ConnectivityProbe? connectivityProbe,
     ConnectivitySyncSignals? syncSignals,
+    ConnectivityPendingWritesBarrier? pendingWritesBarrier,
     bool startPeriodicChecks = true,
   }) : _connectivityProbe = connectivityProbe ?? _defaultConnectivityProbe,
        _syncSignals = syncSignals ?? _defaultSyncSignals,
+       _pendingWritesBarrier =
+           pendingWritesBarrier ?? _defaultPendingWritesBarrier,
        super(ConnectivityStatus.online) {
     try {
       WidgetsBinding.instance.addObserver(this);
@@ -116,6 +134,10 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
         .map((snap) => snap.metadata.isFromCache);
   }
 
+  static Future<void> _defaultPendingWritesBarrier() {
+    return FirebaseConfig.firestore.waitForPendingWrites();
+  }
+
   void _startLiveChecks() {
     _subscribeSyncSignals();
     unawaited(checkConnectivity());
@@ -141,13 +163,17 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   void _onSyncSignal(bool isFromCache) {
     if (!mounted) return;
     if (!isFromCache) {
-      // Server answered — online, and this resolves `syncing` on the actual
-      // reconnect/replay (#682 fix).
+      // Server answered. This proves reachability, not replay of arbitrary
+      // expense/settlement writes or refreshed aggregate triggers.
       _sawServer = true;
-      state = ConnectivityStatus.online;
+      if (!_hasPendingReplay) {
+        state = ConnectivityStatus.online;
+      }
     } else if (_sawServer) {
       // Dropped back to cache after having reached the server — offline.
-      state = ConnectivityStatus.offline;
+      if (!_hasPendingReplay) {
+        state = ConnectivityStatus.offline;
+      }
     }
     // else: cold-start cache-first emission before any server contact — ignore
     // (the init/resume probe or a write-timeout drives offline instead).
@@ -162,6 +188,8 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   Future<void> checkConnectivity() async {
     final isOnline = await _isOnline();
     if (!mounted) return;
+
+    if (_hasPendingReplay) return;
 
     if (isOnline == true) {
       state = ConnectivityStatus.online;
@@ -192,11 +220,12 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   /// Surfaces the transient `syncing` ("Saved — will sync") state **only when
   /// currently offline** — the SDK has queued the write and will replay it on
   /// reconnect (#357). When already online the write commits immediately, so
-  /// this is a no-op. The metadata listener resolves `syncing` back to
-  /// `online`/`offline` on the actual reconnect.
+  /// this is a no-op. The pending-write barrier resolves `syncing` back to
+  /// `online` only after outstanding writes reach the backend.
   void noteLocalWrite() {
     if (state == ConnectivityStatus.offline) {
       state = ConnectivityStatus.syncing;
+      _beginPendingWriteReplayBarrier();
     }
   }
 
@@ -204,19 +233,52 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
   ///
   /// Unlike [noteLocalWrite], this is unconditional: a timed-out write is
   /// strong evidence of being offline. The SDK has the write queued; surface
-  /// "Saved — will sync" regardless. The metadata listener resolves `syncing`
-  /// back to `online`/`offline` on the actual reconnect.
+  /// "Saved — will sync" regardless. The pending-write barrier resolves
+  /// `syncing` back to `online` only after outstanding writes reach the backend.
   void noteQueuedWrite() {
     state = ConnectivityStatus.syncing;
+    _beginPendingWriteReplayBarrier();
+  }
+
+  void _beginPendingWriteReplayBarrier() {
+    final generation = ++_pendingReplayGeneration;
+    _hasPendingReplay = true;
+    late final Future<void> pendingWrites;
+    try {
+      pendingWrites = _pendingWritesBarrier();
+    } catch (_) {
+      // Unit tests without a Firebase app can still exercise the in-memory
+      // state machine. Keep the visible `syncing` state and let explicit test
+      // setters/probes drive any later transition.
+      _hasPendingReplay = false;
+      return;
+    }
+    unawaited(
+      pendingWrites
+          .then<void>((_) {
+            if (!mounted || generation != _pendingReplayGeneration) return;
+            _hasPendingReplay = false;
+            state = ConnectivityStatus.online;
+          })
+          .catchError((Object _) {
+            if (!mounted || generation != _pendingReplayGeneration) return;
+            _hasPendingReplay = false;
+            state = ConnectivityStatus.offline;
+          }),
+    );
   }
 
   /// Set online state
   void setOnline() {
+    _hasPendingReplay = false;
+    _pendingReplayGeneration++;
     state = ConnectivityStatus.online;
   }
 
   /// Set offline state
   void setOffline() {
+    _hasPendingReplay = false;
+    _pendingReplayGeneration++;
     state = ConnectivityStatus.offline;
   }
 
