@@ -529,6 +529,30 @@ void main() {
     );
 
     test(
+      'tapping a declined member-routeable claim_decided notification routes to the group',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        final h = await boot(opened: opened.stream);
+
+        opened.add(
+          const RemoteMessage(
+            data: {
+              'type': 'claim_decided',
+              'groupId': 'g7',
+              'decision': 'declined',
+              'inviteCode': 'ABC123',
+              'routeability': 'member',
+            },
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(h.nav, ['/group/g7']);
+      },
+    );
+
+    test(
       'tapping a declined claim_decided without inviteCode routes to join-group',
       () async {
         final opened = StreamController<RemoteMessage>.broadcast();

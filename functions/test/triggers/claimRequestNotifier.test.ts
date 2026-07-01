@@ -59,8 +59,15 @@ async function seedGroup(
   name: string,
   createdBy: string,
   inviteCode = 'ABC123',
+  memberIds: string[] = [createdBy],
 ): Promise<void> {
-  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name, createdBy, inviteCode });
+  await getFirestore().doc(`groups/${gid}`).set({
+    id: gid,
+    name,
+    createdBy,
+    inviteCode,
+    memberIds,
+  });
 }
 
 async function clearAll(): Promise<void> {
@@ -110,7 +117,7 @@ describe('claimRequestNotifier', () => {
   });
 
   test('pending→claimed notifies the REQUESTER (not the creator) (#565)', async () => {
-    await seedGroup('g1', 'Salalah Trip', 'creator');
+    await seedGroup('g1', 'Salalah Trip', 'creator', 'ABC123', ['creator', 'R']);
     await seedToken('R'); // the requester
     await seedToken('creator');
     const sendEach = mockSendEach(1);
@@ -125,6 +132,7 @@ describe('claimRequestNotifier', () => {
       groupId: 'g1',
       decision: 'claimed',
       inviteCode: 'ABC123',
+      routeability: 'member',
     });
     expect(messages[0].notification.title).toBe('Salalah Trip');
     expect(messages[0].notification.body).toContain('Dad'); // shadow whose spot
@@ -146,6 +154,7 @@ describe('claimRequestNotifier', () => {
       groupId: 'g1',
       decision: 'declined',
       inviteCode: 'ABC123',
+      routeability: 'pre_join',
     });
     expect(messages[0].notification.body).toContain('Dad');
     expect(messages[0].notification.body).toContain('declined');
@@ -164,7 +173,7 @@ describe('claimRequestNotifier', () => {
   });
 
   test('Arabic requester gets the Arabic decide body (#565)', async () => {
-    await seedGroup('g1', 'Trip', 'creator');
+    await seedGroup('g1', 'Trip', 'creator', 'ABC123', ['creator', 'R']);
     await seedToken('R', 'ar');
     const sendEach = mockSendEach(1);
 
@@ -186,7 +195,7 @@ describe('claimRequestNotifier', () => {
   });
 
   test('#710 claiming→claimed notifies the requester with approve copy', async () => {
-    await seedGroup('g1', 'Salalah Trip', 'creator');
+    await seedGroup('g1', 'Salalah Trip', 'creator', 'ABC123', ['creator', 'R']);
     await seedToken('R');
     const sendEach = mockSendEach(1);
 
@@ -200,6 +209,7 @@ describe('claimRequestNotifier', () => {
       groupId: 'g1',
       decision: 'claimed',
       inviteCode: 'ABC123',
+      routeability: 'member',
     });
     expect(messages[0].notification.body).toContain('approved');
   });
@@ -269,7 +279,7 @@ describe('claimRequestNotifier', () => {
   });
 
   test('retrying the same decision event notifies the requester only once', async () => {
-    await seedGroup('g1', 'Trip', 'creator');
+    await seedGroup('g1', 'Trip', 'creator', 'ABC123', ['creator', 'R']);
     await seedToken('R');
     const sendEach = mockSendEach(1);
 
@@ -285,5 +295,21 @@ describe('claimRequestNotifier', () => {
     );
 
     expect(sendEach).toHaveBeenCalledTimes(1);
+  });
+
+  test('declined requester who is already a member is marked group-routeable', async () => {
+    await seedGroup('g1', 'Trip', 'creator', 'ABC123', ['creator', 'R']);
+    await seedToken('R');
+    const sendEach = mockSendEach(1);
+
+    await fire(snap(pending()), snap(pending({ status: 'declined' })));
+
+    expect(sendEach.mock.calls[0][0][0].data).toEqual({
+      type: 'claim_decided',
+      groupId: 'g1',
+      decision: 'declined',
+      inviteCode: 'ABC123',
+      routeability: 'member',
+    });
   });
 });

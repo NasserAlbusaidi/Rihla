@@ -95,9 +95,10 @@ This is required because `/group/:gid/settings` can now be opened directly from 
 Update `_routeFromData`:
 
 - `claim_request` with `groupId` routes to `/group/$groupId/settings`, because the creator acts on claim requests from group settings.
-- `claim_decided` must include `decision: 'claimed' | 'declined'` and should include the group's `inviteCode` read from `groups/{gid}.inviteCode`.
+- `claim_decided` must include `decision: 'claimed' | 'declined'`, `routeability: 'member' | 'pre_join'`, and should include the group's `inviteCode` read from `groups/{gid}.inviteCode`.
 - `claim_decided` with `decision == 'claimed'` routes to `/group/$groupId`, because the requester has become a member after approval.
-- `claim_decided` with `decision == 'declined'` routes to `/join/$inviteCode` when `inviteCode` is present, because the requester remains pre-join and cannot read `/group/$groupId`. If `inviteCode` is absent, route to `/join-group`.
+- `claim_decided` with `decision == 'declined'` and `routeability == 'member'` routes to `/group/$groupId`, because the requester is already a readable group member even though this specific claim request was declined.
+- `claim_decided` with `decision == 'declined'` and `routeability != 'member'` routes to `/join/$inviteCode` when `inviteCode` is present, because the requester remains pre-join and cannot read `/group/$groupId`. If `inviteCode` is absent, route to `/join-group`.
 - Legacy `claim_decided` payloads that have no `decision` cannot be resolved safely. Route them to `/join-group` as a pre-join-safe fallback instead of claiming they can land in the correct group/decision state.
 
 Update `claimRequestNotifier` payloads:
@@ -110,11 +111,12 @@ Update `claimRequestNotifier` payloads:
   type: 'claim_decided',
   groupId: gid,
   decision: afterStatus,
-  inviteCode: groupInviteCode
+  inviteCode: groupInviteCode,
+  routeability: groupMemberIds.includes(requesterUid) ? 'member' : 'pre_join'
 }
 ```
 
-`groupInviteCode` is read from the same group doc lookup currently used for group name/creator. If the group doc has no invite code, send an empty string and let the client fall back to `/join-group` for declined decisions.
+`groupInviteCode` and `groupMemberIds` are read from the same group doc lookup currently used for group name/creator. If the group doc has no invite code, send an empty string and let the client fall back to `/join-group` for pre-join declined decisions. This routeability field is required because a false-negative `alreadyClaimed` approval can mark a request declined after the requester has already become a group member.
 
 Keep existing behavior unchanged for `settlement`, `member_join`, `expense`, and `event`. Unknown types stay ignored. Missing or empty `groupId` stays ignored for claim types.
 
@@ -133,7 +135,7 @@ Keep existing behavior unchanged for `settlement`, `member_join`, `expense`, and
 4. No model field migration or scrub list is involved.
 5. Exact map keys, callback signature, dedupe keys, and route paths are specified.
 6. No arithmetic.
-7. Orthogonal pass: claim-notification routing is included because the idempotency work touches existing notification payload types; declined claim decisions are pre-join and must not route to member-only group screens.
+7. Orthogonal pass: claim-notification routing is included because the idempotency work touches existing notification payload types; declined claim decisions can be either pre-join or already-member, so the payload carries `routeability` from the current `groups/{gid}.memberIds` snapshot.
 
 ## TDD Plan
 
@@ -152,6 +154,7 @@ Write tests before implementation:
    - tapping `claim_request` routes to `/group/<gid>/settings`;
    - tapping `claim_decided` claimed routes to `/group/<gid>`;
    - tapping `claim_decided` declined routes to `/join/<inviteCode>` when present and `/join-group` when absent;
+   - tapping `claim_decided` declined with `routeability: 'member'` routes to `/group/<gid>`;
    - tapping legacy `claim_decided` without `decision` routes to `/join-group`;
    - missing groupId for claim types is ignored.
 4. `test/features/groups/group_settings_screen_test.dart`
@@ -160,6 +163,6 @@ Write tests before implementation:
 Verification commands:
 
 - `cd functions && npm run test:emulator -- test/notifications/fcmSender.test.ts test/triggers/settlementNotifier.test.ts test/triggers/expenseNotifier.test.ts test/triggers/eventNotifier.test.ts test/triggers/claimRequestNotifier.test.ts`
-- `flutter test test/unit/notification_service_test.dart`
+- `flutter test test/unit/notification_service_test.dart test/features/groups/group_settings_screen_test.dart`
 - `cd functions && npm run build`
 - `flutter analyze`

@@ -45,9 +45,15 @@ function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
 async function resolveGroup(
   gid: string,
-): Promise<{ createdBy: string; name: string; inviteCode: string }> {
+): Promise<{ createdBy: string; name: string; inviteCode: string; memberIds: string[] }> {
   try {
     const snap = await getFirestore().doc(`groups/${gid}`).get();
     const data = snap.data() ?? {};
@@ -55,10 +61,11 @@ async function resolveGroup(
       createdBy: asString(data.createdBy),
       name: asString(data.name),
       inviteCode: asString(data.inviteCode),
+      memberIds: asStringArray(data.memberIds),
     };
   } catch (error) {
     logger.warn('claim notify: group lookup failed', { gid, error: String(error) });
-    return { createdBy: '', name: '', inviteCode: '' };
+    return { createdBy: '', name: '', inviteCode: '', memberIds: [] };
   }
 }
 
@@ -110,8 +117,9 @@ export const claimRequestNotifier = onDocumentWritten(
       const requesterUid = asString(after?.requesterUid);
       if (requesterUid.length === 0) return;
 
-      const { name, inviteCode } = await resolveGroup(gid);
+      const { name, inviteCode, memberIds } = await resolveGroup(gid);
       const shadowName = asString(after?.shadowDisplayName);
+      const routeability = memberIds.includes(requesterUid) ? 'member' : 'pre_join';
 
       await sendToUids(
         [requesterUid],
@@ -124,6 +132,7 @@ export const claimRequestNotifier = onDocumentWritten(
           groupId: gid,
           decision: afterStatus,
           inviteCode,
+          routeability,
         },
         { dedupeKey },
       );

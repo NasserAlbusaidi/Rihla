@@ -292,8 +292,8 @@ class NotificationService with WidgetsBindingObserver {
   /// - a *group* `settlement` (no `eventId`, `groupSettlementNotifier`) and
   ///   `member_join` → the group hub `/group/$gid`
   /// - `claim_request` → group settings `/group/$gid/settings`
-  /// - `claim_decided` → the claimed group, invite join route, or join-group
-  ///   fallback depending on the decision payload
+  /// - `claim_decided` → the group for claimed/current-member decisions, invite
+  ///   join route, or join-group fallback depending on the decision payload
   ///
   /// `expense`/`event` always carry a non-empty `eventId` (their triggers fire
   /// on `events/{eid}/…` paths); the `hasEvent` guard degrades any future
@@ -324,6 +324,10 @@ class NotificationService with WidgetsBindingObserver {
         return;
       }
       if (decision == 'declined') {
+        if (data['routeability'] == 'member') {
+          _navigate('/group/$groupId');
+          return;
+        }
         final inviteCode = data['inviteCode'];
         if (inviteCode is String && inviteCode.isNotEmpty) {
           _navigate('/join/$inviteCode');
