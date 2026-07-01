@@ -33,7 +33,7 @@ Widget _wrap(Widget child, {required ThemeMode mode}) {
       // Offline banner reads this; give it a deterministic value so the
       // banner widget builds its non-empty branch when requested.
       connectivityProvider.overrideWith(
-        (ref) => ConnectivityNotifier()..setOffline(),
+        (ref) => ConnectivityNotifier(startPeriodicChecks: false)..setOffline(),
       ),
     ],
     child: MaterialApp(

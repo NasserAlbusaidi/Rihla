@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -6,8 +8,13 @@ import 'package:safar/core/providers/connectivity_provider.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Default probe null + an empty sync-signal stream ⇒ construction touches no
+  // live mechanism, so setter/state-machine tests stay deterministic.
   ConnectivityNotifier makeNotifier({Future<bool?> Function()? probe}) {
-    return ConnectivityNotifier(connectivityProbe: probe ?? () async => null);
+    return ConnectivityNotifier(
+      connectivityProbe: probe ?? () async => null,
+      syncSignals: () => const Stream<bool>.empty(),
+    );
   }
 
   group('ConnectivityNotifier setters', () {
@@ -41,7 +48,7 @@ void main() {
     });
   });
 
-  group('ConnectivityNotifier.checkConnectivity', () {
+  group('ConnectivityNotifier.checkConnectivity (init/resume one-shot probe)', () {
     test('probe true → online', () async {
       final n = makeNotifier(probe: () async => true);
       addTearDown(n.dispose);
@@ -66,23 +73,111 @@ void main() {
     });
   });
 
+  group('sync-signal listener (#633)', () {
+    test(
+      'reconnect signal (isFromCache:false) resolves syncing → online '
+      'WITHOUT a probe (the #682 fix)',
+      () async {
+        final signals = StreamController<bool>();
+        addTearDown(signals.close);
+        final n = ConnectivityNotifier(
+          connectivityProbe: () async => null, // no probe interference
+          syncSignals: () => signals.stream,
+        );
+        addTearDown(n.dispose);
+
+        n.noteQueuedWrite(); // a queued offline money-write
+        expect(n.state, ConnectivityStatus.syncing);
+
+        signals.add(false); // server reached → the write replays
+        await Future<void>.delayed(Duration.zero);
+
+        expect(n.state, ConnectivityStatus.online);
+      },
+    );
+
+    test('drop after a server snapshot (isFromCache:true) → offline', () async {
+      final signals = StreamController<bool>();
+      addTearDown(signals.close);
+      final n = ConnectivityNotifier(
+        connectivityProbe: () async => null,
+        syncSignals: () => signals.stream,
+      );
+      addTearDown(n.dispose);
+
+      signals.add(false); // server seen → online + latch set
+      await Future<void>.delayed(Duration.zero);
+      expect(n.state, ConnectivityStatus.online);
+
+      signals.add(true); // connection dropped
+      await Future<void>.delayed(Duration.zero);
+      expect(n.state, ConnectivityStatus.offline);
+    });
+
+    test(
+      'cold-start cache-first (isFromCache:true, no server seen) stays online',
+      () async {
+        final signals = StreamController<bool>();
+        addTearDown(signals.close);
+        final n = ConnectivityNotifier(
+          connectivityProbe: () async => null,
+          syncSignals: () => signals.stream,
+        );
+        addTearDown(n.dispose);
+
+        signals.add(true); // cache-first emission before any server contact
+        await Future<void>.delayed(Duration.zero);
+
+        expect(n.state, ConnectivityStatus.online); // NOT false-flipped offline
+      },
+    );
+
+    test('listener error events fail open (state unchanged)', () async {
+      final signals = StreamController<bool>();
+      addTearDown(signals.close);
+      final n = ConnectivityNotifier(
+        connectivityProbe: () async => null,
+        syncSignals: () => signals.stream,
+      );
+      addTearDown(n.dispose);
+      n.setOffline();
+
+      signals.addError(Exception('permission-denied'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(n.state, ConnectivityStatus.offline); // no crash, no state change
+    });
+  });
+
+  group('init probe on construct (#633)', () {
+    test('probe false at construct → offline', () async {
+      final n = ConnectivityNotifier(
+        connectivityProbe: () async => false,
+        syncSignals: () => const Stream<bool>.empty(),
+      );
+      addTearDown(n.dispose);
+
+      await Future<void>.delayed(Duration.zero);
+      expect(n.state, ConnectivityStatus.offline);
+    });
+  });
+
   group('didChangeAppLifecycleState', () {
-    test('paused state cancels the periodic timer (no exception)', () async {
+    test('paused cancels the live subscription (no exception)', () async {
       final n = makeNotifier(probe: () async => true);
       addTearDown(n.dispose);
       n.didChangeAppLifecycleState(AppLifecycleState.paused);
-      // No throw and state remains as-is (online).
       expect(n.state, ConnectivityStatus.online);
     });
 
-    test('inactive state cancels the periodic timer', () async {
+    test('inactive cancels the live subscription', () async {
       final n = makeNotifier(probe: () async => true);
       addTearDown(n.dispose);
       n.didChangeAppLifecycleState(AppLifecycleState.inactive);
       expect(n.state, ConnectivityStatus.online);
     });
 
-    test('resumed re-runs check and restarts the timer', () async {
+    test('resumed re-runs the probe and re-subscribes', () async {
       var probeCalls = 0;
       final n = makeNotifier(probe: () async {
         probeCalls++;
@@ -93,11 +188,26 @@ void main() {
       n.didChangeAppLifecycleState(AppLifecycleState.paused);
       n.setOffline();
       n.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      // Drain microtask queue for checkConnectivity().
       await Future<void>.delayed(Duration.zero);
 
       expect(probeCalls, greaterThanOrEqualTo(1));
       expect(n.state, ConnectivityStatus.online);
+    });
+
+    test('paused → resumed toggles the live subscription', () {
+      final signals = StreamController<bool>.broadcast();
+      addTearDown(signals.close);
+      final n = ConnectivityNotifier(
+        connectivityProbe: () async => null,
+        syncSignals: () => signals.stream,
+      );
+      addTearDown(n.dispose);
+
+      expect(n.isLiveCheckActive, isTrue);
+      n.didChangeAppLifecycleState(AppLifecycleState.paused);
+      expect(n.isLiveCheckActive, isFalse);
+      n.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      expect(n.isLiveCheckActive, isTrue);
     });
   });
 
@@ -173,20 +283,28 @@ void main() {
     });
   });
 
-  group('startPeriodicChecks seam (#357)', () {
-    test('defaults to running the periodic check', () {
-      final n = ConnectivityNotifier(connectivityProbe: () async => null);
-      addTearDown(n.dispose);
-      expect(n.isPeriodicCheckActive, isTrue);
-    });
-
-    test('can be disabled so widget tests get a timer-free notifier', () {
+  group('startPeriodicChecks seam', () {
+    test('defaults to running the live connectivity check', () {
+      final signals = StreamController<bool>();
+      addTearDown(signals.close);
       final n = ConnectivityNotifier(
         connectivityProbe: () async => null,
+        syncSignals: () => signals.stream,
+      );
+      addTearDown(n.dispose);
+      expect(n.isLiveCheckActive, isTrue);
+    });
+
+    test('can be disabled so widget tests get a listener-free notifier', () {
+      // No controller: startPeriodicChecks:false never subscribes, and a
+      // single-subscription controller's close() would hang unlistened.
+      final n = ConnectivityNotifier(
+        connectivityProbe: () async => null,
+        syncSignals: () => const Stream<bool>.empty(),
         startPeriodicChecks: false,
       );
       addTearDown(n.dispose);
-      expect(n.isPeriodicCheckActive, isFalse);
+      expect(n.isLiveCheckActive, isFalse);
     });
   });
 }

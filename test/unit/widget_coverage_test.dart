@@ -261,7 +261,8 @@ void main() {
         ProviderScope(
           overrides: [
             connectivityProvider.overrideWith(
-              (ref) => ConnectivityNotifier()..setOffline(),
+              (ref) => ConnectivityNotifier(startPeriodicChecks: false)
+                ..setOffline(),
             ),
           ],
           child: MaterialApp(
@@ -283,7 +284,8 @@ void main() {
         ProviderScope(
           overrides: [
             connectivityProvider.overrideWith(
-              (ref) => ConnectivityNotifier()..setOnline(),
+              (ref) => ConnectivityNotifier(startPeriodicChecks: false)
+                ..setOnline(),
             ),
           ],
           child: MaterialApp(
