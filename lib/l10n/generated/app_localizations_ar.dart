@@ -2268,6 +2268,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get eventClosedBanner => 'مُغلقة · الإنفاق مُجمّد';
 
   @override
+  String get eventViewReceipt => 'عرض الإيصال';
+
+  @override
   String get editorEventClosedTitle => 'الفعالية مُغلقة';
 
   @override

@@ -2214,6 +2214,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventClosedBanner => 'Closed · spending frozen';
 
   @override
+  String get eventViewReceipt => 'View receipt';
+
+  @override
   String get editorEventClosedTitle => 'Event closed';
 
   @override

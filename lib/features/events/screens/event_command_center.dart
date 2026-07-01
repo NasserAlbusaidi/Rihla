@@ -11,6 +11,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/cover_art.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -177,6 +178,9 @@ class _Content extends ConsumerWidget {
           ),
         ),
         // #723: read-only banner once the event is closed.
+        // #708 close-wiring: the closed banner surfaces the Trip Receipt export
+        // (recap/closeout screen) — hidden when there's nothing to export,
+        // mirroring the cover-header recap entry.
         if (event.isClosed)
           SliverToBoxAdapter(
             child: _ClosedBanner(
@@ -184,6 +188,14 @@ class _Content extends ConsumerWidget {
                   ? null
                   : (participantDisplayNames[event.closedBy] ??
                         event.participantNames[event.closedBy]),
+              onViewReceipt: expenses.isEmpty
+                  ? null
+                  : () {
+                      HapticService.lightClick();
+                      GoRouter.of(
+                        context,
+                      ).push('/group/$groupId/event/$eventId/recap');
+                    },
             ),
           ),
         const SliverToBoxAdapter(child: OfflineBanner()),
@@ -983,9 +995,13 @@ class _RecentRow extends StatelessWidget {
 /// #723: thin read-only strip shown on a closed event — "Closed by {name} ·
 /// spending frozen". Mirrors the OfflineBanner pattern.
 class _ClosedBanner extends StatelessWidget {
-  const _ClosedBanner({this.closedByName});
+  const _ClosedBanner({this.closedByName, this.onViewReceipt});
 
   final String? closedByName;
+
+  /// #708 close-wiring: opens the shareable Trip Receipt (recap/closeout
+  /// screen). Null hides the affordance when there is nothing to export.
+  final VoidCallback? onViewReceipt;
 
   @override
   Widget build(BuildContext context) {
@@ -1013,6 +1029,36 @@ class _ClosedBanner extends StatelessWidget {
               ),
             ),
           ),
+          if (onViewReceipt != null) ...[
+            const SizedBox(width: 8),
+            InkWell(
+              key: EventKeys.closedBannerViewReceipt,
+              onTap: onViewReceipt,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(6, 4, 4, 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      context.l10n.eventViewReceipt,
+                      style: AppTypography.sans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    DirectionalIcon(
+                      Iconsax.arrow_right,
+                      size: 13,
+                      color: colors.textPrimary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

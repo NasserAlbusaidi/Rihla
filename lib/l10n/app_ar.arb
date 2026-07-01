@@ -651,6 +651,7 @@
   "eventReopenFailed": "تعذّر إعادة فتح الفعالية: {error}",
   "eventClosedBannerBy": "أُغلقت بواسطة {name} · الإنفاق مُجمّد",
   "eventClosedBanner": "مُغلقة · الإنفاق مُجمّد",
+  "eventViewReceipt": "عرض الإيصال",
   "editorEventClosedTitle": "الفعالية مُغلقة",
   "editorEventClosedMessage": "هذه الفعالية مُغلقة والإنفاق مُجمّد. أعد فتحها من الإعدادات لإضافة المصروفات أو تعديلها.",
   "eventAddExpense": "إضافة مصروف",

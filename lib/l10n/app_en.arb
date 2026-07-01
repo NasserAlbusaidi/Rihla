@@ -1644,6 +1644,10 @@
     }
   },
   "eventClosedBanner": "Closed · spending frozen",
+  "eventViewReceipt": "View receipt",
+  "@eventViewReceipt": {
+    "description": "#708 — action on the closed-event banner that opens the shareable Trip Receipt (recap/closeout screen)."
+  },
   "editorEventClosedTitle": "Event closed",
   "editorEventClosedMessage": "This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.",
   "eventAddExpense": "Add expense",
