@@ -8,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/balance_aggregate_freshness_provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/haptic_service.dart';
@@ -158,6 +159,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       final group = await ref
           .read(groupServiceProvider)
           .joinGroup(inviteCode: _codeController.text.trim());
+      ref
+          .read(balanceAggregateFreshnessProvider.notifier)
+          .markGroupDirty(group.id);
       ref.read(groupLoadingProvider.notifier).state = false;
       _logJoined(group.id);
       HapticService.success(); // D-02: double-tap "done" feel
