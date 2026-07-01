@@ -158,29 +158,34 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-06-30, `65030ad9`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-01, `f0de3a98`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-06-30 deploy ceremony the `backend-deployed` tag is `65030ad9`; prod
+    2026-07-01 deploy ceremony the `backend-deployed` tag is `f0de3a98`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#766 (#767)** — freeze spending snapshot at close (Slice 6 of
+    Latest delta: **#780 (Refs #179)** — notification idempotency + claim-decision
+    routing hardening. **Cloud Functions only** (no rules/index/function-set change).
+    `fcmSender.sendToUids` gains an optional `dedupeKey`; when set, a
+    `claimDeliveryMarker` transaction creates `notificationDeliveries/{sha256(key)}`
+    (admin-SDK only, client default-deny) and skips the send if it already exists,
+    collapsing Eventarc retry redeliveries of the SAME CloudEvent to one buzz. The
+    5 Eventarc notification triggers thread a key = type-prefix + doc ids + the
+    stable CloudEvent `event.id` (distinct events each still notify; #752 decomposed
+    per-event settlements keep distinct ids; no cross-trigger sha collision).
+    Claim-decision payload adds `decision`/`inviteCode`/`routeability`
+    (`member`/`pre_join`, from live `memberIds`) so a declined already-member routes
+    to `/group/:gid`, not a `/join/<code>` they can't use. Client half
+    (`notification_service.dart` claim routing, `group_settings_screen` back-nav →
+    `/home` fallback) shipped on `main` (not deploy-relevant). Merge-time Gate:
+    fresh-context diff review 0 P1 + independent refuter REFUTED:false. **28**
+    functions updated in place (none created/deleted); full Functions + Flutter
+    suites green.
+    Prior delta: **#766 (#767)** — freeze spending snapshot at close (Slice 6 of
     #202). `firestore.rules` `validEventCloseToggle` gains a 5th diff key
-    `spendingSnapshot` in its cheap `diff().hasOnly([…])` gate + a new
-    `spendingSnapshotBounded` opaque guard (`is map && size() <= 16`, mirroring
-    `splitExplanationBounded`) **after** the cheap diff gate — it never touches
-    `validEventBase`, so no 1000-expression-ceiling risk on the heaviest event
-    update. The blob is **opaque display-only** (the frozen SPENDING half of the
-    recap), written on close and DELETEd on reopen (`FieldValue.delete()`; null
-    would fail the `is map` guard); the oracle/`recomputeNet`/every Function NEVER
-    reads it (grep=0, splitExplanation-class). Light/admin allow-lists still
-    **exclude** `spendingSnapshot`, so it is writable ONLY via a genuine admin
-    close/reopen transition. Client half (`SpendingSnapshot` model,
-    `EventRecap.fromSnapshot`, `eventRecapProvider` freeze branch, capture-at-close,
-    "spending frozen" caption, `Event.spendingSnapshot` schema add — OMITTED from
-    `toFirestoreMap` so `validEventCreate keys().hasOnly` stays unbroken,
-    copyWith-preserved — en+ar l10n) shipped on `main` (not deploy-relevant).
-    Rules-only — no function add/remove/logic change (all **28** updated in place).
-    189 rules tests pass (5 new #766); full Flutter suite 2641/0.
+    `spendingSnapshot` + a `spendingSnapshotBounded` opaque guard (`is map &&
+    size() <= 16`) after the cheap diff gate; the blob is opaque display-only,
+    written on close and DELETEd on reopen, never read by the oracle/any Function.
+    Rules-only — all **28** functions updated in place.
     Prior delta: **#723 (#763)** — event close lifecycle (Slice 5 of #202).
     `firestore.rules` adds `eventAcceptsExpenseWrites` which **REPLACES**
     `eventAllowsClientWrites` in the TWO expense write paths only (folds
