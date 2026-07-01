@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
@@ -39,6 +40,28 @@ Future<void> shareImage(
     [XFile.fromData(bytes, mimeType: 'image/png')],
     fileNameOverrides: [fileName],
     text: text,
+    subject: subject,
+    sharePositionOrigin: _shareOrigin(context),
+  );
+}
+
+/// Shares a CSV [csv] document (e.g. the Trip Receipt proof pack, #704) via the
+/// platform share sheet, always supplying a non-zero `sharePositionOrigin` — the
+/// same #308/#309 iOS trap as [shareText]. Do NOT call `Share.shareXFiles`
+/// directly.
+///
+/// The CSV is UTF-8 encoded and passed in-memory as an [XFile.fromData];
+/// `share_plus` writes it to a temp file itself. [fileName] flows through
+/// `fileNameOverrides` so the temp file keeps a `.csv` extension.
+Future<void> shareCsv(
+  BuildContext context,
+  String csv, {
+  String fileName = 'rihla_trip_receipt.csv',
+  String? subject,
+}) {
+  return Share.shareXFiles(
+    [XFile.fromData(utf8.encode(csv), mimeType: 'text/csv')],
+    fileNameOverrides: [fileName],
     subject: subject,
     sharePositionOrigin: _shareOrigin(context),
   );

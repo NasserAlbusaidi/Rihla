@@ -5673,6 +5673,12 @@ abstract class AppLocalizations {
   /// **'Share image'**
   String get recapShareCta;
 
+  /// Secondary button in the recap share sheet that exports the full Trip Receipt proof pack (expenses, allocations, settlements, corrections, balances) as a CSV file (#704).
+  ///
+  /// In en, this message translates to:
+  /// **'Export ledger (CSV)'**
+  String get recapExportCsvButton;
+
   /// Snackbar shown when capturing the recap card to a PNG fails (#722).
   ///
   /// In en, this message translates to:
