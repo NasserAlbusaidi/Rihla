@@ -34,6 +34,8 @@ async function resolveGroupName(gid: string): Promise<string> {
 async function notifySettlement(
   gid: string,
   eid: string | null,
+  settlementId: string,
+  eventId: string,
   snap: { data(): DocumentData } | undefined,
 ): Promise<void> {
   if (!snap) return;
@@ -69,6 +71,9 @@ async function notifySettlement(
 
   const payload: Record<string, string> = { type: 'settlement', groupId: gid };
   if (eid) payload.eventId = eid;
+  const dedupeKey = eid
+    ? `settlement:event:${gid}:${eid}:${settlementId}:${eventId}`
+    : `settlement:group:${gid}:${settlementId}:${eventId}`;
 
   await sendToUids(
     targets,
@@ -77,15 +82,28 @@ async function notifySettlement(
       body: settlementBody(locale, actorName, amountText),
     }),
     payload,
+    { dedupeKey },
   );
 }
 
 export const eventSettlementNotifier = onDocumentCreated(
   'groups/{gid}/events/{eid}/settlements/{settlementId}',
-  (event) => notifySettlement(event.params.gid, event.params.eid, event.data),
+  (event) => notifySettlement(
+    event.params.gid,
+    event.params.eid,
+    event.params.settlementId,
+    event.id,
+    event.data,
+  ),
 );
 
 export const groupSettlementNotifier = onDocumentCreated(
   'groups/{gid}/settlements/{settlementId}',
-  (event) => notifySettlement(event.params.gid, null, event.data),
+  (event) => notifySettlement(
+    event.params.gid,
+    null,
+    event.params.settlementId,
+    event.id,
+    event.data,
+  ),
 );

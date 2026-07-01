@@ -2,10 +2,10 @@ import { getFirestore } from 'firebase-admin/firestore';
 import * as messaging from 'firebase-admin/messaging';
 import { sendToUids } from '../../src/notifications/fcmSender';
 
-async function clearTokens(): Promise<void> {
+async function clearNotificationState(): Promise<void> {
   const db = getFirestore();
-  const docs = await db.collection('fcm_tokens').listDocuments();
-  await Promise.all(docs.map((d) => d.delete()));
+  await db.recursiveDelete(db.collection('fcm_tokens'));
+  await db.recursiveDelete(db.collection('notificationDeliveries'));
 }
 
 async function seedToken(
@@ -43,7 +43,7 @@ const build = (locale: 'en' | 'ar') => ({
 });
 
 beforeEach(async () => {
-  await clearTokens();
+  await clearNotificationState();
 });
 
 afterEach(() => {
@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await clearTokens();
+  await clearNotificationState();
 });
 
 describe('sendToUids', () => {
@@ -153,5 +153,51 @@ describe('sendToUids', () => {
     await sendToUids(['legacy'], build, { type: 'x', groupId: 'g' });
 
     expect(sendEach.mock.calls[0][0][0].notification.body).toBe('text');
+  });
+
+  test('same dedupeKey sends once and writes one marker', async () => {
+    await seedToken('a', 'tok-a', 'en');
+    const sendEach = mockSendEach([{ success: true }]);
+
+    await sendToUids(
+      ['a'],
+      build,
+      { type: 'expense', groupId: 'g' },
+      { dedupeKey: 'expense:create:g:e:x:event-1' },
+    );
+    await sendToUids(
+      ['a'],
+      build,
+      { type: 'expense', groupId: 'g' },
+      { dedupeKey: 'expense:create:g:e:x:event-1' },
+    );
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
+    const markers = await getFirestore().collection('notificationDeliveries').get();
+    expect(markers.size).toBe(1);
+    expect(markers.docs[0].data()).toMatchObject({
+      key: 'expense:create:g:e:x:event-1',
+      data: { type: 'expense', groupId: 'g' },
+    });
+  });
+
+  test('different dedupeKeys send independently', async () => {
+    await seedToken('a', 'tok-a', 'en');
+    const sendEach = mockSendEach([{ success: true }, { success: true }]);
+
+    await sendToUids(
+      ['a'],
+      build,
+      { type: 'event', groupId: 'g' },
+      { dedupeKey: 'event:create:g:e:event-1' },
+    );
+    await sendToUids(
+      ['a'],
+      build,
+      { type: 'event', groupId: 'g' },
+      { dedupeKey: 'event:create:g:e:event-2' },
+    );
+
+    expect(sendEach).toHaveBeenCalledTimes(2);
   });
 });

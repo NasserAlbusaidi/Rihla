@@ -1,6 +1,7 @@
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getMessaging, Message } from 'firebase-admin/messaging';
 import { logger } from 'firebase-functions/v2';
+import { createHash } from 'crypto';
 import '../admin';
 import { Locale, normalizeLocale } from './strings';
 
@@ -11,6 +12,10 @@ export interface NotificationCopy {
 
 /** Builds the localized copy for one recipient's stored locale. */
 export type CopyBuilder = (locale: Locale) => NotificationCopy;
+
+export interface SendToUidsOptions {
+  dedupeKey?: string;
+}
 
 // FCM error codes that mean the token is permanently dead → prune it so the
 // fcm_tokens collection self-cleans. `invalid-argument` is included because a
@@ -25,6 +30,36 @@ interface TokenRecord {
   uid: string;
   token: string;
   locale: Locale;
+}
+
+async function claimDeliveryMarker(
+  dedupeKey: string | undefined,
+  data: Record<string, string>,
+): Promise<boolean> {
+  const key = typeof dedupeKey === 'string' ? dedupeKey.trim() : '';
+  if (key.length === 0) return true;
+
+  try {
+    const db = getFirestore();
+    const deliveryId = createHash('sha256').update(key).digest('hex');
+    const markerRef = db.doc(`notificationDeliveries/${deliveryId}`);
+    return await db.runTransaction(async (tx) => {
+      const existing = await tx.get(markerRef);
+      if (existing.exists) return false;
+      tx.create(markerRef, {
+        key,
+        data,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return true;
+    });
+  } catch (error) {
+    logger.warn('fcm delivery marker failed', {
+      dedupeKey: key,
+      error: String(error),
+    });
+    return false;
+  }
 }
 
 /**
@@ -44,8 +79,11 @@ export async function sendToUids(
   uids: string[],
   build: CopyBuilder,
   data: Record<string, string>,
+  options: SendToUidsOptions = {},
 ): Promise<void> {
   try {
+    if (!(await claimDeliveryMarker(options.dedupeKey, data))) return;
+
     const db = getFirestore();
     const uniqueUids = [
       ...new Set(uids.filter((u) => typeof u === 'string' && u.length > 0)),

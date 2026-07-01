@@ -5,13 +5,20 @@ import { expenseNotifier } from '../../src/triggers/expenseNotifier';
 
 const testEnv = functionsTest({ projectId: 'rihla-safar-test' });
 const wrap = testEnv.wrap(expenseNotifier);
+const FIRE_TIME = '2026-07-01T00:00:00.000Z';
 
 function expenseEvent(
   data: Record<string, unknown>,
   params: { gid: string; eid: string; expenseId: string },
+  id = 'evt-expense-1',
 ) {
   const path = `groups/${params.gid}/events/${params.eid}/expenses/${params.expenseId}`;
-  return { data: testEnv.firestore.makeDocumentSnapshot(data, path), params };
+  return {
+    data: testEnv.firestore.makeDocumentSnapshot(data, path),
+    params,
+    id,
+    time: FIRE_TIME,
+  };
 }
 
 function mockSendEach(count: number): jest.Mock {
@@ -65,6 +72,7 @@ async function clearAll(): Promise<void> {
   const db = getFirestore();
   await db.recursiveDelete(db.collection('fcm_tokens'));
   await db.recursiveDelete(db.collection('groups'));
+  await db.recursiveDelete(db.collection('notificationDeliveries'));
 }
 
 function tokensOf(sendEach: jest.Mock): string[] {
@@ -283,5 +291,23 @@ describe('expenseNotifier', () => {
     );
 
     expect(sendEach.mock.calls[0][0][0].notification.body).toContain('1000');
+  });
+
+  test('retrying the same Eventarc create event sends only once', async () => {
+    await seedGroup('g1', 'Trip');
+    await seedEvent('g1', 'e1', ['creator', 'p2']);
+    await seedMember('g1', 'creator', 'Ahmed');
+    await seedToken('p2');
+    const sendEach = mockSendEach(1);
+    const event = expenseEvent(
+      { ...base, payerParticipantId: 'creator', createdBy: 'creator' },
+      { gid: 'g1', eid: 'e1', expenseId: 'x1' },
+      'evt-expense-retry',
+    );
+
+    await wrap(event);
+    await wrap(event);
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
   });
 });

@@ -138,8 +138,11 @@ class _SettingsTopBar extends StatelessWidget {
                     ? Iconsax.arrow_right
                     : Iconsax.arrow_left,
                 onTap: () {
-                  if (GoRouter.of(context).canPop()) {
-                    GoRouter.of(context).pop();
+                  final router = GoRouter.of(context);
+                  if (router.canPop()) {
+                    router.pop();
+                  } else {
+                    router.go('/home');
                   }
                 },
               ),

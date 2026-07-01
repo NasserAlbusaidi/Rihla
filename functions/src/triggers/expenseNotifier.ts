@@ -108,6 +108,8 @@ async function shareSet(
 async function notifyExpenseCreated(
   gid: string,
   eid: string,
+  expenseId: string,
+  eventId: string,
   snap: { data(): DocumentData } | undefined,
 ): Promise<void> {
   if (!snap) return;
@@ -140,10 +142,17 @@ async function notifyExpenseCreated(
       body: expenseBody(locale, actorName, amountText, description),
     }),
     { type: 'expense', groupId: gid, eventId: eid },
+    { dedupeKey: `expense:create:${gid}:${eid}:${expenseId}:${eventId}` },
   );
 }
 
 export const expenseNotifier = onDocumentCreated(
   'groups/{gid}/events/{eid}/expenses/{expenseId}',
-  (event) => notifyExpenseCreated(event.params.gid, event.params.eid, event.data),
+  (event) => notifyExpenseCreated(
+    event.params.gid,
+    event.params.eid,
+    event.params.expenseId,
+    event.id,
+    event.data,
+  ),
 );

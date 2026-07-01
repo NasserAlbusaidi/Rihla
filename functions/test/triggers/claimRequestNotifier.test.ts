@@ -18,8 +18,8 @@ function absent() {
   // empty data → resource-only proto → .exists === false (create/delete edge)
   return testEnv.firestore.makeDocumentSnapshot({}, PATH);
 }
-function fire(before: unknown, after: unknown) {
-  return wrap({ data: testEnv.makeChange(before, after), params, id: 'evt1', time: FIRE_TIME });
+function fire(before: unknown, after: unknown, id = 'evt1') {
+  return wrap({ data: testEnv.makeChange(before, after), params, id, time: FIRE_TIME });
 }
 
 // A pending claim-request doc as written by requestClaimShadow.ts:121-130.
@@ -54,16 +54,20 @@ async function seedToken(uid: string, locale = 'en'): Promise<void> {
     .set({ user_id: uid, token: `tok-${uid}`, locale, platform: 'android' });
 }
 
-async function seedGroup(gid: string, name: string, createdBy: string): Promise<void> {
-  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name, createdBy });
+async function seedGroup(
+  gid: string,
+  name: string,
+  createdBy: string,
+  inviteCode = 'ABC123',
+): Promise<void> {
+  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name, createdBy, inviteCode });
 }
 
 async function clearAll(): Promise<void> {
   const db = getFirestore();
-  for (const coll of ['fcm_tokens', 'groups']) {
-    const docs = await db.collection(coll).listDocuments();
-    await Promise.all(docs.map((d) => d.delete()));
-  }
+  await db.recursiveDelete(db.collection('fcm_tokens'));
+  await db.recursiveDelete(db.collection('groups'));
+  await db.recursiveDelete(db.collection('notificationDeliveries'));
 }
 
 beforeEach(async () => {
@@ -116,7 +120,12 @@ describe('claimRequestNotifier', () => {
     const messages = sendEach.mock.calls[0][0];
     expect(messages).toHaveLength(1);
     expect(messages[0].token).toBe('tok-R'); // requester, NOT creator
-    expect(messages[0].data).toEqual({ type: 'claim_decided', groupId: 'g1' });
+    expect(messages[0].data).toEqual({
+      type: 'claim_decided',
+      groupId: 'g1',
+      decision: 'claimed',
+      inviteCode: 'ABC123',
+    });
     expect(messages[0].notification.title).toBe('Salalah Trip');
     expect(messages[0].notification.body).toContain('Dad'); // shadow whose spot
     expect(messages[0].notification.body).toContain('approved');
@@ -132,7 +141,12 @@ describe('claimRequestNotifier', () => {
     const messages = sendEach.mock.calls[0][0];
     expect(messages).toHaveLength(1);
     expect(messages[0].token).toBe('tok-R');
-    expect(messages[0].data).toEqual({ type: 'claim_decided', groupId: 'g1' });
+    expect(messages[0].data).toEqual({
+      type: 'claim_decided',
+      groupId: 'g1',
+      decision: 'declined',
+      inviteCode: 'ABC123',
+    });
     expect(messages[0].notification.body).toContain('Dad');
     expect(messages[0].notification.body).toContain('declined');
   });
@@ -181,7 +195,12 @@ describe('claimRequestNotifier', () => {
     const messages = sendEach.mock.calls[0][0];
     expect(messages).toHaveLength(1);
     expect(messages[0].token).toBe('tok-R');
-    expect(messages[0].data).toEqual({ type: 'claim_decided', groupId: 'g1' });
+    expect(messages[0].data).toEqual({
+      type: 'claim_decided',
+      groupId: 'g1',
+      decision: 'claimed',
+      inviteCode: 'ABC123',
+    });
     expect(messages[0].notification.body).toContain('approved');
   });
 
@@ -236,5 +255,35 @@ describe('claimRequestNotifier', () => {
     expect(body).toContain('Sam');
     expect(body).toContain('Dad');
     expect(body).toContain('يريد'); // "wants" — proves Arabic copy, not English
+  });
+
+  test('retrying the same pending request event notifies the creator only once', async () => {
+    await seedGroup('g1', 'Trip', 'creator');
+    await seedToken('creator');
+    const sendEach = mockSendEach(1);
+
+    await fire(absent(), snap(pending()), 'evt-claim-request-retry');
+    await fire(absent(), snap(pending()), 'evt-claim-request-retry');
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
+  });
+
+  test('retrying the same decision event notifies the requester only once', async () => {
+    await seedGroup('g1', 'Trip', 'creator');
+    await seedToken('R');
+    const sendEach = mockSendEach(1);
+
+    await fire(
+      snap(pending()),
+      snap(pending({ status: 'claimed' })),
+      'evt-claim-decision-retry',
+    );
+    await fire(
+      snap(pending()),
+      snap(pending({ status: 'claimed' })),
+      'evt-claim-decision-retry',
+    );
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
   });
 });
