@@ -3765,6 +3765,12 @@ abstract class AppLocalizations {
   /// **'Closed · spending frozen'**
   String get eventClosedBanner;
 
+  /// #708 — action on the closed-event banner that opens the shareable Trip Receipt (recap/closeout screen).
+  ///
+  /// In en, this message translates to:
+  /// **'View receipt'**
+  String get eventViewReceipt;
+
   /// No description provided for @editorEventClosedTitle.
   ///
   /// In en, this message translates to:

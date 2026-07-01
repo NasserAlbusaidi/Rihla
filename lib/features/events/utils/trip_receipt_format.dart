@@ -18,8 +18,10 @@ const String receiptSnapshotNote =
 
 /// Scope caveat stamped in both formats' META — a non-decomposed/residual group
 /// settlement settles debt at the group level only and is intentionally absent.
+/// (A cross-event group-scoped pack is a future slice of #704; until it ships
+/// this note must NOT point users at a "group receipt" that does not exist.)
 const String receiptScopeNote =
-    'Event-scoped. Group-level (cross-event) settlements are not reflected here — see the group receipt.';
+    'Event-scoped. Group-level (cross-event) settlements are not reflected here.';
 
 /// Fixed-decimal money string — value only, no symbol/code (currency is its own
 /// column/field). Precision via [AppFormatters.currencyConfig] with a graceful

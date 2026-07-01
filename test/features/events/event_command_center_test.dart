@@ -352,6 +352,59 @@ void main() {
     expect(find.text('AddExpenseRoute:event-1'), findsNothing);
   });
 
+  testWidgets(
+    '#708 close-wiring: closed banner surfaces "View receipt" → recap',
+    (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+        isClosed: true,
+        closedBy: 'uid-1',
+      );
+      final expense = _expense(
+        id: 'x1',
+        eventId: event.id,
+        payer: 'uid-1',
+        amount: Decimal.parse('10.000'),
+      );
+
+      await _pumpEventHubRouter(
+        tester,
+        event,
+        expenses: [expense],
+        balances: _settledBalances,
+      );
+
+      // The closed banner offers a receipt affordance...
+      final cta = find.byKey(EventKeys.closedBannerViewReceipt);
+      expect(cta, findsOneWidget);
+
+      // ...that routes to the recap/closeout screen (which hosts the export).
+      await tester.tap(cta);
+      await tester.pumpAndSettle();
+      expect(find.text('RecapRoute:event-1'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#708 close-wiring: no receipt CTA on a closed event with no expenses',
+    (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+        isClosed: true,
+        closedBy: 'uid-1',
+      );
+
+      await _pumpEventHubRouter(tester, event);
+
+      // Banner is present, but there is nothing to export → no receipt CTA
+      // (mirrors the cover-header recap entry, hidden when there are no expenses).
+      expect(find.byKey(EventKeys.closedBanner), findsOneWidget);
+      expect(find.byKey(EventKeys.closedBannerViewReceipt), findsNothing);
+    },
+  );
+
   testWidgets('settings button routes to the event settings path', (
     tester,
   ) async {
@@ -722,6 +775,12 @@ Future<void> _pumpEventHubRouter(
                 path: 'settings',
                 builder: (_, state) => Scaffold(
                   body: Text('SettingsRoute:${state.pathParameters['eid']}'),
+                ),
+              ),
+              GoRoute(
+                path: 'recap',
+                builder: (_, state) => Scaffold(
+                  body: Text('RecapRoute:${state.pathParameters['eid']}'),
                 ),
               ),
             ],

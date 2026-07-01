@@ -36,6 +36,8 @@ abstract final class EventKeys {
   static const closeEventTile = Key('event_close_tile');
   static const closeEventConfirmButton = Key('event_close_confirm_button');
   static const closedBanner = Key('event_closed_banner');
+  // #708 close-wiring: closed-event banner surfaces the Trip Receipt export.
+  static const closedBannerViewReceipt = Key('event_closed_banner_view_receipt');
 
   // Recap screen (#202 Slice 1)
   static const recapScreen = Key('event_recap_screen');
