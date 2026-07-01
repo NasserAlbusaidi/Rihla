@@ -4,6 +4,30 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] — 2026-07-01
+
+Closed-track validation build for the event-driven connectivity fix, plus the
+current post-1.7.0 money-trust work already merged to `main`.
+
+### Added
+- **Trip receipt proof packs (#704/#776/#778).** Event recaps can export CSV and
+  PDF proof packs for tester review.
+- **Shareable recap and settle-up handoff work (#202/#367/#717/#721/#722/#723).**
+  Recaps gained richer money summaries, a shareable PNG card, close-state
+  spending snapshots, clearer settle-up CTAs, and numberless WhatsApp payment
+  notifications.
+
+### Changed
+- **Settle-up stale-amount revalidation (#719/#773).** Event and group settle-up
+  writes now revalidate the amount immediately before commit so stale screens
+  cannot submit outdated balances.
+
+### Fixed
+- **Offline replay balance freshness (#633/#777).** Connectivity now treats
+  pending writes and balance aggregate freshness as separate barriers, keeping
+  home balance reads on the once-path until server aggregates catch up after
+  offline replay or join fanout.
+
 ## [1.7.0] — 2026-06-29
 
 Ledger and money-trust release. Group settle-ups now decompose into per-event
