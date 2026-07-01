@@ -5,7 +5,17 @@ import '../models/expense_model.dart';
 
 /// Why an expense surfaced in the pre-settlement review sheet (#204). These are
 /// display-only warnings — none of them change a balance.
-enum ReviewReason { exactSplit, customParticipants, personal, largeAmount }
+enum ReviewReason {
+  exactSplit,
+  customParticipants,
+  personal,
+  largeAmount,
+
+  /// The payer is no longer a live member of the group — a departed-payer
+  /// expense (the #249 conservation-gap class). Only fires when the caller
+  /// supplies the live-member set (see [detectReviewWorthyExpenses]).
+  payerNotInParticipants,
+}
 
 /// A single review-worthy finding: one [expense] flagged for one [reason]. An
 /// expense can produce several flags (e.g. an exact split that is also large).
@@ -34,6 +44,7 @@ final Decimal _largeFractionDefault = Decimal.parse('0.5');
 List<ReviewFlag> detectReviewWorthyExpenses(
   List<Expense> expenses, {
   Decimal? largeFraction,
+  Set<String> activeParticipantIds = const {},
 }) {
   final frac = largeFraction ?? _largeFractionDefault;
   final live = expenses.where((e) => !e.isDeleted).toList();
@@ -56,6 +67,14 @@ List<ReviewFlag> detectReviewWorthyExpenses(
     }
     if (e.scope == ExpenseScope.personal) {
       flags.add(ReviewFlag(e, ReviewReason.personal));
+    }
+    // An empty [activeParticipantIds] means "live-member set unknown" (old
+    // single-arg callers / tests) — skip, so the check never false-fires on
+    // every payer. The caller MUST pass the LIVE-member set (never the
+    // append-only event.participantIds, which never sheds a departed payer).
+    if (activeParticipantIds.isNotEmpty &&
+        !activeParticipantIds.contains(e.payerParticipantId)) {
+      flags.add(ReviewFlag(e, ReviewReason.payerNotInParticipants));
     }
     final total = totalByCurrency[e.currency] ?? Decimal.zero;
     final count = countByCurrency[e.currency] ?? 0;

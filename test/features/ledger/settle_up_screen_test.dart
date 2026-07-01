@@ -20,6 +20,7 @@ import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -88,6 +89,7 @@ void main() {
     SettlementService? settlementService,
     bool router = false,
     String? preSelectedMemberId,
+    List<GroupMember>? groupMembers,
     List<Override> extraOverrides = const [],
   }) {
     final overrides = [
@@ -102,7 +104,9 @@ void main() {
       eventSettlementsProvider(eventRef).overrideWith(
         (ref) => settlementsStream ?? Stream.value(const <Settlement>[]),
       ),
-      groupMembersProvider(groupId).overrideWith((ref) => Stream.value([])),
+      groupMembersProvider(
+        groupId,
+      ).overrideWith((ref) => Stream.value(groupMembers ?? const [])),
       // #261: SettleUpScreen now gates on the group resolving to read its
       // currency. Override groupDetailProvider (it otherwise binds real
       // Firestore) or the screen hangs on the loader. createdBy is a literal,
@@ -242,6 +246,79 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#204: an expense paid by a DEPARTED member surfaces "Payer left" — proves '
+    'the callsite feeds liveMemberIds, NOT the append-only participantIds',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // "gone" was a participant when they paid (so they remain in the
+      // append-only participantIds) but has since LEFT the group (hard-delete →
+      // absent from the live roster). Correct wiring diffs the payer against
+      // liveMemberIds {alice,bob} → flags it. A regression to participantIds
+      // {alice,bob,gone} would NOT flag it and this test would fail (no sheet).
+      final eventWithDeparted = Event(
+        id: eventId,
+        groupId: groupId,
+        name: 'Beach Trip',
+        type: EventType.trip,
+        createdBy: 'alice',
+        participantIds: const ['alice', 'bob', 'gone'],
+        participantNames: const {'alice': 'Alice', 'bob': 'Bob', 'gone': 'Zaid'},
+        modules: const EventModules(),
+        createdAt: DateTime(2026, 5, 16),
+      );
+      // A single plain global/equal expense paid by the departed member → the
+      // ONLY review reason is payerNotInParticipants, so the sheet's very
+      // presence is the discriminator.
+      final departedPayerExpense = [
+        Expense(
+          id: 'e-gone',
+          tripId: eventId,
+          payerParticipantId: 'gone',
+          amount: Decimal.parse('20.000'),
+          description: 'Taxi',
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026, 5, 16),
+          createdBy: 'gone',
+        ),
+      ];
+      // Live roster: alice + bob only. "gone" is absent (hard-deleted on leave).
+      final liveMembers = [
+        GroupMember(
+          id: 'm-alice',
+          groupId: groupId,
+          userId: 'alice',
+          displayName: 'Alice',
+          role: 'CREATOR',
+          joinedAt: DateTime(2026, 5, 16),
+        ),
+        GroupMember(
+          id: 'm-bob',
+          groupId: groupId,
+          userId: 'bob',
+          displayName: 'Bob',
+          role: 'MEMBER',
+          joinedAt: DateTime(2026, 5, 16),
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          eventStream: Stream.value(eventWithDeparted),
+          expensesStream: Stream.value(departedPayerExpense),
+          groupMembers: liveMembers,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
+      expect(find.text('Payer left'), findsOneWidget);
+      expect(find.text('1 paid by someone who left'), findsOneWidget);
     },
   );
 

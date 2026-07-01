@@ -66,12 +66,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   bool _reviewSheetShown = false;
 
   /// #204: on first entry, if the event has review-worthy expenses (exact /
-  /// custom-participant / personal / unusually-large), surface the non-blocking
-  /// review sheet before the user settles. Detection is pure + display-only; the
-  /// sheet never blocks settlement.
-  void _maybeShowReviewSheet(BuildContext context, List<Expense> expenses) {
+  /// custom-participant / personal / unusually-large / paid-by-a-departed-member),
+  /// surface the non-blocking review sheet before the user settles. Detection is
+  /// pure + display-only; the sheet never blocks settlement.
+  ///
+  /// [liveMemberIds] is the LIVE-member set (`!isTombstone` group members) — the
+  /// only set that sheds a departed payer. Never pass `event.participantIds`: it
+  /// is append-only and never scrubbed, so the departed-payer flag would be dead.
+  void _maybeShowReviewSheet(
+    BuildContext context,
+    List<Expense> expenses,
+    Set<String> liveMemberIds,
+  ) {
     if (_reviewSheetShown) return;
-    final flags = detectReviewWorthyExpenses(expenses);
+    final flags = detectReviewWorthyExpenses(
+      expenses,
+      activeParticipantIds: liveMemberIds,
+    );
     if (flags.isEmpty) return;
     _reviewSheetShown = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -169,8 +180,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
     final currentUid = ref.watch(currentUserIdProvider);
-    final groupMembers =
-        ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ?? [];
+    final groupMembersAsync = ref.watch(groupMembersProvider(widget.groupId));
+    final groupMembers = groupMembersAsync.valueOrNull ?? [];
 
     // #249: member-id sets for the per-event balance universe. The universe
     // itself (and the name maps + participants derived from it) is built inside
@@ -195,7 +206,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               child: expensesAsync.when(
                 data: (expenses) {
                   final settlements = settlementsAsync.valueOrNull ?? const [];
-                  _maybeShowReviewSheet(context, expenses); // #204
+                  // #204: gate on members RESOLVED so liveMemberIds is
+                  // authoritative — else a cold-start race (expenses resolve
+                  // before members) latches the one-shot with an empty live set
+                  // and permanently drops the departed-payer flag for the entry.
+                  if (groupMembersAsync.hasValue) {
+                    _maybeShowReviewSheet(context, expenses, liveMemberIds);
+                  }
 
                   // #249: fold departed-member split recipients into the
                   // balance universe so settle-up suggestions conserve. The

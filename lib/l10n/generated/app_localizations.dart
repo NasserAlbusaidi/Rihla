@@ -2348,6 +2348,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 large expense} other{{count} large expenses}}'**
   String preSettleReviewLargeCount(int count);
 
+  /// Count summary line for expenses paid by a member who has since left the group in the pre-settlement review sheet (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 paid by someone who left} other{{count} paid by people who left}}'**
+  String preSettleReviewPayerLeftCount(int count);
+
   /// Per-item reason chip: the expense uses an exact split (#204).
   ///
   /// In en, this message translates to:
@@ -2371,6 +2377,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Large amount'**
   String get preSettleReviewReasonLarge;
+
+  /// Per-item reason chip: the expense was paid by a member who has since left the group (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Payer left'**
+  String get preSettleReviewReasonPayerLeft;
 
   /// Trailing line when more review-worthy expenses exist than the sheet lists (#204).
   ///
