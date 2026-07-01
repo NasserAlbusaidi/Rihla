@@ -14,6 +14,7 @@ import '../models/event_model.dart';
 import '../models/event_recap.dart';
 import '../providers/trip_receipt_provider.dart';
 import '../utils/trip_receipt_csv.dart';
+import '../utils/trip_receipt_pdf.dart';
 import 'recap_share_card.dart';
 
 /// Opens the #722 share-recap preview: the [RecapShareCard] poster (WYSIWYG, in
@@ -63,6 +64,7 @@ class _RecapShareSheetState extends ConsumerState<_RecapShareSheet> {
   final GlobalKey _cardKey = GlobalKey();
   bool _busy = false;
   bool _csvBusy = false;
+  bool _pdfBusy = false;
 
   Future<void> _share() async {
     if (_busy) return;
@@ -112,6 +114,29 @@ class _RecapShareSheetState extends ConsumerState<_RecapShareSheet> {
     }
   }
 
+  Future<void> _exportPdf() async {
+    if (_pdfBusy) return;
+    final receipt = ref.read(tripReceiptProvider(widget.eventRef)).value;
+    if (receipt == null) return; // gated on AsyncData; defensive
+    setState(() => _pdfBusy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final l10n = context.l10n;
+    try {
+      // Building the PDF is async (font load + layout), unlike the sync CSV — so
+      // re-check `mounted` before touching context again for the share origin.
+      final bytes = await tripReceiptToPdf(receipt, l10n);
+      if (!mounted) return;
+      await sharePdf(context, bytes);
+      if (mounted) navigator.pop();
+    } catch (_) {
+      if (mounted) navigator.pop();
+      _showError(messenger, l10n.recapShareError);
+    } finally {
+      if (mounted) setState(() => _pdfBusy = false);
+    }
+  }
+
   void _showError(ScaffoldMessengerState messenger, String message) {
     messenger.showSnackBar(
       // No action → auto-dismisses; explicit duration per the #411 snackbar trap.
@@ -123,7 +148,7 @@ class _RecapShareSheetState extends ConsumerState<_RecapShareSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = context.spacing;
-    final csvReady = ref
+    final receiptReady = ref
         .watch(tripReceiptProvider(widget.eventRef))
         .maybeWhen(data: (r) => !r.isEmpty, orElse: () => false);
     return SafeArea(
@@ -171,12 +196,12 @@ class _RecapShareSheetState extends ConsumerState<_RecapShareSheet> {
               icon: Iconsax.export_1,
             ),
             SizedBox(height: s.space8),
-            // Secondary: the full data proof pack (#704). Disabled until the
-            // receipt resolves (AsyncData) so a one-shot CSV never exports a
-            // partially-loaded snapshot.
+            // Secondary: the full data proof pack (#704). Both are disabled until
+            // the receipt resolves (AsyncData) so an export never captures a
+            // partially-loaded snapshot. CSV = raw data; PDF = formatted print.
             TextButton.icon(
               key: EventKeys.recapExportCsvButton,
-              onPressed: (_csvBusy || !csvReady) ? null : _exportCsv,
+              onPressed: (_csvBusy || !receiptReady) ? null : _exportCsv,
               icon: _csvBusy
                   ? const SizedBox(
                       width: 16,
@@ -185,6 +210,18 @@ class _RecapShareSheetState extends ConsumerState<_RecapShareSheet> {
                     )
                   : const Icon(Iconsax.document_download),
               label: Text(context.l10n.recapExportCsvButton),
+            ),
+            TextButton.icon(
+              key: EventKeys.recapExportPdfButton,
+              onPressed: (_pdfBusy || !receiptReady) ? null : _exportPdf,
+              icon: _pdfBusy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Iconsax.document_text),
+              label: Text(context.l10n.recapExportPdfButton),
             ),
           ],
         ),
