@@ -10,6 +10,7 @@ import 'package:safar/shared/widgets/r_icon_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/connectivity_provider.dart';
+import 'package:safar/core/providers/balance_aggregate_freshness_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -434,7 +435,10 @@ void main() {
       // Type a valid group name. With autovalidateMode.onUserInteraction the
       // form re-validates on input, so the stale error must clear WITHOUT
       // re-submitting (the device-name field is pre-filled and valid).
-      await tester.enterText(find.byKey(GroupKeys.groupNameInput), 'Beach Trip');
+      await tester.enterText(
+        find.byKey(GroupKeys.groupNameInput),
+        'Beach Trip',
+      );
       await tester.pumpAndSettle();
 
       expect(find.text("Name can't be empty."), findsNothing);
@@ -827,6 +831,86 @@ void main() {
     });
 
     testWidgets(
+      '#633: successful join marks the group aggregate dirty before routing',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Joiner',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+        await fakeDb.collection('groups').doc('g-joined').set({
+          'name': 'Trip',
+          'inviteCode': 'ABCD23',
+          'createdBy': 'uid-owner',
+          'memberIds': ['uid-owner', 'uid-joiner'],
+          'currency': 'OMR',
+          'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+        });
+
+        final router = GoRouter(
+          initialLocation: '/join',
+          routes: [
+            GoRoute(
+              path: '/join',
+              builder: (context, state) =>
+                  const JoinGroupScreen(initialInviteCode: 'ABCD23'),
+            ),
+            GoRoute(
+              path: '/group/:gid',
+              builder: (context, state) =>
+                  const Scaffold(body: Text('group-landing')),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              notificationPromptProvider.overrideWithValue(_NoopPrompt()),
+              groupLoadingProvider.overrideWith((ref) => false),
+              groupErrorProvider.overrideWith((ref) => null),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-joiner',
+                  joinGroupCallableOverride:
+                      ({required inviteCode, required displayName}) async {
+                        expect(inviteCode, 'ABCD23');
+                        expect(displayName, 'Joiner');
+                        return 'g-joined';
+                      },
+                ),
+              ),
+            ],
+            child: MaterialApp.router(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              routerConfig: router,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.enterText(find.byType(TextFormField).first, 'Joiner');
+        await tester.pump();
+        await tester.tap(find.byKey(GroupKeys.joinGroupButton));
+        await tester.pumpAndSettle();
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(MaterialApp)),
+        );
+        expect(find.text('group-landing'), findsOneWidget);
+        expect(
+          container.read(balanceAggregateFreshnessProvider),
+          contains('g-joined'),
+        );
+      },
+    );
+
+    testWidgets(
       '#293: name field is blank on a fresh join (no device-name bleed)',
       (tester) async {
         SharedPreferences.setMockInitialValues({
@@ -898,10 +982,7 @@ void main() {
       // auto-submit).
       await tester.enterText(codeField, 'abcd2');
       await tester.pump();
-      expect(
-        tester.widget<TextFormField>(codeField).controller!.text,
-        'ABCD2',
-      );
+      expect(tester.widget<TextFormField>(codeField).controller!.text, 'ABCD2');
       SharedPreferences.setMockInitialValues({
         'settings_device_name': 'Test User',
       });

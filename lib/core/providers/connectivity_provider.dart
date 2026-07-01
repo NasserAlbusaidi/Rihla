@@ -1,58 +1,116 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_config.dart';
+import 'balance_aggregate_freshness_provider.dart';
 
 /// Connectivity state
 enum ConnectivityStatus { online, offline, syncing }
 
+/// One-shot reachability probe (init + app-resume backstop): returns true when
+/// the server answered, false on a network error, null when inconclusive.
 typedef ConnectivityProbe = Future<bool?> Function();
+
+/// Live "is this snapshot from cache?" signal from the Firestore metadata
+/// listener — `true` = served from cache (offline / not-yet-replayed),
+/// `false` = served from the server (online). Injected in tests via a
+/// `StreamController` so offline transitions are driven without a live Firebase
+/// instance (`FakeFirebaseFirestore` acks instantly and can't model this).
+typedef ConnectivitySyncSignals = Stream<bool> Function();
+
+/// Waits for Firestore writes that were outstanding when called to reach the
+/// backend. This is the only signal that clears a queued-write `syncing` state:
+/// a reachability probe alone does not prove queued writes reached Firestore.
+typedef ConnectivityPendingWritesBarrier = Future<void> Function();
 
 /// Connectivity state provider
 final connectivityProvider =
     StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>((ref) {
-      return ConnectivityNotifier();
+      final aggregateFreshness = ref.read(
+        balanceAggregateFreshnessProvider.notifier,
+      );
+      return ConnectivityNotifier(
+        markBalanceAggregateMayBeStale: aggregateFreshness.markGroupDirty,
+      );
     });
 
-/// Connectivity state notifier.
+/// Connectivity state notifier — event-driven (#633).
 ///
-/// Checks connectivity by attempting a Firestore server-only read against
-/// the signed-in user's owner-only FCM token document.
+/// Connectivity is derived from the Firestore SDK's own signals rather than a
+/// wall-clock forced read:
 ///
-/// Firestore handles offline writes automatically via its persistence layer,
-/// so the offline→online auto-sync trigger is removed — there is no manual
-/// upload queue to flush.
+/// * A persistent metadata listener on the caller's owner-only
+///   `fcm_tokens/{uid}` document (`snapshots(includeMetadataChanges: true)`)
+///   flips state on `metadata.isFromCache`: a server snapshot (`false`) means
+///   online only when there is no pending queued write; a cache snapshot
+///   (`true`) means offline, but only once a server snapshot has been seen in
+///   this subscription, so the cold-start cache-first emission never
+///   false-flips to offline.
+/// * Queued-write `syncing` is cleared by Firestore's
+///   `waitForPendingWrites()` barrier, not by the reachability listener alone.
+///   That keeps balance surfaces on the once-path until local writes have
+///   actually reached the backend. Balance-affecting local writes also mark
+///   their group's aggregate as stale until the aggregate doc catches up,
+///   including when the write is accepted while already online.
+/// * A one-shot [ConnectivityProbe] fires on construct and on app-resume as a
+///   backstop for prompt offline detection before the first write / before the
+///   listener has seen the server. There is **no** periodic forced read.
 ///
-/// Pauses the periodic check when the app is backgrounded to avoid
-/// wasting Firestore reads while the user isn't looking.
+/// Firestore replays offline writes automatically via its persistence layer, so
+/// there is no manual upload queue to flush. The listener is cancelled while the
+/// app is backgrounded to avoid waking the radio.
 class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     with WidgetsBindingObserver {
-  Timer? _checkTimer;
   final ConnectivityProbe _connectivityProbe;
+  final ConnectivitySyncSignals _syncSignals;
+  final ConnectivityPendingWritesBarrier _pendingWritesBarrier;
+  final void Function(String groupId)? _markBalanceAggregateMayBeStale;
+  StreamSubscription<bool>? _syncSub;
 
-  /// [startPeriodicChecks] gates the 60s connectivity timer. Production leaves
-  /// it on; widget tests that mount a connectivity-watching screen pass `false`
-  /// to get a timer-free notifier, otherwise the periodic timer never settles
-  /// and `pumpAndSettle` hangs (the documented ConnectivityNotifier trap).
+  /// Whether a server snapshot has been observed since the current
+  /// subscription started. Guards against treating the cold-start cache-first
+  /// emission as an offline transition. Reset on every (re-)subscribe.
+  bool _sawServer = false;
+
+  /// Monotonically increasing token for pending-write replay waits. Only the
+  /// latest wait may clear `syncing`; older completions can race with newer
+  /// queued writes and must be ignored.
+  int _pendingReplayGeneration = 0;
+  bool _hasPendingReplay = false;
+
+  /// [startPeriodicChecks] gates the live connectivity mechanism (metadata
+  /// listener + init probe). Production leaves it on; widget tests that mount a
+  /// connectivity-watching screen pass `false` to get a listener-free notifier,
+  /// otherwise the never-ending stream keeps `pumpAndSettle` from settling (the
+  /// documented ConnectivityNotifier trap). Name kept for test compatibility.
   ConnectivityNotifier({
     ConnectivityProbe? connectivityProbe,
+    ConnectivitySyncSignals? syncSignals,
+    ConnectivityPendingWritesBarrier? pendingWritesBarrier,
+    void Function(String groupId)? markBalanceAggregateMayBeStale,
     bool startPeriodicChecks = true,
   }) : _connectivityProbe = connectivityProbe ?? _defaultConnectivityProbe,
+       _syncSignals = syncSignals ?? _defaultSyncSignals,
+       _pendingWritesBarrier =
+           pendingWritesBarrier ?? _defaultPendingWritesBarrier,
+       _markBalanceAggregateMayBeStale = markBalanceAggregateMayBeStale,
        super(ConnectivityStatus.online) {
     try {
       WidgetsBinding.instance.addObserver(this);
     } catch (_) {
       // No binding in unit tests — lifecycle observation skipped.
     }
-    if (startPeriodicChecks) _startPeriodicCheck();
+    if (startPeriodicChecks) _startLiveChecks();
   }
 
-  /// Whether the periodic connectivity timer is currently scheduled.
+  /// Whether the live connectivity subscription is currently active.
   @visibleForTesting
-  bool get isPeriodicCheckActive => _checkTimer != null;
+  bool get isLiveCheckActive => _syncSub != null;
 
+  /// Default one-shot probe: a server-source read of `fcm_tokens/{uid}`.
   static Future<bool?> _defaultConnectivityProbe() async {
     try {
       final uid = FirebaseConfig.currentUser?.uid;
@@ -72,49 +130,94 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
     }
   }
 
-  void _startPeriodicCheck() {
-    _checkTimer?.cancel();
-    _checkTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
-      await checkConnectivity();
-    });
+  /// Default live signal: the `fcm_tokens/{uid}` metadata listener mapped to
+  /// `metadata.isFromCache`. Returns an empty stream when there is no signed-in
+  /// user so the subscription never targets `.doc(null)`. `FirebaseConfig`
+  /// access throws `[core/no-app]` in unit tests without a Firebase app; the
+  /// caller ([_subscribeSyncSignals]) catches that and fails open.
+  static Stream<bool> _defaultSyncSignals() {
+    final uid = FirebaseConfig.currentUser?.uid;
+    if (uid == null) return const Stream<bool>.empty();
+    return FirebaseConfig.firestore
+        .collection('fcm_tokens')
+        .doc(uid)
+        .snapshots(includeMetadataChanges: true)
+        .map((snap) => snap.metadata.isFromCache);
+  }
+
+  static Future<void> _defaultPendingWritesBarrier() {
+    return FirebaseConfig.firestore.waitForPendingWrites();
+  }
+
+  void _startLiveChecks() {
+    _subscribeSyncSignals();
+    unawaited(checkConnectivity());
+  }
+
+  void _subscribeSyncSignals() {
+    _syncSub?.cancel();
+    _sawServer = false;
+    try {
+      _syncSub = _syncSignals().listen(
+        _onSyncSignal,
+        // Async Firestore errors (permission-denied, transient) bypass a
+        // synchronous try/catch — fail open, keep the current state.
+        onError: (Object _) {},
+      );
+    } catch (_) {
+      // No Firebase app / stream-build throw — fail open, no live subscription.
+      _syncSub = null;
+    }
+  }
+
+  /// Maps a live cache/server signal to a state transition.
+  void _onSyncSignal(bool isFromCache) {
+    if (!mounted) return;
+    if (!isFromCache) {
+      // Server answered. This proves reachability, not replay of arbitrary
+      // expense/settlement writes or refreshed aggregate triggers.
+      _sawServer = true;
+      if (!_hasPendingReplay) {
+        state = ConnectivityStatus.online;
+      }
+    } else if (_sawServer) {
+      // Dropped back to cache after having reached the server — offline.
+      if (!_hasPendingReplay) {
+        state = ConnectivityStatus.offline;
+      }
+    }
+    // else: cold-start cache-first emission before any server contact — ignore
+    // (the init/resume probe or a write-timeout drives offline instead).
+  }
+
+  Future<bool?> _isOnline() => _connectivityProbe();
+
+  /// One-shot connectivity check (init + app-resume backstop).
+  ///
+  /// Uses [Source.server] via the probe so the SDK attempts a real network
+  /// request. A null result is inconclusive and leaves state unchanged.
+  Future<void> checkConnectivity() async {
+    final isOnline = await _isOnline();
+    if (!mounted) return;
+
+    if (_hasPendingReplay) return;
+
+    if (isOnline == true) {
+      state = ConnectivityStatus.online;
+    } else if (isOnline == false) {
+      state = ConnectivityStatus.offline;
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      _checkTimer?.cancel();
-      _checkTimer = null;
+      _syncSub?.cancel();
+      _syncSub = null;
     } else if (state == AppLifecycleState.resumed) {
-      checkConnectivity();
-      _startPeriodicCheck();
-    }
-  }
-
-  /// Ping Firestore to check connectivity.
-  ///
-  /// Uses [Source.server] so the SDK attempts a real network request.
-  /// A [FirebaseException] with code `unavailable` or `deadline-exceeded`
-  /// indicates no network. Permission/auth/probe errors are not treated as
-  /// offline, because they still mean the server answered.
-  ///
-  /// Reads the caller's own `fcm_tokens/{uid}` document. A missing document
-  /// still proves the server is reachable, while avoiding any broad collection
-  /// read permission.
-  Future<bool?> _isOnline() => _connectivityProbe();
-
-  /// Check current connectivity and update state.
-  ///
-  /// Firestore handles offline write replay automatically, so there is no
-  /// manual sync trigger needed on the offline→online transition.
-  Future<void> checkConnectivity() async {
-    final isOnline = await _isOnline();
-    if (!mounted) return;
-
-    if (isOnline == true) {
-      state = ConnectivityStatus.online;
-    } else if (isOnline == false) {
-      state = ConnectivityStatus.offline;
+      _subscribeSyncSignals();
+      unawaited(checkConnectivity());
     }
   }
 
@@ -125,41 +228,87 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
 
   /// Note that a write was just accepted locally by the Firestore SDK.
   ///
+  /// When [groupId] is supplied, marks that group's balance aggregate dirty
+  /// regardless of connectivity state. A server-acked write can still reach
+  /// Firestore before the async aggregate trigger refreshes
+  /// `groups/{gid}/aggregates/balance`, so the home facade must keep using the
+  /// once-path until the aggregate matches the local Firestore view.
+  ///
   /// Surfaces the transient `syncing` ("Saved — will sync") state **only when
   /// currently offline** — the SDK has queued the write and will replay it on
-  /// reconnect (#357). When already online the write commits immediately, so
-  /// this is a no-op (the existing success affordance covers it). The periodic
-  /// probe resolves `syncing` back to `online`/`offline`, so no timer is added.
-  void noteLocalWrite() {
+  /// reconnect (#357). When already online the connectivity state is unchanged.
+  /// The pending-write barrier resolves `syncing` back to `online` only after
+  /// outstanding writes reach the backend.
+  void noteLocalWrite({String? groupId}) {
+    _markStaleAggregate(groupId);
     if (state == ConnectivityStatus.offline) {
       state = ConnectivityStatus.syncing;
+      _beginPendingWriteReplayBarrier();
     }
   }
 
   /// Note that a write TIMED OUT waiting for the server ack (#412).
   ///
   /// Unlike [noteLocalWrite], this is unconditional: a timed-out write is
-  /// stronger evidence of being offline than the probe state, which can lag
-  /// reality by up to 60s. The SDK has the write queued; surface
-  /// "Saved — will sync" regardless. The periodic/resume probe resolves
-  /// `syncing` back to `online`/`offline`, so no timer is added.
-  void noteQueuedWrite() {
+  /// strong evidence of being offline. The SDK has the write queued; surface
+  /// "Saved — will sync" regardless. The pending-write barrier resolves
+  /// `syncing` back to `online` only after outstanding writes reach the backend.
+  void noteQueuedWrite({String? groupId}) {
+    _markStaleAggregate(groupId);
     state = ConnectivityStatus.syncing;
+    _beginPendingWriteReplayBarrier();
+  }
+
+  void _markStaleAggregate(String? groupId) {
+    if (groupId == null || groupId.isEmpty) return;
+    _markBalanceAggregateMayBeStale?.call(groupId);
+  }
+
+  void _beginPendingWriteReplayBarrier() {
+    final generation = ++_pendingReplayGeneration;
+    _hasPendingReplay = true;
+    late final Future<void> pendingWrites;
+    try {
+      pendingWrites = _pendingWritesBarrier();
+    } catch (_) {
+      // Unit tests without a Firebase app can still exercise the in-memory
+      // state machine. Keep the visible `syncing` state and let explicit test
+      // setters/probes drive any later transition.
+      _hasPendingReplay = false;
+      return;
+    }
+    unawaited(
+      pendingWrites
+          .then<void>((_) {
+            if (!mounted || generation != _pendingReplayGeneration) return;
+            _hasPendingReplay = false;
+            state = ConnectivityStatus.online;
+          })
+          .catchError((Object _) {
+            if (!mounted || generation != _pendingReplayGeneration) return;
+            _hasPendingReplay = false;
+            state = ConnectivityStatus.offline;
+          }),
+    );
   }
 
   /// Set online state
   void setOnline() {
+    _hasPendingReplay = false;
+    _pendingReplayGeneration++;
     state = ConnectivityStatus.online;
   }
 
   /// Set offline state
   void setOffline() {
+    _hasPendingReplay = false;
+    _pendingReplayGeneration++;
     state = ConnectivityStatus.offline;
   }
 
   @override
   void dispose() {
-    _checkTimer?.cancel();
+    _syncSub?.cancel();
     try {
       WidgetsBinding.instance.removeObserver(this);
     } catch (_) {

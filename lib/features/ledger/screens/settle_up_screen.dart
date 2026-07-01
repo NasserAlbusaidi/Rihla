@@ -738,10 +738,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
 
       ledgerRevisionNotifier.state++; // #104: refresh home balance
       if (outcome == WriteAck.acked) {
-        connectivityNotifier.noteLocalWrite(); // #357
+        connectivityNotifier.noteLocalWrite(groupId: widget.groupId); // #357
       } else {
-        connectivityNotifier
-            .noteQueuedWrite(); // #412: queued — force "will sync"
+        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
       }
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

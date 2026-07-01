@@ -2,8 +2,9 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/supported_currencies.dart';
-import '../../../core/services/money_serializer.dart';
+import '../../../core/providers/balance_aggregate_freshness_provider.dart';
 import '../../../core/providers/connectivity_provider.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
@@ -33,8 +34,8 @@ final groupSettlementServiceProvider = Provider<GroupSettlementService>(
 /// decomposed group settle-up).
 final settlementCorrectionServiceProvider =
     Provider<SettlementCorrectionService>(
-  (ref) => SettlementCorrectionService(),
-);
+      (ref) => SettlementCorrectionService(),
+    );
 
 /// Provider for [GroupActivityService].
 final groupActivityServiceProvider = Provider<GroupActivityService>(
@@ -202,8 +203,10 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
 /// event (`isLoading && !hasValue`) is NOT flagged, matching the live provider's
 /// separate loading-skip. A soft-deleted event never enters the events list, so
 /// it never appears here.
-final groupFailedEventIdsProvider =
-    Provider.family<Set<String>, String>((ref, groupId) {
+final groupFailedEventIdsProvider = Provider.family<Set<String>, String>((
+  ref,
+  groupId,
+) {
   final events =
       ref.watch(groupEventsProvider(groupId)).valueOrNull ?? const <Event>[];
   final failed = <String>{};
@@ -233,20 +236,21 @@ final groupFailedEventIdsProvider =
 /// appear here.
 final groupTaggedEventSettlementsProvider =
     Provider.family<List<Settlement>, String>((ref, groupId) {
-  final events =
-      ref.watch(groupEventsProvider(groupId)).valueOrNull ?? const <Event>[];
-  final tagged = <Settlement>[];
-  for (final event in events) {
-    final eventRef = (groupId: groupId, eventId: event.id);
-    final settlements =
-        ref.watch(eventSettlementsProvider(eventRef)).valueOrNull ??
-        const <Settlement>[];
-    for (final s in settlements) {
-      if (s.groupSettleUpId != null && !s.isDeleted) tagged.add(s);
-    }
-  }
-  return tagged;
-});
+      final events =
+          ref.watch(groupEventsProvider(groupId)).valueOrNull ??
+          const <Event>[];
+      final tagged = <Settlement>[];
+      for (final event in events) {
+        final eventRef = (groupId: groupId, eventId: event.id);
+        final settlements =
+            ref.watch(eventSettlementsProvider(eventRef)).valueOrNull ??
+            const <Settlement>[];
+        for (final s in settlements) {
+          if (s.groupSettleUpId != null && !s.isDeleted) tagged.add(s);
+        }
+      }
+      return tagged;
+    });
 
 /// Pure reduction from a group's events, members, and money records to a
 /// [GroupBalances]. Extracted from [groupBalancesProvider] (#104) so the live
@@ -451,7 +455,8 @@ GroupBalances computeGroupBalances({
             groupAdjByCurrency[currency]?[uid] ?? Decimal.zero;
         return UserBalance(
           participantId: uid,
-          displayName: memberNames[uid] ??
+          displayName:
+              memberNames[uid] ??
               MemberNameResolver.format(displaysByUid[uid]!),
           totalPaid: totalPaidByCurrency[currency]?[uid] ?? Decimal.zero,
           totalOwed: totalOwedByCurrency[currency]?[uid] ?? Decimal.zero,
@@ -533,17 +538,16 @@ Map<String, Map<String, Map<String, Decimal>>> _buildPerEventBreakdown(
 
     if (eventBuckets.isEmpty) {
       for (final p in participants) {
-        breakdown.putIfAbsent(p.id, () => {})[event.id] = {
-          'OMR': Decimal.zero,
-        };
+        breakdown.putIfAbsent(p.id, () => {})[event.id] = {'OMR': Decimal.zero};
       }
       continue;
     }
     eventBuckets.forEach((currency, eventBalances) {
       for (final b in eventBalances) {
         breakdown
-            .putIfAbsent(b.participantId, () => {})
-            .putIfAbsent(event.id, () => {})[currency] = b.netBalance;
+                .putIfAbsent(b.participantId, () => {})
+                .putIfAbsent(event.id, () => {})[currency] =
+            b.netBalance;
       }
     });
   }
@@ -576,13 +580,12 @@ final currentUserIdProvider = Provider<String?>((ref) {
 /// Fields:
 /// One currency's slice of the cross-group balance (#261).
 /// [net] == [owedToUser] - [userOwes] for this currency.
-typedef CurrencyBalance =
-    ({
-      String currency,
-      Decimal net,
-      Decimal owedToUser,
-      Decimal userOwes,
-    });
+typedef CurrencyBalance = ({
+  String currency,
+  Decimal net,
+  Decimal owedToUser,
+  Decimal userOwes,
+});
 
 /// Cross-group balance, BUCKETED per currency (#261 — there is no FX, so
 /// amounts in different currencies are NEVER summed together).
@@ -593,12 +596,11 @@ typedef CurrencyBalance =
 ///   last but is NEVER dropped). Empty ⇒ all settled / no groups.
 /// - [groupCount]: total number of groups the user belongs to.
 /// - [isLoading]: true if some group balance data is still loading.
-typedef CrossGroupBalance =
-    ({
-      List<CurrencyBalance> byCurrency,
-      int groupCount,
-      bool isLoading,
-    });
+typedef CrossGroupBalance = ({
+  List<CurrencyBalance> byCurrency,
+  int groupCount,
+  bool isLoading,
+});
 
 /// #70: the currency for the cross-group ALL-SETTLED hero state — the user's
 /// single distinct group currency, or null when they have zero groups or groups
@@ -712,50 +714,55 @@ typedef GroupBalancesOnce = ({
 /// headline and the OUTBOUND in-group settle-up screen can never diverge.
 final groupBalancesOnceProvider = FutureProvider.autoDispose
     .family<GroupBalancesOnce, String>((ref, groupId) async {
-  // Register all stream dependencies SYNCHRONOUSLY (before any await) so the
-  // provider re-runs when a list emits or the ledger revision bumps.
-  final eventsFut = ref.watch(groupEventsProvider(groupId).future);
-  final membersFut = ref.watch(groupMembersProvider(groupId).future);
-  final groupSettlementsFut =
-      ref.watch(groupSettlementsProvider(groupId).future);
-  ref.watch(ledgerRevisionProvider);
+      // Register all stream dependencies SYNCHRONOUSLY (before any await) so the
+      // provider re-runs when a list emits or the ledger revision bumps.
+      final eventsFut = ref.watch(groupEventsProvider(groupId).future);
+      final membersFut = ref.watch(groupMembersProvider(groupId).future);
+      final groupSettlementsFut = ref.watch(
+        groupSettlementsProvider(groupId).future,
+      );
+      ref.watch(ledgerRevisionProvider);
 
-  final events = await eventsFut;
-  final members = await membersFut;
-  final groupSettlements = await groupSettlementsFut;
+      final events = await eventsFut;
+      final members = await membersFut;
+      final groupSettlements = await groupSettlementsFut;
 
-  final expenseService = ref.read(expenseServiceProvider);
-  final settlementService = ref.read(settlementServiceProvider);
-  final allExpenses = <Expense>[];
-  final allEventSettlements = <Settlement>[];
-  final failedEventIds = <String>{};
-  for (final event in events) {
-    try {
-      // Read BOTH before mutating the accumulators — if either throws, neither
-      // is added (the OR-drop semantics of the live `:153-156` skip: an event
-      // with one failed money read contributes 0, never half-counted).
-      final eventExpenses =
-          await expenseService.getExpenses(groupId, event.id);
-      final eventSettlements =
-          await settlementService.getSettlements(groupId, event.id);
-      allExpenses.addAll(eventExpenses);
-      allEventSettlements.addAll(eventSettlements);
-    } catch (_) {
-      failedEventIds.add(event.id);
-    }
-  }
+      final expenseService = ref.read(expenseServiceProvider);
+      final settlementService = ref.read(settlementServiceProvider);
+      final allExpenses = <Expense>[];
+      final allEventSettlements = <Settlement>[];
+      final failedEventIds = <String>{};
+      for (final event in events) {
+        try {
+          // Read BOTH before mutating the accumulators — if either throws, neither
+          // is added (the OR-drop semantics of the live `:153-156` skip: an event
+          // with one failed money read contributes 0, never half-counted).
+          final eventExpenses = await expenseService.getExpenses(
+            groupId,
+            event.id,
+          );
+          final eventSettlements = await settlementService.getSettlements(
+            groupId,
+            event.id,
+          );
+          allExpenses.addAll(eventExpenses);
+          allEventSettlements.addAll(eventSettlements);
+        } catch (_) {
+          failedEventIds.add(event.id);
+        }
+      }
 
-  return (
-    balances: computeGroupBalances(
-      events: events,
-      members: members,
-      allExpenses: allExpenses,
-      allEventSettlements: allEventSettlements,
-      groupSettlements: groupSettlements,
-    ),
-    failedEventIds: failedEventIds,
-  );
-});
+      return (
+        balances: computeGroupBalances(
+          events: events,
+          members: members,
+          allExpenses: allExpenses,
+          allEventSettlements: allEventSettlements,
+          groupSettlements: groupSettlements,
+        ),
+        failedEventIds: failedEventIds,
+      );
+    });
 
 /// Home cross-group summary plus whether ANY group's one-shot dropped an event
 /// (#244). [partial] ⇒ [balance] omits one or more events' money (a per-event
@@ -775,8 +782,8 @@ typedef CrossGroupBalanceOnce = ({CrossGroupBalance balance, bool partial});
 /// `balanceReconciler` backfill), degraded, or malformed.
 final groupBalanceAggregateProvider =
     StreamProvider.family<GroupBalanceAggregate?, String>((ref, groupId) {
-  return ref.watch(groupServiceProvider).watchBalanceAggregate(groupId);
-});
+      return ref.watch(groupServiceProvider).watchBalanceAggregate(groupId);
+    });
 
 /// What the home surfaces need from one group's balances, source-agnostic.
 ///
@@ -797,6 +804,83 @@ typedef HomeGroupBalance = ({
   bool fromAggregate,
 });
 
+HomeGroupBalance _homeBalanceFromAggregate(
+  GroupBalanceAggregate aggregate,
+  String uid,
+) {
+  return (
+    userNet: aggregate.netFor(uid),
+    userPerEventNet: aggregate.perEventNetFor(uid),
+    eventCount: aggregate.eventCount,
+    partial: false,
+    fromAggregate: true,
+  );
+}
+
+HomeGroupBalance _homeBalanceFromOnce(GroupBalancesOnce once, String uid) {
+  final balances = once.balances;
+  // Mirror the bucket key-set of the once-path balances: zero when the uid is
+  // absent from a bucket (matches GroupBalanceAggregate.netFor).
+  return (
+    userNet: {
+      for (final entry in balances.balances.entries)
+        entry.key:
+            entry.value
+                .where((b) => b.participantId == uid)
+                .firstOrNull
+                ?.netBalance ??
+            Decimal.zero,
+    },
+    userPerEventNet:
+        balances.perEventBreakdown[uid] ??
+        const <String, Map<String, Decimal>>{},
+    eventCount: balances.eventCount,
+    partial: once.failedEventIds.isNotEmpty,
+    fromAggregate: false,
+  );
+}
+
+bool _decimalMapEquals(Map<String, Decimal> a, Map<String, Decimal> b) {
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    if (b[entry.key] != entry.value) return false;
+  }
+  return true;
+}
+
+bool _perEventNetEquals(
+  Map<String, Map<String, Decimal>> a,
+  Map<String, Map<String, Decimal>> b,
+) {
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    final other = b[entry.key];
+    if (other == null || !_decimalMapEquals(entry.value, other)) return false;
+  }
+  return true;
+}
+
+bool _aggregateMatchesOnce({
+  required HomeGroupBalance aggregate,
+  required HomeGroupBalance once,
+}) {
+  if (once.partial) return false;
+  return aggregate.eventCount == once.eventCount &&
+      _decimalMapEquals(aggregate.userNet, once.userNet) &&
+      _perEventNetEquals(aggregate.userPerEventNet, once.userPerEventNet);
+}
+
+void _clearStaleAggregateAfterBuild(Ref ref, String groupId) {
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
+  Future<void>.microtask(() {
+    if (disposed) return;
+    ref
+        .read(balanceAggregateFreshnessProvider.notifier)
+        .clearGroupDirty(groupId);
+  });
+}
+
 /// The SINGLE chooser between the server aggregate and the client once-path
 /// for home display (#366 spec §0.7). Decision table:
 ///
@@ -814,63 +898,58 @@ typedef HomeGroupBalance = ({
 /// settle-up and all in-group surfaces keep computing live.
 final homeGroupBalanceProvider =
     Provider.family<AsyncValue<HomeGroupBalance>, String>((ref, groupId) {
-  final uid = ref.watch(currentUserIdProvider);
-  if (uid == null) {
-    return const AsyncValue.data((
-      userNet: <String, Decimal>{},
-      userPerEventNet: <String, Map<String, Decimal>>{},
-      eventCount: 0,
-      partial: false,
-      fromAggregate: false,
-    ));
-  }
+      final uid = ref.watch(currentUserIdProvider);
+      if (uid == null) {
+        return const AsyncValue.data((
+          userNet: <String, Decimal>{},
+          userPerEventNet: <String, Map<String, Decimal>>{},
+          eventCount: 0,
+          partial: false,
+          fromAggregate: false,
+        ));
+      }
 
-  // #623: watch the derived bool, not the whole enum. The facade only branches
-  // on `== online`, so without `.select` every offline↔syncing transition
-  // (noteLocalWrite fires one per queued write) needlessly recomputes the
-  // balance for each group and the cross-group hero fold.
-  final online = ref.watch(
-    connectivityProvider.select((s) => s == ConnectivityStatus.online),
-  );
-  if (online) {
-    final aggAsync = ref.watch(groupBalanceAggregateProvider(groupId));
-    if (aggAsync.isLoading && !aggAsync.hasValue) {
-      return const AsyncValue.loading();
-    }
-    final aggregate = aggAsync.valueOrNull;
-    if (aggregate != null) {
-      return AsyncValue.data((
-        userNet: aggregate.netFor(uid),
-        userPerEventNet: aggregate.perEventNetFor(uid),
-        eventCount: aggregate.eventCount,
-        partial: false,
-        fromAggregate: true,
-      ));
-    }
-  }
+      // #623: watch the derived bool, not the whole enum. The facade only branches
+      // on `== online`, so without `.select` every offline↔syncing transition
+      // (noteLocalWrite fires one per queued write) needlessly recomputes the
+      // balance for each group and the cross-group hero fold.
+      final online = ref.watch(
+        connectivityProvider.select((s) => s == ConnectivityStatus.online),
+      );
+      final aggregateMayBeStale = ref.watch(
+        balanceAggregateFreshnessProvider.select(
+          (dirty) => dirty.contains(groupId),
+        ),
+      );
+      if (online) {
+        final aggAsync = ref.watch(groupBalanceAggregateProvider(groupId));
+        if (!aggregateMayBeStale && aggAsync.isLoading && !aggAsync.hasValue) {
+          return const AsyncValue.loading();
+        }
+        final aggregate = aggAsync.valueOrNull;
+        if (aggregate != null) {
+          final aggregateHome = _homeBalanceFromAggregate(aggregate, uid);
+          if (!aggregateMayBeStale) {
+            return AsyncValue.data(aggregateHome);
+          }
+          final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
+          return onceAsync.whenData((once) {
+            final onceHome = _homeBalanceFromOnce(once, uid);
+            if (_aggregateMatchesOnce(
+              aggregate: aggregateHome,
+              once: onceHome,
+            )) {
+              _clearStaleAggregateAfterBuild(ref, groupId);
+              return aggregateHome;
+            }
+            return onceHome;
+          });
+        }
+      }
 
-  final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
-  return onceAsync.whenData((once) {
-    final balances = once.balances;
-    // Mirror the bucket key-set of the once-path balances: zero when the uid
-    // is absent from a bucket (matches GroupBalanceAggregate.netFor).
-    return (
-      userNet: {
-        for (final entry in balances.balances.entries)
-          entry.key: entry.value
-                  .where((b) => b.participantId == uid)
-                  .firstOrNull
-                  ?.netBalance ??
-              Decimal.zero,
-      },
-      userPerEventNet: balances.perEventBreakdown[uid] ??
-          const <String, Map<String, Decimal>>{},
-      eventCount: balances.eventCount,
-      partial: once.failedEventIds.isNotEmpty,
-      fromAggregate: false,
-    );
-  });
-});
+      final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
+      return onceAsync.whenData((once) => _homeBalanceFromOnce(once, uid));
+    });
 
 /// Cross-group fold over [homeGroupBalanceProvider] for [BalanceHeroCard].
 ///
@@ -884,8 +963,9 @@ final homeGroupBalanceProvider =
 /// plus the "may be incomplete" notice, mirroring the #244 per-event OR-drop.
 /// ERROR is reserved for the total blackout (EVERY group hard-errors), where a
 /// zero "all settled" hero would be a lie.
-final crossGroupHomeBalanceProvider =
-    Provider<AsyncValue<CrossGroupBalanceOnce>>((ref) {
+final crossGroupHomeBalanceProvider = Provider<AsyncValue<CrossGroupBalanceOnce>>((
+  ref,
+) {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) {
     return const AsyncValue.data((

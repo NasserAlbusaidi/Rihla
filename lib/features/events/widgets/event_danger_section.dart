@@ -350,12 +350,17 @@ class EventDangerSection extends ConsumerWidget {
       final view = ref.read(ledgerViewProvider(eventRef));
       final snapshot = recap.isEmpty
           ? null
-          : SpendingSnapshot.from(recap: recap, balances: view.balances).toMap();
+          : SpendingSnapshot.from(
+              recap: recap,
+              balances: view.balances,
+            ).toMap();
 
       final connectivity = ref.read(connectivityProvider.notifier);
       final connectivityStatus = ref.read(connectivityProvider);
       final outcome = await awaitServerAck(
-        ref.read(eventServiceProvider).closeEvent(
+        ref
+            .read(eventServiceProvider)
+            .closeEvent(
               groupId: groupId,
               eventId: eventId,
               closedBy: uid,
@@ -500,9 +505,9 @@ class EventDangerSection extends ConsumerWidget {
         skipWait: connectivityStatus != ConnectivityStatus.online,
       );
       if (outcome == WriteAck.acked) {
-        connectivity.noteLocalWrite();
+        connectivity.noteLocalWrite(groupId: groupId);
       } else {
-        connectivity.noteQueuedWrite();
+        connectivity.noteQueuedWrite(groupId: groupId);
       }
       if (context.mounted) {
         context.go('/group/$groupId');
