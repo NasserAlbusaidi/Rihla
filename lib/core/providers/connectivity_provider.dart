@@ -23,7 +23,7 @@ typedef ConnectivitySyncSignals = Stream<bool> Function();
 
 /// Waits for Firestore writes that were outstanding when called to reach the
 /// backend. This is the only signal that clears a queued-write `syncing` state:
-/// a reachability probe alone does not prove money aggregates are fresh.
+/// a reachability probe alone does not prove queued writes reached Firestore.
 typedef ConnectivityPendingWritesBarrier = Future<void> Function();
 
 /// Connectivity state provider
@@ -52,7 +52,9 @@ final connectivityProvider =
 /// * Queued-write `syncing` is cleared by Firestore's
 ///   `waitForPendingWrites()` barrier, not by the reachability listener alone.
 ///   That keeps balance surfaces on the once-path until local writes have
-///   actually reached the backend.
+///   actually reached the backend. Balance-affecting local writes also mark
+///   their group's aggregate as stale until the aggregate doc catches up,
+///   including when the write is accepted while already online.
 /// * A one-shot [ConnectivityProbe] fires on construct and on app-resume as a
 ///   backstop for prompt offline detection before the first write / before the
 ///   listener has seen the server. There is **no** periodic forced read.
@@ -226,14 +228,20 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus>
 
   /// Note that a write was just accepted locally by the Firestore SDK.
   ///
+  /// When [groupId] is supplied, marks that group's balance aggregate dirty
+  /// regardless of connectivity state. A server-acked write can still reach
+  /// Firestore before the async aggregate trigger refreshes
+  /// `groups/{gid}/aggregates/balance`, so the home facade must keep using the
+  /// once-path until the aggregate matches the local Firestore view.
+  ///
   /// Surfaces the transient `syncing` ("Saved — will sync") state **only when
   /// currently offline** — the SDK has queued the write and will replay it on
-  /// reconnect (#357). When already online the write commits immediately, so
-  /// this is a no-op. The pending-write barrier resolves `syncing` back to
-  /// `online` only after outstanding writes reach the backend.
+  /// reconnect (#357). When already online the connectivity state is unchanged.
+  /// The pending-write barrier resolves `syncing` back to `online` only after
+  /// outstanding writes reach the backend.
   void noteLocalWrite({String? groupId}) {
+    _markStaleAggregate(groupId);
     if (state == ConnectivityStatus.offline) {
-      _markStaleAggregate(groupId);
       state = ConnectivityStatus.syncing;
       _beginPendingWriteReplayBarrier();
     }

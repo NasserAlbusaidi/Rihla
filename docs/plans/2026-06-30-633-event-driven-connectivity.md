@@ -3,57 +3,62 @@
 > Re-scoped issue (2026-06-26). The rebuild/dedupe half is **not real** (#623 already fixed it). The real
 > work: replace the unconditional `Timer.periodic(60s)` forced `Source.server` probe with SDK signals, so
 > `syncing` ("Saved — will sync") resolves when Firestore confirms outstanding writes reached the backend
-> instead of lagging up to 60s (the #682 stale-probe-window bug class). Subsumes #682.
+> instead of lagging up to 60s (the #682 stale-probe-window bug class). The PR also adds an aggregate
+> freshness barrier so home does not trust async aggregate docs before they catch up. Subsumes #682.
 
-## Scope guard — single-file refactor, public API frozen
+## Scope guard — connectivity + aggregate freshness boundary
 
-The **entire diff lives in `lib/core/providers/connectivity_provider.dart` + its tests.** The public surface
-of `ConnectivityNotifier` is preserved byte-for-byte, so **no consumer is edited** — including the three
-consumers that sit in `lib/features/events/` (`create_event_screen`, `event_danger_section`,
-`event_info_section`), which another agent is actively editing for #704. Frozen surface:
+This PR is no longer a single-file connectivity refactor. Gate found that the connectivity fix crosses the
+home balance display cache, because `waitForPendingWrites()` proves only that the client write reached
+Firestore; it does **not** prove `groups/{gid}/aggregates/balance` has been refreshed by the async Functions
+aggregator. The intended scope is:
 
-- `enum ConnectivityStatus { online, offline, syncing }` — all three states keep their exact meaning.
-- `connectivityProvider` (`StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>`).
-- `.notifier` methods used by lib: `noteLocalWrite()` (offline→syncing only), `noteQueuedWrite()`
-  (unconditional→syncing), `checkConnectivity()`.
-- Test-facing methods: `setOnline()/setOffline()/setSyncing()` (no lib callers — only widget tests).
-- Ctor params: `ConnectivityProbe? connectivityProbe`, `bool startPeriodicChecks` (kept; ~10 test files
-  pass `startPeriodicChecks: false`).
+- `lib/core/providers/connectivity_provider.dart`: replace the 60s forced-read loop with SDK-driven
+  reachability plus a pending-write replay barrier. The public enum and provider stay stable. The notifier
+  API changes additively: `noteLocalWrite({String? groupId})`, `noteQueuedWrite({String? groupId})`, and an
+  injectable `markBalanceAggregateMayBeStale` callback.
+- `lib/core/providers/balance_aggregate_freshness_provider.dart`: in-memory per-group dirty marker for
+  aggregate docs that may lag behind local Firestore writes.
+- `lib/features/groups/providers/group_balance_provider.dart`: when online but the group is dirty, compute the
+  home balance from the once-path and keep doing so until the aggregate doc matches that once-path result;
+  only then clear the dirty marker and trust the aggregate again.
+- Balance-affecting write callsites pass `groupId` into `noteLocalWrite` / `noteQueuedWrite`. This includes
+  expense and settlement writes, plus event writes that affect the aggregate event count.
+- Cache-isolation/auth-swap paths invalidate the dirty-marker provider together with connectivity so a
+  previous UID's aggregate freshness state cannot leak across users.
 
-Adding a constructor param and an internal mechanism is API-additive, not a break. **No `lib/` file outside
-`connectivity_provider.dart` changes** ⇒ zero collision with #704.
-
-**Test footprint (actual):** `connectivity_provider.dart` + its test, plus two setter-forced constructions
-that must opt out of the now-immediate live mechanism — `widget_coverage_test.dart` (×2) and
-`shared_widgets_theme_test.dart` (×1) switched to `ConnectivityNotifier(startPeriodicChecks: false)..setX()`.
-`flutter_test_config.dart` does not init Firebase, but the construct-time probe/listener made those pumps
-non-deterministic; `startPeriodicChecks:false` is the established idiom for a fixed-state notifier. All
-test-only; no `lib/` collision with #704.
+Non-goals remain unchanged: no Firestore rules changes, no Cloud Functions schema change, no money arithmetic
+rewrite, and no custom offline cache or sync queue.
 
 ## The bug (verified against code)
 
-- `ConnectivityNotifier` (`connectivity_provider.dart`) drives everything from a foreground
-  `Timer.periodic(60s)` (L77) → `checkConnectivity()` (L110) → `_defaultConnectivityProbe()` (L56-73): a
-  forced `get(GetOptions(source: Source.server))` on `fcm_tokens/{uid}`.
+- Before this PR, `ConnectivityNotifier` drove everything from a foreground `Timer.periodic(60s)` →
+  `checkConnectivity()` → `_defaultConnectivityProbe()`: a forced
+  `get(GetOptions(source: Source.server))` on `fcm_tokens/{uid}`.
 - That probe is the **sole resolver of `syncing`** — no app code calls `setOnline/setOffline`; only the
-  60s tick or `didChangeAppLifecycleState(resumed)` runs `checkConnectivity` (L83-92). So after an offline
-  money-write (`noteQueuedWrite` → `syncing`, L146-148), "Saved — will sync" can persist **up to 60s** past
-  the actual reconnect. That lag IS #682.
+  60s tick or `didChangeAppLifecycleState(resumed)` runs `checkConnectivity`. So after an offline money-write
+  (`noteQueuedWrite` → `syncing`), "Saved — will sync" can persist **up to 60s** past the actual reconnect.
+  That lag IS #682.
 - `snapshotsInSync()` / `metadata.isFromCache` / `metadata.hasPendingWrites`: **0 hits in `lib/`** (grep) —
   the SDK's own connectivity signals are unused.
+- The first connectivity fix exposed a second freshness bug: once status returned to `online`,
+  `homeGroupBalanceProvider` trusted the aggregate stream immediately. That was wrong for both offline replay
+  and normal online server-acked money writes, because `functions/src/triggers/balanceAggregator.ts` refreshes
+  the aggregate doc asynchronously after the source expense/settlement/event write lands.
 
 ## Who reads the state (the readers the refactor must keep correct)
 
 | Reader | What it reads | Contract to preserve |
 |---|---|---|
 | `offline_banner.dart:14` | full enum (online/offline/syncing) | 3-way banner; `syncing` must still be reachable AND must clear promptly on reconnect (the fix) |
-| `group_balance_provider.dart:833` | `.select((s)=>s==online)` | online→aggregate doc; **offline AND syncing→once-path**; bool select avoids #623 churn |
-| 11 money-write callsites | `ref.read(connectivityProvider)` for `skipWait = status != online` | offline/syncing skip the 5s wait; online waits then `noteQueuedWrite` on timeout |
+| `group_balance_provider.dart` | `.select((s)=>s==online)` + `balanceAggregateFreshnessProvider` | offline/syncing→once-path; online→aggregate only when not dirty, otherwise once-path until aggregate equals once-path |
+| Balance-affecting write callsites | `ref.read(connectivityProvider)` for `skipWait = status != online`, then `noteLocalWrite/QueuedWrite(groupId)` | offline/syncing skip the 5s wait; online waits; every balance-affecting local write marks the group aggregate dirty |
 | `add_shadow_member_sheet.dart:89`, `create_group_screen.dart:426` | `== online` UI gate | unchanged |
 
 ## Design — chosen approach
 
-Replace the internal mechanism; keep the state machine and public API.
+Replace the internal mechanism while preserving the enum and existing method semantics. New data-flow is
+additive: write callsites may pass `groupId` so the home balance aggregate cache can be invalidated.
 
 ### 1. Drop the periodic timer
 Remove `Timer.periodic(60s)` and `_startPeriodicCheck()`. No unconditional per-minute `Source.server` read.
@@ -87,9 +92,14 @@ expense/settlement writes. Map each emission:
 `noteLocalWrite()` (offline→syncing) and `noteQueuedWrite()` (unconditional→syncing) start
 `FirebaseFirestore.waitForPendingWrites()` through an injectable `ConnectivityPendingWritesBarrier`.
 Only that barrier clears queued-write `syncing` to `online`; a metadata server snapshot or one-shot probe
-does not. This preserves the `homeGroupBalanceProvider` contract: while queued expense/settlement writes
+does not. This preserves the first `homeGroupBalanceProvider` contract: while queued expense/settlement writes
 may not have replayed, `ConnectivityStatus.syncing` keeps home on the once-path instead of trusting the
 server aggregate display cache.
+
+The barrier is **not** an aggregate freshness proof. Once the source write reaches Firestore, the aggregate
+doc still depends on async Functions triggers. Balance-affecting writes therefore also mark the affected
+group's aggregate dirty. The home facade keeps using the once-path while dirty and clears the marker only
+after the aggregate result equals the once-path result.
 
 If the barrier errors during a user swap, `syncing` falls back to `offline`; cache isolation also invalidates
 `connectivityProvider`, so the old `fcm_tokens/{oldUid}` listener is disposed before the UID changes.
@@ -105,11 +115,18 @@ existing 3-way return (true/false/null; null = no change) is preserved.
   timer cancel.
 - `resumed` → re-subscribe the listener + fire one backstop probe.
 
-### 5. Write-path signals unchanged
+### 5. Write-path signals + aggregate freshness
 `noteQueuedWrite()` (unconditional→syncing) stays the **fast** offline signal for the money paths: a write
 that times out at `kWriteAckTimeout` (5s) forces `syncing` immediately, so the *next* write `skipWait`s.
-The pending-write barrier flips `syncing→online` after replay. `noteLocalWrite()` (offline→syncing)
-unchanged except that it also starts the barrier.
+The pending-write barrier flips `syncing→online` after replay.
+
+`noteLocalWrite({groupId})` keeps its connectivity-state contract: it only changes the enum from
+`offline→syncing`. Its aggregate-freshness contract is broader: when `groupId` is supplied, it marks the group
+dirty in every connectivity state, including ordinary online writes that receive a server ack. This closes the
+stale-aggregate window between source-write acceptance and the Functions aggregate refresh. `noteQueuedWrite`
+also marks the supplied group dirty before entering `syncing`.
+
+Callsites that do not affect group balances can continue calling these methods without `groupId`.
 
 ### Rejected alternatives
 - **`snapshotsInSync()` as the primary signal** — rejected: it fires after *every* local mutation (it's a
@@ -134,6 +151,7 @@ ConnectivityNotifier({
   ConnectivityProbe? connectivityProbe,            // unchanged — one-shot init/resume probe
   ConnectivitySyncSignals? syncSignals,            // NEW — default = fcm_tokens metadata listener
   ConnectivityPendingWritesBarrier? pendingWritesBarrier, // NEW — default = waitForPendingWrites()
+  void Function(String groupId)? markBalanceAggregateMayBeStale, // NEW
   bool startPeriodicChecks = true,                 // unchanged name; now gates listener + init probe
 });
 ```
@@ -144,18 +162,19 @@ ConnectivityNotifier({
 - **No-Firebase-app safety:** building the default `syncSignals` / firing the init probe touches
   `FirebaseConfig.firestore`/`currentUser`, which **throws `[core/no-app]`** in unit tests (not returns null
   — CLAUDE.md gotcha). Wrap the subscription in try/catch → fail-open (no subscription; state stays as set),
-  exactly like the existing `WidgetsBinding.addObserver` try/catch (L44-48). The probe is already internally
+  exactly like the existing `WidgetsBinding.addObserver` try/catch. The probe is already internally
   try/catched (returns null). So `widget_coverage_test.dart` (`ConnectivityNotifier()..setOffline()`,
   default `startPeriodicChecks:true`) stays green: listener skipped, init probe returns null, `setOffline`
   wins.
 - `isPeriodicCheckActive` getter (`@visibleForTesting`, only the connectivity test uses it) → rename to
   `isLiveCheckActive` (true when the listener subscription is active); update that one test.
 
-## State machine (unchanged transitions, new triggers)
+## State machine + dirty aggregate markers
 
 ```
 initial: online (optimistic, unchanged)
 online  --listener isFromCache:true (after server seen) | probe false--> offline
+online  --noteLocalWrite(groupId)----------------------------------------> online + dirty aggregate
 online  --noteQueuedWrite (write timed out)------------------------------> syncing
 offline --noteLocalWrite | noteQueuedWrite-------------------------------> syncing
 offline --listener isFromCache:false | probe true------------------------> online
@@ -164,42 +183,45 @@ syncing --pending writes rejected------------------------------------------> off
 *       --probe null (no uid / no-app / non-network error)---------------> unchanged
 ```
 
-The behavioral change: `syncing→online` now fires on the pending-write barrier, not on the 60s probe or on
-an unrelated owner-doc server snapshot. Every existing explicit setter/probe transition remains available
-when no queued-write barrier is active.
+The connectivity-state change: `syncing→online` now fires on the pending-write barrier, not on the 60s probe
+or on an unrelated owner-doc server snapshot. The balance-display change: a supplied `groupId` marks the
+aggregate dirty independently of connectivity state. Every existing explicit setter/probe transition remains
+available when no queued-write barrier is active.
 
 ## Verification principles (run at spec time — reported per Operating Contract)
 
-1. **Classify callsites.** All 11 money-write callsites are INBOUND to the notifier (they *read*
+1. **Classify callsites.** Balance-affecting write callsites are still INBOUND to the notifier: they *read*
    `connectivityProvider` for `skipWait` and *call* `noteLocalWrite/noteQueuedWrite`, which mutate in-memory
-   UI state — **not** Firestore). The notifier's only Firestore interaction is READ (probe GET + metadata
-   listen); it performs **no Firestore write**. No persistence OUTBOUND path changes. The refactor edits
-   **zero** callsites (API frozen). Lowest-risk class for the consumers.
-2. **Verify claims vs code.** Verified this session: `connectivity_provider.dart` L9/L43/L56-73/L77/L83-92/
-   L110-119/L133-137/L146-148; `write_ack.dart` `skipWait` L49; `group_balance_provider.dart:833` `.select`;
-   11 callsites (grep); `snapshotsInSync|hasPendingWrites|isFromCache` = 0 lib hits (grep). `FirebaseConfig`
-   no-app throw — CLAUDE.md pitfall, applied to the try/catch design.
-3. **Trace read-path per write-path.** No Firestore write-path changes (N/A for persistence). For the
-   in-memory state "write": the new `syncing→online` (listener) path's readers are enumerated — `offline_banner`
-   (clears "will sync"), `group_balance_provider` (re-evaluates online→aggregate), the next write's `skipWait`
-   (resumes normal 5s wait). Each named.
+   UI state. The callsites perform the Firestore writes; the notifier performs no Firestore write. The new
+   `groupId` argument is an in-memory display-cache invalidation signal, not a persistence write.
+2. **Verify claims vs code.** Verify `connectivity_provider.dart` for listener/probe/barrier behavior and
+   dirty-marker callback calls; `write_ack.dart` for `skipWait`; `group_balance_provider.dart` for online bool
+   selection plus aggregate-vs-once matching; write callsites for `groupId` propagation; cache-isolation code
+   for provider invalidation.
+3. **Trace read-path per write-path.** Source expense/settlement/event writes can make the aggregate stale.
+   The in-memory dirty marker is read by `homeGroupBalanceProvider`; while dirty, the provider reads the
+   once-path and compares it with the aggregate stream. `offline_banner` still reads only connectivity state,
+   and the next write still reads connectivity state for `skipWait`.
 4. **Enumerate from the type.** `ConnectivityStatus{online,offline,syncing}` — 3 values, all preserved with
-   identical meaning. Notifier public methods enumerated from the file (frozen list above).
+   identical meaning. Notifier public methods are enumerated from the implementation and changed only
+   additively for aggregate freshness.
 5. **Data contracts.** Exact ctor signature (above), the `ConnectivitySyncSignals = Stream<bool> Function()`
-   contract (bool = `metadata.isFromCache`), the full state-transition table. Spelled out, not gestured.
-6. **Arithmetic decomposition.** N/A — no money math, no `MoneySerializer`, no allocator. The balance
-   read-source selection is unchanged (`.select((s)=>s==online)`: online→aggregate, offline/syncing→once-path).
-   Oracle parity untouched (this file never computes balances).
-7. **Adversarial orthogonal axis.** Fix axis = connectivity-detection mechanism (timer→event). The worked
-   tests exercise orthogonal axes: **money-flow** (a queued money-write's `syncing` stays on the once-path
-   after a reachability-only signal, then resolves to `online` only after the pending-write barrier, and
-   #623 churn stays correct);
+   contract (bool = `metadata.isFromCache`), the `BalanceAggregateFreshnessNotifier` set contract (dirty group
+   IDs only), and the full state-transition/dirty-marker table. Spelled out, not gestured.
+6. **Arithmetic decomposition.** No money math, no `MoneySerializer`, no allocator. The balance read-source
+   selection is refined, not recomputed: offline/syncing always use the once-path; online uses the aggregate
+   only when the group is not dirty or the dirty aggregate matches the once-path result.
+7. **Adversarial orthogonal axis.** Fix axes = connectivity-detection mechanism (timer→event) and aggregate
+   freshness (source write→async aggregate trigger). The worked tests exercise orthogonal axes: **money-flow**
+   (a queued money-write's `syncing` stays on the once-path after a reachability-only signal, resolves to
+   `online` only after the pending-write barrier, and dirty aggregates keep using the once-path until catch-up);
    **identity** (uid==null / no-app → listener can't build / probe null → safe no-crash, state sticky);
    **lifecycle/time** (pause cancels the listener → no background read; resume re-subscribes + one probe).
 
-## TDD plan (RED first — `refactor` of a money-write-gating surface ⇒ table-driven)
+## TDD plan (RED first — money-write-gating surface ⇒ table-driven)
 
-Rewrite/extend `test/core/providers/connectivity_provider_test.dart` (and `test/unit/connectivity_provider_test.dart`):
+Rewrite/extend `test/core/providers/connectivity_provider_test.dart`, `test/unit/home_group_balance_provider_test.dart`,
+and the affected cache-isolation tests:
 
 1. **#682 fix (the defining RED test):** construct with injected `syncSignals` and
    `pendingWritesBarrier`; `noteQueuedWrite()` → `syncing`; push `false` (reachability) and verify it stays
@@ -214,19 +236,26 @@ Rewrite/extend `test/core/providers/connectivity_provider_test.dart` (and `test/
    `resumed` → re-subscribed.
 6. **no-Firebase-app fail-open:** default `syncSignals` with no Firebase initialized → ctor does not throw;
    `setOffline()` still works (covers `widget_coverage_test` default-true path).
-7. **write signals unchanged:** `noteLocalWrite` offline→syncing only (no-op online/syncing);
-   `noteQueuedWrite` unconditional→syncing.
+7. **write signals split state from freshness:** `noteLocalWrite` remains offline→syncing for connectivity
+   state, but `noteLocalWrite(groupId)` marks that group dirty even while online; `noteQueuedWrite(groupId)`
+   also marks dirty before entering `syncing`.
+8. **aggregate freshness barrier:** online + dirty + stale aggregate returns once-path and leaves the dirty
+   marker set; after the aggregate stream catches up to the once-path result, the provider returns aggregate
+   data and clears the marker.
+9. **cache isolation:** auth/cache isolation invalidates `balanceAggregateFreshnessProvider` with the other
+   UID-sensitive providers.
 
-Regression suites that MUST stay green unchanged (public API frozen):
+Regression suites that MUST stay green:
 - `test/core/utils/write_ack_test.dart` (no change to `write_ack.dart`).
 - `test/unit/home_group_balance_provider_test.dart` — esp. the #623 churn test (offline→syncing must NOT
-  re-evaluate the facade; syncing→online MUST).
+  re-evaluate the facade; syncing→online MUST) and the dirty-aggregate catch-up test.
 - `test/features/**/*_offline_412_test.dart` (add/edit/create-group/event-settings) — `startPeriodicChecks:false`
-  + setters, untouched.
+  + setters.
 - `test/shared/widgets/offline_banner_test.dart` — 3-state banner.
 
-Run: `flutter test test/core/providers/connectivity_provider_test.dart test/unit/connectivity_provider_test.dart`
-then the regression files, then `flutter analyze` + `bash tool/check_theme_purity.sh` (no widget change, but cheap).
+Run: `flutter test test/core/providers/connectivity_provider_test.dart test/unit/home_group_balance_provider_test.dart
+test/unit/cache_isolation_controller_test.dart`, then the regression files, then `flutter analyze` +
+`bash tool/check_theme_purity.sh`.
 
 ## Acceptance → coverage
 
@@ -234,17 +263,19 @@ then the regression files, then `flutter analyze` + `bash tool/check_theme_purit
 |---|---|
 | No unconditional per-minute forced `Source.server` read | timer dropped (§1); only init/resume one-shot probe + a cheap persistent listen |
 | `syncing` resolves on actual write replay, small bound | pending-write barrier (§2b); test 1 |
-| `skipWait` + balance source correct across offline→online; once-path while offline/syncing | API + `.select((s)=>s==online)` frozen; #623 churn regression test |
+| `skipWait` + balance source correct across offline→online; once-path while offline/syncing | `.select((s)=>s==online)` retained; #623 churn regression test |
+| Online server-acked balance writes do not briefly trust stale aggregate docs | `noteLocalWrite(groupId)` marks dirty in every state; home dirty-aggregate catch-up test |
 | Offline detection reliable — no false-online forcing a full-timeout wait | listener flip (seconds) + init/resume probe shrink the window; `noteQueuedWrite` 5s fallback remains for the brief SDK-detection window (existing safety net, not a regression) |
 | Tests model real offline via injected signals, not FakeFirebaseFirestore | injected `syncSignals` StreamController + `connectivityProbe` |
 
 ## Out of scope
-- Any consumer/callsite edit (API frozen).
 - `snapshotsInSync` / `hasPendingWrites` adoption (rejected above).
 - Changing `kWriteAckTimeout` or `awaitServerAck` semantics.
 - Any rules / Functions / schema / routing / money-math change — none.
+- Adding a new durable aggregate version field. This PR uses explicit aggregate-vs-once equality as the
+  freshness barrier.
 
 ## Gate
-Not strictly one of the four mandatory Gate categories (no money-math/rules/routing/schema-field change), but
-the surface **gates every money-write's `skipWait` and the balance read-source**, and the issue flags
-Gate-category care. Run a fresh-context Opus Gate on this spec before code; stop when no [P1].
+Gate-required: the surface gates every money-write's `skipWait`, the home balance read source, and whether
+money displayed on home may come from a stale aggregate cache. Run a fresh-context Gate on this spec before
+auto-merge; stop when no [P1].

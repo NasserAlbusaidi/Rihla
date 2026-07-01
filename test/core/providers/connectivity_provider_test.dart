@@ -310,16 +310,19 @@ void main() {
       expect(n.state, ConnectivityStatus.online);
     });
 
-    test('online noteLocalWrite does not mark aggregate freshness dirty', () {
-      final marked = <String>[];
-      final n = makeNotifier(markBalanceAggregateMayBeStale: marked.add);
-      addTearDown(n.dispose);
+    test(
+      'online noteLocalWrite marks aggregate dirty without changing state',
+      () {
+        final marked = <String>[];
+        final n = makeNotifier(markBalanceAggregateMayBeStale: marked.add);
+        addTearDown(n.dispose);
 
-      n.noteLocalWrite(groupId: 'g1');
+        n.noteLocalWrite(groupId: 'g1');
 
-      expect(marked, isEmpty);
-      expect(n.state, ConnectivityStatus.online);
-    });
+        expect(marked, ['g1']);
+        expect(n.state, ConnectivityStatus.online);
+      },
+    );
 
     test('syncing → noteLocalWrite → stays syncing (idempotent)', () {
       final n = makeNotifier();
