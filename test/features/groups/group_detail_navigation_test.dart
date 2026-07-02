@@ -186,7 +186,7 @@ void main() {
     ) async {
       await pumpGroupDetail(tester);
 
-      await tester.tap(find.byTooltip('More'));
+      await tester.tap(find.byTooltip('Group options'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Group settings'));
       await tester.pumpAndSettle();
@@ -199,7 +199,7 @@ void main() {
     ) async {
       await pumpGroupDetail(tester);
 
-      await tester.tap(find.byTooltip('More'));
+      await tester.tap(find.byTooltip('Group options'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Activity'));
       await tester.pumpAndSettle();
@@ -274,7 +274,7 @@ void main() {
         ),
       );
       final overflowTargets = find.ancestor(
-        of: find.byTooltip('More'),
+        of: find.byTooltip('Group options'),
         matching: find.byWidgetPredicate(
           (widget) =>
               widget is SizedBox && widget.width == 48 && widget.height == 48,

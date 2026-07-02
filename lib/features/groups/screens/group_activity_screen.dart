@@ -136,8 +136,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       return _filteredCache!;
     }
     debugGroupActivityFilterComputes++;
-    final result =
-        _activities.where((a) => _matches(a.type, _filter)).toList();
+    final result = _activities.where((a) => _matches(a.type, _filter)).toList();
     _filteredCache = result;
     _filteredCacheLen = _activities.length;
     _filteredCacheFilter = _filter;
@@ -213,7 +212,12 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, context.spacing.space4, context.spacing.space20, context.spacing.space24),
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space20,
+        context.spacing.space4,
+        context.spacing.space20,
+        context.spacing.space24,
+      ),
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i == days.length) {
@@ -269,7 +273,12 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space12, context.spacing.space4, context.spacing.space20, context.spacing.space8),
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space12,
+        context.spacing.space4,
+        context.spacing.space20,
+        context.spacing.space8,
+      ),
       child: SizedBox(
         height: 48,
         child: Stack(
@@ -329,9 +338,11 @@ class _FilterStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = [
+      // Same key as the cross-group screen's no-filter chip — the two strips
+      // are parallel UI and must read identically.
       (
         _Filter.all,
-        context.l10n.activityFilterActivity,
+        context.l10n.activityFilterAll,
         GroupKeys.activityFilterAll,
       ),
       (

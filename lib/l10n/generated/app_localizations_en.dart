@@ -1984,9 +1984,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityFilterAll => 'All';
 
   @override
-  String get activityFilterActivity => 'Activity';
-
-  @override
   String get activityFilterSettles => 'Settles';
 
   @override
@@ -2672,7 +2669,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get groupMoreTooltip => 'More';
+  String get groupMoreTooltip => 'Group options';
 
   @override
   String get groupSettings => 'Group settings';
@@ -2754,6 +2751,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupCurrency => 'Currency';
 
   @override
+  String get groupCurrencyLockedNote =>
+      'Currency is set when the group is created and can\'t be changed.';
+
+  @override
   String get groupSettingsLoadFailed => 'Could not load settings';
 
   @override
@@ -2778,6 +2779,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupShowQrCodeSemantic => 'Show QR code';
+
+  @override
+  String get groupShowQrCode => 'Show QR code';
 
   @override
   String get groupShareInviteSemantic => 'Share invite';
@@ -2899,7 +2903,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get groupManage => 'Manage';
+  String get groupAddMemberAction => 'Add member';
 
   @override
   String get groupShadowNotJoinedBadge => 'Not joined yet';
