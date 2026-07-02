@@ -18,10 +18,11 @@ Expense _exp({
   String amount = '5.000',
   ExpenseScope scope = ExpenseScope.global,
   SplitMode? splitMode = SplitMode.equally,
+  String payerParticipantId = 'uid-a',
 }) => Expense(
   id: id,
   tripId: 'event-1',
-  payerParticipantId: 'uid-a',
+  payerParticipantId: payerParticipantId,
   amount: Decimal.parse(amount),
   scope: scope,
   splitMode: splitMode,
@@ -117,5 +118,23 @@ void main() {
 
     expect(tapped?.id, 'villa');
     expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
+  });
+
+  testWidgets('surfaces a departed-payer expense (count line + primary chip)', (
+    tester,
+  ) async {
+    // Plain global/equal expense paid by a member who left → the ONLY reason is
+    // payerNotInParticipants (last in _reasonOrder), so it IS the primary chip.
+    final flags = detectReviewWorthyExpenses(
+      [_exp(id: 'a', description: 'Taxi', payerParticipantId: 'uid-gone')],
+      activeParticipantIds: {'uid-live'},
+    );
+
+    await tester.pumpWidget(_host(flags: flags));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 paid by someone who left'), findsOneWidget);
+    expect(find.text('Payer left'), findsOneWidget);
   });
 }

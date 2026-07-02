@@ -47,6 +47,10 @@ const _reasonOrder = [
   ReviewReason.personal,
   ReviewReason.customParticipants,
   ReviewReason.exactSplit,
+  // Lowest priority: a departed-payer expense that is ALSO exact/large keeps
+  // its stronger primary chip. Every ReviewReason MUST appear here or
+  // `_primaryReason`'s `firstWhere` throws (no orElse).
+  ReviewReason.payerNotInParticipants,
 ];
 
 String _reasonLabel(BuildContext context, ReviewReason reason) =>
@@ -56,6 +60,8 @@ String _reasonLabel(BuildContext context, ReviewReason reason) =>
         context.l10n.preSettleReviewReasonCustom,
       ReviewReason.personal => context.l10n.preSettleReviewReasonPersonal,
       ReviewReason.largeAmount => context.l10n.preSettleReviewReasonLarge,
+      ReviewReason.payerNotInParticipants =>
+        context.l10n.preSettleReviewReasonPayerLeft,
     };
 
 String _countLine(BuildContext context, ReviewReason reason, int count) =>
@@ -65,6 +71,8 @@ String _countLine(BuildContext context, ReviewReason reason, int count) =>
         context.l10n.preSettleReviewCustomCount(count),
       ReviewReason.personal => context.l10n.preSettleReviewPersonalCount(count),
       ReviewReason.largeAmount => context.l10n.preSettleReviewLargeCount(count),
+      ReviewReason.payerNotInParticipants =>
+        context.l10n.preSettleReviewPayerLeftCount(count),
     };
 
 class _PreSettlementReviewSheet extends StatelessWidget {

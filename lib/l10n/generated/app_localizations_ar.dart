@@ -1371,6 +1371,17 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String preSettleReviewPayerLeftCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مصاريف دفعها أشخاص غادروا',
+      one: 'مصروف دفعه شخص غادر',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get preSettleReviewReasonExact => 'تقسيم بمبالغ دقيقة';
 
   @override
@@ -1381,6 +1392,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get preSettleReviewReasonLarge => 'مبلغ كبير';
+
+  @override
+  String get preSettleReviewReasonPayerLeft => 'الدافع غادر';
 
   @override
   String preSettleReviewMore(int count) {
