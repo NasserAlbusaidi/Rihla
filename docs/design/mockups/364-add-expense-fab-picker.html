@@ -41,17 +41,108 @@
     <h2 class="issue-title">design(ledger): persistent Add-expense FAB with group→event picker</h2>
     <span class="issue-meta">P2 · decision · routing surface · Gate before build</span>
   </div>
-  <p class="issue-desc">All three put a saffron FAB on the <code>BottomNavShell</code> (over Groups + Activity tabs).
-     They differ on how a context-free tap <b>resolves the target event</b>: V1 walks an explicit two-step
-     sheet (group, then event); V2 jumps straight into add for the <b>last-active event</b> with a
-     <b>Change</b> escape hatch; V3 expands the FAB into recent group/event shortcuts. Every path ends at the
-     same route — <code>/group/:gid/event/:eid/ledger/add</code> — so back-guard and deep-link behavior is
-     identical regardless of which UI ships. No <code>state.extra</code> in any variant; all navigation is
-     path-based so cold deep-links work.</p>
-  <p class="issue-rec"><b>Recommendation:</b> Variant V2 (quick add, last-active) — one tap to the add screen for the common
-     case (you're logging into the trip you're already on), with <b>Change</b> for the rest. Fewest taps where it matters.</p>
+  <p class="issue-desc">All variants put a saffron FAB on the <code>BottomNavShell</code> (over Groups + Activity tabs;
+     hidden on Profile). They differ on how a context-free tap <b>resolves the target event</b>: V4 opens one
+     flattened sheet of open events across all groups; V1 walks an explicit two-step sheet (group, then event);
+     V2 jumps straight into add for the <b>last-active event</b> with a <b>Change</b> escape hatch; V3 expands
+     the FAB into recent group/event shortcuts. Every path ends at the same route —
+     <code>/group/:gid/event/:eid/ledger/add</code> — so back-guard and deep-link behavior is identical
+     regardless of which UI ships. No <code>state.extra</code> in any variant; all navigation is path-based so
+     cold deep-links work.</p>
+  <p class="issue-rec"><b>Decision (2026-07-02): V4 — flattened events sheet, with a single-candidate fast path.</b>
+     Rows reuse the home journey-strip ordering (ongoing → upcoming → recent), so the trip you're living in is
+     the first row — one tap slower than V2's last-active jump but it never silently files a spend into the
+     wrong event, and it needs no new persistence (V2's last-active pointer doesn't exist anywhere today).
+     When exactly <b>one</b> open event exists across all groups the sheet is skipped entirely — straight to
+     the add screen, whose <i>Where</i> card already names the event. Closed (<code>isClosed</code>, #723) and
+     soft-deleted events never appear. V1/V2/V3 below kept for the record — superseded.</p>
 
   <div class="variant-row">
+
+    <!-- ============ V4 · Flattened events sheet · PICK ============ -->
+    <div class="variant pick">
+      <div class="variant-label">V4 · Flattened events sheet <span class="tag">chosen · 2 taps</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center"><span class="avatar sm av-5">N</span></div>
+            <div class="title">Rihla<span style="color:var(--primary)">.</span></div>
+            <div class="icon-btn center muted">◔</div>
+          </div>
+          <div class="sheet-wrap">
+            <div class="content tight" style="flex:1">
+              <div class="uppercase-label" style="margin-top:4px">Active journeys</div>
+              <div class="ticket">
+                <div class="cover"></div>
+                <div class="perf"></div>
+                <div class="list-row">
+                  <div class="row-body">
+                    <div class="row-title serif" style="font-size:17px">Salalah Khareef</div>
+                    <div class="row-sub mono">3 events · 5 people</div>
+                  </div>
+                  <div class="r-amount neg lg"><span class="ccy">OMR</span>18<span class="dec">.400</span></div>
+                </div>
+              </div>
+            </div>
+            <!-- Flattened picker sheet: open events across ALL groups -->
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Add expense to…</div>
+              <div class="sheet-sub">Your open events, the one you're on first.</div>
+              <div class="card flush">
+                <div class="list-row">
+                  <span class="avatar av-1">SK</span>
+                  <div class="row-body">
+                    <div class="row-title serif">Day 2 — Wadi Darbat</div>
+                    <div class="row-sub mono">Salalah Khareef · ongoing</div>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+                <div class="list-row">
+                  <span class="avatar av-2">DT</span>
+                  <div class="row-body">
+                    <div class="row-title serif">Desert Safari</div>
+                    <div class="row-sub mono">Dubai Trip · in 3 days</div>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+                <div class="list-row">
+                  <span class="avatar av-4">FH</span>
+                  <div class="row-body">
+                    <div class="row-title serif">House Ledger</div>
+                    <div class="row-sub mono">Flat Housemates</div>
+                  </div>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+              <div class="list-row" style="padding-inline:var(--s4)">
+                <div class="row-body"><div class="row-title" style="color:var(--primary);font-size:14px">Browse all groups</div></div>
+                <span class="chevron" style="color:var(--primary)">›</span>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item active">
+              <span class="nav-icon">⊞</span>Groups
+            </div>
+            <div class="nav-item">
+              <span class="nav-icon">◷</span>Activity
+            </div>
+          </div>
+        </div>
+        <div class="fab" style="bottom:calc(var(--s24) + 60px)">＋</div>
+      </div>
+      <p class="variant-note"><b>FAB → one sheet, every open event across every group, ongoing-first.</b>
+         Row = event name over <span class="mono">group · timing</span> subtitle, reusing the home
+         journey-strip priority sort (ongoing → upcoming → recently ended → undated) so the likely target is
+         row one. Tap routes <code>context.push('/group/:gid/event/:eid/ledger/add')</code> — path-based,
+         back pops home. Excludes <code>isClosed</code> (#723) and soft-deleted events. The
+         <b>Browse all groups ›</b> footer covers the long tail (events outside the active window) via the
+         V1 two-step flow. Data comes from streams the home tab already holds live
+         (<code>userGroupsProvider</code> + <code>groupEventsProvider</code>) — zero new listeners.</p>
+    </div>
 
     <!-- ============ V1 · Two-step picker ============ -->
     <div class="variant">
@@ -137,9 +228,9 @@
          <code>context.push</code>es the next path segment — no <code>state.extra</code>.</p>
     </div>
 
-    <!-- ============ V2 · Quick add (last-active) · PICK ============ -->
-    <div class="variant pick">
-      <div class="variant-label">V2 · Quick add (last-active) <span class="tag">1 tap</span></div>
+    <!-- ============ V2 · Quick add (last-active) · superseded ============ -->
+    <div class="variant">
+      <div class="variant-label">V2 · Quick add (last-active) <span class="tag">superseded</span></div>
       <div class="phone">
         <div class="phone-screen">
           <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
@@ -203,12 +294,10 @@
         <!-- Extended FAB above bottom-nav -->
         <div class="fab extended" style="bottom:calc(var(--s24) + 60px)">＋ Expense</div>
       </div>
-      <p class="variant-note"><b>FAB opens add, pre-targeted to your last-active event</b> — the trip you're
-         already living in — with a <b>Change ▾</b> link that drops to the V1 picker for the rare miss.
-         Single tap to a fillable form for the 90% case. The "last-active event" is a SharedPrefs pointer
-         (<code>{gid, eid}</code>) updated on every successful ledger write; if it's empty/stale the FAB
-         falls through to the V1 sheet. <b>Change</b> and the empty fallback both route the same path-based
-         way — no <code>state.extra</code>. All amounts shown in OMR (3 dp, code-first, monospace).</p>
+      <p class="variant-note"><b>Rejected (2026-07-02).</b> One tap fewer than V4 for the repeat case, but the
+         "last-active event" is a NEW SharedPrefs pointer (nothing tracks it today), it can silently file a
+         spend into the wrong event when the pointer is stale, and the empty/stale fallback means two flows
+         to build and test. V4's first row gives the same target with one honest confirmation tap.</p>
     </div>
 
     <!-- ============ V3 · Expanding FAB ============ -->
@@ -275,6 +364,165 @@
          scales badly past ~4 entries and the "More…" tail still falls back to the V1 sheet, so it's two
          flows to build and test. Each row carries a pre-resolved <code>{gid, eid}</code> and
          <code>context.push</code>es the add path directly — no <code>state.extra</code>.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     BLOCK 2 · V4 EDGE STATES — fast path · browse-all · empty
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#364 · 2</span>
+    <h2 class="issue-title">V4 edge states</h2>
+    <span class="issue-meta">fast path · browse-all fallback · zero-groups empty</span>
+  </div>
+  <p class="issue-desc">The sheet's three boundary conditions. <b>Fast path:</b> exactly one open event across
+     all groups (the #245 new-user shape — one group, one seeded event) → the FAB skips the sheet and pushes
+     the add screen directly; its <i>Where</i> card names the target so there is no ambiguity.
+     <b>Browse-all:</b> the footer row slides the sheet to a group list → that group's open events (V1's
+     two-step, reached only on demand). <b>Empty:</b> no groups at all → the sheet explains and offers
+     Create&nbsp;group.</p>
+
+  <div class="variant-row">
+
+    <!-- Fast path -->
+    <div class="variant">
+      <div class="variant-label">Fast path <span class="tag">1 open event → no sheet</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center">‹</div>
+            <div class="title sans">New expense</div>
+          </div>
+          <div class="content tight" style="flex:1">
+            <div class="field" style="margin:var(--s12) 0">
+              <span class="field-label">Amount</span>
+              <div class="input focus" style="font-size:22px">
+                <span class="r-amount neu"><span class="ccy">OMR</span>4<span class="dec">.500</span></span>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:var(--s12)">
+              <span class="field-label">What for?</span>
+              <div class="input muted">Karak &amp; chapati</div>
+            </div>
+            <!-- The existing editor Where card — event context is already visible -->
+            <div class="card soft">
+              <div class="between" style="padding:var(--s8) 0">
+                <span class="tiny muted" style="text-transform:uppercase;letter-spacing:1px">Event</span>
+                <span class="row-title serif" style="font-size:14px">Day 2 — Wadi Darbat</span>
+              </div>
+              <div class="between" style="padding:var(--s8) 0">
+                <span class="tiny muted" style="text-transform:uppercase;letter-spacing:1px">Date</span>
+                <span class="mono" style="font-size:13px">Jul 2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Exactly one open event anywhere → straight to add.</b> Counted over ALL open
+         events (not the window-capped list) so the skip never hides a valid alternative target. The editor's
+         existing <i>Where</i> card (event + date) is the confirmation — no new UI. True 1-tap add for the
+         #245 new-user shape.</p>
+    </div>
+
+    <!-- Browse-all fallback -->
+    <div class="variant">
+      <div class="variant-label">Browse all groups <span class="tag">long-tail fallback</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center"><span class="avatar sm av-5">N</span></div>
+            <div class="title">Rihla<span style="color:var(--primary)">.</span></div>
+            <div class="icon-btn center muted">◔</div>
+          </div>
+          <div class="sheet-wrap">
+            <div class="content tight" style="flex:1"></div>
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="between" style="margin-bottom:var(--s4)">
+                <div class="sheet-title" style="margin-bottom:0">All groups</div>
+                <button class="btn text sm">‹ Back</button>
+              </div>
+              <div class="sheet-sub">Pick a group, then one of its open events.</div>
+              <div class="card flush">
+                <div class="list-row">
+                  <span class="avatar av-1">SK</span>
+                  <div class="row-body"><div class="row-title">Salalah Khareef</div>
+                    <div class="row-sub mono">3 open events</div></div>
+                  <span class="chevron">›</span>
+                </div>
+                <div class="list-row">
+                  <span class="avatar av-2">DT</span>
+                  <div class="row-body"><div class="row-title">Dubai Trip</div>
+                    <div class="row-sub mono">1 open event</div></div>
+                  <span class="chevron">›</span>
+                </div>
+                <div class="list-row">
+                  <span class="avatar av-4">FH</span>
+                  <div class="row-body"><div class="row-title">Flat Housemates</div>
+                    <div class="row-sub mono">2 open events</div></div>
+                  <span class="chevron">›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item active">
+              <span class="nav-icon">⊞</span>Groups
+            </div>
+            <div class="nav-item">
+              <span class="nav-icon">◷</span>Activity
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Footer row slides the sheet to the two-step flow.</b> Groups list → tapped
+         group's open events → add route. A group with exactly one open event skips its event step. Reached
+         only when the flattened list misses (event outside the 60d/14d active window, or many groups) —
+         the common case never sees it.</p>
+    </div>
+
+    <!-- Empty state -->
+    <div class="variant">
+      <div class="variant-label">Empty <span class="tag">no groups yet</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="app-bar">
+            <div class="icon-btn center"><span class="avatar sm av-5">N</span></div>
+            <div class="title">Rihla<span style="color:var(--primary)">.</span></div>
+            <div class="icon-btn center muted">◔</div>
+          </div>
+          <div class="sheet-wrap">
+            <div class="content tight" style="flex:1"></div>
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Nothing to add to yet</div>
+              <div class="sheet-sub">Expenses live inside a group's events. Start a group — it comes with a
+                 ready ledger event.</div>
+              <button class="btn grad block" style="margin-top:var(--s12)">Create a group</button>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item active">
+              <span class="nav-icon">⊞</span>Groups
+            </div>
+            <div class="nav-item">
+              <span class="nav-icon">◷</span>Activity
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Zero groups → explain + Create group</b> (routes <code>/create-group</code>;
+         #245 auto-seeds its default ledger event, so the very next FAB tap hits the fast path). Groups exist
+         but zero open events (all closed/legacy pre-#245): the sheet opens directly on the browse-all group
+         list instead.</p>
     </div>
 
   </div>

@@ -122,6 +122,151 @@ int _priority({
   return 500 + now.difference(fallback).inDays;
 }
 
+/// One row in the add-expense target picker (#364) — an open event the
+/// current user can actually write an expense into.
+class AddExpenseTarget {
+  const AddExpenseTarget({
+    required this.groupId,
+    required this.eventId,
+    required this.eventName,
+    required this.groupName,
+    required this.startDate,
+    required this.endDate,
+    required this.createdAt,
+  });
+
+  final String groupId;
+  final String eventId;
+  final String eventName;
+  final String groupName;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final DateTime createdAt;
+}
+
+/// Aggregate result for the FAB picker (#364).
+class AddExpenseTargets {
+  const AddExpenseTargets({
+    required this.active,
+    required this.openByGroup,
+    required this.totalOpen,
+    required this.sole,
+    required this.allResolved,
+  });
+
+  static const empty = AddExpenseTargets(
+    active: [],
+    openByGroup: {},
+    totalOpen: 0,
+    sole: null,
+    allResolved: true,
+  );
+
+  /// Open targets inside the [_isActive] window, [_priority]-sorted, uncapped.
+  final List<AddExpenseTarget> active;
+
+  /// EVERY open target keyed by group — window-independent, per-group
+  /// [_priority]-sorted, groups with no open target omitted. Feeds the
+  /// sheet's browse-all fallback so the D-4 filter lives in one place.
+  final Map<String, List<AddExpenseTarget>> openByGroup;
+
+  /// Every open target across all resolved groups — ignores the window, so an
+  /// open event that ended long ago still counts (it stays reachable via the
+  /// sheet's browse-all fallback).
+  final int totalOpen;
+
+  /// The fast-path target: non-null iff exactly one open event exists AND
+  /// every group's event stream has resolved. May lie outside the window.
+  final AddExpenseTarget? sole;
+
+  /// False while any group's event stream is still loading (or errored) —
+  /// the fast path must never fire on partial data.
+  final bool allResolved;
+}
+
+/// Flattens every event across the user's groups into add-expense targets
+/// for the tab-shell FAB (#364).
+///
+/// "Open" = not soft-deleted, not closed (#723), and the current user is an
+/// event participant — `validExpenseCreate` requires `isEventParticipant`,
+/// so offering a non-participant event would dead-end in `permission-denied`.
+///
+/// Same stream sources and error-swallow semantics as [activeJourneysProvider]
+/// (both watch streams the always-mounted home tab already holds live).
+final addExpenseTargetsProvider = Provider<AsyncValue<AddExpenseTargets>>((
+  ref,
+) {
+  final uid = ref.watch(currentUserIdProvider);
+  if (uid == null) return const AsyncValue.data(AddExpenseTargets.empty);
+
+  final groupsAsync = ref.watch(userGroupsProvider);
+  if (groupsAsync.isLoading && !groupsAsync.hasValue) {
+    return const AsyncValue.loading();
+  }
+  if (groupsAsync.hasError) {
+    return AsyncValue.error(groupsAsync.error!, groupsAsync.stackTrace!);
+  }
+
+  final groups = groupsAsync.valueOrNull ?? [];
+  final now = DateTime.now();
+  var allResolved = true;
+  var totalOpen = 0;
+  AddExpenseTarget? lastOpen;
+  final windowed = <(int, AddExpenseTarget)>[];
+  final openByGroup = <String, List<AddExpenseTarget>>{};
+
+  for (final group in groups) {
+    final events = ref.watch(groupEventsProvider(group.id)).valueOrNull;
+    if (events == null) {
+      allResolved = false;
+      continue;
+    }
+    final groupOpen = <(int, AddExpenseTarget)>[];
+    for (final event in events) {
+      final open = !event.isDeleted &&
+          !event.isClosed &&
+          event.participantIds.contains(uid);
+      if (!open) continue;
+      totalOpen++;
+      final target = AddExpenseTarget(
+        groupId: group.id,
+        eventId: event.id,
+        eventName: event.name,
+        groupName: group.name,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        createdAt: event.createdAt,
+      );
+      lastOpen = target;
+      final priority = _priority(
+        start: event.startDate,
+        end: event.endDate,
+        fallback: event.createdAt,
+        now: now,
+      );
+      groupOpen.add((priority, target));
+      if (_isActive(event, now)) {
+        windowed.add((priority, target));
+      }
+    }
+    if (groupOpen.isNotEmpty) {
+      groupOpen.sort((a, b) => a.$1.compareTo(b.$1));
+      openByGroup[group.id] = [for (final entry in groupOpen) entry.$2];
+    }
+  }
+
+  windowed.sort((a, b) => a.$1.compareTo(b.$1));
+  return AsyncValue.data(
+    AddExpenseTargets(
+      active: [for (final entry in windowed) entry.$2],
+      openByGroup: openByGroup,
+      totalOpen: totalOpen,
+      sole: allResolved && totalOpen == 1 ? lastOpen : null,
+      allResolved: allResolved,
+    ),
+  );
+});
+
 /// Flattens every event across the user's groups, filters to a sensible
 /// "active" window, sorts by date proximity, and caps the list at 5.
 ///

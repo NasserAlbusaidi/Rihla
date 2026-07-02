@@ -1887,6 +1887,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeQuickActivity => 'Activity';
 
   @override
+  String get addExpenseSheetTitle => 'Add expense to…';
+
+  @override
+  String get addExpenseSheetSubtitle =>
+      'Your open events, the one you\'re on first.';
+
+  @override
+  String addExpenseSheetSubtitleOngoing(Object groupName) {
+    return '$groupName · ongoing';
+  }
+
+  @override
+  String addExpenseSheetSubtitleUpcoming(Object groupName, int days) {
+    return '$groupName · in ${days}d';
+  }
+
+  @override
+  String get addExpenseSheetBrowseAll => 'Browse all groups';
+
+  @override
+  String get addExpenseSheetAllGroupsTitle => 'All groups';
+
+  @override
+  String get addExpenseSheetAllGroupsSubtitle =>
+      'Pick a group, then one of its open events.';
+
+  @override
+  String addExpenseSheetOpenEventCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count open events',
+      one: '1 open event',
+      zero: 'No open events',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get addExpenseSheetPickEventSubtitle => 'Pick an open event.';
+
+  @override
+  String get addExpenseSheetEmptyTitle => 'Nothing to add to yet';
+
+  @override
+  String get addExpenseSheetEmptyBody =>
+      'Expenses live inside a group\'s events. Start a group — it comes with a ready ledger event.';
+
+  @override
+  String get addExpenseSheetLoadFailed =>
+      'Couldn\'t load your events. Try again.';
+
+  @override
   String get activityTitle => 'Activity';
 
   @override
