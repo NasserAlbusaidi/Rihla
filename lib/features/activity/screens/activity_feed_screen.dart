@@ -35,10 +35,15 @@ class ActivityFeedScreen extends ConsumerStatefulWidget {
     super.key,
     required this.groupId,
     required this.eventId,
+    this.embedded = false,
   });
 
   final String groupId;
   final String eventId;
+
+  /// #758: content-only mode for the tabbed event view — skips the Scaffold
+  /// and top bar (the tabbed shell owns chrome + back affordance).
+  final bool embedded;
 
   @override
   ConsumerState<ActivityFeedScreen> createState() =>
@@ -109,6 +114,17 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
   Widget build(BuildContext context) {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
+    final feed = eventAsync.when(
+      loading: () => const _LoadingShimmer(),
+      error: (_, _) => _ErrorView(
+        onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
+      ),
+      data: (event) {
+        if (event == null) return const _NotFoundView();
+        return _buildActivityBody(context, event.participantNames);
+      },
+    );
+    if (widget.embedded) return feed;
     return Scaffold(
       key: ActivityKeys.screen,
       backgroundColor: context.colors.scaffoldBackground,
@@ -119,18 +135,7 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
               title: eventAsync.valueOrNull?.name ?? context.l10n.activityTitle,
             ),
             const SizedBox(height: 6),
-            Expanded(
-              child: eventAsync.when(
-                loading: () => const _LoadingShimmer(),
-                error: (_, _) => _ErrorView(
-                  onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
-                ),
-                data: (event) {
-                  if (event == null) return const _NotFoundView();
-                  return _buildActivityBody(context, event.participantNames);
-                },
-              ),
-            ),
+            Expanded(child: feed),
           ],
         ),
       ),

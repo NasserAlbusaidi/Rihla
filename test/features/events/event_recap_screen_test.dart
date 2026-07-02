@@ -121,6 +121,34 @@ void main() {
         currentUserIdProvider.overrideWithValue(uid),
       ];
 
+  // ── #758: embedded mode (tab panel inside the tabbed event view) ─────────
+
+  testWidgets('#758 embedded mode renders recap without back or Scaffold', (
+    tester,
+  ) async {
+    await pumpRihlaApp(
+      tester,
+      const Scaffold(
+        body: EventRecapScreen(groupId: 'g1', eventId: 'e1', embedded: true),
+      ),
+      overrides: overridesFor(settledRecap()),
+    );
+
+    // Recap content + the share action render…
+    expect(find.text('Total spent'), findsOneWidget);
+    expect(find.byKey(EventKeys.recapShareButton), findsOneWidget);
+    // …but no back button and no nested Scaffold — the tabbed shell owns
+    // chrome and the back affordance.
+    expect(find.byKey(EventKeys.recapBackButton), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(EventRecapScreen),
+        matching: find.byType(Scaffold),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('renders the recap screen with money rows (EN)', (tester) async {
     await pumpRihlaApp(
       tester,

@@ -51,10 +51,21 @@ import '../widgets/ledger_sticky_cta.dart';
 ///   8. Sticky bottom CTA bar — ink "Add expense" + ghost "Settle up"
 ///      (dimmed when settled).
 class LedgerScreen extends ConsumerStatefulWidget {
-  const LedgerScreen({super.key, required this.groupId, required this.eventId});
+  const LedgerScreen({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+    this.embedded = false,
+  });
 
   final String groupId;
   final String eventId;
+
+  /// #758: content-only mode for the tabbed event view — renders the timeline
+  /// (trip caption, category chips, day cards) without the cover header, hero
+  /// statement, roster strip, offline banner, or sticky CTA. The tabbed shell
+  /// owns balance display, chrome, and the add/settle affordances.
+  final bool embedded;
 
   @override
   ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
@@ -75,45 +86,48 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     // add_expense_screen / settle_up_screen.
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
+    final body = eventAsync.when(
+      loading: () => const _LoadingState(),
+      error: (_, _) => _ErrorState(
+        onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
+      ),
+      data: (event) {
+        if (event == null) return const _NotFoundState();
+        if (groupAsync.isLoading && !groupAsync.hasValue) {
+          return const _LoadingState();
+        }
+        final group = groupAsync.valueOrNull;
+        if (group == null) return const _NotFoundState();
+        if (expensesAsync.hasError || settlementsAsync.hasError) {
+          return _DataErrorState(
+            onRetry: () {
+              ref.invalidate(eventExpensesProvider(eventRef));
+              ref.invalidate(eventSettlementsProvider(eventRef));
+            },
+          );
+        }
+        final expenses = expensesAsync.valueOrNull ?? <Expense>[];
+        final settlements = settlementsAsync.valueOrNull ?? <Settlement>[];
+        final currentUserId = ref.watch(currentUserIdProvider);
+        return _Body(
+          groupId: widget.groupId,
+          eventId: widget.eventId,
+          event: event,
+          currency: group.currency,
+          expenses: expenses,
+          settlements: settlements,
+          currentUserId: currentUserId,
+          categoryFilter: _categoryFilter,
+          onCategoryFilter: (cat) => setState(() => _categoryFilter = cat),
+          embedded: widget.embedded,
+        );
+      },
+    );
+    if (widget.embedded) return body;
     return Scaffold(
       key: LedgerKeys.screen,
       backgroundColor: context.colors.scaffoldBackground,
-      body: eventAsync.when(
-        loading: () => const _LoadingState(),
-        error: (_, _) => _ErrorState(
-          onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
-        ),
-        data: (event) {
-          if (event == null) return const _NotFoundState();
-          if (groupAsync.isLoading && !groupAsync.hasValue) {
-            return const _LoadingState();
-          }
-          final group = groupAsync.valueOrNull;
-          if (group == null) return const _NotFoundState();
-          if (expensesAsync.hasError || settlementsAsync.hasError) {
-            return _DataErrorState(
-              onRetry: () {
-                ref.invalidate(eventExpensesProvider(eventRef));
-                ref.invalidate(eventSettlementsProvider(eventRef));
-              },
-            );
-          }
-          final expenses = expensesAsync.valueOrNull ?? <Expense>[];
-          final settlements = settlementsAsync.valueOrNull ?? <Settlement>[];
-          final currentUserId = ref.watch(currentUserIdProvider);
-          return _Body(
-            groupId: widget.groupId,
-            eventId: widget.eventId,
-            event: event,
-            currency: group.currency,
-            expenses: expenses,
-            settlements: settlements,
-            currentUserId: currentUserId,
-            categoryFilter: _categoryFilter,
-            onCategoryFilter: (cat) => setState(() => _categoryFilter = cat),
-          );
-        },
-      ),
+      body: body,
     );
   }
 }
@@ -129,6 +143,7 @@ class _Body extends ConsumerWidget {
     required this.currentUserId,
     required this.categoryFilter,
     required this.onCategoryFilter,
+    required this.embedded,
   });
 
   final String groupId;
@@ -140,6 +155,7 @@ class _Body extends ConsumerWidget {
   final String? currentUserId;
   final int? categoryFilter;
   final ValueChanged<int?> onCategoryFilter;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -244,153 +260,152 @@ class _Body extends ConsumerWidget {
       l10n: context.l10n,
     );
 
-    return Column(
-      children: [
-        Expanded(
-          child: CustomScrollView(
-            restorationId: 'ledger_scroll',
-            slivers: [
-              SliverToBoxAdapter(
-                child: _CoverHeader(
-                  event: event,
+    final scroll = CustomScrollView(
+      restorationId: 'ledger_scroll',
+      slivers: [
+        // #758 embedded: the tabbed shell owns the header, balance display,
+        // offline banner, and per-person surface (Settle tab) — only the
+        // timeline (caption, chips, day cards) renders as the Expenses panel.
+        if (!embedded) ...[
+          SliverToBoxAdapter(
+            child: _CoverHeader(
+              event: event,
+              participantCount: participants.length,
+              onSettings: () => GoRouter.of(
+                context,
+              ).push('/group/$groupId/event/$eventId/settings'),
+              onActivity: () => GoRouter.of(
+                context,
+              ).push('/group/$groupId/event/$eventId/activity'),
+              onSearch: () => showLedgerSearchSheet(
+                context,
+                expenses: expenses,
+                settlements: settlements,
+                expensePayerDisplayNames: expensePayerDisplayNames,
+                settlementDisplayNames: settlementDisplayNames,
+                groupId: groupId,
+                eventId: eventId,
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: OfflineBanner()),
+          SliverToBoxAdapter(
+            child: LedgerHeroStatement(
+              kind: heroKind,
+              amount: singleLine?.net ?? Decimal.zero,
+              currency: singleLine?.currency ?? currency,
+              peopleCount: heroLines.length == 1
+                  ? heroLines.first.peopleCount
+                  : 0,
+              lines: heroLines,
+            ),
+          ),
+        ],
+        if (hasExpenses)
+          SliverToBoxAdapter(
+            child: LedgerTripCaption(
+              label: eventTypeTotalLabel(
+                event.type,
+                context.l10n,
+              ).toUpperCase(),
+              totals: [
+                for (final c in sortedGccFirst(eventTotal.keys))
+                  (currency: c, total: eventTotal[c]!),
+              ],
+              expenseCount: expenses.length,
+              settledCount: settlements.length,
+            ),
+          ),
+        if (!embedded)
+          SliverToBoxAdapter(
+            child: LedgerRosterStrip(
+              state: rosterState,
+              others: roster,
+              currency: currency,
+              currentUserDisplayName: myDisplayName ?? context.l10n.ledgerYou,
+              onPersonTap: (p) => GoRouter.of(context).push(
+                '/group/$groupId/event/$eventId/ledger/'
+                'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',
+              ),
+            ),
+          ),
+        if (hasExpenses)
+          SliverToBoxAdapter(
+            child: LedgerCategoryStrip(
+              expenses: expenses,
+              totalCount: expenses.length,
+              active: categoryFilter,
+              onChange: onCategoryFilter,
+            ),
+          )
+        else
+          const SliverToBoxAdapter(child: LedgerCategoryStripEmpty()),
+        const SliverToBoxAdapter(child: SizedBox(height: 6)),
+        if (timeline.isEmpty)
+          SliverPadding(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space20,
+              vertical: context.spacing.space16,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: hasExpenses
+                  ? EmptyStateView(
+                      icon: Iconsax.receipt_item,
+                      title: context.l10n.ledgerNothingInCategoryTitle,
+                      message: context.l10n.ledgerNothingInCategoryMessage,
+                      actionLabel: context.l10n.ledgerClearFilters,
+                      onAction: () => onCategoryFilter(null),
+                    )
+                  : _EmptyStateBody(currency: currency, eventType: event.type),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final day = days[index];
+              return Padding(
+                padding: EdgeInsets.only(top: index == 0 ? 4 : 14),
+                child: LedgerDayCard(
+                  dayLabel: day.label,
+                  sub: null,
+                  items: day.items,
+                  currentParticipantId: currentPid,
                   participantCount: participants.length,
-                  onSettings: () => GoRouter.of(
-                    context,
-                  ).push('/group/$groupId/event/$eventId/settings'),
-                  onActivity: () => GoRouter.of(
-                    context,
-                  ).push('/group/$groupId/event/$eventId/activity'),
-                  onSearch: () => showLedgerSearchSheet(
-                    context,
-                    expenses: expenses,
-                    settlements: settlements,
-                    expensePayerDisplayNames: expensePayerDisplayNames,
-                    settlementDisplayNames: settlementDisplayNames,
-                    groupId: groupId,
-                    eventId: eventId,
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: OfflineBanner()),
-              SliverToBoxAdapter(
-                child: LedgerHeroStatement(
-                  kind: heroKind,
-                  amount: singleLine?.net ?? Decimal.zero,
-                  currency: singleLine?.currency ?? currency,
-                  peopleCount: heroLines.length == 1
-                      ? heroLines.first.peopleCount
-                      : 0,
-                  lines: heroLines,
-                ),
-              ),
-              if (hasExpenses)
-                SliverToBoxAdapter(
-                  child: LedgerTripCaption(
-                    label: eventTypeTotalLabel(
-                      event.type,
-                      context.l10n,
-                    ).toUpperCase(),
-                    totals: [
-                      for (final c in sortedGccFirst(eventTotal.keys))
-                        (currency: c, total: eventTotal[c]!),
-                    ],
-                    expenseCount: expenses.length,
-                    settledCount: settlements.length,
-                  ),
-                ),
-              SliverToBoxAdapter(
-                child: LedgerRosterStrip(
-                  state: rosterState,
-                  others: roster,
-                  currency: currency,
-                  currentUserDisplayName:
-                      myDisplayName ?? context.l10n.ledgerYou,
-                  onPersonTap: (p) => GoRouter.of(context).push(
+                  expensePayerDisplayNames: expensePayerDisplayNames,
+                  settlementDisplayNames: settlementDisplayNames,
+                  owedByExpenseId: data.owedByExpenseId,
+                  onExpenseTap: (expense) => GoRouter.of(context).push(
                     '/group/$groupId/event/$eventId/ledger/'
-                    'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',
+                    'edit/${expense.id}',
                   ),
+                ),
+              );
+            }, childCount: days.length),
+          ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.space24),
+            child: Center(
+              child: Text(
+                isSettled
+                    ? '· ${context.l10n.ledgerEndOfLedger} · '
+                          '${Decimal.zero.toStringAsFixed(AppFormatters.currencyConfig[currency]?.decimals ?? 3)} ·'
+                    : '· ${context.l10n.ledgerEndOfLedger} ·',
+                style: AppTypography.mono(
+                  fontSize: 9,
+                  color: context.colors.textSecondary,
+                  letterSpacing: 1.5,
                 ),
               ),
-              if (hasExpenses)
-                SliverToBoxAdapter(
-                  child: LedgerCategoryStrip(
-                    expenses: expenses,
-                    totalCount: expenses.length,
-                    active: categoryFilter,
-                    onChange: onCategoryFilter,
-                  ),
-                )
-              else
-                const SliverToBoxAdapter(child: LedgerCategoryStripEmpty()),
-              const SliverToBoxAdapter(child: SizedBox(height: 6)),
-              if (timeline.isEmpty)
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacing.space20,
-                    vertical: context.spacing.space16,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: hasExpenses
-                        ? EmptyStateView(
-                            icon: Iconsax.receipt_item,
-                            title: context.l10n.ledgerNothingInCategoryTitle,
-                            message:
-                                context.l10n.ledgerNothingInCategoryMessage,
-                            actionLabel: context.l10n.ledgerClearFilters,
-                            onAction: () => onCategoryFilter(null),
-                          )
-                        : _EmptyStateBody(
-                            currency: currency,
-                            eventType: event.type,
-                          ),
-                  ),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final day = days[index];
-                    return Padding(
-                      padding: EdgeInsets.only(top: index == 0 ? 4 : 14),
-                      child: LedgerDayCard(
-                        dayLabel: day.label,
-                        sub: null,
-                        items: day.items,
-                        currentParticipantId: currentPid,
-                        participantCount: participants.length,
-                        expensePayerDisplayNames: expensePayerDisplayNames,
-                        settlementDisplayNames: settlementDisplayNames,
-                        owedByExpenseId: data.owedByExpenseId,
-                        onExpenseTap: (expense) => GoRouter.of(context).push(
-                          '/group/$groupId/event/$eventId/ledger/'
-                          'edit/${expense.id}',
-                        ),
-                      ),
-                    );
-                  }, childCount: days.length),
-                ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: context.spacing.space24,
-                  ),
-                  child: Center(
-                    child: Text(
-                      isSettled
-                          ? '· ${context.l10n.ledgerEndOfLedger} · '
-                                '${Decimal.zero.toStringAsFixed(AppFormatters.currencyConfig[currency]?.decimals ?? 3)} ·'
-                          : '· ${context.l10n.ledgerEndOfLedger} ·',
-                      style: AppTypography.mono(
-                        fontSize: 9,
-                        color: context.colors.textSecondary,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
+      ],
+    );
+    if (embedded) return scroll;
+    return Column(
+      children: [
+        Expanded(child: scroll),
         LedgerStickyCta(
           settleEnabled: !isSettled && hasExpenses,
           // #723: closed event freezes spending; settle stays live.

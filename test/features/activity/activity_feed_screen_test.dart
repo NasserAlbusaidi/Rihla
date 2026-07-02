@@ -366,4 +366,54 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(RAmount), findsNothing); // verb line only, no detail
   });
+
+  // ── #758: embedded mode (tab panel inside the tabbed event view) ─────────
+
+  testWidgets('#758 embedded mode renders the feed without its own chrome', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    await seed(db, 2);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eventDetailProvider(
+            eventRef,
+          ).overrideWith((ref) => Stream<Event?>.value(event)),
+          activityServiceProvider.overrideWithValue(
+            ActivityService.withFirestore(db),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(
+            body: ActivityFeedScreen(
+              groupId: groupId,
+              eventId: eventId,
+              embedded: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    // Feed content renders…
+    expect(find.textContaining('Actor 0', findRichText: true), findsOneWidget);
+    // …but the screen contributes no chrome of its own: no back arrow, no
+    // "ACTIVITY" caption, no nested Scaffold (the tabbed shell owns chrome).
+    expect(find.byIcon(Iconsax.arrow_left), findsNothing);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byKey(ActivityKeys.feedList)),
+    );
+    expect(find.text(l10n.activityCaption), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(ActivityFeedScreen),
+        matching: find.byType(Scaffold),
+      ),
+      findsNothing,
+    );
+  });
 }

@@ -2224,6 +2224,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.';
 
   @override
+  String get eventTabExpenses => 'Expenses';
+
+  @override
+  String get eventTabSettleUp => 'Settle up';
+
+  @override
+  String get eventTabActivity => 'Activity';
+
+  @override
+  String get eventTabRecap => 'Recap';
+
+  @override
   String get eventAddExpense => 'Add expense';
 
   @override

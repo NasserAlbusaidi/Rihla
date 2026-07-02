@@ -24,6 +24,7 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
+import 'package:safar/features/groups/widgets/settle_up_page_body.dart';
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
@@ -87,6 +88,7 @@ void main() {
     Stream<List<Settlement>>? settlementsStream,
     SettlementService? settlementService,
     bool router = false,
+    bool embedded = false,
     String? preSelectedMemberId,
     List<Override> extraOverrides = const [],
   }) {
@@ -161,15 +163,52 @@ void main() {
             locale: locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: SettleUpScreen(
-              groupId: groupId,
-              eventId: eventId,
-              preSelectedMemberId: preSelectedMemberId,
-            ),
+            home: embedded
+                ? Scaffold(
+                    body: SettleUpScreen(
+                      groupId: groupId,
+                      eventId: eventId,
+                      preSelectedMemberId: preSelectedMemberId,
+                      embedded: true,
+                    ),
+                  )
+                : SettleUpScreen(
+                    groupId: groupId,
+                    eventId: eventId,
+                    preSelectedMemberId: preSelectedMemberId,
+                  ),
           );
 
     return ProviderScope(overrides: overrides, child: child);
   }
+
+  // ── #758: embedded mode (tab panel inside the tabbed event view) ─────────
+
+  testWidgets('#758 embedded mode renders the body without its own chrome', (
+    tester,
+  ) async {
+    final fakeDb = FakeFirebaseFirestore();
+    await tester.pumpWidget(buildScreen(fakeDb, embedded: true));
+    await tester.pumpAndSettle();
+
+    // Settle content renders…
+    expect(find.byType(SettleUpPageBody), findsOneWidget);
+    // …but no top bar (title + back), no offline banner, no nested Scaffold —
+    // the tabbed shell owns all chrome.
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SettleUpPageBody)),
+    );
+    expect(find.text(l10n.settleUpTitle), findsNothing);
+    expect(find.byIcon(Iconsax.arrow_left_2), findsNothing);
+    expect(find.byType(OfflineBanner), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(SettleUpScreen),
+        matching: find.byType(Scaffold),
+      ),
+      findsNothing,
+    );
+  });
 
   testWidgets('shows loading state while event is loading', (tester) async {
     final fakeDb = FakeFirebaseFirestore();

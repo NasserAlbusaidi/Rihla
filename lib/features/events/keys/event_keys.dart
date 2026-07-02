@@ -3,19 +3,22 @@ import 'package:flutter/material.dart';
 abstract final class EventKeys {
   // Screen keys (D-10: mandatory for all screens)
   static const screen = Key('event_command_center_screen');
-  static const dayBadge = Key('event_command_center_day_badge');
   static const createEventScreen = Key('create_event_screen');
 
-  // Module cards — unique key per card (no duplicate keys in tree)
-  static const ledgerCard = Key('event_ledger_card');
+  // Tabbed event view (#758)
+  static const tabBar = Key('event_tab_bar');
+  static const tabExpenses = Key('event_tab_expenses');
+  static const tabSettleUp = Key('event_tab_settle_up');
+  static const tabActivity = Key('event_tab_activity');
+  static const tabRecap = Key('event_tab_recap');
+  static const balanceHeader = Key('event_balance_header');
+  static const headerCompactAmount = Key('event_header_compact_amount');
+  static const addExpenseFab = Key('event_add_expense_fab');
+  static const searchButton = Key('event_search_button');
 
   // Actions
   static const createEventButton = Key('event_create_button');
   static const selectAllButton = Key('event_select_all_button');
-
-  // Sections
-  static const spendingHero = Key('event_spending_hero');
-  static const addExpenseChip = Key('event_add_expense_chip');
 
   // Parameterized key for event type picker cards
   static Key eventTypeCard(String typeLabel) =>

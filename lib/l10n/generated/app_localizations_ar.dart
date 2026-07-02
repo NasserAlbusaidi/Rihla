@@ -2278,6 +2278,18 @@ class AppLocalizationsAr extends AppLocalizations {
       'هذه الفعالية مُغلقة والإنفاق مُجمّد. أعد فتحها من الإعدادات لإضافة المصروفات أو تعديلها.';
 
   @override
+  String get eventTabExpenses => 'المصاريف';
+
+  @override
+  String get eventTabSettleUp => 'التسوية';
+
+  @override
+  String get eventTabActivity => 'النشاط';
+
+  @override
+  String get eventTabRecap => 'الملخّص';
+
+  @override
   String get eventAddExpense => 'إضافة مصروف';
 
   @override
