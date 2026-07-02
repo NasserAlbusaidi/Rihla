@@ -144,6 +144,60 @@ void main() {
     expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
   });
 
+  // Friction audit tranche 2: for a high-stakes money correction, a
+  // tooltip-only icon is invisible on touch — the affordance must carry a
+  // visible text label, not rely on icon-shape recognition.
+  testWidgets('the correct affordance shows a visible "Correct" label', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_host(_bodyWithHistory(onCorrect: (_) {})));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(GroupKeys.settleUpCorrectButton),
+        matching: find.text('Correct'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  // The labelled control is wider than the old 36px icon; the history tile's
+  // name column is Expanded+ellipsis but the amount is fixed-width, so guard
+  // a narrow phone with long Arabic names against RenderFlex overflow.
+  testWidgets(
+    'history tile with long names + correct + share fits a 320px screen',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        _host(
+          _bodyWithHistory(
+            onCorrect: (_) {},
+            settlements: [
+              Settlement(
+                id: 's-long',
+                tripId: 'event-1',
+                payerParticipantId: 'uid-ahmed',
+                recipientParticipantId: 'uid-sara',
+                amount: Decimal.parse('12345.678'),
+                settledAt: DateTime(2026, 6, 7),
+                payerName: 'عبدالرحمن بن عبدالعزيز الهنائي',
+                recipientName: 'مريم بنت سليمان البوسعيدية',
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   // #567: a reversing correction must read as a CORRECTION in Payment history,
   // not as another (duplicate) payment. The row carries the persisted
   // `settleUpCorrectionNote` sentinel; the tile surfaces it as a "Correction"

@@ -1,9 +1,13 @@
 // Account-card rework (#428 PR-B): Google row, durable-gated sign-out,
-// zero-group-guarded restore entries, Google-aware sign-out copy.
+// tap-gated restore entries, Google-aware sign-out copy.
 //
 // Visibility matrix:
 //   anon + zero groups   → link row + both restore rows; no sign-out
-//   anon + groups        → link row only (restore hidden — populated shell)
+//   anon + groups        → link row + both restore rows VISIBLE; a tap is
+//                          blocked with restoreBlockedHasData (the emptiness
+//                          check moved from row visibility to tap time —
+//                          friction audit tranche 2; the authoritative gate
+//                          still runs AT THE SWAP, #647/#648)
 //   Google-linked (no email) → Google row + sign-out; no link/restore rows
 //   email-linked         → legacy behavior + no Google row
 // Harness mirrors sign_out_tile_test.dart.
@@ -205,16 +209,51 @@ void main() {
   });
 
   group('anonymous + populated shell', () {
-    testWidgets('restore rows hidden (discard-shell unsafe); link row stays',
-        (tester) async {
+    testWidgets('restore rows stay visible; link row stays', (tester) async {
       await tester.pumpWidget(
         await _wrap(service: service, user: _anonUser(), groups: [_group()]),
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(ProfileKeys.profileRestoreGoogleTile), findsNothing);
-      expect(find.byKey(ProfileKeys.profileRestoreEmailTile), findsNothing);
+      expect(find.byKey(ProfileKeys.profileRestoreGoogleTile), findsOneWidget);
+      expect(find.byKey(ProfileKeys.profileRestoreEmailTile), findsOneWidget);
       expect(find.byKey(ProfileKeys.googleLinkTile), findsOneWidget);
+    });
+
+    testWidgets(
+        'email restore tap is blocked with the has-data explanation — '
+        'no /recover push', (tester) async {
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _anonUser(), groups: [_group()]),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(ProfileKeys.profileRestoreEmailTile),
+      );
+      await tester.tap(find.byKey(ProfileKeys.profileRestoreEmailTile));
+      await tester.pumpAndSettle();
+
+      expect(find.text('RecoverStub'), findsNothing);
+      expect(find.text(l10n.restoreBlockedHasData), findsOneWidget);
+    });
+
+    testWidgets(
+        'Google restore tap is blocked with the has-data explanation — '
+        'restoreWithGoogle never called', (tester) async {
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _anonUser(), groups: [_group()]),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(ProfileKeys.profileRestoreGoogleTile),
+      );
+      await tester.tap(find.byKey(ProfileKeys.profileRestoreGoogleTile));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.restoreBlockedHasData), findsOneWidget);
+      verifyNever(() => service.restoreWithGoogle());
     });
   });
 

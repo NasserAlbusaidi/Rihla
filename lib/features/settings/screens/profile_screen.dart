@@ -28,6 +28,7 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/providers/shell_emptiness_gate.dart';
 import '../../auth/services/data_deletion_service.dart';
 import '../../auth/services/durable_account_marker.dart';
 import '../../auth/widgets/delete_account_dialog.dart';
@@ -1091,6 +1092,32 @@ class _AccountCard extends ConsumerWidget {
     }
   }
 
+  /// Advisory pre-check before the email-recover screen — mirrors the gate
+  /// `triggerGoogleRestore` already runs (google_restore_action.dart). Without
+  /// it, a data-holding user reaches the email screen, sends themselves a
+  /// link, and is only blocked at link-open (#647's swap gate) — a downstream
+  /// dead-end instead of an upfront answer. The swap gate stays authoritative.
+  Future<void> _recoverWithEmail(BuildContext context, WidgetRef ref) async {
+    final shellEmpty = await outgoingShellProvablyEmpty(
+      readUser: () => ref.read(firebaseUserProvider.future),
+      readGroups: () => ref.read(userGroupsProvider.future),
+      timeout: ref.read(shellEmptinessGateTimeoutProvider),
+    );
+    if (!context.mounted) return;
+    if (!shellEmpty) {
+      ScaffoldMessenger.of(context)
+        ..removeCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.restoreBlockedHasData),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      return;
+    }
+    unawaited(context.push('/recover'));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
@@ -1100,12 +1127,14 @@ class _AccountCard extends ConsumerWidget {
     final isDurable = ref.watch(isDurableUserProvider);
     final user = ref.watch(authUserChangesProvider).valueOrNull;
     final isAnonymous = user?.isAnonymous ?? false;
-    // Restore entries discard the current shell with no merge engine — only
-    // safe when the shell is provably empty. Mirrors the home empty-state
-    // guard (#428); userGroupsProvider loading/error → hidden (fail-safe).
-    final showRestore =
-        isAnonymous &&
-        (ref.watch(userGroupsProvider).valueOrNull?.isEmpty ?? false);
+    // Restore rows stay VISIBLE for every anonymous user; the shell-emptiness
+    // check moved from row visibility to TAP time (friction audit tranche 2 —
+    // a hidden row with no explanation read as "restore doesn't exist"). A tap
+    // with data present surfaces restoreBlockedHasData instead of a swap:
+    // triggerGoogleRestore self-gates, and the email row gates via
+    // _recoverWithEmail. The AUTHORITATIVE gate is unchanged and still runs at
+    // the swap itself (#647/#648 — outgoingShellProvablyEmpty).
+    final showRestore = isAnonymous;
 
     // #487 bullet 3: only the backup & recovery rows live here now; the
     // irreversible Delete moved to its own _DangerZoneCard below. The trailing
@@ -1221,7 +1250,7 @@ class _AccountCard extends ConsumerWidget {
                 size: 16,
                 color: colors.textSecondary,
               ),
-              onTap: () => context.push('/recover'),
+              onTap: () => unawaited(_recoverWithEmail(context, ref)),
               divider: true,
             ),
           ],
