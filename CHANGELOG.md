@@ -4,6 +4,47 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.2] — 2026-07-02
+
+Closed-track activation and trip-command release. New groups now start with a
+ledger event, expenses can be added from the home shell, event work happens in a
+single tabbed screen, and the settlement review safety net now covers both event
+and group settle-up. Backend changes through `bcb27382` are already live in
+production.
+
+### Added
+- **Default ledger event for new groups (#245/#793/#794).** Creating a group now
+  seeds one ledger event named after the group, and server-side shadow-member
+  fan-in keeps added-by-name members available in existing event split rosters.
+- **Persistent Add Expense FAB (#364/#796).** Groups and Activity tabs now show a
+  fast add-expense action with a flattened open-event picker and a one-event
+  direct path.
+- **Tabbed event command screen (#758/#788).** Event detail now hosts Expenses,
+  Settle up, Activity, and closed-event Recap in one tabbed surface with a pinned
+  balance header.
+- **Group spending summary (#180/#797).** Group detail now shows per-currency
+  spend insights across top events, categories, payers, and consumers.
+
+### Changed
+- **Pre-settlement review expansion (#204/#786/#798).** Event settle-up now flags
+  departed-payer expenses, and group settle-up shows the same review sheet across
+  all affected events before payment is recorded.
+- **Itemized split discoverability (#790/#791).** Itemized is now a first-class
+  split option on the Split card instead of being buried inside the custom split
+  sheet.
+- **Expense category required at creation (#204/#787).** New expenses must pick a
+  category before saving; legacy edits remain editable without forced backfill.
+
+### Fixed
+- **Notification retry idempotency and claim routing (#179/#780).** Eventarc
+  retry deliveries no longer double-send supported notifications, and claim
+  decision taps route safely for member and pre-join cases.
+- **Closed-event receipt access (#708/#782).** The closed-event banner now links
+  directly to the Trip Receipt export surface when there is something to export.
+- **Event polish follow-ups (#789/#792).** Embedded event panels reserve FAB
+  clearance, no-description ledger rows fall back to category names, and live
+  multi-day trips show a localized day badge.
+
 ## [1.7.1] — 2026-07-01
 
 Closed-track validation build for the event-driven connectivity fix, plus the
