@@ -153,6 +153,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   late String _amount;
   late ExpenseScope _scope;
   String? _selectedCategoryId;
+
+  /// #204: set when a save is attempted with no category picked (category is
+  /// mandatory at creation). Drives the inline "choose a category" hint; cleared
+  /// the moment the user selects one.
+  bool _categoryError = false;
   String? _selectedPayerId;
   late Set<String> _customSplitParticipants;
 
@@ -301,6 +306,17 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     // stale in add-mode after the picker).
     if (!MoneySerializer.fitsSafeSubunits(amount, effectiveCurrency)) {
       _showSnack(context.l10n.editorAmountTooLarge);
+      return;
+    }
+
+    // #204: category is mandatory at CREATION — block the save until the user
+    // picks one, so every new expense carries a real category (no null/"Other"
+    // default). Removes the need for an "uncategorized" pre-settlement warning.
+    // Edit mode is exempt: legacy null-category expenses stay editable without a
+    // forced retroactive pick (the mandate is "at creation").
+    if (!_isEdit && (_selectedCategoryId == null || _selectedCategoryId!.isEmpty)) {
+      setState(() => _categoryError = true);
+      _showSnack(context.l10n.editorCategoryRequired);
       return;
     }
 
@@ -727,14 +743,37 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       ),
                     _Section(
                       title: context.l10n.editorCategory,
-                      child: _CategoryStrip(
-                        categoriesAsync: categoriesAsync,
-                        eventType: event?.type,
-                        selectedCategoryId: _selectedCategoryId,
-                        onCategorySelected: (id) {
-                          HapticService.selection();
-                          setState(() => _selectedCategoryId = id);
-                        },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_categoryError)
+                            Padding(
+                              padding: EdgeInsetsDirectional.only(
+                                start: context.spacing.space24,
+                                bottom: context.spacing.space8,
+                              ),
+                              child: Text(
+                                context.l10n.editorCategoryRequired,
+                                style: AppTypography.sans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.colors.error,
+                                ),
+                              ),
+                            ),
+                          _CategoryStrip(
+                            categoriesAsync: categoriesAsync,
+                            eventType: event?.type,
+                            selectedCategoryId: _selectedCategoryId,
+                            onCategorySelected: (id) {
+                              HapticService.selection();
+                              setState(() {
+                                _selectedCategoryId = id;
+                                _categoryError = false;
+                              });
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     if (event != null) ...[

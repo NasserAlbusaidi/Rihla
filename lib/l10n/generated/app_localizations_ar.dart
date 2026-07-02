@@ -823,6 +823,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorCategory => 'الفئة';
 
   @override
+  String get editorCategoryRequired => 'اختر فئة';
+
+  @override
   String get editorPaidBy => 'دفع بواسطة';
 
   @override

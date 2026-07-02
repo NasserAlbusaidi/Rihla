@@ -336,6 +336,14 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '12.345');
     await _settle(tester);
 
+    // #204: category is mandatory at creation — pick one before saving
+    // (Food is present in every event-type order, near the strip's start).
+    final categoryChip = find.text(ar.categoryFood);
+    await tester.ensureVisible(categoryChip);
+    await _settle(tester);
+    await tester.tap(categoryChip);
+    await _settle(tester);
+
     final addAction = find.widgetWithText(FilledButton, ar.editorActionAdd);
     expect(
       addAction,
