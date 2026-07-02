@@ -210,6 +210,11 @@ class SettleUpPageBody extends StatelessWidget {
   /// shared single-`Settlement` contract stays untouched.
   final void Function(String groupSettleUpId)? onCorrectLogical;
 
+  /// Bottom padding of the scroll content. Defaults to the standard gutter; the
+  /// embedded event panel raises it (kEmbeddedEventPanelFabClearance) so the
+  /// last row clears the workspace's floating "+ Add expense" pill (#789).
+  final double bottomInset;
+
   const SettleUpPageBody({
     super.key,
     required this.scope,
@@ -226,6 +231,7 @@ class SettleUpPageBody extends StatelessWidget {
     this.onRecordStepped,
     this.onCorrect,
     this.onCorrectLogical,
+    this.bottomInset = 24,
   });
 
   @override
@@ -296,7 +302,7 @@ class SettleUpPageBody extends StatelessWidget {
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: EdgeInsets.fromLTRB(20, 4, 20, bottomInset),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

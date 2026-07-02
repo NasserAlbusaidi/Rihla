@@ -15,6 +15,7 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../events/embedded_panel_metrics.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../events/utils/event_type_copy.dart';
@@ -384,7 +385,16 @@ class _Body extends ConsumerWidget {
           ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: context.spacing.space24),
+            // #789: in the embedded panel, extend the trailing gutter so the
+            // last content clears the workspace's floating FAB.
+            padding: EdgeInsets.fromLTRB(
+              0,
+              context.spacing.space24,
+              0,
+              embedded
+                  ? kEmbeddedEventPanelFabClearance
+                  : context.spacing.space24,
+            ),
             child: Center(
               child: Text(
                 isSettled
