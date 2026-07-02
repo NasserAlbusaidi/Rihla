@@ -5,13 +5,18 @@ import {
   Timestamp,
   Transaction,
   DocumentData,
-  DocumentReference,
 } from 'firebase-admin/firestore';
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import '../admin';
 import { notifyMemberJoin } from '../notifications/memberJoinNotifier';
 import { normalizeInviteCode } from './shared/inviteCode';
+import {
+  EventFanInUpdate,
+  MAX_FAN_IN_EVENTS,
+  applyEventFanIn,
+  collectEventFanIn,
+} from './shared/eventFanIn';
 
 export interface JoinGroupByInviteCodeInput {
   inviteCode: string;
@@ -93,49 +98,6 @@ function getMemberIds(groupData: DocumentData): string[] {
   return memberIds;
 }
 
-function getParticipantIds(eventData: DocumentData, eventId: string): string[] {
-  const participantIds = eventData.participantIds;
-  if (
-    !Array.isArray(participantIds)
-    || participantIds.some((participantId) => typeof participantId !== 'string')
-  ) {
-    throw new HttpsError(
-      'failed-precondition',
-      `Event ${eventId} participantIds data is malformed.`,
-    );
-  }
-  return participantIds;
-}
-
-function getParticipantNames(
-  eventData: DocumentData,
-  eventId: string,
-): Record<string, string> {
-  const participantNames = eventData.participantNames;
-  if (
-    participantNames == null
-    || typeof participantNames !== 'object'
-    || Array.isArray(participantNames)
-  ) {
-    throw new HttpsError(
-      'failed-precondition',
-      `Event ${eventId} participantNames data is malformed.`,
-    );
-  }
-
-  const normalized: Record<string, string> = {};
-  for (const [participantId, displayName] of Object.entries(participantNames)) {
-    if (typeof displayName !== 'string') {
-      throw new HttpsError(
-        'failed-precondition',
-        `Event ${eventId} participantNames data is malformed.`,
-      );
-    }
-    normalized[participantId] = displayName;
-  }
-  return normalized;
-}
-
 function isTimestamp(value: unknown): value is Timestamp {
   return value instanceof Timestamp;
 }
@@ -147,12 +109,6 @@ function isLookupFailure(error: unknown): boolean {
 
 function tooManyAttemptsError(): HttpsError {
   return new HttpsError('resource-exhausted', 'Too many attempts. Try again later.');
-}
-
-interface EventFanoutUpdate {
-  ref: DocumentReference;
-  addParticipantId: boolean;
-  participantNames: Record<string, string>;
 }
 
 async function assertJoinNotLocked(db: Firestore, uid: string): Promise<void> {
@@ -290,7 +246,7 @@ export const joinGroupByInviteCode = onCall<
           tx.get(membersQuery),
           tx.get(eventsQuery),
         ]);
-        if (eventsSnap.size > 400) {
+        if (eventsSnap.size > MAX_FAN_IN_EVENTS) {
           throw new HttpsError(
             'failed-precondition',
             'Group has too many events to join safely.',
@@ -338,27 +294,8 @@ export const joinGroupByInviteCode = onCall<
           }
         }
 
-        const eventFanoutUpdates: EventFanoutUpdate[] = [];
-        for (const eventSnap of eventsSnap.docs) {
-          const eventData = eventSnap.data() ?? {};
-          if (eventData.isDeleted === true) {
-            continue;
-          }
-          const participantIds = getParticipantIds(eventData, eventSnap.id);
-          const participantNames = getParticipantNames(eventData, eventSnap.id);
-          const addParticipantId = !participantIds.includes(uid);
-          const nameChanged = participantNames[uid] !== displayName;
-          if (addParticipantId || nameChanged) {
-            eventFanoutUpdates.push({
-              ref: eventSnap.ref,
-              addParticipantId,
-              participantNames: {
-                ...participantNames,
-                [uid]: displayName,
-              },
-            });
-          }
-        }
+        const eventFanoutUpdates: EventFanInUpdate[] =
+          collectEventFanIn(eventsSnap, uid, displayName);
 
         if (!memberIds.includes(uid)) {
           tx.update(groupRef, {
@@ -378,16 +315,7 @@ export const joinGroupByInviteCode = onCall<
           });
         }
 
-        for (const eventUpdate of eventFanoutUpdates) {
-          const updateData: Record<string, unknown> = {
-            participantNames: eventUpdate.participantNames,
-            updatedAt: FieldValue.serverTimestamp(),
-          };
-          if (eventUpdate.addParticipantId) {
-            updateData.participantIds = FieldValue.arrayUnion(uid);
-          }
-          tx.update(eventUpdate.ref, updateData);
-        }
+        applyEventFanIn(tx, eventFanoutUpdates, uid);
 
         return resolvedGroupId;
       });

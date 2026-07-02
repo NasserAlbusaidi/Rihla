@@ -72,6 +72,7 @@ async function seedEvent(
   eventId: string,
   participantIds: string[],
   participantNames: Record<string, string>,
+  data: Record<string, unknown> = {},
 ): Promise<void> {
   await getFirestore().doc(`groups/${groupId}/events/${eventId}`).set({
     id: eventId,
@@ -85,8 +86,12 @@ async function seedEvent(
     isDeleted: false,
     deletedAt: null,
     createdAt: new Date('2026-01-04T00:00:00.000Z'),
+    ...data,
   });
 }
+
+const eventData = async (groupId: string, eventId: string) =>
+  (await getFirestore().doc(`groups/${groupId}/events/${eventId}`).get()).data() ?? {};
 
 async function seedExpense(
   path: string,
@@ -309,6 +314,72 @@ describe('addShadowMember callable — creator adds placeholder members by name 
       wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any),
     ).rejects.toMatchObject({ code: 'failed-precondition' });
     expect((await groupData('g')).memberIds).toHaveLength(50);
+  });
+
+  // #245 PR1: a shadow must be fanned into LIVE events exactly like a joiner
+  // (joinGroupByInviteCode's event fan-in) — the expense editor's split roster
+  // reads event.participantIds, and no client path grows it, so a shadow left
+  // out of an event can never be split against there.
+  test('15a. FAN-IN: new shadow lands in a live event participantIds + participantNames', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+    await seedEvent('g', 'e2', [OWNER], { [OWNER]: 'Owner' });
+
+    const res = await wrapped({
+      data: { groupId: 'g', displayName: 'Sara' },
+      auth: { uid: OWNER },
+    } as any);
+    const sara = (res as { memberId: string }).memberId;
+
+    for (const eventId of ['e1', 'e2']) {
+      const event = await eventData('g', eventId);
+      expect(event.participantIds).toEqual(expect.arrayContaining([OWNER, sara]));
+      expect(event.participantIds).toHaveLength(2);
+      expect(event.participantNames).toEqual({ [OWNER]: 'Owner', [sara]: 'Sara' });
+      expect(event.updatedAt).toBeTruthy();
+    }
+  });
+
+  test('15b. FAN-IN skips soft-deleted events', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'dead', [OWNER], { [OWNER]: 'Owner' }, {
+      isDeleted: true,
+      deletedAt: new Date('2026-01-05T00:00:00.000Z'),
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g', displayName: 'Sara' },
+      auth: { uid: OWNER },
+    } as any);
+    const sara = (res as { memberId: string }).memberId;
+
+    const event = await eventData('g', 'dead');
+    expect(event.participantIds).toEqual([OWNER]);
+    expect(event.participantNames).toEqual({ [OWNER]: 'Owner' });
+    expect(event.participantIds).not.toContain(sara);
+    expect(event.updatedAt).toBeUndefined();
+  });
+
+  test('15c. FAN-IN includes CLOSED events (mirrors join — closed rejects new expenses anyway)', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'closed', [OWNER], { [OWNER]: 'Owner' }, {
+      isClosed: true,
+      closedAt: new Date('2026-01-05T00:00:00.000Z'),
+      closedBy: OWNER,
+    });
+
+    const res = await wrapped({
+      data: { groupId: 'g', displayName: 'Sara' },
+      auth: { uid: OWNER },
+    } as any);
+    const sara = (res as { memberId: string }).memberId;
+
+    const event = await eventData('g', 'closed');
+    expect(event.participantIds).toEqual(expect.arrayContaining([OWNER, sara]));
+    expect(event.participantNames[sara]).toBe('Sara');
   });
 
   test('13a. PARITY shadow-as-DEBTOR: split-against → oracle nets the shadow negative', async () => {
