@@ -48,8 +48,12 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   @override
   Widget build(BuildContext context) {
     // #807: hide the FAB on the zero-groups empty state (it would duplicate
-    // the empty state's own "create group" CTA). valueOrNull fail-opens
-    // during loading/error so the FAB doesn't flash-hide on cold start.
+    // the empty state's own "create group" CTA). valueOrNull shows the FAB
+    // through loading/error; the cold-start authStateChanges race can still
+    // emit a transient AsyncData([]) (#647 — settled data, not loading), so a
+    // user WITH groups may see the FAB hidden for a sub-second beat until the
+    // real snapshot lands. Benign for a FAB — do NOT reuse this read as a
+    // safety gate (see outgoingShellProvablyEmpty for the real pattern).
     final groups = ref.watch(userGroupsProvider).valueOrNull;
     final hasNoGroups = groups != null && groups.isEmpty;
     return Scaffold(
