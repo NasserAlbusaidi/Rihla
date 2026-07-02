@@ -349,6 +349,11 @@
   "customSplitModePercent": "نسبة مئوية",
 
   "editorSplitItemized": "حسب الأصناف",
+  "splitModeHelpEqually": "يدفع الجميع بالتساوي.",
+  "splitModeHelpShares": "رجّح من عليه دفع المزيد — مثل الأزواج أو من طلب أكثر.",
+  "splitModeHelpExact": "أدخل حصة كل شخص بالضبط.",
+  "splitModeHelpPercent": "قسّم حسب النسبة المئوية من الإجمالي.",
+  "splitModeHelpItemized": "أضف كل بند في الفاتورة وحدّد من طلبه.",
   "itemizedItemsHeader": "الأصناف",
   "itemizedAddItem": "+ إضافة صنف",
   "itemizedRemoveItem": "حذف الصنف",

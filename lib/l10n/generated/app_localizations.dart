@@ -1982,6 +1982,36 @@ abstract class AppLocalizations {
   /// **'Itemized'**
   String get editorSplitItemized;
 
+  /// One-line helper under the split-mode chips explaining the Equal mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone pays the same.'**
+  String get splitModeHelpEqually;
+
+  /// One-line helper under the split-mode chips explaining the Shares mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight who owes more — e.g. couples or big eaters.'**
+  String get splitModeHelpShares;
+
+  /// One-line helper under the split-mode chips explaining the Exact mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Type each person\'s exact share.'**
+  String get splitModeHelpExact;
+
+  /// One-line helper under the split-mode chips explaining the Percent mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Split by percentage of the total.'**
+  String get splitModeHelpPercent;
+
+  /// One-line helper under the split-mode chips explaining the Itemized mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add each receipt line and tick who ordered it.'**
+  String get splitModeHelpItemized;
+
   /// No description provided for @itemizedItemsHeader.
   ///
   /// In en, this message translates to:

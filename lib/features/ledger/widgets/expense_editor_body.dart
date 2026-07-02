@@ -530,6 +530,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   Future<void> _openSplitModeSheet(
     Event event, {
     SplitMode? requestedMode,
+    bool forceItemized = false,
   }) async {
     HapticService.lightClick();
     final amount = Decimal.tryParse(_amount) ?? Decimal.zero;
@@ -538,8 +539,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _showSnack(context.l10n.editorPickAtLeastTwoPeople);
       return;
     }
-    final mode = requestedMode ?? _splitMode;
-    final sameMode = mode == _splitMode;
+    // split-clarity: the Itemized chip forces the itemized editor open. Itemized
+    // persists as SplitMode.exact, so that's the base mode; carry the existing
+    // items only when genuinely reopening an already-itemized expense.
+    final alreadyItemized = _splitExplanation != null;
+    final mode = forceItemized ? SplitMode.exact : (requestedMode ?? _splitMode);
+    final sameMode = forceItemized ? alreadyItemized : (mode == _splitMode);
     // #289: distinguish two same-named members in the custom-split sheet.
     final displayNames = MemberNameResolver.disambiguateEventParticipants(
       event,
@@ -580,10 +585,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       initialDistribution: sameMode ? _splitDistribution : null,
       // #203 S2: reopen the itemized tab from the stored metadata (only when
       // staying in the same mode; a mode switch starts that tab fresh).
-      initialItems: sameMode ? _splitExplanation?.items : null,
+      // Items/adjustments only seed the ITEMIZED editor, which is now entered
+      // exclusively via the Itemized chip (forceItemized). Tapping Exact/Shares/%
+      // on an already-itemized expense must open that plain mode — seeded with the
+      // current distribution (sameMode above), NOT reopen the itemized editor.
+      initialItems: forceItemized ? _splitExplanation?.items : null,
       // #605: reopen the bill-level adjustments too.
-      initialAdjustments: sameMode ? _splitExplanation?.adjustments : null,
-      initialItemized: sameMode ? _splitExplanation != null : false,
+      initialAdjustments: forceItemized ? _splitExplanation?.adjustments : null,
+      initialItemized: forceItemized,
     );
 
     if (result == null || !mounted) return;
@@ -761,6 +770,10 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                               _handleScopeChange(scope, currentParticipant?.id),
                           onCustomSplitChanged: _handleCustomSplitChange,
                           onPickMode: (mode) => _handlePickMode(event, mode),
+                          // split-clarity: Itemized opens its editor directly,
+                          // instead of the old "tap Exact → find the 5th chip".
+                          onPickItemized: () =>
+                              _openSplitModeSheet(event, forceItemized: true),
                         ),
                       ),
                       _Section(

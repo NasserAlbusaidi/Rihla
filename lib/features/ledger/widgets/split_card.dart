@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
@@ -49,6 +50,7 @@ class SplitCard extends StatefulWidget {
     required this.onScopeChanged,
     required this.onCustomSplitChanged,
     required this.onPickMode,
+    required this.onPickItemized,
   });
 
   final Event event;
@@ -77,6 +79,12 @@ class SplitCard extends StatefulWidget {
   /// Equal → set inline (parent clears the distribution); shares/exact/percent →
   /// parent opens the existing weights sheet seeded with the requested mode.
   final ValueChanged<SplitMode> onPickMode;
+
+  /// split-clarity: the user tapped the Itemized chip. Itemized is NOT a
+  /// [SplitMode] (it persists as `exact` + a `splitExplanation`, #203), so it
+  /// gets its own signal; the parent opens the itemized editor directly instead
+  /// of routing through a mode the user didn't ask for.
+  final VoidCallback onPickItemized;
 
   @override
   State<SplitCard> createState() => _SplitCardState();
@@ -233,8 +241,10 @@ class _SplitCardState extends State<SplitCard> {
             const SizedBox(height: 8),
             _ModeSegment(
               mode: widget.splitMode,
+              isItemized: _isItemized,
               enabled: canSplit,
               onPick: widget.onPickMode,
+              onPickItemized: widget.onPickItemized,
             ),
 
             if (canSplit) ...[
@@ -435,30 +445,158 @@ class _ScopeSegment extends StatelessWidget {
   }
 }
 
+/// split-clarity — the "How" control. All five split options (the four
+/// arithmetic modes + Itemized) are peers, each an icon + label chip, wrapping
+/// so nothing truncates (fixes the old sheet-only 5-chip ellipsis/RTL trap). A
+/// one-line helper under the chips explains the selected option. Itemized is a
+/// first-class chip here, not a hidden 5th tab inside the custom-split sheet.
 class _ModeSegment extends StatelessWidget {
   const _ModeSegment({
     required this.mode,
+    required this.isItemized,
     required this.enabled,
     required this.onPick,
+    required this.onPickItemized,
   });
 
   final SplitMode mode;
+
+  /// True when the expense carries a `splitExplanation` (#203). Itemized
+  /// persists as `SplitMode.exact`, so selection keys off this flag FIRST —
+  /// otherwise a reopened itemized expense would highlight "Exact".
+  final bool isItemized;
   final bool enabled;
   final ValueChanged<SplitMode> onPick;
+  final VoidCallback onPickItemized;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return _Segmented<SplitMode>(
-      value: mode,
-      enabled: enabled,
-      onChanged: onPick,
-      options: [
-        (SplitMode.equally, l10n.splitModeEqually),
-        (SplitMode.shares, l10n.splitModeShares),
-        (SplitMode.exact, l10n.editorSplitModeExactShort),
-        (SplitMode.percent, l10n.editorSplitModePercentShort),
-      ],
+    final modes = <(SplitMode, IconData, String)>[
+      (SplitMode.equally, Iconsax.element_equal, l10n.splitModeEqually),
+      (SplitMode.shares, Iconsax.chart_2, l10n.splitModeShares),
+      (SplitMode.exact, Iconsax.hashtag, l10n.editorSplitModeExactShort),
+      (SplitMode.percent, Iconsax.percentage_square, l10n.splitModePercent),
+    ];
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (m, icon, label) in modes)
+                _ModeChip(
+                  icon: icon,
+                  label: label,
+                  selected: !isItemized && m == mode,
+                  onTap: enabled ? () => onPick(m) : null,
+                ),
+              // Itemized produces an exact split under the hood; the parent
+              // opens the itemized editor directly (no "pick Exact first").
+              _ModeChip(
+                icon: Iconsax.receipt_item,
+                label: l10n.editorSplitItemized,
+                selected: isItemized,
+                onTap: enabled ? onPickItemized : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _ModeHelp(mode: mode, isItemized: isItemized),
+        ],
+      ),
+    );
+  }
+}
+
+/// One icon+label chip in the "How" control. Selected → saffron selection fill
+/// + primary border/icon; otherwise the neutral input surface.
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 14, 8),
+        decoration: BoxDecoration(
+          color: selected ? colors.selectionFill : colors.inputFill,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? colors.primary : colors.rule),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? colors.primaryDark : colors.textSecondary,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: AppTypography.sans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected ? colors.textPrimary : colors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The one-line explainer under the chips for the currently selected mode —
+/// the "clear" half of "every option clear and visible".
+class _ModeHelp extends StatelessWidget {
+  const _ModeHelp({required this.mode, required this.isItemized});
+
+  final SplitMode mode;
+  final bool isItemized;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final String text;
+    if (isItemized) {
+      text = l10n.splitModeHelpItemized;
+    } else {
+      switch (mode) {
+        case SplitMode.equally:
+          text = l10n.splitModeHelpEqually;
+        case SplitMode.shares:
+          text = l10n.splitModeHelpShares;
+        case SplitMode.exact:
+          text = l10n.splitModeHelpExact;
+        case SplitMode.percent:
+          text = l10n.splitModeHelpPercent;
+      }
+    }
+    return Text(
+      text,
+      style: AppTypography.sans(
+        fontSize: 12,
+        color: context.colors.textSecondary,
+      ),
     );
   }
 }

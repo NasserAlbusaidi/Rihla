@@ -1129,6 +1129,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorSplitItemized => 'حسب الأصناف';
 
   @override
+  String get splitModeHelpEqually => 'يدفع الجميع بالتساوي.';
+
+  @override
+  String get splitModeHelpShares =>
+      'رجّح من عليه دفع المزيد — مثل الأزواج أو من طلب أكثر.';
+
+  @override
+  String get splitModeHelpExact => 'أدخل حصة كل شخص بالضبط.';
+
+  @override
+  String get splitModeHelpPercent => 'قسّم حسب النسبة المئوية من الإجمالي.';
+
+  @override
+  String get splitModeHelpItemized => 'أضف كل بند في الفاتورة وحدّد من طلبه.';
+
+  @override
   String get itemizedItemsHeader => 'الأصناف';
 
   @override
