@@ -240,6 +240,53 @@ void main() {
     },
   );
 
+  group('#789 — live "Day N of M" eyebrow badge', () {
+    // Dates anchored at local noon ± whole days so the badge is deterministic
+    // regardless of when the suite runs: start=today-2, end=today+4 → DAY 3/7.
+    Event liveEvent({bool isClosed = false}) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day, 12);
+      return _event(
+        startDate: today.subtract(const Duration(days: 2)),
+        endDate: today.add(const Duration(days: 4)),
+        isClosed: isClosed,
+        closedBy: isClosed ? 'uid-1' : null,
+      );
+    }
+
+    testWidgets('live multi-day trip shows "DAY 3 OF 7" in the eyebrow', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(event: liveEvent()));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('DAY 3 OF 7'), findsOneWidget);
+    });
+
+    testWidgets('a past trip shows no day badge', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          event: _event(
+            startDate: DateTime(2026, 1, 1),
+            endDate: DateTime(2026, 1, 3),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('DAY '), findsNothing);
+    });
+
+    testWidgets('a closed event shows no day badge even with live dates', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(event: liveEvent(isClosed: true)));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('DAY 3 OF 7'), findsNothing);
+    });
+  });
+
   group('#382 PR-5 — per-currency header', () {
     testWidgets('settled in OMR but owing in USD — header is NOT settled', (
       tester,

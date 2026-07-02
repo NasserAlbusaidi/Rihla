@@ -17,6 +17,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
+import 'package:safar/features/events/embedded_panel_metrics.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -215,6 +216,33 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets(
+    '#789 embedded mode reserves FAB clearance at the scroll bottom',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      await tester.pumpWidget(buildScreen(fakeDb, embedded: true));
+      await tester.pumpAndSettle();
+
+      final body = tester.widget<SettleUpPageBody>(
+        find.byType(SettleUpPageBody),
+      );
+      expect(body.bottomInset, kEmbeddedEventPanelFabClearance);
+    },
+  );
+
+  testWidgets('#789 standalone mode keeps the default bottom gutter', (
+    tester,
+  ) async {
+    final fakeDb = FakeFirebaseFirestore();
+    await tester.pumpWidget(buildScreen(fakeDb));
+    await tester.pumpAndSettle();
+
+    final body = tester.widget<SettleUpPageBody>(
+      find.byType(SettleUpPageBody),
+    );
+    expect(body.bottomInset, lessThan(kEmbeddedEventPanelFabClearance));
   });
 
   testWidgets('shows loading state while event is loading', (tester) async {

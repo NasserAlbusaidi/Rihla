@@ -4,6 +4,7 @@ import { logger } from 'firebase-functions/v2';
 import { randomUUID } from 'crypto';
 import '../admin';
 import { normalizeRequiredDisplayName } from './shared/displayName';
+import { MAX_FAN_IN_EVENTS, applyEventFanIn, collectEventFanIn } from './shared/eventFanIn';
 
 export interface AddShadowMemberInput {
   groupId: string;
@@ -99,6 +100,15 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
       // settle-up attribution ambiguous, and keeping names unique now keeps the
       // future claim picker unambiguous. Compared by the displayName FIELD.
       const membersSnap = await tx.get(groupRef.collection('members'));
+      // #245: the shadow is fanned into every live event below (same contract
+      // as joinGroupByInviteCode), so the event count bounds this tx's writes.
+      const eventsSnap = await tx.get(groupRef.collection('events'));
+      if (eventsSnap.size > MAX_FAN_IN_EVENTS) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Group has too many events to add a member safely.',
+        );
+      }
       const candidate = displayName.toLowerCase();
       const collides = membersSnap.docs.some((doc) => {
         const existing = doc.get('displayName');
@@ -128,6 +138,10 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
         memberIds: FieldValue.arrayUnion(newId),
         updatedAt: FieldValue.serverTimestamp(),
       });
+      // #245: mirror the join callable — a member absent from an event's
+      // participantIds can never be split against there (the expense editor
+      // rosters event.participantIds and no client path grows it).
+      applyEventFanIn(tx, collectEventFanIn(eventsSnap, newId, displayName), newId);
       return newId;
     });
 

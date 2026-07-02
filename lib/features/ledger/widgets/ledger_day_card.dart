@@ -231,9 +231,11 @@ class _ExpenseRow extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
+                        // #789: a no-description row falls back to its category
+                        // name (#689-spirit) rather than the generic "Expense".
                         (expense.description?.isNotEmpty ?? false)
                             ? expense.description!
-                            : l10n.ledgerExpenseFallback,
+                            : categoryNameForId(expense.categoryId, l10n),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.sans(
