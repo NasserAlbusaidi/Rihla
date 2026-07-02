@@ -3159,6 +3159,78 @@ abstract class AppLocalizations {
   /// **'Activity'**
   String get homeQuickActivity;
 
+  /// No description provided for @addExpenseSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add expense to…'**
+  String get addExpenseSheetTitle;
+
+  /// No description provided for @addExpenseSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your open events, the one you\'re on first.'**
+  String get addExpenseSheetSubtitle;
+
+  /// No description provided for @addExpenseSheetSubtitleOngoing.
+  ///
+  /// In en, this message translates to:
+  /// **'{groupName} · ongoing'**
+  String addExpenseSheetSubtitleOngoing(Object groupName);
+
+  /// No description provided for @addExpenseSheetSubtitleUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'{groupName} · in {days}d'**
+  String addExpenseSheetSubtitleUpcoming(Object groupName, int days);
+
+  /// No description provided for @addExpenseSheetBrowseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse all groups'**
+  String get addExpenseSheetBrowseAll;
+
+  /// No description provided for @addExpenseSheetAllGroupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All groups'**
+  String get addExpenseSheetAllGroupsTitle;
+
+  /// No description provided for @addExpenseSheetAllGroupsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a group, then one of its open events.'**
+  String get addExpenseSheetAllGroupsSubtitle;
+
+  /// No description provided for @addExpenseSheetOpenEventCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No open events} =1{1 open event} other{{count} open events}}'**
+  String addExpenseSheetOpenEventCount(int count);
+
+  /// No description provided for @addExpenseSheetPickEventSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick an open event.'**
+  String get addExpenseSheetPickEventSubtitle;
+
+  /// No description provided for @addExpenseSheetEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to add to yet'**
+  String get addExpenseSheetEmptyTitle;
+
+  /// No description provided for @addExpenseSheetEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses live inside a group\'s events. Start a group — it comes with a ready ledger event.'**
+  String get addExpenseSheetEmptyBody;
+
+  /// No description provided for @addExpenseSheetLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your events. Try again.'**
+  String get addExpenseSheetLoadFailed;
+
   /// No description provided for @activityTitle.
   ///
   /// In en, this message translates to:

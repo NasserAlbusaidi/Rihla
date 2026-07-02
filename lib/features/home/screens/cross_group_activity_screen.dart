@@ -100,11 +100,12 @@ class _CrossGroupActivityScreenState
         }
         final days = _groupByDay(context, filtered, DateTime.now());
         return ListView.builder(
+          // Bottom inset clears the tab-shell add-expense FAB (#364).
           padding: EdgeInsetsDirectional.fromSTEB(
             context.spacing.space20,
             context.spacing.space4,
             context.spacing.space20,
-            context.spacing.space24,
+            96,
           ),
           itemCount: days.length,
           itemBuilder: (ctx, i) => Padding(

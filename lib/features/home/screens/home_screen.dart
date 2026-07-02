@@ -229,7 +229,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          // #364: tall enough that the last row clears the add-expense FAB.
+          const SliverToBoxAdapter(child: SizedBox(height: 96)),
         ],
       ),
     );
