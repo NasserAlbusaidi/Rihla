@@ -341,6 +341,25 @@ class _Body extends ConsumerWidget {
           )
         else
           const SliverToBoxAdapter(child: LedgerCategoryStripEmpty()),
+        // #807: settlements carry no category, so ANY active category filter
+        // hides every settlement row — say so instead of vanishing them.
+        if (categoryFilter != null && settlements.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(
+                start: context.spacing.space20,
+                end: context.spacing.space20,
+                top: 4,
+              ),
+              child: Text(
+                context.l10n.ledgerSettlementsHiddenByCategory,
+                style: AppTypography.sans(
+                  fontSize: 12,
+                  color: context.colors.textSecondary,
+                ),
+              ),
+            ),
+          ),
         const SliverToBoxAdapter(child: SizedBox(height: 6)),
         if (timeline.isEmpty)
           SliverPadding(

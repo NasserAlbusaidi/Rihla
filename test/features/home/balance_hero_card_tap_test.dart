@@ -55,6 +55,9 @@ void main() {
     );
     await tester.pump();
 
+    // #807: a tappable hero carries a visible cue for what tapping does.
+    expect(find.text('See your journeys'), findsOneWidget);
+
     await tester.tap(find.byKey(HomeKeys.balanceHeroCard));
     await tester.pump();
 

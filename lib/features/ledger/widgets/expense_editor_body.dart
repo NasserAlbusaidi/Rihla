@@ -752,6 +752,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       ),
                     _Section(
                       title: context.l10n.editorCategory,
+                      // #807: category is mandatory at creation (#787) — mark
+                      // it required up front instead of only on blocked submit.
+                      showRequiredMarker: !_isEdit,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1317,13 +1320,27 @@ class _ExpenseProvenanceByline extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
+  const _Section({
+    required this.title,
+    required this.child,
+    this.showRequiredMarker = false,
+  });
 
   final String title;
   final Widget child;
 
+  /// #807: renders a trailing asterisk so a mandatory field announces itself
+  /// before a blocked submit does. Opt-in — only the add-mode Category
+  /// section passes true (mirrors the `!_isEdit` validation gate).
+  final bool showRequiredMarker;
+
   @override
   Widget build(BuildContext context) {
+    final titleStyle = AppTypography.sans(
+      fontSize: 15,
+      fontWeight: FontWeight.w800,
+      color: context.colors.textPrimary,
+    );
     return Padding(
       padding: EdgeInsets.only(top: context.spacing.space24),
       child: Column(
@@ -1331,14 +1348,24 @@ class _Section extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-            child: Text(
-              title,
-              style: AppTypography.sans(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: context.colors.textPrimary,
-              ),
-            ),
+            child: showRequiredMarker
+                ? Text.rich(
+                    TextSpan(
+                      text: title,
+                      style: titleStyle,
+                      children: [
+                        TextSpan(
+                          text: ' *',
+                          style: AppTypography.sans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: context.colors.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Text(title, style: titleStyle),
           ),
           const SizedBox(height: 10),
           child,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'package:haptic_feedback/haptic_feedback.dart';
@@ -6,6 +7,7 @@ import 'package:haptic_feedback/haptic_feedback.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../features/settings/screens/profile_screen.dart';
 import '../../../shared/widgets/grain_overlay.dart';
+import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
 import '../screens/cross_group_activity_screen.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -26,7 +28,7 @@ import 'add_expense_fab.dart';
 ///
 /// NOTE: GoRouter is NOT used for tab navigation per RESEARCH Pitfall 3.
 /// Phase 19 will wire real GoRouter routes for non-Groups tabs.
-class BottomNavShell extends StatefulWidget {
+class BottomNavShell extends ConsumerStatefulWidget {
   /// The dashboard content shown on the Groups tab.
   final Widget child;
 
@@ -36,22 +38,32 @@ class BottomNavShell extends StatefulWidget {
   const BottomNavShell({super.key, required this.child, this.scaffoldKey});
 
   @override
-  State<BottomNavShell> createState() => _BottomNavShellState();
+  ConsumerState<BottomNavShell> createState() => _BottomNavShellState();
 }
 
-class _BottomNavShellState extends State<BottomNavShell> {
+class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   int _currentIndex = 0;
   final Set<int> _visited = {0};
 
   @override
   Widget build(BuildContext context) {
+    // #807: hide the FAB on the zero-groups empty state (it would duplicate
+    // the empty state's own "create group" CTA). valueOrNull shows the FAB
+    // through loading/error; the cold-start authStateChanges race can still
+    // emit a transient AsyncData([]) (#647 — settled data, not loading), so a
+    // user WITH groups may see the FAB hidden for a sub-second beat until the
+    // real snapshot lands. Benign for a FAB — do NOT reuse this read as a
+    // safety gate (see outgoingShellProvablyEmpty for the real pattern).
+    final groups = ref.watch(userGroupsProvider).valueOrNull;
+    final hasNoGroups = groups != null && groups.isEmpty;
     return Scaffold(
       key: widget.scaffoldKey,
       backgroundColor: context.colors.scaffoldBackground,
       body: _buildBody(context),
       // #364: money CTA on Groups/Activity only — Profile is settings.
-      floatingActionButton:
-          _currentIndex == 2 ? null : const AddExpenseFab(),
+      floatingActionButton: _currentIndex == 2 || hasNoGroups
+          ? null
+          : const AddExpenseFab(),
       bottomNavigationBar: _buildNavBar(context),
     );
   }

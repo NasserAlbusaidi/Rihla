@@ -241,8 +241,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(GroupKeys.addPersonAction), findsOneWidget);
+    // #807: the explanatory caption is a non-creator affordance only.
+    expect(find.byKey(GroupKeys.membersCreatorOnlyNote), findsNothing);
 
-    // Non-creator view — affordance absent.
+    // Non-creator view — affordance absent, explained by the #807 caption
+    // instead of silently missing.
     await tester.pumpWidget(
       _wrap(
         prefs: prefs,
@@ -254,6 +257,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(GroupKeys.addPersonAction), findsNothing);
+    expect(find.byKey(GroupKeys.membersCreatorOnlyNote), findsOneWidget);
   });
 
   testWidgets('a shadow member tile renders the "Not joined yet" pill', (

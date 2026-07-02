@@ -158,12 +158,28 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-01, `f0de3a98`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-03, `07864871`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-01 deploy ceremony the `backend-deployed` tag is `f0de3a98`; prod
+    2026-07-03 deploy ceremony the `backend-deployed` tag is `07864871`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#780 (Refs #179)** — notification idempotency + claim-decision
+    Latest delta: **#810 (Refs #808 PR1)** — expense fan-in to the group activity
+    feed. `expenseAuditLogger` also writes `expense_added`/`expense_edited`/
+    `expense_deleted` entries to `groups/{gid}/activity` in the exact
+    `GroupActivityLog` client shape (idempotent `.set` on `event.id`, verb-phrase
+    description, ISO-string timestamp, metadata = ids + money scalars only);
+    `firestore.rules` `validGroupActivityCreate` swaps `type is string` for the
+    4-type client allow-list (`event_created`/`event_deleted`/`group_settlement`/
+    `member_joined` — `member_left` + `expense_*` are Admin-SDK-only, closing a
+    forgery hole); `groupActivityWriteRateMonitor` skips `expense_*` creates
+    (T1 already counted the underlying expense; safe only because of the
+    allow-list). Oracle/#366 aggregate untouched. Rules 193/193, trigger 17/17,
+    monitor 12/12, full emulator suite green.
+    Prior delta: **#793 + #794 (Closes #245, deployed 2026-07-02 `bcb27382`)** —
+    shadow event fan-in via shared `eventFanIn.ts` (Functions-only) + client
+    auto-seed default ledger event (see DEPLOY-LEDGER row for detail; this doc
+    missed that ceremony's update — the ledger did not).
+    Prior delta: **#780 (Refs #179)** — notification idempotency + claim-decision
     routing hardening. **Cloud Functions only** (no rules/index/function-set change).
     `fcmSender.sendToUids` gains an optional `dedupeKey`; when set, a
     `claimDeliveryMarker` transaction creates `notificationDeliveries/{sha256(key)}`

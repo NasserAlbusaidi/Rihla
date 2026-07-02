@@ -123,7 +123,7 @@ class ProfileScreen extends ConsumerWidget {
                       child: const ProfileDisplaySection(),
                     ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                     const SizedBox(height: 18),
-                    _SectionLabel(label: l10n.profileSectionBackupRecovery),
+                    _SectionLabel(label: l10n.profileSectionAccount),
                     SizedBox(height: context.spacing.space8),
                     const _AccountCard().animate().fadeIn(
                       delay: 320.ms,
@@ -881,10 +881,13 @@ class _StatCard extends StatelessWidget {
     return Container(
       key: statKey,
       padding: EdgeInsets.fromLTRB(14, 14, context.spacing.space12, 14),
+      // #807: flat card + hairline, not raised — these are static stats with
+      // no onTap; the raised treatment is the app's actionable-surface cue
+      // (docs/DESIGN.md flat-vs-raised split).
       decoration: BoxDecoration(
         color: colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: context.shadows.raised,
+        border: Border.all(color: colors.rule2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

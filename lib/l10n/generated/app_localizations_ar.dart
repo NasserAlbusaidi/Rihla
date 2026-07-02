@@ -160,7 +160,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileSectionPreferences => 'التفضيلات';
 
   @override
-  String get profileSectionBackupRecovery => 'النسخ الاحتياطي والاسترداد';
+  String get profileSectionAccount => 'الحساب';
 
   @override
   String get profileSectionDanger => 'منطقة الخطر';
@@ -543,6 +543,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get ledgerNothingInCategoryMessage => 'جرّب فئة أخرى أو عد إلى الكل.';
+
+  @override
+  String get ledgerSettlementsHiddenByCategory =>
+      'التسويات غير مصنّفة، لذا تُخفى أثناء التصفية.';
 
   @override
   String get ledgerClearFilters => 'مسح عوامل التصفية';
@@ -1763,6 +1767,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeSeeAll => 'عرض الكل';
 
   @override
+  String get homeSeeActivity => 'عرض النشاط';
+
+  @override
   String get homeGroups => 'المجموعات';
 
   @override
@@ -1885,6 +1892,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeAcrossAllJourneys => 'عبر كل الرحلات';
 
   @override
+  String get homeBalanceHeroHint => 'عرض رحلاتك';
+
+  @override
   String get homeNetYoureOwed => 'الصافي — مستحق لك';
 
   @override
@@ -1988,6 +1998,10 @@ class AppLocalizationsAr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get addExpenseSheetNoOpenEventsHint =>
+      'لا أحداث مفتوحة — افتح حدثًا في هذه المجموعة أولًا';
 
   @override
   String get addExpenseSheetPickEventSubtitle => 'اختر حدثًا مفتوحًا.';
@@ -2363,7 +2377,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get eventClosedBanner => 'مُغلقة · الإنفاق مُجمّد';
 
   @override
-  String get eventViewReceipt => 'عرض الإيصال';
+  String get eventViewReceipt => 'عرض الملخّص';
 
   @override
   String get editorEventClosedTitle => 'الفعالية مُغلقة';
@@ -2830,6 +2844,10 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get groupCurrencyLockedNote =>
       'تُحدَّد العملة عند إنشاء المجموعة ولا يمكن تغييرها.';
+
+  @override
+  String get groupMembersCreatorOnlyNote =>
+      'يمكن لمنشئ المجموعة فقط إضافة الأعضاء أو إزالتهم.';
 
   @override
   String get groupSettingsLoadFailed => 'تعذّر تحميل الإعدادات';
@@ -3439,7 +3457,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupClaimNoRequests => 'لا توجد طلبات مطالبة معلّقة.';
 
   @override
-  String get recapButtonTooltip => 'ملخّص الرحلة';
+  String get recapButtonTooltip => 'الملخّص';
 
   @override
   String recapPeopleExpenses(int people, int expenses) {

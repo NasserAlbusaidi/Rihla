@@ -16,6 +16,7 @@ import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart'
     show Event, EventModules, EventType;
 import 'package:safar/features/events/providers/event_provider.dart';
+import 'package:safar/features/events/utils/event_display.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
@@ -1184,6 +1185,162 @@ void main() {
 
       expect(find.text('—'), findsOneWidget);
       expect(find.text('no share'), findsOneWidget);
+    });
+  });
+
+  // #807 tranche 2.5 — promotions + affordance fixes on the group screen.
+  group('#807 promotions and affordances', () {
+    late SharedPreferences prefs;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      prefs = await SharedPreferences.getInstance();
+    });
+
+    Widget wrapWithRoutes({
+      String? currentUid = 'uid-creator',
+      List<Event> events = const [],
+      AsyncValue<GroupBalances>? balancesAsync,
+    }) {
+      final router = GoRouter(
+        initialLocation: '/group/$_groupId',
+        routes: [
+          GoRoute(
+            path: '/group/:gid',
+            builder: (_, state) =>
+                GroupDetailScreen(groupId: state.pathParameters['gid']!),
+          ),
+          GoRoute(
+            path: '/group/:gid/activity',
+            builder: (_, _) => const Scaffold(body: Text('ActivityRoute')),
+          ),
+          GoRoute(
+            path: '/group/:gid/settings',
+            builder: (_, _) => const Scaffold(body: Text('SettingsRoute')),
+          ),
+        ],
+      );
+      return ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          currentUserIdProvider.overrideWithValue(currentUid),
+          groupDetailProvider(
+            _groupId,
+          ).overrideWith((ref) => Stream.value(_testGroup)),
+          groupMembersProvider(
+            _groupId,
+          ).overrideWith((ref) => Stream.value(_testMembers)),
+          groupEventsProvider(
+            _groupId,
+          ).overrideWith((ref) => Stream.value(events)),
+          groupBalancesProvider(_groupId).overrideWith(
+            (ref) => balancesAsync ?? AsyncValue.data(_balancesEmpty),
+          ),
+          groupActivityProvider(
+            _groupId,
+          ).overrideWith((ref) => Stream.value(const [])),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      );
+    }
+
+    testWidgets('header clock icon routes to the group activity screen', (
+      tester,
+    ) async {
+      await tester.pumpWidget(wrapWithRoutes());
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(GroupKeys.groupDetailActivityButton),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(GroupKeys.groupDetailActivityButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('ActivityRoute'), findsOneWidget);
+    });
+
+    testWidgets('creator sees the People add-person action and it opens '
+        'AddShadowMemberSheet', (tester) async {
+      await tester.pumpWidget(wrapWithRoutes());
+      await tester.pumpAndSettle();
+
+      // The People section sits below the fold — build it by scrolling.
+      final action = find.byKey(GroupKeys.groupDetailAddPersonAction);
+      await tester.scrollUntilVisible(
+        action,
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(action, findsOneWidget);
+      await tester.tap(action);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.addPersonInput), findsOneWidget);
+    });
+
+    testWidgets('non-creator gets no People add-person action', (
+      tester,
+    ) async {
+      await tester.pumpWidget(wrapWithRoutes(currentUid: 'uid-member'));
+      await tester.pumpAndSettle();
+
+      // Build the People section (scroll to its title), then assert the
+      // action is absent for a non-creator.
+      await tester.scrollUntilVisible(
+        find.byKey(GroupKeys.membersAndBalancesSection),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(GroupKeys.groupDetailAddPersonAction),
+        findsNothing,
+      );
+    });
+
+    testWidgets('member avatar stack routes to group settings', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrapWithRoutes(balancesAsync: AsyncValue.data(_balancesWithExpenses)),
+      );
+      await tester.pumpAndSettle();
+
+      final stack = find.byKey(GroupKeys.groupDetailMemberStack);
+      expect(stack, findsOneWidget);
+      await tester.tap(stack);
+      await tester.pumpAndSettle();
+
+      expect(find.text('SettingsRoute'), findsOneWidget);
+    });
+
+    testWidgets('dateless event row no longer duplicates the type label as '
+        'its subtitle', (tester) async {
+      // _testEvent has no start/end date, so pre-#807 the row printed the
+      // type label twice (mono chip + subtitle fallback).
+      await tester.pumpWidget(
+        wrapWithRoutes(
+          events: [_testEvent],
+          balancesAsync: AsyncValue.data(_balancesWithExpenses),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final label = _testEvent.type.localizedShortLabel(l10n);
+      await tester.ensureVisible(find.text('Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(label), findsOneWidget);
     });
   });
 }

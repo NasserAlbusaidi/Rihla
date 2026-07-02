@@ -206,9 +206,9 @@
   "@profileSectionPreferences": {
     "description": "Section header above the Preferences card on the Profile screen. English stays uppercase (typographic flourish + mono letterSpacing); Arabic renders natural-case."
   },
-  "profileSectionBackupRecovery": "BACKUP & RECOVERY",
-  "@profileSectionBackupRecovery": {
-    "description": "Section header above the account credential/recovery card on the Profile screen (#487 bullet 3). English stays uppercase; Arabic renders natural-case."
+  "profileSectionAccount": "ACCOUNT",
+  "@profileSectionAccount": {
+    "description": "Section header above the account credential/recovery card on the Profile screen. #807 renamed it from BACKUP & RECOVERY: the card also holds Sign out, which is an account action, not a recovery one. English stays uppercase; Arabic renders natural-case."
   },
   "profileSectionDanger": "DANGER",
   "@profileSectionDanger": {
@@ -603,6 +603,10 @@
   "ledgerCategoriesAppear": "categories appear as you log them",
   "ledgerNothingInCategoryTitle": "Nothing in this category",
   "ledgerNothingInCategoryMessage": "Try a different category, or switch back to All.",
+  "ledgerSettlementsHiddenByCategory": "Settlements aren't categorized, so they're hidden while filtering.",
+  "@ledgerSettlementsHiddenByCategory": {
+    "description": "#807 — caption under the category strip while a category filter is active and the event has settlement rows (they're structurally category-less, so the filter hides them all)."
+  },
   "ledgerClearFilters": "Clear filters",
   "ledgerEndOfLedger": "END OF LEDGER",
   "ledgerEmptyStateTitle": "An empty page, ready to be written.",
@@ -1435,6 +1439,10 @@
 
   "homeActiveJourneys": "Active journeys",
   "homeSeeAll": "See all",
+  "homeSeeActivity": "View activity",
+  "@homeSeeActivity": {
+    "description": "#807 — action beside the Active journeys header; it routes to the cross-group Activity log, so the label names the real destination (was the lying \"See all\")."
+  },
   "homeGroups": "Groups",
   "homeNewGroup": "New group",
   "homeRecently": "Recently",
@@ -1482,6 +1490,10 @@
   "homeYouOwe": "you owe",
   "homeSettled": "settled",
   "homeAcrossAllJourneys": "Across all journeys",
+  "homeBalanceHeroHint": "See your journeys",
+  "@homeBalanceHeroHint": {
+    "description": "#807 — visible cue on the tappable balance hero (its only action is scrolling to the journeys strip, #284); shown only when the card is tappable."
+  },
   "homeNetYoureOwed": "Net — you're owed",
   "homeNetYouOwe": "Net — you owe",
   "homeAllSettledAcrossJourneys": "All settled across journeys",
@@ -1536,6 +1548,10 @@
         "type": "int"
       }
     }
+  },
+  "addExpenseSheetNoOpenEventsHint": "No open events — open one in this group first",
+  "@addExpenseSheetNoOpenEventsHint": {
+    "description": "#807 — fix-path caption on a disabled group tile in the quick-add picker (replaces the bare =0 count so the dead end explains itself)."
   },
   "addExpenseSheetPickEventSubtitle": "Pick an open event.",
   "addExpenseSheetEmptyTitle": "Nothing to add to yet",
@@ -1708,9 +1724,9 @@
     }
   },
   "eventClosedBanner": "Closed · spending frozen",
-  "eventViewReceipt": "View receipt",
+  "eventViewReceipt": "View recap",
   "@eventViewReceipt": {
-    "description": "#708 — action on the closed-event banner that opens the shareable Trip Receipt (recap/closeout screen)."
+    "description": "#708 — action on the closed-event banner that switches to the Recap tab. #807 unified the surface's name to \"Recap\"; \"Trip Receipt\" refers only to the CSV/PDF export (#704)."
   },
   "editorEventClosedTitle": "Event closed",
   "editorEventClosedMessage": "This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.",
@@ -1941,6 +1957,10 @@
   "groupDefaults": "Defaults",
   "groupCurrency": "Currency",
   "groupCurrencyLockedNote": "Currency is set when the group is created and can't be changed.",
+  "groupMembersCreatorOnlyNote": "Only the group creator can add or remove members.",
+  "@groupMembersCreatorOnlyNote": {
+    "description": "#807 — caption under the members card for non-creators, explaining why the add/remove affordances are absent (mirrors the locked-currency-note pattern)."
+  },
   "groupSettingsLoadFailed": "Could not load settings",
   "groupTryAgain": "Try again",
   "groupInvite": "Invite",
@@ -2513,9 +2533,9 @@
   "@groupClaimNoRequests": {
     "description": "Quiet empty-state for the #278 PR9 creator claim-requests section when there are none."
   },
-  "recapButtonTooltip": "Trip recap",
+  "recapButtonTooltip": "Recap",
   "@recapButtonTooltip": {
-    "description": "Tooltip/label for the event recap entry button (#202 Slice 1)."
+    "description": "Tooltip/label for the event recap entry button (#202 Slice 1; #807 unified the surface's name to \"Recap\" everywhere)."
   },
   "recapPeopleExpenses": "{people, plural, =1{1 person} other{{people} people}} · {expenses, plural, =1{1 expense} other{{expenses} expenses}}",
   "@recapPeopleExpenses": {

@@ -148,6 +148,19 @@ void main() {
       expect(find.byKey(HomeKeys.addExpenseFab), findsNothing);
     });
 
+    testWidgets('hidden on the zero-groups empty state (#807)', (
+      tester,
+    ) async {
+      // No groups: the empty state already carries its own "create group"
+      // CTA — the FAB would be a redundant second entry point to the same
+      // dead end (the target sheet's own empty body).
+      await tester.pumpWidget(buildApp(overridesFor({})));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(HomeKeys.addExpenseFab), findsNothing);
+    });
+
     testWidgets(
       'fast path: exactly one open event → pushes its add route, no sheet',
       (tester) async {
