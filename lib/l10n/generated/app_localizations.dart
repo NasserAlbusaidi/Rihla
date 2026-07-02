@@ -4347,6 +4347,36 @@ abstract class AppLocalizations {
   /// **'People'**
   String get groupPeople;
 
+  /// No description provided for @groupInsightsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights'**
+  String get groupInsightsTitle;
+
+  /// No description provided for @insightsTotalSpent.
+  ///
+  /// In en, this message translates to:
+  /// **'Total spent'**
+  String get insightsTotalSpent;
+
+  /// No description provided for @insightsTopEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Biggest event'**
+  String get insightsTopEvent;
+
+  /// No description provided for @insightsTopPayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fronted the most'**
+  String get insightsTopPayer;
+
+  /// No description provided for @insightsTopConsumer.
+  ///
+  /// In en, this message translates to:
+  /// **'Biggest share'**
+  String get insightsTopConsumer;
+
   /// No description provided for @groupNoEventsTitle.
   ///
   /// In en, this message translates to:

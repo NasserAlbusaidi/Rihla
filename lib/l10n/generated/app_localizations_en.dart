@@ -2577,6 +2577,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupPeople => 'People';
 
   @override
+  String get groupInsightsTitle => 'Insights';
+
+  @override
+  String get insightsTotalSpent => 'Total spent';
+
+  @override
+  String get insightsTopEvent => 'Biggest event';
+
+  @override
+  String get insightsTopPayer => 'Fronted the most';
+
+  @override
+  String get insightsTopConsumer => 'Biggest share';
+
+  @override
   String get groupNoEventsTitle => 'No events yet';
 
   @override

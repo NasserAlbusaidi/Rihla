@@ -19,6 +19,7 @@ abstract final class GroupKeys {
   static const selfMemberRow = Key('group_self_member_row');
   static const inviteCodeSection = Key('group_invite_code_section');
   static const eventsSection = Key('group_events_section');
+  static const insightsSection = Key('group_insights_section');
 
   // Action keys
   static const createGroupButton = Key('group_create_button');
