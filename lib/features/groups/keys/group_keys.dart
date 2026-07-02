@@ -153,6 +153,16 @@ abstract final class GroupKeys {
   static const addPersonAction = Key('group_members_add_person_action');
   static const addPersonInput = Key('group_members_add_person_input');
   static const addPersonSubmit = Key('group_members_add_person_submit');
+
+  // #807: non-creator explanation caption + group-screen promotions. The
+  // detail-screen add-person action gets its OWN key (a tree that navigates
+  // group → settings would otherwise hold two addPersonAction matches).
+  static const membersCreatorOnlyNote = Key('group_members_creator_only_note');
+  static const groupDetailAddPersonAction = Key(
+    'group_detail_add_person_action',
+  );
+  static const groupDetailActivityButton = Key('group_detail_activity_button');
+  static const groupDetailMemberStack = Key('group_detail_member_stack');
   static Key shadowBadge(String memberId) =>
       Key('group_member_shadow_badge_$memberId');
 

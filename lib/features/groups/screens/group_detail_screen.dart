@@ -32,6 +32,7 @@ import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
+import '../widgets/add_shadow_member_sheet.dart';
 import '../widgets/group_spending_summary_section.dart';
 
 /// Group detail screen — saffron travel-journal direction.
@@ -50,8 +51,9 @@ import '../widgets/group_spending_summary_section.dart';
 ///  4. Members section — card-wrapped rows with `RAvatar` · name + role
 ///     suffix · `RAmount` sign trailing.
 ///
-/// Activity is intentionally NOT shown here — wireframe puts it on a
-/// dedicated screen reached via the overflow menu's "Activity" entry.
+/// Activity lives on a dedicated screen (`/group/:gid/activity`), reached
+/// from the header's clock icon (#807 promotion) and, redundantly, the
+/// overflow menu's "Activity" entry.
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({super.key, required this.groupId});
 
@@ -246,9 +248,22 @@ class _ContentState extends ConsumerState<_Content> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
+            // #807: creator-only shortcut to add-by-name — the same sheet the
+            // settings screen offers, without the 4-tap settings detour. The
+            // gate mirrors GroupMembersSection's isCurrentUserCreator.
             child: SectionHeader(
               key: GroupKeys.membersAndBalancesSection,
               title: context.l10n.groupPeople,
+              actionLabel: currentUid != null && group.createdBy == currentUid
+                  ? context.l10n.groupAddMemberAction
+                  : null,
+              actionKey: GroupKeys.groupDetailAddPersonAction,
+              onActionTap: currentUid != null && group.createdBy == currentUid
+                  ? () {
+                      HapticService.selection();
+                      AddShadowMemberSheet.show(context, groupId: group.id);
+                    }
+                  : null,
             ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: context.spacing.space8)),
@@ -326,21 +341,40 @@ class _ContentState extends ConsumerState<_Content> {
         final perEvent = (currentUid != null && balances != null)
             ? balances.perEventBreakdown[currentUid] ?? const {}
             : const <String, Map<String, Decimal>>{};
-        return SliverList(
-          delegate: SliverChildBuilderDelegate((context, index) {
-            final isLast = index == events.length - 1;
-            return _EventRow(
-              event: events[index],
-              shareLines: nonZeroNetsGccFirst(
-                perEvent[events[index].id] ?? const <String, Decimal>{},
+        // #807: card-wrap the rows (same treatment as _MembersCard /
+        // _BalanceCard) so the events — including a fresh group's auto-seeded
+        // one (#245) — carry visual weight next to the loud "New event" CTA
+        // instead of rendering as bare undressed list rows.
+        return SliverToBoxAdapter(
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.colors.cardSurface,
+              borderRadius: BorderRadius.circular(
+                context.spacing.radiusLarge,
               ),
-              groupCurrency: currency,
-              divider: !isLast,
-              onTap: () => GoRouter.of(
-                context,
-              ).push('/group/$groupId/event/${events[index].id}'),
-            );
-          }, childCount: events.length),
+              boxShadow: context.shadows.raised,
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var index = 0; index < events.length; index++)
+                  _EventRow(
+                    event: events[index],
+                    shareLines: nonZeroNetsGccFirst(
+                      perEvent[events[index].id] ?? const <String, Decimal>{},
+                    ),
+                    groupCurrency: currency,
+                    divider: index != events.length - 1,
+                    onTap: () => GoRouter.of(
+                      context,
+                    ).push('/group/$groupId/event/${events[index].id}'),
+                  ),
+              ],
+            ),
+          ),
         );
       },
       loading: () =>
@@ -437,6 +471,20 @@ class _CoverHeader extends StatelessWidget {
                           ),
                           subject: context.l10n.groupShareSubject(group.name),
                         );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    // #807: promote per-group activity out of the overflow
+                    // menu (the menu keeps its entry as a redundant path).
+                    RIconButton(
+                      key: GroupKeys.groupDetailActivityButton,
+                      icon: Iconsax.clock,
+                      semanticLabel: context.l10n.groupActivity,
+                      onTap: () {
+                        HapticService.lightClick();
+                        GoRouter.of(
+                          context,
+                        ).push('/group/${group.id}/activity');
                       },
                     ),
                     const SizedBox(width: 8),
@@ -617,7 +665,25 @@ class _BalanceCard extends StatelessWidget {
                 ),
               ),
               if (memberNames.isNotEmpty)
-                RAvatarStack(names: memberNames, size: 22, max: 4),
+                // #807: the stack read as tappable but did nothing — wire it
+                // to the members list it implies (group settings hosts it).
+                // GestureDetector, not InkWell: a rectangular splash box would
+                // clash with the overlapping circular avatars.
+                Semantics(
+                  button: true,
+                  label: context.l10n.groupSettings,
+                  child: GestureDetector(
+                    key: GroupKeys.groupDetailMemberStack,
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticService.lightClick();
+                      GoRouter.of(
+                        context,
+                      ).push('/group/${group.id}/settings');
+                    },
+                    child: RAvatarStack(names: memberNames, size: 22, max: 4),
+                  ),
+                ),
             ],
           ),
           SizedBox(height: context.spacing.space8),
@@ -834,7 +900,10 @@ class _EventRow extends StatelessWidget {
     final colors = context.colors;
     final spacing = context.spacing;
     final dateLabel = _formatDates(context, event.startDate, event.endDate);
-    final subtitle = dateLabel ?? _eventTypeLabel(context, event.type);
+    // #807: a dateless event (e.g. the #245 auto-seed) used to fall back to
+    // the type label here, printing it twice (the 9px mono chip above already
+    // shows it) — omit the subtitle line instead.
+    final subtitle = dateLabel;
     final hasShare = shareLines.isNotEmpty;
 
     return InkWell(
@@ -879,14 +948,16 @@ class _EventRow extends StatelessWidget {
                           color: colors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: AppTypography.sans(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),

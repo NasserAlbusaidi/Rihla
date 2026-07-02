@@ -314,18 +314,19 @@ void main() {
 
   // #487 bullet 3: the account section was one flat list that mixed the
   // credential/recovery rows with the irreversible Delete. It now splits into
-  // a "Backup & recovery" block and an isolated "Danger" block.
+  // an account block (#807 renamed the header BACKUP & RECOVERY → ACCOUNT,
+  // since the card also holds Sign out) and an isolated "Danger" block.
   group('danger zone isolation (#487 bullet 3)', () {
     testWidgets(
-        'recovery rows sit under BACKUP & RECOVERY; delete lives alone in a '
+        'recovery rows sit under ACCOUNT; delete lives alone in a '
         'separate DANGER block', (tester) async {
       await tester.pumpWidget(
         await _wrap(service: service, user: _anonUser()),
       );
       await tester.pumpAndSettle();
 
-      // The single "ACCOUNT" header is replaced by two labelled blocks.
-      expect(find.text(l10n.profileSectionBackupRecovery), findsOneWidget);
+      // Two labelled blocks: the account card and the danger card.
+      expect(find.text(l10n.profileSectionAccount), findsOneWidget);
       expect(find.text(l10n.profileSectionDanger), findsOneWidget);
 
       // Delete is isolated inside the danger card…

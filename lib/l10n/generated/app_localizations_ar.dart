@@ -160,7 +160,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileSectionPreferences => 'التفضيلات';
 
   @override
-  String get profileSectionBackupRecovery => 'النسخ الاحتياطي والاسترداد';
+  String get profileSectionAccount => 'الحساب';
 
   @override
   String get profileSectionDanger => 'منطقة الخطر';

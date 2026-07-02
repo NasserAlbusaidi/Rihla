@@ -392,11 +392,11 @@ abstract class AppLocalizations {
   /// **'PREFERENCES'**
   String get profileSectionPreferences;
 
-  /// Section header above the account credential/recovery card on the Profile screen (#487 bullet 3). English stays uppercase; Arabic renders natural-case.
+  /// Section header above the account credential/recovery card on the Profile screen. #807 renamed it from BACKUP & RECOVERY: the card also holds Sign out, which is an account action, not a recovery one. English stays uppercase; Arabic renders natural-case.
   ///
   /// In en, this message translates to:
-  /// **'BACKUP & RECOVERY'**
-  String get profileSectionBackupRecovery;
+  /// **'ACCOUNT'**
+  String get profileSectionAccount;
 
   /// Section header above the danger-zone card (delete account) on the Profile screen (#487 bullet 3). English stays uppercase; Arabic renders natural-case.
   ///
