@@ -10,6 +10,7 @@ import '../keys/home_keys.dart';
 import '../screens/cross_group_activity_screen.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import 'add_expense_fab.dart';
 
 /// Bottom navigation shell for the home dashboard.
 ///
@@ -48,6 +49,9 @@ class _BottomNavShellState extends State<BottomNavShell> {
       key: widget.scaffoldKey,
       backgroundColor: context.colors.scaffoldBackground,
       body: _buildBody(context),
+      // #364: money CTA on Groups/Activity only — Profile is settings.
+      floatingActionButton:
+          _currentIndex == 2 ? null : const AddExpenseFab(),
       bottomNavigationBar: _buildNavBar(context),
     );
   }

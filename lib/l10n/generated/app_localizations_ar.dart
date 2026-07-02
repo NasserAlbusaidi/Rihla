@@ -1942,6 +1942,67 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeQuickActivity => 'النشاط';
 
   @override
+  String get addExpenseSheetTitle => 'إضافة مصروف إلى…';
+
+  @override
+  String get addExpenseSheetSubtitle => 'أحداثك المفتوحة، والجاري منها أولًا.';
+
+  @override
+  String addExpenseSheetSubtitleOngoing(Object groupName) {
+    return '$groupName · جارٍ الآن';
+  }
+
+  @override
+  String addExpenseSheetSubtitleUpcoming(Object groupName, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days يومًا',
+      few: '$days أيام',
+      two: 'يومين',
+      one: 'يوم',
+    );
+    return '$groupName · بعد $_temp0';
+  }
+
+  @override
+  String get addExpenseSheetBrowseAll => 'تصفّح كل المجموعات';
+
+  @override
+  String get addExpenseSheetAllGroupsTitle => 'كل المجموعات';
+
+  @override
+  String get addExpenseSheetAllGroupsSubtitle =>
+      'اختر مجموعة، ثم أحد أحداثها المفتوحة.';
+
+  @override
+  String addExpenseSheetOpenEventCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count حدثًا مفتوحًا',
+      few: '$count أحداث مفتوحة',
+      two: 'حدثان مفتوحان',
+      one: 'حدث مفتوح واحد',
+      zero: 'لا أحداث مفتوحة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get addExpenseSheetPickEventSubtitle => 'اختر حدثًا مفتوحًا.';
+
+  @override
+  String get addExpenseSheetEmptyTitle => 'لا شيء للإضافة إليه بعد';
+
+  @override
+  String get addExpenseSheetEmptyBody =>
+      'المصاريف تُسجَّل داخل أحداث المجموعة. أنشئ مجموعة — تأتي مع حدث سجلّ جاهز.';
+
+  @override
+  String get addExpenseSheetLoadFailed => 'تعذّر تحميل أحداثك. حاول مجددًا.';
+
+  @override
   String get activityTitle => 'النشاط';
 
   @override

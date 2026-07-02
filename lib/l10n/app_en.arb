@@ -1509,6 +1509,39 @@
   "homeQuickInviteFriend": "Invite Friend",
   "homeQuickActivity": "Activity",
 
+  "addExpenseSheetTitle": "Add expense to…",
+  "addExpenseSheetSubtitle": "Your open events, the one you're on first.",
+  "addExpenseSheetSubtitleOngoing": "{groupName} · ongoing",
+  "@addExpenseSheetSubtitleOngoing": {
+    "placeholders": {
+      "groupName": {}
+    }
+  },
+  "addExpenseSheetSubtitleUpcoming": "{groupName} · in {days}d",
+  "@addExpenseSheetSubtitleUpcoming": {
+    "placeholders": {
+      "groupName": {},
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "addExpenseSheetBrowseAll": "Browse all groups",
+  "addExpenseSheetAllGroupsTitle": "All groups",
+  "addExpenseSheetAllGroupsSubtitle": "Pick a group, then one of its open events.",
+  "addExpenseSheetOpenEventCount": "{count, plural, =0{No open events} =1{1 open event} other{{count} open events}}",
+  "@addExpenseSheetOpenEventCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addExpenseSheetPickEventSubtitle": "Pick an open event.",
+  "addExpenseSheetEmptyTitle": "Nothing to add to yet",
+  "addExpenseSheetEmptyBody": "Expenses live inside a group's events. Start a group — it comes with a ready ledger event.",
+  "addExpenseSheetLoadFailed": "Couldn't load your events. Try again.",
+
   "activityTitle": "Activity",
   "activityCaption": "ACTIVITY",
   "activitySubtitle": "Across every journey, every group",

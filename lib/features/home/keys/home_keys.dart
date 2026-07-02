@@ -36,4 +36,15 @@ abstract final class HomeKeys {
   static const bottomNavGroups = Key('home_bottom_nav_groups');
   static const bottomNavActivity = Key('home_bottom_nav_activity');
   static const bottomNavProfile = Key('home_bottom_nav_profile');
+
+  // #364: persistent add-expense FAB on the tab shell + its target picker
+  static const addExpenseFab = Key('home_add_expense_fab');
+  static const addExpenseSheet = Key('home_add_expense_sheet');
+  static const addExpenseSheetBrowseAll = Key(
+    'home_add_expense_sheet_browse_all',
+  );
+  static const addExpenseSheetBack = Key('home_add_expense_sheet_back');
+  static const addExpenseSheetCreateGroup = Key(
+    'home_add_expense_sheet_create_group',
+  );
 }
