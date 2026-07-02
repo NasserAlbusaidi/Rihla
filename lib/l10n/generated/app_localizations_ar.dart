@@ -1374,6 +1374,17 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String preSettleReviewPayerLeftCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مصاريف دفعها أشخاص غادروا',
+      one: 'مصروف دفعه شخص غادر',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get preSettleReviewReasonExact => 'تقسيم بمبالغ دقيقة';
 
   @override
@@ -1384,6 +1395,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get preSettleReviewReasonLarge => 'مبلغ كبير';
+
+  @override
+  String get preSettleReviewReasonPayerLeft => 'الدافع غادر';
 
   @override
   String preSettleReviewMore(int count) {
@@ -2279,6 +2293,18 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get editorEventClosedMessage =>
       'هذه الفعالية مُغلقة والإنفاق مُجمّد. أعد فتحها من الإعدادات لإضافة المصروفات أو تعديلها.';
+
+  @override
+  String get eventTabExpenses => 'المصاريف';
+
+  @override
+  String get eventTabSettleUp => 'التسوية';
+
+  @override
+  String get eventTabActivity => 'النشاط';
+
+  @override
+  String get eventTabRecap => 'الملخّص';
 
   @override
   String get eventAddExpense => 'إضافة مصروف';

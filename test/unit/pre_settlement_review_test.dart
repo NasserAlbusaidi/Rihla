@@ -16,10 +16,11 @@ Expense _exp({
   bool isDeleted = false,
   String currency = 'OMR',
   DateTime? createdAt,
+  String payerParticipantId = 'uid-a',
 }) => Expense(
   id: id,
   tripId: 'event-1',
-  payerParticipantId: 'uid-a',
+  payerParticipantId: payerParticipantId,
   amount: Decimal.parse(amount),
   scope: scope,
   splitMode: splitMode,
@@ -155,6 +156,59 @@ void main() {
           .map((f) => f.reason)
           .toSet();
       expect(reasonsForBig, {ReviewReason.exactSplit, ReviewReason.largeAmount});
+    });
+
+    test('an expense paid by a departed (non-live) member is flagged', () {
+      final flags = detectReviewWorthyExpenses(
+        [
+          _exp(id: 'gone-pays', payerParticipantId: 'uid-gone'),
+          _exp(id: 'live-pays', payerParticipantId: 'uid-a'),
+        ],
+        activeParticipantIds: {'uid-a'},
+      );
+      expect(
+        flags
+            .where((f) => f.reason == ReviewReason.payerNotInParticipants)
+            .map((f) => f.expense.id),
+        ['gone-pays'],
+      );
+    });
+
+    test(
+      'departed-payer check is skipped when the live-member set is unknown (empty)',
+      () {
+        // Guards every existing single-arg caller: with no activeParticipantIds
+        // the payer check must NOT fire even though "uid-gone" is absent.
+        final flags = detectReviewWorthyExpenses([
+          _exp(id: 'gone-pays', payerParticipantId: 'uid-gone'),
+        ]);
+        expect(
+          flags.where((f) => f.reason == ReviewReason.payerNotInParticipants),
+          isEmpty,
+        );
+      },
+    );
+
+    test('a departed payer + exact split carries both reasons', () {
+      final flags = detectReviewWorthyExpenses(
+        [
+          _exp(
+            id: 'gone-exact',
+            payerParticipantId: 'uid-gone',
+            splitMode: SplitMode.exact,
+          ),
+          _exp(id: 'live', payerParticipantId: 'uid-a'),
+        ],
+        activeParticipantIds: {'uid-a'},
+      );
+      final reasons = flags
+          .where((f) => f.expense.id == 'gone-exact')
+          .map((f) => f.reason)
+          .toSet();
+      expect(reasons, {
+        ReviewReason.exactSplit,
+        ReviewReason.payerNotInParticipants,
+      });
     });
   });
 

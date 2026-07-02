@@ -46,11 +46,17 @@ class SettleUpScreen extends ConsumerStatefulWidget {
   /// Highlight a specific member's tile via deep-link (`?memberId=`).
   final String? preSelectedMemberId;
 
+  /// #758: content-only mode for the tabbed event view — skips the Scaffold,
+  /// top bar, and offline banner (the tabbed shell owns chrome). All record /
+  /// revalidation / notify logic is unchanged.
+  final bool embedded;
+
   const SettleUpScreen({
     super.key,
     required this.groupId,
     required this.eventId,
     this.preSelectedMemberId,
+    this.embedded = false,
   });
 
   @override
@@ -66,12 +72,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   bool _reviewSheetShown = false;
 
   /// #204: on first entry, if the event has review-worthy expenses (exact /
-  /// custom-participant / personal / unusually-large), surface the non-blocking
-  /// review sheet before the user settles. Detection is pure + display-only; the
-  /// sheet never blocks settlement.
-  void _maybeShowReviewSheet(BuildContext context, List<Expense> expenses) {
+  /// custom-participant / personal / unusually-large / paid-by-a-departed-member),
+  /// surface the non-blocking review sheet before the user settles. Detection is
+  /// pure + display-only; the sheet never blocks settlement.
+  ///
+  /// [activeParticipantIds] is the current event roster narrowed to live
+  /// (`!isTombstone`) group members, so it sheds both event removals and members
+  /// who left the group.
+  void _maybeShowReviewSheet(
+    BuildContext context,
+    List<Expense> expenses, [
+    Set<String> activeParticipantIds = const {},
+  ]) {
     if (_reviewSheetShown) return;
-    final flags = detectReviewWorthyExpenses(expenses);
+    final flags = detectReviewWorthyExpenses(
+      expenses,
+      activeParticipantIds: activeParticipantIds,
+    );
     if (flags.isEmpty) return;
     _reviewSheetShown = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -89,6 +106,42 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     });
   }
 
+  /// Route chrome: Scaffold + top bar + SafeArea (+ [banner] on the data
+  /// branch). Embedded mode (#758) returns [child] bare — the tabbed shell
+  /// owns the Scaffold, back affordance, and offline banner.
+  Widget _chrome(
+    BuildContext context,
+    Widget child, {
+    Key? scaffoldKey,
+    bool banner = false,
+  }) {
+    if (widget.embedded) return child;
+    return Scaffold(
+      key: scaffoldKey,
+      backgroundColor: context.colors.scaffoldBackground,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
+            if (banner) const OfflineBanner(),
+            Expanded(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _missingView(BuildContext context) {
+    return EmptyStateView(
+      icon: Iconsax.warning_2,
+      title: context.l10n.settleUpEventMissingTitle,
+      message: context.l10n.settleUpEventMissingMessage,
+      actionLabel: context.l10n.commonGoHome,
+      onAction: () => context.go('/home'),
+      iconColor: context.colors.textSecondary,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
@@ -101,76 +154,28 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     if (eventAsync.isLoading || groupAsync.isLoading) {
-      return Scaffold(
-        backgroundColor: context.colors.scaffoldBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
-              Expanded(child: SkeletonLoader.groupList()),
-            ],
-          ),
-        ),
-      );
+      return _chrome(context, SkeletonLoader.groupList());
     }
 
     final event = eventAsync.valueOrNull;
 
     if (event == null) {
-      return Scaffold(
-        backgroundColor: context.colors.scaffoldBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
-              Expanded(
-                child: EmptyStateView(
-                  icon: Iconsax.warning_2,
-                  title: context.l10n.settleUpEventMissingTitle,
-                  message: context.l10n.settleUpEventMissingMessage,
-                  actionLabel: context.l10n.commonGoHome,
-                  onAction: () => context.go('/home'),
-                  iconColor: context.colors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _chrome(context, _missingView(context));
     }
 
     // #261: a deleted/missing group emits null — show an error rather than
     // folding it into the loader (which would spin forever).
     final group = groupAsync.valueOrNull;
     if (group == null) {
-      return Scaffold(
-        backgroundColor: context.colors.scaffoldBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
-              Expanded(
-                child: EmptyStateView(
-                  icon: Iconsax.warning_2,
-                  title: context.l10n.settleUpEventMissingTitle,
-                  message: context.l10n.settleUpEventMissingMessage,
-                  actionLabel: context.l10n.commonGoHome,
-                  onAction: () => context.go('/home'),
-                  iconColor: context.colors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _chrome(context, _missingView(context));
     }
     final groupCurrency = group.currency;
 
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
     final currentUid = ref.watch(currentUserIdProvider);
-    final groupMembers =
-        ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ?? [];
+    final groupMembersAsync = ref.watch(groupMembersProvider(widget.groupId));
+    final groupMembers = groupMembersAsync.valueOrNull ?? [];
 
     // #249: member-id sets for the per-event balance universe. The universe
     // itself (and the name maps + participants derived from it) is built inside
@@ -183,188 +188,186 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         .map((m) => m.userId)
         .toSet();
 
-    return Scaffold(
-      key: LedgerKeys.settleUpScreen,
-      backgroundColor: context.colors.scaffoldBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
-            const OfflineBanner(),
-            Expanded(
-              child: expensesAsync.when(
-                data: (expenses) {
-                  final settlements = settlementsAsync.valueOrNull ?? const [];
-                  _maybeShowReviewSheet(context, expenses); // #204
+    return _chrome(
+      context,
+      scaffoldKey: LedgerKeys.settleUpScreen,
+      banner: true,
+      expensesAsync.when(
+        data: (expenses) {
+          final settlements = settlementsAsync.valueOrNull ?? const [];
+          // #204: gate membership-sensitive detection on resolved members so
+          // the one-shot does not latch before live members are authoritative.
+          // If members error, fall back to the old detector path so existing
+          // exact/custom/personal/large warnings still show; only the
+          // payer-left reason is skipped.
+          if (groupMembersAsync.hasValue) {
+            final activeParticipantIds = event.participantIds
+                .toSet()
+                .intersection(liveMemberIds);
+            _maybeShowReviewSheet(context, expenses, activeParticipantIds);
+          } else if (groupMembersAsync.hasError) {
+            _maybeShowReviewSheet(context, expenses);
+          }
 
-                  // #249: fold departed-member split recipients into the
-                  // balance universe so settle-up suggestions conserve. The
-                  // name maps MUST span the universe — OUTBOUND: userRawNames
-                  // feeds the settlement write path.
-                  final universe = eventBalanceUniverse(
-                    event: event,
-                    expenses: expenses,
-                    settlements: settlements,
-                    allMemberIds: allMemberIds,
-                    liveMemberIds: liveMemberIds,
-                  );
-                  final displaysByUid = <String, MemberDisplay>{
-                    for (final id in universe)
-                      id: MemberNameResolver.resolveEventScoped(
-                        uid: id,
-                        event: event,
-                        members: groupMembers,
-                      ),
-                  };
-                  // Render-only disambiguation (#196); raw names stay raw —
-                  // they feed the settlement write path.
-                  final userDisplayNames = MemberNameResolver.disambiguate(
-                    displaysByUid,
-                  );
-                  final userRawNames = <String, String>{
-                    for (final entry in displaysByUid.entries)
-                      entry.key: entry.value.rawName,
-                  };
-                  final participants = universe.map((id) {
-                    return Participant(
-                      id: id,
-                      tripId: event.id,
-                      role: ParticipantRole.member,
-                      joinedAt: event.createdAt,
-                      displayName:
-                          userDisplayNames[id] ??
-                          MemberNameResolver.format(displaysByUid[id]!),
-                    );
-                  }).toList();
+          // #249: fold departed-member split recipients into the
+          // balance universe so settle-up suggestions conserve. The
+          // name maps MUST span the universe — OUTBOUND: userRawNames
+          // feeds the settlement write path.
+          final universe = eventBalanceUniverse(
+            event: event,
+            expenses: expenses,
+            settlements: settlements,
+            allMemberIds: allMemberIds,
+            liveMemberIds: liveMemberIds,
+          );
+          final displaysByUid = <String, MemberDisplay>{
+            for (final id in universe)
+              id: MemberNameResolver.resolveEventScoped(
+                uid: id,
+                event: event,
+                members: groupMembers,
+              ),
+          };
+          // Render-only disambiguation (#196); raw names stay raw —
+          // they feed the settlement write path.
+          final userDisplayNames = MemberNameResolver.disambiguate(
+            displaysByUid,
+          );
+          final userRawNames = <String, String>{
+            for (final entry in displaysByUid.entries)
+              entry.key: entry.value.rawName,
+          };
+          final participants = universe.map((id) {
+            return Participant(
+              id: id,
+              tripId: event.id,
+              role: ParticipantRole.member,
+              joinedAt: event.createdAt,
+              displayName:
+                  userDisplayNames[id] ??
+                  MemberNameResolver.format(displaysByUid[id]!),
+            );
+          }).toList();
 
-                  final bucketed = BalanceCalculator.calculateBalances(
-                    expenses: expenses,
-                    settlements: settlements,
-                    participants: participants,
-                  );
+          final bucketed = BalanceCalculator.calculateBalances(
+            expenses: expenses,
+            settlements: settlements,
+            participants: participants,
+          );
 
-                  // #382 PR-1: one section per currency bucket, the optimizer
-                  // run per bucket (no cross-currency netting, ever). No money
-                  // yet → one empty group-currency bucket (zero summary card).
-                  // The recorded settlement carries the BUCKET currency.
-                  final buckets = <SettleBucket>[
-                    for (final c in sortedGccFirst(bucketed.keys))
-                      (
-                        currency: c,
-                        balances: bucketed[c]!,
-                        optimalSettlements:
-                            BalanceCalculator.calculateOptimalSettlements(
-                              balances: bucketed[c]!,
-                              userNames: userDisplayNames,
-                            ),
-                      ),
-                    if (bucketed.isEmpty)
-                      (
-                        currency: groupCurrency,
-                        balances: const <UserBalance>[],
-                        optimalSettlements: const <Map<String, dynamic>>[],
-                      ),
-                  ];
-
-                  // #595/#598: write-eligibility gates BOTH the forward Record
-                  // button and the #283 "correct this payment" offset. The event
-                  // settlement create/offset rule pins the WRITER to
-                  // event.participantIds (isEventParticipant); a group member who
-                  // can read this event but isn't a participant would be
-                  // permission-denied on EITHER write, so both affordances are
-                  // suppressed for them. The group screen has no such pin (every
-                  // viewer is a member → passes true / wires both).
-                  final canRecord =
-                      currentUid != null &&
-                      event.participantIds.contains(currentUid);
-
-                  return SettleUpPageBody(
-                    scope: SettleScope.event,
-                    subjectName: event.name,
-                    buckets: buckets,
-                    rawNames: userRawNames,
-                    settlementsAsync: settlementsAsync,
-                    currentUid: currentUid,
-                    tileKeys: _tileKeys,
-                    canRecord: canRecord,
-                    preSelectedMemberId: widget.preSelectedMemberId,
-                    onRecord:
-                        ({
-                          required settlement,
-                          required fromRawName,
-                          required toRawName,
-                          required fromUserId,
-                          required toUserId,
-                          required suggestedAmount,
-                          required currency,
-                        }) => _showRecordPaymentSheet(
-                          context,
-                          settlement: settlement,
-                          fromRawName: fromRawName,
-                          toRawName: toRawName,
-                          fromUserId: fromUserId,
-                          toUserId: toUserId,
-                          suggestedAmount: suggestedAmount,
-                          currency: currency,
-                          // #367: scope for the post-record WhatsApp notify —
-                          // event settle names the event AND its group.
-                          eventName: event.name,
-                          groupName: group.name,
-                        ),
-                    onRecordStepped: _runSteppedSettle,
-                    // #283/#598: correct a recorded payment by recording its
-                    // offsetting reverse (swap payer↔recipient, same amount +
-                    // currency) through the same event write path — gated by the
-                    // same write-eligibility as the forward Record, since a
-                    // non-participant's offsetting write would server-reject too.
-                    onCorrect: canRecord
-                        ? (s) => _recordSettlement(
-                            context,
-                            fromUserId: s.recipientParticipantId ?? '',
-                            toUserId: s.payerParticipantId ?? '',
-                            fromName: s.recipientName ?? '',
-                            toName: s.payerName ?? '',
-                            amount: s.amount,
-                            currency: s.currency,
-                            note: context.l10n.settleUpCorrectionNote,
-                          )
-                        : null,
-                  );
-                },
-                loading: SkeletonLoader.groupList,
-                error: (e, _) => Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(context.spacing.space24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Iconsax.warning_2,
-                          size: 40,
-                          color: context.colors.error,
-                        ),
-                        SizedBox(height: context.spacing.space16),
-                        Text(
-                          context.l10n.settleUpCouldNotLoadBalances,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: context.colors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: context.spacing.space8),
-                        TextButton(
-                          onPressed: () =>
-                              ref.invalidate(eventExpensesProvider(eventRef)),
-                          child: Text(context.l10n.commonRetry),
-                        ),
-                      ],
+          // #382 PR-1: one section per currency bucket, the optimizer
+          // run per bucket (no cross-currency netting, ever). No money
+          // yet → one empty group-currency bucket (zero summary card).
+          // The recorded settlement carries the BUCKET currency.
+          final buckets = <SettleBucket>[
+            for (final c in sortedGccFirst(bucketed.keys))
+              (
+                currency: c,
+                balances: bucketed[c]!,
+                optimalSettlements:
+                    BalanceCalculator.calculateOptimalSettlements(
+                      balances: bucketed[c]!,
+                      userNames: userDisplayNames,
                     ),
+              ),
+            if (bucketed.isEmpty)
+              (
+                currency: groupCurrency,
+                balances: const <UserBalance>[],
+                optimalSettlements: const <Map<String, dynamic>>[],
+              ),
+          ];
+
+          // #595/#598: write-eligibility gates BOTH the forward Record
+          // button and the #283 "correct this payment" offset. The event
+          // settlement create/offset rule pins the WRITER to
+          // event.participantIds (isEventParticipant); a group member who
+          // can read this event but isn't a participant would be
+          // permission-denied on EITHER write, so both affordances are
+          // suppressed for them. The group screen has no such pin (every
+          // viewer is a member → passes true / wires both).
+          final canRecord =
+              currentUid != null && event.participantIds.contains(currentUid);
+
+          return SettleUpPageBody(
+            scope: SettleScope.event,
+            subjectName: event.name,
+            buckets: buckets,
+            rawNames: userRawNames,
+            settlementsAsync: settlementsAsync,
+            currentUid: currentUid,
+            tileKeys: _tileKeys,
+            canRecord: canRecord,
+            preSelectedMemberId: widget.preSelectedMemberId,
+            onRecord:
+                ({
+                  required settlement,
+                  required fromRawName,
+                  required toRawName,
+                  required fromUserId,
+                  required toUserId,
+                  required suggestedAmount,
+                  required currency,
+                }) => _showRecordPaymentSheet(
+                  context,
+                  settlement: settlement,
+                  fromRawName: fromRawName,
+                  toRawName: toRawName,
+                  fromUserId: fromUserId,
+                  toUserId: toUserId,
+                  suggestedAmount: suggestedAmount,
+                  currency: currency,
+                  // #367: scope for the post-record WhatsApp notify —
+                  // event settle names the event AND its group.
+                  eventName: event.name,
+                  groupName: group.name,
+                ),
+            onRecordStepped: _runSteppedSettle,
+            // #283/#598: correct a recorded payment by recording its
+            // offsetting reverse (swap payer↔recipient, same amount +
+            // currency) through the same event write path — gated by the
+            // same write-eligibility as the forward Record, since a
+            // non-participant's offsetting write would server-reject too.
+            onCorrect: canRecord
+                ? (s) => _recordSettlement(
+                    context,
+                    fromUserId: s.recipientParticipantId ?? '',
+                    toUserId: s.payerParticipantId ?? '',
+                    fromName: s.recipientName ?? '',
+                    toName: s.payerName ?? '',
+                    amount: s.amount,
+                    currency: s.currency,
+                    note: context.l10n.settleUpCorrectionNote,
+                  )
+                : null,
+          );
+        },
+        loading: SkeletonLoader.groupList,
+        error: (e, _) => Center(
+          child: Padding(
+            padding: EdgeInsets.all(context.spacing.space24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Iconsax.warning_2, size: 40, color: context.colors.error),
+                SizedBox(height: context.spacing.space16),
+                Text(
+                  context.l10n.settleUpCouldNotLoadBalances,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.textPrimary,
                   ),
                 ),
-              ),
+                SizedBox(height: context.spacing.space8),
+                TextButton(
+                  onPressed: () =>
+                      ref.invalidate(eventExpensesProvider(eventRef)),
+                  child: Text(context.l10n.commonRetry),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

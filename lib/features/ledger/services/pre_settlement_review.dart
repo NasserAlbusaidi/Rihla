@@ -5,7 +5,17 @@ import '../models/expense_model.dart';
 
 /// Why an expense surfaced in the pre-settlement review sheet (#204). These are
 /// display-only warnings — none of them change a balance.
-enum ReviewReason { exactSplit, customParticipants, personal, largeAmount }
+enum ReviewReason {
+  exactSplit,
+  customParticipants,
+  personal,
+  largeAmount,
+
+  /// The payer is no longer active in this event — either removed from the
+  /// event roster or no longer a live group member. Only fires when the caller
+  /// supplies the active-participant set (see [detectReviewWorthyExpenses]).
+  payerNotInParticipants,
+}
 
 /// A single review-worthy finding: one [expense] flagged for one [reason]. An
 /// expense can produce several flags (e.g. an exact split that is also large).
@@ -34,6 +44,7 @@ final Decimal _largeFractionDefault = Decimal.parse('0.5');
 List<ReviewFlag> detectReviewWorthyExpenses(
   List<Expense> expenses, {
   Decimal? largeFraction,
+  Set<String> activeParticipantIds = const {},
 }) {
   final frac = largeFraction ?? _largeFractionDefault;
   final live = expenses.where((e) => !e.isDeleted).toList();
@@ -56,6 +67,13 @@ List<ReviewFlag> detectReviewWorthyExpenses(
     }
     if (e.scope == ExpenseScope.personal) {
       flags.add(ReviewFlag(e, ReviewReason.personal));
+    }
+    // An empty [activeParticipantIds] means "active set unknown" (old single-arg
+    // callers / tests, or member-load error fallback) — skip, so the check never
+    // false-fires on every payer.
+    if (activeParticipantIds.isNotEmpty &&
+        !activeParticipantIds.contains(e.payerParticipantId)) {
+      flags.add(ReviewFlag(e, ReviewReason.payerNotInParticipants));
     }
     final total = totalByCurrency[e.currency] ?? Decimal.zero;
     final count = countByCurrency[e.currency] ?? 0;
@@ -107,7 +125,9 @@ const kReviewPerCurrencyCap = 5;
         return a.id.compareTo(b.id);
       });
     shown.addAll(bucket.take(perCurrencyCap));
-    if (bucket.length > perCurrencyCap) overflow += bucket.length - perCurrencyCap;
+    if (bucket.length > perCurrencyCap) {
+      overflow += bucket.length - perCurrencyCap;
+    }
   }
   return (shown: shown, overflow: overflow);
 }

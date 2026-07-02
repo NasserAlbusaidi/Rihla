@@ -1344,6 +1344,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String preSettleReviewPayerLeftCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paid by people who left',
+      one: '1 paid by someone who left',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get preSettleReviewReasonExact => 'Exact split';
 
   @override
@@ -1354,6 +1365,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get preSettleReviewReasonLarge => 'Large amount';
+
+  @override
+  String get preSettleReviewReasonPayerLeft => 'Payer left';
 
   @override
   String preSettleReviewMore(int count) {
@@ -2225,6 +2239,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editorEventClosedMessage =>
       'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.';
+
+  @override
+  String get eventTabExpenses => 'Expenses';
+
+  @override
+  String get eventTabSettleUp => 'Settle up';
+
+  @override
+  String get eventTabActivity => 'Activity';
+
+  @override
+  String get eventTabRecap => 'Recap';
 
   @override
   String get eventAddExpense => 'Add expense';

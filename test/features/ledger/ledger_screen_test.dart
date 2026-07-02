@@ -14,8 +14,13 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/ledger_screen.dart';
+import 'package:safar/features/ledger/widgets/ledger_category_strip.dart';
+import 'package:safar/features/ledger/widgets/ledger_hero_block.dart';
+import 'package:safar/features/ledger/widgets/ledger_roster_strip.dart';
+import 'package:safar/features/ledger/widgets/ledger_sticky_cta.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/cover_art.dart';
+import 'package:safar/shared/widgets/offline_banner.dart';
 
 import '../../helpers/repaint_boundary_finder.dart';
 
@@ -138,6 +143,95 @@ void main() {
       ),
     );
   }
+
+  group('#758 embedded mode (tab panel inside the tabbed event view)', () {
+    Widget buildEmbedded({required List<Expense> expenses}) {
+      final groupMembers = [
+        for (final uid in event.participantIds)
+          GroupMember(
+            id: uid,
+            groupId: groupId,
+            userId: uid,
+            displayName: event.participantNames[uid] ?? uid,
+            role: uid == event.createdBy ? 'CREATOR' : 'MEMBER',
+            joinedAt: event.createdAt,
+          ),
+      ];
+      return ProviderScope(
+        overrides: [
+          groupDetailProvider(groupId).overrideWith(
+            (ref) => Stream.value(
+              Group(
+                id: groupId,
+                name: 'Trip',
+                inviteCode: 'ABC123',
+                createdBy: 'uid-a',
+                memberIds: const ['uid-a', 'uid-b'],
+                currency: 'OMR',
+                createdAt: DateTime(2026),
+              ),
+            ),
+          ),
+          currentUserIdProvider.overrideWithValue('uid-a'),
+          eventDetailProvider(
+            eventRef,
+          ).overrideWith((ref) => Stream.value(event)),
+          eventExpensesProvider(
+            eventRef,
+          ).overrideWith((ref) => Stream.value(expenses)),
+          eventSettlementsProvider(
+            eventRef,
+          ).overrideWith((ref) => Stream.value(const <Settlement>[])),
+          groupMembersProvider(
+            groupId,
+          ).overrideWith((ref) => Stream.value(groupMembers)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(
+            body: LedgerScreen(
+              groupId: groupId,
+              eventId: eventId,
+              embedded: true,
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('renders the timeline without cover/hero/roster/CTA chrome', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildEmbedded(
+          expenses: [expense(id: 'e1', payer: 'uid-a', amount: '10.000')],
+        ),
+      );
+      await tester.pump();
+
+      // Timeline content + inline category chips render…
+      expect(find.text('Item e1'), findsOneWidget);
+      expect(find.byType(LedgerCategoryStrip), findsOneWidget);
+      // …but the shell-owned chrome does not: no cover header, no hero
+      // statement (balance lives in the tabbed header), no roster strip, no
+      // sticky CTA (FAB + Settle tab replace it), no offline banner, no
+      // nested Scaffold.
+      expect(find.byType(CoverArt), findsNothing);
+      expect(find.byType(LedgerHeroStatement), findsNothing);
+      expect(find.byType(LedgerRosterStrip), findsNothing);
+      expect(find.byType(LedgerStickyCta), findsNothing);
+      expect(find.byType(OfflineBanner), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(LedgerScreen),
+          matching: find.byType(Scaffold),
+        ),
+        findsNothing,
+      );
+    });
+  });
 
   group('all-bucket settled gate (#382 PR-5)', () {
     testWidgets(

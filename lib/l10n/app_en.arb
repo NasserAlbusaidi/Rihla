@@ -1053,6 +1053,11 @@
     "description": "Count summary line for unusually-large expenses in the pre-settlement review sheet (#204).",
     "placeholders": {"count": {"type": "int"}}
   },
+  "preSettleReviewPayerLeftCount": "{count, plural, =1{1 paid by someone who left} other{{count} paid by people who left}}",
+  "@preSettleReviewPayerLeftCount": {
+    "description": "Count summary line for expenses paid by a member who has since left the group in the pre-settlement review sheet (#204).",
+    "placeholders": {"count": {"type": "int"}}
+  },
   "preSettleReviewReasonExact": "Exact split",
   "@preSettleReviewReasonExact": {"description": "Per-item reason chip: the expense uses an exact split (#204)."},
   "preSettleReviewReasonCustom": "Custom participants",
@@ -1061,6 +1066,8 @@
   "@preSettleReviewReasonPersonal": {"description": "Per-item reason chip: the expense is personal-only (#204)."},
   "preSettleReviewReasonLarge": "Large amount",
   "@preSettleReviewReasonLarge": {"description": "Per-item reason chip: the expense is unusually large for the event (#204)."},
+  "preSettleReviewReasonPayerLeft": "Payer left",
+  "@preSettleReviewReasonPayerLeft": {"description": "Per-item reason chip: the expense was paid by a member who has since left the group (#204)."},
   "preSettleReviewMore": "+{count} more",
   "@preSettleReviewMore": {
     "description": "Trailing line when more review-worthy expenses exist than the sheet lists (#204).",
@@ -1654,6 +1661,10 @@
   },
   "editorEventClosedTitle": "Event closed",
   "editorEventClosedMessage": "This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.",
+  "eventTabExpenses": "Expenses",
+  "eventTabSettleUp": "Settle up",
+  "eventTabActivity": "Activity",
+  "eventTabRecap": "Recap",
   "eventAddExpense": "Add expense",
   "eventYourBalance": "Your balance",
   "eventYouAreOwed": "You are owed",

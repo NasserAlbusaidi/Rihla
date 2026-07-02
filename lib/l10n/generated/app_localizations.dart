@@ -2354,6 +2354,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 large expense} other{{count} large expenses}}'**
   String preSettleReviewLargeCount(int count);
 
+  /// Count summary line for expenses paid by a member who has since left the group in the pre-settlement review sheet (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 paid by someone who left} other{{count} paid by people who left}}'**
+  String preSettleReviewPayerLeftCount(int count);
+
   /// Per-item reason chip: the expense uses an exact split (#204).
   ///
   /// In en, this message translates to:
@@ -2377,6 +2383,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Large amount'**
   String get preSettleReviewReasonLarge;
+
+  /// Per-item reason chip: the expense was paid by a member who has since left the group (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Payer left'**
+  String get preSettleReviewReasonPayerLeft;
 
   /// Trailing line when more review-worthy expenses exist than the sheet lists (#204).
   ///
@@ -3788,6 +3800,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.'**
   String get editorEventClosedMessage;
+
+  /// No description provided for @eventTabExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get eventTabExpenses;
+
+  /// No description provided for @eventTabSettleUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle up'**
+  String get eventTabSettleUp;
+
+  /// No description provided for @eventTabActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get eventTabActivity;
+
+  /// No description provided for @eventTabRecap.
+  ///
+  /// In en, this message translates to:
+  /// **'Recap'**
+  String get eventTabRecap;
 
   /// No description provided for @eventAddExpense.
   ///
