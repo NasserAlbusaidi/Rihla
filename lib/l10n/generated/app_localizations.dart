@@ -1112,6 +1112,12 @@ abstract class AppLocalizations {
   /// **'Try a different category, or switch back to All.'**
   String get ledgerNothingInCategoryMessage;
 
+  /// #807 — caption under the category strip while a category filter is active and the event has settlement rows (they're structurally category-less, so the filter hides them all).
+  ///
+  /// In en, this message translates to:
+  /// **'Settlements aren\'t categorized, so they\'re hidden while filtering.'**
+  String get ledgerSettlementsHiddenByCategory;
+
   /// No description provided for @ledgerClearFilters.
   ///
   /// In en, this message translates to:
@@ -2865,6 +2871,12 @@ abstract class AppLocalizations {
   /// **'See all'**
   String get homeSeeAll;
 
+  /// #807 — action beside the Active journeys header; it routes to the cross-group Activity log, so the label names the real destination (was the lying "See all").
+  ///
+  /// In en, this message translates to:
+  /// **'View activity'**
+  String get homeSeeActivity;
+
   /// No description provided for @homeGroups.
   ///
   /// In en, this message translates to:
@@ -3051,6 +3063,12 @@ abstract class AppLocalizations {
   /// **'Across all journeys'**
   String get homeAcrossAllJourneys;
 
+  /// #807 — visible cue on the tappable balance hero (its only action is scrolling to the journeys strip, #284); shown only when the card is tappable.
+  ///
+  /// In en, this message translates to:
+  /// **'See your journeys'**
+  String get homeBalanceHeroHint;
+
   /// No description provided for @homeNetYoureOwed.
   ///
   /// In en, this message translates to:
@@ -3206,6 +3224,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{No open events} =1{1 open event} other{{count} open events}}'**
   String addExpenseSheetOpenEventCount(int count);
+
+  /// #807 — fix-path caption on a disabled group tile in the quick-add picker (replaces the bare =0 count so the dead end explains itself).
+  ///
+  /// In en, this message translates to:
+  /// **'No open events — open one in this group first'**
+  String get addExpenseSheetNoOpenEventsHint;
 
   /// No description provided for @addExpenseSheetPickEventSubtitle.
   ///
@@ -3885,10 +3909,10 @@ abstract class AppLocalizations {
   /// **'Closed · spending frozen'**
   String get eventClosedBanner;
 
-  /// #708 — action on the closed-event banner that opens the shareable Trip Receipt (recap/closeout screen).
+  /// #708 — action on the closed-event banner that switches to the Recap tab. #807 unified the surface's name to "Recap"; "Trip Receipt" refers only to the CSV/PDF export (#704).
   ///
   /// In en, this message translates to:
-  /// **'View receipt'**
+  /// **'View recap'**
   String get eventViewReceipt;
 
   /// No description provided for @editorEventClosedTitle.
@@ -4640,6 +4664,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Currency is set when the group is created and can\'t be changed.'**
   String get groupCurrencyLockedNote;
+
+  /// #807 — caption under the members card for non-creators, explaining why the add/remove affordances are absent (mirrors the locked-currency-note pattern).
+  ///
+  /// In en, this message translates to:
+  /// **'Only the group creator can add or remove members.'**
+  String get groupMembersCreatorOnlyNote;
 
   /// No description provided for @groupSettingsLoadFailed.
   ///
@@ -5685,10 +5715,10 @@ abstract class AppLocalizations {
   /// **'No pending claim requests.'**
   String get groupClaimNoRequests;
 
-  /// Tooltip/label for the event recap entry button (#202 Slice 1).
+  /// Tooltip/label for the event recap entry button (#202 Slice 1; #807 unified the surface's name to "Recap" everywhere).
   ///
   /// In en, this message translates to:
-  /// **'Trip recap'**
+  /// **'Recap'**
   String get recapButtonTooltip;
 
   /// Subtitle under the recap title showing participant and expense counts (#202).

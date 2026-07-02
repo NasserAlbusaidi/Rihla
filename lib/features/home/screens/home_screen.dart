@@ -147,7 +147,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 actionLabel:
                     journeysAsync.hasValue &&
                         (journeysAsync.value?.isNotEmpty ?? false)
-                    ? context.l10n.homeSeeAll
+                    ? context.l10n.homeSeeActivity
                     : null,
                 onActionTap: () => context.push('/activity'),
               ).animate().fadeIn(delay: 350.ms),

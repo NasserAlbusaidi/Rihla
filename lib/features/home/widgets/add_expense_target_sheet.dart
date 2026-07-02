@@ -254,7 +254,9 @@ class _AddExpenseTargetSheetState extends ConsumerState<AddExpenseTargetSheet> {
       enabled: open.isNotEmpty,
       title: Text(groupName),
       subtitle: Text(
-        context.l10n.addExpenseSheetOpenEventCount(open.length),
+        open.isEmpty
+            ? context.l10n.addExpenseSheetNoOpenEventsHint
+            : context.l10n.addExpenseSheetOpenEventCount(open.length),
         style: TextStyle(color: colors.textSecondary, fontSize: 12),
       ),
       trailing: open.isEmpty
