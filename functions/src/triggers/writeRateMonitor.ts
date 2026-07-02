@@ -124,18 +124,8 @@ export const groupSettlementWriteRateMonitor = onDocumentCreated(
   (event) => countCreate(event.params.gid, event.data),
 );
 
-// T3 — group-level activity. expense_* entries are the expenseAuditLogger's
-// server fan-in of an expense create T1 already counted — counting them would
-// double-bill the actor (#808 PR1). Keying the skip on `type` is safe ONLY
-// because validGroupActivityCreate's allow-list makes expense_* un-forgeable
-// by clients (same rationale as the #526 activity_logs filter).
+// T3 — group-level activity.
 export const groupActivityWriteRateMonitor = onDocumentCreated(
   'groups/{gid}/activity/{activityId}',
-  (event) => {
-    const type = event.data?.data()?.type;
-    if (typeof type === 'string' && type.startsWith('expense_')) {
-      return Promise.resolve();
-    }
-    return countCreate(event.params.gid, event.data);
-  },
+  (event) => countCreate(event.params.gid, event.data),
 );

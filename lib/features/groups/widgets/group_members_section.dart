@@ -67,6 +67,24 @@ class GroupMembersSection extends ConsumerWidget {
             children: _buildMemberTiles(context, ref),
           ),
         ),
+        // #807: non-creators see no add/remove affordances — say why instead
+        // of leaving the absence unexplained (locked-currency-note pattern).
+        if (!isCurrentUserCreator) ...[
+          SizedBox(height: context.spacing.space8),
+          Padding(
+            padding: EdgeInsetsDirectional.only(
+              start: context.spacing.space4,
+            ),
+            child: Text(
+              context.l10n.groupMembersCreatorOnlyNote,
+              key: GroupKeys.membersCreatorOnlyNote,
+              style: AppTypography.sans(
+                fontSize: 12,
+                color: context.colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

@@ -652,4 +652,62 @@ void main() {
     expect(explanation.items[0].amountFils, 8000);
     expect(explanation.items[1].participantIds, ['uid-yasmin', 'uid-layla']);
   });
+
+  // #807: category is mandatory at creation (#787) — the section title must
+  // announce it up front (asterisk), not only via the blocked-submit error.
+  testWidgets('#807: add mode marks the Category section required',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          currentUserIdProvider.overrideWithValue('uid-yasmin'),
+          eventDetailProvider((
+            groupId: 'group-1',
+            eventId: 'event-1',
+          )).overrideWith((ref) => Stream.value(_event)),
+          tripCategoriesProvider(
+            'event-1',
+          ).overrideWith((ref) => Stream.value(const <ExpenseCategory>[])),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ExpenseEditorBody(
+              groupId: 'group-1',
+              eventId: 'event-1',
+              mode: ExpenseEditorMode.add,
+              currency: 'OMR',
+              onSubmit: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Category *', findRichText: true),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('#807: edit mode keeps the Category title unmarked (edits are '
+      'exempt from the category mandate)', (tester) async {
+    await pumpEditor(
+      tester,
+      initial: provenanceExpense(createdBy: 'uid-yasmin'),
+    );
+
+    expect(
+      find.textContaining('Category *', findRichText: true),
+      findsNothing,
+    );
+    expect(find.text('Category'), findsOneWidget);
+  });
 }

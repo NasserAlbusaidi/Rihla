@@ -31,7 +31,12 @@ void main() {
     expect(find.text('Add expense'), findsOneWidget);
     expect(find.text('AMOUNT · OMR'), findsOneWidget);
     expect(find.text('Description'), findsOneWidget);
-    expect(find.text('Category'), findsOneWidget);
+    // #807: add mode marks Category required — the title is a Text.rich
+    // "Category *", so a plain-text match no longer sees it.
+    expect(
+      find.textContaining('Category *', findRichText: true),
+      findsOneWidget,
+    );
     // #485: one "Split" card — "Paid by" is now its inline field label, and the
     // "Split between" / "How" sections collapsed into it.
     expect(find.text('Split'), findsOneWidget);

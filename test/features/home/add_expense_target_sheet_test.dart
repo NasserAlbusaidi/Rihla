@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
+import 'package:safar/features/home/widgets/add_expense_target_sheet.dart';
 import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -249,7 +252,18 @@ void main() {
       'zero groups → empty body, Create-group CTA routes /create-group',
       (tester) async {
         await tester.pumpWidget(buildApp(overridesFor({})));
-        await openSheet(tester);
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+
+        // #807 hides the FAB on the zero-groups empty state, so the sheet
+        // can't be opened through it here. The empty body stays reachable
+        // (a session's last group can vanish while the sheet is open), so
+        // open the sheet directly to keep pinning it.
+        expect(find.byKey(HomeKeys.addExpenseFab), findsNothing);
+        unawaited(
+          AddExpenseTargetSheet.show(tester.element(find.text('Dashboard'))),
+        );
+        await tester.pumpAndSettle();
 
         expect(find.byKey(HomeKeys.addExpenseSheet), findsOneWidget);
         await tester.tap(find.byKey(HomeKeys.addExpenseSheetCreateGroup));

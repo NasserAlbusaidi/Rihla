@@ -333,6 +333,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #807: the balance hero grew a tap-cue line, nudging rows down —
+      // bring the row fully on-screen before tapping.
+      await tester.ensureVisible(find.text('Friends'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Friends'));
       await tester.pumpAndSettle();
 

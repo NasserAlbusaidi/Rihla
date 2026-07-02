@@ -160,7 +160,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSectionPreferences => 'PREFERENCES';
 
   @override
-  String get profileSectionBackupRecovery => 'BACKUP & RECOVERY';
+  String get profileSectionAccount => 'ACCOUNT';
 
   @override
   String get profileSectionDanger => 'DANGER';
@@ -541,6 +541,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get ledgerNothingInCategoryMessage =>
       'Try a different category, or switch back to All.';
+
+  @override
+  String get ledgerSettlementsHiddenByCategory =>
+      'Settlements aren\'t categorized, so they\'re hidden while filtering.';
 
   @override
   String get ledgerClearFilters => 'Clear filters';
@@ -1716,6 +1720,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSeeAll => 'See all';
 
   @override
+  String get homeSeeActivity => 'View activity';
+
+  @override
   String get homeGroups => 'Groups';
 
   @override
@@ -1830,6 +1837,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeAcrossAllJourneys => 'Across all journeys';
 
   @override
+  String get homeBalanceHeroHint => 'See your journeys';
+
+  @override
   String get homeNetYoureOwed => 'Net — you\'re owed';
 
   @override
@@ -1924,6 +1934,10 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get addExpenseSheetNoOpenEventsHint =>
+      'No open events — open one in this group first';
 
   @override
   String get addExpenseSheetPickEventSubtitle => 'Pick an open event.';
@@ -2302,7 +2316,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventClosedBanner => 'Closed · spending frozen';
 
   @override
-  String get eventViewReceipt => 'View receipt';
+  String get eventViewReceipt => 'View recap';
 
   @override
   String get editorEventClosedTitle => 'Event closed';
@@ -2753,6 +2767,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get groupCurrencyLockedNote =>
       'Currency is set when the group is created and can\'t be changed.';
+
+  @override
+  String get groupMembersCreatorOnlyNote =>
+      'Only the group creator can add or remove members.';
 
   @override
   String get groupSettingsLoadFailed => 'Could not load settings';
@@ -3364,7 +3382,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupClaimNoRequests => 'No pending claim requests.';
 
   @override
-  String get recapButtonTooltip => 'Trip recap';
+  String get recapButtonTooltip => 'Recap';
 
   @override
   String recapPeopleExpenses(int people, int expenses) {

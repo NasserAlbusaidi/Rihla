@@ -197,35 +197,6 @@ void main() {
         'legacy persisted group text',
       );
     });
-
-    // #808 PR1 — the server fans expense_* entries into the group feed with a
-    // readable server-written description; until PR2 adds localized rendering
-    // for these types, the description fallback IS the interim contract. Pin
-    // it so a PR2-era refactor can't silently blank pre-PR2 entries.
-    test('expense_* fan-in types render via the description fallback (#808 PR1)', () {
-      final en = AppLocalizationsEn();
-      for (final type in [
-        'expense_added',
-        'expense_edited',
-        'expense_deleted',
-      ]) {
-        final log = _groupLog(
-          type: type,
-          description: 'added Dinner (10.500 OMR)',
-          metadata: const {
-            'expenseId': 'exp1',
-            'eventId': 'e1',
-            'eventName': 'Muscat trip',
-            'amountFils': 10500,
-            'currency': 'OMR',
-          },
-        );
-        expect(
-          localizedGroupActivityText(en, log),
-          'added Dinner (10.500 OMR)',
-        );
-      }
-    });
   });
 
   group('activityAmountCurrency (#382 PR-4)', () {

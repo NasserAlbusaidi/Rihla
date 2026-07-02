@@ -123,45 +123,6 @@ async function resolveActorName(
   return null;
 }
 
-// #808 PR1 — group-feed fan-in vocabulary. These types are SERVER-ONLY:
-// validGroupActivityCreate's allow-list (firestore.rules) rejects them from
-// clients, which is also what makes the writeRateMonitor expense_* skip safe.
-export type GroupExpenseActivityType =
-  | 'expense_added'
-  | 'expense_edited'
-  | 'expense_deleted';
-
-const GROUP_TYPE: Record<AuditType, GroupExpenseActivityType> = {
-  CREATE: 'expense_added',
-  UPDATE: 'expense_edited',
-  DELETE: 'expense_deleted',
-};
-
-// Group-feed description is a VERB PHRASE without the actor name — the
-// activity row renders actorName separately (leaveGroup.ts parity: 'left the
-// group'); embedding "who" here would double-print the name. English-only
-// fallback: current clients render unknown types via activity_display.dart's
-// `_ => log.description`; PR2 localizes by type.
-export function buildGroupDescription(
-  type: AuditType,
-  d: DocumentData,
-): string {
-  const label =
-    asString(d.description).trim().length > 0
-      ? asString(d.description).trim()
-      : 'an expense';
-  if (type === 'CREATE') {
-    const currency = asString(d.currency) || 'OMR';
-    const money = formatAmount(
-      typeof d.amountFils === 'number' ? d.amountFils : 0,
-      currency,
-    );
-    return `added ${label} (${money} ${currency})`;
-  }
-  if (type === 'DELETE') return `deleted ${label}`;
-  return `edited ${label}`;
-}
-
 // Non-localized fallback string. The feed derives the displayed verb from
 // (category, eventType) → l10n; logText is only the `_` fallback in
 // activity_display.dart, but fromFirestore requires it non-null.
@@ -227,50 +188,6 @@ export const expenseAuditLogger = onDocumentWritten(
     await getFirestore()
       .doc(`groups/${gid}/events/${eid}/activity_logs/${event.id}`)
       .set(entry);
-
-    // #808 PR1 — fan the same audit event into the group activity feed, in
-    // the exact GroupActivityLog client shape (group_activity_log_model.dart):
-    // description non-null, timestamp ISO string (sorts lexicographically with
-    // the client's toIso8601String), doc id == data.id == event.id (idempotent
-    // .set across at-least-once retries; distinct collection from the event
-    // log, so the shared id cannot collide). Metadata carries ids + money
-    // scalars only — no uid-keyed maps — so the claimShadow rekey (actorId)
-    // and the deleteAccount scrub cover it unchanged. The claimRekeyAt
-    // early-return above gates this write too: a shadow-claim re-key produces
-    // NEITHER entry.
-    let eventName = '';
-    try {
-      const eventSnap = await getFirestore()
-        .doc(`groups/${gid}/events/${eid}`)
-        .get();
-      const rawName = eventSnap.data()?.name;
-      if (typeof rawName === 'string') eventName = rawName;
-    } catch (error) {
-      logger.warn('expenseAuditLogger: event name lookup failed', {
-        gid,
-        eid,
-        error: String(error),
-      });
-    }
-
-    await getFirestore()
-      .doc(`groups/${gid}/activity/${event.id}`)
-      .set({
-        id: event.id,
-        type: GROUP_TYPE[type],
-        actorId: actorUid,
-        actorName,
-        description: buildGroupDescription(type, afterData),
-        metadata: {
-          expenseId,
-          eventId: eid,
-          eventName,
-          amountFils:
-            typeof afterData.amountFils === 'number' ? afterData.amountFils : 0,
-          currency: asString(afterData.currency) || 'OMR',
-        },
-        timestamp: event.time,
-      });
 
     logger.info('expenseAuditLogger logged', {
       gid,

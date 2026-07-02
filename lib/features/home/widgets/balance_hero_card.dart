@@ -134,6 +134,34 @@ class _LoadedCard extends StatelessWidget {
       children.add(const _IncompleteNotice());
     }
 
+    // #807: the card's tap only scrolls to the journeys strip (#284) — give
+    // it a visible cue so the tap target stops being invisible. Gated on
+    // onTap so a non-tappable card renders unchanged.
+    if (onTap != null) {
+      children.add(const SizedBox(height: 12));
+      children.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Icon(
+              Iconsax.arrow_down_1,
+              size: 14,
+              color: colors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              context.l10n.homeBalanceHeroHint,
+              style: AppTypography.sans(
+                fontSize: 12,
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final card = Container(
       key: HomeKeys.balanceHeroCard,
       margin: EdgeInsets.symmetric(horizontal: context.spacing.space20),

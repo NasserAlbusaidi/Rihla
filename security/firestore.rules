@@ -1005,18 +1005,7 @@ service cloud.firestore {
             ])
             && request.resource.data.id == activityId
             && request.resource.data.actorId == request.auth.uid
-            // #808 PR1: allow-list of CLIENT-written types. member_left is
-            // written only by the leaveGroup/removeMember callables and
-            // expense_* only by the expenseAuditLogger fan-in (both Admin
-            // SDK, bypassing rules) — a client claiming them is a forgery.
-            // The writeRateMonitor's expense_* skip is only safe because of
-            // this list; extend BOTH together.
-            && request.resource.data.type in [
-              'event_created',
-              'event_deleted',
-              'group_settlement',
-              'member_joined'
-            ]
+            && request.resource.data.type is string
             && isValidDisplayName(request.resource.data.actorName)
             && request.resource.data.description is string
             && request.resource.data.metadata is map

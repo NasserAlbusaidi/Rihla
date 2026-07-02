@@ -112,24 +112,6 @@ describe('writeRateMonitor', () => {
     expect((await counter('g1', 'ga-uid'))?.count).toBe(1);
   });
 
-  test('#808 a server fan-in expense_* group activity create is NOT counted (T1 already counted the expense)', async () => {
-    await wrapGroupActivity(groupActivityCreate(
-      { actorId: 'fan-uid', type: 'expense_added', description: 'added Dinner (10.500 OMR)' },
-      { gid: 'g1', activityId: 'ga-fanin' },
-    ));
-
-    expect(await counter('g1', 'fan-uid')).toBeUndefined();
-  });
-
-  test('#808 a client lifecycle group activity create is still counted', async () => {
-    await wrapGroupActivity(groupActivityCreate(
-      { actorId: 'life-uid', type: 'event_created', description: 'created an event' },
-      { gid: 'g1', activityId: 'ga-life' },
-    ));
-
-    expect((await counter('g1', 'life-uid'))?.count).toBe(1);
-  });
-
   test('crossing the limit logs warn exactly once and sets lastFlaggedAt', async () => {
     process.env.WRITE_RATE_LIMIT = '2';
     const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
