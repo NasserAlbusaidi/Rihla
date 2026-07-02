@@ -265,6 +265,7 @@
   "editorActionSave": "حفظ",
   "editorCategoryPrompt": "ما كان الغرض منه؟",
   "editorCategory": "الفئة",
+  "editorCategoryRequired": "اختر فئة",
   "editorPaidBy": "دفع بواسطة",
   "editorChange": "تغيير",
   "editorSplitBetween": "التقسيم بين",

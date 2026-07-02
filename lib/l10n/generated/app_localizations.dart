@@ -1490,6 +1490,12 @@ abstract class AppLocalizations {
   /// **'Category'**
   String get editorCategory;
 
+  /// Validation shown when the user tries to save an expense without picking a category — category is mandatory at creation (#204).
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a category'**
+  String get editorCategoryRequired;
+
   /// No description provided for @editorPaidBy.
   ///
   /// In en, this message translates to:

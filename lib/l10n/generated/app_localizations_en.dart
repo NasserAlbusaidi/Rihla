@@ -800,6 +800,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorCategory => 'Category';
 
   @override
+  String get editorCategoryRequired => 'Choose a category';
+
+  @override
   String get editorPaidBy => 'Paid by';
 
   @override
