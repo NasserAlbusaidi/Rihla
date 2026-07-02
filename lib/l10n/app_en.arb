@@ -1611,6 +1611,7 @@
   "eventTypeCustomShort": "EVENT",
   "eventTypeCustomDescription": "Start from a flexible event setup",
   "eventNew": "New event",
+  "eventSecondEventHint": "Events split one group's spending into separate trips or outings — most groups only need one.",
   "eventNameLabel": "Event Name",
   "eventNameHint": "e.g. Summer camping trip",
   "eventDatesLabel": "Dates",

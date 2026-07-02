@@ -358,6 +358,22 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // #245: every group is born with one seeded event, so
+                        // anyone here is adding a SECOND one — teach when
+                        // that's worth it.
+                        Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            bottom: context.spacing.space12,
+                          ),
+                          child: Text(
+                            context.l10n.eventSecondEventHint,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: context.colors.textSecondary,
+                                ),
+                          ),
+                        ),
+
                         // Event type chip-row — subtle animation
                         if (disableAnimations)
                           chipRow
