@@ -11,10 +11,10 @@ import '../keys/profile_keys.dart';
 
 /// T3.K — profile handle QR sheet.
 ///
-/// Encodes `https://rihla-safar.web.app/u/<handle>` for in-person handle exchange.
-/// No inbound routing today — handles aren't claimable yet — so the QR
-/// is a visual artifact. Wires alongside the group invite QR (T3.J) so
-/// the qr_flutter integration is amortised across both surfaces.
+/// Encodes the plain handle text for in-person handle exchange — NOT a URL.
+/// There is no `/u/<handle>` route (app or Hosting), so a URL payload scans
+/// to a 404 in the friend's camera. Keep the payload plain text until a
+/// handle lookup page actually ships.
 Future<void> showProfileQrSheet(
   BuildContext context, {
   required String displayName,
@@ -27,10 +27,7 @@ Future<void> showProfileQrSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (_) => _ProfileQrSheet(
-      displayName: displayName,
-      handle: handle,
-    ),
+    builder: (_) => _ProfileQrSheet(displayName: displayName, handle: handle),
   );
 }
 
@@ -40,10 +37,6 @@ class _ProfileQrSheet extends StatelessWidget {
   final String displayName;
   final String handle;
 
-  String get _handleSlug =>
-      handle.startsWith('@') ? handle.substring(1) : handle;
-  Uri get _profileUri => Uri.parse('https://rihla-safar.web.app/u/$_handleSlug');
-
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -51,7 +44,12 @@ class _ProfileQrSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(context.spacing.space20, context.spacing.space12, context.spacing.space20, context.spacing.space20),
+        padding: EdgeInsets.fromLTRB(
+          context.spacing.space20,
+          context.spacing.space12,
+          context.spacing.space20,
+          context.spacing.space20,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -91,7 +89,7 @@ class _ProfileQrSheet extends StatelessWidget {
                 boxShadow: context.shadows.raised,
               ),
               child: QrImageView(
-                data: _profileUri.toString(),
+                data: handle,
                 version: QrVersions.auto,
                 size: 220,
                 backgroundColor: Colors.white,

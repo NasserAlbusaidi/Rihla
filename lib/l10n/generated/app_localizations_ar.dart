@@ -2044,9 +2044,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityFilterAll => 'الكل';
 
   @override
-  String get activityFilterActivity => 'النشاط';
-
-  @override
   String get activityFilterSettles => 'تسويات';
 
   @override
@@ -2750,7 +2747,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get groupMoreTooltip => 'المزيد';
+  String get groupMoreTooltip => 'خيارات المجموعة';
 
   @override
   String get groupSettings => 'إعدادات المجموعة';
@@ -2831,6 +2828,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupCurrency => 'العملة';
 
   @override
+  String get groupCurrencyLockedNote =>
+      'تُحدَّد العملة عند إنشاء المجموعة ولا يمكن تغييرها.';
+
+  @override
   String get groupSettingsLoadFailed => 'تعذّر تحميل الإعدادات';
 
   @override
@@ -2855,6 +2856,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupShowQrCodeSemantic => 'عرض رمز QR';
+
+  @override
+  String get groupShowQrCode => 'عرض رمز QR';
 
   @override
   String get groupShareInviteSemantic => 'مشاركة الدعوة';
@@ -2975,7 +2979,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get groupManage => 'إدارة';
+  String get groupAddMemberAction => 'إضافة عضو';
 
   @override
   String get groupShadowNotJoinedBadge => 'لم ينضم بعد';

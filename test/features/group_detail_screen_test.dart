@@ -601,7 +601,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('More'));
+      await tester.tap(find.byTooltip('Group options'));
       await tester.pumpAndSettle();
 
       expect(find.text('Group settings'), findsOneWidget);

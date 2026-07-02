@@ -46,7 +46,9 @@ class GroupMembersSection extends ConsumerWidget {
         SettingsSectionHeader(
           title: context.l10n.groupMembers,
           // #278 PR3: only the creator can add placeholder members by name.
-          actionLabel: isCurrentUserCreator ? context.l10n.groupManage : null,
+          actionLabel: isCurrentUserCreator
+              ? context.l10n.groupAddMemberAction
+              : null,
           actionKey: GroupKeys.addPersonAction,
           onActionTap: isCurrentUserCreator
               ? () => AddShadowMemberSheet.show(context, groupId: groupId)
@@ -194,8 +196,7 @@ class GroupMembersSection extends ConsumerWidget {
       final hasOutstanding = balances.balances.values.any(
         (bucket) => bucket.any(
           (b) =>
-              b.participantId == member.userId &&
-              b.netBalance != Decimal.zero,
+              b.participantId == member.userId && b.netBalance != Decimal.zero,
         ),
       );
       if (hasOutstanding) {

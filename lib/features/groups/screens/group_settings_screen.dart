@@ -190,9 +190,21 @@ class _DefaultsSection extends StatelessWidget {
                 key: GroupKeys.settingsCurrencyTile,
                 title: context.l10n.groupCurrency,
                 value: currency,
+                locked: true,
                 divider: false,
               ),
             ],
+          ),
+        ),
+        SizedBox(height: context.spacing.space8),
+        Padding(
+          padding: EdgeInsetsDirectional.only(start: spacing.space4),
+          child: Text(
+            context.l10n.groupCurrencyLockedNote,
+            style: AppTypography.sans(
+              fontSize: 12,
+              color: colors.textSecondary,
+            ),
           ),
         ),
       ],
@@ -206,11 +218,13 @@ class _DefaultsRow extends StatelessWidget {
     required this.title,
     required this.value,
     required this.divider,
+    this.locked = false,
   });
 
   final String title;
   final String value;
   final bool divider;
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -230,6 +244,14 @@ class _DefaultsRow extends StatelessWidget {
                   ),
                 ),
               ),
+              if (locked) ...[
+                Icon(
+                  Iconsax.lock,
+                  size: 13,
+                  color: context.colors.textSecondary,
+                ),
+                SizedBox(width: context.spacing.space4),
+              ],
               Text(
                 value,
                 style: AppTypography.sans(
