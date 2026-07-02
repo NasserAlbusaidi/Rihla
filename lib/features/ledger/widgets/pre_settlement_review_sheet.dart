@@ -17,13 +17,15 @@ abstract final class PreSettleReviewKeys {
 /// review-worthy expenses (grouped counts + the top items) before the user
 /// settles. Returns when dismissed — the caller proceeds regardless (the sheet
 /// never blocks). [onReviewAll] fires when "Review expenses" is tapped (the
-/// caller routes to the ledger); [onTapExpense] fires when a listed item is
-/// tapped (the caller deep-links to that expense's editor).
+/// caller routes to the ledger); pass null to hide that CTA — the group-scope
+/// caller has no all-expenses surface to route to (#204, #422 deferred).
+/// [onTapExpense] fires when a listed item is tapped (the caller deep-links to
+/// that expense's editor).
 Future<void> showPreSettlementReviewSheet(
   BuildContext context, {
   required List<ReviewFlag> flags,
   required void Function(Expense expense) onTapExpense,
-  required VoidCallback onReviewAll,
+  VoidCallback? onReviewAll,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -84,7 +86,7 @@ class _PreSettlementReviewSheet extends StatelessWidget {
 
   final List<ReviewFlag> flags;
   final void Function(Expense expense) onTapExpense;
-  final VoidCallback onReviewAll;
+  final VoidCallback? onReviewAll;
 
   ReviewReason _primaryReason(Expense expense) {
     final reasons = flags
@@ -164,17 +166,19 @@ class _PreSettlementReviewSheet extends StatelessWidget {
             SizedBox(height: spacing.space16),
             Row(
               children: [
-                Expanded(
-                  child: TextButton(
-                    key: PreSettleReviewKeys.reviewButton,
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      onReviewAll();
-                    },
-                    child: Text(context.l10n.preSettleReviewReview),
+                if (onReviewAll case final onReviewAll?) ...[
+                  Expanded(
+                    child: TextButton(
+                      key: PreSettleReviewKeys.reviewButton,
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        onReviewAll();
+                      },
+                      child: Text(context.l10n.preSettleReviewReview),
+                    ),
                   ),
-                ),
-                SizedBox(width: spacing.space12),
+                  SizedBox(width: spacing.space12),
+                ],
                 Expanded(
                   child: FilledButton(
                     key: PreSettleReviewKeys.continueButton,

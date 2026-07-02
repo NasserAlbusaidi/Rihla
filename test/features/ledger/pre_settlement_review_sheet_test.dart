@@ -47,7 +47,7 @@ Widget _host({
               context,
               flags: flags,
               onTapExpense: onTapExpense ?? (_) {},
-              onReviewAll: onReviewAll ?? () {},
+              onReviewAll: onReviewAll,
             ),
             child: const Text('open'),
           ),
@@ -118,6 +118,22 @@ void main() {
 
     expect(tapped?.id, 'villa');
     expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
+  });
+
+  testWidgets('null onReviewAll hides the Review CTA (group scope, #204)', (
+    tester,
+  ) async {
+    final flags = detectReviewWorthyExpenses([
+      _exp(id: 'a', splitMode: SplitMode.exact),
+    ]);
+
+    await tester.pumpWidget(_host(flags: flags, onReviewAll: null));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
+    expect(find.byKey(PreSettleReviewKeys.reviewButton), findsNothing);
+    expect(find.byKey(PreSettleReviewKeys.continueButton), findsOneWidget);
   });
 
   testWidgets('surfaces a departed-payer expense (count line + primary chip)', (

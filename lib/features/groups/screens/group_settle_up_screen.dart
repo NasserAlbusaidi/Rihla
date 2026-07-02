@@ -29,8 +29,10 @@ import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/utils/correction_note.dart';
+import '../../ledger/widgets/pre_settlement_review_sheet.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
+import '../providers/group_presettle_review_provider.dart';
 import '../providers/group_provider.dart';
 import '../widgets/record_payment_sheet.dart';
 import '../widgets/settle_notify_sheet.dart';
@@ -68,6 +70,31 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   /// synchronous add-before-await guards against a double-tap reversing the same
   /// settle-up twice in the window before the reverse stream emits.
   final Set<String> _correctingSettleUpIds = <String>{};
+
+  /// #204: the pre-settlement review sheet fires once per screen entry —
+  /// same one-shot contract as the event-level settle-up.
+  bool _reviewSheetShown = false;
+
+  void _maybeShowReviewSheet(
+    BuildContext context,
+    GroupPreSettleReview review,
+  ) {
+    if (_reviewSheetShown || !review.resolved || review.flags.isEmpty) return;
+    _reviewSheetShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showPreSettlementReviewSheet(
+        context,
+        flags: review.flags,
+        // Group scope: each row deep-links to its OWN event's editor
+        // (expense.tripId is the Firestore eventId). No review-all CTA —
+        // there is no group-wide ledger surface (#422 deferred).
+        onTapExpense: (e) => context.push(
+          '/group/${widget.groupId}/event/${e.tripId}/ledger/edit/${e.id}',
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +150,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final failedEventIds = ref.watch(
       groupFailedEventIdsProvider(widget.groupId),
     );
+    // #204: review-worthy expenses across the whole settle basis (zero new
+    // listeners — sibling of the balance provider).
+    final preSettleReview = ref.watch(
+      groupPreSettleReviewProvider(widget.groupId),
+    );
     final eventNameMap =
         <String, ({String name, EventType type, DateTime date})>{
           for (final e in eventsAsync.valueOrNull ?? <Event>[])
@@ -150,6 +182,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             Expanded(
               child: balancesAsync.when(
                 data: (balancesData) {
+                  // #204: surface review-worthy expenses (from ANY event in
+                  // the settle basis) once, before the user settles. Fired
+                  // from the data branch so the sheet never covers a skeleton.
+                  _maybeShowReviewSheet(context, preSettleReview);
+
                   // #382 PR-1: one section per currency bucket, the optimizer
                   // run per bucket (no cross-currency netting, ever). No money
                   // yet → one empty group-currency bucket (zero summary card).
