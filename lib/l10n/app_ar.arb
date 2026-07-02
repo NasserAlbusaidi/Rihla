@@ -615,6 +615,7 @@
   "eventTypeCustomShort": "فعالية",
   "eventTypeCustomDescription": "ابدأ بإعداد فعالية مرن",
   "eventNew": "فعالية جديدة",
+  "eventSecondEventHint": "الفعاليات تقسّم مصاريف المجموعة إلى رحلات أو مناسبات منفصلة — ومعظم المجموعات تكتفي بفعالية واحدة.",
   "eventNameLabel": "اسم الفعالية",
   "eventNameHint": "مثال: رحلة تخييم صيفية",
   "eventDatesLabel": "التواريخ",

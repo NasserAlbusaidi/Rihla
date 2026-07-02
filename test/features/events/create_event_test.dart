@@ -231,6 +231,31 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('CreateEventScreen', () {
+    testWidgets(
+      'shows the second-event teaching hint (#245 — every group is born '
+      'with a seeded event, so this screen always creates an extra one)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrapCreate(
+            const CreateEventScreen(
+              groupId: 'group-1',
+              initialEventType: EventType.trip,
+            ),
+            prefs,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Events split one group\'s spending into separate trips or '
+            'outings — most groups only need one.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
     testWidgets('pre-checks all group members in participant picker', (
       tester,
     ) async {

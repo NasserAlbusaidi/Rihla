@@ -13,6 +13,7 @@ import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/utils/safe_deserialize.dart';
 import '../../auth/services/durable_credential_exception.dart';
+import '../../events/models/event_model.dart';
 import '../models/group_balance_aggregate_model.dart';
 import '../models/group_member_model.dart';
 import '../models/group_model.dart';
@@ -244,26 +245,60 @@ class GroupService extends FirestoreRepository {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
+    // #245: seed one default ledger event so a fresh group collapses to
+    // create-group → add-expense (no create-event detour). Built via the Event
+    // model so the write map comes from the single serializer (toFirestoreMap),
+    // mirroring EventService.stageEvent's construction. Shadows added after
+    // create are fanned in server-side by addShadowMember; joiners by
+    // joinGroupByInviteCode.
+    final seededEvent = Event(
+      id: uuid.v4(),
+      name: name,
+      type: EventType.trip,
+      groupId: groupId,
+      createdBy: uid,
+      participantIds: List.unmodifiable([uid]),
+      participantNames: Map.unmodifiable({uid: displayName}),
+      modules: EventModules.forType(EventType.trip),
+      isDeleted: false,
+      createdAt: now.toUtc(),
+    );
+
     // Step 2: Add creator as member AFTER the group batch commits. The members
     // subcollection rule requires the group doc to exist with the user in
     // memberIds (isGroupMember check), so the member write is chained on the
     // batch ack — sequential on first-write AND on offline replay. The whole
     // chain is the single ack future the caller races.
-    final ack = batch.commit().then((_) {
-      return db
-          .collection('groups')
-          .doc(groupId)
-          .collection('members')
-          .doc(memberId)
-          .set({
-            'id': memberId,
-            'userId': uid,
-            'displayName': displayName,
-            'role': 'CREATOR',
-            'joinedAt': FieldValue.serverTimestamp(),
-            'isShadow': false,
-          });
-    });
+    //
+    // Step 3 (#245): the seeded event is chained the same way — the events
+    // rule reads groups/{gid}.memberIds (isGroupMember), so the group doc must
+    // exist first. A failure here rejects the whole ack, identical to the
+    // member leg's failure semantics.
+    final ack = batch
+        .commit()
+        .then((_) {
+          return db
+              .collection('groups')
+              .doc(groupId)
+              .collection('members')
+              .doc(memberId)
+              .set({
+                'id': memberId,
+                'userId': uid,
+                'displayName': displayName,
+                'role': 'CREATOR',
+                'joinedAt': FieldValue.serverTimestamp(),
+                'isShadow': false,
+              });
+        })
+        .then((_) {
+          return db
+              .collection('groups')
+              .doc(groupId)
+              .collection('events')
+              .doc(seededEvent.id)
+              .set(seededEvent.toFirestoreMap());
+        });
 
     // Return a local Group object — serverTimestamp is not readable until
     // the next Firestore snapshot, so use now() as the local createdAt.

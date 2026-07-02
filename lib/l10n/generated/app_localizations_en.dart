@@ -2103,6 +2103,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventNew => 'New event';
 
   @override
+  String get eventSecondEventHint =>
+      'Events split one group\'s spending into separate trips or outings — most groups only need one.';
+
+  @override
   String get eventNameLabel => 'Event Name';
 
   @override

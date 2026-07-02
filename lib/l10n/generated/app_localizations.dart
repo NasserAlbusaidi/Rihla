@@ -3549,6 +3549,12 @@ abstract class AppLocalizations {
   /// **'New event'**
   String get eventNew;
 
+  /// No description provided for @eventSecondEventHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Events split one group\'s spending into separate trips or outings — most groups only need one.'**
+  String get eventSecondEventHint;
+
   /// No description provided for @eventNameLabel.
   ///
   /// In en, this message translates to:

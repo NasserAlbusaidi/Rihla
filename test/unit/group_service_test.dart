@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 
 void main() {
@@ -287,6 +288,122 @@ void main() {
           );
         },
       );
+    });
+
+    group('auto-seeded ledger event (#245)', () {
+      // A fresh group is born with one ledger event named after the group, so
+      // the first-expense path collapses to create-group → add-expense. The
+      // seed write is chained AFTER the group batch (the events rule reads
+      // groups/{gid}.memberIds), same ordering constraint as the member write.
+      Future<GroupService> seedService(
+        FakeFirebaseFirestore fakeDb, {
+        String uid = 'creator-uid-245',
+      }) async {
+        // The live prefs key (settings_service.dart _deviceNameKey) — the
+        // 'device_name' key used elsewhere in this file predates it and never
+        // mattered there (those tests don't assert displayName).
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Nasser',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            groupServiceProvider.overrideWith(
+              (ref) =>
+                  GroupService.withFirestore(ref, fakeDb, currentUserId: uid),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        return container.read(groupServiceProvider);
+      }
+
+      test('stageGroup seeds exactly one ledger event named after the group, '
+          'participants = creator only', () async {
+        final fakeDb = FakeFirebaseFirestore();
+        const uid = 'creator-uid-245';
+        final service = await seedService(fakeDb);
+
+        final staged = service.stageGroup(name: 'Muscat Trip', currency: 'OMR');
+        await staged.ack;
+
+        final events = await fakeDb
+            .collection('groups')
+            .doc(staged.group.id)
+            .collection('events')
+            .get();
+        expect(events.docs.length, 1);
+
+        final data = events.docs.single.data();
+        expect(data['name'], 'Muscat Trip');
+        expect(data['type'], 'trip');
+        expect(data['groupId'], staged.group.id);
+        expect(data['createdBy'], uid);
+        expect(data['participantIds'], [uid]);
+        expect(data['participantNames'], {uid: 'Nasser'});
+        expect(data['modules'], {'ledger': true});
+        expect(data['isDeleted'], false);
+        expect(data['deletedAt'], null);
+        // #723: events are born open — validEventCreate pins the triple.
+        expect(data['isClosed'], false);
+        expect(data['closedAt'], null);
+        expect(data['closedBy'], null);
+        expect(data['startDate'], null);
+        expect(data['endDate'], null);
+      });
+
+      test('seeded event round-trips through Event.fromDoc (serializer '
+          'contract, no hand-rolled map)', () async {
+        final fakeDb = FakeFirebaseFirestore();
+        const uid = 'creator-uid-245';
+        final service = await seedService(fakeDb);
+
+        final staged = service.stageGroup(name: 'Jebel Shams', currency: 'OMR');
+        await staged.ack;
+
+        final snapshot = (await fakeDb
+                .collection('groups')
+                .doc(staged.group.id)
+                .collection('events')
+                .get())
+            .docs
+            .single;
+        final event = Event.fromDoc(snapshot);
+        expect(event.name, 'Jebel Shams');
+        expect(event.type, EventType.trip);
+        expect(event.participantIds, [uid]);
+        expect(event.participantNames, {uid: 'Nasser'});
+        expect(event.modules.ledger, isTrue);
+        expect(event.isDeleted, isFalse);
+        expect(event.isClosed, isFalse);
+      });
+
+      test('offline (unacked batch) stages no event yet — the seed is chained '
+          'on the group ack like the member write', () async {
+        // stageGroup's guards run synchronously; the event write must not be
+        // issued before the batch acks (rules ordering). FakeFirebaseFirestore
+        // acks instantly, so pin the CHAIN SHAPE instead: after ack, member and
+        // event both exist (the chain completed in order without throwing).
+        final fakeDb = FakeFirebaseFirestore();
+        final service = await seedService(fakeDb);
+
+        final staged = service.stageGroup(name: 'Wadi Bani', currency: 'OMR');
+        await staged.ack;
+
+        final members = await fakeDb
+            .collection('groups')
+            .doc(staged.group.id)
+            .collection('members')
+            .get();
+        final events = await fakeDb
+            .collection('groups')
+            .doc(staged.group.id)
+            .collection('events')
+            .get();
+        expect(members.docs.length, 1);
+        expect(events.docs.length, 1);
+      });
     });
 
     group('updateGroup', () {
