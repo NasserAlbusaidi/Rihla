@@ -32,6 +32,7 @@ import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
+import '../widgets/group_spending_summary_section.dart';
 
 /// Group detail screen — saffron travel-journal direction.
 ///
@@ -262,6 +263,11 @@ class _ContentState extends ConsumerState<_Content> {
                 membersHasError: membersHasError,
               ),
             ),
+          ),
+          // #180: header + padding live INSIDE the widget so an empty group
+          // renders nothing here — no dangling section header.
+          SliverToBoxAdapter(
+            child: GroupSpendingSummarySection(groupId: group.id),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],

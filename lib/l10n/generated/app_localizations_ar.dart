@@ -2705,6 +2705,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupPeople => 'الأشخاص';
 
   @override
+  String get groupInsightsTitle => 'إحصاءات';
+
+  @override
+  String get insightsTotalSpent => 'إجمالي الإنفاق';
+
+  @override
+  String get insightsTopEvent => 'أكبر فعالية';
+
+  @override
+  String get insightsTopPayer => 'الأكثر دفعًا';
+
+  @override
+  String get insightsTopConsumer => 'الحصة الأكبر';
+
+  @override
   String get groupNoEventsTitle => 'لا توجد فعاليات بعد';
 
   @override
