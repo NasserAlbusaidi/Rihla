@@ -70,18 +70,18 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   /// surface the non-blocking review sheet before the user settles. Detection is
   /// pure + display-only; the sheet never blocks settlement.
   ///
-  /// [liveMemberIds] is the LIVE-member set (`!isTombstone` group members) — the
-  /// only set that sheds a departed payer. Never pass `event.participantIds`: it
-  /// is append-only and never scrubbed, so the departed-payer flag would be dead.
+  /// [activeParticipantIds] is the current event roster narrowed to live
+  /// (`!isTombstone`) group members, so it sheds both event removals and members
+  /// who left the group.
   void _maybeShowReviewSheet(
     BuildContext context,
-    List<Expense> expenses,
-    Set<String> liveMemberIds,
-  ) {
+    List<Expense> expenses, [
+    Set<String> activeParticipantIds = const {},
+  ]) {
     if (_reviewSheetShown) return;
     final flags = detectReviewWorthyExpenses(
       expenses,
-      activeParticipantIds: liveMemberIds,
+      activeParticipantIds: activeParticipantIds,
     );
     if (flags.isEmpty) return;
     _reviewSheetShown = true;
@@ -206,12 +206,22 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               child: expensesAsync.when(
                 data: (expenses) {
                   final settlements = settlementsAsync.valueOrNull ?? const [];
-                  // #204: gate on members RESOLVED so liveMemberIds is
-                  // authoritative — else a cold-start race (expenses resolve
-                  // before members) latches the one-shot with an empty live set
-                  // and permanently drops the departed-payer flag for the entry.
+                  // #204: gate membership-sensitive detection on resolved
+                  // members so the one-shot does not latch before live members
+                  // are authoritative. If members error, fall back to the old
+                  // detector path so existing exact/custom/personal/large
+                  // warnings still show; only the payer-left reason is skipped.
                   if (groupMembersAsync.hasValue) {
-                    _maybeShowReviewSheet(context, expenses, liveMemberIds);
+                    final activeParticipantIds = event.participantIds
+                        .toSet()
+                        .intersection(liveMemberIds);
+                    _maybeShowReviewSheet(
+                      context,
+                      expenses,
+                      activeParticipantIds,
+                    );
+                  } else if (groupMembersAsync.hasError) {
+                    _maybeShowReviewSheet(context, expenses);
                   }
 
                   // #249: fold departed-member split recipients into the

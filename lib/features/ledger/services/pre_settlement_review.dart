@@ -11,9 +11,9 @@ enum ReviewReason {
   personal,
   largeAmount,
 
-  /// The payer is no longer a live member of the group — a departed-payer
-  /// expense (the #249 conservation-gap class). Only fires when the caller
-  /// supplies the live-member set (see [detectReviewWorthyExpenses]).
+  /// The payer is no longer active in this event — either removed from the
+  /// event roster or no longer a live group member. Only fires when the caller
+  /// supplies the active-participant set (see [detectReviewWorthyExpenses]).
   payerNotInParticipants,
 }
 
@@ -68,10 +68,9 @@ List<ReviewFlag> detectReviewWorthyExpenses(
     if (e.scope == ExpenseScope.personal) {
       flags.add(ReviewFlag(e, ReviewReason.personal));
     }
-    // An empty [activeParticipantIds] means "live-member set unknown" (old
-    // single-arg callers / tests) — skip, so the check never false-fires on
-    // every payer. The caller MUST pass the LIVE-member set (never the
-    // append-only event.participantIds, which never sheds a departed payer).
+    // An empty [activeParticipantIds] means "active set unknown" (old single-arg
+    // callers / tests, or member-load error fallback) — skip, so the check never
+    // false-fires on every payer.
     if (activeParticipantIds.isNotEmpty &&
         !activeParticipantIds.contains(e.payerParticipantId)) {
       flags.add(ReviewFlag(e, ReviewReason.payerNotInParticipants));
@@ -126,7 +125,9 @@ const kReviewPerCurrencyCap = 5;
         return a.id.compareTo(b.id);
       });
     shown.addAll(bucket.take(perCurrencyCap));
-    if (bucket.length > perCurrencyCap) overflow += bucket.length - perCurrencyCap;
+    if (bucket.length > perCurrencyCap) {
+      overflow += bucket.length - perCurrencyCap;
+    }
   }
   return (shown: shown, overflow: overflow);
 }

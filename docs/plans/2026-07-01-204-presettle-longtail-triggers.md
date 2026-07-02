@@ -49,13 +49,23 @@ if (activeParticipantIds.isNotEmpty &&
 }
 ```
 
-**Load-bearing guard:** `activeParticipantIds.isEmpty → skip`. With a default-empty set an unguarded `!contains(...)` would flag EVERY expense. The empty-set-means-unknown contract keeps the existing single-arg caller (`settle_up_screen.dart:74`) and all current tests green with zero edits — Gate round 1 confirmed this is the only lib caller and that no existing test passes a participant set.
+**Load-bearing guard:** `activeParticipantIds.isEmpty → skip`. With a default-empty set an unguarded `!contains(...)` would flag EVERY expense. The empty-set-means-unknown contract keeps existing single-arg detector calls and the member-error fallback from spuriously flagging every payer.
 
-**⚠️ BEAR TRAP (Gate round 2 [P1]) — the "active set" is `liveMemberIds`, NOT `event.participantIds`.** `event.participantIds` is **append-only**: `removeMember.ts:30` and `leaveGroup.ts:19` never touch it, and `firestore.rules:512-513` only allows it to GROW (`participantIds.hasAll(resource.data.participantIds)`, no `arrayRemove` anywhere). A departed payer therefore stays in `participantIds` forever → `!participantIds.contains(payer)` is unconditionally false → the trigger would be a **no-op** (dead code, masked by a hand-fed green unit test). The set that actually loses a departed member is **`liveMemberIds`** = `groupMembers.where((m) => !m.isTombstone).map((m) => m.userId).toSet()` (`settle_up_screen.dart:181-184`) — the exact "who is still here" set `eventBalanceUniverse` diffs the payer against (`payersAndSettlers.difference(liveMemberIds)`, `expense_provider.dart:138-141`). So the callsite passes `liveMemberIds`, and a payer ∉ `liveMemberIds` = a genuinely departed member = the #249 case.
+**Active-set contract (post-automerge Gate fix):** the callsite passes current event participants narrowed to live group members:
 
-`liveMemberIds` covers BOTH real departure paths (Gate round 3): **leave / remove = hard-delete** (`leaveGroup.ts:18`, `removeMember.ts:29` — member doc deleted + `arrayRemove` from `memberIds`) → the payer is simply ABSENT from `groupMembers`; **deleteAccount = tombstone** (`deleteAccount.ts:620` sets `isTombstone:true`, rewrites `payerParticipantId` to a tombstoneId) → present in `allMemberIds` but excluded by the `!isTombstone` filter. `event.participantIds` catches NEITHER; `allMemberIds` would miss the tombstone. `liveMemberIds` is the only set that excludes both.
+```dart
+final activeParticipantIds = event.participantIds
+    .toSet()
+    .intersection(liveMemberIds);
+```
 
-**Identity axis (Gate-verified):** `liveMemberIds` (member `userId`) and `payerParticipantId` share the same id-space — member `userId`, auth-uid or shadow-uuid alike (`eventBalanceUniverse` folds `payerParticipantId` at `expense_provider.dart:114` and diffs it against `liveMemberIds`). A live group member who simply isn't an event participant is STILL in `liveMemberIds` → not flagged (no false-positive); only a tombstoned/departed member's past expenses flag. During member-load `liveMemberIds` is `[]` → the empty-set-skip guard is the correct fail-safe.
+This catches BOTH axes that make the payer inactive for this event:
+- **left / removed from group:** member doc absent or tombstoned → excluded from `liveMemberIds`, even if old event data still carries the payer id.
+- **removed from this event by an admin:** omitted from `event.participantIds`, even if still a live group member.
+
+The earlier live-member-only contract missed the second case. Rules allow event admins to remove participants (`validEventAdminUpdate` allows `participantIds` mutation), so a live group member who paid and was later removed from the event must still surface in this display-only review sheet.
+
+**Identity axis:** `event.participantIds`, `liveMemberIds` (member `userId`), and `payerParticipantId` share the same id-space — member `userId`, auth-uid or shadow-uuid alike. During member-load `liveMemberIds` is not authoritative; the callsite waits for a resolved member value before supplying the active set. If members error, the callsite uses the single-arg detector path so older exact/custom/personal/large warnings still render and only this membership-sensitive reason is skipped.
 
 ### Sheet (`lib/features/ledger/widgets/pre_settlement_review_sheet.dart`)
 
@@ -87,26 +97,34 @@ Then `flutter gen-l10n` to regenerate `lib/l10n/generated/*` (committed files �
 
 ### Callsite (`lib/features/ledger/screens/settle_up_screen.dart`)
 
-`_maybeShowReviewSheet(context, expenses)` (called at :198 inside `data:(expenses)`) → thread the **live-member** set (`liveMemberIds`, defined at :181-184, in scope at the callsite):
+`_maybeShowReviewSheet(context, expenses)` (called inside `data:(expenses)`) → thread the active event-participant set (`event.participantIds ∩ liveMemberIds`, in scope at the callsite):
 
 ```dart
 void _maybeShowReviewSheet(
-  BuildContext context, List<Expense> expenses, Set<String> liveMemberIds) {
+  BuildContext context,
+  List<Expense> expenses,
+  Set<String> activeParticipantIds = const {},
+) {
   ...
   final flags = detectReviewWorthyExpenses(
-    expenses, activeParticipantIds: liveMemberIds);
+    expenses, activeParticipantIds: activeParticipantIds);
   ...
 }
 ```
-Caller passes `liveMemberIds` (already a `Set<String>`). **Do NOT pass `event.participantIds` — it's append-only and never scrubbed (see BEAR TRAP above).**
+Caller passes `event.participantIds.toSet().intersection(liveMemberIds)`. Do not pass only `liveMemberIds` (misses event-admin removals) or only `event.participantIds` (misses departed/tombstoned group members).
 
-**⚠️ Latch-race guard (Gate round 3 [P2a]) — don't latch before members resolve.** `_maybeShowReviewSheet` is a one-shot (`_reviewSheetShown` latch, :66/73), but the loader gate (:103) waits only on `eventDetail`+`groupDetail`, NOT `groupMembersProvider`. If expenses resolve before members, `liveMemberIds` is `[]` → payer check skipped; and if any OTHER reason fires, the sheet latches on that render and the departed-payer flag is permanently dropped for the entry. Fix: capture the AsyncValue (`final groupMembersAsync = ref.watch(groupMembersProvider(widget.groupId)); final groupMembers = groupMembersAsync.valueOrNull ?? [];`) and gate the call so it only fires once members have resolved:
+**Latch-race/error guard — don't latch membership-sensitive detection before members resolve, but preserve existing warnings on member-load error.** `_maybeShowReviewSheet` is a one-shot (`_reviewSheetShown` latch), but the loader gate waits only on `eventDetail`+`groupDetail`, NOT `groupMembersProvider`. If expenses resolve before members, `liveMemberIds` is not authoritative; and if any OTHER reason fires, the sheet could latch and permanently drop the payer-left flag for the entry. Fix: capture the AsyncValue (`final groupMembersAsync = ref.watch(groupMembersProvider(widget.groupId)); final groupMembers = groupMembersAsync.valueOrNull ?? [];`) and branch:
 ```dart
 if (groupMembersAsync.hasValue) {
-  _maybeShowReviewSheet(context, expenses, liveMemberIds);
+  final activeParticipantIds = event.participantIds
+      .toSet()
+      .intersection(liveMemberIds);
+  _maybeShowReviewSheet(context, expenses, activeParticipantIds);
+} else if (groupMembersAsync.hasError) {
+  _maybeShowReviewSheet(context, expenses);
 }
 ```
-This defers the one-shot until `liveMemberIds` is authoritative (a real group always has ≥1 live member, so an empty `liveMemberIds` reliably means "still loading"). It does NOT change the #249 universe derivation (which keeps `.valueOrNull ?? []`). A members-provider error → sheet never fires → fail-safe (no false nudge).
+This defers the one-shot while members are still loading, but on member-provider error it falls back to the old detector path. That means exact/custom/personal/large warnings still show, while `payerNotInParticipants` remains skipped because the active set is unknown.
 
 ## Verification principles (run now)
 
@@ -116,7 +134,7 @@ This defers the one-shot until `liveMemberIds` is authoritative (a real group al
 4. **Fields from the type** — enumerated from `expense_model.dart`; the departed-payer check needs only `payerParticipantId` (present) + the caller's participant set. ✔
 5. **Data contracts** — `detectReviewWorthyExpenses(List<Expense>, {Decimal? largeFraction, Set<String> activeParticipantIds})`; fires iff `activeParticipantIds.isNotEmpty && !contains(payerParticipantId)`. ✔
 6. **Arithmetic decomposition** — n/a (no aggregate; largeAmount per-currency math untouched). ✔
-7. **Adversarial pass (membership-semantics axis)** — Gate round 2 [P1]: the correct "active" set is `liveMemberIds` (shrinks on departure), NOT the append-only `event.participantIds` (would make the trigger dead code). Same id-space; the bug was set-semantics. Empty-set default means old callers can't spuriously flag every payer. ✔
+7. **Adversarial pass (membership-semantics axis)** — the correct "active" set is `event.participantIds ∩ liveMemberIds`: live-member-only misses event-admin removals, event-participant-only misses departed/tombstoned group members. Empty-set default means old callers can't spuriously flag every payer. ✔
 
 ## Test plan (RED first)
 
@@ -128,18 +146,15 @@ This defers the one-shot until `liveMemberIds` is authoritative (a real group al
 
 `test/features/ledger/pre_settlement_review_sheet_test.dart` — add a `testWidgets`: build a flag list where `payerNotInParticipants` is the **only** reason on the expense (plain global/equal, non-dominant → the last-in-`_reasonOrder` reason IS the primary chip); open the sheet; assert the EN count line `1 paid by someone who left` renders AND the `Payer left` chip appears.
 
-**End-to-end assertion (Gate round 2/3 — the unit test can't catch wrong-set wiring, and the fixture must DISCRIMINATE):** add a widget test on `SettleUpScreen` (`test/features/ledger/settle_up_screen_test.dart` already boots it under a `ProviderScope` overriding `groupMembersProvider`). Fixture mirrors the real leave-after-paying scenario and discriminates `liveMemberIds` from `participantIds`:
-- `event.participantIds = ['stay', 'gone']` (append-only — `gone` was a participant at create and remains).
-- `groupMembersProvider` yields ONLY a live `stay` (member `gone` hard-deleted on leave → absent → ∉ `liveMemberIds`). (A tombstoned `gone` with `isTombstone:true` works equally.)
-- a live expense paid by `gone`.
-- Assert the sheet surfaces `Payer left`.
-
-With correct wiring (`liveMemberIds`) the flag FIRES (`gone` ∉ liveMemberIds); with the buggy `participantIds` wiring it would NOT (`gone` ∈ participantIds) → the test FAILS on the exact round-2 bug. A fixture where `gone` is absent from `participantIds` would pass under BOTH wirings and guard nothing.
+**End-to-end assertions (the unit test can't catch wrong-set wiring, and fixtures must DISCRIMINATE):** add widget tests on `SettleUpScreen`:
+- departed group member: `event.participantIds = ['stay', 'gone']`, `groupMembersProvider` yields only `stay`, a live expense paid by `gone` → catches participant-only wiring.
+- event-admin removal: `event.participantIds = ['stay']`, `groupMembersProvider` yields `stay` and live `gone`, a live expense paid by `gone` → catches live-member-only wiring.
+- member-provider error fallback: `groupMembersProvider` errors, exact-split expense still surfaces the sheet → catches whole-sheet suppression.
 
 ## Definition of done
 
 - [ ] RED: new tests fail before implementation, for the right reason.
-- [ ] Callsite passes `liveMemberIds` (NOT `event.participantIds`) — end-to-end test with a tombstoned payer proves the trigger fires (guards the round-2 dead-code [P1]).
+- [ ] Callsite passes `event.participantIds ∩ liveMemberIds` — end-to-end tests prove both departed group members and event-removed payers trigger.
 - [ ] Detector + sheet + EN/AR ARB + generated l10n + callsite updated.
 - [ ] `flutter gen-l10n` run; generated getters present + committed.
 - [ ] `flutter analyze` clean; `bash tool/check_theme_purity.sh` clean (sheet edits touch no colors, but run it).

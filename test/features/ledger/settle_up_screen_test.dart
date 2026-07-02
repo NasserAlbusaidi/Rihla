@@ -90,6 +90,7 @@ void main() {
     bool router = false,
     String? preSelectedMemberId,
     List<GroupMember>? groupMembers,
+    Stream<List<GroupMember>>? groupMembersStream,
     List<Override> extraOverrides = const [],
   }) {
     final overrides = [
@@ -106,7 +107,9 @@ void main() {
       ),
       groupMembersProvider(
         groupId,
-      ).overrideWith((ref) => Stream.value(groupMembers ?? const [])),
+      ).overrideWith(
+        (ref) => groupMembersStream ?? Stream.value(groupMembers ?? const []),
+      ),
       // #261: SettleUpScreen now gates on the group resolving to read its
       // currency. Override groupDetailProvider (it otherwise binds real
       // Firestore) or the screen hangs on the loader. createdBy is a literal,
@@ -239,6 +242,36 @@ void main() {
   );
 
   testWidgets(
+    '#204: member-provider errors do not suppress existing review reasons',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          expensesStream: Stream.value([
+            Expense(
+              id: 'e1',
+              tripId: eventId,
+              payerParticipantId: 'alice',
+              amount: Decimal.parse('20.000'),
+              description: 'Dinner',
+              scope: ExpenseScope.global,
+              splitMode: SplitMode.exact,
+              createdAt: DateTime(2026, 5, 16),
+              createdBy: 'alice',
+            ),
+          ]),
+          groupMembersStream: Stream.error(StateError('members failed')),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
+      expect(find.text('Exact split'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     '#204: no review sheet when all expenses are ordinary equal splits',
     (tester) async {
       final fakeDb = FakeFirebaseFirestore();
@@ -250,16 +283,14 @@ void main() {
   );
 
   testWidgets(
-    '#204: an expense paid by a DEPARTED member surfaces "Payer left" — proves '
-    'the callsite feeds liveMemberIds, NOT the append-only participantIds',
+    '#204: an expense paid by a DEPARTED member surfaces "Payer left"',
     (tester) async {
       final fakeDb = FakeFirebaseFirestore();
 
       // "gone" was a participant when they paid (so they remain in the
-      // append-only participantIds) but has since LEFT the group (hard-delete →
-      // absent from the live roster). Correct wiring diffs the payer against
-      // liveMemberIds {alice,bob} → flags it. A regression to participantIds
-      // {alice,bob,gone} would NOT flag it and this test would fail (no sheet).
+      // event roster) but has since LEFT the group (hard-delete → absent from
+      // the live roster). Correct wiring diffs the payer against active event
+      // participants who are still live group members → flags it.
       final eventWithDeparted = Event(
         id: eventId,
         groupId: groupId,
@@ -311,6 +342,80 @@ void main() {
           fakeDb,
           eventStream: Stream.value(eventWithDeparted),
           expensesStream: Stream.value(departedPayerExpense),
+          groupMembers: liveMembers,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
+      expect(find.text('Payer left'), findsOneWidget);
+      expect(find.text('1 paid by someone who left'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#204: an event-removed payer surfaces "Payer left" even if still live in the group',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      // "gone" is still a live group member, but an event admin removed them
+      // from this event after they paid. A live-member-only active set misses
+      // this; the event participant set must participate in the detector input.
+      final eventAfterRemoval = Event(
+        id: eventId,
+        groupId: groupId,
+        name: 'Beach Trip',
+        type: EventType.trip,
+        createdBy: 'alice',
+        participantIds: const ['alice', 'bob'],
+        participantNames: const {'alice': 'Alice', 'bob': 'Bob'},
+        modules: const EventModules(),
+        createdAt: DateTime(2026, 5, 16),
+      );
+      final removedPayerExpense = [
+        Expense(
+          id: 'e-removed',
+          tripId: eventId,
+          payerParticipantId: 'gone',
+          amount: Decimal.parse('20.000'),
+          description: 'Taxi',
+          scope: ExpenseScope.global,
+          createdAt: DateTime(2026, 5, 16),
+          createdBy: 'gone',
+        ),
+      ];
+      final liveMembers = [
+        GroupMember(
+          id: 'm-alice',
+          groupId: groupId,
+          userId: 'alice',
+          displayName: 'Alice',
+          role: 'CREATOR',
+          joinedAt: DateTime(2026, 5, 16),
+        ),
+        GroupMember(
+          id: 'm-bob',
+          groupId: groupId,
+          userId: 'bob',
+          displayName: 'Bob',
+          role: 'MEMBER',
+          joinedAt: DateTime(2026, 5, 16),
+        ),
+        GroupMember(
+          id: 'm-gone',
+          groupId: groupId,
+          userId: 'gone',
+          displayName: 'Zaid',
+          role: 'MEMBER',
+          joinedAt: DateTime(2026, 5, 16),
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          eventStream: Stream.value(eventAfterRemoval),
+          expensesStream: Stream.value(removedPayerExpense),
           groupMembers: liveMembers,
         ),
       );
