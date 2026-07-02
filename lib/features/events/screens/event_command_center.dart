@@ -357,9 +357,17 @@ class _EventHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final dateRange = _formatDateRange(context, event.startDate, event.endDate);
+    // #789: "Day N of M" for a live, multi-day trip — suppressed once closed.
+    final day = event.isClosed
+        ? null
+        : liveTripDay(event.startDate, event.endDate, DateTime.now());
+    final dayLabel = day == null
+        ? null
+        : context.l10n.eventDayOf(day.currentDay, day.totalDays);
     final eyebrow = [
       event.type.localizedShortLabel(context.l10n),
       ?dateRange,
+      ?dayLabel,
     ].join(' · ');
 
     return Column(

@@ -19,6 +19,7 @@ import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../events/embedded_panel_metrics.dart';
 import '../../events/providers/event_provider.dart';
 import '../../../core/constants/supported_currencies.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -299,6 +300,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             tileKeys: _tileKeys,
             canRecord: canRecord,
             preSelectedMemberId: widget.preSelectedMemberId,
+            // #789: the embedded panel sits under the workspace's floating FAB;
+            // reserve clearance so the last row isn't overlapped.
+            bottomInset: widget.embedded ? kEmbeddedEventPanelFabClearance : 24,
             onRecord:
                 ({
                   required settlement,
