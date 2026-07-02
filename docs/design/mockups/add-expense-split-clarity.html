@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add expense — split clarity: make every option visible · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Scoped helpers for the split-mode variations. Compose tokens only. */
+  .amt-hero { display:flex; flex-direction:column; gap:2px; padding:var(--s8) 0 var(--s4); }
+  .amt-hero .lbl { font-family:var(--font-mono); font-size:10.5px; letter-spacing:1.2px;
+    text-transform:uppercase; color:var(--ink-3); font-weight:600; }
+  .cat-strip { display:flex; gap:6px; overflow:hidden; }
+  .cat-chip { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500;
+    padding:6px 11px; border-radius:var(--r-pill); background:var(--card-soft);
+    border:1px solid var(--border); color:var(--ink-2); white-space:nowrap; }
+  .cat-chip.on { background:var(--saffron-tint); border-color:var(--primary); color:var(--ink); font-weight:600; }
+  .cat-chip .dot { width:8px; height:8px; border-radius:var(--r-pill); }
+
+  .scope-seg { display:flex; background:var(--card-soft); border:1px solid var(--border);
+    border-radius:var(--r-pill); padding:3px; }
+  .scope-seg .seg { flex:1; text-align:center; font-size:12px; font-weight:600; color:var(--ink-3);
+    padding:7px 0; border-radius:var(--r-pill); }
+  .scope-seg .seg.on { background:var(--card); color:var(--ink); box-shadow:var(--shadow-raised); }
+
+  .subhead { font-family:var(--font-mono); font-size:10.5px; letter-spacing:1.2px;
+    text-transform:uppercase; color:var(--ink-3); font-weight:600; margin:var(--s4) 0 6px; }
+
+  /* Mode glyph tile shared bits */
+  .mglyph { width:30px; height:30px; border-radius:9px; flex:none; display:flex; align-items:center;
+    justify-content:center; font-family:var(--font-mono); font-size:14px; font-weight:600;
+    background:var(--saffron-soft); color:var(--primary-dark); }
+  .mglyph.big { width:38px; height:38px; font-size:17px; border-radius:11px; }
+
+  /* A — inline chip wrap (all modes visible at rest) */
+  .mode-wrap { display:flex; flex-wrap:wrap; gap:8px; }
+  .mode-chip { display:inline-flex; align-items:center; gap:7px; padding:8px 13px 8px 8px;
+    border-radius:var(--r-pill); background:var(--card-soft); border:1px solid var(--border);
+    color:var(--ink-2); font-size:13px; font-weight:600; }
+  .mode-chip .mglyph { width:24px; height:24px; font-size:12px; border-radius:7px; }
+  .mode-chip.on { background:var(--saffron-tint); border-color:var(--primary); color:var(--ink); }
+  .mode-chip.on .mglyph { background:var(--primary); color:#fff; }
+  .helper { display:flex; gap:8px; align-items:flex-start; margin-top:10px; padding:10px 12px;
+    background:var(--saffron-tint); border-radius:var(--r-sm); font-size:12.5px; color:var(--ink-2); }
+
+  /* B — descriptive list rows */
+  .mode-list { border:1px solid var(--border); border-radius:var(--r-input); overflow:hidden;
+    background:var(--card); }
+  .mrow { display:flex; align-items:center; gap:var(--s12); padding:13px var(--s12); }
+  .mrow + .mrow { border-top:1px solid var(--rule); }
+  .mrow.on { background:var(--saffron-tint); }
+  .mrow .m-t { font-size:14px; font-weight:600; color:var(--ink); }
+  .mrow .m-d { font-size:11.5px; color:var(--ink-3); margin-top:1px; }
+  .mrow .m-check { margin-left:auto; color:var(--primary); font-weight:700; font-size:16px; }
+  .summary-row { display:flex; align-items:center; gap:var(--s12); padding:14px;
+    border:1px solid var(--border); border-radius:var(--r-input); background:var(--card); }
+
+  /* C — equal-first with expandable inline grid */
+  .mode-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .mtile { display:flex; align-items:center; gap:10px; padding:11px; border:1px solid var(--border);
+    border-radius:var(--r-input); background:var(--card-soft); }
+  .mtile.on { background:var(--saffron-tint); border-color:var(--primary); }
+  .mtile .mt-t { font-size:13px; font-weight:600; color:var(--ink); }
+  .mtile .mt-d { font-size:10.5px; color:var(--ink-3); margin-top:1px; }
+  .morebar { display:flex; align-items:center; justify-content:space-between; padding:12px 14px;
+    border:1px dashed var(--rule-2); border-radius:var(--r-input); background:var(--card-soft);
+    font-size:13px; font-weight:600; color:var(--primary-dark); }
+
+  .owe-row { display:flex; align-items:center; gap:10px; padding:9px 0; }
+  .owe-row + .owe-row { border-top:1px solid var(--rule); }
+  .callout { background:rgba(168,75,51,.10); border:1px solid rgba(168,75,51,.28); color:#7A2F1F;
+    border-radius:var(--r-sm); padding:9px 12px; font-size:12px; font-weight:500; }
+  .anno { font-family:var(--font-mono); font-size:11px; color:#C7C1B3; margin-top:8px; }
+  .anno b { color:var(--rust); }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>Add expense <span class="saffron">— make every split option clear &amp; visible</span></h1>
+  <p>Reported friction: <b>“it took me a while to find the itemized tab.”</b> The audit confirms why —
+     itemized is buried <b>two levels deep</b>. The Split card's <i>How</i> row shows only 4 modes
+     (<code>split_card.dart:452-463</code>); Itemized exists <b>only</b> as a 5th ellipsis-cramped chip
+     <i>inside a bottom sheet</i> that opens after you tap an unrelated mode
+     (<code>custom_split_sheet_mode_selector.dart:37-53</code>). Reaching it takes 2 non-obvious taps + a
+     modality switch — and the default (Equally) never opens the sheet, so it's discovered by accident.
+     Worked example: <b>Dinner at Bait Al Luban · 4 people · OMR 42.500</b>.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     BLOCK 0 · BEFORE — the burial
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">BEFORE</span>
+    <h2 class="issue-title">Where Itemized hides today</h2>
+    <span class="issue-meta">2 taps + a bottom sheet · default Equally never surfaces it</span>
+  </div>
+  <p class="issue-desc">The main card only offers the four arithmetic modes. Itemized — a materially different,
+     receipt-style interaction — is smuggled in as a look-alike 5th chip that you only meet after committing
+     to Exact/Shares/%, inside a sheet you didn't ask to open.</p>
+
+  <div class="variant-row">
+    <!-- 0a · main card, 4 modes -->
+    <div class="variant">
+      <div class="variant-label">On the screen <span class="tag">Split card</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="content tight" style="padding-top:var(--s16)">
+            <div class="card">
+              <div class="subhead">How to split</div>
+              <div class="chip-row" style="flex-wrap:nowrap">
+                <span class="chip selected" style="flex:1;justify-content:center">Equally</span>
+                <span class="chip" style="flex:1;justify-content:center">Shares</span>
+                <span class="chip" style="flex:1;justify-content:center">Exact</span>
+                <span class="chip" style="flex:1;justify-content:center">%</span>
+              </div>
+              <div class="callout" style="margin-top:12px">No “Itemized” anywhere on this screen.
+                A user scanning the card has zero cue it exists.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="anno">4 chips only · <b>Itemized absent</b> · tapping Equally resolves inline (never opens the sheet)</p>
+    </div>
+
+    <!-- 0b · the sheet with 5 cramped chips -->
+    <div class="variant">
+      <div class="variant-label">After you tap “Exact” <span class="tag">bottom sheet</span></div>
+      <div class="phone short">
+        <div class="phone-screen" style="background:var(--paper)">
+          <div class="sheet-wrap">
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Custom split</div>
+              <div class="sheet-sub">The 5th chip is the only door to Itemized.</div>
+              <div style="display:flex; gap:4px; background:var(--card-soft); border-radius:var(--r-pill); padding:4px;">
+                <span class="chip" style="flex:1;justify-content:center;font-size:11px;padding:7px 4px;overflow:hidden">Equally</span>
+                <span class="chip" style="flex:1;justify-content:center;font-size:11px;padding:7px 4px;overflow:hidden">Shares</span>
+                <span class="chip selected" style="flex:1;justify-content:center;font-size:11px;padding:7px 4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">Exact a…</span>
+                <span class="chip" style="flex:1;justify-content:center;font-size:11px;padding:7px 4px;overflow:hidden">Percent</span>
+                <span class="chip" style="flex:1;justify-content:center;font-size:11px;padding:7px 4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">Itemiz…</span>
+              </div>
+              <div class="callout" style="margin-top:14px">5 equal-width chips → ~60dp each → “Exact amounts”
+                &amp; “Itemized” truncate. Worse in Arabic RTL.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="anno">5 look-alike chips, ellipsized · <b>no icon / no description</b> · Itemized reads as “just more split math”</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     BLOCK 1 · THE FIX — three variations
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">FIX</span>
+    <h2 class="issue-title">Give the split a clear front door</h2>
+    <span class="issue-meta">every mode gets an icon + words · Itemized becomes a first-class option</span>
+  </div>
+  <p class="issue-desc">Three directions, same worked example. All promote Itemized to a peer of the other modes,
+     add an icon + a plain-language label so nothing is “just another split-math variant,” and fix the
+     cramped/ellipsized row. They differ on the <b>visible-at-rest ↔ clarity ↔ 90%-speed</b> trade-off.</p>
+  <p class="issue-rec"><b>Recommendation: A.</b> It answers the literal ask — <i>every option visible at rest,
+     no hunting</i> — while icons + a contextual helper line make each one clear, and a 2-line wrap kills the
+     ellipsis/RTL truncation. Reach for <b>C</b> if you also want to delete the modality switch (no sheet at all)
+     and keep the common Equally case one-glance simple.</p>
+
+  <div class="variant-row">
+
+    <!-- ─────────────── A · inline chip wrap (recommended) ─────────────── -->
+    <div class="variant pick">
+      <div class="variant-label">A · All modes on the card <span class="tag">visible at rest</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">● ● ●</span></div>
+          <div class="app-bar">
+            <div class="icon-btn" style="font-size:20px;color:var(--ink-3)">✕</div>
+            <div class="title sans">Add expense</div>
+            <span class="btn sm" style="min-height:36px">Add</span>
+          </div>
+          <div class="content tight">
+            <div class="amt-hero">
+              <span class="lbl">Amount</span>
+              <span class="r-amount hero"><span class="ccy">OMR</span>42.<span class="dec">500</span></span>
+            </div>
+            <div class="input" style="color:var(--ink-2)">Dinner at Bait Al Luban</div>
+            <div>
+              <div class="subhead">Category</div>
+              <div class="cat-strip">
+                <span class="cat-chip on"><span class="dot" style="background:var(--cat1)"></span>Food</span>
+                <span class="cat-chip"><span class="dot" style="background:var(--cat2)"></span>Stay</span>
+                <span class="cat-chip"><span class="dot" style="background:var(--cat4)"></span>Travel</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="between" style="margin-bottom:10px">
+                <span class="row" style="gap:8px"><span class="avatar sm av-6">N</span>
+                  <span style="font-size:13px;font-weight:600">Nasser paid</span></span>
+                <span class="chip" style="padding:5px 12px;font-size:12px">Change</span>
+              </div>
+              <div class="scope-seg" style="margin-bottom:14px">
+                <span class="seg on">Everyone</span><span class="seg">Some</span><span class="seg">Just me</span>
+              </div>
+
+              <div class="subhead">How to split</div>
+              <div class="mode-wrap">
+                <span class="mode-chip on"><span class="mglyph">=</span>Equally</span>
+                <span class="mode-chip"><span class="mglyph">⚖</span>Shares</span>
+                <span class="mode-chip"><span class="mglyph">#</span>Exact</span>
+                <span class="mode-chip"><span class="mglyph">%</span>Percent</span>
+                <span class="mode-chip"><span class="mglyph">🧾</span>Itemized</span>
+              </div>
+              <div class="helper">
+                <span>🧾</span>
+                <span><b>Itemized</b> — add each receipt line and tick who ordered it. Great for restaurants.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>All five visible, zero hunting.</b> Chips wrap to a 2nd line so nothing
+         truncates (fixes the RTL/ellipsis trap). Icons differentiate; a helper line explains whichever mode
+         is focused. Equally still resolves inline; tapping Itemized opens the item editor <i>directly</i>
+         — no “pick Exact first.” Smallest code delta: add <code>SplitMode</code>-peer for itemized to
+         <code>_ModeSegment</code> and route its tap to the itemized body.</p>
+    </div>
+
+    <!-- ─────────────── B · descriptive list picker ─────────────── -->
+    <div class="variant">
+      <div class="variant-label">B · Self-explaining picker <span class="tag">clarity-max</span></div>
+      <div class="phone">
+        <div class="phone-screen" style="background:var(--paper)">
+          <div class="status-bar"><span>9:41</span><span class="dots">● ● ●</span></div>
+          <div class="sheet-wrap">
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">How do you want to split?</div>
+              <div class="sheet-sub">OMR 42.500 · Nasser paid · 4 people</div>
+              <div class="mode-list">
+                <div class="mrow on"><span class="mglyph big">=</span>
+                  <div><div class="m-t">Equally</div><div class="m-d">Everyone pays the same — 10.625 each</div></div>
+                  <span class="m-check">✓</span></div>
+                <div class="mrow"><span class="mglyph big">⚖</span>
+                  <div><div class="m-t">By shares</div><div class="m-d">Weight who owes more (couples, big eaters)</div></div></div>
+                <div class="mrow"><span class="mglyph big">#</span>
+                  <div><div class="m-t">Exact amounts</div><div class="m-d">Type each person's share by hand</div></div></div>
+                <div class="mrow"><span class="mglyph big">%</span>
+                  <div><div class="m-t">Percentages</div><div class="m-d">Split by percent of the total</div></div></div>
+                <div class="mrow"><span class="mglyph big">🧾</span>
+                  <div><div class="m-t">Itemized</div><div class="m-d">Assign each receipt line to who ordered it</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Every option reads as plain English.</b> The card collapses to a
+         <code>Split · Equally · Change</code> summary row; “Change” opens this list. Spacious rows =
+         no truncation, RTL-safe, and a first-timer instantly understands what Itemized <i>does</i>.
+         Costs one tap to open — but Equally stays the zero-config default, so you never <i>have</i> to.</p>
+    </div>
+
+    <!-- ─────────────── C · equal-first + inline grid ─────────────── -->
+    <div class="variant">
+      <div class="variant-label">C · Equal-first, no sheet <span class="tag">kills the modality hop</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">● ● ●</span></div>
+          <div class="app-bar">
+            <div class="icon-btn" style="font-size:20px;color:var(--ink-3)">✕</div>
+            <div class="title sans">Add expense</div>
+            <span class="btn sm" style="min-height:36px">Add</span>
+          </div>
+          <div class="content tight">
+            <div class="amt-hero">
+              <span class="lbl">Amount</span>
+              <span class="r-amount hero"><span class="ccy">OMR</span>42.<span class="dec">500</span></span>
+            </div>
+            <div class="card">
+              <div class="between" style="margin-bottom:10px">
+                <span class="subhead" style="margin:0">Split equally · 4 people</span>
+                <span class="chip selected" style="padding:4px 10px;font-size:11px"><span class="mglyph" style="width:18px;height:18px;font-size:11px;background:var(--primary);color:#fff">=</span> Equally</span>
+              </div>
+              <div class="owe-row"><span class="avatar sm av-6">N</span><span style="flex:1;font-size:13px">Nasser</span>
+                <span class="r-amount"><span class="ccy">OMR</span>10.<span class="dec">625</span></span></div>
+              <div class="owe-row"><span class="avatar sm av-1">A</span><span style="flex:1;font-size:13px">Ali</span>
+                <span class="r-amount"><span class="ccy">OMR</span>10.<span class="dec">625</span></span></div>
+              <div class="owe-row"><span class="avatar sm av-2">S</span><span style="flex:1;font-size:13px">Sara</span>
+                <span class="r-amount"><span class="ccy">OMR</span>10.<span class="dec">625</span></span></div>
+
+              <div class="morebar" style="margin-top:14px">More ways to split<span>▾</span></div>
+              <div class="mode-grid" style="margin-top:8px">
+                <span class="mtile"><span class="mglyph">⚖</span><div><div class="mt-t">By shares</div><div class="mt-d">weighted</div></div></span>
+                <span class="mtile"><span class="mglyph">#</span><div><div class="mt-t">Exact</div><div class="mt-d">type amounts</div></div></span>
+                <span class="mtile"><span class="mglyph">%</span><div><div class="mt-t">Percent</div><div class="mt-d">by %</div></div></span>
+                <span class="mtile"><span class="mglyph">🧾</span><div><div class="mt-t">Itemized</div><div class="mt-d">by receipt</div></div></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The 90% case is already done.</b> Equally is applied with a live per-person
+         preview the moment you land. “More ways to split” expands an <i>inline</i> grid (no bottom sheet →
+         removes the modality switch friction entirely), and Itemized sits there as a labeled card.
+         Best overall friction win; Itemized is one clearly-labeled tap away rather than visible at rest.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     BLOCK 2 · adjacent friction (not competing variations — follow-ups)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">ALSO</span>
+    <h2 class="issue-title">Adjacent add-expense friction (from the same audit)</h2>
+    <span class="issue-meta">flagged for a follow-up pass — say the word and I'll mock these too</span>
+  </div>
+  <p class="issue-desc" style="margin-bottom:var(--s12)">Surfaced while mapping the flow; not part of the split
+     decision above, but they compound the “so much friction” feeling.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s16);max-width:900px">
+    <div class="callout" style="color:#C7C1B3;background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.10)">
+      <b style="color:var(--saffron-soft)">Category now required, but only checked at submit</b> — the
+      in-flight #204 change (uncommitted) fails the whole form <i>after</i> you tap Add, with no upfront
+      “required” marker. A proactive dim/badge (or a smart default per event type) would avoid the round-trip.
+      <span class="anno" style="display:block">expense_editor_body.dart:312-321, 744-778</span></div>
+    <div class="callout" style="color:#C7C1B3;background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.10)">
+      <b style="color:var(--saffron-soft)">“Split by others” is gated on ≥2 people, silently</b> — with scope
+      = Just me, tapping Shares/Exact/% (any path to Itemized) just flashes a snackbar. No inline hint on the
+      How control says why nothing happened. <span class="anno" style="display:block">expense_editor_body.dart:552-556</span></div>
+  </div>
+</div>
+
+</body>
+</html>

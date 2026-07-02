@@ -6,12 +6,16 @@ import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/split_explanation.dart';
 import 'package:safar/features/ledger/widgets/split_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// #485 — the unified Split card: one payer control (no second dropdown),
 /// plain-language scope segment, inline mode segment, real per-person figures,
 /// and an "adds up to total" footer.
+///
+/// split-clarity (2026-07-02) — Itemized is now a first-class option ON the card
+/// (variation A), not a hidden 5th chip inside the custom-split sheet.
 final _event = Event(
   id: 'event-1',
   name: 'Muscat weekend',
@@ -28,7 +32,14 @@ final _event = Event(
 );
 
 void main() {
-  Future<void> pumpCard(WidgetTester tester) async {
+  Future<void> pumpCard(
+    WidgetTester tester, {
+    SplitMode splitMode = SplitMode.equally,
+    Map<String, Decimal>? splitDistribution,
+    SplitExplanation? splitExplanation,
+    void Function(SplitMode)? onPickMode,
+    VoidCallback? onPickItemized,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
@@ -49,13 +60,14 @@ void main() {
                 payerId: 'uid-yasmin',
                 selfId: 'uid-yasmin',
                 customSplitParticipants: const {},
-                splitMode: SplitMode.equally,
-                splitDistribution: null,
-                splitExplanation: null,
+                splitMode: splitMode,
+                splitDistribution: splitDistribution,
+                splitExplanation: splitExplanation,
                 onChangePayer: () {},
                 onScopeChanged: (_) {},
                 onCustomSplitChanged: (_) {},
-                onPickMode: (_) {},
+                onPickMode: onPickMode ?? (_) {},
+                onPickItemized: onPickItemized ?? () {},
               ),
             ),
           ),
@@ -87,6 +99,69 @@ void main() {
     expect(find.text('Equal'), findsOneWidget);
     expect(find.text('Shares'), findsOneWidget);
     expect(find.text('Exact'), findsOneWidget);
+  });
+
+  testWidgets('Itemized is a first-class option on the card (split-clarity)',
+      (tester) async {
+    await pumpCard(tester);
+
+    // The whole point: itemized is visible on the card at rest, alongside the
+    // four arithmetic modes — no hunting inside the custom-split sheet.
+    expect(find.text('Percent'), findsOneWidget);
+    expect(find.text('Itemized'), findsOneWidget);
+  });
+
+  testWidgets('tapping Itemized fires onPickItemized, not onPickMode',
+      (tester) async {
+    var itemizedTaps = 0;
+    final modes = <SplitMode>[];
+    await pumpCard(
+      tester,
+      onPickMode: modes.add,
+      onPickItemized: () => itemizedTaps++,
+    );
+
+    await tester.tap(find.text('Itemized'));
+    await tester.pump();
+
+    expect(itemizedTaps, 1);
+    // Itemized is NOT a SplitMode — it must not leak through the mode callback.
+    expect(modes, isEmpty);
+  });
+
+  testWidgets('an itemized expense highlights Itemized, not Exact (helper shown)',
+      (tester) async {
+    await pumpCard(
+      tester,
+      // Itemized persists as SplitMode.exact + a splitExplanation (#203).
+      splitMode: SplitMode.exact,
+      splitDistribution: {
+        'uid-yasmin': Decimal.parse('24.000'),
+        'uid-layla': Decimal.parse('24.000'),
+      },
+      splitExplanation: const SplitExplanation(
+        items: [
+          SplitItem(
+            label: 'Dinner',
+            amountFils: 48000,
+            participantIds: ['uid-yasmin', 'uid-layla'],
+          ),
+        ],
+      ),
+    );
+
+    // The selected-mode helper reflects Itemized (proves it's the active
+    // selection, not Exact — the pre-fix bug showed "Exact" highlighted).
+    expect(
+      find.text('Add each receipt line and tick who ordered it.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the selected-mode helper explains Equal by default',
+      (tester) async {
+    await pumpCard(tester);
+    expect(find.text('Everyone pays the same.'), findsOneWidget);
   });
 
   testWidgets('shows real per-person figures and an adds-up footer (#485/#242)',
@@ -132,6 +207,7 @@ void main() {
                 onScopeChanged: scopes.add,
                 onCustomSplitChanged: (_) {},
                 onPickMode: modes.add,
+                onPickItemized: () {},
               ),
             ),
           ),

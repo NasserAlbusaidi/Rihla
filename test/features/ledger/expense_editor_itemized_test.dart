@@ -139,15 +139,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // #485: the itemized state shows on the Split card's keyed summary line, and
-  // the weights sheet opens from the card's mode segment (an itemized expense is
-  // persisted as exact, so "Exact" reopens it on the itemized tab).
+  // #485 / split-clarity: the itemized state shows on the Split card's keyed
+  // summary line. Itemized is now a first-class chip on the card's mode segment,
+  // so it opens the itemized editor DIRECTLY (the old flow reopened it by tapping
+  // the persisted-as "Exact" chip; that now opens plain exact instead).
   Finder summary() => find.byKey(const Key('split_card_summary'));
 
+  // Opens the itemized editor via the card's Itemized chip. `.first` picks the
+  // chip over the identically-labelled summary line ("Itemized · N items").
   Future<void> openHow(WidgetTester tester) async {
-    final exact = find.text('Exact');
-    await tester.ensureVisible(exact);
-    await tester.tap(exact);
+    final itemized = find.text('Itemized').first;
+    await tester.ensureVisible(itemized);
+    await tester.tap(itemized);
     await tester.pumpAndSettle();
   }
 
@@ -167,7 +170,7 @@ void main() {
     );
   });
 
-  testWidgets('opening How on an itemized expense preselects the itemized tab',
+  testWidgets('the Itemized chip opens the itemized tab with seeded rows',
       (tester) async {
     await pumpEditor(tester, _itemizedExpense());
     await openHow(tester);
@@ -177,6 +180,25 @@ void main() {
     expect(find.byKey(const Key('itemized_label_3')), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Pastries'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Latte'), findsOneWidget);
+  });
+
+  testWidgets(
+      'split-clarity: tapping Exact on an itemized expense opens plain exact, '
+      'not the itemized editor',
+      (tester) async {
+    await pumpEditor(tester, _itemizedExpense());
+
+    // The card highlights Itemized and de-highlights Exact. Tapping the Exact
+    // chip must open the PLAIN exact tab — regression guard: the old wiring
+    // reopened the itemized editor because Exact carried the itemized highlight.
+    final exact = find.text('Exact');
+    await tester.ensureVisible(exact);
+    await tester.tap(exact);
+    await tester.pumpAndSettle();
+
+    // Sheet opened (apply present) but NOT on the itemized editor.
+    expect(find.byKey(const Key('split_sheet_apply')), findsOneWidget);
+    expect(find.byKey(const Key('itemized_label_0')), findsNothing);
   });
 
   testWidgets(

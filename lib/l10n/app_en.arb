@@ -918,6 +918,26 @@
   "customSplitModePercent": "Percent",
 
   "editorSplitItemized": "Itemized",
+  "splitModeHelpEqually": "Everyone pays the same.",
+  "@splitModeHelpEqually": {
+    "description": "One-line helper under the split-mode chips explaining the Equal mode."
+  },
+  "splitModeHelpShares": "Weight who owes more — e.g. couples or big eaters.",
+  "@splitModeHelpShares": {
+    "description": "One-line helper under the split-mode chips explaining the Shares mode."
+  },
+  "splitModeHelpExact": "Type each person's exact share.",
+  "@splitModeHelpExact": {
+    "description": "One-line helper under the split-mode chips explaining the Exact mode."
+  },
+  "splitModeHelpPercent": "Split by percentage of the total.",
+  "@splitModeHelpPercent": {
+    "description": "One-line helper under the split-mode chips explaining the Percent mode."
+  },
+  "splitModeHelpItemized": "Add each receipt line and tick who ordered it.",
+  "@splitModeHelpItemized": {
+    "description": "One-line helper under the split-mode chips explaining the Itemized mode."
+  },
   "itemizedItemsHeader": "Items",
   "itemizedAddItem": "+ Add item",
   "itemizedRemoveItem": "Remove item",

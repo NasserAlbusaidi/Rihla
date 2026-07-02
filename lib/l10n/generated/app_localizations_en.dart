@@ -1103,6 +1103,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSplitItemized => 'Itemized';
 
   @override
+  String get splitModeHelpEqually => 'Everyone pays the same.';
+
+  @override
+  String get splitModeHelpShares =>
+      'Weight who owes more — e.g. couples or big eaters.';
+
+  @override
+  String get splitModeHelpExact => 'Type each person\'s exact share.';
+
+  @override
+  String get splitModeHelpPercent => 'Split by percentage of the total.';
+
+  @override
+  String get splitModeHelpItemized =>
+      'Add each receipt line and tick who ordered it.';
+
+  @override
   String get itemizedItemsHeader => 'Items';
 
   @override
