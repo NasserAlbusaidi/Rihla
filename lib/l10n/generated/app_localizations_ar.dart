@@ -2153,6 +2153,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get eventNew => 'فعالية جديدة';
 
   @override
+  String get eventSecondEventHint =>
+      'الفعاليات تقسّم مصاريف المجموعة إلى رحلات أو مناسبات منفصلة — ومعظم المجموعات تكتفي بفعالية واحدة.';
+
+  @override
   String get eventNameLabel => 'اسم الفعالية';
 
   @override
