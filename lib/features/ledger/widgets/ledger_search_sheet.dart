@@ -179,7 +179,9 @@ class _SearchBar extends StatelessWidget {
                 color: colors.inputFill,
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: EdgeInsets.symmetric(horizontal: context.spacing.space12),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.space12,
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -277,19 +279,23 @@ class _Results extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       itemCount: results.length,
       separatorBuilder: (_, _) => SizedBox(height: context.spacing.space8),
-      itemBuilder: (context, index) => _ResultRow(
-        hit: results[index],
-        onTap: () {
-          final hit = results[index];
-          if (hit is _ExpenseHit) {
-            HapticService.lightClick();
-            Navigator.of(context).pop();
-            GoRouter.of(context).push(
-              '/group/$groupId/event/$eventId/ledger/edit/${hit.expense.id}',
-            );
-          }
-        },
-      ),
+      itemBuilder: (context, index) {
+        final hit = results[index];
+        // Settlements have no detail screen (append-only) — render their
+        // rows without a tap target so they don't read as broken.
+        return _ResultRow(
+          hit: hit,
+          onTap: hit is! _ExpenseHit
+              ? null
+              : () {
+                  HapticService.lightClick();
+                  Navigator.of(context).pop();
+                  GoRouter.of(context).push(
+                    '/group/$groupId/event/$eventId/ledger/edit/${hit.expense.id}',
+                  );
+                },
+        );
+      },
     );
   }
 }
@@ -298,69 +304,74 @@ class _ResultRow extends StatelessWidget {
   const _ResultRow({required this.hit, required this.onTap});
 
   final _SearchHit hit;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    final l10n = context.l10n;
+    final card = _buildCard(context);
+    if (onTap == null) return card;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space12),
-        decoration: BoxDecoration(
-          color: colors.cardSurface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: context.shadows.flat,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: colors.inputFill,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                hit.leadingIcon,
-                size: 18,
-                color: colors.textSecondary,
-              ),
+      child: card,
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space12,
+        vertical: context.spacing.space12,
+      ),
+      decoration: BoxDecoration(
+        color: colors.cardSurface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: context.shadows.flat,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: colors.inputFill,
+              borderRadius: BorderRadius.circular(10),
             ),
-            SizedBox(width: context.spacing.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    hit.title(l10n),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.sans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+            child: Icon(hit.leadingIcon, size: 18, color: colors.textSecondary),
+          ),
+          SizedBox(width: context.spacing.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hit.title(l10n),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.sans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hit.subtitle(l10n),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.sans(
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hit.subtitle(l10n),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.sans(
+                    fontSize: 12,
+                    color: colors.textSecondary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            SizedBox(width: context.spacing.space8),
-            RAmount(value: hit.amount, currency: hit.currency, size: 14),
-          ],
-        ),
+          ),
+          SizedBox(width: context.spacing.space8),
+          RAmount(value: hit.amount, currency: hit.currency, size: 14),
+        ],
       ),
     );
   }
@@ -378,7 +389,10 @@ class _Hint extends StatelessWidget {
     final colors = context.colors;
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space32, vertical: context.spacing.space16),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space32,
+          vertical: context.spacing.space16,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -458,11 +472,7 @@ final class _ExpenseHit extends _SearchHit {
 }
 
 final class _SettlementHit extends _SearchHit {
-  _SettlementHit(
-    this.settlement,
-    this.payerDisplay,
-    this.recipientDisplay,
-  );
+  _SettlementHit(this.settlement, this.payerDisplay, this.recipientDisplay);
   final Settlement settlement;
   final String? payerDisplay;
   final String? recipientDisplay;

@@ -1555,7 +1555,6 @@
   "activityNoFilterTitle": "Nothing matches this filter",
   "activityNoFilterMessage": "Try a different filter, or switch back to All.",
   "activityFilterAll": "All",
-  "activityFilterActivity": "Activity",
   "activityFilterSettles": "Settles",
   "activityFilterSettlements": "Settlements",
   "activityFilterEvents": "Events",
@@ -1910,7 +1909,7 @@
       }
     }
   },
-  "groupMoreTooltip": "More",
+  "groupMoreTooltip": "Group options",
   "groupSettings": "Group settings",
   "groupActivity": "Activity",
   "groupYourBalanceHere": "Your balance here",
@@ -1941,6 +1940,7 @@
   "groupSettingsTitle": "Group settings",
   "groupDefaults": "Defaults",
   "groupCurrency": "Currency",
+  "groupCurrencyLockedNote": "Currency is set when the group is created and can't be changed.",
   "groupSettingsLoadFailed": "Could not load settings",
   "groupTryAgain": "Try again",
   "groupInvite": "Invite",
@@ -1955,6 +1955,7 @@
   "groupEditNameSemantic": "Edit group name",
   "groupCopyInviteCodeSemantic": "Copy invite code",
   "groupShowQrCodeSemantic": "Show QR code",
+  "groupShowQrCode": "Show QR code",
   "groupShareInviteSemantic": "Share invite",
   "groupUpdateNameFailed": "Failed to update name: {error}",
   "@groupUpdateNameFailed": {
@@ -2023,7 +2024,7 @@
       "groupName": {}
     }
   },
-  "groupManage": "Manage",
+  "groupAddMemberAction": "Add member",
   "groupShadowNotJoinedBadge": "Not joined yet",
   "@groupShadowNotJoinedBadge": {
     "description": "Pill on a member tile (#278) for a placeholder ('shadow') member added by name who hasn't joined via invite code yet."

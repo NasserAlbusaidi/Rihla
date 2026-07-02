@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
+import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
@@ -502,6 +503,90 @@ void main() {
 
         expect(find.text('Activity'), findsOneWidget);
         expect(find.byTooltip('Back'), findsNothing);
+      },
+    );
+
+    // Friction audit tranche 2: the feed used to hard-cap at 5 entries TOTAL,
+    // so the filter chips filtered a stale 5-item window — a settlement older
+    // than the 5 newest entries showed "nothing matches" despite existing.
+    // This drives the REAL crossGroupActivityProvider (inputs overridden, not
+    // the provider itself) so the merged-window width is actually exercised.
+    testWidgets(
+      'Settlements chip finds a settlement older than the 5 newest entries',
+      (tester) async {
+        final group = Group(
+          id: 'g1',
+          name: 'Trip A',
+          inviteCode: 'ABCDEF',
+          createdBy: 'uid0',
+          memberIds: const ['uid0'],
+          createdAt: DateTime(2026, 1, 1),
+        );
+        final logs = [
+          // 6 newer lifecycle entries push the settlement past the old cap.
+          for (var i = 0; i < 6; i++)
+            GroupActivityLog(
+              id: 'e$i',
+              type: 'event_created',
+              actorId: 'uid0',
+              actorName: 'Ali',
+              description: 'created an event',
+              timestamp: DateTime(2026, 3, 20 + i),
+            ),
+          GroupActivityLog(
+            id: 's-old',
+            type: 'group_settlement',
+            actorId: 'uid0',
+            actorName: 'Sara-Settler',
+            description: 'recorded a settlement',
+            metadata: const {'amount': '12.5'},
+            timestamp: DateTime(2026, 3, 1),
+          ),
+        ];
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const CrossGroupActivityScreen(),
+            overrides: [
+              userGroupsProvider.overrideWith((ref) => Stream.value([group])),
+              groupActivityProvider(
+                'g1',
+              ).overrideWith((_) => Stream.value(logs)),
+              crossGroupHomeBalanceProvider.overrideWith(
+                (ref) => const AsyncValue.data((
+                  balance: (
+                    byCurrency: <CurrencyBalance>[],
+                    groupCount: 0,
+                    isLoading: false,
+                  ),
+                  partial: false,
+                )),
+              ),
+              groupBalancesProvider.overrideWith(
+                (ref, groupId) => const AsyncValue.data((
+                  balances: <String, List<UserBalance>>{},
+                  totalSpent: <String, Decimal>{},
+                  eventCount: 0,
+                  perEventBreakdown:
+                      <String, Map<String, Map<String, Decimal>>>{},
+                  memberNames: <String, String>{},
+                  memberRawNames: <String, String>{},
+                )),
+              ),
+              currentUserIdProvider.overrideWithValue('test-user-id'),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Settlements'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Nothing matches this filter'), findsNothing);
+        expect(
+          find.textContaining('Sara-Settler', findRichText: true),
+          findsWidgets,
+        );
       },
     );
   });

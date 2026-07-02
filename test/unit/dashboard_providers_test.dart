@@ -110,12 +110,14 @@ void main() {
       },
     );
 
-    test('limits to 5 entries total', () async {
+    // The audit's "filters filter a stale 5-item window" finding: the merged
+    // feed window is 30, wide enough that the Activity tab's filter chips
+    // operate on real history, not a pre-truncated cache.
+    test('emits more than the old 5-item window', () async {
       final group1 = _makeGroup(id: 'g1', name: 'Group 1');
 
-      // 7 log entries for a single group — result must be capped at 5
       final logs = List.generate(
-        7,
+        8,
         (i) => _makeLog(id: 'log-$i', timestamp: DateTime(2025, 1, i + 1)),
       );
 
@@ -136,7 +138,37 @@ void main() {
 
       final result = container.read(crossGroupActivityProvider);
       expect(result, isA<AsyncData<List<CrossGroupActivityEntry>>>());
-      expect(result.valueOrNull!.length, equals(5));
+      expect(result.valueOrNull!.length, equals(8));
+    });
+
+    test('caps the merged feed at 30 entries total', () async {
+      final group1 = _makeGroup(id: 'g1', name: 'Group 1');
+
+      final logs = List.generate(
+        35,
+        (i) => _makeLog(id: 'log-$i', timestamp: DateTime(2025, 1, i + 1)),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          userGroupsProvider.overrideWith((_) => Stream.value([group1])),
+          groupActivityProvider('g1').overrideWith((_) => Stream.value(logs)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(
+        crossGroupActivityProvider,
+        (_, _) {},
+        fireImmediately: true,
+      );
+      await _pump(container);
+
+      final result = container.read(crossGroupActivityProvider);
+      expect(result, isA<AsyncData<List<CrossGroupActivityEntry>>>());
+      expect(result.valueOrNull!.length, equals(30));
+      // Newest first — the cap drops the OLDEST entries.
+      expect(result.valueOrNull!.first.log.id, equals('log-34'));
     });
   });
 }

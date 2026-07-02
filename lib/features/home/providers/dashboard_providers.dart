@@ -19,19 +19,26 @@ typedef CrossGroupActivityEntry = ({
   String currency,
 });
 
-/// Aggregates the 5 most recent activity entries across ALL groups,
-/// merged chronologically (newest first).
+/// Cap on the merged cross-group feed. 30 keeps the Activity tab's filter
+/// chips honest — they filter a real window, not a 5-item cache that lets
+/// last week's settlement age out before the chip is ever tapped. The home
+/// RECENTLY section is unaffected (it slices `take(3)`).
+const kCrossGroupActivityMergedCap = 30;
+
+/// Aggregates the most recent activity entries across ALL groups,
+/// merged chronologically (newest first), capped at
+/// [kCrossGroupActivityMergedCap].
 ///
-/// For each group, watches [groupActivityProvider] (which returns the 5 most
-/// recent per-group). Merges all entries, sorts by timestamp descending,
-/// takes top 5.
+/// For each group, watches [groupActivityProvider] (which returns the
+/// `kCrossGroupActivityPerGroupLimit` most recent per-group). Merges all
+/// entries, sorts by timestamp descending, takes the cap.
 ///
 /// Each entry is enriched with [groupName] from the groups list (D-14).
 ///
 /// Returns:
 /// - [AsyncValue.loading] while [userGroupsProvider] has no value
 /// - [AsyncValue.error] if [userGroupsProvider] errors
-/// - [AsyncValue.data] with a list of up to 5 [CrossGroupActivityEntry] records
+/// - [AsyncValue.data] with up to [kCrossGroupActivityMergedCap] entries
 final crossGroupActivityProvider =
     Provider<AsyncValue<List<CrossGroupActivityEntry>>>((ref) {
       final groupsAsync = ref.watch(userGroupsProvider);
@@ -66,10 +73,10 @@ final crossGroupActivityProvider =
 
       if (anyLoading && allEntries.isEmpty) return const AsyncValue.loading();
 
-      // Sort descending by timestamp (newest first), take top 5
+      // Sort descending by timestamp (newest first), take the cap.
       allEntries.sort((a, b) => b.log.timestamp.compareTo(a.log.timestamp));
-      final top5 = allEntries.length > 5
-          ? allEntries.sublist(0, 5)
+      final window = allEntries.length > kCrossGroupActivityMergedCap
+          ? allEntries.sublist(0, kCrossGroupActivityMergedCap)
           : allEntries;
-      return AsyncValue.data(top5);
+      return AsyncValue.data(window);
     });

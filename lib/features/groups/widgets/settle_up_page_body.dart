@@ -821,8 +821,7 @@ List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
     }
     if (!seen.add(id)) continue; // already folded this logical set
     final members = tagged[id]!;
-    final originals =
-        members.where((m) => !isCorrectionNote(m.note)).toList();
+    final originals = members.where((m) => !isCorrectionNote(m.note)).toList();
     if (originals.isEmpty) {
       // Defensive: a tagged set with no non-correction doc (corruption / an
       // orphaned reverse) — never a phantom logical row; render its members
@@ -974,24 +973,28 @@ class _HistoryTile extends StatelessWidget {
     // payment. Mark it with a reversal icon + label instead of the green tick.
     // #753: a corrected LOGICAL row reads the same way (its representative is an
     // original, so the note-based check alone would miss it).
-    final isCorrection = isCorrectedLogical || isCorrectionNote(settlement.note);
+    final isCorrection =
+        isCorrectedLogical || isCorrectionNote(settlement.note);
     final accent = isCorrection
         ? context.colors.textSecondary
         : context.colors.success;
 
     return Container(
-          margin: EdgeInsets.only(bottom: spacing.space8),
-          decoration: BoxDecoration(
-            color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(spacing.radiusMedium),
-            border: Border.all(color: context.colors.rule),
-            boxShadow: context.shadows.raised,
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: spacing.space16,
-            vertical: spacing.space12,
-          ),
-          child: Row(
+      margin: EdgeInsets.only(bottom: spacing.space8),
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(spacing.radiusMedium),
+        border: Border.all(color: context.colors.rule),
+        boxShadow: context.shadows.raised,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: spacing.space16,
+        vertical: spacing.space12,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
               Container(
                 width: 32,
@@ -1068,6 +1071,20 @@ class _HistoryTile extends StatelessWidget {
                   color: context.colors.textPrimary,
                 ),
               ),
+            ],
+          ),
+          SizedBox(height: spacing.space4),
+          // Actions live on their own trailing line: visible labels replace
+          // the old tooltip-only icons (invisible on touch — a high-stakes
+          // money correction shouldn't rely on icon-shape recognition), and
+          // the labelled buttons don't fight the fixed-width amount for row
+          // space on narrow screens (the old single-row layout overflowed
+          // at 320px with long names). Wrap, not Row: two labelled buttons
+          // exceed 320px, so they flow to a second line instead of clipping.
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: spacing.space4,
+            children: [
               // #283: correct a recorded payment by recording an offsetting
               // reverse settlement (append-only). Shown only when a correction
               // driver is wired AND both party ids are present (the offset needs
@@ -1083,45 +1100,57 @@ class _HistoryTile extends StatelessWidget {
                   payerId.isNotEmpty &&
                   recipientId != null &&
                   recipientId.isNotEmpty) ...[
-                SizedBox(width: spacing.space4),
-                IconButton(
+                TextButton.icon(
                   key: index == 0 ? GroupKeys.settleUpCorrectButton : null,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    minimumSize: const Size(0, 40),
+                    padding: EdgeInsets.symmetric(horizontal: spacing.space8),
+                    foregroundColor: context.colors.textSecondary,
                   ),
-                  tooltip: context.l10n.settleUpCorrect,
                   icon: Icon(
                     Iconsax.undo,
-                    size: 16,
+                    size: 14,
                     color: context.colors.textSecondary,
+                  ),
+                  label: Text(
+                    context.l10n.settleUpCorrect,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 1.22,
+                    ),
                   ),
                   onPressed: () =>
                       _confirmAndCorrect(context, payerName, recipientName),
                 ),
               ],
-              SizedBox(width: spacing.space4),
               // #359: share a plain-text receipt of this recorded payment. The
               // Builder gives shareText() the button's own render box as the
               // popover origin (non-zero on iPad); never call Share.share raw.
               Builder(
-                builder: (buttonContext) => IconButton(
+                builder: (buttonContext) => TextButton.icon(
                   // Key only the newest tile so a single, predictable target
                   // anchors widget tests; every tile is still shareable.
                   key: index == 0 ? GroupKeys.settleUpShareReceiptButton : null,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    minimumSize: const Size(0, 40),
+                    padding: EdgeInsets.symmetric(horizontal: spacing.space8),
+                    foregroundColor: context.colors.primary,
                   ),
-                  tooltip: context.l10n.settleUpShareReceipt,
                   icon: DirectionalIcon(
                     Iconsax.send_2,
-                    size: 16,
+                    size: 14,
                     color: context.colors.primary,
+                  ),
+                  label: Text(
+                    context.l10n.settleUpShareReceipt,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 1.22,
+                    ),
                   ),
                   onPressed: () => shareText(
                     buttonContext,
@@ -1137,9 +1166,8 @@ class _HistoryTile extends StatelessWidget {
               ),
             ],
           ),
-        )
-        .animate()
-        .fadeIn(delay: Duration(milliseconds: index * 40))
-        .slideY(begin: 0.08, curve: Curves.easeOutCubic);
+        ],
+      ),
+    ).animate().fadeIn(delay: Duration(milliseconds: index * 40)).slideY(begin: 0.08, curve: Curves.easeOutCubic);
   }
 }

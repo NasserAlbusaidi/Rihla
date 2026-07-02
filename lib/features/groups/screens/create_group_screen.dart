@@ -1,21 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/utils/error_message_translator.dart';
-import '../../../core/utils/share_helper.dart';
 import '../../../core/utils/write_ack.dart';
 
-import '../../../core/config/app_links.dart';
 import '../../../core/constants/supported_currencies.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/services/haptic_service.dart';
 import '../../../core/services/notification_prompt.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -30,6 +26,7 @@ import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../widgets/currency_picker_sheet.dart';
+import '../widgets/qr_invite_sheet.dart';
 import '../widgets/group_stamp_picker.dart';
 import '../widgets/invite_code_display.dart';
 import '../widgets/shadow_member_chips_field.dart';
@@ -750,35 +747,14 @@ UnderlineInputBorder _inputBorder(Color color, {double width = 1}) {
 
 /// Post-creation share prompt presented as a bottom sheet.
 ///
-/// Shows the invite code via [InviteCodeDisplay] with copy and share actions.
+/// Shows the invite code via [InviteCodeDisplay] with the same action row as
+/// the settings invite sheet (copy link / WhatsApp / share) plus a QR entry —
+/// this is the peak invite moment, so it offers every channel Settings does.
 class _SharePrompt extends StatelessWidget {
   final Group group;
   final VoidCallback onNavigate;
 
   const _SharePrompt({required this.group, required this.onNavigate});
-
-  void _copyCode(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: group.inviteCode));
-    HapticService.success();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.groupInviteCodeCopied),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _shareCode(BuildContext context) {
-    shareText(
-      context,
-      context.l10n.groupShareInviteMessage(
-        group.name,
-        AppLinks.inviteUrl(group.inviteCode).toString(),
-        group.inviteCode,
-      ),
-      subject: context.l10n.groupShareSubject(group.name),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -814,32 +790,30 @@ class _SharePrompt extends StatelessWidget {
 
             SizedBox(height: context.spacing.space24),
 
-            // Copy and Share buttons
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () => _copyCode(context),
-                      child: Text(context.l10n.groupCopyCode),
-                    ),
+            InviteActionRow(group: group),
+
+            SizedBox(height: context.spacing.space8),
+
+            Center(
+              child: TextButton.icon(
+                onPressed: () => showGroupInviteQrSheet(context, group: group),
+                icon: Icon(
+                  Iconsax.scan_barcode,
+                  size: 16,
+                  color: colors.textPrimary,
+                ),
+                label: Text(
+                  context.l10n.groupShowQrCode,
+                  style: AppTypography.sans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
                   ),
                 ),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: () => _shareCode(context),
-                      child: Text(context.l10n.groupShare),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
 
-            SizedBox(height: context.spacing.space16),
+            SizedBox(height: context.spacing.space8),
 
             Center(
               child: TextButton(
