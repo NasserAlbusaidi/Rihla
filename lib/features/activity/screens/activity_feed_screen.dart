@@ -11,6 +11,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../events/embedded_panel_metrics.dart';
 import '../../events/providers/event_provider.dart';
 import '../keys/activity_keys.dart';
 import '../models/activity_log_model.dart';
@@ -167,7 +168,13 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
       key: ActivityKeys.feedList,
       restorationId: 'activity_feed_scroll',
       controller: _scrollController,
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
+      // #789: embedded panel clears the workspace's floating FAB.
+      padding: EdgeInsetsDirectional.fromSTEB(
+        20,
+        4,
+        20,
+        widget.embedded ? kEmbeddedEventPanelFabClearance : 24,
+      ),
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i == days.length) {
