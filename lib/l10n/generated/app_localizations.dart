@@ -3795,6 +3795,30 @@ abstract class AppLocalizations {
   /// **'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.'**
   String get editorEventClosedMessage;
 
+  /// No description provided for @eventTabExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get eventTabExpenses;
+
+  /// No description provided for @eventTabSettleUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle up'**
+  String get eventTabSettleUp;
+
+  /// No description provided for @eventTabActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get eventTabActivity;
+
+  /// No description provided for @eventTabRecap.
+  ///
+  /// In en, this message translates to:
+  /// **'Recap'**
+  String get eventTabRecap;
+
   /// No description provided for @eventAddExpense.
   ///
   /// In en, this message translates to:

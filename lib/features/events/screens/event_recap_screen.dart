@@ -34,49 +34,68 @@ class EventRecapScreen extends ConsumerWidget {
     super.key,
     required this.groupId,
     required this.eventId,
+    this.embedded = false,
   });
 
   final String groupId;
   final String eventId;
+
+  /// #758: content-only mode for the tabbed event view — skips the Scaffold
+  /// and the back button (the tabbed shell owns chrome); the share action
+  /// stays in the panel's header row.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final eventRef = (groupId: groupId, eventId: eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
 
+    final body = eventAsync.when(
+      loading: () => _wrap(context, const [
+        Center(
+          child: Padding(
+            padding: EdgeInsets.only(top: 48),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ]),
+      error: (_, _) => _notFound(context),
+      data: (event) {
+        if (event == null) return _notFound(context);
+        final recap = ref.watch(eventRecapProvider(eventRef));
+        if (recap.isEmpty) return _empty(context);
+        // Names resolved at the widget (the model carries only ids) via the
+        // same memoized ledger pass the recap provider already watches.
+        final view = ref.watch(ledgerViewProvider(eventRef));
+        final uid = ref.watch(currentUserIdProvider);
+        return _wrap(
+          context,
+          _content(context, recap, view.rosterDisplayNames, uid, event),
+          trailing: _shareButton(
+            context,
+            recap,
+            view.rosterDisplayNames,
+            event,
+          ),
+        );
+      },
+    );
+    if (embedded) return body;
     return Scaffold(
       key: EventKeys.recapScreen,
       backgroundColor: context.colors.scaffoldBackground,
-      body: SafeArea(
-        child: eventAsync.when(
-          loading: () => _wrap(context, const [Center(child: Padding(
-            padding: EdgeInsets.only(top: 48),
-            child: CircularProgressIndicator(),
-          ))]),
-          error: (_, _) => _notFound(context),
-          data: (event) {
-            if (event == null) return _notFound(context);
-            final recap = ref.watch(eventRecapProvider(eventRef));
-            if (recap.isEmpty) return _empty(context);
-            // Names resolved at the widget (the model carries only ids) via the
-            // same memoized ledger pass the recap provider already watches.
-            final view = ref.watch(ledgerViewProvider(eventRef));
-            final uid = ref.watch(currentUserIdProvider);
-            return _wrap(
-              context,
-              _content(context, recap, view.rosterDisplayNames, uid, event),
-              trailing: _shareButton(
-                  context, recap, view.rosterDisplayNames, event),
-            );
-          },
-        ),
-      ),
+      body: SafeArea(child: body),
     );
   }
 
   /// Scrollable column with the standard header (back start, optional [trailing]
-  /// at the end — the share action on the data path) + 24px gutters.
-  Widget _wrap(BuildContext context, List<Widget> children, {Widget? trailing}) {
+  /// at the end — the share action on the data path) + 24px gutters. Embedded
+  /// mode drops the back button and, with no trailing action, the whole row.
+  Widget _wrap(
+    BuildContext context,
+    List<Widget> children, {
+    Widget? trailing,
+  }) {
     return SingleChildScrollView(
       child: Padding(
         padding: EdgeInsetsDirectional.symmetric(
@@ -86,13 +105,14 @@ class EventRecapScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(height: context.spacing.space16),
-            Row(
-              children: [
-                _backButton(context),
-                const Spacer(),
-                ?trailing,
-              ],
-            ),
+            if (!embedded || trailing != null)
+              Row(
+                children: [
+                  if (!embedded) _backButton(context),
+                  const Spacer(),
+                  ?trailing,
+                ],
+              ),
             SizedBox(height: context.spacing.space16),
             ...children,
             SizedBox(height: context.spacing.space24),
@@ -185,7 +205,8 @@ class EventRecapScreen extends ConsumerWidget {
 
       for (final ccy in currencies) ...[
         SizedBox(height: context.spacing.space24),
-        if (multi) _currencyHeader(context, ccy, recap.totalSpentByCurrency[ccy]),
+        if (multi)
+          _currencyHeader(context, ccy, recap.totalSpentByCurrency[ccy]),
         ..._currencyBlock(context, recap, roster, uid, ccy),
       ],
 
@@ -206,8 +227,9 @@ class EventRecapScreen extends ConsumerWidget {
     EventRecap recap,
     List<String> currencies,
   ) {
-    final anyOutstanding =
-        currencies.any((ccy) => !(recap.isSettledByCurrency[ccy] ?? true));
+    final anyOutstanding = currencies.any(
+      (ccy) => !(recap.isSettledByCurrency[ccy] ?? true),
+    );
     if (!anyOutstanding) return const [];
     final c = context.colors;
     return [
@@ -228,9 +250,10 @@ class EventRecapScreen extends ConsumerWidget {
             Text(
               context.l10n.recapSettleCtaTitle,
               style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: c.textPrimary),
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: c.textPrimary,
+              ),
             ),
             SizedBox(height: context.spacing.space4),
             Text(
@@ -242,8 +265,9 @@ class EventRecapScreen extends ConsumerWidget {
               key: EventKeys.recapSettleEventButton,
               onPressed: () {
                 HapticService.lightClick();
-                GoRouter.of(context)
-                    .push('/group/$groupId/event/$eventId/ledger/settle-up');
+                GoRouter.of(
+                  context,
+                ).push('/group/$groupId/event/$eventId/ledger/settle-up');
               },
               child: Text(context.l10n.recapSettleThisEvent),
             ),
@@ -271,85 +295,124 @@ class EventRecapScreen extends ConsumerWidget {
     bool multi,
   ) {
     final c = context.colors;
-    final children = <Widget>[_sectionLabel(context, context.l10n.recapTotalSpent)];
+    final children = <Widget>[
+      _sectionLabel(context, context.l10n.recapTotalSpent),
+    ];
 
     if (!multi) {
       // Single currency: one hero total + the user's folded net/paid/share.
       final ccy = currencies.isEmpty ? 'OMR' : currencies.first;
-      children.add(RAmount(
-        value: recap.totalSpentByCurrency[ccy] ?? Decimal.zero,
-        currency: ccy,
-        size: 30,
-        weight: FontWeight.w700,
-      ));
+      children.add(
+        RAmount(
+          value: recap.totalSpentByCurrency[ccy] ?? Decimal.zero,
+          currency: ccy,
+          size: 30,
+          weight: FontWeight.w700,
+        ),
+      );
       final net = recap.userNetByCurrency[ccy];
       if (net != null) {
         children.addAll([
           Divider(height: context.spacing.space24, color: c.rule),
-          Row(children: [
-            Expanded(
-              child: Text(context.l10n.recapNet,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.recapNet,
                   style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: c.textPrimary)),
-            ),
-            RAmount(value: net, currency: ccy, sign: true, size: 20),
-          ]),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: c.textPrimary,
+                  ),
+                ),
+              ),
+              RAmount(value: net, currency: ccy, sign: true, size: 20),
+            ],
+          ),
           SizedBox(height: context.spacing.space8),
-          _miniStat(context, context.l10n.recapYouPaid,
-              recap.userPaidByCurrency[ccy] ?? Decimal.zero, ccy),
-          _miniStat(context, context.l10n.recapYourShare,
-              recap.userShareByCurrency[ccy] ?? Decimal.zero, ccy),
+          _miniStat(
+            context,
+            context.l10n.recapYouPaid,
+            recap.userPaidByCurrency[ccy] ?? Decimal.zero,
+            ccy,
+          ),
+          _miniStat(
+            context,
+            context.l10n.recapYourShare,
+            recap.userShareByCurrency[ccy] ?? Decimal.zero,
+            ccy,
+          ),
         ]);
       }
     } else {
       // Multi currency: one row per currency, never cross-summed, + the note.
       for (final ccy in currencies) {
         if (!recap.totalSpentByCurrency.containsKey(ccy)) continue;
-        children.add(Padding(
-          padding: EdgeInsetsDirectional.only(top: context.spacing.space8),
-          child: Row(children: [
-            Expanded(
-              child: Text(ccy,
-                  style: TextStyle(fontSize: 14, color: c.textSecondary)),
+        children.add(
+          Padding(
+            padding: EdgeInsetsDirectional.only(top: context.spacing.space8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    ccy,
+                    style: TextStyle(fontSize: 14, color: c.textSecondary),
+                  ),
+                ),
+                RAmount(
+                  value: recap.totalSpentByCurrency[ccy]!,
+                  currency: ccy,
+                  showCurrency: false,
+                  size: 18,
+                  weight: FontWeight.w700,
+                ),
+              ],
             ),
-            RAmount(
-              value: recap.totalSpentByCurrency[ccy]!,
-              currency: ccy,
-              showCurrency: false,
-              size: 18,
-              weight: FontWeight.w700,
-            ),
-          ]),
-        ));
+          ),
+        );
       }
       children.addAll([
         SizedBox(height: context.spacing.space12),
-        Text(context.l10n.recapMultiCurrencyNote,
-            style: TextStyle(fontSize: 12, color: c.textSecondary)),
+        Text(
+          context.l10n.recapMultiCurrencyNote,
+          style: TextStyle(fontSize: 12, color: c.textSecondary),
+        ),
       ]);
     }
 
-    return _card(context, Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    ), padding: EdgeInsetsDirectional.all(context.spacing.space20));
+    return _card(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+      padding: EdgeInsetsDirectional.all(context.spacing.space20),
+    );
   }
 
   Widget _miniStat(
-      BuildContext context, String label, Decimal value, String ccy) {
+    BuildContext context,
+    String label,
+    Decimal value,
+    String ccy,
+  ) {
     return Padding(
       padding: EdgeInsetsDirectional.only(top: context.spacing.space4),
-      child: Row(children: [
-        Expanded(
-          child: Text(label,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
               style: TextStyle(
-                  fontSize: 13, color: context.colors.textSecondary)),
-        ),
-        RAmount(value: value, currency: ccy, size: 13),
-      ]),
+                fontSize: 13,
+                color: context.colors.textSecondary,
+              ),
+            ),
+          ),
+          RAmount(value: value, currency: ccy, size: 13),
+        ],
+      ),
     );
   }
 
@@ -358,20 +421,29 @@ class EventRecapScreen extends ConsumerWidget {
   Widget _currencyHeader(BuildContext context, String ccy, Decimal? total) {
     return Padding(
       padding: EdgeInsetsDirectional.only(bottom: context.spacing.space8),
-      child: Row(children: [
-        Text(ccy,
+      child: Row(
+        children: [
+          Text(
+            ccy,
             style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-                color: context.colors.primary)),
-        if (total != null) ...[
-          Text('  ·  ',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: context.colors.primary,
+            ),
+          ),
+          if (total != null) ...[
+            Text(
+              '  ·  ',
               style: TextStyle(
-                  fontSize: 13, color: context.colors.textSecondary)),
-          RAmount(value: total, currency: ccy, showCurrency: false, size: 13),
+                fontSize: 13,
+                color: context.colors.textSecondary,
+              ),
+            ),
+            RAmount(value: total, currency: ccy, showCurrency: false, size: 13),
+          ],
         ],
-      ]),
+      ),
     );
   }
 
@@ -382,9 +454,11 @@ class EventRecapScreen extends ConsumerWidget {
     String? uid,
     String ccy,
   ) {
-    final payers = recap.payerTotalsByCurrency[ccy] ?? const <RecapPersonAmount>[];
+    final payers =
+        recap.payerTotalsByCurrency[ccy] ?? const <RecapPersonAmount>[];
     final biggest = recap.biggestExpenseByCurrency[ccy];
-    final cats = recap.categoryTotalsByCurrency[ccy] ?? const <RecapCategoryTotal>[];
+    final cats =
+        recap.categoryTotalsByCurrency[ccy] ?? const <RecapCategoryTotal>[];
     final nets = recap.participantNetsByCurrency[ccy] ?? const <RecapNet>[];
     final settled = recap.isSettledByCurrency[ccy] ?? true;
 
@@ -426,47 +500,59 @@ class EventRecapScreen extends ConsumerWidget {
     if (payers.isNotEmpty) {
       final top = payers.first;
       final name = roster[top.participantId] ?? context.l10n.ledgerSomeone;
-      cards.add(Expanded(
-        child: _highlightCard(
-          context,
-          label: context.l10n.recapTopPayer,
-          body: Row(children: [
-            RAvatar(name: name, size: 22),
-            SizedBox(width: context.spacing.space8),
-            Flexible(
-              child: Text(name,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+      cards.add(
+        Expanded(
+          child: _highlightCard(
+            context,
+            label: context.l10n.recapTopPayer,
+            body: Row(
+              children: [
+                RAvatar(name: name, size: 22),
+                SizedBox(width: context.spacing.space8),
+                Flexible(
+                  child: Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: context.colors.textPrimary)),
+                      color: context.colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ]),
-          amount: top.amount,
-          ccy: ccy,
+            amount: top.amount,
+            ccy: ccy,
+          ),
         ),
-      ));
+      );
     }
     if (biggest != null) {
       final desc = biggest.description?.trim();
       final label = (desc != null && desc.isNotEmpty)
           ? desc
           : categoryNameForId(biggest.categoryId, context.l10n);
-      cards.add(Expanded(
-        child: _highlightCard(
-          context,
-          label: context.l10n.recapBiggestExpense,
-          body: Text(label,
+      cards.add(
+        Expanded(
+          child: _highlightCard(
+            context,
+            label: context.l10n.recapBiggestExpense,
+            body: Text(
+              label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.textPrimary)),
-          amount: biggest.amount,
-          ccy: ccy,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: context.colors.textPrimary,
+              ),
+            ),
+            amount: biggest.amount,
+            ccy: ccy,
+          ),
         ),
-      ));
+      );
     }
     // IntrinsicHeight bounds the Row's height so stretch equalizes both cards
     // (a bare stretch in the vertically-unbounded scroll view → infinite height).
@@ -508,35 +594,50 @@ class EventRecapScreen extends ConsumerWidget {
   }
 
   Widget _categoryCard(
-      BuildContext context, List<RecapCategoryTotal> cats, String ccy) {
+    BuildContext context,
+    List<RecapCategoryTotal> cats,
+    String ccy,
+  ) {
     final maxTotal = cats.first.total; // desc-sorted
-    return _card(context, Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < cats.length; i++) ...[
-          if (i > 0) SizedBox(height: context.spacing.space12),
-          Row(children: [
-            _dot(context, categoryColorForId(context.colors, cats[i].categoryId)),
-            SizedBox(width: context.spacing.space8),
-            Expanded(
-              child: Text(categoryNameForId(cats[i].categoryId, context.l10n),
-                  style: TextStyle(
-                      fontSize: 13, color: context.colors.textPrimary)),
+    return _card(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < cats.length; i++) ...[
+            if (i > 0) SizedBox(height: context.spacing.space12),
+            Row(
+              children: [
+                _dot(
+                  context,
+                  categoryColorForId(context.colors, cats[i].categoryId),
+                ),
+                SizedBox(width: context.spacing.space8),
+                Expanded(
+                  child: Text(
+                    categoryNameForId(cats[i].categoryId, context.l10n),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: context.colors.textPrimary,
+                    ),
+                  ),
+                ),
+                RAmount(value: cats[i].total, currency: ccy, size: 13),
+              ],
             ),
-            RAmount(value: cats[i].total, currency: ccy, size: 13),
-          ]),
-          SizedBox(height: context.spacing.space8),
-          _bar(
-            context,
-            ratio: maxTotal > Decimal.zero
-                ? cats[i].total.toDouble() / maxTotal.toDouble()
-                : 0,
-            color: categoryColorForId(context.colors, cats[i].categoryId),
-          ),
+            SizedBox(height: context.spacing.space8),
+            _bar(
+              context,
+              ratio: maxTotal > Decimal.zero
+                  ? cats[i].total.toDouble() / maxTotal.toDouble()
+                  : 0,
+              color: categoryColorForId(context.colors, cats[i].categoryId),
+            ),
+          ],
         ],
-      ],
-    ));
+      ),
+    );
   }
 
   Widget _payerCard(
@@ -547,29 +648,41 @@ class EventRecapScreen extends ConsumerWidget {
     String ccy,
   ) {
     final maxPaid = payers.first.amount; // desc-sorted
-    return _card(context, Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < payers.length; i++) ...[
-          if (i > 0) SizedBox(height: context.spacing.space12),
-          Row(children: [
-            RAvatar(name: roster[payers[i].participantId] ?? '?', size: 22),
-            SizedBox(width: context.spacing.space8),
-            Expanded(child: _personName(context, payers[i].participantId, roster, uid)),
-            RAmount(value: payers[i].amount, currency: ccy, size: 13),
-          ]),
-          SizedBox(height: context.spacing.space8),
-          _bar(
-            context,
-            ratio: maxPaid > Decimal.zero
-                ? payers[i].amount.toDouble() / maxPaid.toDouble()
-                : 0,
-            color: context.colors.ink2,
-          ),
+    return _card(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < payers.length; i++) ...[
+            if (i > 0) SizedBox(height: context.spacing.space12),
+            Row(
+              children: [
+                RAvatar(name: roster[payers[i].participantId] ?? '?', size: 22),
+                SizedBox(width: context.spacing.space8),
+                Expanded(
+                  child: _personName(
+                    context,
+                    payers[i].participantId,
+                    roster,
+                    uid,
+                  ),
+                ),
+                RAmount(value: payers[i].amount, currency: ccy, size: 13),
+              ],
+            ),
+            SizedBox(height: context.spacing.space8),
+            _bar(
+              context,
+              ratio: maxPaid > Decimal.zero
+                  ? payers[i].amount.toDouble() / maxPaid.toDouble()
+                  : 0,
+              color: context.colors.ink2,
+            ),
+          ],
         ],
-      ],
-    ));
+      ),
+    );
   }
 
   Widget _netsCard(
@@ -579,17 +692,26 @@ class EventRecapScreen extends ConsumerWidget {
     String? uid,
     String ccy,
   ) {
-    return _card(context, Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < nets.length; i++)
-          _netRow(context, nets[i], roster, uid, ccy),
-      ],
-    ), padding: EdgeInsetsDirectional.zero);
+    return _card(
+      context,
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < nets.length; i++)
+            _netRow(context, nets[i], roster, uid, ccy),
+        ],
+      ),
+      padding: EdgeInsetsDirectional.zero,
+    );
   }
 
-  Widget _netRow(BuildContext context, RecapNet n, Map<String, String> roster,
-      String? uid, String ccy) {
+  Widget _netRow(
+    BuildContext context,
+    RecapNet n,
+    Map<String, String> roster,
+    String? uid,
+    String ccy,
+  ) {
     final isYou = uid != null && n.participantId == uid;
     final name = roster[n.participantId] ?? context.l10n.ledgerSomeone;
     final isZero = n.net == Decimal.zero;
@@ -599,38 +721,54 @@ class EventRecapScreen extends ConsumerWidget {
         horizontal: context.spacing.space16,
         vertical: context.spacing.space12,
       ),
-      child: Row(children: [
-        RAvatar(name: name, size: 28),
-        SizedBox(width: context.spacing.space12),
-        Expanded(child: _personName(context, n.participantId, roster, uid)),
-        if (isZero)
-          Text(context.l10n.recapSettledRow,
-              style: TextStyle(fontSize: 13, color: context.colors.textSecondary))
-        else
-          RAmount(value: n.net, currency: ccy, sign: true, size: 13),
-      ]),
+      child: Row(
+        children: [
+          RAvatar(name: name, size: 28),
+          SizedBox(width: context.spacing.space12),
+          Expanded(child: _personName(context, n.participantId, roster, uid)),
+          if (isZero)
+            Text(
+              context.l10n.recapSettledRow,
+              style: TextStyle(
+                fontSize: 13,
+                color: context.colors.textSecondary,
+              ),
+            )
+          else
+            RAmount(value: n.net, currency: ccy, sign: true, size: 13),
+        ],
+      ),
     );
   }
 
-  Widget _personName(BuildContext context, String id, Map<String, String> roster,
-      String? uid) {
+  Widget _personName(
+    BuildContext context,
+    String id,
+    Map<String, String> roster,
+    String? uid,
+  ) {
     final name = roster[id] ?? context.l10n.ledgerSomeone;
     final isYou = uid != null && id == uid;
     return Text.rich(
-      TextSpan(children: [
-        TextSpan(text: name),
-        if (isYou)
-          TextSpan(
-            text: ' · ${context.l10n.recapYouSuffix}',
-            style: TextStyle(
-                fontWeight: FontWeight.w400, color: context.colors.textSecondary),
-          ),
-      ]),
+      TextSpan(
+        children: [
+          TextSpan(text: name),
+          if (isYou)
+            TextSpan(
+              text: ' · ${context.l10n.recapYouSuffix}',
+              style: TextStyle(
+                fontWeight: FontWeight.w400,
+                color: context.colors.textSecondary,
+              ),
+            ),
+        ],
+      ),
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: context.colors.textPrimary),
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: context.colors.textPrimary,
+      ),
     );
   }
 
@@ -677,21 +815,27 @@ class EventRecapScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(children: [
-            Icon(icon, size: 16, color: accent),
-            SizedBox(width: context.spacing.space8),
-            Expanded(
-              child: Text(title,
+          Row(
+            children: [
+              Icon(icon, size: 16, color: accent),
+              SizedBox(width: context.spacing.space8),
+              Expanded(
+                child: Text(
+                  title,
                   style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: context.colors.textPrimary)),
-            ),
-          ]),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
           SizedBox(height: context.spacing.space8),
-          Text(subtitle,
-              style: TextStyle(
-                  fontSize: 13, color: context.colors.textSecondary)),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
+          ),
         ],
       ),
     );
@@ -699,8 +843,11 @@ class EventRecapScreen extends ConsumerWidget {
 
   // ── Small shared bits ───────────────────────────────────────────────────
 
-  Widget _card(BuildContext context, Widget child,
-      {EdgeInsetsGeometry? padding}) {
+  Widget _card(
+    BuildContext context,
+    Widget child, {
+    EdgeInsetsGeometry? padding,
+  }) {
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
@@ -722,8 +869,11 @@ class EventRecapScreen extends ConsumerWidget {
     );
   }
 
-  Widget _bar(BuildContext context,
-      {required double ratio, required Color color}) {
+  Widget _bar(
+    BuildContext context, {
+    required double ratio,
+    required Color color,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(3),
       child: Container(
@@ -745,7 +895,8 @@ class EventRecapScreen extends ConsumerWidget {
   Widget _frozenCaption(BuildContext context, DateTime? closedAt) {
     final text = closedAt != null
         ? context.l10n.recapSpendingFrozen(
-            formatShortMonthDayYear(context, closedAt))
+            formatShortMonthDayYear(context, closedAt),
+          )
         : context.l10n.recapSpendingFrozenNoDate;
     return Padding(
       key: EventKeys.recapFrozenCaption,
@@ -759,7 +910,9 @@ class EventRecapScreen extends ConsumerWidget {
             child: Text(
               text,
               style: TextStyle(
-                  fontSize: 12, color: context.colors.textSecondary),
+                fontSize: 12,
+                color: context.colors.textSecondary,
+              ),
             ),
           ),
         ],

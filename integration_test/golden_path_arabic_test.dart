@@ -302,91 +302,74 @@ void main() {
     await tester.tap(submitEventButton);
     await _settle(tester, timeout: const Duration(seconds: 20));
 
+    // #758: the event is one tabbed screen — its Expenses tab IS the ledger
+    // surface, so there is no hub→ledger drill-in anymore.
     await _waitFor(
       tester,
-      label: 'event hub or ledger',
+      label: 'tabbed event view',
+      predicate: () => find.byKey(EventKeys.screen).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    _log('CHECKPOINT: tabbed event view rendered (ar)');
+
+    _log('CHECKPOINT: adding first expense via the floating pill (ar)');
+    final addFab = find.byKey(EventKeys.addExpenseFab);
+    await _waitFor(
+      tester,
+      label: 'add-expense FAB',
+      predicate: () => addFab.evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    await tester.ensureVisible(addFab);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(addFab);
+    await _settle(tester, timeout: const Duration(seconds: 12));
+
+    await _waitFor(
+      tester,
+      label: 'ledger_add_expense_screen',
       predicate: () =>
-          find.byKey(EventKeys.screen).evaluate().isNotEmpty ||
-          find.byKey(LedgerKeys.screen).evaluate().isNotEmpty,
+          find.byKey(LedgerKeys.addExpenseScreen).evaluate().isNotEmpty,
       timeout: const Duration(seconds: 30),
     );
 
-    if (find.byKey(LedgerKeys.screen).evaluate().isEmpty) {
-      _log('CHECKPOINT: opening ledger from event hub (ar)');
-      if (find.byKey(EventKeys.ledgerCard).evaluate().isEmpty) {
-        _log('CHECKPOINT: empty hub has no ledger card; adding first expense');
-        final addExpenseChip = find.byKey(EventKeys.addExpenseChip);
-        await tester.ensureVisible(addExpenseChip);
-        await tester.pump(const Duration(milliseconds: 100));
-        await tester.tap(addExpenseChip);
-        await _settle(tester, timeout: const Duration(seconds: 12));
+    await tester.enterText(find.byType(TextField).first, '12.345');
+    await _settle(tester);
 
-        await _waitFor(
-          tester,
-          label: 'ledger_add_expense_screen',
-          predicate: () =>
-              find.byKey(LedgerKeys.addExpenseScreen).evaluate().isNotEmpty,
-          timeout: const Duration(seconds: 30),
-        );
-
-        await tester.enterText(find.byType(TextField).first, '12.345');
-        await _settle(tester);
-
-        final addAction = find.widgetWithText(FilledButton, ar.editorActionAdd);
-        expect(
-          addAction,
-          findsOneWidget,
-          reason: 'Add expense action did not render in Arabic.',
-        );
-        await tester.tap(addAction);
-        await _settle(tester, timeout: const Duration(seconds: 20));
-
-        await _waitFor(
-          tester,
-          label: 'expense success dialog',
-          predicate: () => find.text(ar.commonDone).evaluate().isNotEmpty,
-          timeout: const Duration(seconds: 30),
-        );
-        await tester.tap(find.widgetWithText(ElevatedButton, ar.commonDone));
-        await _settle(tester, timeout: const Duration(seconds: 12));
-
-        await _waitFor(
-          tester,
-          label: 'event hub ledger summary',
-          predicate: () =>
-              find.byKey(EventKeys.ledgerCard).evaluate().isNotEmpty,
-          timeout: const Duration(seconds: 30),
-        );
-      }
-
-      final ledgerCard = find.byKey(EventKeys.ledgerCard);
-      await tester.ensureVisible(ledgerCard);
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(ledgerCard);
-      await _settle(tester, timeout: const Duration(seconds: 12));
-    }
-
-    await _waitFor(
-      tester,
-      label: 'ledger_screen',
-      predicate: () => find.byKey(LedgerKeys.screen).evaluate().isNotEmpty,
-      timeout: const Duration(seconds: 30),
-    );
-    _log('CHECKPOINT: ledger rendered (ar)');
-
-    await _waitFor(
-      tester,
-      label: 'arabic ledger copy',
-      predicate: () =>
-          find.text(ar.ledgerAddExpense).evaluate().isNotEmpty ||
-          find.text(ar.ledgerEmptyStateTitle).evaluate().isNotEmpty,
-      timeout: const Duration(seconds: 30),
-    );
+    final addAction = find.widgetWithText(FilledButton, ar.editorActionAdd);
     expect(
-      find.text(ar.ledgerAddExpense),
+      addAction,
       findsOneWidget,
-      reason:
-          'Ledger sticky CTA did not render the Arabic ledgerAddExpense key.',
+      reason: 'Add expense action did not render in Arabic.',
+    );
+    await tester.tap(addAction);
+    await _settle(tester, timeout: const Duration(seconds: 20));
+
+    await _waitFor(
+      tester,
+      label: 'expense success dialog',
+      predicate: () => find.text(ar.commonDone).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    await tester.tap(find.widgetWithText(ElevatedButton, ar.commonDone));
+    await _settle(tester, timeout: const Duration(seconds: 12));
+
+    // Back on the tabbed event view: the Arabic tab labels + the FAB label
+    // render (the Expenses tab is the default panel).
+    await _waitFor(
+      tester,
+      label: 'arabic event tab copy',
+      predicate: () =>
+          find.byKey(EventKeys.tabBar).evaluate().isNotEmpty &&
+          find.text(ar.eventTabExpenses).evaluate().isNotEmpty,
+      timeout: const Duration(seconds: 30),
+    );
+    _log('CHECKPOINT: expenses tab rendered (ar)');
+
+    expect(
+      find.text(ar.eventAddExpense),
+      findsOneWidget,
+      reason: 'Add-expense FAB did not render the Arabic eventAddExpense key.',
     );
 
     _log('--- TEST PASSED (locale=ar) ---');

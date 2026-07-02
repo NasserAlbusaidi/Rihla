@@ -22,4 +22,4 @@
 - **event_info_section.dart**, **event_danger_section.dart**, **event_details_card.dart**, **event_participants_card.dart**
 
 ### keys/
-- **event_keys.dart**: Widget `Key` constants for event screens/widgets (e.g. `spendingHero`).
+- **event_keys.dart**: Widget `Key` constants for event screens/widgets (e.g. `tabBar`, `addExpenseFab`).
