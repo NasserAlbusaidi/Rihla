@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
-import 'package:safar/core/theme/tokens/domain_aliases.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -18,28 +16,11 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/providers/ledger_view_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
-import 'package:safar/shared/widgets/cover_art.dart';
 
-import '../../helpers/repaint_boundary_finder.dart';
-
+/// #758 — the tabbed event view's balance header + closed-state affordances.
+/// Tab switching / panels / FAB behavior lives in event_tabs_test.dart.
 void main() {
-  testWidgets('renders current day badge when event is in progress', (
-    tester,
-  ) async {
-    final today = DateUtils.dateOnly(DateTime.now());
-    final event = _event(
-      startDate: today.subtract(const Duration(days: 2)),
-      endDate: today.add(const Duration(days: 4)),
-    );
-
-    await tester.pumpWidget(_wrap(event: event));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(EventKeys.dayBadge), findsOneWidget);
-    expect(find.text('Day 3 of 7'), findsOneWidget);
-  });
-
-  testWidgets('empty state — shows "Nothing to settle yet" and dashed CTA', (
+  testWidgets('empty state — header shows "Nothing to settle yet"', (
     tester,
   ) async {
     final event = _event(
@@ -51,38 +32,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Nothing to settle yet'), findsOneWidget);
-    expect(find.text('Add the first expense'), findsOneWidget);
-    // Ledger summary strip is hidden in the empty state.
-    expect(find.byKey(EventKeys.ledgerCard), findsNothing);
+  });
+
+  testWidgets('settled state — header shows "All settled"', (tester) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+    final expense = _expense(
+      id: 'x1',
+      eventId: event.id,
+      payer: 'uid-1',
+      amount: Decimal.parse('10.000'),
+    );
+
+    await tester.pumpWidget(
+      _wrap(event: event, expenses: [expense], balances: _settledBalances),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('All settled'), findsOneWidget);
   });
 
   testWidgets(
-    'settled state — shows "All settled" and ledger strip with total',
-    (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
-
-      await tester.pumpWidget(
-        _wrap(event: event, expenses: [expense], balances: _settledBalances),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('All settled'), findsOneWidget);
-      expect(find.byKey(EventKeys.ledgerCard), findsOneWidget);
-      expect(find.text('· 1 expense'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    '#689: ledger strip overline speaks the event type (camping → Camping total)',
+    '#689: the Expenses tab trip caption speaks the event type '
+    '(camping → CAMPING TOTAL)',
     (tester) async {
       final event = _event(
         startDate: DateTime(2026, 1, 1),
@@ -101,13 +75,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // _Overline uppercases its label for the mono caption styling.
-      expect(find.text('CAMPING TOTAL'), findsOneWidget);
-      expect(find.text('TRIP TOTAL'), findsNothing);
+      expect(find.textContaining('CAMPING TOTAL'), findsOneWidget);
+      expect(find.textContaining('TRIP TOTAL'), findsNothing);
     },
   );
 
-  testWidgets('you-are-owed state — sage hero with per-row breakdown', (
+  testWidgets('you-are-owed state — sage overline in the header', (
     tester,
   ) async {
     final event = _event(
@@ -127,7 +100,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('YOU ARE OWED'), findsOneWidget);
-    expect(find.textContaining('owes you', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('you-owe state — rust overline in the header', (tester) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+    );
+    final expense = _expense(
+      id: 'x1',
+      eventId: event.id,
+      payer: 'uid-2',
+      amount: Decimal.parse('20.000'),
+    );
+
+    await tester.pumpWidget(
+      _wrap(event: event, expenses: [expense], balances: _userOwingBalances),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('YOU OWE'), findsOneWidget);
   });
 
   testWidgets('#261: non-OMR group renders its currency code, not OMR', (
@@ -155,61 +147,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The event hero + trip-total strip render the group's currency code.
     expect(find.textContaining('USD'), findsAtLeastNWidgets(1));
     expect(find.textContaining('OMR'), findsNothing);
   });
 
   testWidgets(
-    'recent row uses persisted categoryId when an expense has no description',
-    (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('20.000'),
-        categoryId: 'groceries',
-      );
-
-      await tester.pumpWidget(
-        _wrap(event: event, expenses: [expense], balances: _settledBalances),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Groceries'), findsOneWidget);
-      expect(find.text('Expense'), findsNothing);
-    },
-  );
-
-  testWidgets('you-owe state — rust hero with per-row breakdown', (
-    tester,
-  ) async {
-    final event = _event(
-      startDate: DateTime(2026, 1, 1),
-      endDate: DateTime(2026, 1, 3),
-    );
-    final expense = _expense(
-      id: 'x1',
-      eventId: event.id,
-      payer: 'uid-2',
-      amount: Decimal.parse('20.000'),
-    );
-
-    await tester.pumpWidget(
-      _wrap(event: event, expenses: [expense], balances: _userOwingBalances),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('YOU OWE'), findsOneWidget);
-    expect(find.textContaining('you owe', findRichText: true), findsOneWidget);
-  });
-
-  testWidgets(
-    '#631: hub computes "you owe" through the shared ledgerViewProvider '
+    '#631: header computes "you owe" through the shared ledgerViewProvider '
     '(no injected balances)',
     (tester) async {
       final event = _event(
@@ -218,8 +161,7 @@ void main() {
       );
       // uid-2 pays 20 OMR, equal-split between the two participants → I (uid-1)
       // owe 10, uid-2 is owed 10. No balance override: this drives the REAL
-      // BalanceCalculator pass via ledgerViewProvider, proving the #631 swap
-      // computes the hero state end-to-end (not just rewires an injection point).
+      // BalanceCalculator pass via ledgerViewProvider end-to-end.
       final expense = _expense(
         id: 'x1',
         eventId: event.id,
@@ -262,146 +204,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('YOU OWE'), findsOneWidget);
-      expect(
-        find.textContaining('you owe', findRichText: true),
-        findsOneWidget,
-      );
-    },
-  );
-
-  testWidgets('ledger summary strip routes to the event ledger path', (
-    tester,
-  ) async {
-    final event = _event(
-      startDate: DateTime(2026, 1, 1),
-      endDate: DateTime(2026, 1, 3),
-    );
-    final expense = _expense(
-      id: 'x1',
-      eventId: event.id,
-      payer: 'uid-1',
-      amount: Decimal.parse('10.000'),
-    );
-
-    await _pumpEventHubRouter(
-      tester,
-      event,
-      expenses: [expense],
-      balances: _settledBalances,
-    );
-
-    await tester.tap(find.byKey(EventKeys.ledgerCard));
-    await tester.pumpAndSettle();
-
-    expect(find.text('LedgerRoute:event-1'), findsOneWidget);
-  });
-
-  testWidgets('direct route back button returns to group route', (
-    tester,
-  ) async {
-    final event = _event(
-      startDate: DateTime(2026, 1, 1),
-      endDate: DateTime(2026, 1, 3),
-    );
-
-    await _pumpEventHubRouter(tester, event);
-
-    await tester.tap(find.byIcon(Iconsax.arrow_left));
-    await tester.pumpAndSettle();
-
-    expect(find.text('GroupRoute:group-1'), findsOneWidget);
-  });
-
-  testWidgets('add expense button routes to /ledger/add', (tester) async {
-    final event = _event(
-      startDate: DateTime(2026, 1, 1),
-      endDate: DateTime(2026, 1, 3),
-    );
-
-    await _pumpEventHubRouter(tester, event);
-
-    await tester.tap(find.byKey(EventKeys.addExpenseChip));
-    await tester.pumpAndSettle();
-
-    expect(find.text('AddExpenseRoute:event-1'), findsOneWidget);
-  });
-
-  testWidgets('#723 closed event shows banner and disables add-expense', (
-    tester,
-  ) async {
-    final event = _event(
-      startDate: DateTime(2026, 1, 1),
-      endDate: DateTime(2026, 1, 3),
-      isClosed: true,
-      closedBy: 'uid-1',
-    );
-
-    await _pumpEventHubRouter(tester, event);
-
-    // Banner present, resolving closedBy -> name.
-    expect(find.byKey(EventKeys.closedBanner), findsOneWidget);
-    expect(find.textContaining('spending frozen'), findsOneWidget);
-
-    // Add-expense button is disabled (tapping does not route to /add).
-    final button = tester.widget<FilledButton>(
-      find.byKey(EventKeys.addExpenseChip),
-    );
-    expect(button.onPressed, isNull);
-    await tester.tap(find.byKey(EventKeys.addExpenseChip));
-    await tester.pumpAndSettle();
-    expect(find.text('AddExpenseRoute:event-1'), findsNothing);
-  });
-
-  testWidgets(
-    '#708 close-wiring: closed banner surfaces "View receipt" → recap',
-    (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-        isClosed: true,
-        closedBy: 'uid-1',
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
-
-      await _pumpEventHubRouter(
-        tester,
-        event,
-        expenses: [expense],
-        balances: _settledBalances,
-      );
-
-      // The closed banner offers a receipt affordance...
-      final cta = find.byKey(EventKeys.closedBannerViewReceipt);
-      expect(cta, findsOneWidget);
-
-      // ...that routes to the recap/closeout screen (which hosts the export).
-      await tester.tap(cta);
-      await tester.pumpAndSettle();
-      expect(find.text('RecapRoute:event-1'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    '#708 close-wiring: no receipt CTA on a closed event with no expenses',
-    (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-        isClosed: true,
-        closedBy: 'uid-1',
-      );
-
-      await _pumpEventHubRouter(tester, event);
-
-      // Banner is present, but there is nothing to export → no receipt CTA
-      // (mirrors the cover-header recap entry, hidden when there are no expenses).
-      expect(find.byKey(EventKeys.closedBanner), findsOneWidget);
-      expect(find.byKey(EventKeys.closedBannerViewReceipt), findsNothing);
     },
   );
 
@@ -421,8 +223,25 @@ void main() {
     expect(find.text('SettingsRoute:event-1'), findsOneWidget);
   });
 
-  group('#382 PR-5 — per-currency hub', () {
-    testWidgets('settled in OMR but owing in USD — hub is NOT settled', (
+  testWidgets(
+    '#708 close-wiring: no receipt CTA on a closed event with no expenses',
+    (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+        isClosed: true,
+        closedBy: 'uid-1',
+      );
+
+      await _pumpEventHubRouter(tester, event);
+
+      expect(find.byKey(EventKeys.closedBanner), findsOneWidget);
+      expect(find.byKey(EventKeys.closedBannerViewReceipt), findsNothing);
+    },
+  );
+
+  group('#382 PR-5 — per-currency header', () {
+    testWidgets('settled in OMR but owing in USD — header is NOT settled', (
       tester,
     ) async {
       final event = _event(
@@ -464,14 +283,10 @@ void main() {
       expect(find.text('YOU OWE'), findsOneWidget);
       expect(
         find.descendant(
-          of: find.byKey(EventKeys.spendingHero),
+          of: find.byKey(EventKeys.balanceHeader),
           matching: find.textContaining('USD'),
         ),
         findsWidgets,
-      );
-      expect(
-        find.textContaining('you owe', findRichText: true),
-        findsOneWidget,
       );
     });
 
@@ -515,22 +330,14 @@ void main() {
         expect(find.text('YOU ARE OWED'), findsNothing);
         expect(find.text('YOU OWE'), findsNothing);
         expect(find.text('All settled'), findsNothing);
-        final hero = find.byKey(EventKeys.spendingHero);
+        final header = find.byKey(EventKeys.balanceHeader);
         expect(
-          find.descendant(of: hero, matching: find.textContaining('10.000')),
+          find.descendant(of: header, matching: find.textContaining('10.000')),
           findsWidgets,
         );
         expect(
-          find.descendant(of: hero, matching: find.textContaining('USD')),
+          find.descendant(of: header, matching: find.textContaining('USD')),
           findsWidgets,
-        );
-        expect(
-          find.textContaining('owes you', findRichText: true),
-          findsOneWidget,
-        );
-        expect(
-          find.textContaining('you owe', findRichText: true),
-          findsOneWidget,
         );
       },
     );
@@ -575,120 +382,8 @@ void main() {
         expect(find.text('YOU ARE OWED'), findsOneWidget);
       },
     );
-
-    testWidgets('roster dot lights from any non-zero bucket', (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-2',
-        amount: Decimal.parse('7.00'),
-        currency: 'USD',
-      );
-
-      await tester.pumpWidget(
-        _wrap(
-          event: event,
-          expenses: [expense],
-          buckets: {
-            'OMR': _settledBalances,
-            'USD': [
-              _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('-7.00')),
-              _balance(
-                uid: 'uid-2',
-                name: 'Nasser',
-                net: Decimal.parse('7.00'),
-              ),
-            ],
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
-      await tester.pumpAndSettle();
-
-      final colors = tester.element(find.byKey(EventKeys.screen)).colors;
-      expect(_rosterDot(colors.success), findsOneWidget);
-      expect(_rosterDot(colors.error), findsNothing);
-    });
-
-    testWidgets('roster dot color comes from the GCC-first non-zero bucket', (
-      tester,
-    ) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
-
-      await tester.pumpWidget(
-        _wrap(
-          event: event,
-          expenses: [expense],
-          buckets: {
-            'OMR': [
-              _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('2.000')),
-              _balance(
-                uid: 'uid-2',
-                name: 'Nasser',
-                net: Decimal.parse('-2.000'),
-              ),
-            ],
-            'USD': [
-              _balance(uid: 'uid-1', name: 'Mona', net: Decimal.parse('-7.00')),
-              _balance(
-                uid: 'uid-2',
-                name: 'Nasser',
-                net: Decimal.parse('7.00'),
-              ),
-            ],
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
-      await tester.pumpAndSettle();
-
-      // uid-2 owes in OMR (rust) and is owed in USD (sage): the GCC-first
-      // non-zero bucket decides, so the dot is rust.
-      final colors = tester.element(find.byKey(EventKeys.screen)).colors;
-      expect(_rosterDot(colors.error), findsOneWidget);
-      expect(_rosterDot(colors.success), findsNothing);
-    });
-  });
-
-  testWidgets('#626: event cover art is wrapped in a RepaintBoundary', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _wrap(
-        event: _event(
-          startDate: DateTime(2026, 1, 1),
-          endDate: DateTime(2026, 1, 3),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expectWrappedInRepaintBoundary(find.byType(CoverArt));
   });
 }
-
-Finder _rosterDot(Color color) => find.byWidgetPredicate(
-  (w) =>
-      w is Container &&
-      w.constraints == const BoxConstraints.tightFor(width: 6, height: 6) &&
-      w.decoration is BoxDecoration &&
-      (w.decoration! as BoxDecoration).shape == BoxShape.circle &&
-      (w.decoration! as BoxDecoration).color == color,
-);
 
 // ───────────────────────────── Helpers
 
@@ -715,6 +410,12 @@ Widget _wrap({
       eventSettlementsProvider(
         eventRef,
       ).overrideWith((_) => Stream.value(const [])),
+      groupMembersProvider(event.groupId).overrideWith(
+        (_) => Stream.value([
+          _realMember('uid-1', 'Mona'),
+          _realMember('uid-2', 'Nasser'),
+        ]),
+      ),
       if (balances != null || buckets != null)
         ledgerViewProvider(eventRef).overrideWithValue(
           _ledgerView(
@@ -807,6 +508,12 @@ Future<void> _pumpEventHubRouter(
         eventSettlementsProvider(
           eventRef,
         ).overrideWith((_) => Stream.value(const [])),
+        groupMembersProvider(event.groupId).overrideWith(
+          (_) => Stream.value([
+            _realMember('uid-1', 'Mona'),
+            _realMember('uid-2', 'Nasser'),
+          ]),
+        ),
         if (balances != null)
           ledgerViewProvider(eventRef).overrideWithValue(
             _ledgerView(
@@ -896,11 +603,10 @@ UserBalance _balance({
   );
 }
 
-/// Synthetic [LedgerView] for tests that inject pre-baked balances (#631 swaps
-/// the hub off `eventBalancesProvider` onto `ledgerViewProvider`). `eventTotal`
-/// mirrors the real provider (`calculateTotalExpensesByCurrency(expenses)`);
-/// `rosterDisplayNames` carries plain participant names; the command center
-/// reads none of the remaining record fields, so they stay empty.
+/// Synthetic [LedgerView] for tests that inject pre-baked balances. The
+/// tabbed shell reads `balances`, `eventTotal`, and `rosterDisplayNames`; the
+/// embedded ledger panel additionally reads the display-name maps, which stay
+/// empty (payer rows then render their fallbacks — fine for these tests).
 LedgerView _ledgerView({
   required Event event,
   required List<Expense> expenses,
