@@ -61,14 +61,29 @@ final groupSettlementsProvider =
 // groupActivityProvider
 // ---------------------------------------------------------------------------
 
-/// Reactive stream of the most recent group-level activity entries (default 5).
+/// Per-group window feeding the cross-group activity feed. Lives HERE (beside
+/// the provider) because `dashboard_providers.dart` imports this file one-way;
+/// its merged-feed cap (`kCrossGroupActivityMergedCap`) lives over there.
+///
+/// 15/group so the merged feed's filter chips operate on real history — the
+/// old 5/group window let entries age out before a filter was ever tapped.
+const kCrossGroupActivityPerGroupLimit = 15;
+
+/// Reactive stream of the most recent group-level activity entries
+/// ([kCrossGroupActivityPerGroupLimit] per group).
 ///
 /// Backed by [GroupActivityService.watchRecentActivity]. Activity entries
-/// live at `groups/{groupId}/activity`.
+/// live at `groups/{groupId}/activity`. Sole watcher is
+/// `crossGroupActivityProvider` — the per-group history screen paginates via
+/// `fetchActivityPageRaw` instead, so widening this limit widens the existing
+/// listeners without adding any (#104 axis).
 final groupActivityProvider =
     StreamProvider.family<List<GroupActivityLog>, String>((ref, groupId) {
       final service = ref.read(groupActivityServiceProvider);
-      return service.watchRecentActivity(groupId);
+      return service.watchRecentActivity(
+        groupId,
+        limit: kCrossGroupActivityPerGroupLimit,
+      );
     });
 
 // ---------------------------------------------------------------------------
