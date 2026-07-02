@@ -356,6 +356,45 @@ describe('Publish readiness Firestore rules', () => {
 
       await assertSucceeds(batch.commit());
     });
+
+    // #245: stageGroup chains the seeded event on the group batch ack, BEFORE
+    // the creator's member doc write completes. This pins the ordering
+    // assumption that chain rests on: isGroupMember/groupMembers() read
+    // groups/{gid}.memberIds (the group DOC), never member subcollection docs,
+    // so the event create is valid the instant the batch commits.
+    test('#245 seeded event create is valid right after the group batch, '
+      + 'WITHOUT any member doc', async () => {
+      await testEnv.clearFirestore();
+      const linked = testEnv.authenticatedContext('google-uid', {
+        firebase: { sign_in_provider: 'google.com' },
+      });
+      const db = linked.firestore();
+      const batch = db.batch();
+      batch.set(
+        db.doc('groups/seed-group'),
+        groupCreatePayload('google-uid', 'seed-group', 'SEED12'),
+      );
+      batch.set(db.doc('inviteCodes/SEED12'), {
+        groupId: 'seed-group',
+        createdAt: new Date(),
+      });
+      await assertSucceeds(batch.commit());
+
+      // The exact seed payload stageGroup writes (Event.toFirestoreMap):
+      // trip type, creator-only participants, born-open close triple.
+      await assertSucceeds(
+        db.doc('groups/seed-group/events/seeded-1').set(
+          validEvent({
+            name: 'Gate Group',
+            type: 'trip',
+            groupId: 'seed-group',
+            createdBy: 'google-uid',
+            participantIds: ['google-uid'],
+            participantNames: { 'google-uid': 'Nasser' },
+          }),
+        ),
+      );
+    });
   });
 
   test('group create accepts valid display name boundaries', async () => {
