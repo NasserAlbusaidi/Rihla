@@ -71,8 +71,11 @@ void main() {
   });
 
   test('both invite share callsites use the link-bearing message', () {
+    // The post-create prompt shares through InviteActionRow (qr_invite_sheet),
+    // so the link-bearing guarantee lives there; create_group_screen must
+    // keep delegating to it rather than growing its own share path.
     for (final path in const [
-      'lib/features/groups/screens/create_group_screen.dart',
+      'lib/features/groups/widgets/qr_invite_sheet.dart',
       'lib/features/groups/widgets/group_info_section.dart',
     ]) {
       final source = File(path).readAsStringSync();
@@ -81,11 +84,25 @@ void main() {
         contains('groupShareInviteMessage('),
         reason: '$path must share the link-bearing invite message',
       );
+    }
+    for (final path in const [
+      'lib/features/groups/screens/create_group_screen.dart',
+      'lib/features/groups/widgets/qr_invite_sheet.dart',
+      'lib/features/groups/widgets/group_info_section.dart',
+    ]) {
+      final source = File(path).readAsStringSync();
       expect(
         source,
         isNot(contains('groupShareMessage(')),
         reason: '$path must not share the link-less bare-code message (#277)',
       );
     }
+    expect(
+      File(
+        'lib/features/groups/screens/create_group_screen.dart',
+      ).readAsStringSync(),
+      contains('InviteActionRow('),
+      reason: 'the post-create prompt must share via InviteActionRow',
+    );
   });
 }

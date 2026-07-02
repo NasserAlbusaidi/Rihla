@@ -40,28 +40,18 @@ class _QrInviteSheet extends StatelessWidget {
 
   Uri get _inviteUri => AppLinks.inviteUrl(group.inviteCode);
 
-  String _inviteMessage(BuildContext context) =>
-      context.l10n.groupShareInviteMessage(
-        group.name,
-        _inviteUri.toString(),
-        group.inviteCode,
-      );
-
-  Future<void> _shareInvite(BuildContext context) {
-    return shareText(
-      context,
-      _inviteMessage(context),
-      subject: context.l10n.groupShareInviteSubject(group.name),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(context.spacing.space20, context.spacing.space12, context.spacing.space20, context.spacing.space20),
+        padding: EdgeInsetsDirectional.fromSTEB(
+          context.spacing.space20,
+          context.spacing.space12,
+          context.spacing.space20,
+          context.spacing.space20,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -108,68 +98,101 @@ class _QrInviteSheet extends StatelessWidget {
             const SizedBox(height: 6),
             _CodePill(code: group.inviteCode),
             SizedBox(height: context.spacing.space20),
-            Row(
-              children: [
-                Expanded(
-                  child: _SheetButton(
-                    icon: Iconsax.copy,
-                    label: context.l10n.groupCopyLink,
-                    onTap: () async {
-                      HapticService.lightClick();
-                      await Clipboard.setData(
-                        ClipboardData(text: _inviteUri.toString()),
-                      );
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.l10n.groupLinkCopied),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  // #354 — WhatsApp-direct invite (dominant GCC channel). Opens
-                  // WhatsApp prefilled with the same link-bearing message; falls
-                  // back to the OS share sheet when WhatsApp isn't installed.
-                  child: _SheetButton(
-                    key: GroupKeys.inviteWhatsAppButton,
-                    icon: Iconsax.message,
-                    label: context.l10n.groupShareViaWhatsApp,
-                    onTap: () {
-                      HapticService.lightClick();
-                      // The fallback runs after an async canLaunchUrl probe, so
-                      // the sheet may be gone by then — guard the context before
-                      // touching it (mirrors the Copy button above).
-                      shareInviteViaWhatsApp(
-                        _inviteMessage(context),
-                        fallback: () async {
-                          if (!context.mounted) return;
-                          await _shareInvite(context);
-                        },
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _SheetButton(
-                    icon: Iconsax.send_2,
-                    label: context.l10n.groupShare,
-                    primary: true,
-                    onTap: () {
-                      HapticService.lightClick();
-                      _shareInvite(context);
-                    },
-                  ),
-                ),
-              ],
-            ),
+            InviteActionRow(group: group),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Copy-link / WhatsApp / Share action row for a group invite.
+///
+/// Shared by the settings QR sheet and the post-create share prompt so both
+/// surfaces offer the same channels — the post-create prompt used to offer
+/// only copy + generic share, hiding WhatsApp/QR at the peak invite moment.
+class InviteActionRow extends StatelessWidget {
+  const InviteActionRow({super.key, required this.group});
+
+  final Group group;
+
+  Uri get _inviteUri => AppLinks.inviteUrl(group.inviteCode);
+
+  String _inviteMessage(BuildContext context) =>
+      context.l10n.groupShareInviteMessage(
+        group.name,
+        _inviteUri.toString(),
+        group.inviteCode,
+      );
+
+  Future<void> _shareInvite(BuildContext context) {
+    return shareText(
+      context,
+      _inviteMessage(context),
+      subject: context.l10n.groupShareInviteSubject(group.name),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _SheetButton(
+            icon: Iconsax.copy,
+            label: context.l10n.groupCopyLink,
+            onTap: () async {
+              HapticService.lightClick();
+              await Clipboard.setData(
+                ClipboardData(text: _inviteUri.toString()),
+              );
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(context.l10n.groupLinkCopied),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          // #354 — WhatsApp-direct invite (dominant GCC channel). Opens
+          // WhatsApp prefilled with the same link-bearing message; falls
+          // back to the OS share sheet when WhatsApp isn't installed.
+          child: _SheetButton(
+            key: GroupKeys.inviteWhatsAppButton,
+            icon: Iconsax.message,
+            label: context.l10n.groupShareViaWhatsApp,
+            onTap: () {
+              HapticService.lightClick();
+              // The fallback runs after an async canLaunchUrl probe, so
+              // the sheet may be gone by then — guard the context before
+              // touching it (mirrors the Copy button above).
+              shareInviteViaWhatsApp(
+                _inviteMessage(context),
+                fallback: () async {
+                  if (!context.mounted) return;
+                  await _shareInvite(context);
+                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SheetButton(
+            icon: Iconsax.send_2,
+            label: context.l10n.groupShare,
+            primary: true,
+            onTap: () {
+              HapticService.lightClick();
+              _shareInvite(context);
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -219,7 +242,10 @@ class _CodePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: context.spacing.space8),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space16,
+        vertical: context.spacing.space8,
+      ),
       decoration: BoxDecoration(
         color: colors.inputFill,
         borderRadius: BorderRadius.circular(context.spacing.radiusPill),

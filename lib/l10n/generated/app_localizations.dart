@@ -3309,12 +3309,6 @@ abstract class AppLocalizations {
   /// **'All'**
   String get activityFilterAll;
 
-  /// No description provided for @activityFilterActivity.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity'**
-  String get activityFilterActivity;
-
   /// No description provided for @activityFilterSettles.
   ///
   /// In en, this message translates to:
@@ -4488,7 +4482,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupMoreTooltip.
   ///
   /// In en, this message translates to:
-  /// **'More'**
+  /// **'Group options'**
   String get groupMoreTooltip;
 
   /// No description provided for @groupSettings.
@@ -4641,6 +4635,12 @@ abstract class AppLocalizations {
   /// **'Currency'**
   String get groupCurrency;
 
+  /// No description provided for @groupCurrencyLockedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency is set when the group is created and can\'t be changed.'**
+  String get groupCurrencyLockedNote;
+
   /// No description provided for @groupSettingsLoadFailed.
   ///
   /// In en, this message translates to:
@@ -4688,6 +4688,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show QR code'**
   String get groupShowQrCodeSemantic;
+
+  /// No description provided for @groupShowQrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Show QR code'**
+  String get groupShowQrCode;
 
   /// No description provided for @groupShareInviteSemantic.
   ///
@@ -4893,11 +4899,11 @@ abstract class AppLocalizations {
   /// **'Join \'{groupName}\' on Rihla'**
   String groupShareInviteSubject(Object groupName);
 
-  /// No description provided for @groupManage.
+  /// No description provided for @groupAddMemberAction.
   ///
   /// In en, this message translates to:
-  /// **'Manage'**
-  String get groupManage;
+  /// **'Add member'**
+  String get groupAddMemberAction;
 
   /// Pill on a member tile (#278) for a placeholder ('shadow') member added by name who hasn't joined via invite code yet.
   ///
