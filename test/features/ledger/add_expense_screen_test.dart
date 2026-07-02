@@ -185,7 +185,7 @@ void main() {
         customSplitParticipants: null,
         splitMode: SplitMode.equally,
         splitDistribution: null,
-        categoryId: null,
+        categoryId: 'food',
         createdBy: 'uid-yasmin',
       ),
     ).thenReturn((expense: _expense, ack: Future<void>.value()));
@@ -193,6 +193,8 @@ void main() {
     await _pumpAddExpenseScreen(tester, expenseService: service);
 
     await tester.enterText(find.byType(TextField).first, '12.5');
+    await tester.tap(find.text('Food')); // #204: category is mandatory
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -211,7 +213,7 @@ void main() {
         customSplitParticipants: null,
         splitMode: SplitMode.equally,
         splitDistribution: null,
-        categoryId: null,
+        categoryId: 'food',
         createdBy: 'uid-yasmin',
       ),
     ).called(1);
@@ -226,12 +228,68 @@ void main() {
     expect(find.text('Amount must be greater than zero'), findsOneWidget);
   });
 
+  testWidgets('blocks submit until a category is chosen (#204)', (tester) async {
+    final service = _MockExpenseService();
+    when(
+      () => service.stageExpense(
+        groupId: 'group-1',
+        eventId: 'event-1',
+        payerParticipantId: 'uid-yasmin',
+        amount: Decimal.parse('12.5'),
+        description: null,
+        scope: ExpenseScope.global,
+        customSplitParticipants: null,
+        splitMode: SplitMode.equally,
+        splitDistribution: null,
+        categoryId: 'food',
+        createdBy: 'uid-yasmin',
+      ),
+    ).thenReturn((expense: _expense, ack: Future<void>.value()));
+
+    await _pumpAddExpenseScreen(tester, expenseService: service);
+
+    await tester.enterText(find.byType(TextField).first, '12.5');
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pump();
+
+    // Category is mandatory at creation — the save is blocked with a
+    // validation message and nothing is staged until the user picks one.
+    expect(find.text('Choose a category'), findsWidgets);
+    expect(find.text('Expense Saved'), findsNothing);
+
+    // Once a category is chosen the validation clears and the save proceeds.
+    await tester.tap(find.text('Food'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Expense Saved'), findsOneWidget);
+    verify(
+      () => service.stageExpense(
+        groupId: 'group-1',
+        eventId: 'event-1',
+        payerParticipantId: 'uid-yasmin',
+        amount: Decimal.parse('12.5'),
+        description: null,
+        scope: ExpenseScope.global,
+        customSplitParticipants: null,
+        splitMode: SplitMode.equally,
+        splitDistribution: null,
+        categoryId: 'food',
+        createdBy: 'uid-yasmin',
+      ),
+    ).called(1);
+  });
+
   testWidgets('rejects submit when the current uid is not an event participant', (
     tester,
   ) async {
     await _pumpAddExpenseScreen(tester, event: _eventWithoutCurrentUser);
 
     await tester.enterText(find.byType(TextField).first, '4');
+    await tester.tap(find.text('Food')); // #204: get past the category gate
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pump();
 
@@ -254,7 +312,7 @@ void main() {
         customSplitParticipants: null,
         splitMode: SplitMode.equally,
         splitDistribution: null,
-        categoryId: null,
+        categoryId: 'food',
         createdBy: 'uid-yasmin',
       ),
     ).thenThrow(StateError('offline'));
@@ -262,6 +320,8 @@ void main() {
     await _pumpAddExpenseScreen(tester, expenseService: service);
 
     await tester.enterText(find.byType(TextField).first, '7');
+    await tester.tap(find.text('Food')); // #204: category is mandatory
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

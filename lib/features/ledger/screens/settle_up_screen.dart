@@ -72,12 +72,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   bool _reviewSheetShown = false;
 
   /// #204: on first entry, if the event has review-worthy expenses (exact /
-  /// custom-participant / personal / unusually-large), surface the non-blocking
-  /// review sheet before the user settles. Detection is pure + display-only; the
-  /// sheet never blocks settlement.
-  void _maybeShowReviewSheet(BuildContext context, List<Expense> expenses) {
+  /// custom-participant / personal / unusually-large / paid-by-a-departed-member),
+  /// surface the non-blocking review sheet before the user settles. Detection is
+  /// pure + display-only; the sheet never blocks settlement.
+  ///
+  /// [activeParticipantIds] is the current event roster narrowed to live
+  /// (`!isTombstone`) group members, so it sheds both event removals and members
+  /// who left the group.
+  void _maybeShowReviewSheet(
+    BuildContext context,
+    List<Expense> expenses, [
+    Set<String> activeParticipantIds = const {},
+  ]) {
     if (_reviewSheetShown) return;
-    final flags = detectReviewWorthyExpenses(expenses);
+    final flags = detectReviewWorthyExpenses(
+      expenses,
+      activeParticipantIds: activeParticipantIds,
+    );
     if (flags.isEmpty) return;
     _reviewSheetShown = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -163,8 +174,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
     final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
     final currentUid = ref.watch(currentUserIdProvider);
-    final groupMembers =
-        ref.watch(groupMembersProvider(widget.groupId)).valueOrNull ?? [];
+    final groupMembersAsync = ref.watch(groupMembersProvider(widget.groupId));
+    final groupMembers = groupMembersAsync.valueOrNull ?? [];
 
     // #249: member-id sets for the per-event balance universe. The universe
     // itself (and the name maps + participants derived from it) is built inside
@@ -184,7 +195,19 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       expensesAsync.when(
         data: (expenses) {
           final settlements = settlementsAsync.valueOrNull ?? const [];
-          _maybeShowReviewSheet(context, expenses); // #204
+          // #204: gate membership-sensitive detection on resolved members so
+          // the one-shot does not latch before live members are authoritative.
+          // If members error, fall back to the old detector path so existing
+          // exact/custom/personal/large warnings still show; only the
+          // payer-left reason is skipped.
+          if (groupMembersAsync.hasValue) {
+            final activeParticipantIds = event.participantIds
+                .toSet()
+                .intersection(liveMemberIds);
+            _maybeShowReviewSheet(context, expenses, activeParticipantIds);
+          } else if (groupMembersAsync.hasError) {
+            _maybeShowReviewSheet(context, expenses);
+          }
 
           // #249: fold departed-member split recipients into the
           // balance universe so settle-up suggestions conserve. The

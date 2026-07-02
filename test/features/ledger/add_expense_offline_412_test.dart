@@ -16,6 +16,7 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/add_expense_screen.dart';
@@ -48,7 +49,7 @@ void main() {
           customSplitParticipants: null,
           splitMode: SplitMode.equally,
           splitDistribution: null,
-          categoryId: null,
+          categoryId: 'food',
           createdBy: 'uid-yasmin',
         ),
       ).thenAnswer((_) => Completer<Expense>().future);
@@ -65,7 +66,7 @@ void main() {
           customSplitParticipants: null,
           splitMode: SplitMode.equally,
           splitDistribution: null,
-          categoryId: null,
+          categoryId: 'food',
           createdBy: 'uid-yasmin',
         ),
       ).thenReturn((expense: _expense, ack: Completer<void>().future));
@@ -89,9 +90,19 @@ void main() {
               groupId: 'group-1',
               eventId: 'event-1',
             )).overrideWith((ref) => Stream.value(_event)),
-            tripCategoriesProvider(
-              'event-1',
-            ).overrideWith((ref) => Stream.value(const [])),
+            // #204: category is mandatory at creation → offer one to pick.
+            tripCategoriesProvider('event-1').overrideWith(
+              (ref) => Stream.value([
+                ExpenseCategory(
+                  id: 'food',
+                  tripId: 'event-1',
+                  name: 'Food',
+                  icon: 'food',
+                  color: '#C2693B',
+                  createdAt: DateTime(2026, 1, 1),
+                ),
+              ]),
+            ),
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme,
@@ -108,6 +119,8 @@ void main() {
       );
 
       await tester.enterText(find.byType(TextField).first, '12.5');
+      await tester.tap(find.text('Food')); // #204: category is mandatory
+      await tester.pump();
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       await tester.pump();
       // Past kWriteAckTimeout (5s) + dialog entrance animation. Never

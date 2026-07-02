@@ -75,9 +75,20 @@ void main() {
             groupId: groupId,
             eventId: eventId,
           )).overrideWith((ref) => Stream.value(event)),
-          tripCategoriesProvider(
-            eventId,
-          ).overrideWith((ref) => Stream.value(const <ExpenseCategory>[])),
+          // #204: category is mandatory at creation, so the picker must offer
+          // at least one option (production always serves the 10 defaults, #689).
+          tripCategoriesProvider(eventId).overrideWith(
+            (ref) => Stream.value([
+              ExpenseCategory(
+                id: 'food',
+                tripId: eventId,
+                name: 'Food',
+                icon: 'food',
+                color: '#C2693B',
+                createdAt: DateTime(2026, 1, 1),
+              ),
+            ]),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
@@ -123,6 +134,8 @@ void main() {
     final db = await pump(tester, currency: 'USD');
 
     await tester.enterText(find.byType(TextField).first, '12.34');
+    await tester.tap(find.text('Food')); // #204: category is mandatory
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -139,6 +152,8 @@ void main() {
     final db = await pump(tester, currency: 'OMR');
 
     await tester.enterText(find.byType(TextField).first, '12');
+    await tester.tap(find.text('Food')); // #204: category is mandatory
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -178,6 +193,8 @@ void main() {
 
       await tester.enterText(find.byType(TextField).first, '12.34');
       await tester.pump();
+      await tester.tap(find.text('Food')); // #204: category is mandatory
+      await tester.pump();
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
@@ -213,6 +230,8 @@ void main() {
       expect(find.text('100'), findsOneWidget);
       expect(find.textContaining('.5'), findsNothing);
 
+      await tester.tap(find.text('Food')); // #204: category is mandatory
+      await tester.pump();
       await tester.tap(find.widgetWithText(FilledButton, 'Add'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
@@ -314,9 +333,20 @@ void main() {
             groupId: groupId,
             eventId: eventId,
           )).overrideWith((ref) => Stream.value(event)),
-          tripCategoriesProvider(
-            eventId,
-          ).overrideWith((ref) => Stream.value(const <ExpenseCategory>[])),
+          // #204: category is mandatory at creation, so the picker must offer
+          // at least one option (production always serves the 10 defaults, #689).
+          tripCategoriesProvider(eventId).overrideWith(
+            (ref) => Stream.value([
+              ExpenseCategory(
+                id: 'food',
+                tripId: eventId,
+                name: 'Food',
+                icon: 'food',
+                color: '#C2693B',
+                createdAt: DateTime(2026, 1, 1),
+              ),
+            ]),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
