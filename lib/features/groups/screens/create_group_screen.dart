@@ -419,7 +419,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                             onPressed: () => showDurableCredentialSheet(context),
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
+                              // 40dp floor: sub-40dp Material buttons clip
+                              // Geist descenders (app_theme_button_test.dart).
+                              minimumSize: const Size(0, 40),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(context.l10n.profileAccountLinkGoogle),
