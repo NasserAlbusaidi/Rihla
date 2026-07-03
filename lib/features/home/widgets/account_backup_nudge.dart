@@ -16,10 +16,11 @@ import '../keys/home_keys.dart';
 ///
 /// Identity is a device-bound anonymous Firebase UID, so reinstall / new phone
 /// / clear-data silently orphans every group and expense unless a durable
-/// credential was linked beforehand. Post-gate (#441 PR2) a dashboard user is
-/// normally already durable, so this only fires for legacy pre-gate anon
-/// shells — and no longer mis-nudges a Google-linked user without an email
-/// (the old `linkedEmail == null` condition did).
+/// credential was linked beforehand. Post-#818 (the #441 create-time gate was
+/// removed) an anonymous dashboard is the NORMAL first-run state, not a legacy
+/// edge case — this nudge is the primary link-your-account prompt. It no
+/// longer mis-nudges a Google-linked user without an email (the old
+/// `linkedEmail == null` condition did).
 ///
 /// It renders only while the user is anonymous and has not dismissed it;
 /// a successful link flips [isDurableUserProvider] and hides it for good,
