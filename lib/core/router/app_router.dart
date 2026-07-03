@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import '../../features/events/models/event_model.dart';
 import '../../features/events/screens/create_event_screen.dart';
 import '../../features/events/screens/event_command_center.dart';
@@ -25,8 +26,10 @@ import '../../features/auth/screens/link_email_sent_screen.dart';
 import '../../features/auth/screens/recover_pending_screen.dart';
 import '../../features/auth/screens/recover_screen.dart';
 import '../../features/settings/screens/profile_screen.dart';
+import '../../shared/widgets/empty_state_view.dart';
 import '../extensions/build_context_l10n.dart';
 import '../screens/splash_screen.dart';
+import '../theme/tokens/domain_aliases.dart';
 
 /// Route names for type-safe navigation
 class AppRoutes {
@@ -484,10 +487,39 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
 
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Text(context.l10n.errorPageNotFound(state.matchedLocation)),
-      ),
-    ),
+    errorBuilder: (context, state) => const RouteNotFoundScreen(),
   );
 });
+
+/// Shown by [GoRouter]'s `errorBuilder` when the requested location does not
+/// match any registered route — e.g. a broken or expired share link.
+///
+/// The raw unmatched path (`state.matchedLocation`) is intentionally never
+/// surfaced here: it's implementation detail, not something a user landing
+/// on a dead link can act on.
+@visibleForTesting
+class RouteNotFoundScreen extends StatelessWidget {
+  const RouteNotFoundScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.colors.scaffoldBackground,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(context.spacing.space24),
+            child: EmptyStateView(
+              icon: Iconsax.warning_2,
+              title: context.l10n.errorPageNotFoundTitle,
+              message: context.l10n.errorPageNotFoundBody,
+              actionLabel: context.l10n.commonGoHome,
+              onAction: () => context.go(AppRoutes.home),
+              iconColor: context.colors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
