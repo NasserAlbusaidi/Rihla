@@ -49,6 +49,10 @@ abstract final class HomeKeys {
 
   // #818 Wave 5.2: top-bar notification bell — selects the History tab.
   static const activityBell = Key('home_activity_bell');
+  // #840 PR-4: unread dot on the top-bar bell itself. NEVER reuse
+  // activityUnreadBadge — HomeScreen contains BottomNavShell, so both
+  // badges coexist and a shared key blows up `tester.widget<Badge>` reads.
+  static const bellUnreadBadge = Key('home_bell_unread_badge');
 
   // #364: persistent add-expense FAB on the tab shell + its target picker
   static const addExpenseFab = Key('home_add_expense_fab');
