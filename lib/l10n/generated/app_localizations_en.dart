@@ -130,7 +130,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editNameFieldHint => 'Your name';
 
   @override
-  String get editNameInitialsCaption => 'INITIALS SHOWN WHEN NO PHOTO';
+  String get editNamePreviewCaption => 'How you\'ll appear in groups';
 
   @override
   String get legalSheetTitle => 'Legal';

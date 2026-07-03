@@ -6,15 +6,16 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/name_validators.dart';
+import '../../../shared/widgets/r_avatar.dart';
 import '../keys/profile_keys.dart';
 
 /// Bottom sheet for editing the user's display name.
 ///
 /// Aligned with the Hi_Sheet_EditName wireframe (tier 6 · sheets & pickers):
-/// italic display title, prompt copy, text field, initials selector, and a
-/// Cancel + Save action row. The initials selector is presentation only —
-/// the saved value remains the trimmed display name; initials are derived
-/// elsewhere via [InitialsCircle].
+/// italic display title, prompt copy, text field, a static identity preview,
+/// and a Cancel + Save action row. The preview is non-interactive — it
+/// renders the real [RAvatar] derivation live from the typed text so it
+/// never lies about what will be saved (#818 Wave 4).
 class EditNameBottomSheet extends ConsumerStatefulWidget {
   const EditNameBottomSheet({
     super.key,
@@ -34,7 +35,6 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
   late final TextEditingController _controller;
   bool _isSaving = false;
   bool _showCheck = false;
-  int _selectedInitialsStyle = 0;
   String? _errorText;
 
   @override
@@ -89,25 +89,6 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     Navigator.of(context).pop();
   }
 
-  List<String> _initialsOptions(String trimmed) {
-    if (trimmed.isEmpty) return ['—', '—', '—'];
-    final parts = trimmed
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
-    final first = parts.first;
-    final twoLetter = parts.length >= 2
-        ? '${first[0]}${parts[1][0]}'.toUpperCase()
-        : first.length >= 2
-        ? first.substring(0, 2).toUpperCase()
-        : first[0].toUpperCase();
-    final oneLetter = first[0].toUpperCase();
-    final triplet = first.length >= 3
-        ? '${first[0].toUpperCase()}${first.substring(1, 3).toLowerCase()}'
-        : first[0].toUpperCase();
-    return [twoLetter, oneLetter, triplet];
-  }
-
   @override
   Widget build(BuildContext context) {
     final trimmed = _controller.text.trim();
@@ -115,7 +96,6 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     final colors = context.colors;
     final spacing = context.spacing;
     final l10n = context.l10n;
-    final initials = _initialsOptions(trimmed);
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -190,32 +170,28 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                   ),
                 ),
                 SizedBox(height: spacing.space20),
-                Text(
-                  l10n.editNameInitialsCaption,
-                  style: AppTypography.sans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textSecondary,
-                    letterSpacing: 0.8,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.cardSoft,
+                    borderRadius: BorderRadius.circular(spacing.radiusInput),
+                    border: Border.all(color: colors.rule),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    for (var i = 0; i < initials.length; i++) ...[
+                  child: Row(
+                    children: [
+                      RAvatar(name: trimmed, size: 44),
+                      SizedBox(width: spacing.space12),
                       Expanded(
-                        child: _InitialsOption(
-                          label: initials[i],
-                          selected: _selectedInitialsStyle == i,
-                          onTap: () {
-                            HapticService.lightClick();
-                            setState(() => _selectedInitialsStyle = i);
-                          },
+                        child: Text(
+                          l10n.editNamePreviewCaption,
+                          style: AppTypography.sans(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ),
-                      if (i < initials.length - 1) SizedBox(width: context.spacing.space8),
                     ],
-                  ],
+                  ),
                 ),
                 SizedBox(height: spacing.space24),
                 Row(
@@ -296,48 +272,6 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
         fontSize: 15,
         fontWeight: FontWeight.w700,
         color: colors.textOnPrimary,
-      ),
-    );
-  }
-}
-
-class _InitialsOption extends StatelessWidget {
-  const _InitialsOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? colors.inputFillWarm : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? colors.textPrimary : colors.rule2,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.mono(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
       ),
     );
   }

@@ -163,9 +163,9 @@
   "@editNameFieldHint": {
     "description": "Placeholder hint for the display-name text field."
   },
-  "editNameInitialsCaption": "INITIALS SHOWN WHEN NO PHOTO",
-  "@editNameInitialsCaption": {
-    "description": "All-caps caption above the initials chip selector (English typographic flourish; Arabic renders natural-case)."
+  "editNamePreviewCaption": "How you'll appear in groups",
+  "@editNamePreviewCaption": {
+    "description": "Caption beside the static RAvatar preview in EditNameBottomSheet, replacing the removed fake initials-style selector (#818 Wave 4)."
   },
 
   "legalSheetTitle": "Legal",

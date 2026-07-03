@@ -6,6 +6,7 @@ import 'package:safar/core/utils/name_validators.dart';
 import 'package:safar/features/settings/keys/profile_keys.dart';
 import 'package:safar/features/settings/widgets/edit_name_bottom_sheet.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/r_avatar.dart';
 
 // #227 — direct coverage for EditNameBottomSheet (no prior test).
 //
@@ -143,4 +144,71 @@ void main() {
       expect(find.byKey(ProfileKeys.saveNameButton), findsOneWidget);
     },
   );
+
+  // #818 Wave 4 PR B — the fake tappable "initials style" selector
+  // (_selectedInitialsStyle, never read by _handleSave) is replaced by a
+  // single honest static preview rendering the real RAvatar derivation.
+  group('initials preview (#818 Wave 4)', () {
+    testWidgets(
+      'no tappable initials chips remain; the honest RAvatar preview shows instead',
+      (tester) async {
+        await openEditName(
+          tester,
+          currentName: 'Nasser Albusaidi',
+          onSave: (_) async {},
+        );
+
+        // The old promise-breaking caption ("INITIALS SHOWN WHEN NO PHOTO")
+        // must be gone — there is no photo feature.
+        expect(find.text('INITIALS SHOWN WHEN NO PHOTO'), findsNothing);
+
+        // No tappable chip UI remains — AnimatedContainer was exclusive to
+        // the deleted _InitialsOption (TextField's own internal
+        // GestureDetectors are unrelated and legitimately still present).
+        expect(
+          find.descendant(
+            of: find.byType(EditNameBottomSheet),
+            matching: find.byType(AnimatedContainer),
+          ),
+          findsNothing,
+        );
+
+        // The real RAvatar derivation renders in its place, seeded from the
+        // sheet's current text.
+        final avatarFinder = find.descendant(
+          of: find.byType(EditNameBottomSheet),
+          matching: find.byType(RAvatar),
+        );
+        expect(avatarFinder, findsOneWidget);
+        expect(tester.widget<RAvatar>(avatarFinder).name, 'Nasser Albusaidi');
+
+        // New honest caption replaces the old one.
+        expect(find.text("How you'll appear in groups"), findsOneWidget);
+      },
+    );
+
+    testWidgets('preview live-updates as the user types', (tester) async {
+      await openEditName(
+        tester,
+        currentName: '',
+        onSave: (_) async {},
+      );
+
+      await tester.enterText(
+        find.byKey(ProfileKeys.nameTextField),
+        'John Doe',
+      );
+      await tester.pump();
+
+      final avatarFinder = find.descendant(
+        of: find.byType(EditNameBottomSheet),
+        matching: find.byType(RAvatar),
+      );
+      expect(tester.widget<RAvatar>(avatarFinder).name, 'John Doe');
+      expect(
+        find.descendant(of: avatarFinder, matching: find.text('JD')),
+        findsOneWidget,
+      );
+    });
+  });
 }
