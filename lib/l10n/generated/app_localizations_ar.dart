@@ -2076,6 +2076,31 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityFilterExpenses => 'المصروفات';
 
   @override
+  String get activitySearchTooltip => 'بحث';
+
+  @override
+  String get activitySearchClose => 'إغلاق البحث';
+
+  @override
+  String get activitySearchHint => 'ابحث في النشاط';
+
+  @override
+  String get activitySearchNoMatchesTitle => 'لا توجد نتائج';
+
+  @override
+  String activitySearchNoMatchesMessage(Object query) {
+    return 'لا يوجد في نشاطك المحمّل ما يطابق \"$query\".';
+  }
+
+  @override
+  String get activitySearchOlder => 'ابحث في نشاط أقدم';
+
+  @override
+  String activitySearchLoadedCount(int count) {
+    return 'يجري البحث في $count إدخال محمّل';
+  }
+
+  @override
   String get activityEventMissingTitle => 'هذه الفعالية لم تعد موجودة';
 
   @override

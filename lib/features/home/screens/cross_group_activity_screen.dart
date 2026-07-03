@@ -8,6 +8,8 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
+import '../../../l10n/generated/app_localizations.dart';
+import '../../activity/keys/activity_keys.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -51,10 +53,20 @@ class _CrossGroupActivityScreenState
   _Filter _filter = _Filter.all;
   late final ScrollController _scrollController;
 
+  // #808 PR3: inline search over the loaded pages. `_searching` toggles the
+  // field; `_query` (trimmed) narrows the visible rows and drives the honest
+  // "search older activity" affordance.
+  bool _searching = false;
+  late final TextEditingController _searchController;
+  late final FocusNode _searchFocus;
+  String _query = '';
+
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
+    _searchController = TextEditingController()..addListener(_onQueryChanged);
+    _searchFocus = FocusNode();
     // #808 PR2: reaching the tab (routed /activity or the first tab build)
     // marks the feed seen → clears the unread dot. Post-frame so we never
     // mutate a provider during the first build.
@@ -66,6 +78,8 @@ class _CrossGroupActivityScreenState
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -76,27 +90,59 @@ class _CrossGroupActivityScreenState
     }
   }
 
-  // #634: memoize the filtered list. `entries` is append-only within a load,
-  // so its length uniquely identifies its content; recompute only when the list
-  // grows or the filter changes — not on every rebuild.
-  List<CrossGroupActivityEntry>? _filteredCache;
-  int _filteredCacheLen = -1;
-  _Filter? _filteredCacheFilter;
+  void _onQueryChanged() {
+    final next = _searchController.text.trim();
+    if (next != _query) setState(() => _query = next);
+  }
 
-  List<CrossGroupActivityEntry> _filtered(
+  void _toggleSearch() {
+    setState(() {
+      _searching = !_searching;
+      if (!_searching) {
+        _searchController.clear();
+        _query = '';
+      }
+    });
+    if (_searching) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocus.requestFocus();
+      });
+    }
+  }
+
+  // #634: memoize the visible list. `entries` is append-only within a load, so
+  // its length uniquely identifies its content; recompute only when the list
+  // grows, the filter changes, the query changes, or the locale changes — not
+  // on every rebuild. Query AND the type chip both apply (#808 PR3).
+  List<CrossGroupActivityEntry>? _visibleCache;
+  int _visibleCacheLen = -1;
+  _Filter? _visibleCacheFilter;
+  String _visibleCacheQuery = '';
+  String? _visibleCacheLocale;
+
+  List<CrossGroupActivityEntry> _visible(
     List<CrossGroupActivityEntry> entries,
+    AppLocalizations l10n,
   ) {
-    if (_filteredCache != null &&
-        _filteredCacheLen == entries.length &&
-        _filteredCacheFilter == _filter) {
-      return _filteredCache!;
+    if (_visibleCache != null &&
+        _visibleCacheLen == entries.length &&
+        _visibleCacheFilter == _filter &&
+        _visibleCacheQuery == _query &&
+        _visibleCacheLocale == l10n.localeName) {
+      return _visibleCache!;
     }
     final result = entries
-        .where((e) => _matchesFilter(e.log.type, _filter))
+        .where(
+          (e) =>
+              _matchesFilter(e.log.type, _filter) &&
+              activityMatchesQuery(e, _query, l10n),
+        )
         .toList();
-    _filteredCache = result;
-    _filteredCacheLen = entries.length;
-    _filteredCacheFilter = _filter;
+    _visibleCache = result;
+    _visibleCacheLen = entries.length;
+    _visibleCacheFilter = _filter;
+    _visibleCacheQuery = _query;
+    _visibleCacheLocale = l10n.localeName;
     return result;
   }
 
@@ -108,8 +154,20 @@ class _CrossGroupActivityScreenState
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(showBack: widget.showBack),
+            _TopBar(
+              showBack: widget.showBack,
+              showSearch: pager.entries.isNotEmpty,
+              searching: _searching,
+              onToggleSearch: _toggleSearch,
+            ),
             const SizedBox(height: 6),
+            if (_searching) ...[
+              _SearchField(
+                controller: _searchController,
+                focusNode: _searchFocus,
+              ),
+              SizedBox(height: context.spacing.space8),
+            ],
             _FilterStrip(
               current: _filter,
               onChange: (f) => setState(() => _filter = f),
@@ -144,8 +202,26 @@ class _CrossGroupActivityScreenState
       );
     }
 
-    final filtered = _filtered(pager.entries);
-    if (filtered.isEmpty) {
+    final querying = _query.isNotEmpty;
+    final visible = _visible(pager.entries, context.l10n);
+    if (visible.isEmpty) {
+      // #808 PR3: a live query that matches none of the LOADED entries is its
+      // own state — honest "no matches" with a "search older activity" action
+      // while more pages remain. (True-empty and filter-empty are handled below
+      // with the #807 add-expense CTA / plain filter copy.)
+      if (querying && pager.entries.isNotEmpty) {
+        final canLoadMore = pager.hasMore;
+        return EmptyStateView(
+          icon: Iconsax.search_normal,
+          title: context.l10n.activitySearchNoMatchesTitle,
+          message: context.l10n.activitySearchNoMatchesMessage(_query),
+          actionLabel: canLoadMore ? context.l10n.activitySearchOlder : null,
+          onAction: canLoadMore
+              ? () =>
+                    ref.read(crossGroupActivityPagerProvider.notifier).loadMore()
+              : null,
+        );
+      }
       final isTrueEmpty = pager.entries.isEmpty;
       // #807: only offer the add-expense CTA on the true no-activity state and
       // only when the user has a group. Zero groups → NO CTA (never a duplicate
@@ -165,8 +241,14 @@ class _CrossGroupActivityScreenState
       );
     }
 
-    final days = _groupByDay(context, filtered, DateTime.now());
-    final showFooter = pager.isLoadingMore || pager.partialFailure;
+    final days = _groupByDay(context, visible, DateTime.now());
+    // While a query is active and more pages remain, the footer offers an
+    // explicit "search older activity" pull (#808 PR3) — in addition to the
+    // scroll-near-bottom auto-prefetch.
+    final showSearchOlder =
+        querying && pager.hasMore && !pager.isLoadingMore && !pager.partialFailure;
+    final showFooter =
+        pager.isLoadingMore || pager.partialFailure || showSearchOlder;
     return RefreshIndicator(
       onRefresh: () =>
           ref.read(crossGroupActivityPagerProvider.notifier).refresh(),
@@ -181,7 +263,13 @@ class _CrossGroupActivityScreenState
         ),
         itemCount: days.length + (showFooter ? 1 : 0),
         itemBuilder: (ctx, i) {
-          if (i == days.length) return _Footer(pager: pager);
+          if (i == days.length) {
+            return _Footer(
+              pager: pager,
+              searching: querying,
+              loadedCount: pager.entries.length,
+            );
+          }
           return Padding(
             padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
             child: _DaySection(label: days[i].label, entries: days[i].entries),
@@ -195,8 +283,18 @@ class _CrossGroupActivityScreenState
 // ──────────────────────────── Footer (loading / partial-failure retry)
 
 class _Footer extends ConsumerWidget {
-  const _Footer({required this.pager});
+  const _Footer({
+    required this.pager,
+    this.searching = false,
+    this.loadedCount = 0,
+  });
   final CrossGroupActivityPagerState pager;
+
+  /// A query is active — offer an explicit "search older activity" pull.
+  final bool searching;
+
+  /// Count of loaded entries the query has already searched (footer copy).
+  final int loadedCount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -215,14 +313,39 @@ class _Footer extends ConsumerWidget {
         ),
       );
     }
-    // Partial failure (#244 OR-drop): survivors are shown above; offer a retry
-    // for the groups whose fetch threw.
+    if (pager.partialFailure) {
+      // Partial failure (#244 OR-drop): survivors are shown above; offer a
+      // retry for the groups whose fetch threw.
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space16),
+        child: Column(
+          children: [
+            Text(
+              context.l10n.activityPartialFailure,
+              textAlign: TextAlign.center,
+              style: AppTypography.sans(
+                fontSize: 13,
+                color: context.colors.textSecondary,
+              ),
+            ),
+            TextButton(
+              onPressed: () => ref
+                  .read(crossGroupActivityPagerProvider.notifier)
+                  .retryFailed(),
+              child: Text(context.l10n.activityReload),
+            ),
+          ],
+        ),
+      );
+    }
+    // #808 PR3: query active + more pages remain — surface how many loaded
+    // entries were searched and a button to pull older pages through the pager.
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacing.space16),
       child: Column(
         children: [
           Text(
-            context.l10n.activityPartialFailure,
+            context.l10n.activitySearchLoadedCount(loadedCount),
             textAlign: TextAlign.center,
             style: AppTypography.sans(
               fontSize: 13,
@@ -230,9 +353,10 @@ class _Footer extends ConsumerWidget {
             ),
           ),
           TextButton(
+            key: ActivityKeys.searchOlderButton,
             onPressed: () =>
-                ref.read(crossGroupActivityPagerProvider.notifier).retryFailed(),
-            child: Text(context.l10n.activityReload),
+                ref.read(crossGroupActivityPagerProvider.notifier).loadMore(),
+            child: Text(context.l10n.activitySearchOlder),
           ),
         ],
       ),
@@ -243,9 +367,21 @@ class _Footer extends ConsumerWidget {
 // ──────────────────────────── Top bar
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.showBack});
+  const _TopBar({
+    required this.showBack,
+    required this.showSearch,
+    required this.searching,
+    required this.onToggleSearch,
+  });
 
   final bool showBack;
+
+  /// Whether the search toggle is offered (only once the feed has entries).
+  final bool showSearch;
+
+  /// Whether the inline search field is currently open (swaps the glyph).
+  final bool searching;
+  final VoidCallback onToggleSearch;
 
   // #666: top-level route entry. When /activity is the sole stack page
   // (canPop()==false), pop has nothing to return to — fall back to /home so
@@ -316,8 +452,86 @@ class _TopBar extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 40),
+          if (showSearch)
+            RIconButton(
+              key: ActivityKeys.searchToggle,
+              variant: RIconButtonVariant.ghost,
+              icon: searching ? Iconsax.close_circle : Iconsax.search_normal,
+              tooltip: searching
+                  ? context.l10n.activitySearchClose
+                  : context.l10n.activitySearchTooltip,
+              onTap: onToggleSearch,
+            )
+          else
+            const SizedBox(width: 40),
         ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────── Inline search field
+
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.controller, required this.focusNode});
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        context.spacing.space20,
+        context.spacing.space8,
+        context.spacing.space20,
+        0,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.inputFill,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12),
+        child: Row(
+          children: [
+            Icon(
+              Iconsax.search_normal,
+              size: 18,
+              color: colors.textSecondary,
+            ),
+            SizedBox(width: context.spacing.space8),
+            Expanded(
+              child: TextField(
+                key: ActivityKeys.searchField,
+                controller: controller,
+                focusNode: focusNode,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: context.l10n.activitySearchHint,
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                style: AppTypography.sans(
+                  fontSize: 15,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ),
+            if (controller.text.isNotEmpty)
+              GestureDetector(
+                onTap: controller.clear,
+                behavior: HitTestBehavior.opaque,
+                child: Icon(
+                  Iconsax.close_circle,
+                  size: 18,
+                  color: colors.textSecondary,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

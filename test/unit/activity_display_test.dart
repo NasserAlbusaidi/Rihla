@@ -34,6 +34,10 @@ GroupActivityLog _groupLog({
   timestamp: DateTime(2026, 1, 1),
 );
 
+({GroupActivityLog log, String groupName, String groupId, String currency})
+_entry(GroupActivityLog log, {String groupName = 'Trip A', String currency = 'OMR'}) =>
+    (log: log, groupName: groupName, groupId: 'g1', currency: currency);
+
 void main() {
   group('activity display helpers', () {
     test('localizes known event activity types in English and Arabic', () {
@@ -197,6 +201,68 @@ void main() {
       expect(
         localizedGroupActivityText(ar, log),
         'legacy persisted group text',
+      );
+    });
+
+    test('forged non-String metadata values read as absent, never a '
+        '_TypeError (rules check only `metadata is map`)', () {
+      final en = AppLocalizationsEn();
+
+      // eventName: int → generic variant on every eventName-consuming type.
+      for (final type in [
+        'event_created',
+        'event_deleted',
+        'expense_added',
+        'expense_edited',
+        'expense_deleted',
+      ]) {
+        expect(
+          () => localizedGroupActivityText(
+            en,
+            _groupLog(type: type, metadata: const {'eventName': 42}),
+          ),
+          returnsNormally,
+          reason: type,
+        );
+      }
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'expense_added', metadata: const {'eventName': 42}),
+        ),
+        en.activityGroupExpenseAddedGeneric,
+      );
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'event_created', metadata: const {'eventName': 42}),
+        ),
+        en.activityGroupEventCreatedGeneric,
+      );
+
+      // memberName: map → treated absent → removal falls to the description.
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(
+            type: 'member_left',
+            description: 'legacy removal text',
+            metadata: const {
+              'memberAction': 'removed',
+              'memberName': {'a': 1},
+            },
+          ),
+        ),
+        'legacy removal text',
+      );
+
+      // memberAction: int → treated absent → plain "left the group".
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'member_left', metadata: const {'memberAction': 7}),
+        ),
+        en.activityGroupMemberLeft,
       );
     });
 
@@ -439,6 +505,31 @@ void main() {
       expect(amt.currency, 'OMR');
     });
 
+    test('non-finite legacy num amount → null, never a FormatException '
+        '(client-forgeable metadata; Decimal.parse("NaN") throws)', () {
+      for (final junk in [
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+      ]) {
+        final log = _groupLog(
+          type: 'group_settlement',
+          metadata: {'amount': junk},
+        );
+        expect(activityAmount(log, 'OMR'), isNull, reason: '$junk');
+      }
+    });
+
+    test('finite legacy num still parses after the non-finite guard', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        metadata: const {'amount': 9.5},
+      );
+      final amt = activityAmount(log, 'OMR');
+      expect(amt!.value, Decimal.parse('9.5'));
+      expect(amt.currency, 'OMR');
+    });
+
     test('both keys present → fils wins (currency from metadata)', () {
       final log = _groupLog(
         type: 'expense_added',
@@ -485,6 +576,133 @@ void main() {
         );
         expect(activityAmountCurrency(log, 'AED'), 'AED', reason: '$junk');
       }
+    });
+  });
+
+  group('activityMatchesQuery (#808 PR3)', () {
+    final en = AppLocalizationsEn();
+    final ar = AppLocalizationsAr();
+
+    test('an empty or whitespace-only query matches every entry', () {
+      final entry = _entry(_groupLog(type: 'member_joined'));
+      expect(activityMatchesQuery(entry, '', en), isTrue);
+      expect(activityMatchesQuery(entry, '   ', en), isTrue);
+    });
+
+    test('matches the actor name, case-insensitively', () {
+      final entry = _entry(_groupLog(type: 'member_joined')); // actorName 'Alice'
+      expect(activityMatchesQuery(entry, 'ali', en), isTrue);
+      expect(activityMatchesQuery(entry, 'ALICE', en), isTrue);
+      expect(activityMatchesQuery(entry, 'bob', en), isFalse);
+    });
+
+    test('matches the group name', () {
+      final entry = _entry(
+        _groupLog(type: 'member_joined'),
+        groupName: 'Beach Squad',
+      );
+      expect(activityMatchesQuery(entry, 'squad', en), isTrue);
+    });
+
+    test('matches metadata.eventName', () {
+      final entry = _entry(
+        _groupLog(
+          type: 'expense_added',
+          metadata: const {'eventName': 'Snorkel Day'},
+        ),
+      );
+      expect(activityMatchesQuery(entry, 'snorkel', en), isTrue);
+    });
+
+    test('matches the localized display text (English)', () {
+      final entry = _entry(_groupLog(type: 'group_settlement'));
+      expect(activityMatchesQuery(entry, 'settlement', en), isTrue);
+    });
+
+    test('matches the localized display text (Arabic)', () {
+      final joined = _entry(_groupLog(type: 'member_joined'));
+      expect(activityMatchesQuery(joined, 'المجموعة', ar), isTrue);
+      final settle = _entry(_groupLog(type: 'group_settlement'));
+      expect(activityMatchesQuery(settle, 'تسوية', ar), isTrue);
+    });
+
+    test('matches the raw description even when the localized text is generic '
+        '(D-PR2-1: the fan-in label lives only in the description)', () {
+      // eventName present → localized = "added an expense in Beach Trip"; the
+      // "Dinner" label survives only in the English fan-in description.
+      final entry = _entry(
+        _groupLog(
+          type: 'expense_added',
+          description: 'added Dinner (10.500 OMR)',
+          metadata: const {'eventName': 'Beach Trip'},
+        ),
+      );
+      expect(
+        localizedGroupActivityText(en, entry.log).contains('Dinner'),
+        isFalse,
+      );
+      expect(activityMatchesQuery(entry, 'dinner', en), isTrue);
+    });
+
+    test('matches the formatted amount string when an amount is shown', () {
+      final entry = _entry(
+        _groupLog(
+          type: 'expense_added',
+          description: 'added an expense', // no digits of its own
+          metadata: const {
+            'amountFils': 10500,
+            'currency': 'OMR',
+            'eventName': '',
+          },
+        ),
+      );
+      // Displayed as "OMR 10.500".
+      expect(activityMatchesQuery(entry, '10.5', en), isTrue);
+      expect(activityMatchesQuery(entry, '10.500', en), isTrue);
+      expect(activityMatchesQuery(entry, 'omr', en), isTrue);
+    });
+
+    test('does not match an amount that is not shown (fils without a trusted '
+        'currency → activityAmount null)', () {
+      final entry = _entry(
+        _groupLog(
+          type: 'expense_added',
+          description: 'added an expense', // no digits
+          metadata: const {'amountFils': 10500}, // no currency → null amount
+        ),
+      );
+      expect(activityAmount(entry.log, entry.currency), isNull);
+      expect(activityMatchesQuery(entry, '10500', en), isFalse);
+    });
+
+    test('no crash and no match on an empty-metadata entry with a miss', () {
+      final entry = _entry(_groupLog(type: 'member_joined'));
+      expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);
+    });
+
+    test('forged legacy NaN amount never throws — the matcher runs '
+        'activityAmount over EVERY loaded entry in the parent build', () {
+      final entry = _entry(
+        _groupLog(
+          type: 'group_settlement',
+          metadata: const {'amount': double.nan},
+        ),
+      );
+      expect(() => activityMatchesQuery(entry, 'ali', en), returnsNormally);
+      // Other fields stay searchable (actorName is 'Alice').
+      expect(activityMatchesQuery(entry, 'ali', en), isTrue);
+      expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);
+    });
+
+    test('forged non-String eventName never throws — same parent-build class '
+        'as the NaN amount', () {
+      final entry = _entry(
+        _groupLog(type: 'expense_added', metadata: const {'eventName': 42}),
+      );
+      expect(() => activityMatchesQuery(entry, 'a', en), returnsNormally);
+      // Other fields stay searchable (actorName is 'Alice').
+      expect(activityMatchesQuery(entry, 'ali', en), isTrue);
+      expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);
     });
   });
 }

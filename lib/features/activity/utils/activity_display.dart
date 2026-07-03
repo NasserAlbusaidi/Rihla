@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/utils/formatters.dart';
 import '../../groups/models/group_activity_log_model.dart';
 import '../models/activity_log_model.dart';
 
@@ -22,10 +23,21 @@ String localizedEventActivityText(AppLocalizations l10n, ActivityLog log) {
   };
 }
 
+/// Every metadata read in this file goes through a value-domain guard, never a
+/// raw cast: the map is client-forgeable (`firestore.rules` checks only
+/// `metadata is map`), and activityMatchesQuery runs these helpers over EVERY
+/// loaded entry in the parent build — one forged value would ErrorWidget the
+/// whole Activity tab (same class as the amountFils/legacy-amount guards).
+/// A non-String value reads as absent → the existing generic/fallback path.
+String? _metadataString(GroupActivityLog log, String key) {
+  final value = log.metadata[key];
+  return value is String ? value : null;
+}
+
 String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
-  final eventName = log.metadata['eventName'] as String?;
-  final memberName = log.metadata['memberName'] as String?;
-  final memberAction = log.metadata['memberAction'] as String?;
+  final eventName = _metadataString(log, 'eventName');
+  final memberName = _metadataString(log, 'memberName');
+  final memberAction = _metadataString(log, 'memberAction');
   return switch (log.type) {
     'group_settlement' => l10n.activityGroupSettlementDescription,
     'event_created' =>
@@ -126,7 +138,50 @@ String activityAmountCurrency(GroupActivityLog log, String fallback) {
 /// Coerce both WITHOUT forcing a currency precision — [RAmount] applies the
 /// row's own currency scale (#380).
 Decimal? _coerceLegacyAmount(Object? raw) {
-  if (raw is num) return Decimal.parse(raw.toString());
+  // Non-finite → null: Decimal.parse('NaN') THROWS, the metadata map is
+  // client-forgeable (rules check only `is map`), and activityMatchesQuery
+  // runs this over EVERY loaded entry in the parent build — one forged row
+  // would ErrorWidget the whole tab (client half of the #814 legacy-NaN note).
+  if (raw is num) return raw.isFinite ? Decimal.parse(raw.toString()) : null;
   if (raw is String) return Decimal.tryParse(raw);
   return null;
+}
+
+/// #808 PR3 — pure client-side match for the cross-group Activity search.
+///
+/// Case-insensitive `contains` over the fields a user can see on a row:
+/// the raw `description` (keeps the fan-in expense label searchable even though
+/// the localized phrase is generic per D-PR2-1), the LOCALIZED display text,
+/// the actor name, the group name, `metadata.eventName`, and — only when the
+/// row actually shows an amount ([activityAmount] non-null) — the formatted
+/// amount string as rendered (code-first, e.g. `OMR 10.500`). An empty or
+/// whitespace-only query matches everything, so callers can pass the live query
+/// unconditionally. The parameter is the [CrossGroupActivityEntry] record shape;
+/// typed structurally to keep this util free of the providers layer.
+bool activityMatchesQuery(
+  ({GroupActivityLog log, String groupName, String groupId, String currency})
+  entry,
+  String query,
+  AppLocalizations l10n,
+) {
+  final needle = query.trim().toLowerCase();
+  if (needle.isEmpty) return true;
+
+  final log = entry.log;
+  final haystacks = <String?>[
+    log.description,
+    localizedGroupActivityText(l10n, log),
+    log.actorName,
+    entry.groupName,
+    _metadataString(log, 'eventName'),
+  ];
+
+  final amount = activityAmount(log, entry.currency);
+  if (amount != null) {
+    haystacks.add(
+      AppFormatters.formatCurrency(amount.value.abs(), amount.currency),
+    );
+  }
+
+  return haystacks.any((h) => h != null && h.toLowerCase().contains(needle));
 }

@@ -1577,6 +1577,25 @@
   "activityFilterEvents": "Events",
   "activityFilterMembers": "Members",
   "activityFilterExpenses": "Expenses",
+  "activitySearchTooltip": "Search",
+  "activitySearchClose": "Close search",
+  "activitySearchHint": "Search activity",
+  "activitySearchNoMatchesTitle": "No matches",
+  "activitySearchNoMatchesMessage": "Nothing in your loaded activity matches \"{query}\".",
+  "@activitySearchNoMatchesMessage": {
+    "placeholders": {
+      "query": {}
+    }
+  },
+  "activitySearchOlder": "Search older activity",
+  "activitySearchLoadedCount": "Searching {count} loaded entries",
+  "@activitySearchLoadedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "activityEventMissingTitle": "This event no longer exists",
   "activityEventMissingMessage": "It may have been deleted.",
   "activityRelativeJustNow": "JUST NOW",

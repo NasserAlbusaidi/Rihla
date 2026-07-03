@@ -3369,6 +3369,48 @@ abstract class AppLocalizations {
   /// **'Expenses'**
   String get activityFilterExpenses;
 
+  /// No description provided for @activitySearchTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get activitySearchTooltip;
+
+  /// No description provided for @activitySearchClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get activitySearchClose;
+
+  /// No description provided for @activitySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search activity'**
+  String get activitySearchHint;
+
+  /// No description provided for @activitySearchNoMatchesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get activitySearchNoMatchesTitle;
+
+  /// No description provided for @activitySearchNoMatchesMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in your loaded activity matches \"{query}\".'**
+  String activitySearchNoMatchesMessage(Object query);
+
+  /// No description provided for @activitySearchOlder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search older activity'**
+  String get activitySearchOlder;
+
+  /// No description provided for @activitySearchLoadedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching {count} loaded entries'**
+  String activitySearchLoadedCount(int count);
+
   /// No description provided for @activityEventMissingTitle.
   ///
   /// In en, this message translates to:
