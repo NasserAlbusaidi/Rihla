@@ -353,6 +353,39 @@ void main() {
       expect(amt!.value, Decimal.parse('8')); // fils, not '999'
     });
 
+    test('non-finite fils never throws — NaN/±infinity → null '
+        '(group_settlement metadata is client-forgeable; .toInt() throws)', () {
+      // group_settlement activity docs are CLIENT-writable and firestore.rules
+      // guards metadata only as `is map`, so any member can forge these.
+      for (final junk in [
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+      ]) {
+        final log = _groupLog(
+          type: 'group_settlement',
+          metadata: {'amountFils': junk, 'currency': 'OMR'},
+        );
+        expect(activityAmount(log, 'OMR'), isNull, reason: '$junk');
+      }
+    });
+
+    test('non-finite fils + legacy amount → legacy path wins '
+        '(exact pre-fix fall-through semantics)', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        metadata: const {
+          'amountFils': double.nan,
+          'currency': 'OMR',
+          'amount': '9.500',
+        },
+      );
+      final amt = activityAmount(log, 'OMR');
+      expect(amt, isNotNull);
+      expect(amt!.value, Decimal.parse('9.5'));
+      expect(amt.currency, 'OMR');
+    });
+
     test('fils present but currency MISSING → null (never guess the scale)', () {
       final log = _groupLog(
         type: 'expense_added',

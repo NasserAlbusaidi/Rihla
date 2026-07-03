@@ -378,6 +378,33 @@ void main() {
       expect(amounts.single.currency, 'OMR');
     });
 
+    testWidgets('forged non-finite amountFils renders the row without an '
+        'amount and without an ErrorWidget (group_settlement metadata is '
+        'client-forgeable)', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          's-nan',
+          'Mallory',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amountFils': double.nan, 'currency': 'OMR'},
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ErrorWidget), findsNothing);
+      expect(_richContaining('recorded a settlement'), findsOneWidget);
+      expect(find.byType(RAmount), findsNothing);
+    });
+
     testWidgets('Expenses filter shows only expense_* rows', (tester) async {
       final db = FakeFirebaseFirestore();
       await _seed(db, 'g1', [

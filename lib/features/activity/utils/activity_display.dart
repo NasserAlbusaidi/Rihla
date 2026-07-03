@@ -101,8 +101,11 @@ String activityAmountCurrency(GroupActivityLog log, String fallback) {
   // `is num`, not `is int`: Firestore number deserialization can yield a Dart
   // double for this field. Subunits are integers by contract, so a malformed
   // fraction truncates via .toInt() — exactly like the sibling reader of the
-  // same field (ExpenseAuditSnap.tryParse, expense_audit_diff.dart).
-  if (fils is num) {
+  // same field (ExpenseAuditSnap.tryParse, expense_audit_diff.dart). isFinite
+  // guards NaN/±infinity — forgeable via client-writable group_settlement
+  // metadata (rules check only `is map`) and .toInt() on them THROWS in
+  // build; non-finite falls through to the legacy path like the pre-num gate.
+  if (fils is num && fils.isFinite) {
     final raw = log.metadata['currency'];
     if (raw is String && MoneySerializer.supportedCurrencies.contains(raw)) {
       return (
