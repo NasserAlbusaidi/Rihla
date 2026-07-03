@@ -331,10 +331,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
+    // #854: the raw error is humanized, never leaked verbatim to the user.
     expect(
-      find.text('Failed to add expense: Bad state: offline'),
+      find.text('Failed to add expense: Something went wrong. Please try again.'),
       findsOneWidget,
     );
+    expect(find.textContaining('Bad state'), findsNothing);
   });
 }
 
