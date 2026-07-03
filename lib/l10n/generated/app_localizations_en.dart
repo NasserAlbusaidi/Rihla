@@ -3349,6 +3349,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashRetry => 'Try again';
 
   @override
+  String get splashOfflineTitle => 'You\'re offline';
+
+  @override
+  String get splashOfflineBody =>
+      'Rihla needs an internet connection the first time it starts. Connect and try again.';
+
+  @override
   String get notificationRationaleTitle => 'Stay in the loop';
 
   @override

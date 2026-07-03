@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../extensions/build_context_l10n.dart';
 import '../theme/tokens/color_tokens.dart';
 import '../theme/tokens/typography_tokens.dart';
+import '../utils/error_message_translator.dart';
 
 /// Brand splash screen — loading and error states from wireframe S_Splash_*.
 ///
@@ -10,18 +11,29 @@ import '../theme/tokens/typography_tokens.dart';
 /// to stay consistent with the pre-[MaterialApp] boot context.
 class SplashScreen extends StatelessWidget {
   final bool hasError;
+
+  /// The boot error, if any (#838). Purely used to pick offline-specific
+  /// copy via [classifyError] — never displayed raw. Optional and unused by
+  /// the [_CacheIsolationApp] call site, which shows the generic error copy.
+  final Object? error;
   final VoidCallback? onRetry;
 
-  const SplashScreen({super.key, this.hasError = false, this.onRetry});
+  const SplashScreen({
+    super.key,
+    this.hasError = false,
+    this.error,
+    this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
     const colors = AppColorTokens.light;
+    final offline = error != null && classifyError(error!) == FriendlyError.network;
     return Scaffold(
       backgroundColor: colors.scaffoldBackground,
       body: SafeArea(
         child: hasError
-            ? _ErrorBody(colors: colors, onRetry: onRetry)
+            ? _ErrorBody(colors: colors, offline: offline, onRetry: onRetry)
             : const _LoadingBody(colors: AppColorTokens.light),
       ),
     );
@@ -98,13 +110,18 @@ class _LoadingBody extends StatelessWidget {
 
 class _ErrorBody extends StatelessWidget {
   final AppColorTokens colors;
+  final bool offline;
   final VoidCallback? onRetry;
-  const _ErrorBody({required this.colors, this.onRetry});
+  const _ErrorBody({required this.colors, this.offline = false, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     // design-token-justified: no errorSoft token; #F2D6CF from wireframe negSoft
     const errorSoft = Color(0xFFF2D6CF);
+
+    final l10n = context.l10n;
+    final title = offline ? l10n.splashOfflineTitle : l10n.splashErrorTitle;
+    final body = offline ? l10n.splashOfflineBody : l10n.splashErrorBody;
 
     return Center(
       child: Padding(
@@ -119,7 +136,7 @@ class _ErrorBody extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              context.l10n.splashErrorTitle,
+              title,
               style: AppTypography.display(
                 fontSize: 26,
                 color: colors.textPrimary,
@@ -128,7 +145,7 @@ class _ErrorBody extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              context.l10n.splashErrorBody,
+              body,
               style: AppTypography.sans(
                 fontSize: 13,
                 color: colors.textSecondary,

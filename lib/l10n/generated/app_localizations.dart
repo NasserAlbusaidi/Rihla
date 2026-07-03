@@ -5661,6 +5661,18 @@ abstract class AppLocalizations {
   /// **'Try again'**
   String get splashRetry;
 
+  /// Title on the splash error state shown when the first-ever boot auth call fails because the device has no network connection (#838).
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re offline'**
+  String get splashOfflineTitle;
+
+  /// Body copy on the splash error state shown when the first-ever boot auth call fails because the device has no network connection (#838).
+  ///
+  /// In en, this message translates to:
+  /// **'Rihla needs an internet connection the first time it starts. Connect and try again.'**
+  String get splashOfflineBody;
+
   /// Title of the soft in-app rationale sheet shown before the OS push-permission dialog (#352), at the first natural moment (a successful group join or create).
   ///
   /// In en, this message translates to:

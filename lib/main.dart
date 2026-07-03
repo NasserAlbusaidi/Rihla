@@ -137,6 +137,12 @@ class _AuthGate extends StatefulWidget {
 class _AuthGateState extends State<_AuthGate> {
   late Future<void> _authFuture;
 
+  /// The last boot error reported to Sentry (#838). The [FutureBuilder]
+  /// builder re-runs on every rebuild while `snapshot.hasError` stays true
+  /// (e.g. locale/theme changes), so capture is de-duped by identity rather
+  /// than re-firing per rebuild.
+  Object? _lastReported;
+
   @override
   void initState() {
     super.initState();
@@ -164,16 +170,23 @@ class _AuthGateState extends State<_AuthGate> {
           );
         }
         if (snapshot.hasError) {
-          Sentry.captureException(
-            snapshot.error,
-            stackTrace: snapshot.stackTrace,
-          );
+          if (!identical(snapshot.error, _lastReported)) {
+            _lastReported = snapshot.error;
+            Sentry.captureException(
+              snapshot.error,
+              stackTrace: snapshot.stackTrace,
+            );
+          }
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: SplashScreen(hasError: true, onRetry: _retry),
+            home: SplashScreen(
+              hasError: true,
+              error: snapshot.error,
+              onRetry: _retry,
+            ),
           );
         }
         return const SafarApp();
