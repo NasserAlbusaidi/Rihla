@@ -3549,6 +3549,24 @@ abstract class AppLocalizations {
   /// **'recorded a settlement'**
   String get activityGroupSettlementDescription;
 
+  /// No description provided for @activitySettlementPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'paid {toName}'**
+  String activitySettlementPaid(Object toName);
+
+  /// No description provided for @activitySettlementReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'received a payment from {fromName}'**
+  String activitySettlementReceived(Object fromName);
+
+  /// No description provided for @activitySettlementBetween.
+  ///
+  /// In en, this message translates to:
+  /// **'recorded a settlement from {fromName} to {toName}'**
+  String activitySettlementBetween(Object fromName, Object toName);
+
   /// No description provided for @activityGroupEventCreatedGeneric.
   ///
   /// In en, this message translates to:

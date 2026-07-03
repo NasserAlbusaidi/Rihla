@@ -879,6 +879,10 @@ void main() {
         'amount': '7.75',
         'recipientId': 'uid-alice',
         'currency': 'OMR',
+        'fromUserId': 'uid-bob',
+        'toUserId': 'uid-alice',
+        'fromName': 'Bob',
+        'toName': 'Alice',
       });
     });
 
@@ -1436,11 +1440,19 @@ void main() {
           'amount': '10',
           'recipientId': 'uid-alice',
           'currency': 'OMR',
+          'fromUserId': 'uid-bob',
+          'toUserId': 'uid-alice',
+          'fromName': 'Bob',
+          'toName': 'Alice',
         });
         expect(activityService.logCalls[1].metadata, {
           'amount': '20',
           'recipientId': 'uid-alice',
           'currency': 'USD',
+          'fromUserId': 'uid-bob',
+          'toUserId': 'uid-alice',
+          'fromName': 'Bob',
+          'toName': 'Alice',
         });
         // One final summary snackbar; no per-step "Settlement recorded.".
         expect(find.text('Settlement recorded.'), findsNothing);

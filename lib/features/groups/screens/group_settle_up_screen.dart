@@ -892,6 +892,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               'amount': amount.toString(),
               'recipientId': toUserId,
               'currency': currency,
+              'fromUserId': fromUserId,
+              'toUserId': toUserId,
+              'fromName': fromName,
+              'toName': toName,
             },
           );
 
@@ -1031,6 +1035,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                 'amount': amount.toString(),
                 'recipientId': toUserId,
                 'currency': currency,
+                'fromUserId': fromUserId,
+                'toUserId': toUserId,
+                'fromName': fromName,
+                'toName': toName,
               },
             );
       }

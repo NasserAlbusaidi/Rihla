@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/utils/localized_dates.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -617,18 +618,73 @@ void main() {
         final amounts = tester
             .widgetList<RAmount>(find.byType(RAmount))
             .toList();
-        // Two settlement rows, each a 14px main + 11px sage amount.
-        expect(amounts, hasLength(4));
+        // #818 Wave 3.1: the signed sage RAmount is gone — each settlement
+        // row renders only its single 14px main amount.
+        expect(amounts, hasLength(2));
 
         final usd = amounts.where((a) => a.currency == 'USD').toList();
         final omr = amounts.where((a) => a.currency == 'OMR').toList();
-        expect(usd, hasLength(2)); // stamped row renders at its own currency
-        expect(omr, hasLength(2)); // legacy row falls back to group currency
+        expect(usd, hasLength(1)); // stamped row renders at its own currency
+        expect(omr, hasLength(1)); // legacy row falls back to group currency
 
         // Foreign currency gets labeled on the main amount; the group
         // currency stays bare (pre-PR-4 appearance preserved).
         expect(usd.where((a) => a.showCurrency).length, 1);
         expect(omr.where((a) => a.showCurrency).length, 0);
+      },
+    );
+
+    // #818 Wave 3.1: the unconditional green `+` (a second signed sage
+    // RAmount rendered IN PLACE of the timestamp) is gone — settlement rows
+    // now fall into the same relative-timestamp `else` branch as every other
+    // row. A NEW directional fixture (not `_todayActivity()`, which the
+    // legacy-fallback assertions at :424/:546/:710 depend on staying
+    // direction-key-free) exercises this.
+    testWidgets(
+      'settlement row shows no signed sage amount and renders the relative '
+      'timestamp instead',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final prefs = await SharedPreferences.getInstance();
+        final timestamp = _atMidday(0).subtract(const Duration(hours: 2));
+        await _seedActivities(fakeDb, 'grp-1', [
+          GroupActivityLog(
+            id: 'act-directional',
+            type: 'group_settlement',
+            actorId: 'uid-alice',
+            actorName: 'Alice',
+            description: 'settled OMR 10.500 with Bob',
+            metadata: const {
+              'amount': '10.5',
+              'currency': 'OMR',
+              'recipientId': 'uid-bob',
+              'fromUserId': 'uid-alice',
+              'toUserId': 'uid-bob',
+              'fromName': 'Alice',
+              'toName': 'Bob',
+            },
+            timestamp: timestamp,
+          ),
+        ]);
+
+        await tester.pumpWidget(
+          _buildActivityScreen(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
+        );
+        await tester.pumpAndSettle();
+
+        // Only the single unsigned main amount — no second signed sage
+        // RAmount rendered for the settlement row.
+        final amounts = tester
+            .widgetList<RAmount>(find.byType(RAmount))
+            .toList();
+        expect(amounts, hasLength(1));
+        expect(amounts.single.sign, isFalse);
+        expect(amounts.single.tone, isNot(AmountTone.sage));
+
+        // The relative timestamp renders where the signed amount used to be.
+        final context = tester.element(find.byType(GroupActivityScreen));
+        final expectedTime = formatRelativeShort(context, timestamp);
+        expect(find.text(expectedTime), findsOneWidget);
       },
     );
   });

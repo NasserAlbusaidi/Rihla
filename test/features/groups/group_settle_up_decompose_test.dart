@@ -298,6 +298,16 @@ void main() {
         expect(activityService.logCalls.single.type, 'group_settlement');
         expect(activityService.logCalls.single.metadata?['amount'], '7.75');
 
+        // #818 Wave 3.1: direction keys stamped alongside the legacy shape —
+        // cardinality stays exactly 1 (this spec only widens the metadata map).
+        final metadata = activityService.logCalls.single.metadata!;
+        expect(metadata['fromUserId'], 'uid-bob');
+        expect(metadata['toUserId'], 'uid-alice');
+        expect(metadata['fromName'], isA<String>());
+        expect(metadata['fromName'], isNotEmpty);
+        expect(metadata['toName'], isA<String>());
+        expect(metadata['toName'], isNotEmpty);
+
         // Per-event write happened → home one-shot must be refreshed.
         expect(container.read(ledgerRevisionProvider), 1);
 

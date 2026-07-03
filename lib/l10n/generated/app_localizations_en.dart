@@ -2116,6 +2116,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityGroupSettlementDescription => 'recorded a settlement';
 
   @override
+  String activitySettlementPaid(Object toName) {
+    return 'paid $toName';
+  }
+
+  @override
+  String activitySettlementReceived(Object fromName) {
+    return 'received a payment from $fromName';
+  }
+
+  @override
+  String activitySettlementBetween(Object fromName, Object toName) {
+    return 'recorded a settlement from $fromName to $toName';
+  }
+
+  @override
   String get activityGroupEventCreatedGeneric => 'created an event';
 
   @override
