@@ -717,13 +717,13 @@ class AppLocalizationsAr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count طريقة',
-      many: '$count طريقة',
-      few: '$count طرق',
-      two: 'طريقتين',
-      one: 'طريقة واحدة',
+      other: '$count شخص',
+      many: '$count شخصًا',
+      few: '$count أشخاص',
+      two: 'شخصين',
+      one: 'شخص واحد',
     );
-    return 'مقسّم على $_temp0';
+    return 'مقسّم بين $_temp0';
   }
 
   @override
@@ -937,11 +937,11 @@ class AppLocalizationsAr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count طريقة',
-      many: '$count طريقة',
-      few: '$count طرق',
-      two: 'طريقتان',
-      one: 'طريقة واحدة',
+      other: '$count شخص',
+      many: '$count شخصًا',
+      few: '$count أشخاص',
+      two: 'شخصان',
+      one: 'شخص واحد',
     );
     return '$scope · $_temp0';
   }
@@ -964,13 +964,13 @@ class AppLocalizationsAr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count طريقة',
-      many: '$count طريقة',
-      few: '$count طرق',
-      two: 'طريقتين',
-      one: 'طريقة واحدة',
+      other: '$count شخص',
+      many: '$count شخصًا',
+      few: '$count أشخاص',
+      two: 'شخصين',
+      one: 'شخص واحد',
     );
-    return 'قسّم بالتساوي على $_temp0.';
+    return 'قسّم بالتساوي بين $_temp0.';
   }
 
   @override
@@ -1578,7 +1578,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settleScopeNoteGroup =>
-      'هذا هو الرصيد الكامل للجميع عبر المجموعة بأكملها. تسجيل دفعة هنا لن يوازن دفتر كل فعالية على حدة — وهذا متوقع.';
+      'هذا هو الرصيد الكامل للجميع عبر المجموعة بأكملها. تسجيل دفعة هنا يوزّعها على دفتر كل فعالية قدر الإمكان — وما تبقى منها يُسجَّل على مستوى المجموعة.';
 
   @override
   String get settleUpPaymentHistory => 'سجل الدفعات';
@@ -2762,7 +2762,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupJoinHintBody =>
-      'الانضمام فوري — لا حاجة لموافقة إذا كان الرمز صحيحًا.';
+      'الانضمام فوري — الموافقة مطلوبة فقط عند المطالبة بمكان عضو موجود مسبقًا.';
 
   @override
   String get groupJoinMoodTitle => 'لديك دعوة؟';
