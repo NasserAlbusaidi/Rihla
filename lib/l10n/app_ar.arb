@@ -976,6 +976,8 @@
   "splashErrorTitle": "حدث خطأ ما",
   "splashErrorBody": "تعذّر تشغيل التطبيق.",
   "splashRetry": "حاول مرة أخرى",
+  "splashOfflineTitle": "لا يوجد اتصال",
+  "splashOfflineBody": "يحتاج رحلة إلى اتصال بالإنترنت عند تشغيله لأول مرة. اتصل بالإنترنت وحاول مرة أخرى.",
   "notificationRationaleTitle": "ابقَ على اطّلاع",
   "notificationRationaleBody": "نُنبّهك عندما يضيف أحدهم مصروفًا أو يسوّي حسابًا.",
   "notificationRationaleNotNow": "ليس الآن",
