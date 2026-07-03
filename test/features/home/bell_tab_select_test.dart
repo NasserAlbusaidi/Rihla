@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -31,6 +32,11 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 /// converts identically. `/activity` itself stays registered for deep links
 /// (pinned separately by `test/unit/app_router_test.dart`) — its stub route
 /// here exists only so a regression that still pushes it is visible.
+///
+/// #840 PR-4: the bell also carries its own unread badge
+/// (`HomeKeys.bellUnreadBadge` — never `activityUnreadBadge`, which the
+/// NavigationBar destination already owns) and its glyph is `Iconsax.activity`
+/// (matching the History tab's own inactive icon), not `Iconsax.notification`.
 
 Group _makeGroup(String id, String name) => Group(
   id: id,
@@ -198,9 +204,23 @@ void main() {
         find.byKey(HomeKeys.activityUnreadBadge),
       );
       expect(badge.isLabelVisible, isTrue);
+      final bellBadge = tester.widget<Badge>(
+        find.byKey(HomeKeys.bellUnreadBadge),
+      );
+      expect(bellBadge.isLabelVisible, isTrue);
 
       await tester.tap(find.byKey(HomeKeys.activityBell));
       await tester.pumpAndSettle();
+
+      // #840 PR-4: the bell lives on the Groups tab, which AnimatedOpacity/
+      // IgnorePointer keeps MOUNTED (just invisible) while Activity is
+      // selected — so its own badge is readable immediately, no back-to-
+      // Groups dance needed (unlike the NavigationBar badge below, which the
+      // selectedIcon swap removes from the tree entirely).
+      final bellCleared = tester.widget<Badge>(
+        find.byKey(HomeKeys.bellUnreadBadge),
+      );
+      expect(bellCleared.isLabelVisible, isFalse);
 
       // While Activity is selected, NavigationBar renders selectedIcon (no
       // Badge) — switch back to Groups before reading the badge, mirroring
@@ -212,6 +232,40 @@ void main() {
         find.byKey(HomeKeys.activityUnreadBadge),
       );
       expect(cleared.isLabelVisible, isFalse);
+    });
+
+    testWidgets('bell badge hidden with an empty activity feed', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildTestApp(prefs, _baseOverrides()));
+      await tester.pumpAndSettle();
+
+      final bellBadge = tester.widget<Badge>(
+        find.byKey(HomeKeys.bellUnreadBadge),
+      );
+      expect(bellBadge.isLabelVisible, isFalse);
+    });
+
+    testWidgets('bell renders the activity glyph, not the notification bell', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildTestApp(prefs, _baseOverrides()));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(HomeKeys.activityBell),
+          matching: find.byIcon(Iconsax.activity),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(HomeKeys.activityBell),
+          matching: find.byIcon(Iconsax.notification),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('journeys View-activity action selects the tab', (
