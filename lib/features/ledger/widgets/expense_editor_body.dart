@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
+import 'package:flutter/foundation.dart' show mapEquals, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -191,6 +194,40 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
   bool _isSubmitting = false;
 
+  // --- Discard guard (#818 Wave 3.2) -------------------------------------
+  // Snapshot of the form at open. `_isDirty` compares the CURRENT working
+  // fields against these, frozen once in initState — see the class doc below
+  // each field for why re-deriving from widget.initial/providers would be
+  // wrong (a mid-session settings change or a remote open-edit swap must not
+  // retroactively change what counts as "the user's own edits").
+  late final String _pristineAmount;
+  late final String _pristineNote;
+  late final ExpenseScope _pristineScope;
+  late final String? _pristineCategoryId;
+  late final String? _pristinePayerId;
+  late final Set<String> _pristineCustomSplit;
+  late final SplitMode _pristineSplitMode;
+  late final Map<String, Decimal>? _pristineSplitDistribution;
+  late final SplitExplanation? _pristineSplitExplanation;
+
+  /// True once the working form state has diverged from the pristine
+  /// baseline captured at open. Drives `PopScope.canPop` and the X button.
+  /// Currency dirtiness is `_currencyManuallyPicked` (add-mode only) rather
+  /// than a value compare — the #382 PR-6 async smart default re-seeds
+  /// [_selectedCurrency] via [didUpdateWidget] without user action, and that
+  /// must never false-dirty a pristine screen.
+  bool get _isDirty =>
+      _amount != _pristineAmount ||
+      _noteController.text != _pristineNote ||
+      _scope != _pristineScope ||
+      _selectedCategoryId != _pristineCategoryId ||
+      _selectedPayerId != _pristinePayerId ||
+      !setEquals(_customSplitParticipants, _pristineCustomSplit) ||
+      _splitMode != _pristineSplitMode ||
+      !mapEquals(_splitDistribution, _pristineSplitDistribution) ||
+      !identical(_splitExplanation, _pristineSplitExplanation) ||
+      (!_isEdit && _currencyManuallyPicked);
+
   /// #627 follow-up: the disambiguation name map is event-derived and shared by
   /// every in-build consumer (`_PaidByCard`, `_ExpenseProvenanceByline`,
   /// `_SplitPreviewCard`). The parent `setState`s `_amount` on every keystroke,
@@ -242,7 +279,32 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       _splitExplanation = null;
     }
     _amountFocusNode.addListener(_selectDefaultZeroOnFocus);
+    // #818 Wave 3.2: the note field's own setState (_DescriptionFieldState,
+    // for its inline validation) is local to that child — the parent's
+    // canPop must be told about note-only edits too, or a stale `true`
+    // survives a system-back check (amount already rebuilds the parent via
+    // its onChanged setState).
+    _noteController.addListener(_onNoteChanged);
+
+    // Pristine baseline — captured AFTER both mode branches above so it's an
+    // exact snapshot of what was just assigned. The Set/Map are defensive
+    // copies (Gate r1 [P2]): every current mutation is replace-only, but a
+    // shared reference would let a future in-place mutation silently mutate
+    // the baseline too, making the dirty predicate read clean forever.
+    _pristineAmount = _amount;
+    _pristineNote = _noteController.text;
+    _pristineScope = _scope;
+    _pristineCategoryId = _selectedCategoryId;
+    _pristinePayerId = _selectedPayerId;
+    _pristineCustomSplit = Set.of(_customSplitParticipants);
+    _pristineSplitMode = _splitMode;
+    _pristineSplitDistribution = _splitDistribution == null
+        ? null
+        : Map.of(_splitDistribution!);
+    _pristineSplitExplanation = _splitExplanation;
   }
+
+  void _onNoteChanged() => setState(() {});
 
   @override
   void didUpdateWidget(covariant ExpenseEditorBody oldWidget) {
@@ -262,6 +324,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   void dispose() {
     _amountFocusNode.removeListener(_selectDefaultZeroOnFocus);
     _amountFocusNode.dispose();
+    _noteController.removeListener(_onNoteChanged);
     _noteController.dispose();
     _amountController.dispose();
     super.dispose();
@@ -439,6 +502,60 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  /// #818 Wave 3.2: shown when a dirty editor is about to be dismissed (X or
+  /// system back — see [_handleClose] and the `PopScope` in [build]). Mirrors
+  /// [_confirmDelete]'s house idiom but with no icon row (discarding a draft
+  /// is lighter than deleting a persisted record) and the destructive action
+  /// labeled "Discard" rather than "Delete".
+  Future<void> _confirmDiscard() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+        ),
+        title: Text(
+          _isEdit
+              ? context.l10n.editorDiscardEditTitle
+              : context.l10n.editorDiscardAddTitle,
+        ),
+        content: Text(context.l10n.editorDiscardBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.editorDiscardKeepEditing),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              context.l10n.editorDiscardConfirm,
+              style: TextStyle(color: context.colors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      // Imperative pop — bypasses `PopScope.canPop` by design (verified
+      // against go_router 13.2.5's `delegate.dart`, which calls
+      // `NavigatorState.pop` directly, never `maybePop`).
+      context.pop();
+    }
+  }
+
+  /// #818 Wave 3.2: single chokepoint for both dismissal paths (X tap; system
+  /// back routes through `PopScope.onPopInvokedWithResult` instead, which
+  /// calls [_confirmDiscard] directly since a blocked pop never reaches here).
+  void _handleClose() {
+    HapticService.lightClick();
+    if (!_isDirty) {
+      context.pop();
+      return;
+    }
+    unawaited(_confirmDiscard());
   }
 
   void _showSnack(String message) {
@@ -683,162 +800,173 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       )),
     );
 
-    return Scaffold(
-      backgroundColor: context.colors.scaffoldBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _ExpenseTopBar(
-              title: _isEdit
-                  ? context.l10n.editorTitleEditExpense
-                  : context.l10n.editorTitleAddExpense,
-              actionLabel: _isEdit
-                  ? context.l10n.editorActionSave
-                  : context.l10n.editorActionAdd,
-              isLoading: _isSubmitting,
-              onClose: () {
-                HapticService.lightClick();
-                context.pop();
-              },
-              onAction: _submit,
-            ),
-            const OfflineBanner(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: context.spacing.space24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _AmountHero(
-                      controller: _amountController,
-                      focusNode: _amountFocusNode,
-                      amount: _amount,
-                      currency: effectiveCurrency,
-                      onChanged: (value) =>
-                          setState(() => _amount = _sanitizeAmount(value)),
-                      onTap: _queueSelectDefaultZero,
-                    ),
-                    // #382 PR-6: per-expense currency picker (add mode only).
-                    // Edit keeps the stored currency immutable (changing it would
-                    // strand any settlement recorded against the old bucket).
-                    if (!_isEdit)
-                      _CurrencyRow(
-                        key: LedgerKeys.expenseCurrencyField,
+    return PopScope(
+      // #818 Wave 3.2: a pristine screen keeps canPop true so Android
+      // predictive-back preview stays alive; a dirty screen blocks the pop
+      // and routes system-back through the same discard dialog as the X.
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        unawaited(_confirmDiscard());
+      },
+      child: Scaffold(
+        backgroundColor: context.colors.scaffoldBackground,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _ExpenseTopBar(
+                title: _isEdit
+                    ? context.l10n.editorTitleEditExpense
+                    : context.l10n.editorTitleAddExpense,
+                actionLabel: _isEdit
+                    ? context.l10n.editorActionSave
+                    : context.l10n.editorActionAdd,
+                isLoading: _isSubmitting,
+                onClose: _handleClose,
+                onAction: _submit,
+              ),
+              const OfflineBanner(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(bottom: context.spacing.space24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _AmountHero(
+                        controller: _amountController,
+                        focusNode: _amountFocusNode,
+                        amount: _amount,
                         currency: effectiveCurrency,
-                        onTap: _openCurrencySheet,
+                        onChanged: (value) =>
+                            setState(() => _amount = _sanitizeAmount(value)),
+                        onTap: _queueSelectDefaultZero,
                       ),
-                    // #382 PR-6: soft fat-finger warning — non-blocking, reactive.
-                    // Shown only when the picked currency diverges from the
-                    // event's dominant (most-frequent) one; picking the dominant
-                    // makes it vanish. Never in edit mode (currency is immutable).
-                    if (!_isEdit &&
-                        widget.dominantCurrency != null &&
-                        effectiveCurrency != widget.dominantCurrency)
-                      _CurrencyMismatchNotice(
-                        key: LedgerKeys.expenseCurrencyWarning,
-                        selected: effectiveCurrency,
-                        dominant: widget.dominantCurrency!,
-                      ),
-                    _DescriptionField(controller: _noteController),
-                    // #248 PR5: provenance byline — who ADDED / last EDITED this
-                    // expense, distinct from who PAID (the "Paid by" card). Edit
-                    // mode only, and only once the event has resolved (names
-                    // come from its participantNames map).
-                    if (_isEdit && event != null && widget.initial != null)
-                      _ExpenseProvenanceByline(
-                        displayNames: _disambiguatedNames(event),
-                        event: event,
-                        expense: widget.initial!,
-                      ),
-                    _Section(
-                      title: context.l10n.editorCategory,
-                      // #807: category is mandatory at creation (#787) — mark
-                      // it required up front instead of only on blocked submit.
-                      showRequiredMarker: !_isEdit,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_categoryError)
-                            Padding(
-                              padding: EdgeInsetsDirectional.only(
-                                start: context.spacing.space24,
-                                bottom: context.spacing.space8,
-                              ),
-                              child: Text(
-                                context.l10n.editorCategoryRequired,
-                                style: AppTypography.sans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.colors.error,
+                      // #382 PR-6: per-expense currency picker (add mode only).
+                      // Edit keeps the stored currency immutable (changing it would
+                      // strand any settlement recorded against the old bucket).
+                      if (!_isEdit)
+                        _CurrencyRow(
+                          key: LedgerKeys.expenseCurrencyField,
+                          currency: effectiveCurrency,
+                          onTap: _openCurrencySheet,
+                        ),
+                      // #382 PR-6: soft fat-finger warning — non-blocking, reactive.
+                      // Shown only when the picked currency diverges from the
+                      // event's dominant (most-frequent) one; picking the dominant
+                      // makes it vanish. Never in edit mode (currency is immutable).
+                      if (!_isEdit &&
+                          widget.dominantCurrency != null &&
+                          effectiveCurrency != widget.dominantCurrency)
+                        _CurrencyMismatchNotice(
+                          key: LedgerKeys.expenseCurrencyWarning,
+                          selected: effectiveCurrency,
+                          dominant: widget.dominantCurrency!,
+                        ),
+                      _DescriptionField(controller: _noteController),
+                      // #248 PR5: provenance byline — who ADDED / last EDITED this
+                      // expense, distinct from who PAID (the "Paid by" card). Edit
+                      // mode only, and only once the event has resolved (names
+                      // come from its participantNames map).
+                      if (_isEdit && event != null && widget.initial != null)
+                        _ExpenseProvenanceByline(
+                          displayNames: _disambiguatedNames(event),
+                          event: event,
+                          expense: widget.initial!,
+                        ),
+                      _Section(
+                        title: context.l10n.editorCategory,
+                        // #807: category is mandatory at creation (#787) — mark
+                        // it required up front instead of only on blocked submit.
+                        showRequiredMarker: !_isEdit,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_categoryError)
+                              Padding(
+                                padding: EdgeInsetsDirectional.only(
+                                  start: context.spacing.space24,
+                                  bottom: context.spacing.space8,
+                                ),
+                                child: Text(
+                                  context.l10n.editorCategoryRequired,
+                                  style: AppTypography.sans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: context.colors.error,
+                                  ),
                                 ),
                               ),
+                            _CategoryStrip(
+                              categoriesAsync: categoriesAsync,
+                              eventType: event?.type,
+                              selectedCategoryId: _selectedCategoryId,
+                              onCategorySelected: (id) {
+                                HapticService.selection();
+                                setState(() {
+                                  _selectedCategoryId = id;
+                                  _categoryError = false;
+                                });
+                              },
                             ),
-                          _CategoryStrip(
-                            categoriesAsync: categoriesAsync,
-                            eventType: event?.type,
-                            selectedCategoryId: _selectedCategoryId,
-                            onCategorySelected: (id) {
-                              HapticService.selection();
-                              setState(() {
-                                _selectedCategoryId = id;
-                                _categoryError = false;
-                              });
-                            },
+                          ],
+                        ),
+                      ),
+                      if (event != null) ...[
+                        // #485: one Split card — single payer control, plain-
+                        // language scope, inline mode segment, real per-person
+                        // figures (#242). Replaces the former Paid-by / Split-
+                        // between / How sections and the duplicate payer picker.
+                        _Section(
+                          title: context.l10n.editorSplit,
+                          child: SplitCard(
+                            event: event,
+                            displayNames: _disambiguatedNames(event),
+                            amount: Decimal.tryParse(_amount) ?? Decimal.zero,
+                            currency: effectiveCurrency,
+                            scope: _scope,
+                            payerId: _selectedPayerId ?? currentParticipant?.id,
+                            selfId: currentParticipant?.id,
+                            customSplitParticipants: _customSplitParticipants,
+                            splitMode: _splitMode,
+                            splitDistribution: _splitDistribution,
+                            splitExplanation: _splitExplanation,
+                            onChangePayer: () => _openPayerSheet(event),
+                            onScopeChanged: (scope) => _handleScopeChange(
+                              scope,
+                              currentParticipant?.id,
+                            ),
+                            onCustomSplitChanged: _handleCustomSplitChange,
+                            onPickMode: (mode) => _handlePickMode(event, mode),
+                            // split-clarity: Itemized opens its editor directly,
+                            // instead of the old "tap Exact → find the 5th chip".
+                            onPickItemized: () =>
+                                _openSplitModeSheet(event, forceItemized: true),
                           ),
-                        ],
-                      ),
-                    ),
-                    if (event != null) ...[
-                      // #485: one Split card — single payer control, plain-
-                      // language scope, inline mode segment, real per-person
-                      // figures (#242). Replaces the former Paid-by / Split-
-                      // between / How sections and the duplicate payer picker.
-                      _Section(
-                        title: context.l10n.editorSplit,
-                        child: SplitCard(
-                          event: event,
-                          displayNames: _disambiguatedNames(event),
-                          amount: Decimal.tryParse(_amount) ?? Decimal.zero,
-                          currency: effectiveCurrency,
-                          scope: _scope,
-                          payerId: _selectedPayerId ?? currentParticipant?.id,
-                          selfId: currentParticipant?.id,
-                          customSplitParticipants: _customSplitParticipants,
-                          splitMode: _splitMode,
-                          splitDistribution: _splitDistribution,
-                          splitExplanation: _splitExplanation,
-                          onChangePayer: () => _openPayerSheet(event),
-                          onScopeChanged: (scope) =>
-                              _handleScopeChange(scope, currentParticipant?.id),
-                          onCustomSplitChanged: _handleCustomSplitChange,
-                          onPickMode: (mode) => _handlePickMode(event, mode),
-                          // split-clarity: Itemized opens its editor directly,
-                          // instead of the old "tap Exact → find the 5th chip".
-                          onPickItemized: () =>
-                              _openSplitModeSheet(event, forceItemized: true),
                         ),
-                      ),
-                      _Section(
-                        title: context.l10n.editorWhere,
-                        child: _WhereCard(event: event),
-                      ),
-                    ] else
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: context.spacing.space24,
+                        _Section(
+                          title: context.l10n.editorWhere,
+                          child: _WhereCard(event: event),
                         ),
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                    if (_isEdit && widget.onDelete != null)
-                      _DeleteCard(
-                        enabled: !_isSubmitting,
-                        onDelete: _confirmDelete,
-                      ),
-                  ],
+                      ] else
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: context.spacing.space24,
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      if (_isEdit && widget.onDelete != null)
+                        _DeleteCard(
+                          enabled: !_isSubmitting,
+                          onDelete: _confirmDelete,
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1416,9 +1544,7 @@ class _CategoryStrip extends StatelessWidget {
         return SizedBox(
           height: 42,
           child: ListView.separated(
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacing.space24,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
             scrollDirection: Axis.horizontal,
             itemCount: sorted.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),

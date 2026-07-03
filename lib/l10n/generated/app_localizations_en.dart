@@ -972,6 +972,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Removes for everyone in this event.';
 
   @override
+  String get editorDiscardAddTitle => 'Discard this expense?';
+
+  @override
+  String get editorDiscardEditTitle => 'Discard your changes?';
+
+  @override
+  String get editorDiscardBody => 'You\'ll lose what you\'ve entered.';
+
+  @override
+  String get editorDiscardKeepEditing => 'Keep editing';
+
+  @override
+  String get editorDiscardConfirm => 'Discard';
+
+  @override
   String get editorCustomiseSplit => 'Customise split';
 
   @override
