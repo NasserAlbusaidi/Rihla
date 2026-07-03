@@ -12,13 +12,14 @@ enum SettleScope { event, group }
 /// Persistent, non-dismissible scope note pinned under the settle-up headline
 /// (#717).
 ///
-/// A `scope:'group'` settlement clears someone's *whole-group* net across every
-/// event, but each event's own ledger keeps showing the full owe (the per-event
-/// drill-down is `participantIds`-only by design). Nothing on either settle
-/// surface said so, so users couldn't tell what a recorded payment actually
-/// covered — settle the group, then the single-event ledger still reads "you
-/// owe". This note names that up front. Display-only — no balance math, no
-/// rules, no schema.
+/// Since #752, a `scope:'group'` settlement DECOMPOSES into per-event
+/// settlement writes wherever the payer/recipient pair shares attribution on
+/// an event (`_recordDecomposedSettlement`), plus one residual group-level
+/// settlement for whatever can't be attributed to a specific event; only a
+/// departed-party/zero-attribution transfer still falls back to a single
+/// group-level write. Nothing on either settle surface said what a recorded
+/// payment actually covers, so this note names it up front. Display-only —
+/// no balance math, no rules, no schema.
 ///
 /// Unlike [CurrencyBucketsExplainer] it never burns a seen-flag: scope is
 /// context that matters on every visit, not a one-time lesson, so it stays

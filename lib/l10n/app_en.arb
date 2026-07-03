@@ -1238,9 +1238,9 @@
       }
     }
   },
-  "settleScopeNoteGroup": "This is everyone's complete balance across the whole group. Recording a payment here won't even out each event's own ledger — that's expected.",
+  "settleScopeNoteGroup": "This is everyone's complete balance across the whole group. Recording a payment here spreads it over each event's ledger where it can — anything left over is tracked at group level.",
   "@settleScopeNoteGroup": {
-    "description": "Persistent scope note (#717) on the group-scoped settle-up screen. Clarifies that this is the complete whole-group balance and that recording a payment will not change individual event ledgers (the per-event drill-down is participants-only by design)."
+    "description": "Persistent scope note (#717) on the group-scoped settle-up screen. Clarifies that this is the complete whole-group balance; since #752 a recorded payment decomposes into per-event settlement writes where it can attribute to a specific event, with any unattributable remainder tracked as a group-level settlement."
   },
   "settleUpPaymentHistory": "Payment history",
   "settleUpUnknown": "Unknown",
@@ -1967,7 +1967,7 @@
   "groupInviteCode": "Invite code",
   "groupInviteCodeHelper": "Ask a group member for their 6-character code",
   "groupJoinHintTitle": "You'll see balances right away.",
-  "groupJoinHintBody": "Joining is instant — no approval needed once the code matches.",
+  "groupJoinHintBody": "Joining is instant — approval is only needed if you're claiming an existing member's spot.",
   "groupJoinMoodTitle": "Got an invite?",
   "groupJoinMoodBody": "Enter the 6-character code a friend gave you. We will drop you straight into the group.",
   "groupJoinInvalidCode": "That code doesn't match any group. Check the code and try again.",
