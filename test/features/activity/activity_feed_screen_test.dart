@@ -416,4 +416,48 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('day card is flat + hairline, not raised (#866)', (
+    tester,
+  ) async {
+    // Raised = the app's actionable-surface cue (#807 flat-vs-raised split),
+    // but these rows are inert — their content affordance is the inline
+    // ExpenseAuditDetail, not a tap target. The day card must carry no
+    // shadow and a hairline border instead.
+    final db = FakeFirebaseFirestore();
+    await seed(db, 2);
+    await tester.pumpWidget(
+      buildRoute([
+        activityServiceProvider.overrideWithValue(
+          ActivityService.withFirestore(db),
+        ),
+      ]),
+    );
+    await tester.pump(const Duration(seconds: 1));
+
+    final dayPadding = find.byWidgetPredicate(
+      (w) =>
+          w.key is ValueKey<String> &&
+          (w.key as ValueKey<String>).value.startsWith('activity-day-'),
+    );
+    expect(dayPadding, findsOneWidget);
+    // The card is the only rounded-decoration Container in the section (the
+    // header hairline divider Container has no borderRadius).
+    final card = tester.widget<Container>(
+      find
+          .descendant(
+            of: dayPadding,
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is Container &&
+                  w.decoration is BoxDecoration &&
+                  (w.decoration as BoxDecoration).borderRadius != null,
+            ),
+          )
+          .first,
+    );
+    final deco = card.decoration as BoxDecoration;
+    expect(deco.boxShadow, isNull);
+    expect(deco.border, isNotNull);
+  });
 }

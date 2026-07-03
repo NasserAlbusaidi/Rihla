@@ -306,10 +306,16 @@ class _DaySection extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Container(
+          // #866: flat card + hairline, not raised — these rows are inert
+          // (their content affordance is the inline ExpenseAuditDetail, not a
+          // tap target); the raised treatment is the app's actionable-surface
+          // cue (#807, docs/DESIGN.md flat-vs-raised split). #852 gave the
+          // GroupActivityLog surfaces real per-row targets instead — this
+          // feed's ActivityLog model has none.
           decoration: BoxDecoration(
             color: colors.cardSurface,
             borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-            boxShadow: context.shadows.raised,
+            border: Border.all(color: colors.rule2),
           ),
           padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
           child: Column(

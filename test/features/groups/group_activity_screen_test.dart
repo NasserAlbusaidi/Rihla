@@ -166,6 +166,43 @@ Widget _buildActivityRoute({
             builder: (context, state) =>
                 GroupActivityScreen(groupId: state.pathParameters['gid']!),
           ),
+          // #852: stub target routes for per-type row deep-links, mirroring
+          // the #840 harness in cross_group_activity_screen_test.dart.
+          GoRoute(
+            path: 'settle-up',
+            builder: (context, state) => Scaffold(
+              body: Text('GroupSettleUp:${state.pathParameters['gid']}'),
+            ),
+          ),
+          GoRoute(
+            path: 'event/:eid',
+            builder: (context, state) => Scaffold(
+              body: Text(
+                'EventHub:${state.pathParameters['gid']}/'
+                '${state.pathParameters['eid']}',
+              ),
+            ),
+            routes: [
+              GoRoute(
+                path: 'ledger',
+                builder: (context, state) => Scaffold(
+                  body: Text(
+                    'EventLedger:${state.pathParameters['gid']}/'
+                    '${state.pathParameters['eid']}',
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'activity',
+                builder: (context, state) => Scaffold(
+                  body: Text(
+                    'EventActivity:${state.pathParameters['gid']}/'
+                    '${state.pathParameters['eid']}',
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -765,5 +802,140 @@ void main() {
       expect(_richTextContaining('added an expense in Beach Trip'), findsOneWidget);
       expect(_richTextContaining('recorded a settlement'), findsNothing);
     });
+  });
+
+  // #852: rows in the raised day card deep-link per type via the shared
+  // activityRowTarget table; targets resolving to this screen's own group
+  // root stay inert (pushing a duplicate of the parent is the same false
+  // affordance this issue removes).
+  group('row deep-links (#852)', () {
+    GroupActivityLog makeLog(
+      String id,
+      String type, {
+      Map<String, dynamic> metadata = const {},
+    }) => GroupActivityLog(
+      id: id,
+      type: type,
+      actorId: 'uid-alice',
+      actorName: 'Alice',
+      description: 'does something',
+      metadata: metadata,
+      timestamp: _atMidday(0),
+    );
+
+    Future<void> pumpSeeded(
+      WidgetTester tester,
+      GroupActivityLog log,
+    ) async {
+      final fakeDb = FakeFirebaseFirestore();
+      await _seedActivities(fakeDb, 'grp-1', [log]);
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        _buildActivityRoute(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('expense_added routes to the event ledger', (tester) async {
+      await pumpSeeded(
+        tester,
+        makeLog(
+          'e1',
+          'expense_added',
+          metadata: const {
+            'eventId': 'ev1',
+            'eventName': 'Beach Trip',
+            'amountFils': 500,
+            'currency': 'OMR',
+          },
+        ),
+      );
+
+      await tester.tap(_richTextContaining('added an expense in Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EventLedger:grp-1/ev1'), findsOneWidget);
+    });
+
+    testWidgets('group_settlement routes to group settle-up', (tester) async {
+      await pumpSeeded(
+        tester,
+        makeLog(
+          's1',
+          'group_settlement',
+          metadata: const {'amount': '12.5'},
+        ),
+      );
+
+      await tester.tap(find.byIcon(Iconsax.wallet_3));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupSettleUp:grp-1'), findsOneWidget);
+    });
+
+    testWidgets('event_created routes to the event hub', (tester) async {
+      await pumpSeeded(
+        tester,
+        makeLog(
+          'ev-log',
+          'event_created',
+          metadata: const {'eventId': 'ev1', 'eventName': 'Beach Trip'},
+        ),
+      );
+
+      await tester.tap(_richTextContaining('created Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EventHub:grp-1/ev1'), findsOneWidget);
+      expect(find.text('GroupDetail:grp-1'), findsNothing);
+    });
+
+    testWidgets(
+      'member_joined row is inert — self-target never pushes a duplicate '
+      'group detail',
+      (tester) async {
+        await pumpSeeded(tester, makeLog('m1', 'member_joined'));
+
+        await tester.tap(
+          _richTextContaining('joined the group'),
+          warnIfMissed: false,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.activityScreen), findsOneWidget);
+        expect(find.text('GroupDetail:grp-1'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'expense_added with a forged eventId is inert and never an ErrorWidget',
+      (tester) async {
+        await pumpSeeded(
+          tester,
+          makeLog(
+            'e-forged',
+            'expense_added',
+            metadata: const {
+              'eventId': 42,
+              'eventName': 'Beach Trip',
+              'amountFils': 500,
+              'currency': 'OMR',
+            },
+          ),
+        );
+
+        await tester.tap(
+          _richTextContaining('added an expense in Beach Trip'),
+          warnIfMissed: false,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ErrorWidget), findsNothing);
+        expect(find.byKey(GroupKeys.activityScreen), findsOneWidget);
+        expect(find.text('GroupDetail:grp-1'), findsNothing);
+        expect(find.text('EventLedger:grp-1/42'), findsNothing);
+      },
+    );
   });
 }
