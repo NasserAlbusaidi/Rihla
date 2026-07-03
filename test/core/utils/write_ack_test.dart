@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/services/late_write_notice.dart';
 import 'package:safar/core/utils/write_ack.dart';
 
 // #412: awaitServerAck races a Firestore write's server-ack future against a
@@ -86,6 +87,73 @@ void main() {
       completer.completeError(StateError('boom'));
       async.flushMicrotasks();
       expect(late, isA<StateError>());
+    });
+  });
+
+  // Scorecard critical 1: a terminal replay rejection must reach the global
+  // user-visible notice, not just debugPrint + Sentry.
+  group('late-write notice', () {
+    final recorded = <Object>[];
+
+    setUp(recorded.clear);
+    tearDown(() {
+      lateWriteNoticePresenter = defaultLateWriteNoticePresenter;
+    });
+
+    test('a rejection after the queued return reaches the presenter once', () {
+      fakeAsync((async) {
+        lateWriteNoticePresenter = recorded.add;
+        final completer = Completer<void>();
+        awaitServerAck(completer.future);
+        async.elapse(const Duration(seconds: 6));
+        completer.completeError(StateError('rejected on replay'));
+        async.flushMicrotasks();
+        expect(recorded, hasLength(1));
+        expect(recorded.single, isA<StateError>());
+      });
+    });
+
+    test('a skipWait rejection also reaches the presenter', () {
+      fakeAsync((async) {
+        lateWriteNoticePresenter = recorded.add;
+        final completer = Completer<void>();
+        awaitServerAck(completer.future, skipWait: true);
+        async.flushMicrotasks();
+        completer.completeError(StateError('rejected on replay'));
+        async.flushMicrotasks();
+        expect(recorded, hasLength(1));
+      });
+    });
+
+    test('an in-window error propagates to the caller and skips the notice',
+        () {
+      fakeAsync((async) {
+        lateWriteNoticePresenter = recorded.add;
+        final completer = Completer<void>();
+        awaitServerAck(completer.future).catchError((Object e) {
+          return WriteAck.queued;
+        });
+        completer.completeError(StateError('online rejection'));
+        async.flushMicrotasks();
+        expect(recorded, isEmpty);
+      });
+    });
+
+    test('a throwing presenter breaks neither the observer nor onLateError',
+        () {
+      fakeAsync((async) {
+        var onLateCalled = false;
+        lateWriteNoticePresenter = (_) => throw StateError('presenter bug');
+        final completer = Completer<void>();
+        awaitServerAck(
+          completer.future,
+          onLateError: (_, _) => onLateCalled = true,
+        );
+        async.elapse(const Duration(seconds: 6));
+        completer.completeError(StateError('rejected'));
+        async.flushMicrotasks();
+        expect(onLateCalled, isTrue);
+      });
     });
   });
 }

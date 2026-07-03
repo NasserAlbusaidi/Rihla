@@ -934,6 +934,7 @@
   "errorPermissionDenied": "ليس لديك إذن للقيام بذلك.",
   "errorTooManyRequests": "محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.",
   "errorUnexpected": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+  "lateWriteFailedNotice": "تعذّر حفظ تغيير حديث: {cause}",
   "authErrorEmailAlreadyLinked": "هذا البريد مرتبط بالفعل بحساب Rihla. استعد ذلك الحساب بدلًا من ذلك.",
   "authErrorInvalidEmail": "لا يبدو هذا بريدًا إلكترونيًا صالحًا.",
   "authErrorEmailsDontMatch": "البريدان غير متطابقين.",

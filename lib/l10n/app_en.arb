@@ -2266,6 +2266,13 @@
   "@errorUnexpected": {
     "description": "Friendly cause phrase (#356) for any unclassified error; the raw detail is sent to Sentry, not shown."
   },
+  "lateWriteFailedNotice": "A recent change couldn't be saved: {cause}",
+  "@lateWriteFailedNotice": {
+    "description": "Global SnackBar shown when a queued-offline write is rejected by the server on replay after reconnect — the optimistic local change has been rolled back. {cause} is a friendly cause phrase (errorNetwork / errorPermissionDenied / ...).",
+    "placeholders": {
+      "cause": {}
+    }
+  },
   "authErrorEmailAlreadyLinked": "This email is already linked to a Rihla account. Restore from that account instead.",
   "@authErrorEmailAlreadyLinked": {
     "description": "Shown on the Link-email screen when the email is already linked to another Rihla account."
