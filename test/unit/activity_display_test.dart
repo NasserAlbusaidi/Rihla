@@ -46,8 +46,8 @@ void main() {
       final ar = AppLocalizationsAr();
       final log = _eventLog(category: 'MONEY', eventType: 'CREATE');
 
-      expect(localizedEventActivityText(en, log), 'added a money entry');
-      expect(localizedEventActivityText(ar, log), 'أضاف قيدًا ماليًا');
+      expect(localizedEventActivityText(en, log), 'added an expense');
+      expect(localizedEventActivityText(ar, log), 'أضاف مصروفًا');
     });
 
     test('localizes every known event activity branch', () {
