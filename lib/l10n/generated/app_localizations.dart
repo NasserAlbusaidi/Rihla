@@ -332,11 +332,11 @@ abstract class AppLocalizations {
   /// **'Your name'**
   String get editNameFieldHint;
 
-  /// All-caps caption above the initials chip selector (English typographic flourish; Arabic renders natural-case).
+  /// Caption beside the static RAvatar preview in EditNameBottomSheet, replacing the removed fake initials-style selector (#818 Wave 4).
   ///
   /// In en, this message translates to:
-  /// **'INITIALS SHOWN WHEN NO PHOTO'**
-  String get editNameInitialsCaption;
+  /// **'How you\'ll appear in groups'**
+  String get editNamePreviewCaption;
 
   /// Title of the LegalLinksSheet bottom sheet.
   ///

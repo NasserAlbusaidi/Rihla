@@ -130,7 +130,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editNameFieldHint => 'اسمك';
 
   @override
-  String get editNameInitialsCaption => 'الأحرف الأولى تظهر عند غياب الصورة';
+  String get editNamePreviewCaption => 'كما سيراك أصدقاؤك في المجموعات';
 
   @override
   String get legalSheetTitle => 'الشروط القانونية';

@@ -49,7 +49,7 @@
   "editNameHelper": "هذا ما سيراه أصدقاؤك في المجموعات.",
   "editNameFieldLabel": "اسم العرض",
   "editNameFieldHint": "اسمك",
-  "editNameInitialsCaption": "الأحرف الأولى تظهر عند غياب الصورة",
+  "editNamePreviewCaption": "كما سيراك أصدقاؤك في المجموعات",
 
   "legalSheetTitle": "الشروط القانونية",
   "legalTermsOfService": "شروط الخدمة",
