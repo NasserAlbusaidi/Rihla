@@ -18,6 +18,7 @@ import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/wordmark_logo.dart';
+import '../../activity/utils/activity_nav.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -235,8 +236,14 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                             activity: entry.log,
                             groupName: entry.groupName,
                             groupId: entry.groupId,
-                            onTap: () =>
-                                context.push('/group/${entry.groupId}'),
+                            // #852: per-type deep-link, same table as the
+                            // History tab (activity_nav.dart).
+                            onTap: () => context.push(
+                              activityRowTarget(
+                                groupId: entry.groupId,
+                                log: entry.log,
+                              ),
+                            ),
                           );
                         }).toList(),
                       ),
