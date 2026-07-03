@@ -36,7 +36,7 @@ void main() {
       expect(settings.deviceName, equals(''));
       expect(settings.currencyCode, equals('OMR'));
       expect(settings.languageCode, equals('en'));
-      expect(settings.themeMode, equals(AppThemeMode.system));
+      expect(settings.themeMode, equals(AppThemeMode.light));
       expect(settings.pushNotificationsEnabled, isFalse);
     });
 

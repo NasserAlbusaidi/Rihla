@@ -47,10 +47,10 @@ void main() {
       await svc.saveThemeMode(AppThemeMode.light);
       expect(svc.loadSettings().themeMode, AppThemeMode.light);
     });
-    test('default when unset is system', () async {
+    test('default when unset is light', () async {
       final prefs = await SharedPreferences.getInstance();
       final svc = SettingsService(prefs);
-      expect(svc.loadSettings().themeMode, AppThemeMode.system);
+      expect(svc.loadSettings().themeMode, AppThemeMode.light);
     });
   });
 }
