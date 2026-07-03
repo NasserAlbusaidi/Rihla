@@ -6,6 +6,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/widgets/expense_success_dialog.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/directional_icon.dart';
 
 void main() {
   Expense makeExpense() {
@@ -48,5 +49,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+
+    // #840: the category row's dead disclosure chevron was removed (no
+    // InkWell anywhere in the card ever wired it to a tap) — it must not
+    // reappear.
+    expect(find.byType(DirectionalIcon), findsNothing);
   });
 }
