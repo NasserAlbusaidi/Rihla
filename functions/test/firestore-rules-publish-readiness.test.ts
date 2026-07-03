@@ -2678,6 +2678,58 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(member.doc('groups/g1/events/e1/activity_logs/aRead').get());
   });
 
+  // #808 PR1 — group activity `type` is now ALLOW-LISTED for client creates.
+  // Before this, `type is string` accepted anything: a member could forge
+  // `expense_added` (server-only fan-in vocabulary) or `member_left`
+  // (written only by the leaveGroup/removeMember callables via Admin SDK).
+  function validGroupActivity(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id: 'ga1',
+      type: 'event_created',
+      actorId: 'member',
+      actorName: 'Member',
+      description: 'created an event',
+      metadata: {},
+      timestamp: new Date().toISOString(),
+      ...overrides,
+    };
+  }
+
+  test('#808 each client-written group activity type is accepted (event_created/event_deleted/group_settlement/member_joined)', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    for (const type of ['event_created', 'event_deleted', 'group_settlement', 'member_joined']) {
+      const id = `ga-ok-${type}`;
+      await assertSucceeds(
+        member.doc(`groups/g1/activity/${id}`).set(validGroupActivity({ id, type })),
+      );
+    }
+  });
+
+  test('#808 a client cannot forge server-only or unknown group activity types', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    for (const type of ['expense_added', 'expense_edited', 'expense_deleted', 'member_left', 'totally_made_up']) {
+      const id = `ga-forge-${type}`;
+      await assertFails(
+        member.doc(`groups/g1/activity/${id}`).set(validGroupActivity({ id, type })),
+      );
+    }
+  });
+
+  test('#808 the server (Admin SDK / rules-disabled) CAN write expense_* and member_left group entries', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await assertSucceeds(ctx.firestore().doc('groups/g1/activity/ga-srv').set(
+        validGroupActivity({
+          id: 'ga-srv',
+          type: 'expense_added',
+          actorId: 'owner',
+          actorName: 'Owner',
+          description: 'added Dinner (10.500 OMR)',
+          metadata: { expenseId: 'exp1', eventId: 'e1', eventName: 'Trip', amountFils: 10500, currency: 'OMR' },
+        }),
+      ));
+    });
+  });
+
   // #366 — balance aggregate: server-only write, member read.
   function validAggregate(): Record<string, unknown> {
     return {

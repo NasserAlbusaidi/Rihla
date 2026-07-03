@@ -185,3 +185,79 @@ describe('expenseAuditLogger', () => {
     expect((await getFirestore().doc(EXP_PATH).get()).exists).toBe(false);
   });
 });
+
+// #808 PR1 — the same audit event also fans into the GROUP activity feed, in
+// the exact GroupActivityLog client shape (group_activity_log_model.dart):
+// {id == doc id, type, actorId, actorName, description non-null, metadata map,
+// timestamp ISO string}. Description is a VERB PHRASE without the actor name
+// (leaveGroup.ts parity — the activity row renders actorName separately).
+describe('group activity fan-in (#808 PR1)', () => {
+  const GROUP_ACTIVITY = 'groups/g1/activity';
+  const groupLogs = () => getFirestore().collection(GROUP_ACTIVITY).get();
+
+  test('CREATE also writes one expense_added group entry in GroupActivityLog shape', async () => {
+    await seedMember('owner', 'Owner', 'member-uuid-not-owner');
+    await getFirestore().doc('groups/g1/events/e1').set({ name: 'Muscat trip' });
+    await fire(absent(), snap(expData({ description: 'Dinner' })), 'evt-fanin-1');
+    const group = await groupLogs();
+    expect(group.size).toBe(1);
+    const d = group.docs[0].data();
+    expect(group.docs[0].id).toBe('evt-fanin-1');
+    expect(d).toMatchObject({
+      id: 'evt-fanin-1',
+      type: 'expense_added',
+      actorId: 'owner',
+      actorName: 'Owner',
+      description: 'added Dinner (10.500 OMR)',
+      timestamp: FIRE_TIME,
+      metadata: {
+        expenseId: 'exp1',
+        eventId: 'e1',
+        eventName: 'Muscat trip',
+        amountFils: 10500,
+        currency: 'OMR',
+      },
+    });
+  });
+
+  test('UPDATE → expense_edited; DELETE → expense_deleted (label-bearing verb phrases)', async () => {
+    await getFirestore().doc('groups/g1/events/e1').set({ name: 'Muscat trip' });
+    await fire(snap(expData()), snap(expData({ amountFils: 9000 })), 'evt-fanin-2');
+    await fire(
+      snap(expData({ description: 'Dinner' })),
+      snap(expData({ isDeleted: true, description: 'Dinner' })),
+      'evt-fanin-3',
+    );
+    const group = await groupLogs();
+    const byId = Object.fromEntries(group.docs.map((x) => [x.id, x.data()]));
+    expect(byId['evt-fanin-2'].type).toBe('expense_edited');
+    expect(byId['evt-fanin-2'].description).toBe('edited an expense');
+    expect(byId['evt-fanin-3'].type).toBe('expense_deleted');
+    expect(byId['evt-fanin-3'].description).toBe('deleted Dinner');
+  });
+
+  test('no-op edit and claimRekeyAt re-key write NEITHER entry', async () => {
+    const rekeyAt = Timestamp.fromMillis(1_700_000_000_000);
+    await fire(snap(expData()), snap(expData({ lastEditedBy: 'owner' })), 'evt-fanin-4');
+    await fire(
+      snap(expData()),
+      snap(expData({ payerParticipantId: 'claimer', claimRekeyAt: rekeyAt })),
+      'evt-fanin-5',
+    );
+    expect((await groupLogs()).size).toBe(0);
+    expect((await logs()).size).toBe(0);
+  });
+
+  test('at-least-once retry collapses to one group doc (same event.id)', async () => {
+    await fire(absent(), snap(expData()), 'evt-fanin-6');
+    await fire(absent(), snap(expData()), 'evt-fanin-6');
+    expect((await groupLogs()).size).toBe(1);
+  });
+
+  test('missing event doc → eventName empty string; unresolved actor → actorName null', async () => {
+    await fire(absent(), snap(expData()), 'evt-fanin-7');
+    const d = (await groupLogs()).docs[0].data();
+    expect(d.metadata.eventName).toBe('');
+    expect(d.actorName).toBeNull();
+  });
+});
