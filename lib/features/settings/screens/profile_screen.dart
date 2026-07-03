@@ -46,7 +46,6 @@ import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
 import '../widgets/profile_display_section.dart';
 import '../widgets/profile_support_section.dart';
-import '../widgets/profile_qr_sheet.dart';
 
 /// Profile tab — saffron travel-journal direction.
 ///
@@ -448,16 +447,6 @@ class _IdentityCard extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _IdentityChip(
-                        leadingIcon: Iconsax.scan_barcode,
-                        label: 'QR',
-                        onTap: () => showProfileQrSheet(
-                          context,
-                          displayName: displayName,
-                          handle: handle,
-                        ),
-                      ),
-                      SizedBox(width: context.spacing.space8),
                       _IdentityChip(
                         leadingIcon: Iconsax.copy,
                         label: handle,

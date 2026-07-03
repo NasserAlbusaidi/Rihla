@@ -145,18 +145,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get legalDeleteMyData => 'Delete my data';
 
   @override
-  String get qrSheetTitle => 'My QR';
-
-  @override
-  String get qrSemanticsLabel => 'Profile QR code';
-
-  @override
-  String get qrCopyHandle => 'Copy handle';
-
-  @override
-  String get qrHandleCopied => 'Handle copied';
-
-  @override
   String get profileSectionPreferences => 'PREFERENCES';
 
   @override

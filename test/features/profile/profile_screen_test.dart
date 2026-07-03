@@ -353,6 +353,30 @@ void main() {
 
       expect(find.text('@alice'), findsOneWidget);
     });
+
+    testWidgets(
+      'has no QR chip (#840 — handle has no lookup to scan to)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Alice',
+        });
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            const ProfileScreen(),
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              profileStatsProvider.overrideWith((ref) => _statsData()),
+            ],
+          ),
+        );
+        await _pumpWithAnimations(tester);
+
+        expect(find.text('QR'), findsNothing);
+        expect(find.text('@alice'), findsOneWidget);
+      },
+    );
   });
 
   group('ProfileScreen — InitialsCircle', () {

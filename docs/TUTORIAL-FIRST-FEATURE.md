@@ -417,7 +417,8 @@ Switch back to English when you're done.
 There is no `profile_screen_test.dart` in `test/features/settings/`
 today; create one. Use `pumpRihlaApp` (from `test/helpers/`) as your
 harness — it registers Riverpod overrides and localization delegates.
-See the existing `profile_qr_sheet_test.dart` for the pattern.
+See the existing `test/features/settings/theme_picker_test.dart` for
+the pattern.
 
 Add a new test:
 
