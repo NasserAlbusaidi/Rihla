@@ -1028,7 +1028,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorUnknownParticipant => 'غير معروف';
 
   @override
-  String get editorShadowProfile => 'ملف ظل';
+  String get editorShadowProfile => 'لم ينضم بعد';
 
   @override
   String get editorPaidByLabel => 'دفع بواسطة';
@@ -1438,12 +1438,12 @@ class AppLocalizationsAr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count تحويل،\nالجميع متوازن.',
-      many: '$count تحويلًا،\nالجميع متوازن.',
-      few: '$count تحويلات،\nالجميع متوازن.',
-      two: 'تحويلان،\nالجميع متوازن.',
-      one: 'تحويل واحد،\nالجميع متوازن.',
-      zero: 'لا تحويلات،\nالجميع متوازن.',
+      other: '$count تحويل\nحتى يتوازن الجميع.',
+      many: '$count تحويلًا\nحتى يتوازن الجميع.',
+      few: '$count تحويلات\nحتى يتوازن الجميع.',
+      two: 'تحويلان\nحتى يتوازن الجميع.',
+      one: 'تحويل واحد\nحتى يتوازن الجميع.',
+      zero: 'لا تحويلات\nحتى يتوازن الجميع.',
     );
     return '$_temp0';
   }
@@ -2061,7 +2061,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityFilterAll => 'الكل';
 
   @override
-  String get activityFilterSettles => 'تسويات';
+  String get activityFilterSettles => 'التسويات';
 
   @override
   String get activityFilterSettlements => 'التسويات';
@@ -2131,13 +2131,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityAuditPayerLabel => 'الدافع';
 
   @override
-  String get activityEventMoneyCreated => 'أضاف قيدًا ماليًا';
+  String get activityEventMoneyCreated => 'أضاف مصروفًا';
 
   @override
-  String get activityEventMoneyUpdated => 'حدّث قيدًا ماليًا';
+  String get activityEventMoneyUpdated => 'حدّث مصروفًا';
 
   @override
-  String get activityEventMoneyDeleted => 'حذف قيدًا ماليًا';
+  String get activityEventMoneyDeleted => 'حذف مصروفًا';
 
   @override
   String get activityEventGearCreated => 'أضاف بند معدات';

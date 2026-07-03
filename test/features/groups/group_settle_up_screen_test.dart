@@ -462,7 +462,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Settle Up'), findsOneWidget);
-        // The count lives in the italic headline ("One transfer, …") …
+        // The count lives in the italic headline ("One transfer\nuntil …") …
         expect(find.textContaining('One transfer'), findsOneWidget);
         // … and no longer in a separate summary pill (#158).
         expect(find.text('1 transfer'), findsNothing);
