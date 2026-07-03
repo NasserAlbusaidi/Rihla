@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../shared/widgets/directional_icon.dart';
 import '../utils/localized_category_name.dart';
 import '../models/expense_model.dart';
 
@@ -84,7 +83,9 @@ class ExpenseSuccessDialog extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: context.colors.inputFill,
-                  borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+                  borderRadius: BorderRadius.circular(
+                    context.spacing.radiusCard,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -228,12 +229,6 @@ class _ExpenseSummaryCard extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
-                ),
-                const Spacer(),
-                DirectionalIcon(
-                  Iconsax.arrow_right_3,
-                  size: 16,
-                  color: context.colors.textSecondary,
                 ),
               ],
             ),
