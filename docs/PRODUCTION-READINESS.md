@@ -158,12 +158,24 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-03, `07864871`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-03, `35785be4`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-03 deploy ceremony the `backend-deployed` tag is `07864871`; prod
+    2026-07-03 deploy ceremony the `backend-deployed` tag is `35785be4`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#810 (Refs #808 PR1)** — expense fan-in to the group activity
+    Latest delta: **#814 (#820)** — value-domain floor for client-writable
+    group-activity metadata, **rules-only**. `validGroupActivityCreate` gains
+    `validActivityMetadata(md)`: `amountFils` absent-or-int ≥ 0 (rejects
+    NaN/Infinity/doubles/negatives), `currency` absent-or-`validCurrency`
+    allow-list, legacy `amount` absent-or-string, `eventName`/`memberName`/
+    `memberAction` absent-or-string, `size() <= 16`; ids/unknown keys stay
+    opaque. Single-reference `map.get(key, default)` pattern in the standalone
+    `/activity` create block (no 1000-expr pressure). Client display half
+    shipped in #815/#816; Admin-SDK writers (`expense_*` fan-in, `member_left`
+    callables) bypass rules — unaffected. Functions/indexes had zero content
+    delta vs `07864871`; the 28 functions redeployed in place. Rules suite
+    201/201 at deploy time.
+    Prior delta: **#810 (Refs #808 PR1, deployed 2026-07-03 `07864871`)** — expense fan-in to the group activity
     feed. `expenseAuditLogger` also writes `expense_added`/`expense_edited`/
     `expense_deleted` entries to `groups/{gid}/activity` in the exact
     `GroupActivityLog` client shape (idempotent `.set` on `event.id`, verb-phrase

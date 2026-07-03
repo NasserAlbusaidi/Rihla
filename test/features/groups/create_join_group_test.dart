@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/r_icon_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +25,7 @@ import 'package:safar/features/groups/screens/create_group_screen.dart';
 import 'package:safar/features/groups/screens/group_settings_screen.dart';
 import 'package:safar/features/groups/screens/join_group_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/l10n/generated/app_localizations_en.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
@@ -37,6 +39,20 @@ class _NoopPrompt implements NotificationPrompt {
   @override
   Future<void> maybePrompt() async {}
 }
+
+/// #818: relocated from durable_gate_wiring_test.dart — a bare Mock lets the
+/// gate-removal pins assert `joinGroup` directly without a FakeFirebaseFirestore
+/// round-trip.
+class _MockGroupService extends Mock implements GroupService {}
+
+Group _gateRemovalGroup() => Group(
+  id: 'g1',
+  name: 'Trip',
+  inviteCode: 'ABCDEF',
+  createdBy: 'u1',
+  memberIds: const ['u1'],
+  createdAt: DateTime(2026, 1, 1),
+);
 
 void main() {
   group('CreateGroupScreen', () {
@@ -1055,6 +1071,94 @@ void main() {
         });
       },
     );
+  });
+
+  // ---------------------------------------------------------------------------
+  // JoinGroupScreen — #818 relocated from durable_gate_wiring_test.dart
+  // ---------------------------------------------------------------------------
+  //
+  // These pinned that the JOIN path never consulted the #441 durable-
+  // credential gate (#648 "gate creation, not participation"). #818 removed
+  // the gate from the CREATE path too, so there is no gate left anywhere —
+  // relocated here (not deleted) rather than lost, because the join-failure
+  // test is the ONLY coverage of the groupJoinFailed snackbar.
+
+  group('JoinGroupScreen — gate-removal pins (#818)', () {
+    late _MockGroupService groupService;
+
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      groupService = _MockGroupService();
+    });
+
+    Widget wrapMocked(SharedPreferences sp) {
+      final router = GoRouter(
+        initialLocation: '/join',
+        routes: [
+          GoRoute(path: '/join', builder: (_, _) => const JoinGroupScreen()),
+          GoRoute(
+            path: '/group/:id',
+            builder: (_, _) => const Scaffold(body: Text('group-landing')),
+          ),
+        ],
+      );
+      return ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(sp),
+          groupServiceProvider.overrideWithValue(groupService),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+    }
+
+    Future<void> typeJoin(WidgetTester tester) async {
+      final fields = find.byType(TextField);
+      // Name field (0), invite-code field (1).
+      await tester.enterText(fields.at(0), 'Tester');
+      await tester.pump();
+      await tester.enterText(fields.at(1), 'ABCDEF'); // 6th char auto-submits
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'join proceeds straight to joinGroup — no gate to consult (#648, #818)',
+      (tester) async {
+        when(
+          () => groupService.joinGroup(inviteCode: any(named: 'inviteCode')),
+        ).thenAnswer((_) async => _gateRemovalGroup());
+
+        final sp = await SharedPreferences.getInstance();
+        await tester.pumpWidget(wrapMocked(sp));
+        await tester.pumpAndSettle();
+
+        await typeJoin(tester);
+
+        verify(() => groupService.joinGroup(inviteCode: 'ABCDEF')).called(1);
+        expect(find.text('group-landing'), findsOneWidget);
+      },
+    );
+
+    testWidgets('a join failure surfaces the generic join error', (
+      tester,
+    ) async {
+      when(
+        () => groupService.joinGroup(inviteCode: any(named: 'inviteCode')),
+      ).thenThrow(Exception('boom'));
+
+      final sp = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wrapMocked(sp));
+      await tester.pumpAndSettle();
+
+      await typeJoin(tester);
+
+      expect(find.text(AppLocalizationsEn().groupJoinFailed), findsOneWidget);
+    });
   });
 
   // ---------------------------------------------------------------------------

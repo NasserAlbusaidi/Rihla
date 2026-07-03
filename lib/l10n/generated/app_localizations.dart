@@ -5595,7 +5595,7 @@ abstract class AppLocalizations {
   /// **'Continue with Google'**
   String get durableGateContinueGoogle;
 
-  /// Dismiss action on the gate sheet. Aborts the pending create/join; the gate re-asks on the next attempt.
+  /// Dismiss action on the durable-credential sheet (#285 backup nudge / manual link entry points). Purely dismisses the sheet — no pending create/join is aborted by it (#818 removed the create-time gate).
   ///
   /// In en, this message translates to:
   /// **'Not now'**
@@ -5637,12 +5637,6 @@ abstract class AppLocalizations {
   /// **'Could not link your account. Try again.'**
   String get durableGateError;
 
-  /// Snackbar shown when a create/join is refused because the user is still anonymous (#441) — the defense path when the gate sheet was bypassed, and the mapping for the server-side permission-denied reject.
-  ///
-  /// In en, this message translates to:
-  /// **'Link a Google account to continue.'**
-  String get durableCredentialRequired;
-
   /// Label for the optional #278 chips field on the create-group screen — add placeholder ('shadow') members by name now, or invite them later.
   ///
   /// In en, this message translates to:
@@ -5660,6 +5654,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect to add names'**
   String get createGroupShadowOfflineHint;
+
+  /// #818: shown instead of the offline hint / creator explanation when the current (anonymous) creator has no durable credential — addShadowMember hard-rejects anonymous callers server-side. Reused on the create-screen chips field and the group-settings members section footer.
+  ///
+  /// In en, this message translates to:
+  /// **'Link your account to add people by name — anyone can still join with the invite code.'**
+  String get shadowAddRequiresLink;
 
   /// Snackbar when a seeded placeholder name (#278) collides with an existing member; the group is already created and the other names still proceed.
   ///

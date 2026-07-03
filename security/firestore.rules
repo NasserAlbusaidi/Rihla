@@ -11,12 +11,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // #441: money data must never be born under a discardable anonymous UID.
-    // Gates group + inviteCode creation.
-    function isDurableSignIn() {
-      return request.auth.token.firebase.sign_in_provider != 'anonymous';
-    }
-
     function nullableString(value) {
       return value == null || value is string;
     }
@@ -236,7 +230,6 @@ service cloud.firestore {
       allow get, list: if false;
 
       allow create: if signedIn()
-        && isDurableSignIn()
         && request.resource.data.keys().hasOnly(['groupId', 'createdAt'])
         && request.resource.data.groupId is string
         && request.resource.data.createdAt is timestamp
@@ -295,7 +288,6 @@ service cloud.firestore {
 
       function validGroupCreate() {
         return signedIn()
-          && isDurableSignIn()
           && request.resource.data.keys().hasOnly([
             'id',
             'name',
@@ -991,6 +983,22 @@ service cloud.firestore {
       }
 
       match /activity/{activityId} {
+        // #814 — value-domain floor for client-forgeable metadata (spirit of
+        // #192/#193/#194). Known keys are absent-or-typed via the single-
+        // reference get() pattern (#723); ids and unknown keys stay opaque;
+        // the map is key-count bounded. Server writers (expense_* fan-in,
+        // member_left callables) use the Admin SDK and bypass this.
+        function validActivityMetadata(md) {
+          return md.size() <= 16
+            && md.get('amountFils', 0) is int
+            && md.get('amountFils', 0) >= 0
+            && validCurrency(md.get('currency', 'OMR'))
+            && md.get('amount', '') is string
+            && md.get('eventName', '') is string
+            && md.get('memberName', '') is string
+            && md.get('memberAction', '') is string;
+        }
+
         function validGroupActivityCreate() {
           return isGroupMember(groupId)
             && groupAllowsClientWrites(groupId)
@@ -1020,6 +1028,7 @@ service cloud.firestore {
             && isValidDisplayName(request.resource.data.actorName)
             && request.resource.data.description is string
             && request.resource.data.metadata is map
+            && validActivityMetadata(request.resource.data.metadata)
             && request.resource.data.timestamp is string;
         }
 

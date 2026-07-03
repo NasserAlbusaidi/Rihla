@@ -12,7 +12,6 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/utils/safe_deserialize.dart';
-import '../../auth/services/durable_credential_exception.dart';
 import '../../events/models/event_model.dart';
 import '../models/group_balance_aggregate_model.dart';
 import '../models/group_member_model.dart';
@@ -63,7 +62,6 @@ final groupErrorProvider = StateProvider<String?>((ref) => null);
 class GroupService extends FirestoreRepository {
   final Ref _ref;
   final String? _currentUserIdOverride;
-  final bool Function()? _isAnonymousOverride;
   final Future<String> Function({
     required String inviteCode,
     required String displayName,
@@ -78,7 +76,6 @@ class GroupService extends FirestoreRepository {
   /// Production constructor — uses [FirebaseConfig.firestore] via base class.
   GroupService(this._ref)
     : _currentUserIdOverride = null,
-      _isAnonymousOverride = null,
       _joinGroupCallableOverride = null,
       _addShadowMemberCallableOverride = null,
       super();
@@ -89,7 +86,6 @@ class GroupService extends FirestoreRepository {
     this._ref,
     FirebaseFirestore firestoreDb, {
     String? currentUserId,
-    bool Function()? isAnonymous,
     Future<String> Function({
       required String inviteCode,
       required String displayName,
@@ -101,26 +97,12 @@ class GroupService extends FirestoreRepository {
     })?
     addShadowMemberCallableOverride,
   }) : _currentUserIdOverride = currentUserId,
-       _isAnonymousOverride = isAnonymous,
        _joinGroupCallableOverride = joinGroupCallableOverride,
        _addShadowMemberCallableOverride = addShadowMemberCallableOverride,
        super.withFirestore(firestoreDb);
 
   String? get _currentUid =>
       _currentUserIdOverride ?? FirebaseConfig.currentUser?.uid;
-
-  bool get _isCurrentUserAnonymous {
-    final override = _isAnonymousOverride;
-    if (override != null) return override();
-    // An injected test uid implies a durable user; FirebaseConfig.currentUser
-    // throws [core/no-app] in unit tests without Firebase (#390).
-    if (_currentUserIdOverride != null) return false;
-    try {
-      return FirebaseConfig.currentUser?.isAnonymous ?? false;
-    } catch (_) {
-      return false;
-    }
-  }
 
   /// Generate a unique 6-character invite code.
   ///
@@ -181,10 +163,7 @@ class GroupService extends FirestoreRepository {
   /// with the creator in `memberIds`) holds. This preserves today's sequential
   /// ordering exactly; it does NOT issue the two writes concurrently.
   ///
-  /// Throws synchronously if the user is not authenticated, or
-  /// [DurableCredentialRequiredException] for an anonymous user (#441) — the
-  /// guards run BEFORE any write is staged so an offline-queued batch can never
-  /// replay past the gate.
+  /// Throws synchronously if the user is not authenticated.
   ({Group group, Future<void> ack}) stageGroup({
     required String name,
     required String currency,
@@ -194,11 +173,6 @@ class GroupService extends FirestoreRepository {
     final uid = _currentUid;
     if (uid == null) {
       throw Exception('User not authenticated');
-    }
-    // #441: gate BEFORE batch staging — an offline-queued batch replays on
-    // reconnect and would bypass any UI-level gate.
-    if (_isCurrentUserAnonymous) {
-      throw const DurableCredentialRequiredException();
     }
 
     final rawName = _ref.read(settingsProvider).deviceName;

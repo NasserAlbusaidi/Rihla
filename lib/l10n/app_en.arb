@@ -2414,7 +2414,7 @@
   },
   "durableGateNotNow": "Not now",
   "@durableGateNotNow": {
-    "description": "Dismiss action on the gate sheet. Aborts the pending create/join; the gate re-asks on the next attempt."
+    "description": "Dismiss action on the durable-credential sheet (#285 backup nudge / manual link entry points). Purely dismisses the sheet — no pending create/join is aborted by it (#818 removed the create-time gate)."
   },
   "durableGateConflict": "That Google account already belongs to another Rihla account. Switching to it would leave this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first, then use a different Google account.",
   "@durableGateConflict": {
@@ -2440,10 +2440,6 @@
   "@durableGateError": {
     "description": "Generic failure line on the gate sheet (config missing, unexpected errors)."
   },
-  "durableCredentialRequired": "Link a Google account to continue.",
-  "@durableCredentialRequired": {
-    "description": "Snackbar shown when a create/join is refused because the user is still anonymous (#441) — the defense path when the gate sheet was bypassed, and the mapping for the server-side permission-denied reject."
-  },
   "createGroupWhoElse": "Who's in?",
   "@createGroupWhoElse": {
     "description": "Label for the optional #278 chips field on the create-group screen — add placeholder ('shadow') members by name now, or invite them later."
@@ -2455,6 +2451,10 @@
   "createGroupShadowOfflineHint": "Connect to add names",
   "@createGroupShadowOfflineHint": {
     "description": "Shown under the #278 chips field while offline — adding placeholder members needs the addShadowMember callable, which has no offline replay. The group still creates with just the creator."
+  },
+  "shadowAddRequiresLink": "Link your account to add people by name — anyone can still join with the invite code.",
+  "@shadowAddRequiresLink": {
+    "description": "#818: shown instead of the offline hint / creator explanation when the current (anonymous) creator has no durable credential — addShadowMember hard-rejects anonymous callers server-side. Reused on the create-screen chips field and the group-settings members section footer."
   },
   "createGroupShadowNameTaken": "\"{name}\" is already used in this group.",
   "@createGroupShadowNameTaken": {
