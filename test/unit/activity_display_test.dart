@@ -289,6 +289,70 @@ void main() {
       expect(amt.currency, 'USD');
     });
 
+    test('fils as a Firestore-deserialized DOUBLE still converts '
+        '(expense_audit_diff.dart:37 is-num precedent)', () {
+      // Firestore number deserialization can yield Dart double for the SAME
+      // amountFils field — the shipped sibling reader (ExpenseAuditSnap.tryParse)
+      // guards `is num` + `.toInt()`, and its test seeds 8000.0.
+      final log = _groupLog(
+        type: 'expense_added',
+        metadata: const {'amountFils': 8000.0, 'currency': 'OMR'},
+      );
+      final amt = activityAmount(log, 'OMR');
+      expect(amt, isNotNull);
+      expect(amt!.value, Decimal.parse('8'));
+      expect(amt.currency, 'OMR');
+    });
+
+    test('non-whole double fils truncates like the sibling reader (.toInt())',
+        () {
+      final log = _groupLog(
+        type: 'expense_added',
+        metadata: const {'amountFils': 8000.7, 'currency': 'OMR'},
+      );
+      // 8000.7.toInt() == 8000 fils == OMR 8.000 — mirrors ExpenseAuditSnap.
+      final amt = activityAmount(log, 'OMR');
+      expect(amt!.value, Decimal.parse('8'));
+      expect(amt.currency, 'OMR');
+    });
+
+    test('double fils with missing/unsupported currency still → null', () {
+      expect(
+        activityAmount(
+          _groupLog(
+            type: 'expense_added',
+            metadata: const {'amountFils': 8000.0},
+          ),
+          'OMR',
+        ),
+        isNull,
+      );
+      expect(
+        activityAmount(
+          _groupLog(
+            type: 'expense_added',
+            metadata: const {'amountFils': 8000.0, 'currency': 'XXX'},
+          ),
+          'OMR',
+        ),
+        isNull,
+      );
+    });
+
+    test('double fils wins over a stray legacy amount (precedence unchanged)',
+        () {
+      final log = _groupLog(
+        type: 'expense_added',
+        metadata: const {
+          'amountFils': 8000.0,
+          'currency': 'OMR',
+          'amount': '999',
+        },
+      );
+      final amt = activityAmount(log, 'OMR');
+      expect(amt!.value, Decimal.parse('8')); // fils, not '999'
+    });
+
     test('fils present but currency MISSING → null (never guess the scale)', () {
       final log = _groupLog(
         type: 'expense_added',

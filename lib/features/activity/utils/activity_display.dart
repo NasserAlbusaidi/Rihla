@@ -98,10 +98,17 @@ String activityAmountCurrency(GroupActivityLog log, String fallback) {
   String fallbackCurrency,
 ) {
   final fils = log.metadata['amountFils'];
-  if (fils is int) {
+  // `is num`, not `is int`: Firestore number deserialization can yield a Dart
+  // double for this field. Subunits are integers by contract, so a malformed
+  // fraction truncates via .toInt() — exactly like the sibling reader of the
+  // same field (ExpenseAuditSnap.tryParse, expense_audit_diff.dart).
+  if (fils is num) {
     final raw = log.metadata['currency'];
     if (raw is String && MoneySerializer.supportedCurrencies.contains(raw)) {
-      return (value: MoneySerializer.fromSubunits(fils, raw), currency: raw);
+      return (
+        value: MoneySerializer.fromSubunits(fils.toInt(), raw),
+        currency: raw,
+      );
     }
     return null;
   }

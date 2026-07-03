@@ -345,6 +345,39 @@ void main() {
       expect(amounts.single.currency, 'OMR');
     });
 
+    testWidgets('expense amount renders when Firestore deserializes amountFils '
+        'as a double (expense_audit_diff.dart:37 precedent)', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          'e1',
+          'Alice',
+          'added Dinner (8.000 OMR)',
+          type: 'expense_added',
+          metadata: const {
+            'expenseId': 'x1',
+            'eventId': 'ev1',
+            'eventName': 'Beach Trip',
+            'amountFils': 8000.0,
+            'currency': 'OMR',
+          },
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+      expect(amounts, hasLength(1));
+      expect(amounts.single.value, Decimal.parse('8'));
+      expect(amounts.single.currency, 'OMR');
+    });
+
     testWidgets('Expenses filter shows only expense_* rows', (tester) async {
       final db = FakeFirebaseFirestore();
       await _seed(db, 'g1', [
