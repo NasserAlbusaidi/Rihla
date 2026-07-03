@@ -31,6 +31,24 @@ final _event = Event(
   createdAt: DateTime(2026, 5, 30),
 );
 
+/// Three participants so an equal split leaves an indivisible remainder
+/// (#853): 10.000/3 does not divide evenly in any currency.
+final _threePersonEvent = Event(
+  id: 'event-3',
+  name: 'Nizwa weekend',
+  type: EventType.trip,
+  groupId: 'group-1',
+  createdBy: 'a-ali',
+  participantIds: const ['a-ali', 'b-basma', 'c-zayn'],
+  participantNames: const {
+    'a-ali': 'Ali Said',
+    'b-basma': 'Basma Noor',
+    'c-zayn': 'Zayn Malik',
+  },
+  modules: const EventModules(),
+  createdAt: DateTime(2026, 6, 1),
+);
+
 void main() {
   Future<void> pumpCard(
     WidgetTester tester, {
@@ -39,7 +57,11 @@ void main() {
     SplitExplanation? splitExplanation,
     void Function(SplitMode)? onPickMode,
     VoidCallback? onPickItemized,
+    Event? event,
+    String amount = '48.000',
+    String currency = 'OMR',
   }) async {
+    final effectiveEvent = event ?? _event;
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
@@ -49,16 +71,13 @@ void main() {
           home: Scaffold(
             body: SingleChildScrollView(
               child: SplitCard(
-                event: _event,
-                displayNames: const {
-                  'uid-yasmin': 'Yasmin Khan',
-                  'uid-layla': 'Layla Hassan',
-                },
-                amount: Decimal.parse('48.000'),
-                currency: 'OMR',
+                event: effectiveEvent,
+                displayNames: effectiveEvent.participantNames,
+                amount: Decimal.parse(amount),
+                currency: currency,
                 scope: ExpenseScope.global,
-                payerId: 'uid-yasmin',
-                selfId: 'uid-yasmin',
+                payerId: effectiveEvent.participantIds.first,
+                selfId: effectiveEvent.participantIds.first,
                 customSplitParticipants: const {},
                 splitMode: splitMode,
                 splitDistribution: splitDistribution,
@@ -225,4 +244,31 @@ void main() {
     expect(scopes, [ExpenseScope.personal]);
     expect(modes, [SplitMode.shares]);
   });
+
+  // #853: equal-split preview rows must show the allocator's REAL per-person
+  // owed (currency-quantized, remainder on the alphabetically-last recipient),
+  // so they reconcile to the total — not a naive per-head that sums short.
+  // Pre-fix every row showed the naive base (e.g. OMR 3.333), so the remainder
+  // value (OMR 3.334) appeared nowhere → this is the RED/GREEN discriminator.
+  final nonDivisibleCases =
+      <({String currency, String amount, String base, String remainder})>[
+        (currency: 'OMR', amount: '10.000', base: '3.333', remainder: '3.334'),
+        (currency: 'USD', amount: '10.00', base: '3.33', remainder: '3.34'),
+        (currency: 'JPY', amount: '10', base: '3', remainder: '4'),
+      ];
+  for (final c in nonDivisibleCases) {
+    testWidgets('equal split reconciles a ${c.currency} non-divisible total '
+        '(#853)', (tester) async {
+      await pumpCard(
+        tester,
+        event: _threePersonEvent,
+        amount: c.amount,
+        currency: c.currency,
+      );
+      // Alphabetically-last recipient (Zayn) absorbs the 1-subunit remainder.
+      expect(find.text('${c.currency} ${c.remainder}'), findsOneWidget);
+      // The other two carry the base share.
+      expect(find.text('${c.currency} ${c.base}'), findsWidgets);
+    });
+  }
 }
