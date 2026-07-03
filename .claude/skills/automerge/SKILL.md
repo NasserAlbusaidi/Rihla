@@ -7,7 +7,9 @@ description: Review-gated auto-merge for Rihla PRs. Classifies a PR's diff; Gate
 
 The fresh-context review is the thing that flips auto-merge on — nothing reaches `main` on green CI alone for the dangerous categories. This is the Gate (`run-the-gate`) applied to a **PR diff at merge time** instead of a spec before code, plus the `verified-sweep` refute guard, wired to `gh pr merge --auto`.
 
-GitHub does the actual merge: enabling auto-merge holds the PR until the required `readiness` check is green and the branch is up-to-date (`allow_update_branch` is ON so BEHIND PRs self-update), then merges and deletes the branch. "Enabled" ≠ "merged now."
+GitHub does the actual merge: enabling auto-merge holds the PR until the required `readiness` check is green and the branch is up-to-date, then merges and deletes the branch. "Enabled" ≠ "merged now."
+
+**Auto-merge NEVER updates a BEHIND branch.** `allow_update_branch` only *permits* the update — nothing calls it (verified 2026-07-03: #859 sat BEHIND indefinitely; the old claim here that BEHIND PRs "self-update" was false). Every squash-merge re-BEHINDs whatever is queued behind it, so a merge train stalls after the first car. After enabling auto-merge, check `mergeStateStatus` and update BEHIND branches yourself (Step 3a); the `pr-babysitter` skill re-does this on every pass for the whole board.
 
 ## The one property this lives or dies on
 
@@ -59,7 +61,14 @@ m=$(gh repo view --json viewerDefaultMergeMethod -q .viewerDefaultMergeMethod)
 case "$m" in SQUASH) f=--squash;; REBASE) f=--rebase;; *) f=--merge;; esac
 gh pr merge <N> --auto $f
 ```
-Report: classified EXEMPT (which check let it through), auto-merge enabled, will merge on green `readiness`.
+
+Then clear the BEHIND stall (auto-merge will never do this itself):
+```bash
+s=$(gh pr view <N> --json mergeStateStatus -q .mergeStateStatus)
+[ "$s" = "BEHIND" ] && gh pr update-branch <N>
+```
+
+Report: classified EXEMPT (which check let it through), auto-merge enabled, branch updated if it was BEHIND, will merge on green `readiness`.
 
 ## Step 3b — GATE → review → refute → enable
 
@@ -71,16 +80,11 @@ Report: classified EXEMPT (which check let it through), auto-merge enabled, will
 **Refute** (the `verified-sweep` guard — a PASS is a done-claim, and fabricated/sycophantic done-claims are this repo's signature failure; `delete_branch_on_merge` makes the merge effectively irreversible). Spawn a SECOND fresh `Agent` (opus, zero history). Give it the diff + the reviewer's clean verdict; its job is to REFUTE — find one P1 the reviewer missed, default to `refuted: true` on any uncertainty. Model the prompt on `.claude/workflows/verified-sweep.js`'s refute prompt.
 
 - `refuted: true` (or refuter returns nothing) → post the reason as a PR comment, STOP. Treat unverified as refuted.
-- `refuted: false` with concrete evidence it actively confirmed clean → enable auto-merge (Step 3a commands).
+- `refuted: false` with concrete evidence it actively confirmed clean → enable auto-merge (Step 3a commands, including the BEHIND update).
 
-## /loop usage
+## The merge tail — hand it to pr-babysitter
 
-`/loop /automerge-sweep` (or self-paced): list candidates and run the pipeline on each.
-```bash
-gh pr list --state open --json number,isDraft,autoMergeRequest \
-  --jq '.[] | select(.isDraft==false and .autoMergeRequest==null) | .number'
-```
-Per PR: classify → exempt-enable or gate-review. Gate PRs that hit P1s get a comment and are left for you — the loop does not block on them.
+Enabling auto-merge is not the finish line: branches go BEHIND after every squash-merge (and never self-update), CI goes red, reviewers leave P1s, merged worktrees linger. The **`pr-babysitter`** skill (this repo) owns that tail — per pass it updates BEHIND PRs, runs THIS pipeline on any open PR still missing auto-merge, and surfaces P1/red-CI/conflict PRs for the human. Under `/loop` it runs until the board is clear. Use it instead of hand-polling `gh pr view`.
 
 ## Non-negotiables
 
