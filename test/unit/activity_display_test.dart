@@ -443,6 +443,31 @@ void main() {
       expect(amt.currency, 'OMR');
     });
 
+    test('non-finite legacy num amount → null, never a FormatException '
+        '(client-forgeable metadata; Decimal.parse("NaN") throws)', () {
+      for (final junk in [
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+      ]) {
+        final log = _groupLog(
+          type: 'group_settlement',
+          metadata: {'amount': junk},
+        );
+        expect(activityAmount(log, 'OMR'), isNull, reason: '$junk');
+      }
+    });
+
+    test('finite legacy num still parses after the non-finite guard', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        metadata: const {'amount': 9.5},
+      );
+      final amt = activityAmount(log, 'OMR');
+      expect(amt!.value, Decimal.parse('9.5'));
+      expect(amt.currency, 'OMR');
+    });
+
     test('both keys present → fils wins (currency from metadata)', () {
       final log = _groupLog(
         type: 'expense_added',
@@ -590,6 +615,20 @@ void main() {
 
     test('no crash and no match on an empty-metadata entry with a miss', () {
       final entry = _entry(_groupLog(type: 'member_joined'));
+      expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);
+    });
+
+    test('forged legacy NaN amount never throws — the matcher runs '
+        'activityAmount over EVERY loaded entry in the parent build', () {
+      final entry = _entry(
+        _groupLog(
+          type: 'group_settlement',
+          metadata: const {'amount': double.nan},
+        ),
+      );
+      expect(() => activityMatchesQuery(entry, 'ali', en), returnsNormally);
+      // Other fields stay searchable (actorName is 'Alice').
+      expect(activityMatchesQuery(entry, 'ali', en), isTrue);
       expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);
     });
   });

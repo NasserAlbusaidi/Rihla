@@ -127,7 +127,11 @@ String activityAmountCurrency(GroupActivityLog log, String fallback) {
 /// Coerce both WITHOUT forcing a currency precision — [RAmount] applies the
 /// row's own currency scale (#380).
 Decimal? _coerceLegacyAmount(Object? raw) {
-  if (raw is num) return Decimal.parse(raw.toString());
+  // Non-finite → null: Decimal.parse('NaN') THROWS, the metadata map is
+  // client-forgeable (rules check only `is map`), and activityMatchesQuery
+  // runs this over EVERY loaded entry in the parent build — one forged row
+  // would ErrorWidget the whole tab (client half of the #814 legacy-NaN note).
+  if (raw is num) return raw.isFinite ? Decimal.parse(raw.toString()) : null;
   if (raw is String) return Decimal.tryParse(raw);
   return null;
 }

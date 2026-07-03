@@ -352,5 +352,46 @@ void main() {
       expect(_rich('Match-Me'), findsWidgets);
       expect(find.byKey(ActivityKeys.searchOlderButton), findsOneWidget);
     });
+
+    testWidgets('a forged legacy-NaN amount entry never ErrorWidgets the tab '
+        'while searching (matcher runs activityAmount over ALL loaded entries '
+        'in the parent build)', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity('a1', 'Alice', 'created an event', at: DateTime(2026, 3, 28)),
+        _activity(
+          's-nan',
+          'Mallory',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': double.nan},
+          at: DateTime(2026, 3, 27),
+        ),
+        _activity(
+          's1',
+          'Bob',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': '9'},
+          at: DateTime(2026, 3, 26),
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openSearch(tester);
+      await _type(tester, 'bob');
+
+      expect(find.byType(ErrorWidget), findsNothing);
+      expect(_rich('Bob'), findsOneWidget);
+      expect(_rich('Mallory'), findsNothing);
+      expect(_rich('Alice'), findsNothing);
+    });
   });
 }
