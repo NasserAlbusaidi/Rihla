@@ -471,7 +471,7 @@ void main() {
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.destinations, hasLength(3));
       expect(find.text('Groups'), findsWidgets);
-      expect(find.text('Activity'), findsWidgets);
+      expect(find.text('History'), findsWidgets);
       expect(find.text('Profile'), findsWidgets);
       expect(find.text('Chats'), findsNothing);
     });

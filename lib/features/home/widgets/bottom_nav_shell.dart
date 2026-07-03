@@ -46,6 +46,19 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   int _currentIndex = 0;
   final Set<int> _visited = {0};
 
+  /// Centralizes both tab-switch side effects — the #808 PR2 seen-stamp (tab
+  /// 1 only) and the #113 lazy-build visited set — so a programmatic select
+  /// (via [BottomNavTabScope]) behaves identically to a direct nav-bar tap.
+  void _selectTab(int i) {
+    if (i == 1) {
+      ref.read(activitySeenProvider.notifier).markSeenNow();
+    }
+    setState(() {
+      _currentIndex = i;
+      _visited.add(i);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // #807: hide the FAB on the zero-groups empty state (it would duplicate
@@ -57,15 +70,18 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
     // safety gate (see outgoingShellProvablyEmpty for the real pattern).
     final groups = ref.watch(userGroupsProvider).valueOrNull;
     final hasNoGroups = groups != null && groups.isEmpty;
-    return Scaffold(
-      key: widget.scaffoldKey,
-      backgroundColor: context.colors.scaffoldBackground,
-      body: _buildBody(context),
-      // #364: money CTA on Groups/Activity only — Profile is settings.
-      floatingActionButton: _currentIndex == 2 || hasNoGroups
-          ? null
-          : const AddExpenseFab(),
-      bottomNavigationBar: _buildNavBar(context),
+    return BottomNavTabScope(
+      selectTab: _selectTab,
+      child: Scaffold(
+        key: widget.scaffoldKey,
+        backgroundColor: context.colors.scaffoldBackground,
+        body: _buildBody(context),
+        // #364: money CTA on Groups/Activity only — Profile is settings.
+        floatingActionButton: _currentIndex == 2 || hasNoGroups
+            ? null
+            : const AddExpenseFab(),
+        bottomNavigationBar: _buildNavBar(context),
+      ),
     );
   }
 
@@ -134,14 +150,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
           try {
             Haptics.vibrate(HapticsType.selection);
           } catch (_) {}
-          // #808 PR2: opening Activity marks the feed seen → clears the dot.
-          if (i == 1) {
-            ref.read(activitySeenProvider.notifier).markSeenNow();
-          }
-          setState(() {
-            _currentIndex = i;
-            _visited.add(i);
-          });
+          _selectTab(i);
         },
         height: 72,
         elevation: 8,
@@ -189,4 +198,35 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
       ),
     );
   }
+}
+
+/// Programmatic tab-select channel for descendants of [BottomNavShell]
+/// (#818 Wave 5.2) — lets a widget inside the Groups tab's subtree (e.g. the
+/// home top-bar bell) select another tab without the shell exposing its
+/// `_currentIndex` state to a provider or routing through GoRouter.
+///
+/// [selectTab] runs the SAME side effects as a direct nav-bar tap
+/// (`_BottomNavShellState._selectTab`): the seen-stamp on tab 1 and the
+/// lazy-build visited set.
+///
+/// [maybeOf] uses `getElementForInheritedWidgetOfExactType` rather than
+/// `dependOnInheritedWidgetOfExactType` — callers look this up inside `onTap`
+/// callbacks, not `build`, so no build-time dependency should be registered.
+class BottomNavTabScope extends InheritedWidget {
+  const BottomNavTabScope({
+    super.key,
+    required this.selectTab,
+    required super.child,
+  });
+
+  final void Function(int index) selectTab;
+
+  static BottomNavTabScope? maybeOf(BuildContext context) =>
+      context
+              .getElementForInheritedWidgetOfExactType<BottomNavTabScope>()
+              ?.widget
+          as BottomNavTabScope?;
+
+  @override
+  bool updateShouldNotify(BottomNavTabScope oldWidget) => false;
 }

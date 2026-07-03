@@ -1530,8 +1530,12 @@
   },
   "homeNoSpendingThisWeek": "No spending this week",
   "homeBottomNavGroups": "Groups",
-  "homeBottomNavActivity": "Activity",
+  "homeBottomNavActivity": "History",
   "homeBottomNavProfile": "Profile",
+  "historyTabTitle": "History",
+  "@historyTabTitle": {
+    "description": "Header of the cross-group History tab screen"
+  },
   "homeQuickAddExpense": "Add Expense",
   "homeQuickSettleUp": "Settle Up",
   "homeQuickInviteFriend": "Invite Friend",

@@ -1907,10 +1907,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeBottomNavGroups => 'Groups';
 
   @override
-  String get homeBottomNavActivity => 'Activity';
+  String get homeBottomNavActivity => 'History';
 
   @override
   String get homeBottomNavProfile => 'Profile';
+
+  @override
+  String get historyTabTitle => 'History';
 
   @override
   String get homeQuickAddExpense => 'Add Expense';
