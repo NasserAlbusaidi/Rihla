@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/keys/shared_keys.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
@@ -507,6 +508,38 @@ void main() {
         find.textContaining('Sara-Settler', findRichText: true),
         findsWidgets,
       );
+    });
+
+    testWidgets('empty state offers an Add-expense CTA when the user has groups',
+        (tester) async {
+      final db = FakeFirebaseFirestore();
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('No activity yet'), findsOneWidget);
+      expect(find.byKey(SharedKeys.emptyStateCtaButton), findsOneWidget);
+    });
+
+    testWidgets('empty state has NO CTA when the user has zero groups (#807)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          groups: const [],
+          service: GroupActivityService.withFirestore(FakeFirebaseFirestore()),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('No activity yet'), findsOneWidget);
+      expect(find.byKey(SharedKeys.emptyStateCtaButton), findsNothing);
     });
 
     testWidgets('row tap pushes /group/{gid}', (tester) async {

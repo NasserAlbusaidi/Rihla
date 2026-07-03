@@ -9,12 +9,15 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../activity/utils/activity_display.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../providers/activity_unread_provider.dart';
 import '../providers/cross_group_activity_pager.dart';
 import '../providers/dashboard_providers.dart';
+import '../widgets/add_expense_target_sheet.dart';
 
 /// Full-screen cross-group activity feed (saffron travel-journal direction).
 ///
@@ -52,6 +55,12 @@ class _CrossGroupActivityScreenState
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
+    // #808 PR2: reaching the tab (routed /activity or the first tab build)
+    // marks the feed seen → clears the unread dot. Post-frame so we never
+    // mutate a provider during the first build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(activitySeenProvider.notifier).markSeenNow();
+    });
   }
 
   @override
@@ -137,14 +146,22 @@ class _CrossGroupActivityScreenState
 
     final filtered = _filtered(pager.entries);
     if (filtered.isEmpty) {
+      final isTrueEmpty = pager.entries.isEmpty;
+      // #807: only offer the add-expense CTA on the true no-activity state and
+      // only when the user has a group. Zero groups → NO CTA (never a duplicate
+      // create-group affordance).
+      final groups = ref.watch(userGroupsProvider).valueOrNull;
+      final showCta = isTrueEmpty && groups != null && groups.isNotEmpty;
       return EmptyStateView(
         icon: Iconsax.activity,
-        title: pager.entries.isEmpty
+        title: isTrueEmpty
             ? context.l10n.activityNoActivityTitle
             : context.l10n.activityNoFilterTitle,
-        message: pager.entries.isEmpty
+        message: isTrueEmpty
             ? context.l10n.activityCrossGroupEmptyMessage
             : context.l10n.activityNoFilterMessage,
+        actionLabel: showCta ? context.l10n.ledgerAddExpense : null,
+        onAction: showCta ? () => AddExpenseTargetSheet.show(context) : null,
       );
     }
 
