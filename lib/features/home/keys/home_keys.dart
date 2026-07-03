@@ -47,6 +47,9 @@ abstract final class HomeKeys {
   // #808 PR2: unread dot on the Activity destination (inactive icon).
   static const activityUnreadBadge = Key('home_activity_unread_badge');
 
+  // #818 Wave 5.2: top-bar notification bell — selects the History tab.
+  static const activityBell = Key('home_activity_bell');
+
   // #364: persistent add-expense FAB on the tab shell + its target picker
   static const addExpenseFab = Key('home_add_expense_fab');
   static const addExpenseSheet = Key('home_add_expense_sheet');

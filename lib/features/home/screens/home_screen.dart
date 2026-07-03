@@ -155,7 +155,16 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                         (journeysAsync.value?.isNotEmpty ?? false)
                     ? context.l10n.homeSeeActivity
                     : null,
-                onActionTap: () => context.push('/activity'),
+                onActionTap: () {
+                  // #818 Wave 5.2: same tab-select as the bell — one
+                  // concern, same destination.
+                  final scope = BottomNavTabScope.maybeOf(context);
+                  if (scope != null) {
+                    scope.selectTab(1);
+                  } else {
+                    context.push('/activity');
+                  }
+                },
               ).animate().fadeIn(delay: 350.ms),
             ),
           ),
@@ -515,10 +524,18 @@ class _TopBar extends ConsumerWidget {
             const WordmarkLogo(size: 22),
             const Spacer(),
             _IconCircle(
+              key: HomeKeys.activityBell,
               icon: Iconsax.notification,
               onTap: () {
                 HapticService.lightClick();
-                context.push('/activity');
+                // #818 Wave 5.2: select the History tab in place rather than
+                // pushing /activity — the route stays for deep links.
+                final scope = BottomNavTabScope.maybeOf(context);
+                if (scope != null) {
+                  scope.selectTab(1);
+                } else {
+                  context.push('/activity');
+                }
               },
             ),
           ],
@@ -598,7 +615,7 @@ class _SetNameChip extends StatelessWidget {
 /// just an icon in a 40×40 tap target. The wireframe shows this as the
 /// notifications affordance on the right of the top bar.
 class _IconCircle extends StatelessWidget {
-  const _IconCircle({required this.icon, required this.onTap});
+  const _IconCircle({super.key, required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;
