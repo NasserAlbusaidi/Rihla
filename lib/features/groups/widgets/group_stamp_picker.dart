@@ -160,7 +160,8 @@ class _RowLabel extends StatelessWidget {
       alignment: AlignmentDirectional.centerStart,
       child: Text(
         text.toUpperCase(),
-        style: AppTypography.mono(
+        style: AppTypography.caption(
+          context,
           fontSize: 11,
           color: colors.textSecondary,
           fontWeight: FontWeight.w600,
@@ -249,7 +250,8 @@ class _MonogramCell extends StatelessWidget {
       onTap: onTap,
       child: Text(
         initial,
-        style: AppTypography.display(
+        style: AppTypography.displayOf(
+          context,
           fontSize: 22,
           color: selected ? colors.primaryDark : colors.textSecondary,
           height: 1.0,

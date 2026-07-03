@@ -214,7 +214,8 @@ class _SplitCardState extends State<SplitCard> {
                 if (widget.scope == ExpenseScope.global)
                   Text(
                     l10n.editorEventDefault,
-                    style: AppTypography.mono(
+                    style: AppTypography.caption(
+                      context,
                       fontSize: 9,
                       letterSpacing: 1.6,
                       color: colors.textPrimary.withValues(alpha: 0.45),
@@ -363,7 +364,8 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: AppTypography.mono(
+      style: AppTypography.caption(
+        context,
         fontSize: 10.5,
         letterSpacing: 1.0,
         fontWeight: FontWeight.w700,

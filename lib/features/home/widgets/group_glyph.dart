@@ -67,7 +67,8 @@ class GroupGlyph extends StatelessWidget {
             name.trim().isEmpty
                 ? '·'
                 : name.trim().characters.first.toUpperCase(),
-            style: AppTypography.display(
+            style: AppTypography.displayOf(
+              context,
               fontSize: size * 0.56,
               color: ink,
               height: 1.0,

@@ -421,7 +421,8 @@ class _IdentityCard extends ConsumerWidget {
                           key: hasName
                               ? ProfileKeys.displayName
                               : ProfileKeys.setNamePrompt,
-                          style: AppTypography.display(
+                          style: AppTypography.displayOf(
+                            context,
                             fontSize: 28,
                             color: hasName
                                 ? colors.textPrimary
@@ -883,7 +884,8 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             keyLabel,
-            style: AppTypography.mono(
+            style: AppTypography.caption(
+              context,
               fontSize: 9,
               fontWeight: FontWeight.w600,
               color: colors.textSecondary,
@@ -931,7 +933,8 @@ class _SectionLabel extends StatelessWidget {
         children: [
           Text(
             label,
-            style: AppTypography.mono(
+            style: AppTypography.caption(
+              context,
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: colors.textSecondary,
@@ -1633,7 +1636,8 @@ class _PrefIconLetter extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         letter,
-        style: AppTypography.display(
+        style: AppTypography.displayOf(
+          context,
           fontSize: 15,
           color: context.colors.textPrimary,
           height: 1.0,

@@ -69,7 +69,8 @@ class LedgerHeroStatement extends StatelessWidget {
     }
 
     final double baseSize = kind == LedgerHeroKind.empty ? 28 : 32;
-    final baseStyle = AppTypography.display(
+    final baseStyle = AppTypography.displayOf(
+      context,
       fontSize: baseSize,
       color: colors.textPrimary,
       letterSpacing: -0.5,
@@ -119,13 +120,16 @@ class LedgerHeroStatement extends StatelessWidget {
   }) {
     final colors = context.colors;
     final l10n = context.l10n;
-    final baseStyle = AppTypography.display(
+    final baseStyle = AppTypography.displayOf(
+      context,
       fontSize: baseSize,
       color: colors.textPrimary,
       letterSpacing: -0.5,
       height: 1.1,
     );
     final tailStyle = baseStyle.copyWith(color: colors.textSecondary);
+    // Hero balance figure — Latin digits in every locale; stays raw display()
+    // on purpose (#841).
     final numStyle = AppTypography.display(
       fontSize: baseSize,
       color: positive ? colors.successText : colors.errorText,
@@ -250,7 +254,8 @@ class _SettledRow extends StatelessWidget {
           ),
           child: Text(
             l10n.ledgerSettledBadge,
-            style: AppTypography.mono(
+            style: AppTypography.caption(
+              context,
               fontSize: 10,
               color: colors.successText,
               letterSpacing: 1.2,
@@ -286,19 +291,23 @@ class LedgerTripCaption extends StatelessWidget {
     final colors = context.colors;
     final l10n = context.l10n;
     final effectiveLabel = label ?? l10n.ledgerTripTotal;
-    final labelStyle = AppTypography.mono(
+    final labelStyle = AppTypography.caption(
+      context,
       fontSize: 10,
       color: colors.textSecondary,
       letterSpacing: 1.4,
       fontWeight: FontWeight.w600,
     );
+    // Per-currency trip-total amount — MONEY, stays mono in every locale
+    // (#841); do not sweep into caption().
     final amountStyle = AppTypography.mono(
       fontSize: 11,
       color: colors.ink2,
       letterSpacing: 0.2,
       fontWeight: FontWeight.w600,
     );
-    final tailStyle = AppTypography.mono(
+    final tailStyle = AppTypography.caption(
+      context,
       fontSize: 10,
       color: colors.textSecondary,
       letterSpacing: 0.3,

@@ -116,7 +116,8 @@ class GroupInfoSection extends ConsumerWidget {
           group.name,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: AppTypography.display(
+          style: AppTypography.displayOf(
+            context,
             fontSize: 22,
             color: context.colors.textPrimary,
             height: 1.1,

@@ -125,7 +125,8 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
               children: [
                 Text(
                   l10n.editNameTitle,
-                  style: AppTypography.display(
+                  style: AppTypography.displayOf(
+                    context,
                     fontSize: 26,
                     color: colors.textPrimary,
                     height: 1.15,

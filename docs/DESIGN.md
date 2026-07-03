@@ -116,13 +116,22 @@ persist but the features were stripped in Phase 39 — dead.)
 
 Three families, one Arabic display face. Helpers live on `AppTypography`; ambient
 styles come from `Theme.of(context).textTheme.*` (wired to the same families).
+Typography is **per-script** (#841): locale-visible display text and translatable
+captions go through the context-aware helpers (`displayOf`, `caption`), which
+re-express the Latin recipes for Arabic — joined script rejects mono tracking,
+and there is no synthetic italic.
 
 | Family | Helper | Use |
 |---|---|---|
-| **Instrument Serif** *(italic)* | `AppTypography.display(...)` | Wordmark, screen titles, hero numerals. The emotional voice — sparingly. |
-| **Geist** (sans) | `AppTypography.sans(...)` | All UI text, labels, buttons, body. |
-| **Geist Mono** (tabular) | `AppTypography.mono(...)` | All money amounts, currency codes, dates, uppercase captions ("ACTIVE JOURNEYS"). |
+| **Instrument Serif** *(italic)* | `AppTypography.displayOf(context, ...)` (context-free `display()` reserved for the cached theme + brand-Latin) | Wordmark, screen titles, hero numerals, **and entity names (user text)**; Arabic renders upright w500 — no synthetic italic. |
+| **Geist** (sans) | `AppTypography.sans(...)` | All UI text, labels, buttons, body — and user free-text in every locale (never mono). |
+| **Geist Mono** (tabular) | `AppTypography.mono(...)` | All money amounts, currency codes, invite codes, dates-as-figures. **Numerals/codes only — translatable captions use `caption()`; user free-text uses `sans()`.** |
+| *(per-script caption)* | `AppTypography.caption(context, ...)` | Small caps-style captions/eyebrows ("ACTIVE JOURNEYS"). Latin = mono recipe; Arabic = sans w700, spacing 0, ≥11px (joined script rejects tracking; uppercase is a no-op). |
 | **Rihla Arabic Display** *(Reem Kufi subset)* | `AppTypography.arabicDisplay(...)` | Arabic wordmark only; do not use for general Arabic UI copy without replacing the subset strategy. |
+
+The `app_theme.dart` `TextTheme`/AppBar slots keep context-free `display()`
+(cached `ThemeData`, #622 static pattern); those slots are currently unread by
+app code — do not wire new consumers to them without a locale story.
 
 Fonts are **bundled app assets** (`pubspec.yaml` `flutter: fonts:`), not fetched
 at runtime — no `GoogleFonts.getFont` in `lib/` (guard-tested). Tabular figures

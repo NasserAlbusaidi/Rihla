@@ -264,7 +264,8 @@ class _ItemizedSectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: AppTypography.mono(
+            style: AppTypography.caption(
+              context,
               fontSize: 10,
               letterSpacing: 1.5,
               fontWeight: FontWeight.w700,
@@ -678,7 +679,8 @@ class _AssignSheetState extends State<_AssignSheet> {
                   Expanded(
                     child: Text(
                       l10n.itemizedWhoHadThis,
-                      style: AppTypography.display(
+                      style: AppTypography.displayOf(
+                        context,
                         fontSize: 22,
                         color: colors.textPrimary,
                       ),
@@ -1017,7 +1019,8 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   l10n.adjustmentSheetTitle,
-                  style: AppTypography.display(
+                  style: AppTypography.displayOf(
+                    context,
                     fontSize: 22,
                     color: colors.textPrimary,
                   ),
@@ -1081,7 +1084,8 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     l10n.adjustmentSpreadHeader,
-                    style: AppTypography.mono(
+                    style: AppTypography.caption(
+                      context,
                       fontSize: 10,
                       letterSpacing: 1.5,
                       fontWeight: FontWeight.w700,

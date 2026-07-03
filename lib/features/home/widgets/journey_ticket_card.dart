@@ -74,7 +74,8 @@ class JourneyTicketCard extends StatelessWidget {
                             color: colors.textPrimary.withValues(alpha: 0.5),
                             child: Text(
                               dateLabel.toUpperCase(),
-                              style: AppTypography.mono(
+                              style: AppTypography.caption(
+                                context,
                                 fontSize: 9,
                                 color: Colors.white,
                                 letterSpacing: 1.5,
@@ -104,7 +105,8 @@ class JourneyTicketCard extends StatelessWidget {
                     entry.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.display(
+                    style: AppTypography.displayOf(
+                      context,
                       fontSize: 18,
                       color: colors.textPrimary,
                       letterSpacing: -0.2,

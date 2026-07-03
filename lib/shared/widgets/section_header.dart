@@ -42,7 +42,8 @@ class SectionHeader extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: AppTypography.mono(
+            style: AppTypography.caption(
+              context,
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: colors.textSecondary,
