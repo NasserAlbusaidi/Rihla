@@ -140,7 +140,8 @@ class RecapShareCard extends StatelessWidget {
                     caption,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.mono(
+                    style: AppTypography.caption(
+                      context,
                       fontSize: 9,
                       color: c.textOnPrimary.withValues(alpha: 0.92),
                       letterSpacing: 2,
@@ -151,7 +152,8 @@ class RecapShareCard extends StatelessWidget {
                     recap.eventName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.display(
+                    style: AppTypography.displayOf(
+                      context,
                       fontSize: 27,
                       color: c.textOnPrimary,
                       height: 1.05,
@@ -543,7 +545,8 @@ class RecapShareCard extends StatelessWidget {
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: AppTypography.mono(
+      style: AppTypography.caption(
+        context,
         fontSize: size,
         fontWeight: FontWeight.w700,
         color: context.colors.textSecondary,

@@ -86,7 +86,8 @@ class _LoadedCard extends StatelessWidget {
           Expanded(
             child: Text(
               context.l10n.homeAcrossAllJourneys,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 16,
                 color: colors.textSecondary,
               ),

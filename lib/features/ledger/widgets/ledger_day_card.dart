@@ -35,7 +35,8 @@ class LedgerDayStamp extends StatelessWidget {
         children: [
           Text(
             name,
-            style: AppTypography.display(
+            style: AppTypography.displayOf(
+              context,
               fontSize: 23,
               color: colors.textPrimary,
               letterSpacing: -0.3,
@@ -53,7 +54,8 @@ class LedgerDayStamp extends StatelessWidget {
                   if (date != null)
                     Text(
                       date.toUpperCase(),
-                      style: AppTypography.mono(
+                      style: AppTypography.caption(
+                        context,
                         fontSize: 10,
                         color: colors.textSecondary,
                         letterSpacing: 1.6,
@@ -72,7 +74,8 @@ class LedgerDayStamp extends StatelessWidget {
                   if (sub != null && sub!.isNotEmpty)
                     Text(
                       sub!,
-                      style: AppTypography.display(
+                      style: AppTypography.displayOf(
+                        context,
                         fontSize: 13.5,
                         color: colors.textSecondary,
                       ),
@@ -500,7 +503,8 @@ class _Overline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = AppTypography.mono(
+    final base = AppTypography.caption(
+      context,
       fontSize: 10.5,
       color: sageText,
       letterSpacing: 1.2,
@@ -514,11 +518,11 @@ class _Overline extends StatelessWidget {
         children: [
           TextSpan(text: context.l10n.ledgerSettlementLabel, style: base),
           TextSpan(
+            // User-authored free text — sans in every locale (#841).
             text: ' · ${note!}',
-            style: AppTypography.mono(
+            style: AppTypography.sans(
               fontSize: 10.5,
               color: secondary,
-              letterSpacing: 0.3,
               fontWeight: FontWeight.w500,
             ),
           ),

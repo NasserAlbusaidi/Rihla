@@ -461,7 +461,8 @@ class _JoinGroupTopBar extends StatelessWidget {
             ),
             Text(
               context.l10n.groupJoinTitle,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 19,
                 color: colors.textPrimary,
               ),
@@ -484,7 +485,8 @@ class _JoinMoodBlock extends StatelessWidget {
       children: [
         Text(
           context.l10n.groupJoinMoodTitle,
-          style: AppTypography.display(
+          style: AppTypography.displayOf(
+            context,
             fontSize: 30,
             color: colors.textPrimary,
             height: 1.05,

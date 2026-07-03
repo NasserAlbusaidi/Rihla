@@ -420,7 +420,8 @@ class _Body extends ConsumerWidget {
                     ? '· ${context.l10n.ledgerEndOfLedger} · '
                           '${Decimal.zero.toStringAsFixed(AppFormatters.currencyConfig[currency]?.decimals ?? 3)} ·'
                     : '· ${context.l10n.ledgerEndOfLedger} ·',
-                style: AppTypography.mono(
+                style: AppTypography.caption(
+                  context,
                   fontSize: 9,
                   color: context.colors.textSecondary,
                   letterSpacing: 1.5,
@@ -567,7 +568,8 @@ class _CoverHeader extends StatelessWidget {
                   captionParts.join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.mono(
+                  style: AppTypography.caption(
+                    context,
                     fontSize: 9,
                     color: Colors.white.withValues(alpha: 0.85),
                     letterSpacing: 2,
@@ -578,7 +580,8 @@ class _CoverHeader extends StatelessWidget {
                   event.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.display(
+                  style: AppTypography.displayOf(
+                    context,
                     fontSize: 26,
                     color: Colors.white,
                     height: 1.1,
@@ -617,7 +620,8 @@ class _EmptyStateBody extends StatelessWidget {
           Text(
             context.l10n.ledgerEmptyStateTitle,
             textAlign: TextAlign.center,
-            style: AppTypography.display(
+            style: AppTypography.displayOf(
+              context,
               fontSize: 22,
               color: colors.textPrimary,
               height: 1.2,

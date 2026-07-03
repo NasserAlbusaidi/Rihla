@@ -103,7 +103,8 @@ class _AddShadowMemberSheetState extends ConsumerState<AddShadowMemberSheet> {
           children: [
             Text(
               context.l10n.groupAddPersonTitle,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 22,
                 color: colors.textPrimary,
                 height: 1.1,

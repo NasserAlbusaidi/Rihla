@@ -333,7 +333,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               Text(
                 context.l10n.homeRestoreSectionCaption.toUpperCase(),
                 textAlign: TextAlign.center,
-                style: AppTypography.mono(
+                style: AppTypography.caption(
+                  context,
                   fontSize: 10.5,
                   color: context.colors.textSecondary,
                   letterSpacing: 1.7,
@@ -680,7 +681,8 @@ class _GreetingStrip extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
       child: Text(
         context.l10n.homeGreeting(greeting, name).toUpperCase(),
-        style: AppTypography.mono(
+        style: AppTypography.caption(
+          context,
           fontSize: 10,
           color: colors.textSecondary,
           letterSpacing: 2,

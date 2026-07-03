@@ -516,7 +516,8 @@ class _CoverHeader extends StatelessWidget {
               children: [
                 Text(
                   context.l10n.groupMemberCountCaps(memberCount),
-                  style: AppTypography.mono(
+                  style: AppTypography.caption(
+                    context,
                     fontSize: 9,
                     color: context.colors.textOnPrimary.withValues(alpha: 0.85),
                     letterSpacing: 2,
@@ -527,7 +528,8 @@ class _CoverHeader extends StatelessWidget {
                   group.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.display(
+                  style: AppTypography.displayOf(
+                    context,
                     fontSize: 30,
                     color: context.colors.textOnPrimary,
                     height: 1.05,
@@ -669,7 +671,8 @@ class _BalanceCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   context.l10n.groupYourBalanceHere,
-                  style: AppTypography.display(
+                  style: AppTypography.displayOf(
+                    context,
                     fontSize: 14,
                     color: colors.textSecondary,
                   ),
@@ -942,7 +945,8 @@ class _EventRow extends StatelessWidget {
                     children: [
                       Text(
                         _eventTypeLabel(context, event.type),
-                        style: AppTypography.mono(
+                        style: AppTypography.caption(
+                          context,
                           fontSize: 9,
                           color: colors.textSecondary,
                           letterSpacing: 1.5,

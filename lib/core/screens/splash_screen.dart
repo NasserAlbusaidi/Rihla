@@ -137,7 +137,8 @@ class _ErrorBody extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               title,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 26,
                 color: colors.textPrimary,
               ),

@@ -126,7 +126,8 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                       SizedBox(height: context.spacing.space12),
                       Text(
                         context.l10n.groupDeleteSheetTitle,
-                        style: AppTypography.display(
+                        style: AppTypography.displayOf(
+                          context,
                           fontSize: 28,
                           color: colors.textPrimary,
                           height: 1.05,
@@ -202,7 +203,9 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                             ),
                             child: Text(
                               widget.groupName,
-                              style: AppTypography.mono(
+                              // User free-text (type-to-confirm target) —
+                              // sans in every locale (#841).
+                              style: AppTypography.sans(
                                 fontSize: 11,
                                 color: colors.textPrimary,
                                 fontWeight: FontWeight.w600,
@@ -225,9 +228,12 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                         controller: _controller,
                         autofocus: false,
                         onChanged: (_) => setState(() {}),
-                        style: AppTypography.mono(
+                        // User free-text input the user must match against the
+                        // group name — sans in every locale (#841).
+                        style: AppTypography.sans(
                           fontSize: 15,
                           color: colors.textPrimary,
+                          fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
                           filled: true,

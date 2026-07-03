@@ -224,7 +224,8 @@ class LedgerCategoryStripEmpty extends StatelessWidget {
               context.l10n.ledgerCategoriesAppear,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 12,
                 color: colors.textSecondary,
               ),
