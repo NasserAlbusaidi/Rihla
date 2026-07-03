@@ -1754,6 +1754,36 @@ abstract class AppLocalizations {
   /// **'Removes for everyone in this event.'**
   String get editorDeleteThisExpenseBody;
 
+  /// No description provided for @editorDiscardAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this expense?'**
+  String get editorDiscardAddTitle;
+
+  /// No description provided for @editorDiscardEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard your changes?'**
+  String get editorDiscardEditTitle;
+
+  /// No description provided for @editorDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll lose what you\'ve entered.'**
+  String get editorDiscardBody;
+
+  /// No description provided for @editorDiscardKeepEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get editorDiscardKeepEditing;
+
+  /// No description provided for @editorDiscardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get editorDiscardConfirm;
+
   /// No description provided for @editorCustomiseSplit.
   ///
   /// In en, this message translates to:
