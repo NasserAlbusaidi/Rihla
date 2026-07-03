@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../helpers/repaint_boundary_finder.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/events/models/event_model.dart'
     show Event, EventModules, EventType;
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -1201,6 +1202,7 @@ void main() {
       String? currentUid = 'uid-creator',
       List<Event> events = const [],
       AsyncValue<GroupBalances>? balancesAsync,
+      bool durable = true,
     }) {
       final router = GoRouter(
         initialLocation: '/group/$_groupId',
@@ -1239,6 +1241,9 @@ void main() {
           groupActivityProvider(
             _groupId,
           ).overrideWith((ref) => Stream.value(const [])),
+          // #818: the add-by-name shortcut is now also gated on durability
+          // (addShadowMember hard-rejects anonymous callers server-side).
+          isDurableUserProvider.overrideWithValue(durable),
         ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
@@ -1306,6 +1311,29 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgets(
+      '#818: anonymous creator gets no People add-person action',
+      (tester) async {
+        await tester.pumpWidget(wrapWithRoutes(durable: false));
+        await tester.pumpAndSettle();
+
+        // Same creator uid as the durable-creator test, but anonymous — the
+        // affordance must be hidden (addShadowMember hard-rejects anon
+        // callers server-side).
+        await tester.scrollUntilVisible(
+          find.byKey(GroupKeys.membersAndBalancesSection),
+          150,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(GroupKeys.groupDetailAddPersonAction),
+          findsNothing,
+        );
+      },
+    );
 
     testWidgets('member avatar stack routes to group settings', (
       tester,
