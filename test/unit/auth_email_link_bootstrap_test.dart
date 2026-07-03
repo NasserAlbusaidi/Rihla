@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/services/app_messenger.dart';
 import 'package:safar/features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/auth/providers/shell_emptiness_gate.dart';
@@ -13,6 +15,7 @@ import 'package:safar/features/auth/services/auth_email_link_config.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockAppLinks extends Mock implements AppLinks {}
 
@@ -575,4 +578,59 @@ void main() {
       },
     );
   });
+
+  // ---------------------------------------------------------------------
+  // #841 PR-3: widget-level l10n test. Every other test in this file drives
+  // the bare ProviderContainer (no widget tree), so
+  // appMessengerKey.currentContext is always null and every snack silently
+  // takes the EN fallback — that would mask total localization failure for
+  // AR users. This drives the REAL provider through a real MaterialApp,
+  // mirroring the #843 recovery_outcome_notice_test.dart AR widget test.
+  // ---------------------------------------------------------------------
+  testWidgets(
+    'AR l10n: no-pending-email snack shows the localized string',
+    (tester) async {
+      when(() => service.readPendingEmail()).thenReturn(null);
+
+      container = ProviderContainer(
+        overrides: [
+          appLinksProvider.overrideWithValue(appLinks),
+          authRecoveryServiceProvider.overrideWithValue(service),
+          firebaseUserProvider.overrideWith(
+            (ref) => Stream<User?>.value(_anonUser),
+          ),
+          groupServiceProvider.overrideWithValue(groupService),
+          shellEmptinessGateTimeoutProvider.overrideWithValue(
+            const Duration(seconds: 5),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            scaffoldMessengerKey: appMessengerKey,
+            locale: const Locale('ar'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Consumer(
+              builder: (context, ref, _) {
+                ref.watch(authEmailLinkBootstrapProvider);
+                return const Scaffold(body: SizedBox());
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      uriStream.add(_validAuthLink());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+      expect(find.text(ar.authEmailLinkNoPendingEmail), findsOneWidget);
+    },
+  );
 }

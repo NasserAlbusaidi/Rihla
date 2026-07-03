@@ -22,11 +22,13 @@ void main() {
     WidgetTester tester, {
     required String currentName,
     required Future<void> Function(String) onSave,
+    Locale? locale,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
           theme: AppTheme.lightTheme,
+          locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
@@ -96,6 +98,36 @@ void main() {
     );
     expect(saves, 0);
   });
+
+  testWidgets(
+    'AR l10n: control character error shows the localized message (#841 PR-3)',
+    (tester) async {
+      // #841 leak: the sheet called the raw-EN validateDisplayName, so an AR
+      // user would see this English string regardless of locale.
+      var saves = 0;
+      await openEditName(
+        tester,
+        currentName: 'Alice',
+        onSave: (_) async => saves++,
+        locale: const Locale('ar'),
+      );
+
+      await tester.enterText(
+        find.byKey(ProfileKeys.nameTextField),
+        'Bad${String.fromCharCode(7)}Name',
+      );
+      await tester.tap(find.byKey(ProfileKeys.saveNameButton));
+      await tester.pump();
+
+      final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+      expect(find.text(ar.nameValidationControlChars), findsOneWidget);
+      expect(
+        find.text('Remove line breaks or special characters.'),
+        findsNothing,
+      );
+      expect(saves, 0);
+    },
+  );
 
   testWidgets('valid name is normalized before onSave', (tester) async {
     String? saved;
