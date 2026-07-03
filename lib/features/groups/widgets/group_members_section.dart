@@ -10,6 +10,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../keys/group_keys.dart';
 import '../models/group_member_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -39,6 +40,10 @@ class GroupMembersSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // #818: addShadowMember hard-rejects anonymous callers server-side, so a
+    // durable creator is required (not just any creator) for the affordance.
+    final isDurableUser = ref.watch(isDurableUserProvider);
+    final canAddByName = isCurrentUserCreator && isDurableUser;
     return Column(
       key: GroupKeys.membersSection,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,11 +51,9 @@ class GroupMembersSection extends ConsumerWidget {
         SettingsSectionHeader(
           title: context.l10n.groupMembers,
           // #278 PR3: only the creator can add placeholder members by name.
-          actionLabel: isCurrentUserCreator
-              ? context.l10n.groupAddMemberAction
-              : null,
+          actionLabel: canAddByName ? context.l10n.groupAddMemberAction : null,
           actionKey: GroupKeys.addPersonAction,
-          onActionTap: isCurrentUserCreator
+          onActionTap: canAddByName
               ? () => AddShadowMemberSheet.show(context, groupId: groupId)
               : null,
         ),
@@ -69,14 +72,18 @@ class GroupMembersSection extends ConsumerWidget {
         ),
         // #807: non-creators see no add/remove affordances — say why instead
         // of leaving the absence unexplained (locked-currency-note pattern).
-        if (!isCurrentUserCreator) ...[
+        // #818: an anonymous creator gets the link-to-add-by-name hint instead
+        // of the non-creator explanation (they ARE the creator).
+        if (!canAddByName) ...[
           SizedBox(height: context.spacing.space8),
           Padding(
             padding: EdgeInsetsDirectional.only(
               start: context.spacing.space4,
             ),
             child: Text(
-              context.l10n.groupMembersCreatorOnlyNote,
+              isCurrentUserCreator
+                  ? context.l10n.shadowAddRequiresLink
+                  : context.l10n.groupMembersCreatorOnlyNote,
               key: GroupKeys.membersCreatorOnlyNote,
               style: AppTypography.sans(
                 fontSize: 12,

@@ -3414,9 +3414,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get durableGateError => 'تعذّر ربط حسابك. حاول مرة أخرى.';
 
   @override
-  String get durableCredentialRequired => 'اربط حساب Google للمتابعة.';
-
-  @override
   String get createGroupWhoElse => 'من سيشارك؟';
 
   @override
@@ -3424,6 +3421,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get createGroupShadowOfflineHint => 'اتصل بالإنترنت لإضافة الأسماء';
+
+  @override
+  String get shadowAddRequiresLink =>
+      'اربط حسابك لإضافة أشخاص بالاسم — يمكن لأي شخص الانضمام برمز الدعوة.';
 
   @override
   String createGroupShadowNameTaken(Object name) {

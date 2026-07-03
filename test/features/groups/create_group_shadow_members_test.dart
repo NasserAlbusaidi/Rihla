@@ -21,7 +21,7 @@ import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/core/theme/app_theme.dart';
-import 'package:safar/features/auth/providers/durable_credential_gate_provider.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -61,7 +61,11 @@ void main() {
     ).thenReturn((group: _group(), ack: Future<void>.value()));
   });
 
-  Widget wrap(SharedPreferences sp, {required ConnectivityStatus status}) {
+  Widget wrap(
+    SharedPreferences sp, {
+    required ConnectivityStatus status,
+    bool durable = true,
+  }) {
     connectivity = ConnectivityNotifier(startPeriodicChecks: false);
     if (status == ConnectivityStatus.offline) {
       connectivity.setOffline();
@@ -90,13 +94,11 @@ void main() {
         groupServiceProvider.overrideWithValue(groupService),
         notificationPromptProvider.overrideWithValue(_RecordingPrompt()),
         connectivityProvider.overrideWith((ref) => connectivity),
-        durableCredentialGateProvider.overrideWith(
-          (ref) => DurableCredentialGate(
-            ref,
-            isAnonymous: () => false,
-            presentSheet: (_, {intent}) async => true,
-          ),
-        ),
+        // #818: the chips field is now also gated on durability
+        // (enabled: online && durable) — every test here types into
+        // shadowMemberInput or asserts its enabled state, so the harness
+        // must present a durable (non-anonymous) user by default.
+        isDurableUserProvider.overrideWithValue(durable),
       ],
       child: MaterialApp.router(
         routerConfig: router,
@@ -159,6 +161,34 @@ void main() {
         () =>
             groupService.addShadowMember(groupId: 'g1', displayName: 'Khalid'),
       ).called(1);
+    },
+  );
+
+  testWidgets(
+    '#818: anonymous creator online — chips field disabled + '
+    'shadowAddRequiresLink hint, NOT the offline hint',
+    (tester) async {
+      final sp = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        wrap(sp, status: ConnectivityStatus.online, durable: false),
+      );
+      await tester.pump();
+
+      // The anon hint wins over the offline hint even though connectivity
+      // is online — addShadowMember hard-rejects anonymous callers
+      // server-side, so the affordance is disabled regardless.
+      expect(
+        find.text(
+          'Link your account to add people by name — anyone can still '
+          'join with the invite code.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Connect to add names'), findsNothing);
+      final field = tester.widget<TextField>(
+        find.byKey(GroupKeys.shadowMemberInput),
+      );
+      expect(field.enabled, isFalse);
     },
   );
 

@@ -3338,9 +3338,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get durableGateError => 'Could not link your account. Try again.';
 
   @override
-  String get durableCredentialRequired => 'Link a Google account to continue.';
-
-  @override
   String get createGroupWhoElse => 'Who\'s in?';
 
   @override
@@ -3348,6 +3345,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createGroupShadowOfflineHint => 'Connect to add names';
+
+  @override
+  String get shadowAddRequiresLink =>
+      'Link your account to add people by name — anyone can still join with the invite code.';
 
   @override
   String createGroupShadowNameTaken(Object name) {

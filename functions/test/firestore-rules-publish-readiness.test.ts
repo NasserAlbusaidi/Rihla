@@ -285,11 +285,12 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
-  // #441: money data must never be born under a discardable anonymous UID.
-  // Anonymous-provider tokens are rejected on group + inviteCode creation;
-  // every other provider (incl. the option-less default 'custom' used by the
-  // tests above) passes.
-  describe('#441 durable-credential gate on group creation', () => {
+  // #818: the #441 durable-credential gate on group creation is REMOVED.
+  // Post-#648 an anonymous user can already join groups and add expenses on a
+  // discardable UID ("gate creation, not participation"), so the create gate
+  // no longer protects its founding invariant — anonymous provider tokens now
+  // pass group + inviteCode creation the same as every other provider.
+  describe('#818 anonymous provider can create groups (durable-credential gate removed)', () => {
     function groupCreatePayload(uid: string, groupId: string, code: string) {
       return {
         id: groupId,
@@ -305,13 +306,13 @@ describe('Publish readiness Firestore rules', () => {
       };
     }
 
-    test('anonymous provider cannot create a group (even valid-shaped)', async () => {
+    test('anonymous provider can create a group (valid-shaped)', async () => {
       await testEnv.clearFirestore();
       const anon = testEnv.authenticatedContext('anon-uid', {
         firebase: { sign_in_provider: 'anonymous' },
       });
 
-      await assertFails(
+      await assertSucceeds(
         anon
           .firestore()
           .doc('groups/anon-group')
@@ -319,7 +320,7 @@ describe('Publish readiness Firestore rules', () => {
       );
     });
 
-    test('anonymous provider cannot create the group + inviteCode batch', async () => {
+    test('anonymous provider can create the group + inviteCode batch', async () => {
       await testEnv.clearFirestore();
       const anon = testEnv.authenticatedContext('anon-uid', {
         firebase: { sign_in_provider: 'anonymous' },
@@ -335,7 +336,7 @@ describe('Publish readiness Firestore rules', () => {
         createdAt: new Date(),
       });
 
-      await assertFails(batch.commit());
+      await assertSucceeds(batch.commit());
     });
 
     test('google.com provider can create the group + inviteCode batch', async () => {
@@ -2725,6 +2726,152 @@ describe('Publish readiness Firestore rules', () => {
           actorName: 'Owner',
           description: 'added Dinner (10.500 OMR)',
           metadata: { expenseId: 'exp1', eventId: 'e1', eventName: 'Trip', amountFils: 10500, currency: 'OMR' },
+        }),
+      ));
+    });
+  });
+
+  // #814 — value-domain floor for client-forgeable group-activity metadata.
+  // Before this, `metadata is map` accepted any shape: a member could forge
+  // `amountFils: NaN`/negative fils, unsupported currencies, or non-string
+  // names that the display layer (#815/#816) must otherwise defend against.
+  test('#814 a client cannot forge non-finite or negative amountFils', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const forgeries = [NaN, Infinity, 10.5, -100];
+    for (const amountFils of forgeries) {
+      const id = `ga-814-amountfils-${String(amountFils)}`;
+      await assertFails(
+        member.doc(`groups/g1/activity/${id}`).set(
+          validGroupActivity({ id, type: 'group_settlement', metadata: { amountFils } }),
+        ),
+      );
+    }
+  });
+
+  test('#814 a client cannot forge an unsupported metadata currency', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-currency').set(
+        validGroupActivity({
+          id: 'ga-814-currency',
+          type: 'group_settlement',
+          metadata: { amountFils: 10500, currency: 'ZZZ' },
+        }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge a non-string legacy amount', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-amount').set(
+        validGroupActivity({ id: 'ga-814-amount', type: 'group_settlement', metadata: { amount: 42 } }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge a non-string eventName', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-eventname').set(
+        validGroupActivity({
+          id: 'ga-814-eventname',
+          type: 'event_created',
+          metadata: { eventName: 42 },
+        }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge non-string memberName or memberAction', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-membername').set(
+        validGroupActivity({ id: 'ga-814-membername', type: 'group_settlement', metadata: { memberName: 42 } }),
+      ),
+    );
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-memberaction').set(
+        validGroupActivity({ id: 'ga-814-memberaction', type: 'group_settlement', metadata: { memberAction: 42 } }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge a metadata map with more than 16 keys', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const metadata: Record<string, unknown> = {};
+    for (let i = 0; i < 17; i += 1) {
+      metadata[`k${i}`] = `v${i}`;
+    }
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-toobig').set(
+        validGroupActivity({ id: 'ga-814-toobig', type: 'group_settlement', metadata }),
+      ),
+    );
+  });
+
+  test('#814 legitimate client metadata shapes still succeed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-settle').set(
+        validGroupActivity({
+          id: 'ga-814-ok-settle',
+          type: 'group_settlement',
+          metadata: { amount: '12.500', recipientId: 'member', currency: 'OMR' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-event').set(
+        validGroupActivity({
+          id: 'ga-814-ok-event',
+          type: 'event_created',
+          metadata: { eventId: 'e1', eventName: 'Trip' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-join').set(
+        validGroupActivity({
+          id: 'ga-814-ok-join',
+          type: 'member_joined',
+          metadata: { groupId: 'g1' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-empty').set(
+        validGroupActivity({ id: 'ga-814-ok-empty', metadata: {} }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-opaque').set(
+        validGroupActivity({
+          id: 'ga-814-ok-opaque',
+          metadata: { someFutureId: 'abc' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-faninshape').set(
+        validGroupActivity({
+          id: 'ga-814-ok-faninshape',
+          metadata: { amountFils: 10500, currency: 'OMR' },
+        }),
+      ),
+    );
+  });
+
+  test('#814 the server (Admin SDK / rules-disabled) can still write garbage-shaped metadata on member_left', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await assertSucceeds(ctx.firestore().doc('groups/g1/activity/ga-814-srv').set(
+        validGroupActivity({
+          id: 'ga-814-srv',
+          type: 'member_left',
+          actorId: 'owner',
+          actorName: 'Owner',
+          description: 'Member left the group',
+          metadata: { memberName: 42 },
         }),
       ));
     });
