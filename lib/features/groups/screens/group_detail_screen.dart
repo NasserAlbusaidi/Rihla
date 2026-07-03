@@ -24,6 +24,7 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../events/providers/event_provider.dart';
@@ -155,6 +156,7 @@ class _ContentState extends ConsumerState<_Content> {
     // its terminal error (else _MembersCard hangs on "Loading members…").
     final membersAsync = ref.watch(groupMembersProvider(group.id));
     final currentUid = ref.watch(currentUserIdProvider);
+    final isDurableUser = ref.watch(isDurableUserProvider);
     final balances = balancesAsync.valueOrNull;
     final balanceLines = nonZeroNetsGccFirst(
       myNetByCurrency(balances?.balances ?? const {}, currentUid),
@@ -250,15 +252,24 @@ class _ContentState extends ConsumerState<_Content> {
           SliverToBoxAdapter(
             // #807: creator-only shortcut to add-by-name — the same sheet the
             // settings screen offers, without the 4-tap settings detour. The
-            // gate mirrors GroupMembersSection's isCurrentUserCreator.
+            // gate mirrors GroupMembersSection's isCurrentUserCreator. #818:
+            // also requires a durable creator — addShadowMember hard-rejects
+            // anonymous callers server-side, so an anonymous creator sees no
+            // affordance (mirrors GroupMembersSection).
             child: SectionHeader(
               key: GroupKeys.membersAndBalancesSection,
               title: context.l10n.groupPeople,
-              actionLabel: currentUid != null && group.createdBy == currentUid
+              actionLabel:
+                  currentUid != null &&
+                      group.createdBy == currentUid &&
+                      isDurableUser
                   ? context.l10n.groupAddMemberAction
                   : null,
               actionKey: GroupKeys.groupDetailAddPersonAction,
-              onActionTap: currentUid != null && group.createdBy == currentUid
+              onActionTap:
+                  currentUid != null &&
+                      group.createdBy == currentUid &&
+                      isDurableUser
                   ? () {
                       HapticService.selection();
                       AddShadowMemberSheet.show(context, groupId: group.id);

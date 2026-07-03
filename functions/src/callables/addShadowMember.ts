@@ -48,9 +48,12 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
     }
-    // A shadow is group-scoped placeholder data; the CREATOR adds it and is
-    // always durable (validGroupCreate requires a durable sign-in). Reject anon
-    // defensively, mirroring joinGroupByInviteCode:236.
+    // A shadow is group-scoped placeholder data. #818 removed the durable-
+    // credential gate on group CREATION, so an anonymous user can now be the
+    // creator here — the CLIENT gates the add-by-name affordance on
+    // isDurableUserProvider (create-screen chips, group-detail #807 shortcut,
+    // group-settings members section). This reject is the server backstop for
+    // that carve-out, mirroring joinGroupByInviteCode:236.
     if (request.auth.token?.firebase?.sign_in_provider === 'anonymous') {
       throw new HttpsError(
         'permission-denied',

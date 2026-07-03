@@ -18,8 +18,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/r_icon_button.dart';
-import '../../auth/providers/durable_credential_gate_provider.dart';
-import '../../auth/services/durable_credential_exception.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/pending_gate_intent.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
@@ -135,21 +134,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   Future<void> _createGroup() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // #441: first valuable write — an anonymous user must link Google first.
-    // The intent carries the typed form across the gate-conflict
-    // discard-shell restart (#428).
-    final gateOk = await ref
-        .read(durableCredentialGateProvider)
-        .ensure(
-          context,
-          intent: PendingGateIntent.create(
-            groupName: _nameController.text.trim(),
-            displayName: _displayNameController.text.trim(),
-            currencyCode: _selectedCurrency,
-          ),
-        );
-    if (!gateOk || !mounted) return;
-
     ref.read(groupLoadingProvider.notifier).state = true;
     ref.read(groupErrorProvider.notifier).state = null;
 
@@ -180,9 +164,8 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       // Group immediately + the server-ack future. Race the ack instead of
       // awaiting it raw (the old createGroup().timeout(15s) falsely reported
       // "couldn't create group" offline for a group that WAS created and will
-      // sync). stageGroup runs the auth/anonymous guards synchronously, so its
-      // DurableCredentialRequiredException is caught below — it MUST stay
-      // inside this try.
+      // sync). stageGroup runs the not-authenticated guard synchronously, so
+      // that throw is caught below — it MUST stay inside this try.
       final staged = ref
           .read(groupServiceProvider)
           .stageGroup(
@@ -226,14 +209,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       // has a group to be notified about. Fires after the sheet so it doesn't
       // fight the modal.
       unawaited(notificationPrompt.maybePrompt());
-    } on DurableCredentialRequiredException {
-      // Defense path (#441): the service refused an anonymous write the UI
-      // gate didn't catch (e.g. auth state changed mid-flow).
-      if (!mounted) return;
-      ref.read(groupLoadingProvider.notifier).state = false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.durableCredentialRequired)),
-      );
     } catch (e, st) {
       if (!mounted) return;
       ref.read(groupLoadingProvider.notifier).state = false;
@@ -421,9 +396,13 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                         names: _shadowNames,
                         enabled:
                             ref.watch(connectivityProvider) ==
-                            ConnectivityStatus.online,
+                                ConnectivityStatus.online &&
+                            ref.watch(isDurableUserProvider),
                         onAdd: _addShadowName,
                         onRemove: _removeShadowName,
+                        disabledHint: ref.watch(isDurableUserProvider)
+                            ? null
+                            : context.l10n.shadowAddRequiresLink,
                       ),
                       const SizedBox(height: 18),
                       _CurrencyField(

@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -161,6 +162,7 @@ Widget _wrap({
   required bool isCreator,
   required List<GroupMember> members,
   GroupBalances? balances,
+  bool durable = true,
 }) {
   final currentUserId = isCreator ? 'uid-creator' : 'shadow-sara';
   final router = GoRouter(
@@ -196,6 +198,9 @@ Widget _wrap({
         'group-1',
       ).overrideWith((ref) => AsyncValue.data(balances ?? _zeroBalances())),
       groupServiceProvider.overrideWith(serviceBuilder),
+      // #818: the add-by-name affordance is now also gated on durability
+      // (addShadowMember hard-rejects anonymous callers server-side).
+      isDurableUserProvider.overrideWithValue(durable),
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
@@ -259,6 +264,40 @@ void main() {
     expect(find.byKey(GroupKeys.addPersonAction), findsNothing);
     expect(find.byKey(GroupKeys.membersCreatorOnlyNote), findsOneWidget);
   });
+
+  testWidgets(
+    '#818: anonymous creator sees no Add-person affordance, and the '
+    'footer note is the link hint (not the non-creator explanation)',
+    (tester) async {
+      final calls = _Calls();
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          serviceBuilder: (ref) => _MockGroupService(ref, calls: calls),
+          connectivity: _online(),
+          isCreator: true,
+          members: [_creator(), _shadow()],
+          durable: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.addPersonAction), findsNothing);
+      expect(
+        find.text(
+          'Link your account to add people by name — anyone can still '
+          'join with the invite code.',
+        ),
+        findsOneWidget,
+      );
+      // NOT the non-creator explanation — this user IS the creator, just
+      // not durable.
+      expect(
+        find.text('Only the group creator can add or remove members.'),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('a shadow member tile renders the "Not joined yet" pill', (
     tester,
