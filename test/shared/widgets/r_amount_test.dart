@@ -207,4 +207,59 @@ void main() {
       expect(_leafSpans(tester)[0].style!.fontSize, closeTo(42.0, 0.01));
     });
   });
+
+  group('RAmount — semantics (a11y)', () {
+    testWidgets('negative signed amount announces an ASCII minus, '
+        'not the fragmented spans with U+2212', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(value: Decimal.parse('-12.5'), currency: 'OMR', sign: true),
+        ),
+      );
+      expect(find.bySemanticsLabel('-OMR 12.500'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('positive signed amount announces the plus', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(value: Decimal.parse('12.5'), currency: 'OMR', sign: true),
+        ),
+      );
+      expect(find.bySemanticsLabel('+OMR 12.500'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('showCurrency:false announces the bare value', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('184.2'),
+            currency: 'USD',
+            showCurrency: false,
+          ),
+        ),
+      );
+      expect(find.bySemanticsLabel('184.20'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('caller-provided semanticsLabel wins', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('184.2'),
+            currency: 'OMR',
+            semanticsLabel: 'You are owed OMR 184.200',
+          ),
+        ),
+      );
+      expect(find.bySemanticsLabel('You are owed OMR 184.200'), findsOneWidget);
+      handle.dispose();
+    });
+  });
 }
