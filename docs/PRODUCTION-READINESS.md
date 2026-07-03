@@ -158,12 +158,18 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-03, `18b1d3e7`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-03, `abee70e8`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-03 deploy ceremony the `backend-deployed` tag is `18b1d3e7`; prod
+    2026-07-03 deploy ceremony the `backend-deployed` tag is `abee70e8`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#826 (Refs #818 Wave 2, Decision 0)** — anon-create gate
+    Latest delta: **#830 (Refs #818 Wave 3.1)** — settlement direction in
+    activity feeds, rules half: `validActivityMetadata` gains 5 absent-or-typed
+    string clauses (`recipientId` promoted to typed; the new direction keys
+    `fromUserId`/`toUserId`/`fromName`/`toName`). Pure tightening — type
+    allow-list, `hasOnly` list, and 16-key cap untouched; rules suite 202/202 at
+    deploy time. See the DEPLOY-LEDGER `abee70e8` row for the full record.
+    Prior delta: **#826 (Refs #818 Wave 2, Decision 0)** — anon-create gate
     removed. `firestore.rules` loses `isDurableSignIn()` (helper + its only two
     conjuncts: `validGroupCreate`, `inviteCodes` create) — anonymous users can
     now create groups + invite codes (join was already un-gated, #648).
