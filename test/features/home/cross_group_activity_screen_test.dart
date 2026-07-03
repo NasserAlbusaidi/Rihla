@@ -186,7 +186,7 @@ void main() {
   Future<SharedPreferences> prefs() => SharedPreferences.getInstance();
 
   group('CrossGroupActivityScreen (paginated)', () {
-    testWidgets('shows "Activity" title', (tester) async {
+    testWidgets('shows "History" title', (tester) async {
       final db = FakeFirebaseFirestore();
       await tester.pumpWidget(
         _app(
@@ -196,7 +196,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Activity'), findsOneWidget);
+      expect(find.text('History'), findsOneWidget);
     });
 
     testWidgets('shows empty state when there is no activity', (tester) async {
@@ -652,7 +652,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Activity'), findsOneWidget);
+      expect(find.text('History'), findsOneWidget);
       expect(find.byTooltip('Back'), findsNothing);
     });
   });
