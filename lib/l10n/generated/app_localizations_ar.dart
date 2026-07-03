@@ -3413,6 +3413,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get splashRetry => 'حاول مرة أخرى';
 
   @override
+  String get splashOfflineTitle => 'لا يوجد اتصال';
+
+  @override
+  String get splashOfflineBody =>
+      'يحتاج رحلة إلى اتصال بالإنترنت عند تشغيله لأول مرة. اتصل بالإنترنت وحاول مرة أخرى.';
+
+  @override
   String get notificationRationaleTitle => 'ابقَ على اطّلاع';
 
   @override
