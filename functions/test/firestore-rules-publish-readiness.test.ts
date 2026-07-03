@@ -2730,6 +2730,152 @@ describe('Publish readiness Firestore rules', () => {
     });
   });
 
+  // #814 — value-domain floor for client-forgeable group-activity metadata.
+  // Before this, `metadata is map` accepted any shape: a member could forge
+  // `amountFils: NaN`/negative fils, unsupported currencies, or non-string
+  // names that the display layer (#815/#816) must otherwise defend against.
+  test('#814 a client cannot forge non-finite or negative amountFils', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const forgeries = [NaN, Infinity, 10.5, -100];
+    for (const amountFils of forgeries) {
+      const id = `ga-814-amountfils-${String(amountFils)}`;
+      await assertFails(
+        member.doc(`groups/g1/activity/${id}`).set(
+          validGroupActivity({ id, type: 'group_settlement', metadata: { amountFils } }),
+        ),
+      );
+    }
+  });
+
+  test('#814 a client cannot forge an unsupported metadata currency', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-currency').set(
+        validGroupActivity({
+          id: 'ga-814-currency',
+          type: 'group_settlement',
+          metadata: { amountFils: 10500, currency: 'ZZZ' },
+        }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge a non-string legacy amount', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-amount').set(
+        validGroupActivity({ id: 'ga-814-amount', type: 'group_settlement', metadata: { amount: 42 } }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge a non-string eventName', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-eventname').set(
+        validGroupActivity({
+          id: 'ga-814-eventname',
+          type: 'event_created',
+          metadata: { eventName: 42 },
+        }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge non-string memberName or memberAction', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-membername').set(
+        validGroupActivity({ id: 'ga-814-membername', type: 'group_settlement', metadata: { memberName: 42 } }),
+      ),
+    );
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-memberaction').set(
+        validGroupActivity({ id: 'ga-814-memberaction', type: 'group_settlement', metadata: { memberAction: 42 } }),
+      ),
+    );
+  });
+
+  test('#814 a client cannot forge a metadata map with more than 16 keys', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    const metadata: Record<string, unknown> = {};
+    for (let i = 0; i < 17; i += 1) {
+      metadata[`k${i}`] = `v${i}`;
+    }
+    await assertFails(
+      member.doc('groups/g1/activity/ga-814-toobig').set(
+        validGroupActivity({ id: 'ga-814-toobig', type: 'group_settlement', metadata }),
+      ),
+    );
+  });
+
+  test('#814 legitimate client metadata shapes still succeed', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-settle').set(
+        validGroupActivity({
+          id: 'ga-814-ok-settle',
+          type: 'group_settlement',
+          metadata: { amount: '12.500', recipientId: 'member', currency: 'OMR' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-event').set(
+        validGroupActivity({
+          id: 'ga-814-ok-event',
+          type: 'event_created',
+          metadata: { eventId: 'e1', eventName: 'Trip' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-join').set(
+        validGroupActivity({
+          id: 'ga-814-ok-join',
+          type: 'member_joined',
+          metadata: { groupId: 'g1' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-empty').set(
+        validGroupActivity({ id: 'ga-814-ok-empty', metadata: {} }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-opaque').set(
+        validGroupActivity({
+          id: 'ga-814-ok-opaque',
+          metadata: { someFutureId: 'abc' },
+        }),
+      ),
+    );
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-814-ok-faninshape').set(
+        validGroupActivity({
+          id: 'ga-814-ok-faninshape',
+          metadata: { amountFils: 10500, currency: 'OMR' },
+        }),
+      ),
+    );
+  });
+
+  test('#814 the server (Admin SDK / rules-disabled) can still write garbage-shaped metadata on member_left', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await assertSucceeds(ctx.firestore().doc('groups/g1/activity/ga-814-srv').set(
+        validGroupActivity({
+          id: 'ga-814-srv',
+          type: 'member_left',
+          actorId: 'owner',
+          actorName: 'Owner',
+          description: 'Member left the group',
+          metadata: { memberName: 42 },
+        }),
+      ));
+    });
+  });
+
   // #366 — balance aggregate: server-only write, member read.
   function validAggregate(): Record<string, unknown> {
     return {
