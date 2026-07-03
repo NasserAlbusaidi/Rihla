@@ -158,12 +158,20 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-03, `35785be4`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-03, `18b1d3e7`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-03 deploy ceremony the `backend-deployed` tag is `35785be4`; prod
+    2026-07-03 deploy ceremony the `backend-deployed` tag is `18b1d3e7`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#814 (#820)** — value-domain floor for client-writable
+    Latest delta: **#826 (Refs #818 Wave 2, Decision 0)** — anon-create gate
+    removed. `firestore.rules` loses `isDurableSignIn()` (helper + its only two
+    conjuncts: `validGroupCreate`, `inviteCodes` create) — anonymous users can
+    now create groups + invite codes (join was already un-gated, #648).
+    `addShadowMember` keeps its anon reject as the server backstop for the
+    client-side shadow carve-out. Rules-only server delta (functions updated in
+    place, none created/deleted); rules suite 201/201 at deploy time. See the
+    DEPLOY-LEDGER `18b1d3e7` row for the full record.
+    Prior delta: **#814 (#820, deployed 2026-07-03 `35785be4`)** — value-domain floor for client-writable
     group-activity metadata, **rules-only**. `validGroupActivityCreate` gains
     `validActivityMetadata(md)`: `amountFils` absent-or-int ≥ 0 (rejects
     NaN/Infinity/doubles/negatives), `currency` absent-or-`validCurrency`
