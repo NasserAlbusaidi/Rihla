@@ -3349,6 +3349,12 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get errorPageNotFoundTitle => 'الصفحة غير موجودة';
+
+  @override
+  String get errorPageNotFoundBody => 'ربما تم حذفها، أو أن الرابط غير صحيح.';
+
+  @override
   String get splashTagline => 'رحلتك المشتركة';
 
   @override
