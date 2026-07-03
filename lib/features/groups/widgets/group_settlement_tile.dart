@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_avatar.dart';
 
 /// A card-style settlement tile showing payer → payee, amount, and a
@@ -148,9 +149,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                 ),
                               ),
                             ),
-                            Positioned(
-                              right: 0,
-                              child: Icon(
+                            PositionedDirectional(
+                              end: 0,
+                              child: DirectionalIcon(
                                 Iconsax.arrow_right_1,
                                 size: 14,
                                 // textMuted-decorative-justified: transfer direction arrow is decorative; payer/payee text carries the meaning.
@@ -184,11 +185,17 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            TextSpan(
-                              text: ' -> ',
-                              style: TextStyle(
-                                color: context.colors.textSecondary,
-                                fontWeight: FontWeight.w500,
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Padding(
+                                padding: const EdgeInsetsDirectional.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: DirectionalIcon(
+                                  Iconsax.arrow_right_1,
+                                  size: 12,
+                                  color: context.colors.textSecondary,
+                                ),
                               ),
                             ),
                             TextSpan(
