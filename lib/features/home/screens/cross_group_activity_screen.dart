@@ -11,6 +11,7 @@ import '../../../core/utils/localized_dates.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../activity/keys/activity_keys.dart';
 import '../../activity/utils/activity_display.dart';
+import '../../groups/models/group_activity_log_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -676,7 +677,7 @@ class _ActivityRow extends StatelessWidget {
     final amount = activityAmount(log, entry.currency);
 
     return InkWell(
-      onTap: () => GoRouter.of(context).push('/group/${entry.groupId}'),
+      onTap: () => GoRouter.of(context).push(_historyRowTarget(entry)),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
         child: Column(
@@ -768,6 +769,66 @@ class _ActivityRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ──────────────────────────── #840 PR-7: per-type row deep-links
+
+/// Deep-link target for a History row tap, resolved per activity [type]
+/// (#840 PR-7). Called ONLY from the row's `onTap` — never from `build` and
+/// never shared with `activityMatchesQuery` (`activity_display.dart`), which
+/// runs over every loaded entry; a throwing/build-time resolution there would
+/// ErrorWidget the whole tab (the #808 P1 class).
+///
+/// [entry.groupId] comes ONLY from fetch context (`_enrich` in
+/// `cross_group_activity_pager.dart`), never `log.metadata['groupId']` — that
+/// key is client-forgeable (e.g. on `member_joined`) and a forged groupId
+/// would cross-group-navigate. A forged eventId under the TRUE groupId only
+/// ever reaches a safe not-found state on the target screen.
+String _historyRowTarget(CrossGroupActivityEntry entry) {
+  final groupId = entry.groupId;
+  final log = entry.log;
+  switch (log.type) {
+    case 'expense_added':
+    case 'expense_edited':
+      final eventId = _navMetadataString(log, 'eventId');
+      return eventId == null
+          ? '/group/$groupId'
+          : '/group/$groupId/event/$eventId/ledger';
+    case 'expense_deleted':
+      // The audit feed is the only place a deleted expense is still visible.
+      final eventId = _navMetadataString(log, 'eventId');
+      return eventId == null
+          ? '/group/$groupId'
+          : '/group/$groupId/event/$eventId/activity';
+    case 'event_created':
+      final eventId = _navMetadataString(log, 'eventId');
+      return eventId == null
+          ? '/group/$groupId'
+          : '/group/$groupId/event/$eventId';
+    case 'group_settlement':
+      // Metadata carries no eventId even for #752 decomposed settle-ups —
+      // group settle-up is the only honest target. No `?memberId=` in v1.
+      return '/group/$groupId/settle-up';
+    // event_deleted (target is gone), member_joined, member_left, and any
+    // unknown/default type all fall through to group detail (unchanged).
+    default:
+      return '/group/$groupId';
+  }
+}
+
+/// Type+non-empty guard for a metadata value read for NAVIGATION.
+///
+/// `firestore.rules`' #814 value-domain floor types 11 named metadata keys
+/// but leaves `eventId`/`expenseId` OPAQUE, and legacy pre-#814 docs have no
+/// floor at all — the map is client-forgeable end to end. A non-String OR
+/// empty value reads as absent so a forged/legacy row degrades to the group
+/// detail fallback instead of building a malformed path (an empty segment,
+/// e.g. `/group/g1/event//ledger`). Deliberately NOT a reuse of
+/// `activity_display.dart`'s file-private `_metadataString` (which is
+/// `is String` only, without the `.isNotEmpty` guard this callsite needs).
+String? _navMetadataString(GroupActivityLog log, String key) {
+  final value = log.metadata[key];
+  return value is String && value.isNotEmpty ? value : null;
 }
 
 class _CategoryIcon extends StatelessWidget {
