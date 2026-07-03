@@ -13,6 +13,7 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../providers/cross_group_activity_pager.dart';
 import '../providers/dashboard_providers.dart';
 
 /// Full-screen cross-group activity feed (saffron travel-journal direction).
@@ -45,10 +46,54 @@ enum _Filter { all, settlements, events, members, expenses }
 class _CrossGroupActivityScreenState
     extends ConsumerState<CrossGroupActivityScreen> {
   _Filter _filter = _Filter.all;
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      ref.read(crossGroupActivityPagerProvider.notifier).loadMore();
+    }
+  }
+
+  // #634: memoize the filtered list. `entries` is append-only within a load,
+  // so its length uniquely identifies its content; recompute only when the list
+  // grows or the filter changes — not on every rebuild.
+  List<CrossGroupActivityEntry>? _filteredCache;
+  int _filteredCacheLen = -1;
+  _Filter? _filteredCacheFilter;
+
+  List<CrossGroupActivityEntry> _filtered(
+    List<CrossGroupActivityEntry> entries,
+  ) {
+    if (_filteredCache != null &&
+        _filteredCacheLen == entries.length &&
+        _filteredCacheFilter == _filter) {
+      return _filteredCache!;
+    }
+    final result = entries
+        .where((e) => _matchesFilter(e.log.type, _filter))
+        .toList();
+    _filteredCache = result;
+    _filteredCacheLen = entries.length;
+    _filteredCacheFilter = _filter;
+    return result;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final activityAsync = ref.watch(crossGroupActivityProvider);
+    final pager = ref.watch(crossGroupActivityPagerProvider);
     return Scaffold(
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
@@ -61,7 +106,7 @@ class _CrossGroupActivityScreenState
               onChange: (f) => setState(() => _filter = f),
             ),
             SizedBox(height: context.spacing.space8),
-            Expanded(child: _buildBody(context, activityAsync)),
+            Expanded(child: _buildBody(context, pager)),
           ],
         ),
       ),
@@ -70,49 +115,110 @@ class _CrossGroupActivityScreenState
 
   Widget _buildBody(
     BuildContext context,
-    AsyncValue<List<CrossGroupActivityEntry>> activityAsync,
+    CrossGroupActivityPagerState pager,
   ) {
-    return activityAsync.when(
-      // #488: a layout-matched skeleton, not a blank screen, while loading.
-      loading: SkeletonLoader.expenseList,
-      error: (_, _) => EmptyStateView(
+    // #488: a layout-matched skeleton, not a blank screen, on the first load.
+    if (!pager.initialised && pager.entries.isEmpty) {
+      return SkeletonLoader.expenseList();
+    }
+    // A failed first load (or a partial failure with zero survivors) surfaces a
+    // real, retryable error — never the misleading "No activity yet".
+    if (pager.entries.isEmpty &&
+        (pager.firstLoadFailed || pager.partialFailure)) {
+      return EmptyStateView(
         icon: Iconsax.warning_2,
         title: context.l10n.activityLoadFailedTitle,
         message: context.l10n.activityLoadFailedMessage,
-        onAction: () => ref.invalidate(crossGroupActivityProvider),
+        onAction: () =>
+            ref.read(crossGroupActivityPagerProvider.notifier).refresh(),
         actionLabel: context.l10n.commonRetry,
-      ),
-      data: (entries) {
-        final filtered = entries
-            .where((e) => _matchesFilter(e.log.type, _filter))
-            .toList();
-        if (filtered.isEmpty) {
-          return EmptyStateView(
-            icon: Iconsax.activity,
-            title: entries.isEmpty
-                ? context.l10n.activityNoActivityTitle
-                : context.l10n.activityNoFilterTitle,
-            message: entries.isEmpty
-                ? context.l10n.activityCrossGroupEmptyMessage
-                : context.l10n.activityNoFilterMessage,
-          );
-        }
-        final days = _groupByDay(context, filtered, DateTime.now());
-        return ListView.builder(
-          // Bottom inset clears the tab-shell add-expense FAB (#364).
-          padding: EdgeInsetsDirectional.fromSTEB(
-            context.spacing.space20,
-            context.spacing.space4,
-            context.spacing.space20,
-            96,
-          ),
-          itemCount: days.length,
-          itemBuilder: (ctx, i) => Padding(
+      );
+    }
+
+    final filtered = _filtered(pager.entries);
+    if (filtered.isEmpty) {
+      return EmptyStateView(
+        icon: Iconsax.activity,
+        title: pager.entries.isEmpty
+            ? context.l10n.activityNoActivityTitle
+            : context.l10n.activityNoFilterTitle,
+        message: pager.entries.isEmpty
+            ? context.l10n.activityCrossGroupEmptyMessage
+            : context.l10n.activityNoFilterMessage,
+      );
+    }
+
+    final days = _groupByDay(context, filtered, DateTime.now());
+    final showFooter = pager.isLoadingMore || pager.partialFailure;
+    return RefreshIndicator(
+      onRefresh: () =>
+          ref.read(crossGroupActivityPagerProvider.notifier).refresh(),
+      child: ListView.builder(
+        controller: _scrollController,
+        // Bottom inset clears the tab-shell add-expense FAB (#364).
+        padding: EdgeInsetsDirectional.fromSTEB(
+          context.spacing.space20,
+          context.spacing.space4,
+          context.spacing.space20,
+          96,
+        ),
+        itemCount: days.length + (showFooter ? 1 : 0),
+        itemBuilder: (ctx, i) {
+          if (i == days.length) return _Footer(pager: pager);
+          return Padding(
             padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
             child: _DaySection(label: days[i].label, entries: days[i].entries),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ──────────────────────────── Footer (loading / partial-failure retry)
+
+class _Footer extends ConsumerWidget {
+  const _Footer({required this.pager});
+  final CrossGroupActivityPagerState pager;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (pager.isLoadingMore) {
+      return Padding(
+        padding: EdgeInsets.all(context.spacing.space16),
+        child: Center(
+          child: SizedBox(
+            width: context.spacing.space16,
+            height: context.spacing.space16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: context.colors.primary,
+            ),
           ),
-        );
-      },
+        ),
+      );
+    }
+    // Partial failure (#244 OR-drop): survivors are shown above; offer a retry
+    // for the groups whose fetch threw.
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space16),
+      child: Column(
+        children: [
+          Text(
+            context.l10n.activityPartialFailure,
+            textAlign: TextAlign.center,
+            style: AppTypography.sans(
+              fontSize: 13,
+              color: context.colors.textSecondary,
+            ),
+          ),
+          TextButton(
+            onPressed: () =>
+                ref.read(crossGroupActivityPagerProvider.notifier).retryFailed(),
+            child: Text(context.l10n.activityReload),
+          ),
+        ],
+      ),
     );
   }
 }

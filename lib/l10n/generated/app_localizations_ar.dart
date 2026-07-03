@@ -2035,6 +2035,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityReload => 'إعادة التحميل';
 
   @override
+  String get activityPartialFailure => 'تعذّر تحميل بعض النشاط';
+
+  @override
   String get activityNoActivityTitle => 'لا يوجد نشاط بعد';
 
   @override

@@ -1564,6 +1564,7 @@
   "activityLoadFailedTitle": "Could not load activity",
   "activityLoadFailedMessage": "Check your connection and try again.",
   "activityReload": "Reload",
+  "activityPartialFailure": "Some activity couldn't load",
   "activityNoActivityTitle": "No activity yet",
   "activityCrossGroupEmptyMessage": "Activity from all your groups will appear here.",
   "activityEventEmptyMessage": "Actions by you and your group members will appear here.",

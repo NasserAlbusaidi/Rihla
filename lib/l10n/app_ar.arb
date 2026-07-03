@@ -572,6 +572,7 @@
   "activityLoadFailedTitle": "تعذّر تحميل النشاط",
   "activityLoadFailedMessage": "تحقق من اتصالك وحاول مرة أخرى.",
   "activityReload": "إعادة التحميل",
+  "activityPartialFailure": "تعذّر تحميل بعض النشاط",
   "activityNoActivityTitle": "لا يوجد نشاط بعد",
   "activityCrossGroupEmptyMessage": "سيظهر هنا نشاط كل مجموعاتك.",
   "activityEventEmptyMessage": "ستظهر هنا إجراءاتك وإجراءات أعضاء المجموعة.",

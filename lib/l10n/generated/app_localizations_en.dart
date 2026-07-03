@@ -1973,6 +1973,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityReload => 'Reload';
 
   @override
+  String get activityPartialFailure => 'Some activity couldn\'t load';
+
+  @override
   String get activityNoActivityTitle => 'No activity yet';
 
   @override

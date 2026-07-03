@@ -3291,6 +3291,12 @@ abstract class AppLocalizations {
   /// **'Reload'**
   String get activityReload;
 
+  /// No description provided for @activityPartialFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Some activity couldn\'t load'**
+  String get activityPartialFailure;
+
   /// No description provided for @activityNoActivityTitle.
   ///
   /// In en, this message translates to:
