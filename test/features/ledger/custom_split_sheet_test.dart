@@ -346,7 +346,7 @@ void main() {
       // The shadow member is marked; the real member is not.
       expect(find.text('Alex'), findsOneWidget);
       expect(find.text('Bo'), findsOneWidget);
-      expect(find.text('Shadow Profile'), findsOneWidget);
+      expect(find.text("Hasn't joined yet"), findsOneWidget);
     });
   });
 
