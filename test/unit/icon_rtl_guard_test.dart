@@ -21,29 +21,31 @@ void main() {
       .whereType<File>()
       .where((f) => f.path.endsWith('.dart'));
 
-  test('lib/features wraps back arrows in DirectionalIcon, not bare Icon (#348)',
-      () {
-    final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_left');
-    final offenders = <String>[];
+  test(
+    'lib/features wraps back arrows in DirectionalIcon, not bare Icon (#348)',
+    () {
+      final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_left');
+      final offenders = <String>[];
 
-    for (final file in libFeatureDartFiles()) {
-      final lines = file.readAsLinesSync();
-      for (var i = 0; i < lines.length; i++) {
-        if (banned.hasMatch(lines[i])) {
-          offenders.add('${file.path}:${i + 1}  ->  ${lines[i].trim()}');
+      for (final file in libFeatureDartFiles()) {
+        final lines = file.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          if (banned.hasMatch(lines[i])) {
+            offenders.add('${file.path}:${i + 1}  ->  ${lines[i].trim()}');
+          }
         }
       }
-    }
 
-    expect(
-      offenders,
-      isEmpty,
-      reason:
-          'Wrap navigational back arrows in DirectionalIcon(Iconsax.arrow_left_2) '
-          'so Arabic RTL mirrors them to the start edge. Offenders:\n'
-          '${offenders.join('\n')}',
-    );
-  });
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Wrap navigational back arrows in DirectionalIcon(Iconsax.arrow_left_2) '
+            'so Arabic RTL mirrors them to the start edge. Offenders:\n'
+            '${offenders.join('\n')}',
+      );
+    },
+  );
 
   /// #348 follow-up — the forward disclosure chevron must mirror in RTL too.
   ///
@@ -57,25 +59,52 @@ void main() {
   /// `\bIcon\(` skips `DirectionalIcon(` (the 'l' before 'Icon' kills the word
   /// boundary) and the `Iconsax` immediately after `(` skips RTL-aware ternaries
   /// like `Icon(rtl ? Iconsax.arrow_left : Iconsax.arrow_right_3)`. The thinner
-  /// `arrow_right_1`/`arrow_right_2` direction glyphs are intentionally out of
-  /// scope (e.g. the settlement transfer arrow).
-  test('lib/features routes the forward chevron through DirectionalIcon (#348)',
-      () {
-    final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_right_3');
-    final offenders = <String>[];
+  /// `arrow_right_2` direction glyph remains out of scope (no live call-site as
+  /// of #840); `arrow_right_1` (the settlement transfer arrow) is now guarded
+  /// by the test below (#840).
+  test(
+    'lib/features routes the forward chevron through DirectionalIcon (#348)',
+    () {
+      final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_right_3');
+      final offenders = <String>[];
 
-    for (final file in libFeatureDartFiles()) {
-      if (banned.hasMatch(file.readAsStringSync())) {
-        offenders.add(file.path);
+      for (final file in libFeatureDartFiles()) {
+        if (banned.hasMatch(file.readAsStringSync())) {
+          offenders.add(file.path);
+        }
       }
-    }
 
-    expect(
-      offenders,
-      isEmpty,
-      reason:
-          'Wrap the forward chevron in DirectionalIcon(Iconsax.arrow_right_3) so '
-          'Arabic RTL mirrors it. Offending files:\n${offenders.join('\n')}',
-    );
-  });
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Wrap the forward chevron in DirectionalIcon(Iconsax.arrow_right_3) so '
+            'Arabic RTL mirrors it. Offending files:\n${offenders.join('\n')}',
+      );
+    },
+  );
+
+  /// #840 — the settlement transfer arrow (`arrow_right_1`) must mirror in RTL
+  /// too, closing the gap the #348 follow-up above left open.
+  test(
+    'lib/features routes the settlement transfer arrow through DirectionalIcon (#840)',
+    () {
+      final banned = RegExp(r'\bIcon\(\s*Iconsax\.arrow_right_1');
+      final offenders = <String>[];
+
+      for (final file in libFeatureDartFiles()) {
+        if (banned.hasMatch(file.readAsStringSync())) {
+          offenders.add(file.path);
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Wrap the settlement transfer arrow in DirectionalIcon(Iconsax.arrow_right_1) '
+            'so Arabic RTL mirrors it. Offending files:\n${offenders.join('\n')}',
+      );
+    },
+  );
 }
