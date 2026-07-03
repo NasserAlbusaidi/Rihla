@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,7 +40,7 @@ class CrossGroupActivityScreen extends ConsumerStatefulWidget {
       _CrossGroupActivityScreenState();
 }
 
-enum _Filter { all, settlements, events, members }
+enum _Filter { all, settlements, events, members, expenses }
 
 class _CrossGroupActivityScreenState
     extends ConsumerState<CrossGroupActivityScreen> {
@@ -215,6 +214,7 @@ class _FilterStrip extends StatelessWidget {
       _Filter.settlements: context.l10n.activityFilterSettlements,
       _Filter.events: context.l10n.activityFilterEvents,
       _Filter.members: context.l10n.activityFilterMembers,
+      _Filter.expenses: context.l10n.activityFilterExpenses,
     };
     return SizedBox(
       height: 32,
@@ -334,7 +334,9 @@ class _ActivityRow extends StatelessWidget {
     final colors = context.colors;
     final log = entry.log;
     final description = localizedGroupActivityText(context.l10n, log);
-    final amount = _coerceAmount(log.metadata['amount']);
+    // #808 PR2: single chokepoint — legacy settlement `amount` OR the server
+    // fan-in `amountFils`+`currency` shape (fils never through decimal-units).
+    final amount = activityAmount(log, entry.currency);
 
     return InkWell(
       onTap: () => GoRouter.of(context).push('/group/${entry.groupId}'),
@@ -398,10 +400,11 @@ class _ActivityRow extends StatelessWidget {
                   children: [
                     if (amount != null)
                       RAmount(
-                        value: amount,
+                        value: amount.value,
                         // #382 PR-4: stamped settlement currency wins; legacy
-                        // rows fall back to the entry's group currency.
-                        currency: activityAmountCurrency(log, entry.currency),
+                        // rows fall back to the entry's group currency. #808
+                        // PR2: expense entries carry their own per-doc currency.
+                        currency: amount.currency,
                         size: 14,
                       )
                     else
@@ -427,18 +430,6 @@ class _ActivityRow extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Settlement amounts arrive as a stringified Decimal
-  /// (`GroupSettleUpScreen.logGroupEvent` writes `amount.toString()`) or, for
-  /// some logs, as a num. Coerce both to a `Decimal` WITHOUT forcing OMR's 3dp
-  /// (#380) — [RAmount] applies the entry's own currency precision. Mirrors
-  /// `GroupActivityScreen._coerceAmount`.
-  Decimal? _coerceAmount(Object? raw) {
-    if (raw == null) return null;
-    if (raw is num) return Decimal.parse(raw.toString());
-    if (raw is String) return Decimal.tryParse(raw);
-    return null;
   }
 }
 
@@ -473,6 +464,23 @@ class _CategoryIcon extends StatelessWidget {
         colors.textSecondary,
         Iconsax.user_minus,
       ),
+      // #808 PR2: expense fan-in entries (receipt family — a money glyph, not a
+      // navigation chevron; parallels the settlement wallet glyph, #160).
+      'expense_added' => (
+        colors.saffronSoft,
+        colors.primaryDark,
+        Iconsax.receipt_add,
+      ),
+      'expense_edited' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.receipt_edit,
+      ),
+      'expense_deleted' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.receipt_minus,
+      ),
       _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity),
     };
     return Container(
@@ -497,6 +505,7 @@ bool _matchesFilter(String type, _Filter f) {
     _Filter.settlements => type == 'group_settlement',
     _Filter.events => type == 'event_created' || type == 'event_deleted',
     _Filter.members => type == 'member_joined' || type == 'member_left',
+    _Filter.expenses => type.startsWith('expense_'),
   };
 }
 

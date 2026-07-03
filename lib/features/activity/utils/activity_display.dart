@@ -1,3 +1,5 @@
+import 'package:decimal/decimal.dart';
+
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../groups/models/group_activity_log_model.dart';
@@ -41,6 +43,22 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
                 ? log.description
                 : l10n.activityGroupMemberRemoved(memberName))
           : l10n.activityGroupMemberLeft,
+    // #808 PR2: server-fan-in expense entries. GENERIC by design (D-PR2-1) —
+    // metadata carries no expense label, so we localize by type + eventName and
+    // show the amount separately (via activityAmount); the English fan-in
+    // description (with the embedded label) is intentionally not surfaced.
+    'expense_added' =>
+      eventName == null || eventName.isEmpty
+          ? l10n.activityGroupExpenseAddedGeneric
+          : l10n.activityGroupExpenseAdded(eventName),
+    'expense_edited' =>
+      eventName == null || eventName.isEmpty
+          ? l10n.activityGroupExpenseEditedGeneric
+          : l10n.activityGroupExpenseEdited(eventName),
+    'expense_deleted' =>
+      eventName == null || eventName.isEmpty
+          ? l10n.activityGroupExpenseDeletedGeneric
+          : l10n.activityGroupExpenseDeleted(eventName),
     _ => log.description,
   };
 }
@@ -56,4 +74,49 @@ String activityAmountCurrency(GroupActivityLog log, String fallback) {
     return raw;
   }
   return fallback;
+}
+
+/// The amount + currency to display for an activity row, from either the #808
+/// server-fan-in shape (`amountFils` integer subunits + `currency`) or the
+/// legacy settlement shape (`amount` decimal-units string/num).
+///
+/// Single chokepoint — replaces the two private `_coerceAmount` copies in the
+/// activity screens. Contract:
+///
+/// - `amountFils` is an int AND `currency` is a supported code →
+///   `MoneySerializer.fromSubunits(amountFils, currency)` in that currency.
+/// - `amountFils` is present but the currency is missing/unsupported → `null`.
+///   `amountFils` is integer SUBUNITS; converting it with a guessed scale would
+///   render a 10×/1000× lie (10500 fils shown as 10,500). It must NEVER flow
+///   through the legacy decimal-units path — so a fils entry without a trusted
+///   currency shows no amount rather than a wrong one.
+/// - otherwise fall back to the legacy `amount` (num/string) with the currency
+///   resolved by [activityAmountCurrency].
+/// - neither key present → `null`.
+({Decimal value, String currency})? activityAmount(
+  GroupActivityLog log,
+  String fallbackCurrency,
+) {
+  final fils = log.metadata['amountFils'];
+  if (fils is int) {
+    final raw = log.metadata['currency'];
+    if (raw is String && MoneySerializer.supportedCurrencies.contains(raw)) {
+      return (value: MoneySerializer.fromSubunits(fils, raw), currency: raw);
+    }
+    return null;
+  }
+
+  final legacy = _coerceLegacyAmount(log.metadata['amount']);
+  if (legacy == null) return null;
+  return (value: legacy, currency: activityAmountCurrency(log, fallbackCurrency));
+}
+
+/// Legacy settlement amounts arrive as a stringified `Decimal`
+/// (`GroupSettleUpScreen.logGroupEvent` writes `amount.toString()`) or a num.
+/// Coerce both WITHOUT forcing a currency precision — [RAmount] applies the
+/// row's own currency scale (#380).
+Decimal? _coerceLegacyAmount(Object? raw) {
+  if (raw is num) return Decimal.parse(raw.toString());
+  if (raw is String) return Decimal.tryParse(raw);
+  return null;
 }

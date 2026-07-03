@@ -2070,6 +2070,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityFilterMembers => 'الأعضاء';
 
   @override
+  String get activityFilterExpenses => 'المصروفات';
+
+  @override
   String get activityEventMissingTitle => 'هذه الفعالية لم تعد موجودة';
 
   @override
@@ -2155,6 +2158,30 @@ class AppLocalizationsAr extends AppLocalizations {
   String activityGroupMemberRemoved(Object memberName) {
     return 'أزال $memberName من المجموعة';
   }
+
+  @override
+  String activityGroupExpenseAdded(Object eventName) {
+    return 'أضاف مصروفًا في $eventName';
+  }
+
+  @override
+  String get activityGroupExpenseAddedGeneric => 'أضاف مصروفًا';
+
+  @override
+  String activityGroupExpenseEdited(Object eventName) {
+    return 'عدّل مصروفًا في $eventName';
+  }
+
+  @override
+  String get activityGroupExpenseEditedGeneric => 'عدّل مصروفًا';
+
+  @override
+  String activityGroupExpenseDeleted(Object eventName) {
+    return 'حذف مصروفًا في $eventName';
+  }
+
+  @override
+  String get activityGroupExpenseDeletedGeneric => 'حذف مصروفًا';
 
   @override
   String get activityTitlePaymentRecorded => 'تم تسجيل دفعة';

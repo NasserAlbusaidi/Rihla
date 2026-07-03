@@ -112,6 +112,7 @@ abstract final class GroupKeys {
       Key('group_activity_filter_settlements');
   static const activityFilterEvents = Key('group_activity_filter_events');
   static const activityFilterMembers = Key('group_activity_filter_members');
+  static const activityFilterExpenses = Key('group_activity_filter_expenses');
 
   // MemberBalanceCard keys
   static const settledBadge = Key('group_member_settled_badge');
