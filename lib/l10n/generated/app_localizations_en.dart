@@ -3299,6 +3299,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get recoveryRestoredOk => 'Account restored.';
+
+  @override
+  String get recoveryRestoredEmpty =>
+      'Signed in, but this account has no groups yet. Restored the wrong account? Profile → Account → Sign out lets you try another.';
+
+  @override
+  String get recoverySwapIncomplete =>
+      'Account restore didn\'t complete. Please try again.';
+
+  @override
   String get groupSettleUpMissingTitle => 'This group is no longer available';
 
   @override
