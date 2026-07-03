@@ -332,7 +332,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(
-      find.text('Failed to add expense: Bad state: offline'),
+      find.text('Failed to add expense: Something went wrong. Please try again.'),
       findsOneWidget,
     );
   });

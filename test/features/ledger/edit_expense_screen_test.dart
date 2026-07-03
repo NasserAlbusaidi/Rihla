@@ -301,7 +301,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(
-      find.text('Failed to update expense: Bad state: locked'),
+      find.text('Failed to update expense: Something went wrong. Please try again.'),
       findsOneWidget,
     );
   });
@@ -365,7 +365,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(
-      find.text('Failed to delete expense: Bad state: permission denied'),
+      find.text('Failed to delete expense: Something went wrong. Please try again.'),
       findsOneWidget,
     );
   });

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -14,6 +15,7 @@ import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/currency_display_name.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/localized_name_validators.dart';
@@ -441,12 +443,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
               : _splitExplanation,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      unawaited(Sentry.captureException(e, stackTrace: st));
       if (mounted) {
+        final cause = friendlyMessageFor(context, e);
         _showSnack(
           _isEdit
-              ? context.l10n.editorFailedToUpdateExpense(e.toString())
-              : context.l10n.editorFailedToAddExpense(e.toString()),
+              ? context.l10n.editorFailedToUpdateExpense(cause)
+              : context.l10n.editorFailedToAddExpense(cause),
         );
       }
     } finally {
@@ -495,9 +499,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     setState(() => _isSubmitting = true);
     try {
       await onDelete();
-    } catch (e) {
+    } catch (e, st) {
+      unawaited(Sentry.captureException(e, stackTrace: st));
       if (mounted) {
-        _showSnack(context.l10n.editorDeleteExpenseFailed(e.toString()));
+        _showSnack(
+          context.l10n.editorDeleteExpenseFailed(
+            friendlyMessageFor(context, e),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
