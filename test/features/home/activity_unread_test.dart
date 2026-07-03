@@ -130,5 +130,68 @@ void main() {
       );
       expect(cleared.isLabelVisible, isFalse);
     });
+
+    testWidgets(
+      '#818 Wave 5.2: BottomNavTabScope.selectTab(1) clears the dot '
+      'exactly like a direct nav-bar tap',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              userGroupsProvider.overrideWith(
+                (ref) => Stream.value(const []),
+              ),
+              crossGroupActivityProvider.overrideWith(
+                (ref) =>
+                    AsyncValue.data([_entry('a', DateTime.utc(2026, 3, 1))]),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: BottomNavShell(
+                child: Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () =>
+                        BottomNavTabScope.maybeOf(context)?.selectTab(1),
+                    child: const Text('select tab 1'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        final badge = tester.widget<Badge>(
+          find.byKey(HomeKeys.activityUnreadBadge),
+        );
+        expect(badge.isLabelVisible, isTrue);
+
+        await tester.tap(find.text('select tab 1'));
+        // Drains the Activity tab's EmptyStateView entrance ticker.
+        await tester.pumpAndSettle();
+
+        final navBar = tester.widget<NavigationBar>(
+          find.byType(NavigationBar),
+        );
+        expect(navBar.selectedIndex, 1);
+
+        // Return to Groups so the Activity destination shows its inactive
+        // (badge-wrapped) icon again before reading isLabelVisible.
+        await tester.tap(find.byKey(HomeKeys.bottomNavGroups));
+        await tester.pumpAndSettle();
+
+        final cleared = tester.widget<Badge>(
+          find.byKey(HomeKeys.activityUnreadBadge),
+        );
+        expect(cleared.isLabelVisible, isFalse);
+      },
+    );
   });
 }
