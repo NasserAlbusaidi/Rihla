@@ -300,10 +300,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
+    // #854: the raw error is humanized, never leaked verbatim to the user.
     expect(
-      find.text('Failed to update expense: Bad state: locked'),
+      find.text('Failed to update expense: Something went wrong. Please try again.'),
       findsOneWidget,
     );
+    expect(find.textContaining('Bad state'), findsNothing);
   });
 
   testWidgets('delete confirmation can be cancelled', (tester) async {
@@ -364,10 +366,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
+    // #854: the raw error is humanized, never leaked verbatim to the user.
     expect(
-      find.text('Failed to delete expense: Bad state: permission denied'),
+      find.text('Failed to delete expense: Something went wrong. Please try again.'),
       findsOneWidget,
     );
+    expect(find.textContaining('Bad state'), findsNothing);
   });
 
   // #203 S2 PR1 — switching an itemized expense to an Equally split must
