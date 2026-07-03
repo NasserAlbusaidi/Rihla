@@ -13,6 +13,7 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../activity/utils/activity_display.dart';
+import '../../activity/utils/activity_nav.dart';
 import '../keys/group_keys.dart';
 import '../models/group_activity_log_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -254,6 +255,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
             dateSuffix: days[i].dateSuffix,
             entries: days[i].entries,
             currency: currency,
+            groupId: widget.groupId,
           ),
         );
       },
@@ -439,11 +441,13 @@ class _DaySection extends StatelessWidget {
     required this.dateSuffix,
     required this.entries,
     required this.currency,
+    required this.groupId,
   });
   final String label;
   final String? dateSuffix;
   final List<GroupActivityLog> entries;
   final String currency;
+  final String groupId;
 
   @override
   Widget build(BuildContext context) {
@@ -482,6 +486,7 @@ class _DaySection extends StatelessWidget {
                   log: entries[i],
                   divider: i < entries.length - 1,
                   currency: currency,
+                  groupId: groupId,
                 ),
             ],
           ),
@@ -496,10 +501,12 @@ class _ActivityRow extends StatelessWidget {
     required this.log,
     required this.divider,
     required this.currency,
+    required this.groupId,
   });
   final GroupActivityLog log;
   final bool divider;
   final String currency;
+  final String groupId;
 
   @override
   Widget build(BuildContext context) {
@@ -510,79 +517,89 @@ class _ActivityRow extends StatelessWidget {
     // wins; legacy rows fall back to the group currency threaded in.
     final amt = activityAmount(log, currency);
     final description = localizedGroupActivityText(context.l10n, log);
+    // #852: per-type deep-link shared with the History tab (activity_nav.dart;
+    // total, so safe to resolve during build). A target resolving to this
+    // screen's own group root (member_*, event_deleted, unknown types, or a
+    // guard-degraded eventId) stays inert — pushing a duplicate of the parent
+    // screen is the false affordance this issue removes.
+    final target = activityRowTarget(groupId: groupId, log: log);
+    final selfTarget = target == '/group/$groupId';
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
-      child: Column(
-        children: [
-          Row(
-            // Top-align so the category icon pins to the first line when a
-            // long actor + verb phrase wraps to two lines (#159).
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CategoryIcon(type: log.type),
-              SizedBox(width: context.spacing.space12),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: log.actorName,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
+    return InkWell(
+      onTap: selfTarget ? null : () => GoRouter.of(context).push(target),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+        child: Column(
+          children: [
+            Row(
+              // Top-align so the category icon pins to the first line when a
+              // long actor + verb phrase wraps to two lines (#159).
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CategoryIcon(type: log.type),
+                SizedBox(width: context.spacing.space12),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: log.actorName,
+                          style: AppTypography.sans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
                         ),
-                      ),
-                      const TextSpan(text: ' '),
-                      TextSpan(
-                        text: description,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          color: colors.textSecondary,
+                        const TextSpan(text: ' '),
+                        TextSpan(
+                          text: description,
+                          style: AppTypography.sans(
+                            fontSize: 14,
+                            color: colors.textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              SizedBox(width: context.spacing.space12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (amt != null) ...[
-                    RAmount(
-                      value: amt.value,
-                      currency: amt.currency,
-                      size: 14,
-                      // Label only foreign amounts; the group's own currency
-                      // stays bare (the expense_audit_detail !sameCurrency
-                      // idiom).
-                      showCurrency: amt.currency != currency,
+                SizedBox(width: context.spacing.space12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (amt != null) ...[
+                      RAmount(
+                        value: amt.value,
+                        currency: amt.currency,
+                        size: 14,
+                        // Label only foreign amounts; the group's own currency
+                        // stays bare (the expense_audit_detail !sameCurrency
+                        // idiom).
+                        showCurrency: amt.currency != currency,
+                      ),
+                      const SizedBox(height: 2),
+                    ],
+                    Text(
+                      formatRelativeShort(context, log.timestamp),
+                      style: AppTypography.caption(
+                        context,
+                        fontSize: 10,
+                        color: colors.textSecondary,
+                        letterSpacing: 0.4,
+                      ),
                     ),
-                    const SizedBox(height: 2),
                   ],
-                  Text(
-                    formatRelativeShort(context, log.timestamp),
-                    style: AppTypography.caption(
-                      context,
-                      fontSize: 10,
-                      color: colors.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
+            ),
+            if (divider) ...[
+              SizedBox(height: context.spacing.space12),
+              Container(height: 0.5, color: colors.rule),
             ],
-          ),
-          if (divider) ...[
-            SizedBox(height: context.spacing.space12),
-            Container(height: 0.5, color: colors.rule),
           ],
-        ],
+        ),
       ),
     );
   }
