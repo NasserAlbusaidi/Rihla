@@ -91,7 +91,8 @@ class _SettleNotifySheet extends StatelessWidget {
                     Text(
                       context.l10n.settleNotifySheetTitle(recipientName),
                       textAlign: TextAlign.center,
-                      style: AppTypography.display(
+                      style: AppTypography.displayOf(
+                        context,
                         fontSize: 24,
                         color: colors.textPrimary,
                         height: 1.15,

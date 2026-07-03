@@ -240,7 +240,8 @@ class _TopBar extends StatelessWidget {
                 children: [
                   Text(
                     context.l10n.activityCaption,
-                    style: AppTypography.mono(
+                    style: AppTypography.caption(
+                      context,
                       fontSize: 10,
                       color: colors.textSecondary,
                       letterSpacing: 2,
@@ -251,7 +252,8 @@ class _TopBar extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.display(
+                    style: AppTypography.displayOf(
+                      context,
                       fontSize: 22,
                       color: colors.textPrimary,
                       letterSpacing: -0.3,
@@ -290,7 +292,8 @@ class _DaySection extends StatelessWidget {
           children: [
             Text(
               label.toUpperCase(),
-              style: AppTypography.mono(
+              style: AppTypography.caption(
+                context,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: colors.textSecondary,
@@ -394,7 +397,8 @@ class _ActivityRow extends StatelessWidget {
               SizedBox(width: context.spacing.space8),
               Text(
                 formatRelativeShort(context, log.createdAt),
-                style: AppTypography.mono(
+                style: AppTypography.caption(
+                  context,
                   fontSize: 10,
                   color: colors.textSecondary,
                   letterSpacing: 0.4,

@@ -32,7 +32,8 @@ class _Header extends StatelessWidget {
         children: [
           Text(
             context.l10n.customSplitHow,
-            style: AppTypography.display(
+            style: AppTypography.displayOf(
+              context,
               fontSize: 26,
               color: colors.textPrimary,
               height: 1.15,
@@ -112,7 +113,8 @@ class _Footer extends StatelessWidget {
             itemized
                 ? context.l10n.itemizedItemsMatchTotal
                 : context.l10n.customSplitTotal,
-            style: AppTypography.mono(
+            style: AppTypography.caption(
+              context,
               fontSize: 10,
               letterSpacing: 1.5,
               color: colors.textSecondary,

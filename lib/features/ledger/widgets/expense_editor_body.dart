@@ -1120,7 +1120,8 @@ class _AmountHero extends StatelessWidget {
                 textDirection: TextDirection.ltr,
                 child: Text(
                   context.l10n.editorAmountLabel(currency),
-                  style: AppTypography.mono(
+                  style: AppTypography.caption(
+                    context,
                     fontSize: 10,
                     letterSpacing: 1.6,
                     color: labelColor,

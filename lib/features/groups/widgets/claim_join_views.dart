@@ -35,7 +35,8 @@ class ClaimPickerView extends StatelessWidget {
       children: [
         Text(
           context.l10n.groupClaimPickerTitle,
-          style: AppTypography.display(
+          style: AppTypography.displayOf(
+            context,
             fontSize: 26,
             color: colors.textPrimary,
             height: 1.1,
@@ -142,7 +143,11 @@ class ClaimWaitingView extends StatelessWidget {
         Text(
           context.l10n.groupClaimWaitingTitle,
           textAlign: TextAlign.center,
-          style: AppTypography.display(fontSize: 24, color: colors.textPrimary),
+          style: AppTypography.displayOf(
+            context,
+            fontSize: 24,
+            color: colors.textPrimary,
+          ),
         ),
         SizedBox(height: context.spacing.space8),
         Text(
@@ -192,7 +197,8 @@ Future<bool?> showClaimConfirmSheet(
           children: [
             Text(
               sheetContext.l10n.groupClaimConfirmTitle(name),
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                sheetContext,
                 fontSize: 22,
                 color: colors.textPrimary,
               ),

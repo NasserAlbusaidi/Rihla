@@ -448,7 +448,8 @@ class _DaySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final labelStyle = AppTypography.mono(
+    final labelStyle = AppTypography.caption(
+      context,
       fontSize: 10,
       fontWeight: FontWeight.w600,
       color: colors.textSecondary,
@@ -566,7 +567,8 @@ class _ActivityRow extends StatelessWidget {
                   ],
                   Text(
                     formatRelativeShort(context, log.timestamp),
-                    style: AppTypography.mono(
+                    style: AppTypography.caption(
+                      context,
                       fontSize: 10,
                       color: colors.textSecondary,
                       letterSpacing: 0.4,

@@ -2150,56 +2150,56 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityAuditPayerLabel => 'الدافع';
 
   @override
-  String get activityEventMoneyCreated => 'أضاف مصروفًا';
+  String get activityEventMoneyCreated => 'إضافة مصروف';
 
   @override
-  String get activityEventMoneyUpdated => 'حدّث مصروفًا';
+  String get activityEventMoneyUpdated => 'تحديث مصروف';
 
   @override
-  String get activityEventMoneyDeleted => 'حذف مصروفًا';
+  String get activityEventMoneyDeleted => 'حذف مصروف';
 
   @override
-  String get activityEventGearCreated => 'أضاف بند معدات';
+  String get activityEventGearCreated => 'إضافة بند معدات';
 
   @override
-  String get activityEventGearUpdated => 'حدّث بند معدات';
+  String get activityEventGearUpdated => 'تحديث بند معدات';
 
   @override
   String get activityEventGearDeleted => 'حذف بند معدات';
 
   @override
-  String get activityEventDocsCreated => 'أضاف مستندًا';
+  String get activityEventDocsCreated => 'إضافة مستند';
 
   @override
-  String get activityEventDocsUpdated => 'حدّث مستندًا';
+  String get activityEventDocsUpdated => 'تحديث مستند';
 
   @override
-  String get activityEventDocsDeleted => 'حذف مستندًا';
+  String get activityEventDocsDeleted => 'حذف مستند';
 
   @override
-  String get activityGroupSettlementDescription => 'سجّل تسوية';
+  String get activityGroupSettlementDescription => 'تسجيل تسوية';
 
   @override
   String activitySettlementPaid(Object toName) {
-    return 'دفع إلى $toName';
+    return 'دفعة إلى $toName';
   }
 
   @override
   String activitySettlementReceived(Object fromName) {
-    return 'استلم دفعة من $fromName';
+    return 'استلام دفعة من $fromName';
   }
 
   @override
   String activitySettlementBetween(Object fromName, Object toName) {
-    return 'سجّل تسوية من $fromName إلى $toName';
+    return 'تسوية من $fromName إلى $toName';
   }
 
   @override
-  String get activityGroupEventCreatedGeneric => 'أنشأ فعالية';
+  String get activityGroupEventCreatedGeneric => 'إنشاء فعالية';
 
   @override
   String activityGroupEventCreated(Object eventName) {
-    return 'أنشأ $eventName';
+    return 'إنشاء $eventName';
   }
 
   @override
@@ -2211,39 +2211,39 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get activityGroupMemberJoined => 'انضم إلى المجموعة';
+  String get activityGroupMemberJoined => 'انضمام إلى المجموعة';
 
   @override
-  String get activityGroupMemberLeft => 'غادر المجموعة';
+  String get activityGroupMemberLeft => 'مغادرة المجموعة';
 
   @override
   String activityGroupMemberRemoved(Object memberName) {
-    return 'أزال $memberName من المجموعة';
+    return 'إزالة $memberName من المجموعة';
   }
 
   @override
   String activityGroupExpenseAdded(Object eventName) {
-    return 'أضاف مصروفًا في $eventName';
+    return 'إضافة مصروف في $eventName';
   }
 
   @override
-  String get activityGroupExpenseAddedGeneric => 'أضاف مصروفًا';
+  String get activityGroupExpenseAddedGeneric => 'إضافة مصروف';
 
   @override
   String activityGroupExpenseEdited(Object eventName) {
-    return 'عدّل مصروفًا في $eventName';
+    return 'تعديل مصروف في $eventName';
   }
 
   @override
-  String get activityGroupExpenseEditedGeneric => 'عدّل مصروفًا';
+  String get activityGroupExpenseEditedGeneric => 'تعديل مصروف';
 
   @override
   String activityGroupExpenseDeleted(Object eventName) {
-    return 'حذف مصروفًا في $eventName';
+    return 'حذف مصروف في $eventName';
   }
 
   @override
-  String get activityGroupExpenseDeletedGeneric => 'حذف مصروفًا';
+  String get activityGroupExpenseDeletedGeneric => 'حذف مصروف';
 
   @override
   String get activityTitlePaymentRecorded => 'تم تسجيل دفعة';
@@ -2255,10 +2255,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityTitleEventRemoved => 'تم حذف فعالية';
 
   @override
-  String get activityTitleMemberJoined => 'انضم عضو';
+  String get activityTitleMemberJoined => 'انضمام عضو';
 
   @override
-  String get activityTitleMemberLeft => 'غادر عضو';
+  String get activityTitleMemberLeft => 'مغادرة عضو';
 
   @override
   String get activityTitleGeneric => 'نشاط';

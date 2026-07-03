@@ -159,7 +159,8 @@ class _GroupEditSheetState extends ConsumerState<GroupEditSheet> {
               Center(
                 child: Text(
                   context.l10n.groupEditTitle,
-                  style: AppTypography.display(
+                  style: AppTypography.displayOf(
+                    context,
                     fontSize: 24,
                     color: colors.textPrimary,
                   ),

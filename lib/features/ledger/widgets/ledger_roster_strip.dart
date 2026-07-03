@@ -256,7 +256,8 @@ class _Chip extends StatelessWidget {
         ),
         child: Text(
           context.l10n.ledgerEven,
-          style: AppTypography.mono(
+          style: AppTypography.caption(
+            context,
             fontSize: 9.5,
             color: colors.textSecondary,
             fontWeight: FontWeight.w600,
