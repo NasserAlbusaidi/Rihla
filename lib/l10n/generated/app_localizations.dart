@@ -2582,10 +2582,10 @@ abstract class AppLocalizations {
   /// **'This settles balances for {eventName} only. Money owed across the rest of the group is settled from the group\'s Settle up.'**
   String settleScopeNoteEvent(String eventName);
 
-  /// Persistent scope note (#717) on the group-scoped settle-up screen. Clarifies that this is the complete whole-group balance and that recording a payment will not change individual event ledgers (the per-event drill-down is participants-only by design).
+  /// Persistent scope note (#717) on the group-scoped settle-up screen. Clarifies that this is the complete whole-group balance; since #752 a recorded payment decomposes into per-event settlement writes where it can attribute to a specific event, with any unattributable remainder tracked as a group-level settlement.
   ///
   /// In en, this message translates to:
-  /// **'This is everyone\'s complete balance across the whole group. Recording a payment here won\'t even out each event\'s own ledger — that\'s expected.'**
+  /// **'This is everyone\'s complete balance across the whole group. Recording a payment here spreads it over each event\'s ledger where it can — anything left over is tracked at group level.'**
   String get settleScopeNoteGroup;
 
   /// No description provided for @settleUpPaymentHistory.
@@ -4512,7 +4512,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupJoinHintBody.
   ///
   /// In en, this message translates to:
-  /// **'Joining is instant — no approval needed once the code matches.'**
+  /// **'Joining is instant — approval is only needed if you\'re claiming an existing member\'s spot.'**
   String get groupJoinHintBody;
 
   /// No description provided for @groupJoinMoodTitle.

@@ -1529,7 +1529,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settleScopeNoteGroup =>
-      'This is everyone\'s complete balance across the whole group. Recording a payment here won\'t even out each event\'s own ledger — that\'s expected.';
+      'This is everyone\'s complete balance across the whole group. Recording a payment here spreads it over each event\'s ledger where it can — anything left over is tracked at group level.';
 
   @override
   String get settleUpPaymentHistory => 'Payment history';
@@ -2687,7 +2687,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupJoinHintBody =>
-      'Joining is instant — no approval needed once the code matches.';
+      'Joining is instant — approval is only needed if you\'re claiming an existing member\'s spot.';
 
   @override
   String get groupJoinMoodTitle => 'Got an invite?';
