@@ -143,7 +143,7 @@ void main() {
       expect(find.text('Alice'), findsOneWidget);
       expect(find.text('Ghost'), findsOneWidget);
       // Exactly one shadow member → exactly one marker.
-      expect(find.text('Shadow Profile'), findsOneWidget);
+      expect(find.text("Hasn't joined yet"), findsOneWidget);
     });
 
     testWidgets('calls onSelectAllChanged when Select All tapped', (
