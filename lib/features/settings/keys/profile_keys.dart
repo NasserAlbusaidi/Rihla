@@ -23,9 +23,6 @@ abstract final class ProfileKeys {
   static const licensesTile = Key('profile_licenses_tile');
   static const coffeeTile = Key('profile_coffee_tile');
 
-  // T3.K — profile QR sheet
-  static const qrCard = Key('profile_qr_card');
-
   // P3 — account recovery (linked email)
   static const linkedEmailTile = Key('profile_linked_email_tile');
 

@@ -145,18 +145,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get legalDeleteMyData => 'حذف بياناتي';
 
   @override
-  String get qrSheetTitle => 'رمزي';
-
-  @override
-  String get qrSemanticsLabel => 'رمز QR للملف الشخصي';
-
-  @override
-  String get qrCopyHandle => 'نسخ المعرّف';
-
-  @override
-  String get qrHandleCopied => 'تم نسخ المعرّف';
-
-  @override
   String get profileSectionPreferences => 'التفضيلات';
 
   @override
