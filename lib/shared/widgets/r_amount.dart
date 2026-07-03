@@ -42,6 +42,7 @@ class RAmount extends StatelessWidget {
     this.sign = false,
     this.tone = AmountTone.auto,
     this.weight = FontWeight.w500,
+    this.semanticsLabel,
   });
 
   /// Amount to render. [Decimal] avoids float drift on baisa boundaries.
@@ -70,6 +71,12 @@ class RAmount extends StatelessWidget {
 
   /// Font weight applied to all glyphs. Default `w500` matches the wireframe.
   final FontWeight weight;
+
+  /// Screen-reader override. When null, a default label is derived from the
+  /// rendered value: unfragmented, ASCII `+`/`-` (the visual U+2212 minus is
+  /// not announced by TalkBack/VoiceOver), currency code only when
+  /// [showCurrency] is true — so what's heard matches what's seen.
+  final String? semanticsLabel;
 
   /// Negative sign character — typographic minus (U+2212), not hyphen-minus.
   static const String _minus = '−';
@@ -118,6 +125,10 @@ class RAmount extends StatelessWidget {
         ? '$prefix$currency '
         : (prefix.isEmpty ? '' : '$prefix ');
 
+    final asciiPrefix = sign ? (isPositive ? '+' : (isNegative ? '-' : '')) : '';
+    final spokenLabel = semanticsLabel ??
+        '$asciiPrefix${showCurrency ? '$currency ' : ''}$formatted';
+
     return Text.rich(
       TextSpan(
         children: [
@@ -127,6 +138,7 @@ class RAmount extends StatelessWidget {
             TextSpan(text: decimalPart, style: decimalStyle),
         ],
       ),
+      semanticsLabel: spokenLabel,
       textDirection: TextDirection.ltr,
       maxLines: 1,
       overflow: TextOverflow.visible,
