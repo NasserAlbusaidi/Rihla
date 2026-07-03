@@ -956,6 +956,8 @@
   "groupSettleUpAcrossEventsLabel": "عبر الفعاليات",
 
   "errorPageNotFound": "الصفحة غير موجودة: {location}",
+  "errorPageNotFoundTitle": "الصفحة غير موجودة",
+  "errorPageNotFoundBody": "ربما تم حذفها، أو أن الرابط غير صحيح.",
 
   "splashTagline": "رحلتك المشتركة",
   "splashErrorTitle": "حدث خطأ ما",

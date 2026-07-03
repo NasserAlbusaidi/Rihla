@@ -3273,6 +3273,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get errorPageNotFoundTitle => 'Page not found';
+
+  @override
+  String get errorPageNotFoundBody =>
+      'It may have been deleted, or the link is incorrect.';
+
+  @override
   String get splashTagline => 'your shared journey';
 
   @override

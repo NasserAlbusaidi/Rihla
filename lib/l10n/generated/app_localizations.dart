@@ -5529,6 +5529,18 @@ abstract class AppLocalizations {
   /// **'Page not found: {location}'**
   String errorPageNotFound(Object location);
 
+  /// Title on the friendly 404 screen shown by GoRouter's errorBuilder when the requested location does not match any route — e.g. a broken or expired share link.
+  ///
+  /// In en, this message translates to:
+  /// **'Page not found'**
+  String get errorPageNotFoundTitle;
+
+  /// Body copy on the friendly 404 screen shown by GoRouter's errorBuilder. The Go Home action label reuses commonGoHome.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been deleted, or the link is incorrect.'**
+  String get errorPageNotFoundBody;
+
   /// Brand tagline shown under the Rihla wordmark on the boot splash screen.
   ///
   /// In en, this message translates to:
