@@ -1013,7 +1013,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorUnknownParticipant => 'Unknown';
 
   @override
-  String get editorShadowProfile => 'Shadow Profile';
+  String get editorShadowProfile => 'Hasn\'t joined yet';
 
   @override
   String get editorPaidByLabel => 'PAID BY';
@@ -1424,8 +1424,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count transfers,\neveryone\'s even.',
-      one: 'One transfer,\neveryone\'s even.',
+      other: '$count transfers\nuntil everyone\'s even.',
+      one: 'One transfer\nuntil everyone\'s even.',
     );
     return '$_temp0';
   }
@@ -2016,7 +2016,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityFilterAll => 'All';
 
   @override
-  String get activityFilterSettles => 'Settles';
+  String get activityFilterSettles => 'Settlements';
 
   @override
   String get activityFilterSettlements => 'Settlements';
@@ -2086,13 +2086,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityAuditPayerLabel => 'Payer';
 
   @override
-  String get activityEventMoneyCreated => 'added a money entry';
+  String get activityEventMoneyCreated => 'added an expense';
 
   @override
-  String get activityEventMoneyUpdated => 'updated a money entry';
+  String get activityEventMoneyUpdated => 'updated an expense';
 
   @override
-  String get activityEventMoneyDeleted => 'deleted a money entry';
+  String get activityEventMoneyDeleted => 'deleted an expense';
 
   @override
   String get activityEventGearCreated => 'added a gear entry';

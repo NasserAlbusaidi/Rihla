@@ -881,7 +881,10 @@
   "editorUnableToLoadParticipants": "Unable to load participants",
   "editorNoOtherParticipants": "No other participants to select",
   "editorUnknownParticipant": "Unknown",
-  "editorShadowProfile": "Shadow Profile",
+  "editorShadowProfile": "Hasn't joined yet",
+  "@editorShadowProfile": {
+    "description": "Caption under a placeholder (shadow) member's name in participant pickers, shown before they've joined the group themselves."
+  },
   "editorPaidByLabel": "PAID BY",
   "editorParticipantMe": "{name} (Me)",
   "@editorParticipantMe": {
@@ -1107,8 +1110,9 @@
   "preSettleReviewContinue": "Continue to settle",
   "@preSettleReviewContinue": {"description": "Action that dismisses the non-blocking pre-settlement review sheet and proceeds (#204)."},
   "settleUpEveryoneEvenHeadline": "Everyone's even.",
-  "settleUpTransfersHeadline": "{count, plural, =1{One transfer,\neveryone's even.} other{{count} transfers,\neveryone's even.}}",
+  "settleUpTransfersHeadline": "{count, plural, =1{One transfer\nuntil everyone's even.} other{{count} transfers\nuntil everyone's even.}}",
   "@settleUpTransfersHeadline": {
+    "description": "Forward-looking headline shown while transfers are still outstanding (not yet settled) — must not read as already-settled.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -1577,7 +1581,7 @@
   "activityNoFilterTitle": "Nothing matches this filter",
   "activityNoFilterMessage": "Try a different filter, or switch back to All.",
   "activityFilterAll": "All",
-  "activityFilterSettles": "Settles",
+  "activityFilterSettles": "Settlements",
   "activityFilterSettlements": "Settlements",
   "activityFilterEvents": "Events",
   "activityFilterMembers": "Members",
@@ -1630,9 +1634,9 @@
   },
   "activitySomeone": "Someone",
   "activityAuditPayerLabel": "Payer",
-  "activityEventMoneyCreated": "added a money entry",
-  "activityEventMoneyUpdated": "updated a money entry",
-  "activityEventMoneyDeleted": "deleted a money entry",
+  "activityEventMoneyCreated": "added an expense",
+  "activityEventMoneyUpdated": "updated an expense",
+  "activityEventMoneyDeleted": "deleted an expense",
   "activityEventGearCreated": "added a gear entry",
   "activityEventGearUpdated": "updated a gear entry",
   "activityEventGearDeleted": "deleted a gear entry",

@@ -18,8 +18,8 @@ void main() {
     (tester) async {
       await _pumpSelector(tester);
 
-      // Omar is a shadow member → the "Shadow Profile" subtitle renders.
-      expect(find.text('Shadow Profile'), findsOneWidget);
+      // Omar is a shadow member → the "Hasn't joined yet" subtitle renders.
+      expect(find.text("Hasn't joined yet"), findsOneWidget);
       // The two real members carry no shadow marker.
       expect(find.text('Yasmin Khan'), findsOneWidget);
       expect(find.text('Omar Said'), findsOneWidget);

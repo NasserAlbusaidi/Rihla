@@ -1820,10 +1820,10 @@ abstract class AppLocalizations {
   /// **'Unknown'**
   String get editorUnknownParticipant;
 
-  /// No description provided for @editorShadowProfile.
+  /// Caption under a placeholder (shadow) member's name in participant pickers, shown before they've joined the group themselves.
   ///
   /// In en, this message translates to:
-  /// **'Shadow Profile'**
+  /// **'Hasn\'t joined yet'**
   String get editorShadowProfile;
 
   /// No description provided for @editorPaidByLabel.
@@ -2480,10 +2480,10 @@ abstract class AppLocalizations {
   /// **'Everyone\'s even.'**
   String get settleUpEveryoneEvenHeadline;
 
-  /// No description provided for @settleUpTransfersHeadline.
+  /// Forward-looking headline shown while transfers are still outstanding (not yet settled) — must not read as already-settled.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{One transfer,\neveryone\'s even.} other{{count} transfers,\neveryone\'s even.}}'**
+  /// **'{count, plural, =1{One transfer\nuntil everyone\'s even.} other{{count} transfers\nuntil everyone\'s even.}}'**
   String settleUpTransfersHeadline(int count);
 
   /// No description provided for @settleUpNoOptimizedPayments.
@@ -3372,7 +3372,7 @@ abstract class AppLocalizations {
   /// No description provided for @activityFilterSettles.
   ///
   /// In en, this message translates to:
-  /// **'Settles'**
+  /// **'Settlements'**
   String get activityFilterSettles;
 
   /// No description provided for @activityFilterSettlements.
@@ -3492,19 +3492,19 @@ abstract class AppLocalizations {
   /// No description provided for @activityEventMoneyCreated.
   ///
   /// In en, this message translates to:
-  /// **'added a money entry'**
+  /// **'added an expense'**
   String get activityEventMoneyCreated;
 
   /// No description provided for @activityEventMoneyUpdated.
   ///
   /// In en, this message translates to:
-  /// **'updated a money entry'**
+  /// **'updated an expense'**
   String get activityEventMoneyUpdated;
 
   /// No description provided for @activityEventMoneyDeleted.
   ///
   /// In en, this message translates to:
-  /// **'deleted a money entry'**
+  /// **'deleted an expense'**
   String get activityEventMoneyDeleted;
 
   /// No description provided for @activityEventGearCreated.
