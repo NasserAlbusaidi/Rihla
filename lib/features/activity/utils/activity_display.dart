@@ -34,12 +34,41 @@ String? _metadataString(GroupActivityLog log, String key) {
   return value is String ? value : null;
 }
 
+/// #818 Wave 3.1 — directional settlement phrase.
+///
+/// All four reads are type-guarded (`_metadataString`): a forged non-string
+/// value or a legacy row (missing keys entirely) degrades to the generic
+/// fallback, never a crash — `activityMatchesQuery` calls this for EVERY
+/// loaded row, so a per-row crash would take out the whole tab (the #808 P1
+/// class). Inline null/empty checks (not a separate bool) so Dart's flow
+/// analysis promotes all four locals to non-null `String` at the l10n call
+/// sites (Gate r1 [P2]).
+String _settlementText(AppLocalizations l10n, GroupActivityLog log) {
+  final fromName = _metadataString(log, 'fromName');
+  final toName = _metadataString(log, 'toName');
+  final fromUserId = _metadataString(log, 'fromUserId');
+  final toUserId = _metadataString(log, 'toUserId');
+  if (fromName == null ||
+      fromName.isEmpty ||
+      toName == null ||
+      toName.isEmpty ||
+      fromUserId == null ||
+      fromUserId.isEmpty ||
+      toUserId == null ||
+      toUserId.isEmpty) {
+    return l10n.activityGroupSettlementDescription; // legacy/forged fallback
+  }
+  if (log.actorId == fromUserId) return l10n.activitySettlementPaid(toName);
+  if (log.actorId == toUserId) return l10n.activitySettlementReceived(fromName);
+  return l10n.activitySettlementBetween(fromName, toName); // #595 third-party recorder
+}
+
 String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
   final eventName = _metadataString(log, 'eventName');
   final memberName = _metadataString(log, 'memberName');
   final memberAction = _metadataString(log, 'memberAction');
   return switch (log.type) {
-    'group_settlement' => l10n.activityGroupSettlementDescription,
+    'group_settlement' => _settlementText(l10n, log),
     'event_created' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupEventCreatedGeneric
@@ -174,6 +203,8 @@ bool activityMatchesQuery(
     log.actorName,
     entry.groupName,
     _metadataString(log, 'eventName'),
+    _metadataString(log, 'fromName'),
+    _metadataString(log, 'toName'),
   ];
 
   final amount = activityAmount(log, entry.currency);

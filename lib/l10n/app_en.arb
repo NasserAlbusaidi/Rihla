@@ -1635,6 +1635,25 @@
   "activityEventDocsUpdated": "updated a document",
   "activityEventDocsDeleted": "deleted a document",
   "activityGroupSettlementDescription": "recorded a settlement",
+  "activitySettlementPaid": "paid {toName}",
+  "@activitySettlementPaid": {
+    "placeholders": {
+      "toName": {}
+    }
+  },
+  "activitySettlementReceived": "received a payment from {fromName}",
+  "@activitySettlementReceived": {
+    "placeholders": {
+      "fromName": {}
+    }
+  },
+  "activitySettlementBetween": "recorded a settlement from {fromName} to {toName}",
+  "@activitySettlementBetween": {
+    "placeholders": {
+      "fromName": {},
+      "toName": {}
+    }
+  },
   "activityGroupEventCreatedGeneric": "created an event",
   "activityGroupEventCreated": "created {eventName}",
   "@activityGroupEventCreated": {

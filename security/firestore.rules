@@ -996,7 +996,12 @@ service cloud.firestore {
             && md.get('amount', '') is string
             && md.get('eventName', '') is string
             && md.get('memberName', '') is string
-            && md.get('memberAction', '') is string;
+            && md.get('memberAction', '') is string
+            && md.get('recipientId', '') is string
+            && md.get('fromUserId', '') is string
+            && md.get('toUserId', '') is string
+            && md.get('fromName', '') is string
+            && md.get('toName', '') is string;
         }
 
         function validGroupActivityCreate() {

@@ -2797,6 +2797,45 @@ describe('Publish readiness Firestore rules', () => {
     );
   });
 
+  // #818 Wave 3.1 — recipientId promoted from opaque to typed alongside the
+  // four new direction keys.
+  test('#818 a client cannot forge non-string recipientId/fromUserId/toUserId/fromName/toName', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-818-forge-recipientid').set(
+        validGroupActivity({ id: 'ga-818-forge-recipientid', type: 'group_settlement', metadata: { recipientId: 42 } }),
+      ),
+    );
+    await assertFails(
+      member.doc('groups/g1/activity/ga-818-forge-fromuserid').set(
+        validGroupActivity({ id: 'ga-818-forge-fromuserid', type: 'group_settlement', metadata: { fromUserId: 42 } }),
+      ),
+    );
+    await assertFails(
+      member.doc('groups/g1/activity/ga-818-forge-touserid').set(
+        validGroupActivity({ id: 'ga-818-forge-touserid', type: 'group_settlement', metadata: { toUserId: 42 } }),
+      ),
+    );
+    await assertFails(
+      member.doc('groups/g1/activity/ga-818-forge-fromname').set(
+        validGroupActivity({
+          id: 'ga-818-forge-fromname',
+          type: 'group_settlement',
+          metadata: { fromUserId: 'member', toUserId: 'owner', fromName: 5, toName: 'Owner' },
+        }),
+      ),
+    );
+    await assertFails(
+      member.doc('groups/g1/activity/ga-818-forge-toname').set(
+        validGroupActivity({
+          id: 'ga-818-forge-toname',
+          type: 'group_settlement',
+          metadata: { fromUserId: 'member', toUserId: 'owner', fromName: 'Member', toName: 5 },
+        }),
+      ),
+    );
+  });
+
   test('#814 a client cannot forge a metadata map with more than 16 keys', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
     const metadata: Record<string, unknown> = {};
@@ -2818,6 +2857,25 @@ describe('Publish readiness Firestore rules', () => {
           id: 'ga-814-ok-settle',
           type: 'group_settlement',
           metadata: { amount: '12.500', recipientId: 'member', currency: 'OMR' },
+        }),
+      ),
+    );
+    // #818 Wave 3.1: the full directional shape (7 keys) is accepted — the
+    // legacy 3-key shape above is the anchor this must not regress.
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-818-ok-directional').set(
+        validGroupActivity({
+          id: 'ga-818-ok-directional',
+          type: 'group_settlement',
+          metadata: {
+            amount: '12.500',
+            recipientId: 'member',
+            currency: 'OMR',
+            fromUserId: 'member',
+            toUserId: 'owner',
+            fromName: 'Member',
+            toName: 'Owner',
+          },
         }),
       ),
     );

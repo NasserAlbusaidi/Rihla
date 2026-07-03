@@ -508,7 +508,6 @@ class _ActivityRow extends StatelessWidget {
     // through the decimal-units path). #382 PR-4: a stamped bucket currency
     // wins; legacy rows fall back to the group currency threaded in.
     final amt = activityAmount(log, currency);
-    final isSettlement = log.type == 'group_settlement';
     final description = localizedGroupActivityText(context.l10n, log);
 
     return Padding(
@@ -565,24 +564,14 @@ class _ActivityRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                   ],
-                  if (isSettlement && amt != null)
-                    RAmount(
-                      value: amt.value,
-                      currency: amt.currency,
-                      size: 11,
-                      sign: true,
-                      tone: AmountTone.sage,
-                      showCurrency: false,
-                    )
-                  else
-                    Text(
-                      formatRelativeShort(context, log.timestamp),
-                      style: AppTypography.mono(
-                        fontSize: 10,
-                        color: colors.textSecondary,
-                        letterSpacing: 0.4,
-                      ),
+                  Text(
+                    formatRelativeShort(context, log.timestamp),
+                    style: AppTypography.mono(
+                      fontSize: 10,
+                      color: colors.textSecondary,
+                      letterSpacing: 0.4,
                     ),
+                  ),
                 ],
               ),
             ],

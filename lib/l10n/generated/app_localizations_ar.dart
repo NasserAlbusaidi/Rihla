@@ -2161,6 +2161,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityGroupSettlementDescription => 'سجّل تسوية';
 
   @override
+  String activitySettlementPaid(Object toName) {
+    return 'دفع إلى $toName';
+  }
+
+  @override
+  String activitySettlementReceived(Object fromName) {
+    return 'استلم دفعة من $fromName';
+  }
+
+  @override
+  String activitySettlementBetween(Object fromName, Object toName) {
+    return 'سجّل تسوية من $fromName إلى $toName';
+  }
+
+  @override
   String get activityGroupEventCreatedGeneric => 'أنشأ فعالية';
 
   @override

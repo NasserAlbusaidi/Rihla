@@ -24,10 +24,11 @@ GroupActivityLog _groupLog({
   required String type,
   String description = 'legacy group text',
   Map<String, dynamic> metadata = const {},
+  String actorId = 'uid-1',
 }) => GroupActivityLog(
   id: 'group-log',
   type: type,
-  actorId: 'uid-1',
+  actorId: actorId,
   actorName: 'Alice',
   description: description,
   metadata: metadata,
@@ -328,6 +329,140 @@ void main() {
         localizedGroupActivityText(en, _groupLog(type: 'expense_deleted')),
         en.activityGroupExpenseDeletedGeneric,
       );
+    });
+  });
+
+  group('directional settlement text (#818 Wave 3.1)', () {
+    final en = AppLocalizationsEn();
+
+    test('actor == fromUserId → "paid {toName}"', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-payer',
+        metadata: const {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': 'Ali',
+          'toName': 'Sarah',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activitySettlementPaid('Sarah'),
+      );
+    });
+
+    test('actor == toUserId → "received a payment from {fromName}" '
+        '(#282 creditor records)', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-payee',
+        metadata: const {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': 'Ali',
+          'toName': 'Sarah',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activitySettlementReceived('Ali'),
+      );
+    });
+
+    test('actor is neither party → "recorded a settlement from {fromName} to '
+        '{toName}" (#595 settle-on-behalf third party)', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-third-party',
+        metadata: const {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': 'Ali',
+          'toName': 'Sarah',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activitySettlementBetween('Ali', 'Sarah'),
+      );
+    });
+
+    test('legacy row with no direction keys → generic fallback', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        metadata: const {'amount': '10.5', 'recipientId': 'uid-x'},
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupSettlementDescription,
+      );
+    });
+
+    test('forged non-String direction key → fallback, never a crash', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-payer',
+        metadata: const {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': 5, // forged: not a String
+          'toName': 'Sarah',
+        },
+      );
+      expect(
+        () => localizedGroupActivityText(en, log),
+        returnsNormally,
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupSettlementDescription,
+      );
+    });
+
+    test('empty-string direction keys → fallback', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-payer',
+        metadata: const {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': '',
+          'toName': 'Sarah',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupSettlementDescription,
+      );
+    });
+
+    test('search matcher matches a directional row by toName', () {
+      final entry = _entry(
+        _groupLog(
+          type: 'group_settlement',
+          actorId: 'uid-payer',
+          metadata: const {
+            'fromUserId': 'uid-payer',
+            'toUserId': 'uid-payee',
+            'fromName': 'Ali',
+            'toName': 'Sarah',
+          },
+        ),
+      );
+      expect(activityMatchesQuery(entry, 'sarah', en), isTrue);
+    });
+
+    test('search matcher matches a legacy row by description (no direction '
+        'keys)', () {
+      final entry = _entry(
+        _groupLog(
+          type: 'group_settlement',
+          description: 'settled OMR 10.500 with Bob',
+          metadata: const {'amount': '10.5', 'recipientId': 'uid-bob'},
+        ),
+      );
+      expect(activityMatchesQuery(entry, 'bob', en), isTrue);
     });
   });
 
