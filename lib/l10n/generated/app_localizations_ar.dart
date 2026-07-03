@@ -998,6 +998,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorDeleteThisExpenseBody => 'يزيله للجميع في هذه الفعالية.';
 
   @override
+  String get editorDiscardAddTitle => 'تجاهل هذا المصروف؟';
+
+  @override
+  String get editorDiscardEditTitle => 'تجاهل تغييراتك؟';
+
+  @override
+  String get editorDiscardBody => 'ستفقد ما أدخلته.';
+
+  @override
+  String get editorDiscardKeepEditing => 'متابعة التعديل';
+
+  @override
+  String get editorDiscardConfirm => 'تجاهل';
+
+  @override
   String get editorCustomiseSplit => 'تخصيص التقسيم';
 
   @override
