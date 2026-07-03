@@ -26,6 +26,7 @@ import '../../ledger/providers/expense_provider.dart';
 import '../../settings/widgets/edit_name_bottom_sheet.dart';
 import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
+import '../providers/activity_unread_provider.dart';
 import '../providers/dashboard_providers.dart';
 import '../widgets/account_backup_nudge.dart';
 import '../widgets/activity_row.dart';
@@ -525,7 +526,9 @@ class _TopBar extends ConsumerWidget {
             const Spacer(),
             _IconCircle(
               key: HomeKeys.activityBell,
-              icon: Iconsax.notification,
+              icon: Iconsax.activity,
+              showBadge: ref.watch(activityUnreadProvider),
+              semanticLabel: context.l10n.homeBottomNavActivity,
               onTap: () {
                 HapticService.lightClick();
                 // #818 Wave 5.2: select the History tab in place rather than
@@ -615,23 +618,42 @@ class _SetNameChip extends StatelessWidget {
 /// just an icon in a 40×40 tap target. The wireframe shows this as the
 /// notifications affordance on the right of the top bar.
 class _IconCircle extends StatelessWidget {
-  const _IconCircle({super.key, required this.icon, required this.onTap});
+  const _IconCircle({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.showBadge = false,
+    this.semanticLabel,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+
+  // #840 PR-4: drives the unread-dot Badge wrapping the icon below — the
+  // Badge itself is always present (mirroring bottom_nav_shell.dart's
+  // NavigationDestination icon) so `isLabelVisible` alone toggles the dot.
+  final bool showBadge;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Semantics(
       button: true,
+      label: semanticLabel,
       child: InkResponse(
         onTap: onTap,
         radius: 24,
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Icon(icon, size: 20, color: colors.textPrimary),
+          child: Badge(
+            key: HomeKeys.bellUnreadBadge,
+            isLabelVisible: showBadge,
+            smallSize: 8,
+            backgroundColor: colors.primary,
+            child: Icon(icon, size: 20, color: colors.textPrimary),
+          ),
         ),
       ),
     );
