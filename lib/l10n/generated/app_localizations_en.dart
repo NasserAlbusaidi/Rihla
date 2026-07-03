@@ -2016,6 +2016,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityFilterExpenses => 'Expenses';
 
   @override
+  String get activitySearchTooltip => 'Search';
+
+  @override
+  String get activitySearchClose => 'Close search';
+
+  @override
+  String get activitySearchHint => 'Search activity';
+
+  @override
+  String get activitySearchNoMatchesTitle => 'No matches';
+
+  @override
+  String activitySearchNoMatchesMessage(Object query) {
+    return 'Nothing in your loaded activity matches \"$query\".';
+  }
+
+  @override
+  String get activitySearchOlder => 'Search older activity';
+
+  @override
+  String activitySearchLoadedCount(int count) {
+    return 'Searching $count loaded entries';
+  }
+
+  @override
   String get activityEventMissingTitle => 'This event no longer exists';
 
   @override
