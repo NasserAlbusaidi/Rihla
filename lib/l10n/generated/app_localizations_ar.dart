@@ -1959,10 +1959,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeBottomNavGroups => 'المجموعات';
 
   @override
-  String get homeBottomNavActivity => 'النشاط';
+  String get homeBottomNavActivity => 'السجل';
 
   @override
   String get homeBottomNavProfile => 'الملف';
+
+  @override
+  String get historyTabTitle => 'السجل';
 
   @override
   String get homeQuickAddExpense => 'إضافة مصروف';

@@ -433,7 +433,7 @@ class _TopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.activityTitle,
+                  context.l10n.historyTabTitle,
                   style: AppTypography.display(
                     fontSize: 28,
                     color: colors.textPrimary,

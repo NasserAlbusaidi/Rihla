@@ -133,9 +133,9 @@ void main() {
     await tester.tap(activityTab);
     await _settle(tester);
     expect(
-      find.text(ar.activityTitle),
+      find.text(ar.historyTabTitle),
       findsWidgets,
-      reason: 'Activity tab did not render Arabic title copy.',
+      reason: 'History tab did not render Arabic title copy.',
     );
 
     // PR2a Profile-translation assertion (codex round 1 P1-A): jump to the

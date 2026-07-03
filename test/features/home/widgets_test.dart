@@ -178,7 +178,7 @@ void main() {
       );
     }
 
-    testWidgets('Test 6: renders 3 tabs: Groups, Activity, Profile', (
+    testWidgets('Test 6: renders 3 tabs: Groups, History, Profile', (
       tester,
     ) async {
       await tester.pumpWidget(buildShellApp(shellOverrides()));
@@ -191,7 +191,7 @@ void main() {
         navBar.destinations.map(
           (destination) => (destination as NavigationDestination).label,
         ),
-        orderedEquals(['Groups', 'Activity', 'Profile']),
+        orderedEquals(['Groups', 'History', 'Profile']),
       );
       expect(find.text('Chats'), findsNothing);
     });
@@ -209,19 +209,19 @@ void main() {
         navBar.destinations.map(
           (destination) => (destination as NavigationDestination).label,
         ),
-        orderedEquals(['المجموعات', 'النشاط', 'الملف']),
+        orderedEquals(['المجموعات', 'السجل', 'الملف']),
       );
     });
 
     testWidgets(
-      'Test 7: shows CrossGroupActivityScreen when tapping Activity tab',
+      'Test 7: shows CrossGroupActivityScreen when tapping History tab',
       (tester) async {
         await tester.pumpWidget(buildShellApp(shellOverrides()));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pumpAndSettle();
 
-        // Tap Activity tab (index 1)
-        await tester.tap(find.text('Activity').last);
+        // Tap History tab (index 1)
+        await tester.tap(find.text('History').last);
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pumpAndSettle();
 

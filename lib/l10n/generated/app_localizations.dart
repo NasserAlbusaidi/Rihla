@@ -3192,7 +3192,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeBottomNavActivity.
   ///
   /// In en, this message translates to:
-  /// **'Activity'**
+  /// **'History'**
   String get homeBottomNavActivity;
 
   /// No description provided for @homeBottomNavProfile.
@@ -3200,6 +3200,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Profile'**
   String get homeBottomNavProfile;
+
+  /// Header of the cross-group History tab screen
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get historyTabTitle;
 
   /// No description provided for @homeQuickAddExpense.
   ///
