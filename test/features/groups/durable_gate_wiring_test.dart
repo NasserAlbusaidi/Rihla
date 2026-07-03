@@ -1,10 +1,14 @@
-// Screen wiring for the durable-credential gate (#441 PR2).
+// #818: the #441 durable-credential create-time gate is REMOVED. This file
+// used to pin the gated create-screen wiring (declined gate aborts, gate
+// receives an in-flight intent, passed gate proceeds, and the
+// DurableCredentialRequiredException defense path). All four are obsolete —
+// stageGroup no longer consults anonymity at all, and durableCredentialGateProvider
+// no longer exists — so they're replaced by ONE pin: an anonymous user taps
+// Create and stageGroup is invoked directly, with no sheet ever presented.
 //
-// Both create and join consult durableCredentialGateProvider AFTER form
-// validation and BEFORE setDeviceName/the service call; a declined gate
-// aborts cleanly. The service-level DurableCredentialRequiredException
-// (defense path — UI gate bypassed) maps to the durableCredentialRequired
-// snackbar. Harness mirrors notification_prompt_wiring_test.dart.
+// The join group (join never consulted the gate, #648) is UNRELATED to this
+// removal and survives — relocated to create_join_group_test.dart per the
+// #818 spec so create-gate coverage can be deleted without losing it.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,16 +19,11 @@ import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/core/theme/app_theme.dart';
-import 'package:safar/features/auth/providers/durable_credential_gate_provider.dart';
-import 'package:safar/features/auth/services/durable_credential_exception.dart';
-import 'package:safar/features/auth/services/pending_gate_intent.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/create_group_screen.dart';
-import 'package:safar/features/groups/screens/join_group_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
-import 'package:safar/l10n/generated/app_localizations_en.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockGroupService extends Mock implements GroupService {}
@@ -32,24 +31,6 @@ class MockGroupService extends Mock implements GroupService {}
 class RecordingPrompt implements NotificationPrompt {
   @override
   Future<void> maybePrompt() async {}
-}
-
-class RecordingGate extends DurableCredentialGate {
-  RecordingGate(super.ref, {required bool result})
-    : super(
-        isAnonymous: () => true,
-        presentSheet: (_, {intent}) async => result,
-      );
-
-  int ensured = 0;
-  PendingGateIntent? lastIntent;
-
-  @override
-  Future<bool> ensure(BuildContext context, {PendingGateIntent? intent}) {
-    ensured++;
-    lastIntent = intent;
-    return super.ensure(context, intent: intent);
-  }
 }
 
 Group _group() => Group(
@@ -63,15 +44,13 @@ Group _group() => Group(
 
 void main() {
   late MockGroupService groupService;
-  late RecordingGate gate;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     groupService = MockGroupService();
   });
 
-  Widget wrap(SharedPreferences sp, Widget home, String start,
-      {required bool gateResult}) {
+  Widget wrap(SharedPreferences sp, Widget home, String start) {
     final router = GoRouter(
       initialLocation: start,
       routes: [
@@ -97,10 +76,6 @@ void main() {
         connectivityProvider.overrideWith(
           (ref) => ConnectivityNotifier(startPeriodicChecks: false),
         ),
-        durableCredentialGateProvider.overrideWith((ref) {
-          gate = RecordingGate(ref, result: gateResult);
-          return gate;
-        }),
       ],
       child: MaterialApp.router(
         routerConfig: router,
@@ -112,14 +87,6 @@ void main() {
   }
 
   Future<SharedPreferences> prefs() => SharedPreferences.getInstance();
-
-  /// The override is lazy — materialize it so [gate] is readable even when
-  /// the screen never consults the provider (the failing-RED direction).
-  void materializeGate(WidgetTester tester) {
-    ProviderScope.containerOf(
-      tester.element(find.byType(MaterialApp)),
-    ).read(durableCredentialGateProvider);
-  }
 
   group('create', () {
     Future<void> fillAndSubmit(WidgetTester tester) async {
@@ -133,165 +100,33 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('declined gate aborts before createGroup', (tester) async {
-      final sp = await prefs();
-      await tester.pumpWidget(
-        wrap(sp, const CreateGroupScreen(), '/create-group',
-            gateResult: false),
-      );
-      await tester.pumpAndSettle();
-      materializeGate(tester);
-
-      await fillAndSubmit(tester);
-
-      expect(gate.ensured, 1);
-      // #520: the screen now stages via stageGroup — verifyNever must target it
-      // or this declined-gate-blocks-write guard becomes a vacuous always-pass.
-      verifyNever(
-        () => groupService.stageGroup(
-          name: any(named: 'name'),
-          currency: any(named: 'currency'),
-        ),
-      );
-      final container = ProviderScope.containerOf(
-        tester.element(find.byKey(GroupKeys.createGroupButton)),
-      );
-      expect(container.read(groupLoadingProvider), isFalse);
-    });
-
-    testWidgets('gate receives the typed form as a create intent (#428)',
-        (tester) async {
-      final sp = await prefs();
-      await tester.pumpWidget(
-        wrap(sp, const CreateGroupScreen(), '/create-group',
-            gateResult: false),
-      );
-      await tester.pumpAndSettle();
-      materializeGate(tester);
-
-      await fillAndSubmit(tester);
-
-      final intent = gate.lastIntent;
-      expect(intent, isNotNull);
-      expect(intent!.type, PendingGateIntent.typeCreate);
-      expect(intent.groupName, 'Family Trip');
-      expect(intent.displayName, 'Tester');
-      expect(intent.currencyCode, 'OMR');
-    });
-
-    testWidgets('passed gate proceeds to stageGroup', (tester) async {
-      when(
-        () => groupService.stageGroup(
-          name: any(named: 'name'),
-          currency: any(named: 'currency'),
-        ),
-      ).thenReturn((group: _group(), ack: Future<void>.value()));
-
-      final sp = await prefs();
-      await tester.pumpWidget(
-        wrap(sp, const CreateGroupScreen(), '/create-group', gateResult: true),
-      );
-      await tester.pumpAndSettle();
-      materializeGate(tester);
-
-      await fillAndSubmit(tester);
-
-      expect(gate.ensured, 1);
-      verify(
-        () => groupService.stageGroup(
-          name: 'Family Trip',
-          currency: any(named: 'currency'),
-        ),
-      ).called(1);
-    });
-
     testWidgets(
-      'service-level DurableCredentialRequiredException maps to the '
-      'durableCredentialRequired snackbar (defense path)',
+      '#818: anonymous user taps Create → stageGroup invoked directly, '
+      'no durable-credential sheet',
       (tester) async {
-        // stageGroup runs the anonymous guard synchronously; thenThrow makes the
-        // mock throw on the (synchronous) call, inside the screen's try, where
-        // the on-DurableCredentialRequiredException clause catches it.
         when(
           () => groupService.stageGroup(
             name: any(named: 'name'),
             currency: any(named: 'currency'),
           ),
-        ).thenThrow(const DurableCredentialRequiredException());
+        ).thenReturn((group: _group(), ack: Future<void>.value()));
 
         final sp = await prefs();
-        await tester.pumpWidget(
-          wrap(sp, const CreateGroupScreen(), '/create-group',
-              gateResult: true),
-        );
+        await tester.pumpWidget(wrap(sp, const CreateGroupScreen(), '/create-group'));
         await tester.pumpAndSettle();
-        materializeGate(tester);
 
         await fillAndSubmit(tester);
 
-        expect(
-          find.text(AppLocalizationsEn().durableCredentialRequired),
-          findsOneWidget,
-        );
-        final container = ProviderScope.containerOf(
-          tester.element(find.byKey(GroupKeys.createGroupButton)),
-        );
-        expect(container.read(groupLoadingProvider), isFalse);
+        verify(
+          () => groupService.stageGroup(
+            name: 'Family Trip',
+            currency: any(named: 'currency'),
+          ),
+        ).called(1);
+        // The #441 gate sheet ("Keep your money safe") never appears — there is
+        // no gate left to present it.
+        expect(find.text('Keep your money safe'), findsNothing);
       },
     );
-  });
-
-  group('join', () {
-    Future<void> typeJoin(WidgetTester tester) async {
-      final fields = find.byType(TextField);
-      // Name field (0), invite-code field (1).
-      await tester.enterText(fields.at(0), 'Tester');
-      await tester.pump();
-      await tester.enterText(fields.at(1), 'ABCDEF'); // 6th char auto-submits
-      await tester.pump(const Duration(milliseconds: 250));
-      await tester.pumpAndSettle();
-    }
-
-    // #648: "gate creation, not participation" — the join path no longer
-    // consults the durable-credential gate at all (anonymous users may join).
-    // The gate stays on the CREATE path only (the create group above).
-    testWidgets('join does NOT consult the durable gate and proceeds straight '
-        'to joinGroup (#648)', (tester) async {
-      when(() => groupService.joinGroup(inviteCode: any(named: 'inviteCode')))
-          .thenAnswer((_) async => _group());
-
-      final sp = await prefs();
-      // gateResult: false would have BLOCKED the old gated join; it must be
-      // irrelevant now — the gate is never consulted on join.
-      await tester.pumpWidget(
-        wrap(sp, const JoinGroupScreen(), '/join', gateResult: false),
-      );
-      await tester.pumpAndSettle();
-      materializeGate(tester);
-
-      await typeJoin(tester);
-
-      expect(gate.ensured, 0);
-      verify(() => groupService.joinGroup(inviteCode: 'ABCDEF')).called(1);
-      expect(find.text('group-landing'), findsOneWidget);
-    });
-
-    testWidgets('a join failure surfaces the generic join error', (
-      tester,
-    ) async {
-      when(() => groupService.joinGroup(inviteCode: any(named: 'inviteCode')))
-          .thenThrow(Exception('boom'));
-
-      final sp = await prefs();
-      await tester.pumpWidget(
-        wrap(sp, const JoinGroupScreen(), '/join', gateResult: true),
-      );
-      await tester.pumpAndSettle();
-      materializeGate(tester);
-
-      await typeJoin(tester);
-
-      expect(find.text(AppLocalizationsEn().groupJoinFailed), findsOneWidget);
-    });
   });
 }

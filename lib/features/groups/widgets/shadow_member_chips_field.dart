@@ -25,12 +25,14 @@ class ShadowMemberChipsField extends StatefulWidget {
     required this.enabled,
     required this.onAdd,
     required this.onRemove,
+    this.disabledHint,
   });
 
   /// The placeholder names entered so far, in entry order.
   final List<String> names;
 
-  /// Whether the input accepts new names (false while offline).
+  /// Whether the input accepts new names (false while offline, or — #818 —
+  /// while the creator is anonymous).
   final bool enabled;
 
   /// Called with a trimmed, valid name when the user submits the input.
@@ -40,6 +42,11 @@ class ShadowMemberChipsField extends StatefulWidget {
 
   /// Called with the exact name to remove when its chip's × is tapped.
   final ValueChanged<String> onRemove;
+
+  /// #818: footer copy shown instead of [createGroupShadowOfflineHint] when
+  /// [enabled] is false for a reason OTHER than connectivity (an anonymous
+  /// creator) — null falls back to the offline hint.
+  final String? disabledHint;
 
   @override
   State<ShadowMemberChipsField> createState() => _ShadowMemberChipsFieldState();
@@ -137,7 +144,8 @@ class _ShadowMemberChipsFieldState extends State<ShadowMemberChipsField> {
         Text(
           widget.enabled
               ? context.l10n.groupCreatorBody
-              : context.l10n.createGroupShadowOfflineHint,
+              : (widget.disabledHint ??
+                    context.l10n.createGroupShadowOfflineHint),
           style: AppTypography.sans(
             fontSize: 11,
             color: colors.textSecondary,

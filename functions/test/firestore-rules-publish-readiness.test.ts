@@ -285,11 +285,12 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(batch.commit());
   });
 
-  // #441: money data must never be born under a discardable anonymous UID.
-  // Anonymous-provider tokens are rejected on group + inviteCode creation;
-  // every other provider (incl. the option-less default 'custom' used by the
-  // tests above) passes.
-  describe('#441 durable-credential gate on group creation', () => {
+  // #818: the #441 durable-credential gate on group creation is REMOVED.
+  // Post-#648 an anonymous user can already join groups and add expenses on a
+  // discardable UID ("gate creation, not participation"), so the create gate
+  // no longer protects its founding invariant — anonymous provider tokens now
+  // pass group + inviteCode creation the same as every other provider.
+  describe('#818 anonymous provider can create groups (durable-credential gate removed)', () => {
     function groupCreatePayload(uid: string, groupId: string, code: string) {
       return {
         id: groupId,
@@ -305,13 +306,13 @@ describe('Publish readiness Firestore rules', () => {
       };
     }
 
-    test('anonymous provider cannot create a group (even valid-shaped)', async () => {
+    test('anonymous provider can create a group (valid-shaped)', async () => {
       await testEnv.clearFirestore();
       const anon = testEnv.authenticatedContext('anon-uid', {
         firebase: { sign_in_provider: 'anonymous' },
       });
 
-      await assertFails(
+      await assertSucceeds(
         anon
           .firestore()
           .doc('groups/anon-group')
@@ -319,7 +320,7 @@ describe('Publish readiness Firestore rules', () => {
       );
     });
 
-    test('anonymous provider cannot create the group + inviteCode batch', async () => {
+    test('anonymous provider can create the group + inviteCode batch', async () => {
       await testEnv.clearFirestore();
       const anon = testEnv.authenticatedContext('anon-uid', {
         firebase: { sign_in_provider: 'anonymous' },
@@ -335,7 +336,7 @@ describe('Publish readiness Firestore rules', () => {
         createdAt: new Date(),
       });
 
-      await assertFails(batch.commit());
+      await assertSucceeds(batch.commit());
     });
 
     test('google.com provider can create the group + inviteCode batch', async () => {

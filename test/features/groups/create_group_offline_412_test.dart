@@ -22,7 +22,6 @@ import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_prompt.dart';
 import 'package:safar/core/theme/app_theme.dart';
-import 'package:safar/features/auth/providers/durable_credential_gate_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -82,15 +81,6 @@ void main() {
         groupServiceProvider.overrideWithValue(groupService),
         notificationPromptProvider.overrideWithValue(_RecordingPrompt()),
         connectivityProvider.overrideWith((ref) => connectivity),
-        // Durable (non-anonymous) user → the gate passes without presenting a
-        // sheet, so the create path runs straight through to the write.
-        durableCredentialGateProvider.overrideWith(
-          (ref) => DurableCredentialGate(
-            ref,
-            isAnonymous: () => false,
-            presentSheet: (_, {intent}) async => true,
-          ),
-        ),
       ],
       child: MaterialApp.router(
         routerConfig: router,
