@@ -148,15 +148,12 @@ class _SplitCardState extends State<SplitCard> {
   }
 
   void _recomputeOwed() {
-    if (!_isNonEqual) {
-      _owed = null;
-      return;
-    }
     debugSplitPreviewOwedComputes++;
-    // #242 WYSIWYG: for shares/exact/percent show each person's REAL owed
-    // amount via the same pure helper calculateBalances uses, so the preview
-    // equals what gets persisted. `onFallback: null` keeps a transient/forged
-    // split silent. Equal splits keep the uniform `each`.
+    // #242/#853 WYSIWYG: every mode, including Equal, shows each person's REAL
+    // owed amount via the same pure helper calculateBalances uses, so the
+    // preview equals what gets persisted. Equal mode therefore gets the
+    // allocator's currency quantization + last-recipient remainder. `onFallback:
+    // null` keeps a transient/forged split silent.
     _owed = BalanceCalculator.allocateExpenseOwed(
       amount: widget.amount,
       splitMode: widget.splitMode,
@@ -291,10 +288,9 @@ class _SplitCardState extends State<SplitCard> {
         widget.displayNames[id] ??
         widget.event.participantNames[id] ??
         l10n.editorMemberFallback;
-    final each = (widget.amount / Decimal.fromInt(_splitParticipantIds.length))
-        .toDecimal(scaleOnInfinitePrecision: 3);
-    // Real per-person owed for non-equal modes (#242); equal keeps `each`.
-    final share = _owed != null ? (_owed![id] ?? Decimal.zero) : each;
+    // #242/#853: every mode reads the REAL per-person owed from the allocator
+    // (equal included), so the row figures reconcile to the total.
+    final share = _owed![id] ?? Decimal.zero;
     return _SplitPersonRow(
       name: name,
       // #289: compact disambiguated label — first name, keeping the `(#…)`
@@ -332,7 +328,7 @@ class _SplitCardState extends State<SplitCard> {
           ),
         ],
       );
-    } else if (_owed != null) {
+    } else if (_isNonEqual) {
       inner = Text(l10n.editorAmountsVary, style: style);
     } else {
       final count = _splitParticipantIds.length;

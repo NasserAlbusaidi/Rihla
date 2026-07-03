@@ -203,20 +203,24 @@ void main() {
     expect(debugSplitPreviewOwedComputes, greaterThan(owedAfterLoad));
   });
 
-  testWidgets('equal split never runs the owed allocation', (tester) async {
-    await pumpEditor(
-      tester,
-      initial: expenseWith(mode: SplitMode.equally, amount: '9.000'),
-    );
-    expect(find.text('OMR 4.500'), findsWidgets); // 9.000 / 2
-    expect(debugSplitPreviewOwedComputes, 0);
+  testWidgets(
+    'equal split runs owed allocation and memoizes across non-money edits',
+    (tester) async {
+      await pumpEditor(
+        tester,
+        initial: expenseWith(mode: SplitMode.equally, amount: '9.000'),
+      );
+      expect(find.text('OMR 4.500'), findsWidgets); // 9.000 / 2
+      final owedAfterLoad = debugSplitPreviewOwedComputes;
+      expect(owedAfterLoad, greaterThanOrEqualTo(1));
 
-    await tester.enterText(find.byType(TextField).first, '12.000');
-    await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(1), 'Airport snacks');
+      await tester.pumpAndSettle();
 
-    expect(find.text('OMR 6.000'), findsWidgets); // 12.000 / 2
-    expect(debugSplitPreviewOwedComputes, 0);
-  });
+      expect(find.text('OMR 4.500'), findsWidgets); // still 9.000 / 2
+      expect(debugSplitPreviewOwedComputes, owedAfterLoad);
+    },
+  );
 
   testWidgets(
     'one shared name map feeds the paid-by card and the preview, flat across a '
