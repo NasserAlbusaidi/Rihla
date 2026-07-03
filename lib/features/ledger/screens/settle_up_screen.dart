@@ -132,6 +132,32 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     );
   }
 
+  /// #818 Wave 5.3: nav-only "View recap & export" CTA, standalone-event
+  /// settle-up ONLY — gated on `!widget.embedded && expenses.isNotEmpty`. Does
+  /// NOT copy the command-center's `!event.isClosed` conjunct: a closed
+  /// event's standalone settle-up should still reach the recap/export.
+  /// Pushes the existing recap route directly — never opens
+  /// `showRecapShareSheet` here (that would drag `eventRecapProvider` +
+  /// `ledgerViewProvider` watches into settle-up); export stays owned by the
+  /// recap screen.
+  Widget? _buildRecapCta(BuildContext context, List<Expense> expenses) {
+    if (widget.embedded || expenses.isEmpty) return null;
+    return Padding(
+      padding: EdgeInsetsDirectional.only(top: context.spacing.space24),
+      child: OutlinedButton.icon(
+        key: LedgerKeys.settleUpRecapCta,
+        onPressed: () {
+          HapticService.lightClick();
+          GoRouter.of(
+            context,
+          ).push('/group/${widget.groupId}/event/${widget.eventId}/recap');
+        },
+        icon: const Icon(Iconsax.document_text),
+        label: Text(context.l10n.settleUpViewRecapCta),
+      ),
+    );
+  }
+
   Widget _missingView(BuildContext context) {
     return EmptyStateView(
       icon: Iconsax.warning_2,
@@ -303,6 +329,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             // #789: the embedded panel sits under the workspace's floating FAB;
             // reserve clearance so the last row isn't overlapped.
             bottomInset: widget.embedded ? kEmbeddedEventPanelFabClearance : 24,
+            // #818 Wave 5.3: nav-only entry to the existing recap/export
+            // route, standalone-event-settle-up only (no group entry — Trip
+            // Receipt is event-scoped, #704 open; no embedded entry — the
+            // Recap tab sits in the same tab strip one swipe away).
+            footer: _buildRecapCta(context, expenses),
             onRecord:
                 ({
                   required settlement,

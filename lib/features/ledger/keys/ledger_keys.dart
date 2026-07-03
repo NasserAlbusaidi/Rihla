@@ -24,6 +24,9 @@ abstract final class LedgerKeys {
   // Search sheet (T3.L)
   static const searchField = Key('ledger_search_field');
 
+  // #818 Wave 5.3: standalone settle-up → recap/export nav entry
+  static const settleUpRecapCta = Key('settle_up_recap_cta');
+
   // Parameterized keys for list items
   static Key expenseCard(String id) => Key('ledger_expense_card_$id');
 }

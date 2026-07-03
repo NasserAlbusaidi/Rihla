@@ -1544,6 +1544,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpShareReceipt => 'Share receipt';
 
   @override
+  String get settleUpViewRecapCta => 'View recap & export';
+
+  @override
   String settleUpReceiptLine(
     Object payerName,
     Object recipientName,

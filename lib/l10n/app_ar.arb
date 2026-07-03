@@ -456,6 +456,7 @@
   "settleUpUnknown": "غير معروف",
   "settleUpPaidConnector": "دفع",
   "settleUpShareReceipt": "مشاركة الإيصال",
+  "settleUpViewRecapCta": "عرض الملخّص والتصدير",
   "settleUpReceiptLine": "دفع {payerName} إلى {recipientName} {amount}",
   "settleUpReceiptContext": "{date} · {subjectName}",
   "settleUpReceiptFooter": "— مُسجَّل في رِحلة",

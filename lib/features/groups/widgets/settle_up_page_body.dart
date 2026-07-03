@@ -215,6 +215,11 @@ class SettleUpPageBody extends StatelessWidget {
   /// last row clears the workspace's floating "+ Add expense" pill (#789).
   final double bottomInset;
 
+  /// Optional caller-supplied section rendered after the payment-history
+  /// section, inside the scroll, before the [bottomInset] spacer (#818 Wave
+  /// 5.3). Null renders nothing — every existing caller is unaffected.
+  final Widget? footer;
+
   const SettleUpPageBody({
     super.key,
     required this.scope,
@@ -232,6 +237,7 @@ class SettleUpPageBody extends StatelessWidget {
     this.onCorrect,
     this.onCorrectLogical,
     this.bottomInset = 24,
+    this.footer,
   });
 
   @override
@@ -339,6 +345,7 @@ class SettleUpPageBody extends StatelessWidget {
               onCorrectLogical: onCorrectLogical,
             ),
           ],
+          ?footer,
         ],
       ),
     );

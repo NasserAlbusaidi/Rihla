@@ -28,6 +28,7 @@ import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/groups/widgets/settle_up_page_body.dart';
 import 'package:safar/core/models/split_mode.dart';
+import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -163,6 +164,15 @@ void main() {
                     eventId: state.pathParameters['eid']!,
                   ),
                 ),
+                // #818 Wave 5.3: recap route stub — the real route is nested
+                // under /group/:gid in app_router.dart, but this flat stub is
+                // enough to prove the CTA pushes the right path.
+                GoRoute(
+                  path: '/group/:gid/event/:eid/recap',
+                  builder: (_, state) => Scaffold(
+                    body: Text('Recap:${state.pathParameters['eid']}'),
+                  ),
+                ),
               ],
             ),
           )
@@ -243,6 +253,50 @@ void main() {
       find.byType(SettleUpPageBody),
     );
     expect(body.bottomInset, lessThan(kEmbeddedEventPanelFabClearance));
+  });
+
+  // #818 Wave 5.3: nav-only CTA from standalone settle-up to the existing
+  // recap route (export stays owned by the recap screen). Scope: standalone
+  // event settle-up ONLY — no group entry (Trip Receipt is event-scoped,
+  // #704 open), no embedded entry (the Recap tab sits in the same tab strip).
+  group('#818 Wave 5.3: recap CTA', () {
+    testWidgets(
+      'standalone shows the recap CTA and navigates to the recap route',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+
+        await tester.pumpWidget(buildScreen(fakeDb, router: true));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(LedgerKeys.settleUpRecapCta), findsOneWidget);
+
+        await tester.ensureVisible(find.byKey(LedgerKeys.settleUpRecapCta));
+        await tester.tap(find.byKey(LedgerKeys.settleUpRecapCta));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Recap:event-1'), findsOneWidget);
+      },
+    );
+
+    testWidgets('embedded hides the recap CTA', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      await tester.pumpWidget(buildScreen(fakeDb, embedded: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(LedgerKeys.settleUpRecapCta), findsNothing);
+    });
+
+    testWidgets('empty ledger hides the recap CTA', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      await tester.pumpWidget(
+        buildScreen(fakeDb, expensesStream: Stream.value(const <Expense>[])),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(LedgerKeys.settleUpRecapCta), findsNothing);
+    });
   });
 
   testWidgets('shows loading state while event is loading', (tester) async {

@@ -1593,6 +1593,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpShareReceipt => 'مشاركة الإيصال';
 
   @override
+  String get settleUpViewRecapCta => 'عرض الملخّص والتصدير';
+
+  @override
   String settleUpReceiptLine(
     Object payerName,
     Object recipientName,
