@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+import '../services/late_write_notice.dart';
+
 /// Outcome of racing a Firestore write against a server-ack timeout (#412).
 enum WriteAck { acked, queued }
 
@@ -40,6 +42,12 @@ Future<WriteAck> awaitServerAck(
         onError: (Object error, StackTrace stackTrace) {
           debugPrint('Queued write failed on replay: $error');
           unawaited(Sentry.captureException(error, stackTrace: stackTrace));
+          try {
+            notifyLateWriteFailure(error);
+          } catch (_) {
+            // The notice is best-effort; a presenter bug must never break
+            // the observer or loop a secondary failure into Sentry.
+          }
           onLateError?.call(error, stackTrace);
         },
       ),

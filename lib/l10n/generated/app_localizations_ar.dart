@@ -3290,6 +3290,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorUnexpected => 'حدث خطأ ما. يرجى المحاولة مرة أخرى.';
 
   @override
+  String lateWriteFailedNotice(Object cause) {
+    return 'تعذّر حفظ تغيير حديث: $cause';
+  }
+
+  @override
   String get authErrorEmailAlreadyLinked =>
       'هذا البريد مرتبط بالفعل بحساب Rihla. استعد ذلك الحساب بدلًا من ذلك.';
 

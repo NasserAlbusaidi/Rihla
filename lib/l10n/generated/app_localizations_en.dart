@@ -3214,6 +3214,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorUnexpected => 'Something went wrong. Please try again.';
 
   @override
+  String lateWriteFailedNotice(Object cause) {
+    return 'A recent change couldn\'t be saved: $cause';
+  }
+
+  @override
   String get authErrorEmailAlreadyLinked =>
       'This email is already linked to a Rihla account. Restore from that account instead.';
 

@@ -5433,6 +5433,12 @@ abstract class AppLocalizations {
   /// **'Something went wrong. Please try again.'**
   String get errorUnexpected;
 
+  /// Global SnackBar shown when a queued-offline write is rejected by the server on replay after reconnect — the optimistic local change has been rolled back. {cause} is a friendly cause phrase (errorNetwork / errorPermissionDenied / ...).
+  ///
+  /// In en, this message translates to:
+  /// **'A recent change couldn\'t be saved: {cause}'**
+  String lateWriteFailedNotice(Object cause);
+
   /// Shown on the Link-email screen when the email is already linked to another Rihla account.
   ///
   /// In en, this message translates to:
