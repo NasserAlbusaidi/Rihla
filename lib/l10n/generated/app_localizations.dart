@@ -5577,6 +5577,24 @@ abstract class AppLocalizations {
   /// **'Resend in {seconds}s'**
   String authRecoverPendingResendCountdown(int seconds);
 
+  /// Boot-time snack shown after a Google/email restore whose swap survived the restart AND (#839) either has data or the presence probe was inconclusive.
+  ///
+  /// In en, this message translates to:
+  /// **'Account restored.'**
+  String get recoveryRestoredOk;
+
+  /// #839 boot-time snack shown when the restore's swap survived the restart but a Source.server presence probe SERVER-CONFIRMS the account holds zero groups — points at the existing Profile → Account → Sign out escape path rather than claiming a confident, possibly-wrong success.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in, but this account has no groups yet. Restored the wrong account? Profile → Account → Sign out lets you try another.'**
+  String get recoveryRestoredEmpty;
+
+  /// Boot-time snack shown when a success marker's expectedUid (#458) does not match who is actually signed in after the restart — the swap did not durably survive.
+  ///
+  /// In en, this message translates to:
+  /// **'Account restore didn\'t complete. Please try again.'**
+  String get recoverySwapIncomplete;
+
   /// Empty-state title on the group settle-up screen when the group can no longer be loaded (e.g. the user was removed).
   ///
   /// In en, this message translates to:

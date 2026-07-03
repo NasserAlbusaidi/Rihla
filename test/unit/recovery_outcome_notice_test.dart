@@ -1,36 +1,70 @@
-// Boot-time surfacing of a RecoveryOutcome marker (#439 C.3).
+// Boot-time surfacing of a RecoveryOutcome marker (#439 C.3 / #839).
 //
 // The marker is the ONLY trace of a swap outcome (the process restarted);
 // on the next cold boot it must become a user-visible message + the
-// authoritative Sentry signal, exactly once.
+// authoritative Sentry signal, exactly once. #839 adds a data-presence probe
+// so a wrong/never-linked restore that lands on a genuinely empty account
+// gets an honest "no groups yet" instead of a confident "Account restored."
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/app_messenger.dart';
+import 'package:safar/features/auth/providers/recovery_outcome_notice_provider.dart';
 import 'package:safar/features/auth/services/auth_error_humanizer.dart';
 import 'package:safar/features/auth/services/recovery_outcome.dart';
 import 'package:safar/features/auth/services/recovery_outcome_notice.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Generic test fixture — deliberately distinct from any real ARB copy so a
+/// test failure clearly names which branch fired. Real localization
+/// (context → AppLocalizations, EN fallback) is the provider's job and is
+/// covered separately by the widget-level AR test below.
+const _messages = (
+  restoredOk: 'ok-msg',
+  restoredEmpty: 'empty-msg',
+  swapIncomplete: 'incomplete-msg',
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late SharedPreferences prefs;
-  late List<(String, bool)> snacks;
+  late List<(String, bool, Duration)> snacks;
   late List<String> captures;
+  late List<String> probedUids;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     snacks = [];
     captures = [];
+    probedUids = [];
   });
 
-  void run({String? Function()? currentUid}) => surfaceRecoveryOutcome(
-        prefs: prefs,
-        currentUid: currentUid ?? () => null,
-        showSnack: (message, {bool isError = false}) =>
-            snacks.add((message, isError)),
-        capture: captures.add,
-      );
+  Future<void> run({
+    String? Function()? currentUid,
+    Future<bool?> Function(String uid)? hasData,
+  }) => surfaceRecoveryOutcome(
+    prefs: prefs,
+    currentUid: currentUid ?? () => null,
+    hasData:
+        hasData ??
+        (uid) async {
+          probedUids.add(uid);
+          return null;
+        },
+    messages: _messages,
+    showSnack:
+        (
+          message, {
+          bool isError = false,
+          Duration duration = const Duration(seconds: 4),
+        }) => snacks.add((message, isError, duration)),
+    capture: captures.add,
+  );
 
   test('failure marker → humanized error snack + Sentry capture + cleared',
       () async {
@@ -41,13 +75,14 @@ void main() {
       code: 'invalid-action-code',
     );
 
-    run();
+    await run();
 
     expect(snacks, [
-      (humanizeAuthErrorCode('invalid-action-code'), true),
+      (humanizeAuthErrorCode('invalid-action-code'), true, const Duration(seconds: 4)),
     ]);
     expect(captures, ['recovery_failed op=recover code=invalid-action-code']);
     expect(prefs.containsKey(RecoveryOutcome.prefsKey), isFalse);
+    expect(probedUids, isEmpty);
   });
 
   test('capture string carries no PII beyond op+code', () async {
@@ -58,36 +93,19 @@ void main() {
       code: 'user-disabled',
     );
 
-    run();
+    await run();
 
     expect(captures.single, 'recovery_failed op=google code=user-disabled');
-  });
-
-  test('successful restore → success snack, NO capture', () async {
-    await writeRecoveryOutcome(prefs, op: RecoveryOutcome.opGoogle, ok: true);
-
-    run();
-
-    expect(snacks, [('Account restored.', false)]);
-    expect(captures, isEmpty);
-  });
-
-  test('successful email restore → success snack', () async {
-    await writeRecoveryOutcome(prefs, op: RecoveryOutcome.opRecover, ok: true);
-
-    run();
-
-    expect(snacks, hasLength(1));
-    expect(snacks.single.$2, isFalse);
   });
 
   test('successful sign-out → silent (no snack, no capture)', () async {
     await writeRecoveryOutcome(prefs, op: RecoveryOutcome.opSignOut, ok: true);
 
-    run();
+    await run();
 
     expect(snacks, isEmpty);
     expect(captures, isEmpty);
+    expect(probedUids, isEmpty);
   });
 
   test('failed sign-out still surfaces', () async {
@@ -98,14 +116,19 @@ void main() {
       code: 'network-request-failed',
     );
 
-    run();
+    await run();
 
     expect(snacks, hasLength(1));
     expect(snacks.single.$2, isTrue);
     expect(captures, hasLength(1));
   });
 
-  test('#458: success marker whose swap did NOT survive → failure notice',
+  // ---------------------------------------------------------------------
+  // #458 mismatch branch — unchanged, evaluated FIRST, never reaches the
+  // #839 probe.
+  // ---------------------------------------------------------------------
+
+  test('mismatch → incomplete-msg (swap did NOT survive the restart)',
       () async {
     await writeRecoveryOutcome(
       prefs,
@@ -114,15 +137,50 @@ void main() {
       expectedUid: 'durable-uid',
     );
 
-    run(currentUid: () => 'stale-anon-uid');
+    await run(currentUid: () => 'stale-anon-uid');
 
     expect(snacks, [
-      ("Account restore didn't complete. Please try again.", true),
+      (_messages.swapIncomplete, true, const Duration(seconds: 4)),
     ]);
     expect(captures, ['recovery_swap_not_durable op=google']);
+    expect(probedUids, isEmpty);
   });
 
-  test('#458: success marker whose swap survived → success notice', () async {
+  test('mismatch: no signed-in user at boot counts as a mismatch', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(currentUid: () => null);
+
+    expect(snacks.single.$2, isTrue);
+    expect(captures, ['recovery_swap_not_durable op=google']);
+    expect(probedUids, isEmpty);
+  });
+
+  test('mismatch capture carries no UID', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(currentUid: () => 'stale-anon-uid');
+
+    expect(captures.single, isNot(contains('durable-uid')));
+    expect(captures.single, isNot(contains('stale-anon-uid')));
+  });
+
+  // ---------------------------------------------------------------------
+  // #839 probe branches — only reached once the swap is confirmed durable
+  // (or was never checkable).
+  // ---------------------------------------------------------------------
+
+  test('restored + hasData(true) → ok', () async {
     await writeRecoveryOutcome(
       prefs,
       op: RecoveryOutcome.opRecover,
@@ -130,27 +188,22 @@ void main() {
       expectedUid: 'durable-uid',
     );
 
-    run(currentUid: () => 'durable-uid');
-
-    expect(snacks, [('Account restored.', false)]);
-    expect(captures, isEmpty);
-  });
-
-  test('#458: no signed-in user at boot counts as a mismatch', () async {
-    await writeRecoveryOutcome(
-      prefs,
-      op: RecoveryOutcome.opGoogle,
-      ok: true,
-      expectedUid: 'durable-uid',
+    await run(
+      currentUid: () => 'durable-uid',
+      hasData: (uid) async {
+        probedUids.add(uid);
+        return true;
+      },
     );
 
-    run(currentUid: () => null);
-
-    expect(snacks.single.$2, isTrue);
-    expect(captures, ['recovery_swap_not_durable op=google']);
+    expect(snacks, [
+      (_messages.restoredOk, false, const Duration(seconds: 4)),
+    ]);
+    expect(captures, isEmpty);
+    expect(probedUids, ['durable-uid']);
   });
 
-  test('#458: unreadable auth (throws) → trust the claim, never false-alarm',
+  test('restored + confirmed-empty → empty-msg, 8s duration, not an error',
       () async {
     await writeRecoveryOutcome(
       prefs,
@@ -159,13 +212,22 @@ void main() {
       expectedUid: 'durable-uid',
     );
 
-    run(currentUid: () => throw StateError('[core/no-app]'));
+    await run(
+      currentUid: () => 'durable-uid',
+      hasData: (uid) async {
+        probedUids.add(uid);
+        return false;
+      },
+    );
 
-    expect(snacks, [('Account restored.', false)]);
+    expect(snacks, [
+      (_messages.restoredEmpty, false, const Duration(seconds: 8)),
+    ]);
     expect(captures, isEmpty);
+    expect(probedUids, ['durable-uid']);
   });
 
-  test('#458: mismatch capture carries no UID', () async {
+  test('restored + inconclusive probe (null) → ok, never scare', () async {
     await writeRecoveryOutcome(
       prefs,
       op: RecoveryOutcome.opGoogle,
@@ -173,10 +235,75 @@ void main() {
       expectedUid: 'durable-uid',
     );
 
-    run(currentUid: () => 'stale-anon-uid');
+    await run(
+      currentUid: () => 'durable-uid',
+      hasData: (uid) async {
+        probedUids.add(uid);
+        return null;
+      },
+    );
 
-    expect(captures.single, isNot(contains('durable-uid')));
-    expect(captures.single, isNot(contains('stale-anon-uid')));
+    expect(snacks, [
+      (_messages.restoredOk, false, const Duration(seconds: 4)),
+    ]);
+    expect(captures, isEmpty);
+    expect(probedUids, ['durable-uid']);
+  });
+
+  test(
+      'uid-throws → ok without probe (unreadable auth trusts the claim, '
+      'never false-alarms)', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(currentUid: () => throw StateError('[core/no-app]'));
+
+    expect(snacks, [
+      (_messages.restoredOk, false, const Duration(seconds: 4)),
+    ]);
+    expect(captures, isEmpty);
+    expect(probedUids, isEmpty);
+  });
+
+  test('expectedUid == null → probe targets currentUid()', () async {
+    // Legacy v1 marker (or any success marker written without an
+    // expectedUid): the mismatch check is skipped entirely, so #839 must
+    // still probe against whoever is ACTUALLY signed in, per Gate r1.
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+    );
+
+    await run(
+      currentUid: () => 'uid-current',
+      hasData: (uid) async {
+        probedUids.add(uid);
+        return false;
+      },
+    );
+
+    expect(probedUids, ['uid-current']);
+    expect(snacks, [
+      (_messages.restoredEmpty, false, const Duration(seconds: 8)),
+    ]);
+  });
+
+  test('expectedUid == null and no current uid → trusts the claim (nothing '
+      'to probe)', () async {
+    await writeRecoveryOutcome(prefs, op: RecoveryOutcome.opGoogle, ok: true);
+
+    await run(currentUid: () => null);
+
+    expect(snacks, [
+      (_messages.restoredOk, false, const Duration(seconds: 4)),
+    ]);
+    expect(captures, isEmpty);
+    expect(probedUids, isEmpty);
   });
 
   test('one-shot: a second boot surfaces nothing', () async {
@@ -187,17 +314,17 @@ void main() {
       code: 'invalid-action-code',
     );
 
-    run();
+    await run();
     snacks.clear();
     captures.clear();
-    run();
+    await run();
 
     expect(snacks, isEmpty);
     expect(captures, isEmpty);
   });
 
-  test('no marker → nothing', () {
-    run();
+  test('no marker → nothing', () async {
+    await run();
     expect(snacks, isEmpty);
     expect(captures, isEmpty);
   });
@@ -212,5 +339,57 @@ void main() {
       "No connection. Try again when you're online.",
     );
     expect(humanizeAuthErrorCode('weird-code'), contains('weird-code'));
+  });
+
+  // ---------------------------------------------------------------------
+  // Gate r1: widget-level l10n test. The provider's own
+  // `appMessengerKey.currentContext → AppLocalizations.of(ctx)` resolution
+  // is otherwise untested, and its EN-literal fallback would silently mask
+  // total localization failure for AR users — so this drives the REAL
+  // provider (not the pure function) through a real MaterialApp.
+  // ---------------------------------------------------------------------
+
+  testWidgets(
+      'AR l10n: provider resolves and shows the localized '
+      'recoveryRestoredEmpty string', (tester) async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'uid-1',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          recoveryOutcomeCurrentUidProvider.overrideWithValue(() => 'uid-1'),
+          recoveryOutcomeProbeProvider.overrideWithValue(
+            (_) async => false,
+          ),
+        ],
+        child: MaterialApp(
+          scaffoldMessengerKey: appMessengerKey,
+          locale: const Locale('ar'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Consumer(
+            builder: (context, ref, _) {
+              ref.watch(recoveryOutcomeNoticeProvider);
+              return const Scaffold(body: SizedBox());
+            },
+          ),
+        ),
+      ),
+    );
+
+    // First frame commits the postFrameCallback; a couple more pumps let the
+    // async probe resolve and the SnackBar's entrance animation begin.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+    expect(find.text(ar.recoveryRestoredEmpty), findsOneWidget);
   });
 }

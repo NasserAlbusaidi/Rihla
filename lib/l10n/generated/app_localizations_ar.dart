@@ -3375,6 +3375,17 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get recoveryRestoredOk => 'تم استعادة الحساب.';
+
+  @override
+  String get recoveryRestoredEmpty =>
+      'تم تسجيل الدخول، لكن لا توجد مجموعات في هذا الحساب بعد. هل استعدت الحساب الخطأ؟ الملف الشخصي ← الحساب ← تسجيل الخروج يتيح لك تجربة حساب آخر.';
+
+  @override
+  String get recoverySwapIncomplete =>
+      'لم تكتمل استعادة الحساب. حاول مرة أخرى.';
+
+  @override
   String get groupSettleUpMissingTitle => 'هذه المجموعة لم تعد متاحة';
 
   @override

@@ -962,6 +962,10 @@
   "authRecoverPendingResendLink": "إعادة إرسال الرابط",
   "authRecoverPendingResendCountdown": "إعادة الإرسال خلال {seconds} ث",
 
+  "recoveryRestoredOk": "تم استعادة الحساب.",
+  "recoveryRestoredEmpty": "تم تسجيل الدخول، لكن لا توجد مجموعات في هذا الحساب بعد. هل استعدت الحساب الخطأ؟ الملف الشخصي ← الحساب ← تسجيل الخروج يتيح لك تجربة حساب آخر.",
+  "recoverySwapIncomplete": "لم تكتمل استعادة الحساب. حاول مرة أخرى.",
+
   "groupSettleUpMissingTitle": "هذه المجموعة لم تعد متاحة",
   "groupSettleUpMissingMessage": "قد تكون قد أُزلت منها. اضغط أدناه للعودة إلى الرئيسية.",
   "groupSettleUpEventLabelFallback": "فعالية ...{suffix}",
