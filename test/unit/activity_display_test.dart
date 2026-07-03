@@ -204,6 +204,68 @@ void main() {
       );
     });
 
+    test('forged non-String metadata values read as absent, never a '
+        '_TypeError (rules check only `metadata is map`)', () {
+      final en = AppLocalizationsEn();
+
+      // eventName: int → generic variant on every eventName-consuming type.
+      for (final type in [
+        'event_created',
+        'event_deleted',
+        'expense_added',
+        'expense_edited',
+        'expense_deleted',
+      ]) {
+        expect(
+          () => localizedGroupActivityText(
+            en,
+            _groupLog(type: type, metadata: const {'eventName': 42}),
+          ),
+          returnsNormally,
+          reason: type,
+        );
+      }
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'expense_added', metadata: const {'eventName': 42}),
+        ),
+        en.activityGroupExpenseAddedGeneric,
+      );
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'event_created', metadata: const {'eventName': 42}),
+        ),
+        en.activityGroupEventCreatedGeneric,
+      );
+
+      // memberName: map → treated absent → removal falls to the description.
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(
+            type: 'member_left',
+            description: 'legacy removal text',
+            metadata: const {
+              'memberAction': 'removed',
+              'memberName': {'a': 1},
+            },
+          ),
+        ),
+        'legacy removal text',
+      );
+
+      // memberAction: int → treated absent → plain "left the group".
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'member_left', metadata: const {'memberAction': 7}),
+        ),
+        en.activityGroupMemberLeft,
+      );
+    });
+
     // #808 PR2: the server fan-in (expenseAuditLogger) writes expense_added/
     // expense_edited/expense_deleted with an English verb-phrase description and
     // metadata.eventName. The client localizes by type (D-PR2-1 — GENERIC, no
@@ -627,6 +689,17 @@ void main() {
         ),
       );
       expect(() => activityMatchesQuery(entry, 'ali', en), returnsNormally);
+      // Other fields stay searchable (actorName is 'Alice').
+      expect(activityMatchesQuery(entry, 'ali', en), isTrue);
+      expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);
+    });
+
+    test('forged non-String eventName never throws — same parent-build class '
+        'as the NaN amount', () {
+      final entry = _entry(
+        _groupLog(type: 'expense_added', metadata: const {'eventName': 42}),
+      );
+      expect(() => activityMatchesQuery(entry, 'a', en), returnsNormally);
       // Other fields stay searchable (actorName is 'Alice').
       expect(activityMatchesQuery(entry, 'ali', en), isTrue);
       expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);

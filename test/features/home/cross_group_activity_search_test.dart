@@ -393,5 +393,46 @@ void main() {
       expect(_rich('Mallory'), findsNothing);
       expect(_rich('Alice'), findsNothing);
     });
+
+    testWidgets('a forged non-String eventName entry never ErrorWidgets the '
+        'tab while searching (same class: unvalidated metadata value-domain '
+        'reaching the parent-build matcher)', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity('a1', 'Alice', 'created an event', at: DateTime(2026, 3, 28)),
+        _activity(
+          'e-forged',
+          'Mallory',
+          'added an expense',
+          type: 'expense_added',
+          metadata: const {'eventName': 42},
+          at: DateTime(2026, 3, 27),
+        ),
+        _activity(
+          's1',
+          'Bob',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': '9'},
+          at: DateTime(2026, 3, 26),
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openSearch(tester);
+      await _type(tester, 'bob');
+
+      expect(find.byType(ErrorWidget), findsNothing);
+      expect(_rich('Bob'), findsOneWidget);
+      expect(_rich('Mallory'), findsNothing);
+      expect(_rich('Alice'), findsNothing);
+    });
   });
 }

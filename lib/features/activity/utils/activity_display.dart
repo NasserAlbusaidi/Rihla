@@ -23,10 +23,21 @@ String localizedEventActivityText(AppLocalizations l10n, ActivityLog log) {
   };
 }
 
+/// Every metadata read in this file goes through a value-domain guard, never a
+/// raw cast: the map is client-forgeable (`firestore.rules` checks only
+/// `metadata is map`), and activityMatchesQuery runs these helpers over EVERY
+/// loaded entry in the parent build — one forged value would ErrorWidget the
+/// whole Activity tab (same class as the amountFils/legacy-amount guards).
+/// A non-String value reads as absent → the existing generic/fallback path.
+String? _metadataString(GroupActivityLog log, String key) {
+  final value = log.metadata[key];
+  return value is String ? value : null;
+}
+
 String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
-  final eventName = log.metadata['eventName'] as String?;
-  final memberName = log.metadata['memberName'] as String?;
-  final memberAction = log.metadata['memberAction'] as String?;
+  final eventName = _metadataString(log, 'eventName');
+  final memberName = _metadataString(log, 'memberName');
+  final memberAction = _metadataString(log, 'memberAction');
   return switch (log.type) {
     'group_settlement' => l10n.activityGroupSettlementDescription,
     'event_created' =>
@@ -162,7 +173,7 @@ bool activityMatchesQuery(
     localizedGroupActivityText(l10n, log),
     log.actorName,
     entry.groupName,
-    log.metadata['eventName'] as String?,
+    _metadataString(log, 'eventName'),
   ];
 
   final amount = activityAmount(log, entry.currency);
