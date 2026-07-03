@@ -34,6 +34,48 @@ void main() {
       expect(outerRow.crossAxisAlignment, CrossAxisAlignment.start);
     },
   );
+
+  // #808 PR2: the home RECENTLY row renders text via localizedGroupActivityText,
+  // so the new expense_* types flow through with no widget change.
+  testWidgets('renders localized text for an expense fan-in entry', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            child: ActivityRow(
+              activity: GroupActivityLog(
+                id: 'x',
+                type: 'expense_added',
+                actorId: 'u1',
+                actorName: 'Alice',
+                description: 'added Dinner (10.500 OMR)',
+                metadata: const {'eventName': 'Beach Trip'},
+                timestamp: DateTime(2026, 5, 1),
+              ),
+              groupName: 'Beach Crew',
+              groupId: 'g1',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Text &&
+            (w.textSpan?.toPlainText().contains('added an expense in Beach Trip') ??
+                false),
+      ),
+      findsOneWidget,
+    );
+  });
 }
 
 GroupActivityLog _fixture() => GroupActivityLog(

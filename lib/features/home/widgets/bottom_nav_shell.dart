@@ -9,6 +9,7 @@ import '../../../features/settings/screens/profile_screen.dart';
 import '../../../shared/widgets/grain_overlay.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
+import '../providers/activity_unread_provider.dart';
 import '../screens/cross_group_activity_screen.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
@@ -107,6 +108,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   }
 
   Widget _buildNavBar(BuildContext context) {
+    final hasUnreadActivity = ref.watch(activityUnreadProvider);
     return NavigationBarTheme(
       data: NavigationBarThemeData(
         backgroundColor: context.colors.bottomNavBackground,
@@ -132,6 +134,10 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
           try {
             Haptics.vibrate(HapticsType.selection);
           } catch (_) {}
+          // #808 PR2: opening Activity marks the feed seen → clears the dot.
+          if (i == 1) {
+            ref.read(activitySeenProvider.notifier).markSeenNow();
+          }
           setState(() {
             _currentIndex = i;
             _visited.add(i);
@@ -150,10 +156,16 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
             label: context.l10n.homeBottomNavGroups,
           ),
           NavigationDestination(
-            icon: Icon(
-              Iconsax.activity,
-              color: context.colors.bottomNavInactiveIcon,
-              key: HomeKeys.bottomNavActivity,
+            icon: Badge(
+              key: HomeKeys.activityUnreadBadge,
+              isLabelVisible: hasUnreadActivity,
+              smallSize: 8,
+              backgroundColor: context.colors.primary,
+              child: Icon(
+                Iconsax.activity,
+                color: context.colors.bottomNavInactiveIcon,
+                key: HomeKeys.bottomNavActivity,
+              ),
             ),
             selectedIcon: Icon(
               Iconsax.activity5,

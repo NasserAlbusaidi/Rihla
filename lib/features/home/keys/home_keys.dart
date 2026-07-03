@@ -36,6 +36,8 @@ abstract final class HomeKeys {
   static const bottomNavGroups = Key('home_bottom_nav_groups');
   static const bottomNavActivity = Key('home_bottom_nav_activity');
   static const bottomNavProfile = Key('home_bottom_nav_profile');
+  // #808 PR2: unread dot on the Activity destination (inactive icon).
+  static const activityUnreadBadge = Key('home_activity_unread_badge');
 
   // #364: persistent add-expense FAB on the tab shell + its target picker
   static const addExpenseFab = Key('home_add_expense_fab');

@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -630,5 +631,83 @@ void main() {
         expect(omr.where((a) => a.showCurrency).length, 0);
       },
     );
+  });
+
+  group('expense fan-in rendering (#808 PR2)', () {
+    GroupActivityLog expenseLog({
+      String id = 'exp-1',
+      String type = 'expense_added',
+      String eventName = 'Beach Trip',
+      int amountFils = 10500,
+      String currency = 'OMR',
+    }) => GroupActivityLog(
+      id: id,
+      type: type,
+      actorId: 'uid-alice',
+      actorName: 'Alice',
+      // The server fan-in writes an English verb phrase WITH the label; the
+      // client localizes GENERICALLY (no label) from type + eventName.
+      description: 'added Dinner (10.500 OMR)',
+      metadata: {
+        'expenseId': 'e1',
+        'eventId': 'ev1',
+        'eventName': eventName,
+        'amountFils': amountFils,
+        'currency': currency,
+      },
+      timestamp: _atMidday(0),
+    );
+
+    testWidgets('localizes an expense row with a receipt icon and the amount '
+        'from amountFils', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+      await _seedActivities(fakeDb, 'grp-exp', [expenseLog()]);
+
+      await tester.pumpWidget(
+        _buildActivityScreen(groupId: 'grp-exp', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(_richTextContaining('added an expense in Beach Trip'), findsOneWidget);
+      // The embedded English label from the fan-in description is NOT surfaced.
+      expect(_richTextContaining('Dinner'), findsNothing);
+      expect(find.byIcon(Iconsax.receipt_add), findsOneWidget);
+
+      final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+      expect(amounts, hasLength(1));
+      // 10500 fils = OMR 10.500 — never 10,500.
+      expect(amounts.single.value, Decimal.parse('10.5'));
+      expect(amounts.single.currency, 'OMR');
+    });
+
+    testWidgets('the Expenses filter chip shows only expense rows', (
+      tester,
+    ) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+      await _seedActivities(fakeDb, 'grp-exp-filter', [
+        expenseLog(),
+        _todayActivity(), // group_settlement
+      ]);
+
+      await tester.pumpWidget(
+        _buildActivityScreen(
+          groupId: 'grp-exp-filter',
+          fakeDb: fakeDb,
+          prefs: prefs,
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.activityFilterExpenses), findsOneWidget);
+      await tester.tap(find.byKey(GroupKeys.activityFilterExpenses));
+      await tester.pumpAndSettle();
+
+      expect(_richTextContaining('added an expense in Beach Trip'), findsOneWidget);
+      expect(_richTextContaining('recorded a settlement'), findsNothing);
+    });
   });
 }

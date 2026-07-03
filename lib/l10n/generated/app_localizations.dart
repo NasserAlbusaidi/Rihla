@@ -3291,6 +3291,12 @@ abstract class AppLocalizations {
   /// **'Reload'**
   String get activityReload;
 
+  /// No description provided for @activityPartialFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Some activity couldn\'t load'**
+  String get activityPartialFailure;
+
   /// No description provided for @activityNoActivityTitle.
   ///
   /// In en, this message translates to:
@@ -3356,6 +3362,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Members'**
   String get activityFilterMembers;
+
+  /// No description provided for @activityFilterExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get activityFilterExpenses;
 
   /// No description provided for @activityEventMissingTitle.
   ///
@@ -3506,6 +3518,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'removed {memberName} from the group'**
   String activityGroupMemberRemoved(Object memberName);
+
+  /// No description provided for @activityGroupExpenseAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'added an expense in {eventName}'**
+  String activityGroupExpenseAdded(Object eventName);
+
+  /// No description provided for @activityGroupExpenseAddedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'added an expense'**
+  String get activityGroupExpenseAddedGeneric;
+
+  /// No description provided for @activityGroupExpenseEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'edited an expense in {eventName}'**
+  String activityGroupExpenseEdited(Object eventName);
+
+  /// No description provided for @activityGroupExpenseEditedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'edited an expense'**
+  String get activityGroupExpenseEditedGeneric;
+
+  /// No description provided for @activityGroupExpenseDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted an expense in {eventName}'**
+  String activityGroupExpenseDeleted(Object eventName);
+
+  /// No description provided for @activityGroupExpenseDeletedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted an expense'**
+  String get activityGroupExpenseDeletedGeneric;
 
   /// No description provided for @activityTitlePaymentRecorded.
   ///

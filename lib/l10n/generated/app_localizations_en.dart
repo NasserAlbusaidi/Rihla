@@ -1973,6 +1973,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityReload => 'Reload';
 
   @override
+  String get activityPartialFailure => 'Some activity couldn\'t load';
+
+  @override
   String get activityNoActivityTitle => 'No activity yet';
 
   @override
@@ -2008,6 +2011,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activityFilterMembers => 'Members';
+
+  @override
+  String get activityFilterExpenses => 'Expenses';
 
   @override
   String get activityEventMissingTitle => 'This event no longer exists';
@@ -2095,6 +2101,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String activityGroupMemberRemoved(Object memberName) {
     return 'removed $memberName from the group';
   }
+
+  @override
+  String activityGroupExpenseAdded(Object eventName) {
+    return 'added an expense in $eventName';
+  }
+
+  @override
+  String get activityGroupExpenseAddedGeneric => 'added an expense';
+
+  @override
+  String activityGroupExpenseEdited(Object eventName) {
+    return 'edited an expense in $eventName';
+  }
+
+  @override
+  String get activityGroupExpenseEditedGeneric => 'edited an expense';
+
+  @override
+  String activityGroupExpenseDeleted(Object eventName) {
+    return 'deleted an expense in $eventName';
+  }
+
+  @override
+  String get activityGroupExpenseDeletedGeneric => 'deleted an expense';
 
   @override
   String get activityTitlePaymentRecorded => 'Payment recorded';

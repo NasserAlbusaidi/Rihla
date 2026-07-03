@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,11 +9,15 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../activity/utils/activity_display.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../providers/activity_unread_provider.dart';
+import '../providers/cross_group_activity_pager.dart';
 import '../providers/dashboard_providers.dart';
+import '../widgets/add_expense_target_sheet.dart';
 
 /// Full-screen cross-group activity feed (saffron travel-journal direction).
 ///
@@ -41,15 +44,65 @@ class CrossGroupActivityScreen extends ConsumerStatefulWidget {
       _CrossGroupActivityScreenState();
 }
 
-enum _Filter { all, settlements, events, members }
+enum _Filter { all, settlements, events, members, expenses }
 
 class _CrossGroupActivityScreenState
     extends ConsumerState<CrossGroupActivityScreen> {
   _Filter _filter = _Filter.all;
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+    // #808 PR2: reaching the tab (routed /activity or the first tab build)
+    // marks the feed seen → clears the unread dot. Post-frame so we never
+    // mutate a provider during the first build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(activitySeenProvider.notifier).markSeenNow();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      ref.read(crossGroupActivityPagerProvider.notifier).loadMore();
+    }
+  }
+
+  // #634: memoize the filtered list. `entries` is append-only within a load,
+  // so its length uniquely identifies its content; recompute only when the list
+  // grows or the filter changes — not on every rebuild.
+  List<CrossGroupActivityEntry>? _filteredCache;
+  int _filteredCacheLen = -1;
+  _Filter? _filteredCacheFilter;
+
+  List<CrossGroupActivityEntry> _filtered(
+    List<CrossGroupActivityEntry> entries,
+  ) {
+    if (_filteredCache != null &&
+        _filteredCacheLen == entries.length &&
+        _filteredCacheFilter == _filter) {
+      return _filteredCache!;
+    }
+    final result = entries
+        .where((e) => _matchesFilter(e.log.type, _filter))
+        .toList();
+    _filteredCache = result;
+    _filteredCacheLen = entries.length;
+    _filteredCacheFilter = _filter;
+    return result;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final activityAsync = ref.watch(crossGroupActivityProvider);
+    final pager = ref.watch(crossGroupActivityPagerProvider);
     return Scaffold(
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
@@ -62,7 +115,7 @@ class _CrossGroupActivityScreenState
               onChange: (f) => setState(() => _filter = f),
             ),
             SizedBox(height: context.spacing.space8),
-            Expanded(child: _buildBody(context, activityAsync)),
+            Expanded(child: _buildBody(context, pager)),
           ],
         ),
       ),
@@ -71,49 +124,118 @@ class _CrossGroupActivityScreenState
 
   Widget _buildBody(
     BuildContext context,
-    AsyncValue<List<CrossGroupActivityEntry>> activityAsync,
+    CrossGroupActivityPagerState pager,
   ) {
-    return activityAsync.when(
-      // #488: a layout-matched skeleton, not a blank screen, while loading.
-      loading: SkeletonLoader.expenseList,
-      error: (_, _) => EmptyStateView(
+    // #488: a layout-matched skeleton, not a blank screen, on the first load.
+    if (!pager.initialised && pager.entries.isEmpty) {
+      return SkeletonLoader.expenseList();
+    }
+    // A failed first load (or a partial failure with zero survivors) surfaces a
+    // real, retryable error — never the misleading "No activity yet".
+    if (pager.entries.isEmpty &&
+        (pager.firstLoadFailed || pager.partialFailure)) {
+      return EmptyStateView(
         icon: Iconsax.warning_2,
         title: context.l10n.activityLoadFailedTitle,
         message: context.l10n.activityLoadFailedMessage,
-        onAction: () => ref.invalidate(crossGroupActivityProvider),
+        onAction: () =>
+            ref.read(crossGroupActivityPagerProvider.notifier).refresh(),
         actionLabel: context.l10n.commonRetry,
-      ),
-      data: (entries) {
-        final filtered = entries
-            .where((e) => _matchesFilter(e.log.type, _filter))
-            .toList();
-        if (filtered.isEmpty) {
-          return EmptyStateView(
-            icon: Iconsax.activity,
-            title: entries.isEmpty
-                ? context.l10n.activityNoActivityTitle
-                : context.l10n.activityNoFilterTitle,
-            message: entries.isEmpty
-                ? context.l10n.activityCrossGroupEmptyMessage
-                : context.l10n.activityNoFilterMessage,
-          );
-        }
-        final days = _groupByDay(context, filtered, DateTime.now());
-        return ListView.builder(
-          // Bottom inset clears the tab-shell add-expense FAB (#364).
-          padding: EdgeInsetsDirectional.fromSTEB(
-            context.spacing.space20,
-            context.spacing.space4,
-            context.spacing.space20,
-            96,
-          ),
-          itemCount: days.length,
-          itemBuilder: (ctx, i) => Padding(
+      );
+    }
+
+    final filtered = _filtered(pager.entries);
+    if (filtered.isEmpty) {
+      final isTrueEmpty = pager.entries.isEmpty;
+      // #807: only offer the add-expense CTA on the true no-activity state and
+      // only when the user has a group. Zero groups → NO CTA (never a duplicate
+      // create-group affordance).
+      final groups = ref.watch(userGroupsProvider).valueOrNull;
+      final showCta = isTrueEmpty && groups != null && groups.isNotEmpty;
+      return EmptyStateView(
+        icon: Iconsax.activity,
+        title: isTrueEmpty
+            ? context.l10n.activityNoActivityTitle
+            : context.l10n.activityNoFilterTitle,
+        message: isTrueEmpty
+            ? context.l10n.activityCrossGroupEmptyMessage
+            : context.l10n.activityNoFilterMessage,
+        actionLabel: showCta ? context.l10n.ledgerAddExpense : null,
+        onAction: showCta ? () => AddExpenseTargetSheet.show(context) : null,
+      );
+    }
+
+    final days = _groupByDay(context, filtered, DateTime.now());
+    final showFooter = pager.isLoadingMore || pager.partialFailure;
+    return RefreshIndicator(
+      onRefresh: () =>
+          ref.read(crossGroupActivityPagerProvider.notifier).refresh(),
+      child: ListView.builder(
+        controller: _scrollController,
+        // Bottom inset clears the tab-shell add-expense FAB (#364).
+        padding: EdgeInsetsDirectional.fromSTEB(
+          context.spacing.space20,
+          context.spacing.space4,
+          context.spacing.space20,
+          96,
+        ),
+        itemCount: days.length + (showFooter ? 1 : 0),
+        itemBuilder: (ctx, i) {
+          if (i == days.length) return _Footer(pager: pager);
+          return Padding(
             padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
             child: _DaySection(label: days[i].label, entries: days[i].entries),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ──────────────────────────── Footer (loading / partial-failure retry)
+
+class _Footer extends ConsumerWidget {
+  const _Footer({required this.pager});
+  final CrossGroupActivityPagerState pager;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (pager.isLoadingMore) {
+      return Padding(
+        padding: EdgeInsets.all(context.spacing.space16),
+        child: Center(
+          child: SizedBox(
+            width: context.spacing.space16,
+            height: context.spacing.space16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: context.colors.primary,
+            ),
           ),
-        );
-      },
+        ),
+      );
+    }
+    // Partial failure (#244 OR-drop): survivors are shown above; offer a retry
+    // for the groups whose fetch threw.
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space16),
+      child: Column(
+        children: [
+          Text(
+            context.l10n.activityPartialFailure,
+            textAlign: TextAlign.center,
+            style: AppTypography.sans(
+              fontSize: 13,
+              color: context.colors.textSecondary,
+            ),
+          ),
+          TextButton(
+            onPressed: () =>
+                ref.read(crossGroupActivityPagerProvider.notifier).retryFailed(),
+            child: Text(context.l10n.activityReload),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -215,6 +337,7 @@ class _FilterStrip extends StatelessWidget {
       _Filter.settlements: context.l10n.activityFilterSettlements,
       _Filter.events: context.l10n.activityFilterEvents,
       _Filter.members: context.l10n.activityFilterMembers,
+      _Filter.expenses: context.l10n.activityFilterExpenses,
     };
     return SizedBox(
       height: 32,
@@ -334,7 +457,9 @@ class _ActivityRow extends StatelessWidget {
     final colors = context.colors;
     final log = entry.log;
     final description = localizedGroupActivityText(context.l10n, log);
-    final amount = _coerceAmount(log.metadata['amount']);
+    // #808 PR2: single chokepoint — legacy settlement `amount` OR the server
+    // fan-in `amountFils`+`currency` shape (fils never through decimal-units).
+    final amount = activityAmount(log, entry.currency);
 
     return InkWell(
       onTap: () => GoRouter.of(context).push('/group/${entry.groupId}'),
@@ -398,10 +523,11 @@ class _ActivityRow extends StatelessWidget {
                   children: [
                     if (amount != null)
                       RAmount(
-                        value: amount,
+                        value: amount.value,
                         // #382 PR-4: stamped settlement currency wins; legacy
-                        // rows fall back to the entry's group currency.
-                        currency: activityAmountCurrency(log, entry.currency),
+                        // rows fall back to the entry's group currency. #808
+                        // PR2: expense entries carry their own per-doc currency.
+                        currency: amount.currency,
                         size: 14,
                       )
                     else
@@ -427,18 +553,6 @@ class _ActivityRow extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Settlement amounts arrive as a stringified Decimal
-  /// (`GroupSettleUpScreen.logGroupEvent` writes `amount.toString()`) or, for
-  /// some logs, as a num. Coerce both to a `Decimal` WITHOUT forcing OMR's 3dp
-  /// (#380) — [RAmount] applies the entry's own currency precision. Mirrors
-  /// `GroupActivityScreen._coerceAmount`.
-  Decimal? _coerceAmount(Object? raw) {
-    if (raw == null) return null;
-    if (raw is num) return Decimal.parse(raw.toString());
-    if (raw is String) return Decimal.tryParse(raw);
-    return null;
   }
 }
 
@@ -473,6 +587,23 @@ class _CategoryIcon extends StatelessWidget {
         colors.textSecondary,
         Iconsax.user_minus,
       ),
+      // #808 PR2: expense fan-in entries (receipt family — a money glyph, not a
+      // navigation chevron; parallels the settlement wallet glyph, #160).
+      'expense_added' => (
+        colors.saffronSoft,
+        colors.primaryDark,
+        Iconsax.receipt_add,
+      ),
+      'expense_edited' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.receipt_edit,
+      ),
+      'expense_deleted' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.receipt_minus,
+      ),
       _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity),
     };
     return Container(
@@ -497,6 +628,7 @@ bool _matchesFilter(String type, _Filter f) {
     _Filter.settlements => type == 'group_settlement',
     _Filter.events => type == 'event_created' || type == 'event_deleted',
     _Filter.members => type == 'member_joined' || type == 'member_left',
+    _Filter.expenses => type.startsWith('expense_'),
   };
 }
 

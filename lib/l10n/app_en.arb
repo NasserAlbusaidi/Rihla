@@ -1564,6 +1564,7 @@
   "activityLoadFailedTitle": "Could not load activity",
   "activityLoadFailedMessage": "Check your connection and try again.",
   "activityReload": "Reload",
+  "activityPartialFailure": "Some activity couldn't load",
   "activityNoActivityTitle": "No activity yet",
   "activityCrossGroupEmptyMessage": "Activity from all your groups will appear here.",
   "activityEventEmptyMessage": "Actions by you and your group members will appear here.",
@@ -1575,6 +1576,7 @@
   "activityFilterSettlements": "Settlements",
   "activityFilterEvents": "Events",
   "activityFilterMembers": "Members",
+  "activityFilterExpenses": "Expenses",
   "activityEventMissingTitle": "This event no longer exists",
   "activityEventMissingMessage": "It may have been deleted.",
   "activityRelativeJustNow": "JUST NOW",
@@ -1636,6 +1638,27 @@
       "memberName": {}
     }
   },
+  "activityGroupExpenseAdded": "added an expense in {eventName}",
+  "@activityGroupExpenseAdded": {
+    "placeholders": {
+      "eventName": {}
+    }
+  },
+  "activityGroupExpenseAddedGeneric": "added an expense",
+  "activityGroupExpenseEdited": "edited an expense in {eventName}",
+  "@activityGroupExpenseEdited": {
+    "placeholders": {
+      "eventName": {}
+    }
+  },
+  "activityGroupExpenseEditedGeneric": "edited an expense",
+  "activityGroupExpenseDeleted": "deleted an expense in {eventName}",
+  "@activityGroupExpenseDeleted": {
+    "placeholders": {
+      "eventName": {}
+    }
+  },
+  "activityGroupExpenseDeletedGeneric": "deleted an expense",
   "activityTitlePaymentRecorded": "Payment recorded",
   "activityTitleEventCreated": "Event created",
   "activityTitleEventRemoved": "Event removed",

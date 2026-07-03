@@ -1,32 +1,49 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/keys/shared_keys.dart';
+import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
-import 'package:safar/features/home/providers/dashboard_providers.dart';
+import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
-import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
-// Test helpers
+// Fixtures + helpers
 // ---------------------------------------------------------------------------
 
-GroupActivityLog _makeActivity(
+Group _group(String id, String name, {String currency = 'OMR'}) => Group(
+  id: id,
+  name: name,
+  inviteCode: 'INV${id.toUpperCase()}',
+  createdBy: 'uid0',
+  memberIds: const ['uid0'],
+  currency: currency,
+  createdAt: DateTime(2026, 1, 1),
+);
+
+GroupActivityLog _activity(
   String id,
   String actorName,
   String description, {
   String type = 'event_created',
   Map<String, dynamic> metadata = const {},
+  DateTime? at,
 }) => GroupActivityLog(
   id: id,
   type: type,
@@ -34,21 +51,105 @@ GroupActivityLog _makeActivity(
   actorName: actorName,
   description: description,
   metadata: metadata,
-  timestamp: DateTime(2026, 3, 28),
+  timestamp: at ?? DateTime(2026, 3, 28),
 );
 
-CrossGroupActivityEntry _makeEntry(
-  GroupActivityLog log,
-  String groupName,
-  String groupId, {
-  String currency = 'OMR',
-}) => (log: log, groupName: groupName, groupId: groupId, currency: currency);
+Future<void> _seed(
+  FakeFirebaseFirestore db,
+  String groupId,
+  List<GroupActivityLog> logs,
+) async {
+  for (final a in logs) {
+    await db
+        .collection('groups')
+        .doc(groupId)
+        .collection('activity')
+        .doc(a.id)
+        .set({
+          'id': a.id,
+          'type': a.type,
+          'actorId': a.actorId,
+          'actorName': a.actorName,
+          'description': a.description,
+          'metadata': a.metadata,
+          'timestamp': a.timestamp.toUtc().toIso8601String(),
+        });
+  }
+}
 
-Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
+/// Fails every fetch — models a total load failure.
+class _ThrowingService extends GroupActivityService {
+  _ThrowingService() : super.withFirestore(FakeFirebaseFirestore());
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) async => throw Exception('boom');
+}
+
+/// Fails only for [failGroupId]; other groups read from the fake normally.
+class _SelectiveThrowService extends GroupActivityService {
+  _SelectiveThrowService(super.db, this.failGroupId) : super.withFirestore();
+  final String failGroupId;
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) async {
+    if (groupId == failGroupId) throw Exception('boom for $failGroupId');
+    return super.fetchActivityPageRaw(
+      groupId,
+      startAfter: startAfter,
+      limit: limit,
+    );
+  }
+}
+
+/// Holds its first fetch until [gate] completes — models an in-flight load so
+/// the skeleton is observable.
+class _PendingService extends GroupActivityService {
+  _PendingService(super.db) : super.withFirestore();
+  final Completer<void> gate = Completer<void>();
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) async {
+    if (!gate.isCompleted) await gate.future;
+    return super.fetchActivityPageRaw(
+      groupId,
+      startAfter: startAfter,
+      limit: limit,
+    );
+  }
+}
+
+Widget _app({
+  required List<Group> groups,
+  required GroupActivityService service,
+  required SharedPreferences prefs,
+  bool showBack = false,
+  String initialLocation = '/activity',
+}) {
   final router = GoRouter(
-    initialLocation: '/activity',
+    initialLocation: initialLocation,
     routes: [
-      GoRoute(path: '/activity', builder: (ctx, state) => widget),
+      GoRoute(
+        path: '/home',
+        builder: (ctx, state) => Scaffold(
+          body: ElevatedButton(
+            onPressed: () => ctx.push('/activity'),
+            child: const Text('Go to Activity'),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/activity',
+        builder: (ctx, state) => CrossGroupActivityScreen(showBack: showBack),
+      ),
       GoRoute(
         path: '/group/:id',
         builder: (ctx, state) =>
@@ -56,9 +157,13 @@ Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
       ),
     ],
   );
-
   return ProviderScope(
-    overrides: overrides,
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
+      groupActivityServiceProvider.overrideWith((ref) => service),
+      currentUserIdProvider.overrideWithValue('uid0'),
+    ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -68,526 +173,487 @@ Widget _buildTestApp(Widget widget, {List<Override> overrides = const []}) {
   );
 }
 
-/// Minimal overrides to prevent unrelated providers from throwing.
-List<Override> _baseOverrides({
-  required AsyncValue<List<CrossGroupActivityEntry>> activityOverride,
-}) => [
-  crossGroupActivityProvider.overrideWith((ref) => activityOverride),
-  userGroupsProvider.overrideWith((ref) => Stream.value([])),
-  crossGroupHomeBalanceProvider.overrideWith(
-    (ref) => const AsyncValue.data((
-      balance: (
-        byCurrency: <CurrencyBalance>[],
-        groupCount: 0,
-        isLoading: false,
-      ),
-      partial: false,
-    )),
-  ),
-  groupBalancesProvider.overrideWith(
-    (ref, groupId) => const AsyncValue.data((
-      balances: <String, List<UserBalance>>{},
-      totalSpent: <String, Decimal>{},
-      eventCount: 0,
-      perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
-      memberNames: <String, String>{},
-      memberRawNames: <String, String>{},
-    )),
-  ),
-  currentUserIdProvider.overrideWithValue('test-user-id'),
-];
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+Finder _richContaining(String text) => find.byWidgetPredicate(
+  (w) =>
+      w is Text &&
+      ((w.data?.contains(text) ?? false) ||
+          (w.textSpan?.toPlainText().contains(text) ?? false)),
+);
 
 void main() {
-  group('CrossGroupActivityScreen', () {
+  setUpAll(() => SharedPreferences.setMockInitialValues({}));
+
+  Future<SharedPreferences> prefs() => SharedPreferences.getInstance();
+
+  group('CrossGroupActivityScreen (paginated)', () {
     testWidgets('shows "Activity" title', (tester) async {
+      final db = FakeFirebaseFirestore();
       await tester.pumpWidget(
-        _buildTestApp(
-          const CrossGroupActivityScreen(),
-          overrides: _baseOverrides(
-            activityOverride: const AsyncValue.data([]),
-          ),
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
         ),
       );
       await tester.pumpAndSettle();
-
       expect(find.text('Activity'), findsOneWidget);
     });
 
-    testWidgets('shows empty state when no activity', (tester) async {
+    testWidgets('shows empty state when there is no activity', (tester) async {
+      final db = FakeFirebaseFirestore();
       await tester.pumpWidget(
-        _buildTestApp(
-          const CrossGroupActivityScreen(),
-          overrides: _baseOverrides(
-            activityOverride: const AsyncValue.data([]),
-          ),
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
         ),
       );
       await tester.pumpAndSettle();
-
       expect(find.text('No activity yet'), findsOneWidget);
     });
 
-    testWidgets('shows a skeleton (not a blank screen) while loading (#488)', (
+    testWidgets('shows a skeleton while the first load is in flight (#488)', (
       tester,
     ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
+      final service = _PendingService(db);
       await tester.pumpWidget(
-        _buildTestApp(
-          const CrossGroupActivityScreen(),
-          overrides: _baseOverrides(
-            activityOverride: const AsyncValue.loading(),
-          ),
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: service,
+          prefs: await prefs(),
         ),
       );
-      // One frame only — the skeleton shimmer never settles, so pumpAndSettle
-      // would hang.
-      await tester.pump();
-
+      await tester.pump(); // load kicked off, gate not yet open
       expect(find.byType(SkeletonLoader), findsOneWidget);
+
+      service.gate.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(SkeletonLoader), findsNothing);
     });
 
-    testWidgets('shows activity entries with group name', (tester) async {
-      final log1 = _makeActivity('a1', 'Alice', 'created an event');
-      final log2 = _makeActivity(
-        'a2',
-        'Bob',
-        'joined the group',
-        type: 'member_joined',
-      );
-
-      final entries = [
-        _makeEntry(log1, 'Trip A', 'g1'),
-        _makeEntry(log2, 'Trip B', 'g2'),
-      ];
-
+    testWidgets('renders entries enriched with their group name', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
+      await _seed(db, 'g2', [
+        _activity('a2', 'Bob', 'joined', type: 'member_joined'),
+      ]);
       await tester.pumpWidget(
-        _buildTestApp(
-          const CrossGroupActivityScreen(),
-          overrides: _baseOverrides(activityOverride: AsyncValue.data(entries)),
+        _app(
+          groups: [_group('g1', 'Trip A'), _group('g2', 'Trip B')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.text('Trip A'), findsOneWidget);
       expect(find.text('Trip B'), findsOneWidget);
-      expect(find.textContaining('created an event'), findsOneWidget);
-      expect(find.textContaining('joined the group'), findsOneWidget);
+      expect(_richContaining('created an event'), findsOneWidget);
+      expect(_richContaining('joined the group'), findsOneWidget);
     });
 
-    testWidgets(
-      'settlement entry uses the wallet glyph (#160) in a top-aligned row '
-      '(#159)',
-      (tester) async {
-        final log = _makeActivity(
-          's1',
-          'Alice',
-          'recorded a settlement',
-          type: 'group_settlement',
-        );
-
-        await tester.pumpWidget(
-          _buildTestApp(
-            const CrossGroupActivityScreen(),
-            overrides: _baseOverrides(
-              activityOverride: AsyncValue.data([
-                _makeEntry(log, 'Trip A', 'g1'),
-              ]),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        // #160: money glyph, not a bare chevron.
-        expect(find.byIcon(Iconsax.wallet_3), findsOneWidget);
-        expect(find.byIcon(Iconsax.arrow_right_3), findsNothing);
-
-        // #159: the icon's row top-aligns so it pins to the first line.
-        final row = tester.widget<Row>(
-          find
-              .ancestor(
-                of: find.byIcon(Iconsax.wallet_3),
-                matching: find.byType(Row),
-              )
-              .first,
-        );
-        expect(row.crossAxisAlignment, CrossAxisAlignment.start);
-      },
-    );
-
-    testWidgets(
-      'settlement amount stored as a stringified Decimal renders (#380) — '
-      'the cross-group feed must not drop the string-encoded `amount` that '
-      'GroupSettleUpScreen.logGroupEvent writes',
-      (tester) async {
-        // GroupSettleUpScreen writes metadata: {'amount': amount.toString()},
-        // i.e. a stringified Decimal — NOT a num. The old `is num` coercion
-        // dropped it, so the row rendered no amount at all.
-        final log = _makeActivity(
+    testWidgets('settlement uses the wallet glyph in a top-aligned row', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
           's1',
           'Alice',
           'recorded a settlement',
           type: 'group_settlement',
           metadata: const {'amount': '12.5'},
-        );
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.pumpWidget(
-          _buildTestApp(
-            const CrossGroupActivityScreen(),
-            overrides: _baseOverrides(
-              activityOverride: AsyncValue.data([
-                _makeEntry(log, 'Trip A', 'g1'),
-              ]),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
+      expect(find.byIcon(Iconsax.wallet_3), findsOneWidget);
+      final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+      expect(amounts, hasLength(1));
+      expect(amounts.single.value, Decimal.parse('12.5'));
+    });
 
-        final amounts = tester
-            .widgetList<RAmount>(find.byType(RAmount))
-            .toList();
-        expect(amounts, hasLength(1));
-        // Parsed straight from the string, no double round-trip / forced 3dp.
-        expect(amounts.single.value, Decimal.parse('12.5'));
-      },
-    );
-
-    testWidgets(
-      'string-encoded amount on a USD group renders at 2dp precision (#380)',
-      (tester) async {
-        final log = _makeActivity(
-          's2',
-          'Bob',
-          'recorded a settlement',
-          type: 'group_settlement',
-          metadata: const {'amount': '20.25'},
-        );
-
-        await tester.pumpWidget(
-          _buildTestApp(
-            const CrossGroupActivityScreen(),
-            overrides: _baseOverrides(
-              activityOverride: AsyncValue.data([
-                _makeEntry(log, 'USD Trip', 'g9', currency: 'USD'),
-              ]),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        final amounts = tester
-            .widgetList<RAmount>(find.byType(RAmount))
-            .toList();
-        expect(amounts, hasLength(1));
-        expect(amounts.single.value, Decimal.parse('20.25'));
-        expect(amounts.single.currency, 'USD');
-      },
-    );
-
-    testWidgets(
-      'metadata.currency wins over the entry (group) currency; legacy rows '
-      'fall back (#382 PR-4)',
-      (tester) async {
-        final stamped = _makeActivity(
-          's3',
+    testWidgets('per-doc settlement currency wins over the group currency', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          's1',
           'Alice',
           'recorded a settlement',
           type: 'group_settlement',
           metadata: const {'amount': '20.25', 'currency': 'USD'},
-        );
-        final legacy = _makeActivity(
-          's4',
+          at: DateTime(2026, 3, 28),
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Oman Trip')], // group currency OMR
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+      expect(amounts.single.currency, 'USD');
+    });
+
+    testWidgets('renders a localized expense_* row with amount from amountFils',
+        (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          'e1',
+          'Alice',
+          'added Dinner (10.500 OMR)',
+          type: 'expense_added',
+          metadata: const {
+            'expenseId': 'x1',
+            'eventId': 'ev1',
+            'eventName': 'Beach Trip',
+            'amountFils': 10500,
+            'currency': 'OMR',
+          },
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_richContaining('added an expense in Beach Trip'), findsOneWidget);
+      expect(find.byIcon(Iconsax.receipt_add), findsOneWidget);
+      final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+      expect(amounts.single.value, Decimal.parse('10.5'));
+      expect(amounts.single.currency, 'OMR');
+    });
+
+    testWidgets('expense amount renders when Firestore deserializes amountFils '
+        'as a double (expense_audit_diff.dart:37 precedent)', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          'e1',
+          'Alice',
+          'added Dinner (8.000 OMR)',
+          type: 'expense_added',
+          metadata: const {
+            'expenseId': 'x1',
+            'eventId': 'ev1',
+            'eventName': 'Beach Trip',
+            'amountFils': 8000.0,
+            'currency': 'OMR',
+          },
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+      expect(amounts, hasLength(1));
+      expect(amounts.single.value, Decimal.parse('8'));
+      expect(amounts.single.currency, 'OMR');
+    });
+
+    testWidgets('forged non-finite amountFils renders the row without an '
+        'amount and without an ErrorWidget (group_settlement metadata is '
+        'client-forgeable)', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          's-nan',
+          'Mallory',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amountFils': double.nan, 'currency': 'OMR'},
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ErrorWidget), findsNothing);
+      expect(_richContaining('recorded a settlement'), findsOneWidget);
+      expect(find.byType(RAmount), findsNothing);
+    });
+
+    testWidgets('Expenses filter shows only expense_* rows', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          'e1',
+          'Alice',
+          'added an expense',
+          type: 'expense_added',
+          metadata: const {
+            'eventName': 'Beach Trip',
+            'amountFils': 500,
+            'currency': 'OMR',
+          },
+          at: DateTime(2026, 3, 28),
+        ),
+        _activity(
+          's1',
           'Bob',
           'recorded a settlement',
           type: 'group_settlement',
-          metadata: const {'amount': '7.750'},
-        );
-
-        await tester.pumpWidget(
-          _buildTestApp(
-            const CrossGroupActivityScreen(),
-            overrides: _baseOverrides(
-              activityOverride: AsyncValue.data([
-                _makeEntry(stamped, 'Oman Trip', 'g1'), // entry currency OMR
-                _makeEntry(legacy, 'Oman Trip', 'g1'),
-              ]),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        final amounts = tester
-            .widgetList<RAmount>(find.byType(RAmount))
-            .toList();
-        expect(amounts, hasLength(2));
-        expect(amounts.map((a) => a.currency), containsAll(['USD', 'OMR']));
-      },
-    );
-
-    testWidgets('shows error state on error', (tester) async {
+          metadata: const {'amount': '9'},
+          at: DateTime(2026, 3, 27),
+        ),
+      ]);
       await tester.pumpWidget(
-        _buildTestApp(
-          const CrossGroupActivityScreen(),
-          overrides: _baseOverrides(
-            activityOverride: AsyncValue.error(
-              Exception('Network error'),
-              StackTrace.empty,
-            ),
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Expenses'));
+      await tester.pumpAndSettle();
+
+      expect(_richContaining('added an expense in Beach Trip'), findsOneWidget);
+      expect(_richContaining('recorded a settlement'), findsNothing);
+    });
+
+    testWidgets('paginates: a page-2-only row becomes findable after scrolling',
+        (tester) async {
+      final db = FakeFirebaseFirestore();
+      final now = DateTime(2026, 3, 28, 12);
+      await _seed(db, 'g1', [
+        for (var i = 0; i < 60; i++)
+          _activity(
+            'a$i',
+            'Actor-$i',
+            'created an event',
+            at: now.subtract(Duration(minutes: i)),
           ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Actor-55 is on page 2 (entries 50..59) — not present before scrolling.
+      final target = find.textContaining('Actor-55', findRichText: true);
+      expect(target, findsNothing);
+
+      final scrollable = find.byType(Scrollable).last;
+      for (var i = 0; i < 60 && target.evaluate().isEmpty; i++) {
+        await tester.drag(scrollable, const Offset(0, -300));
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      expect(target, findsWidgets);
+    });
+
+    testWidgets('pull-to-refresh re-runs the load without error', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(_richContaining('created an event'), findsOneWidget);
+
+      await tester.fling(find.byType(RefreshIndicator), const Offset(0, 300), 1000);
+      await tester.pumpAndSettle();
+
+      expect(_richContaining('created an event'), findsOneWidget);
+    });
+
+    testWidgets('total load failure shows the #488 error view with retry', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: _ThrowingService(),
+          prefs: await prefs(),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.text('Could not load activity'), findsOneWidget);
+      expect(find.text('No activity yet'), findsNothing);
     });
 
-    testWidgets('back button pops route', (tester) async {
-      // Build with a preceding route so we can verify a pop happens.
-      final router = GoRouter(
-        initialLocation: '/home',
-        routes: [
-          GoRoute(
-            path: '/home',
-            builder: (ctx, state) => Scaffold(
-              body: ElevatedButton(
-                onPressed: () => ctx.push('/activity'),
-                child: const Text('Go to Activity'),
-              ),
-            ),
-          ),
-          GoRoute(
-            path: '/activity',
-            builder: (ctx, state) => ProviderScope(
-              overrides: _baseOverrides(
-                activityOverride: const AsyncValue.data([]),
-              ),
-              // The /activity route builds the screen with showBack:true
-              // (mirrors app_router) so the pushed back button renders.
-              child: const CrossGroupActivityScreen(showBack: true),
-            ),
-          ),
-          GoRoute(
-            path: '/group/:id',
-            builder: (ctx, state) => Scaffold(
-              body: Text('GroupDetail:${state.pathParameters['id']}'),
-            ),
-          ),
-        ],
-      );
-
+    testWidgets('partial failure shows a footer notice + retry, plus survivors',
+        (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: _baseOverrides(
-            activityOverride: const AsyncValue.data([]),
-          ),
-          child: MaterialApp.router(
-            theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            routerConfig: router,
-          ),
+        _app(
+          groups: [_group('g1', 'Trip A'), _group('g2', 'Trip B')],
+          service: _SelectiveThrowService(db, 'g2'),
+          prefs: await prefs(),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Navigate to /activity
-      await tester.tap(find.text('Go to Activity'));
-      await tester.pumpAndSettle();
-
-      // Verify we are on the activity screen
-      expect(find.text('Activity'), findsOneWidget);
-
-      // Tap back button
-      await tester.tap(find.byTooltip('Back'));
-      await tester.pumpAndSettle();
-
-      // Should be back on home screen
-      expect(find.text('Go to Activity'), findsOneWidget);
-      expect(find.text('Activity'), findsNothing);
+      // The readable group's entry still shows…
+      expect(_richContaining('created an event'), findsOneWidget);
+      // …with a partial-failure notice.
+      expect(find.text("Some activity couldn't load"), findsOneWidget);
     });
 
-    // #666: /activity is a top-level route (sibling of /home). When it is the
-    // sole stack page (canPop()==false), the route entry must still expose a
-    // back affordance that routes home — mirroring ProfileScreen's showBack.
-    testWidgets(
-      'cold direct-entry route (showBack): back button routes to /home (#666)',
-      (tester) async {
-        final router = GoRouter(
-          initialLocation: '/activity',
-          routes: [
-            GoRoute(
-              path: '/home',
-              builder: (ctx, state) => const Scaffold(body: Text('Home')),
-            ),
-            GoRoute(
-              path: '/activity',
-              builder: (ctx, state) => ProviderScope(
-                overrides: _baseOverrides(
-                  activityOverride: const AsyncValue.data([]),
-                ),
-                child: const CrossGroupActivityScreen(showBack: true),
-              ),
-            ),
-          ],
-        );
-        addTearDown(router.dispose);
+    testWidgets('Settlements filter finds a settlement beyond the newest few', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        for (var i = 0; i < 6; i++)
+          _activity('e$i', 'Ali', 'created an event', at: DateTime(2026, 3, 20 + i)),
+        _activity(
+          's-old',
+          'Sara-Settler',
+          'recorded a settlement',
+          type: 'group_settlement',
+          metadata: const {'amount': '12.5'},
+          at: DateTime(2026, 3, 1),
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: _baseOverrides(
-              activityOverride: const AsyncValue.data([]),
-            ),
-            child: MaterialApp.router(
-              theme: AppTheme.lightTheme,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              routerConfig: router,
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Settlements'));
+      await tester.pumpAndSettle();
 
-        // The back affordance must render even though canPop() is false…
-        expect(find.text('Activity'), findsOneWidget);
-        expect(find.byTooltip('Back'), findsOneWidget);
+      expect(find.text('Nothing matches this filter'), findsNothing);
+      expect(
+        find.textContaining('Sara-Settler', findRichText: true),
+        findsWidgets,
+      );
+    });
 
-        // …and tapping it must route home, not no-op / strand the user.
-        await tester.tap(find.byTooltip('Back'));
-        await tester.pumpAndSettle();
+    testWidgets('empty state offers an Add-expense CTA when the user has groups',
+        (tester) async {
+      final db = FakeFirebaseFirestore();
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        expect(find.text('Home'), findsOneWidget);
-        expect(find.text('Activity'), findsNothing);
-      },
-    );
+      expect(find.text('No activity yet'), findsOneWidget);
+      expect(find.byKey(SharedKeys.emptyStateCtaButton), findsOneWidget);
+    });
 
-    // #666 [P1] guard: the same widget is the Activity bottom-nav tab
-    // (BottomNavShell case 1 builds `const CrossGroupActivityScreen()`), where
-    // canPop()==false. The tab default (showBack:false) must NOT show a back
-    // arrow — the hardening must not leak onto the tab.
-    testWidgets(
-      'tab default (showBack:false) shows no back affordance when canPop is '
-      'false (#666 tab-regression guard)',
-      (tester) async {
-        final router = GoRouter(
-          initialLocation: '/activity',
-          routes: [
-            GoRoute(
-              path: '/activity',
-              builder: (ctx, state) => ProviderScope(
-                overrides: _baseOverrides(
-                  activityOverride: const AsyncValue.data([]),
-                ),
-                child: const CrossGroupActivityScreen(),
-              ),
-            ),
-          ],
-        );
-        addTearDown(router.dispose);
+    testWidgets('empty state has NO CTA when the user has zero groups (#807)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          groups: const [],
+          service: GroupActivityService.withFirestore(FakeFirebaseFirestore()),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: _baseOverrides(
-              activityOverride: const AsyncValue.data([]),
-            ),
-            child: MaterialApp.router(
-              theme: AppTheme.lightTheme,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              routerConfig: router,
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
+      expect(find.text('No activity yet'), findsOneWidget);
+      expect(find.byKey(SharedKeys.emptyStateCtaButton), findsNothing);
+    });
 
-        expect(find.text('Activity'), findsOneWidget);
-        expect(find.byTooltip('Back'), findsNothing);
-      },
-    );
+    testWidgets('row tap pushes /group/{gid}', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    // Friction audit tranche 2: the feed used to hard-cap at 5 entries TOTAL,
-    // so the filter chips filtered a stale 5-item window — a settlement older
-    // than the 5 newest entries showed "nothing matches" despite existing.
-    // This drives the REAL crossGroupActivityProvider (inputs overridden, not
-    // the provider itself) so the merged-window width is actually exercised.
-    testWidgets(
-      'Settlements chip finds a settlement older than the 5 newest entries',
-      (tester) async {
-        final group = Group(
-          id: 'g1',
-          name: 'Trip A',
-          inviteCode: 'ABCDEF',
-          createdBy: 'uid0',
-          memberIds: const ['uid0'],
-          createdAt: DateTime(2026, 1, 1),
-        );
-        final logs = [
-          // 6 newer lifecycle entries push the settlement past the old cap.
-          for (var i = 0; i < 6; i++)
-            GroupActivityLog(
-              id: 'e$i',
-              type: 'event_created',
-              actorId: 'uid0',
-              actorName: 'Ali',
-              description: 'created an event',
-              timestamp: DateTime(2026, 3, 20 + i),
-            ),
-          GroupActivityLog(
-            id: 's-old',
-            type: 'group_settlement',
-            actorId: 'uid0',
-            actorName: 'Sara-Settler',
-            description: 'recorded a settlement',
-            metadata: const {'amount': '12.5'},
-            timestamp: DateTime(2026, 3, 1),
-          ),
-        ];
+      await tester.tap(_richContaining('created an event'));
+      await tester.pumpAndSettle();
+      expect(find.text('GroupDetail:g1'), findsOneWidget);
+    });
+  });
 
-        await tester.pumpWidget(
-          _buildTestApp(
-            const CrossGroupActivityScreen(),
-            overrides: [
-              userGroupsProvider.overrideWith((ref) => Stream.value([group])),
-              groupActivityProvider(
-                'g1',
-              ).overrideWith((_) => Stream.value(logs)),
-              crossGroupHomeBalanceProvider.overrideWith(
-                (ref) => const AsyncValue.data((
-                  balance: (
-                    byCurrency: <CurrencyBalance>[],
-                    groupCount: 0,
-                    isLoading: false,
-                  ),
-                  partial: false,
-                )),
-              ),
-              groupBalancesProvider.overrideWith(
-                (ref, groupId) => const AsyncValue.data((
-                  balances: <String, List<UserBalance>>{},
-                  totalSpent: <String, Decimal>{},
-                  eventCount: 0,
-                  perEventBreakdown:
-                      <String, Map<String, Map<String, Decimal>>>{},
-                  memberNames: <String, String>{},
-                  memberRawNames: <String, String>{},
-                )),
-              ),
-              currentUserIdProvider.overrideWithValue('test-user-id'),
-            ],
-          ),
-        );
-        await tester.pumpAndSettle();
+  group('back-affordance (#666)', () {
+    testWidgets('cold direct-entry (showBack) back button routes to /home', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          groups: const [],
+          service: _ThrowingService(),
+          prefs: await prefs(),
+          showBack: true,
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Settlements'));
-        await tester.pumpAndSettle();
+      expect(find.byTooltip('Back'), findsOneWidget);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Go to Activity'), findsOneWidget); // /home
+    });
 
-        expect(find.text('Nothing matches this filter'), findsNothing);
-        expect(
-          find.textContaining('Sara-Settler', findRichText: true),
-          findsWidgets,
-        );
-      },
-    );
+    testWidgets('tab default (showBack:false) shows no back affordance', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          groups: const [],
+          service: _ThrowingService(),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Activity'), findsOneWidget);
+      expect(find.byTooltip('Back'), findsNothing);
+    });
   });
 }

@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -46,7 +45,7 @@ class GroupActivityScreen extends ConsumerStatefulWidget {
       _GroupActivityScreenState();
 }
 
-enum _Filter { all, settlements, events, members }
+enum _Filter { all, settlements, events, members, expenses }
 
 /// Test seam (#634): increments each time the filtered activity list is
 /// actually recomputed (a cache miss). Re-tapping the already-active chip and
@@ -360,6 +359,11 @@ class _FilterStrip extends StatelessWidget {
         context.l10n.activityFilterMembers,
         GroupKeys.activityFilterMembers,
       ),
+      (
+        _Filter.expenses,
+        context.l10n.activityFilterExpenses,
+        GroupKeys.activityFilterExpenses,
+      ),
     ];
     return SizedBox(
       height: context.spacing.space32,
@@ -499,11 +503,11 @@ class _ActivityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final amountRaw = log.metadata['amount'];
-    final amount = _coerceAmount(amountRaw);
-    // #382 PR-4: settlements stamped with a bucket currency render in it;
-    // legacy rows fall back to the group currency threaded in by the screen.
-    final rowCurrency = activityAmountCurrency(log, currency);
+    // #808 PR2: single chokepoint — handles both the legacy settlement `amount`
+    // and the server-fan-in `amountFils`+`currency` shape (fils never rendered
+    // through the decimal-units path). #382 PR-4: a stamped bucket currency
+    // wins; legacy rows fall back to the group currency threaded in.
+    final amt = activityAmount(log, currency);
     final isSettlement = log.type == 'group_settlement';
     final description = localizedGroupActivityText(context.l10n, log);
 
@@ -549,22 +553,22 @@ class _ActivityRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (amount != null) ...[
+                  if (amt != null) ...[
                     RAmount(
-                      value: amount,
-                      currency: rowCurrency,
+                      value: amt.value,
+                      currency: amt.currency,
                       size: 14,
                       // Label only foreign amounts; the group's own currency
                       // stays bare (the expense_audit_detail !sameCurrency
                       // idiom).
-                      showCurrency: rowCurrency != currency,
+                      showCurrency: amt.currency != currency,
                     ),
                     const SizedBox(height: 2),
                   ],
-                  if (isSettlement && amount != null)
+                  if (isSettlement && amt != null)
                     RAmount(
-                      value: amount,
-                      currency: rowCurrency,
+                      value: amt.value,
+                      currency: amt.currency,
                       size: 11,
                       sign: true,
                       tone: AmountTone.sage,
@@ -590,21 +594,6 @@ class _ActivityRow extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// Settlement amounts may arrive as a stringified Decimal (see
-  /// `GroupSettleUpScreen.logGroupEvent` metadata) or as a num. Coerce to a
-  /// `Decimal` WITHOUT forcing OMR's 3dp (#261) — [RAmount] applies the group's
-  /// own currency precision.
-  Decimal? _coerceAmount(Object? raw) {
-    if (raw == null) return null;
-    if (raw is num) {
-      return Decimal.parse(raw.toString());
-    }
-    if (raw is String) {
-      return Decimal.tryParse(raw);
-    }
-    return null;
   }
 }
 
@@ -648,6 +637,26 @@ class _CategoryIcon extends StatelessWidget {
         Iconsax.user_minus,
         true,
       ),
+      // #808 PR2: expense fan-in entries (receipt family — a money glyph, not a
+      // navigation chevron; parallels the settlement wallet glyph, #160).
+      'expense_added' => (
+        colors.saffronSoft,
+        colors.primaryDark,
+        Iconsax.receipt_add,
+        true,
+      ),
+      'expense_edited' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.receipt_edit,
+        true,
+      ),
+      'expense_deleted' => (
+        colors.cardSoft,
+        colors.textSecondary,
+        Iconsax.receipt_minus,
+        true,
+      ),
       _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity, true),
     };
     return Container(
@@ -672,6 +681,7 @@ bool _matches(String type, _Filter f) {
     _Filter.settlements => type == 'group_settlement',
     _Filter.events => type == 'event_created' || type == 'event_deleted',
     _Filter.members => type == 'member_joined' || type == 'member_left',
+    _Filter.expenses => type.startsWith('expense_'),
   };
 }
 
