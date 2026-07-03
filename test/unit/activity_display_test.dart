@@ -47,7 +47,7 @@ void main() {
       final log = _eventLog(category: 'MONEY', eventType: 'CREATE');
 
       expect(localizedEventActivityText(en, log), 'added an expense');
-      expect(localizedEventActivityText(ar, log), 'أضاف مصروفًا');
+      expect(localizedEventActivityText(ar, log), 'إضافة مصروف');
     });
 
     test('localizes every known event activity branch', () {
@@ -130,7 +130,7 @@ void main() {
       );
 
       expect(localizedGroupActivityText(en, log), 'created Beach Trip');
-      expect(localizedGroupActivityText(ar, log), 'أنشأ Beach Trip');
+      expect(localizedGroupActivityText(ar, log), 'إنشاء Beach Trip');
     });
 
     test('localizes group activity generic and settlement branches', () {
@@ -189,7 +189,7 @@ void main() {
       );
 
       expect(localizedGroupActivityText(en, log), 'removed Bob from the group');
-      expect(localizedGroupActivityText(ar, log), 'أزال Bob من المجموعة');
+      expect(localizedGroupActivityText(ar, log), 'إزالة Bob من المجموعة');
     });
 
     test('preserves legacy group fallback text for unknown rows', () {
