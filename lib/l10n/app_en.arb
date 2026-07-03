@@ -2357,6 +2357,70 @@
     }
   },
 
+  "authEmailLinkNoPendingEmail": "Open Rihla from the device where you requested the email, or enter the email again here.",
+  "@authEmailLinkNoPendingEmail": {
+    "description": "#841 PR-3: snack shown when an email-link deep link arrives but no pending email is saved locally (different device, or Settings never primed)."
+  },
+  "authEmailLinkRecoverBlocked": "Recovery would switch to your saved account and leave this device's current trips behind — they're tied to a temporary identity that can't be moved. Resolve them first.",
+  "@authEmailLinkRecoverBlocked": {
+    "description": "#841 PR-3: snack shown when a recover deep link is blocked because the outgoing anon shell is not provably empty (#647)."
+  },
+  "authEmailLinkRestored": "Restored {email}",
+  "@authEmailLinkRestored": {
+    "description": "#841 PR-3: success snack shown after an email-link RECOVER swap completes.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authEmailLinkLinked": "Linked {email}",
+  "@authEmailLinkLinked": {
+    "description": "#841 PR-3: success snack shown after an email-link LINK completes.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authEmailLinkGenericError": "Couldn't complete the email link. Try again.",
+  "@authEmailLinkGenericError": {
+    "description": "#841 PR-3: catch-all snack shown when completing the email link fails for a non-FirebaseAuthException reason."
+  },
+  "authEmailLinkErrorExpired": "This link has expired or was already used. Send a new one.",
+  "@authEmailLinkErrorExpired": {
+    "description": "#841 PR-3: humanized auth error for Firebase's invalid-action-code/expired-action-code when completing an email link."
+  },
+  "authEmailLinkErrorInvalidEmail": "That email doesn't look valid.",
+  "@authEmailLinkErrorInvalidEmail": {
+    "description": "#841 PR-3: humanized auth error for Firebase's invalid-email code when completing an email link."
+  },
+  "authEmailLinkErrorDisabled": "This account has been disabled.",
+  "@authEmailLinkErrorDisabled": {
+    "description": "#841 PR-3: humanized auth error for Firebase's user-disabled code when completing an email link."
+  },
+  "authEmailLinkErrorNetwork": "No connection. Try again when you're online.",
+  "@authEmailLinkErrorNetwork": {
+    "description": "#841 PR-3: humanized auth error for Firebase's network-request-failed code when completing an email link."
+  },
+  "authEmailLinkErrorTooManyRequests": "Too many attempts. Wait a few minutes and try again.",
+  "@authEmailLinkErrorTooManyRequests": {
+    "description": "#841 PR-3: humanized auth error for Firebase's too-many-requests code when completing an email link."
+  },
+  "authEmailLinkErrorAlreadyInUse": "This email is already linked to a Rihla account. Restore from that account instead.",
+  "@authEmailLinkErrorAlreadyInUse": {
+    "description": "#841 PR-3: humanized auth error for Firebase's email-already-in-use/credential-already-in-use/provider-already-linked codes when completing an email link."
+  },
+  "authEmailLinkErrorGeneric": "Something went wrong ({code}). Please try again.",
+  "@authEmailLinkErrorGeneric": {
+    "description": "#841 PR-3: fallback humanized auth error surfacing the raw Firebase error code when completing an email link.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+
   "recoveryRestoredOk": "Account restored.",
   "@recoveryRestoredOk": {
     "description": "Boot-time snack shown after a Google/email restore whose swap survived the restart AND (#839) either has data or the presence probe was inconclusive."

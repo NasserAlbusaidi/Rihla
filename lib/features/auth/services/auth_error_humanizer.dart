@@ -1,10 +1,37 @@
+import '../../../l10n/generated/app_localizations.dart';
+
 /// User-facing message for a Firebase auth error code. Extracted from the
 /// email-link bootstrap's `_humanize` (#439) so the boot-time recovery
 /// outcome notice reuses the exact same wording.
 ///
-/// English-only on purpose — the whole bootstrap snackbar surface is
-/// hardcoded English today; localizing it is tracked debt, not this fix.
-String humanizeAuthErrorCode(String code) {
+/// Localized when [l10n] is supplied (#841 PR-3 — the email-link bootstrap
+/// resolves it via `appMessengerKey.currentContext`, mirroring the #843
+/// `recovery_outcome_notice_provider.dart` precedent). The EN literal switch
+/// below is the fallback used both when [l10n] is omitted/unavailable AND by
+/// `recovery_outcome_notice.dart`'s `surfaceRecoveryOutcome`, which stays
+/// deliberately context-free (#839) and never supplies one.
+String humanizeAuthErrorCode(String code, {AppLocalizations? l10n}) {
+  if (l10n != null) {
+    switch (code) {
+      case 'invalid-action-code':
+      case 'expired-action-code':
+        return l10n.authEmailLinkErrorExpired;
+      case 'invalid-email':
+        return l10n.authEmailLinkErrorInvalidEmail;
+      case 'user-disabled':
+        return l10n.authEmailLinkErrorDisabled;
+      case 'network-request-failed':
+        return l10n.authEmailLinkErrorNetwork;
+      case 'too-many-requests':
+        return l10n.authEmailLinkErrorTooManyRequests;
+      case 'email-already-in-use':
+      case 'credential-already-in-use':
+      case 'provider-already-linked':
+        return l10n.authEmailLinkErrorAlreadyInUse;
+      default:
+        return l10n.authEmailLinkErrorGeneric(code);
+    }
+  }
   switch (code) {
     case 'invalid-action-code':
     case 'expired-action-code':

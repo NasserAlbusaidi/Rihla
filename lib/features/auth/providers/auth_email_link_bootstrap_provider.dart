@@ -9,6 +9,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/app_messenger.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../groups/providers/group_provider.dart';
 import '../services/auth_email_link_config.dart';
 import '../services/auth_email_link_recognizer.dart';
@@ -53,8 +54,23 @@ void _showSnack(
   );
 }
 
+/// Resolves the mounted app's [AppLocalizations] via
+/// `appMessengerKey.currentContext`, mirroring the #843
+/// `recovery_outcome_notice_provider.dart` precedent (#841 PR-3). Returns
+/// `null` when no context is mounted or it carries no `Localizations`
+/// ancestor — callers fall back to the EN literal in that case.
+AppLocalizations? _l10n() {
+  final ctx = appMessengerKey.currentContext;
+  if (ctx == null) return null;
+  try {
+    return AppLocalizations.of(ctx);
+  } catch (_) {
+    return null;
+  }
+}
+
 String _humanize(FirebaseAuthException error) =>
-    humanizeAuthErrorCode(error.code);
+    humanizeAuthErrorCode(error.code, l10n: _l10n());
 
 /// Starts the email-link listener early enough to catch cold-start links.
 ///
@@ -111,8 +127,9 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
       );
       ref.read(pendingEmailLinkProvider.notifier).state = link;
       _showSnack(
-        'Open Rihla from the device where you requested the email, '
-        'or enter the email again here.',
+        _l10n()?.authEmailLinkNoPendingEmail ??
+            'Open Rihla from the device where you requested the email, '
+                'or enter the email again here.',
         isError: true,
       );
       return;
@@ -174,9 +191,11 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
             );
           }
           _showSnack(
-            'Recovery would switch to your saved account and leave this '
-            "device's current trips behind — they're tied to a temporary "
-            "identity that can't be moved. Resolve them first.",
+            _l10n()?.authEmailLinkRecoverBlocked ??
+                'Recovery would switch to your saved account and leave this '
+                    "device's current trips behind — they're tied to a "
+                    "temporary identity that can't be moved. Resolve them "
+                    'first.',
             isError: true,
             duration: const Duration(seconds: 8),
           );
@@ -185,12 +204,19 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         final result = await service.restoreWithEmailLink(link);
         FirebaseConfig.log('Recovery: restoreWithEmailLink succeeded');
         ref.read(pendingEmailLinkProvider.notifier).state = null;
-        _showSnack('Restored ${result.user?.email ?? pendingEmail}');
+        final restoredEmail = result.user?.email ?? pendingEmail;
+        _showSnack(
+          _l10n()?.authEmailLinkRestored(restoredEmail) ??
+              'Restored $restoredEmail',
+        );
       } else {
         final result = await service.completeEmailLink(link);
         FirebaseConfig.log('Recovery: completeEmailLink succeeded');
         ref.read(pendingEmailLinkProvider.notifier).state = null;
-        _showSnack('Linked ${result.user?.email ?? pendingEmail}');
+        final linkedEmail = result.user?.email ?? pendingEmail;
+        _showSnack(
+          _l10n()?.authEmailLinkLinked(linkedEmail) ?? 'Linked $linkedEmail',
+        );
       }
     } on FirebaseAuthException catch (error, stack) {
       // #414: a LINK that fails with email-already-in-use (and friends) must
@@ -219,7 +245,11 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         stackTrace: stack,
       );
       unawaited(Sentry.captureException(error, stackTrace: stack));
-      _showSnack("Couldn't complete the email link. Try again.", isError: true);
+      _showSnack(
+        _l10n()?.authEmailLinkGenericError ??
+            "Couldn't complete the email link. Try again.",
+        isError: true,
+      );
     }
   }
 

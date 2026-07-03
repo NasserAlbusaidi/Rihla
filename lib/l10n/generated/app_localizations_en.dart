@@ -3287,6 +3287,56 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get authEmailLinkNoPendingEmail =>
+      'Open Rihla from the device where you requested the email, or enter the email again here.';
+
+  @override
+  String get authEmailLinkRecoverBlocked =>
+      'Recovery would switch to your saved account and leave this device\'s current trips behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first.';
+
+  @override
+  String authEmailLinkRestored(String email) {
+    return 'Restored $email';
+  }
+
+  @override
+  String authEmailLinkLinked(String email) {
+    return 'Linked $email';
+  }
+
+  @override
+  String get authEmailLinkGenericError =>
+      'Couldn\'t complete the email link. Try again.';
+
+  @override
+  String get authEmailLinkErrorExpired =>
+      'This link has expired or was already used. Send a new one.';
+
+  @override
+  String get authEmailLinkErrorInvalidEmail =>
+      'That email doesn\'t look valid.';
+
+  @override
+  String get authEmailLinkErrorDisabled => 'This account has been disabled.';
+
+  @override
+  String get authEmailLinkErrorNetwork =>
+      'No connection. Try again when you\'re online.';
+
+  @override
+  String get authEmailLinkErrorTooManyRequests =>
+      'Too many attempts. Wait a few minutes and try again.';
+
+  @override
+  String get authEmailLinkErrorAlreadyInUse =>
+      'This email is already linked to a Rihla account. Restore from that account instead.';
+
+  @override
+  String authEmailLinkErrorGeneric(String code) {
+    return 'Something went wrong ($code). Please try again.';
+  }
+
+  @override
   String get recoveryRestoredOk => 'Account restored.';
 
   @override
