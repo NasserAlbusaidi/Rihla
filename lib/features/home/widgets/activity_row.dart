@@ -98,7 +98,8 @@ class ActivityRow extends StatelessWidget {
                       SizedBox(width: context.spacing.space8),
                       Text(
                         formatRelativeShort(context, activity.timestamp),
-                        style: AppTypography.mono(
+                        style: AppTypography.caption(
+                          context,
                           fontSize: 10,
                           color: colors.textSecondary,
                           letterSpacing: 0.4,

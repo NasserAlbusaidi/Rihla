@@ -246,7 +246,8 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                       _titleText(context, isPartial),
                       textAlign: TextAlign.center,
                       key: GroupKeys.settleUpRecordSheetTitle,
-                      style: AppTypography.display(
+                      style: AppTypography.displayOf(
+                        context,
                         fontSize: 28,
                         color: colors.textPrimary,
                         height: 1.1,

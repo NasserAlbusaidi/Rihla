@@ -1,12 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Brand typography system for the saffron travel-journal direction.
 ///
 /// - [display] — Instrument Serif italic. Hero numerals, screen titles, the
 ///   "Rihla" wordmark. Use sparingly; this is the emotional voice.
+///   Locale-visible text goes through [displayOf] instead (#841).
 /// - [sans] — Geist. Default UI text, labels, buttons.
-/// - [mono] — Geist Mono with tabular figures. ALL money amounts, dates,
-///   uppercase mono captions ("ACTIVE JOURNEYS", "EST. 2025").
+/// - [mono] — Geist Mono with tabular figures. Numerals/codes only: money
+///   amounts, currency codes, invite codes, dates-as-figures. Translatable
+///   captions go through [caption] instead (#841).
 ///
 /// Use the helper methods (`AppTypography.display(...)`) when you need a
 /// one-off style outside the [TextTheme] hierarchy. For ambient text styles,
@@ -107,8 +111,9 @@ class AppTypography {
 
   /// Mono style — Geist Mono with tabular figures (plain, un-slashed zero).
   ///
-  /// Use for money amounts, currency codes, dates, version strings, and
-  /// any small uppercase caption ("EST. 2025", "ACTIVE JOURNEYS").
+  /// Numerals and codes ONLY: money amounts, currency codes, invite codes,
+  /// dates-as-figures, version strings. Never translatable copy — that's
+  /// [caption] — and never user free-text — that's [sans].
   static TextStyle mono({
     required double fontSize,
     Color? color,
@@ -124,6 +129,72 @@ class AppTypography {
       letterSpacing: letterSpacing,
       height: height,
       fontFeatures: tabularNumberFeatures,
+    );
+  }
+
+  /// Small caps-style caption for TRANSLATABLE copy (section headers,
+  /// eyebrows, action links, meta lines). Latin: the classic mono recipe,
+  /// unchanged. Arabic: mono tracking visually disconnects joined letters,
+  /// so the caption re-expresses its role as sans w700, letterSpacing 0,
+  /// floor 11px. Callers keep `.toUpperCase()` — it is a no-op on Arabic
+  /// script.
+  static TextStyle caption(
+    BuildContext context, {
+    required double fontSize,
+    Color? color,
+    FontWeight fontWeight = FontWeight.w500,
+    double? letterSpacing,
+    double? height,
+  }) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    if (!isArabic) {
+      return mono(
+        fontSize: fontSize,
+        color: color,
+        fontWeight: fontWeight,
+        letterSpacing: letterSpacing,
+        height: height,
+      );
+    }
+    return sans(
+      fontSize: math.max(fontSize, 11),
+      color: color,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0,
+      height: height,
+    );
+  }
+
+  /// Locale-aware display. Latin: italic Instrument Serif (unchanged).
+  /// Arabic: Instrument Serif carries no Arabic glyphs — the renderer falls
+  /// back to the system face; upright w500 replaces the synthetic slant.
+  static TextStyle displayOf(
+    BuildContext context, {
+    required double fontSize,
+    Color? color,
+    FontWeight? fontWeight,
+    double? letterSpacing,
+    double? height,
+    bool italic = true,
+  }) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    if (!isArabic) {
+      return display(
+        fontSize: fontSize,
+        color: color,
+        fontWeight: fontWeight ?? FontWeight.w400,
+        letterSpacing: letterSpacing,
+        height: height,
+        italic: italic,
+      );
+    }
+    return display(
+      fontSize: fontSize,
+      color: color,
+      fontWeight: fontWeight ?? FontWeight.w500,
+      letterSpacing: 0,
+      height: height,
+      italic: false,
     );
   }
 }

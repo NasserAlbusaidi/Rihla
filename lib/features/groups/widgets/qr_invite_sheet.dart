@@ -66,7 +66,8 @@ class _QrInviteSheet extends StatelessWidget {
             SizedBox(height: context.spacing.space20),
             Text(
               context.l10n.groupScanToJoin,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 22,
                 color: colors.textPrimary,
               ),
@@ -89,7 +90,8 @@ class _QrInviteSheet extends StatelessWidget {
             SizedBox(height: context.spacing.space20),
             Text(
               context.l10n.groupOrEnterCode,
-              style: AppTypography.mono(
+              style: AppTypography.caption(
+                context,
                 fontSize: 10,
                 letterSpacing: 1.5,
                 color: colors.textSecondary,

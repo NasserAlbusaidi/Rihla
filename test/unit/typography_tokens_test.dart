@@ -2,6 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/theme/tokens/typography_tokens.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
+
+/// Obtains a [BuildContext] under [locale] for the context-aware helpers
+/// (`caption`, `displayOf`) — they branch on
+/// `Localizations.localeOf(context).languageCode`.
+Future<BuildContext> _localizedContext(
+  WidgetTester tester,
+  Locale locale,
+) async {
+  late BuildContext captured;
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) {
+          captured = context;
+          return const SizedBox.shrink();
+        },
+      ),
+    ),
+  );
+  await tester.pump();
+  return captured;
+}
 
 /// Brand faces are bundled as app assets and resolved natively by the Flutter
 /// font engine — no `google_fonts` runtime fetch (#103). The Arabic wordmark
@@ -105,6 +131,101 @@ void main() {
       expect(style.color, const Color(0xFF112233));
       expect(style.fontWeight, FontWeight.w600);
       expect(style.letterSpacing, -2);
+    });
+  });
+
+  group('AppTypography.caption (per-script caption, #841)', () {
+    testWidgets(
+      'EN: byte-identical to mono() — family, w500 default, spacing preserved',
+      (tester) async {
+        final context = await _localizedContext(tester, const Locale('en'));
+        final style = AppTypography.caption(
+          context,
+          fontSize: 11,
+          letterSpacing: 1.2,
+        );
+        final monoStyle = AppTypography.mono(fontSize: 11, letterSpacing: 1.2);
+        expect(style.fontFamily, AppTypography.monoFamily);
+        expect(style.fontFamily, 'Geist Mono');
+        expect(
+          style.fontWeight,
+          FontWeight.w500,
+          reason:
+              'caption() EN default weight must equal mono()\'s default so a '
+              'no-weight migrated caller renders byte-identically',
+        );
+        expect(style.fontWeight, monoStyle.fontWeight);
+        expect(style.letterSpacing, 1.2);
+        expect(style, monoStyle);
+      },
+    );
+
+    testWidgets('AR: sans w700, letterSpacing 0, fontSize floored to 11', (
+      tester,
+    ) async {
+      final context = await _localizedContext(tester, const Locale('ar'));
+      final style = AppTypography.caption(
+        context,
+        fontSize: 10.5,
+        letterSpacing: 1.2,
+      );
+      expect(style.fontFamily, AppTypography.sansFamily);
+      expect(style.fontFamily, 'Geist');
+      expect(style.fontWeight, FontWeight.w700);
+      expect(style.letterSpacing, 0);
+      expect(style.fontSize, 11);
+    });
+
+    testWidgets('AR: fontSize at or above the floor passes through', (
+      tester,
+    ) async {
+      final context = await _localizedContext(tester, const Locale('ar'));
+      final style = AppTypography.caption(context, fontSize: 13);
+      expect(style.fontSize, 13);
+    });
+  });
+
+  group('AppTypography.displayOf (locale-aware display, #841)', () {
+    testWidgets('EN: italic Instrument Serif, w400 default — display() as-is', (
+      tester,
+    ) async {
+      final context = await _localizedContext(tester, const Locale('en'));
+      final style = AppTypography.displayOf(context, fontSize: 28);
+      expect(style.fontFamily, AppTypography.displayFamily);
+      expect(style.fontStyle, FontStyle.italic);
+      expect(style.fontWeight, FontWeight.w400);
+      expect(style, AppTypography.display(fontSize: 28));
+    });
+
+    testWidgets('AR: upright w500 default — no synthetic italic', (
+      tester,
+    ) async {
+      final context = await _localizedContext(tester, const Locale('ar'));
+      final style = AppTypography.displayOf(context, fontSize: 28);
+      expect(style.fontStyle, FontStyle.normal);
+      expect(style.fontWeight, FontWeight.w500);
+    });
+
+    testWidgets('AR: explicit fontWeight is honored', (tester) async {
+      final context = await _localizedContext(tester, const Locale('ar'));
+      final style = AppTypography.displayOf(
+        context,
+        fontSize: 28,
+        fontWeight: FontWeight.w400,
+      );
+      expect(style.fontWeight, FontWeight.w400);
+    });
+
+    testWidgets('AR: the italic argument is ignored — always upright', (
+      tester,
+    ) async {
+      final context = await _localizedContext(tester, const Locale('ar'));
+      final style = AppTypography.displayOf(
+        context,
+        fontSize: 28,
+        italic: true,
+      );
+      expect(style.fontStyle, FontStyle.normal);
     });
   });
 }

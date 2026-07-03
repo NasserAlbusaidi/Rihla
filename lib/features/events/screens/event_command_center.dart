@@ -391,7 +391,8 @@ class _EventHeader extends StatelessWidget {
                       eyebrow.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTypography.mono(
+                      style: AppTypography.caption(
+                        context,
                         fontSize: 9,
                         color: colors.primaryDark,
                         letterSpacing: 1.8,
@@ -402,7 +403,8 @@ class _EventHeader extends StatelessWidget {
                       event.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTypography.display(
+                      style: AppTypography.displayOf(
+                        context,
                         fontSize: 18,
                         color: colors.textPrimary,
                         height: 1.1,
@@ -538,7 +540,8 @@ class _BalanceBlock extends StatelessWidget {
             state == _HubState.settled
                 ? context.l10n.eventAllSettled
                 : context.l10n.eventNothingToSettleYet,
-            style: AppTypography.display(
+            style: AppTypography.displayOf(
+              context,
               fontSize: 24,
               color: state == _HubState.settled
                   ? colors.successText

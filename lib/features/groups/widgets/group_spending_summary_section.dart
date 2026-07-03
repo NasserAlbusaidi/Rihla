@@ -222,7 +222,8 @@ class _InsightRow extends StatelessWidget {
               children: [
                 Text(
                   label.toUpperCase(),
-                  style: AppTypography.mono(
+                  style: AppTypography.caption(
+                    context,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: colors.textSecondary,

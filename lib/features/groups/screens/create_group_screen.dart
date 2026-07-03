@@ -481,7 +481,8 @@ class _CreateGroupTopBar extends StatelessWidget {
             ),
             Text(
               context.l10n.groupNew,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 19,
                 color: colors.textPrimary,
               ),
@@ -549,7 +550,8 @@ class _MoodBlock extends StatelessWidget {
       children: [
         Text(
           context.l10n.groupMoodTitle,
-          style: AppTypography.display(
+          style: AppTypography.displayOf(
+            context,
             fontSize: 30,
             color: colors.textPrimary,
             height: 1.05,
@@ -770,7 +772,8 @@ class _SharePrompt extends StatelessWidget {
           children: [
             Text(
               group.name,
-              style: AppTypography.display(
+              style: AppTypography.displayOf(
+                context,
                 fontSize: 26,
                 color: colors.textPrimary,
                 height: 1.1,
