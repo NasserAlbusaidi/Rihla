@@ -44,6 +44,10 @@ abstract final class GroupKeys {
   static Key shadowMemberRemove(String name) =>
       Key('group_create_shadow_remove_$name');
 
+  // #840: link-account CTA shown below the shadow-member field for an
+  // anonymous creator (mirrors the field's own disabled-hint condition).
+  static const createLinkAccountCta = Key('group_create_link_account_cta');
+
   // Label / empty state keys
   static const noGroupsEmpty = Key('group_no_groups_empty');
   static const noEventsEmpty = Key('group_no_events_empty');

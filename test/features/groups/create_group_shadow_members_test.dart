@@ -193,6 +193,42 @@ void main() {
   );
 
   testWidgets(
+    '#840: durable creator (default harness) — no link-account CTA below '
+    'the field',
+    (tester) async {
+      final sp = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wrap(sp, status: ConnectivityStatus.online));
+      await tester.pump();
+
+      expect(find.byKey(GroupKeys.createLinkAccountCta), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#840: anonymous creator — link-account CTA renders below the disabled '
+    'field; tap opens the durable-credential sheet',
+    (tester) async {
+      final sp = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        wrap(sp, status: ConnectivityStatus.online, durable: false),
+      );
+      await tester.pump();
+
+      expect(find.byKey(GroupKeys.createLinkAccountCta), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(GroupKeys.createLinkAccountCta));
+      await tester.pump();
+      await tester.tap(find.byKey(GroupKeys.createLinkAccountCta));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // The existing durable-credential sheet opened (its own test suite
+      // covers the sheet's own behavior; this only proves the CTA wires to it).
+      expect(find.byKey(const Key('durableGate.continue')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'offline: chips input disabled + hint; Create still makes the group with '
     'zero addShadowMember calls (#278)',
     (tester) async {

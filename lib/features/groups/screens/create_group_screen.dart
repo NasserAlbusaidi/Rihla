@@ -20,6 +20,7 @@ import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/pending_gate_intent.dart';
+import '../../auth/widgets/durable_credential_sheet.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
@@ -404,6 +405,28 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                             ? null
                             : context.l10n.shadowAddRequiresLink,
                       ),
+                      // #840: link-account CTA — same durability-only
+                      // condition as the field's own disabled hint above, so
+                      // the two stay in lockstep. Bare showDurableCredentialSheet
+                      // call (no PendingGateIntent, matching every other
+                      // caller); on success `isDurableUserProvider` flips live
+                      // and this CTA self-hides.
+                      if (!ref.watch(isDurableUserProvider))
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton(
+                            key: GroupKeys.createLinkAccountCta,
+                            onPressed: () => showDurableCredentialSheet(context),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              // 40dp floor: sub-40dp Material buttons clip
+                              // Geist descenders (app_theme_button_test.dart).
+                              minimumSize: const Size(0, 40),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(context.l10n.profileAccountLinkGoogle),
+                          ),
+                        ),
                       const SizedBox(height: 18),
                       _CurrencyField(
                         value: _selectedCurrency,
