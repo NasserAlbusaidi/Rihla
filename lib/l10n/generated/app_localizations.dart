@@ -362,30 +362,6 @@ abstract class AppLocalizations {
   /// **'Delete my data'**
   String get legalDeleteMyData;
 
-  /// Title of the profile QR bottom sheet.
-  ///
-  /// In en, this message translates to:
-  /// **'My QR'**
-  String get qrSheetTitle;
-
-  /// Accessibility semantics label describing the rendered QR image.
-  ///
-  /// In en, this message translates to:
-  /// **'Profile QR code'**
-  String get qrSemanticsLabel;
-
-  /// Button label that copies the profile handle to the clipboard.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy handle'**
-  String get qrCopyHandle;
-
-  /// SnackBar shown after the profile handle is copied (alias of profileSnackHandleCopied — same text).
-  ///
-  /// In en, this message translates to:
-  /// **'Handle copied'**
-  String get qrHandleCopied;
-
   /// Section header above the Preferences card on the Profile screen. English stays uppercase (typographic flourish + mono letterSpacing); Arabic renders natural-case.
   ///
   /// In en, this message translates to:

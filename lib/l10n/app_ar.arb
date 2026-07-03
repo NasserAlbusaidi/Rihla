@@ -56,11 +56,6 @@
   "legalPrivacyPolicy": "سياسة الخصوصية",
   "legalDeleteMyData": "حذف بياناتي",
 
-  "qrSheetTitle": "رمزي",
-  "qrSemanticsLabel": "رمز QR للملف الشخصي",
-  "qrCopyHandle": "نسخ المعرّف",
-  "qrHandleCopied": "تم نسخ المعرّف",
-
   "profileSectionPreferences": "التفضيلات",
   "profileSectionAccount": "الحساب",
   "profileSectionDanger": "منطقة الخطر",

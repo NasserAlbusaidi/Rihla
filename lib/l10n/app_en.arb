@@ -185,23 +185,6 @@
     "description": "Legal sheet row that opens the data-deletion request page."
   },
 
-  "qrSheetTitle": "My QR",
-  "@qrSheetTitle": {
-    "description": "Title of the profile QR bottom sheet."
-  },
-  "qrSemanticsLabel": "Profile QR code",
-  "@qrSemanticsLabel": {
-    "description": "Accessibility semantics label describing the rendered QR image."
-  },
-  "qrCopyHandle": "Copy handle",
-  "@qrCopyHandle": {
-    "description": "Button label that copies the profile handle to the clipboard."
-  },
-  "qrHandleCopied": "Handle copied",
-  "@qrHandleCopied": {
-    "description": "SnackBar shown after the profile handle is copied (alias of profileSnackHandleCopied — same text)."
-  },
-
   "profileSectionPreferences": "PREFERENCES",
   "@profileSectionPreferences": {
     "description": "Section header above the Preferences card on the Profile screen. English stays uppercase (typographic flourish + mono letterSpacing); Arabic renders natural-case."
