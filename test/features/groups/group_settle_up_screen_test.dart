@@ -23,6 +23,7 @@ import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
+import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -710,6 +711,10 @@ void main() {
       expect(find.text('Payment history'), findsOneWidget);
       // History tiles render RichText spans — the substring lives in a span.
       expect(find.textContaining('paid', findRichText: true), findsWidgets);
+      // #818 Wave 5.3: the recap CTA is a standalone-event-settle-up-only
+      // affordance (receipt is event-scoped, #704 open) — the group screen
+      // never wires the `footer` param, so it must never appear here.
+      expect(find.byKey(LedgerKeys.settleUpRecapCta), findsNothing);
     });
 
     testWidgets('history section omitted when no settlements', (tester) async {

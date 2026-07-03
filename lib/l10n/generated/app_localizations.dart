@@ -2612,6 +2612,12 @@ abstract class AppLocalizations {
   /// **'Share receipt'**
   String get settleUpShareReceipt;
 
+  /// #818 Wave 5.3: nav-only CTA on the standalone event settle-up screen, below payment history, that pushes the existing event recap route (Trip Receipt export lives there). Must never say 'receipt' — #359 collision with the per-payment share-receipt affordance above.
+  ///
+  /// In en, this message translates to:
+  /// **'View recap & export'**
+  String get settleUpViewRecapCta;
+
   /// First line of the shareable settlement receipt (#359): who paid whom, how much. The amount is pre-formatted code-first (e.g. 'OMR 5.000').
   ///
   /// In en, this message translates to:

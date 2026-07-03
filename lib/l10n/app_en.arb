@@ -1249,6 +1249,10 @@
   "@settleUpShareReceipt": {
     "description": "Affordance on a recorded-payment history tile (#359) that shares a plain-text receipt of the settlement via the iOS-safe shareText() helper."
   },
+  "settleUpViewRecapCta": "View recap & export",
+  "@settleUpViewRecapCta": {
+    "description": "#818 Wave 5.3: nav-only CTA on the standalone event settle-up screen, below payment history, that pushes the existing event recap route (Trip Receipt export lives there). Must never say 'receipt' — #359 collision with the per-payment share-receipt affordance above."
+  },
   "settleUpReceiptLine": "{payerName} paid {recipientName} {amount}",
   "@settleUpReceiptLine": {
     "description": "First line of the shareable settlement receipt (#359): who paid whom, how much. The amount is pre-formatted code-first (e.g. 'OMR 5.000').",
