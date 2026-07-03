@@ -154,6 +154,49 @@ Widget _app({
         path: '/group/:id',
         builder: (ctx, state) =>
             Scaffold(body: Text('GroupDetail:${state.pathParameters['id']}')),
+        // #840 PR-7: nested target routes for per-type History deep-links.
+        // The fake harness param is `:id` (NOT the real router's `:gid`) —
+        // pushes are literal path strings so this mismatch never reaches prod.
+        routes: [
+          GoRoute(
+            path: 'settle-up',
+            builder: (ctx, state) => Scaffold(
+              body: Text(
+                'GroupSettleUp:${state.pathParameters['id']}'
+                '?${state.uri.query}',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'event/:eid',
+            builder: (ctx, state) => Scaffold(
+              body: Text(
+                'EventHub:${state.pathParameters['id']}/'
+                '${state.pathParameters['eid']}',
+              ),
+            ),
+            routes: [
+              GoRoute(
+                path: 'ledger',
+                builder: (ctx, state) => Scaffold(
+                  body: Text(
+                    'EventLedger:${state.pathParameters['id']}/'
+                    '${state.pathParameters['eid']}',
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'activity',
+                builder: (ctx, state) => Scaffold(
+                  body: Text(
+                    'EventActivity:${state.pathParameters['id']}/'
+                    '${state.pathParameters['eid']}',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );
@@ -602,9 +645,58 @@ void main() {
       expect(find.byKey(SharedKeys.emptyStateCtaButton), findsNothing);
     });
 
-    testWidgets('row tap pushes /group/{gid}', (tester) async {
+    // #840 PR-7: row tap now deep-links per activity type instead of always
+    // pushing group detail. `event_created` WITH an eventId now lands on the
+    // event hub, not group detail — this is the behavior change the old
+    // "uniform push" test used to pin.
+    testWidgets(
+      'event_created with an eventId routes to the event hub, not group '
+      'detail (#840)',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        await _seed(db, 'g1', [
+          _activity(
+            'a1',
+            'Alice',
+            'created an event',
+            type: 'event_created',
+            metadata: const {'eventId': 'ev1', 'eventName': 'Beach Trip'},
+          ),
+        ]);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(_richContaining('created Beach Trip'));
+        await tester.pumpAndSettle();
+        expect(find.text('EventHub:g1/ev1'), findsOneWidget);
+        expect(find.text('GroupDetail:g1'), findsNothing);
+      },
+    );
+  });
+
+  group('History row deep-links (#840)', () {
+    testWidgets('expense_added routes to the event ledger', (tester) async {
       final db = FakeFirebaseFirestore();
-      await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
+      await _seed(db, 'g1', [
+        _activity(
+          'e1',
+          'Alice',
+          'added an expense',
+          type: 'expense_added',
+          metadata: const {
+            'eventId': 'ev1',
+            'eventName': 'Beach Trip',
+            'amountFils': 500,
+            'currency': 'OMR',
+          },
+        ),
+      ]);
       await tester.pumpWidget(
         _app(
           groups: [_group('g1', 'Trip A')],
@@ -614,9 +706,292 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(_richContaining('created an event'));
+      await tester.tap(_richContaining('added an expense in Beach Trip'));
       await tester.pumpAndSettle();
+
+      expect(find.text('EventLedger:g1/ev1'), findsOneWidget);
+    });
+
+    testWidgets('expense_edited routes to the event ledger', (tester) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          'e1',
+          'Alice',
+          'edited an expense',
+          type: 'expense_edited',
+          metadata: const {
+            'eventId': 'ev1',
+            'eventName': 'Beach Trip',
+            'amountFils': 500,
+            'currency': 'OMR',
+          },
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(_richContaining('edited an expense in Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EventLedger:g1/ev1'), findsOneWidget);
+    });
+
+    testWidgets(
+      'expense_deleted routes to the event activity feed (audit trail), '
+      'not the ledger',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        await _seed(db, 'g1', [
+          _activity(
+            'e1',
+            'Alice',
+            'deleted an expense',
+            type: 'expense_deleted',
+            metadata: const {'eventId': 'ev1', 'eventName': 'Beach Trip'},
+          ),
+        ]);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(_richContaining('deleted an expense in Beach Trip'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('EventActivity:g1/ev1'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'event_deleted routes to group detail (target event is gone)',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        await _seed(db, 'g1', [
+          _activity(
+            'e1',
+            'Alice',
+            'deleted an event',
+            type: 'event_deleted',
+            metadata: const {'eventId': 'ev1', 'eventName': 'Beach Trip'},
+          ),
+        ]);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(_richContaining('deleted Beach Trip'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('GroupDetail:g1'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'group_settlement routes to group settle-up with no query params '
+      '(no ?memberId= in v1, even with recipientId in metadata)',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        await _seed(db, 'g1', [
+          _activity(
+            's1',
+            'Alice',
+            'recorded a settlement',
+            type: 'group_settlement',
+            metadata: const {
+              'amount': '12.5',
+              'fromUserId': 'uid0',
+              'toUserId': 'uid1',
+              'fromName': 'Alice',
+              'toName': 'Bob',
+              'recipientId': 'uid1',
+            },
+          ),
+        ]);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Iconsax.wallet_3));
+        await tester.pumpAndSettle();
+
+        expect(find.text('GroupSettleUp:g1?'), findsOneWidget);
+      },
+    );
+
+    testWidgets('member_joined routes to group detail (unchanged)', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity('m1', 'Bob', 'joined', type: 'member_joined'),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(_richContaining('joined the group'));
+      await tester.pumpAndSettle();
+
       expect(find.text('GroupDetail:g1'), findsOneWidget);
+    });
+
+    testWidgets('member_left routes to group detail (unchanged)', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity('m1', 'Bob', 'left', type: 'member_left'),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(_richContaining('left the group'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupDetail:g1'), findsOneWidget);
+    });
+
+    testWidgets('an unknown/default activity type routes to group detail', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity(
+          'z1',
+          'Zed',
+          'did something weird',
+          type: 'something_unrecognized',
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(_richContaining('did something weird'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GroupDetail:g1'), findsOneWidget);
+    });
+
+    group('forged/absent eventId metadata degrades to group detail, never '
+        'an ErrorWidget (#840)', () {
+      final forgedValues = <String, Object>{
+        'int': 42,
+        'bool': true,
+        'map': {'x': 1},
+        'empty string': '',
+      };
+
+      for (final forged in forgedValues.entries) {
+        testWidgets(
+          'expense_added with eventId as ${forged.key} falls back to group '
+          'detail',
+          (tester) async {
+            final db = FakeFirebaseFirestore();
+            await _seed(db, 'g1', [
+              _activity(
+                'e1',
+                'Alice',
+                'added an expense',
+                type: 'expense_added',
+                metadata: {
+                  'eventId': forged.value,
+                  'eventName': 'Beach Trip',
+                  'amountFils': 500,
+                  'currency': 'OMR',
+                },
+              ),
+            ]);
+            await tester.pumpWidget(
+              _app(
+                groups: [_group('g1', 'Trip A')],
+                service: GroupActivityService.withFirestore(db),
+                prefs: await prefs(),
+              ),
+            );
+            await tester.pumpAndSettle();
+
+            await tester.tap(
+              _richContaining('added an expense in Beach Trip'),
+            );
+            await tester.pumpAndSettle();
+
+            expect(find.byType(ErrorWidget), findsNothing);
+            expect(find.text('GroupDetail:g1'), findsOneWidget);
+          },
+        );
+      }
+
+      testWidgets(
+        'expense_added with an absent eventId falls back to group detail',
+        (tester) async {
+          final db = FakeFirebaseFirestore();
+          await _seed(db, 'g1', [
+            _activity(
+              'e1',
+              'Alice',
+              'added an expense',
+              type: 'expense_added',
+              metadata: const {
+                'eventName': 'Beach Trip',
+                'amountFils': 500,
+                'currency': 'OMR',
+              },
+            ),
+          ]);
+          await tester.pumpWidget(
+            _app(
+              groups: [_group('g1', 'Trip A')],
+              service: GroupActivityService.withFirestore(db),
+              prefs: await prefs(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(_richContaining('added an expense in Beach Trip'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(ErrorWidget), findsNothing);
+          expect(find.text('GroupDetail:g1'), findsOneWidget);
+        },
+      );
     });
   });
 
