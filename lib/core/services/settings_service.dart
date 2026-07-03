@@ -29,10 +29,10 @@ class SettingsService {
   /// never made an explicit choice) so an Arabic phone boots Arabic (#286). A
   /// stored choice always wins; an absent device hint falls back to English.
   AppSettings loadSettings({String? deviceLanguageCode}) {
-    final themeIndex = _prefs.getInt(_themeKey) ?? AppThemeMode.system.index;
+    final themeIndex = _prefs.getInt(_themeKey) ?? AppThemeMode.light.index;
     final themeMode = themeIndex >= 0 && themeIndex < AppThemeMode.values.length
         ? AppThemeMode.values[themeIndex]
-        : AppThemeMode.system;
+        : AppThemeMode.light;
 
     final languageCode =
         _prefs.getString(languageKey) ?? deviceLanguageCode ?? 'en';
