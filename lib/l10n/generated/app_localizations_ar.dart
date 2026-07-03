@@ -3363,6 +3363,56 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get authEmailLinkNoPendingEmail =>
+      'افتح Rihla من الجهاز الذي طلبت منه البريد الإلكتروني، أو أدخل البريد الإلكتروني هنا مرة أخرى.';
+
+  @override
+  String get authEmailLinkRecoverBlocked =>
+      'ستؤدي الاستعادة إلى التبديل إلى حسابك المحفوظ وترك رحلات هذا الجهاز الحالية خلفها — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. يجب حل ذلك أولًا.';
+
+  @override
+  String authEmailLinkRestored(String email) {
+    return 'تمت الاستعادة: $email';
+  }
+
+  @override
+  String authEmailLinkLinked(String email) {
+    return 'تم الربط: $email';
+  }
+
+  @override
+  String get authEmailLinkGenericError =>
+      'تعذّر إتمام رابط البريد الإلكتروني. حاول مرة أخرى.';
+
+  @override
+  String get authEmailLinkErrorExpired =>
+      'انتهت صلاحية هذا الرابط أو تم استخدامه من قبل. أرسل رابطًا جديدًا.';
+
+  @override
+  String get authEmailLinkErrorInvalidEmail =>
+      'لا يبدو هذا البريد الإلكتروني صالحًا.';
+
+  @override
+  String get authEmailLinkErrorDisabled => 'تم تعطيل هذا الحساب.';
+
+  @override
+  String get authEmailLinkErrorNetwork =>
+      'لا يوجد اتصال. حاول مرة أخرى عند الاتصال بالإنترنت.';
+
+  @override
+  String get authEmailLinkErrorTooManyRequests =>
+      'محاولات كثيرة جدًا. انتظر بضع دقائق ثم حاول مرة أخرى.';
+
+  @override
+  String get authEmailLinkErrorAlreadyInUse =>
+      'هذا البريد مرتبط بالفعل بحساب Rihla. استعد ذلك الحساب بدلًا من ذلك.';
+
+  @override
+  String authEmailLinkErrorGeneric(String code) {
+    return 'حدث خطأ ما ($code). يرجى المحاولة مرة أخرى.';
+  }
+
+  @override
   String get recoveryRestoredOk => 'تم استعادة الحساب.';
 
   @override

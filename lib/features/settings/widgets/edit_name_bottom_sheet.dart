@@ -5,6 +5,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../keys/profile_keys.dart';
@@ -50,7 +51,7 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
   }
 
   Future<void> _handleSave() async {
-    final error = validateDisplayName(_controller.text);
+    final error = validateDisplayNameLocalized(context, _controller.text);
     if (error != null) {
       setState(() => _errorText = error);
       return;

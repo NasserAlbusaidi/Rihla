@@ -329,17 +329,44 @@ void main() {
     expect(captures, isEmpty);
   });
 
-  test('humanizeAuthErrorCode keeps the bootstrap mapping', () {
-    expect(
-      humanizeAuthErrorCode('invalid-action-code'),
-      'This link has expired or was already used. Send a new one.',
-    );
-    expect(
-      humanizeAuthErrorCode('network-request-failed'),
-      "No connection. Try again when you're online.",
-    );
-    expect(humanizeAuthErrorCode('weird-code'), contains('weird-code'));
-  });
+  test(
+    'humanizeAuthErrorCode: EN-literal fallback when no l10n is supplied',
+    () {
+      // surfaceRecoveryOutcome (recovery_outcome_notice.dart) calls this with
+      // no l10n on purpose — it stays context-free (#839) — so this fallback
+      // contract must hold regardless of the #841 PR-3 localized branch below.
+      expect(
+        humanizeAuthErrorCode('invalid-action-code'),
+        'This link has expired or was already used. Send a new one.',
+      );
+      expect(
+        humanizeAuthErrorCode('network-request-failed'),
+        "No connection. Try again when you're online.",
+      );
+      expect(humanizeAuthErrorCode('weird-code'), contains('weird-code'));
+    },
+  );
+
+  test(
+    'humanizeAuthErrorCode: localizes when l10n is supplied (#841 PR-3)',
+    () async {
+      final en = await AppLocalizations.delegate.load(const Locale('en'));
+      final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+
+      expect(
+        humanizeAuthErrorCode('invalid-action-code', l10n: en),
+        en.authEmailLinkErrorExpired,
+      );
+      expect(
+        humanizeAuthErrorCode('invalid-action-code', l10n: ar),
+        ar.authEmailLinkErrorExpired,
+      );
+      expect(
+        humanizeAuthErrorCode('weird-code', l10n: en),
+        en.authEmailLinkErrorGeneric('weird-code'),
+      );
+    },
+  );
 
   // ---------------------------------------------------------------------
   // Gate r1: widget-level l10n test. The provider's own

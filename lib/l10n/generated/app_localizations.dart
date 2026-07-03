@@ -5553,6 +5553,78 @@ abstract class AppLocalizations {
   /// **'Resend in {seconds}s'**
   String authRecoverPendingResendCountdown(int seconds);
 
+  /// #841 PR-3: snack shown when an email-link deep link arrives but no pending email is saved locally (different device, or Settings never primed).
+  ///
+  /// In en, this message translates to:
+  /// **'Open Rihla from the device where you requested the email, or enter the email again here.'**
+  String get authEmailLinkNoPendingEmail;
+
+  /// #841 PR-3: snack shown when a recover deep link is blocked because the outgoing anon shell is not provably empty (#647).
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery would switch to your saved account and leave this device\'s current trips behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first.'**
+  String get authEmailLinkRecoverBlocked;
+
+  /// #841 PR-3: success snack shown after an email-link RECOVER swap completes.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored {email}'**
+  String authEmailLinkRestored(String email);
+
+  /// #841 PR-3: success snack shown after an email-link LINK completes.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked {email}'**
+  String authEmailLinkLinked(String email);
+
+  /// #841 PR-3: catch-all snack shown when completing the email link fails for a non-FirebaseAuthException reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t complete the email link. Try again.'**
+  String get authEmailLinkGenericError;
+
+  /// #841 PR-3: humanized auth error for Firebase's invalid-action-code/expired-action-code when completing an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'This link has expired or was already used. Send a new one.'**
+  String get authEmailLinkErrorExpired;
+
+  /// #841 PR-3: humanized auth error for Firebase's invalid-email code when completing an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'That email doesn\'t look valid.'**
+  String get authEmailLinkErrorInvalidEmail;
+
+  /// #841 PR-3: humanized auth error for Firebase's user-disabled code when completing an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been disabled.'**
+  String get authEmailLinkErrorDisabled;
+
+  /// #841 PR-3: humanized auth error for Firebase's network-request-failed code when completing an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. Try again when you\'re online.'**
+  String get authEmailLinkErrorNetwork;
+
+  /// #841 PR-3: humanized auth error for Firebase's too-many-requests code when completing an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Wait a few minutes and try again.'**
+  String get authEmailLinkErrorTooManyRequests;
+
+  /// #841 PR-3: humanized auth error for Firebase's email-already-in-use/credential-already-in-use/provider-already-linked codes when completing an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already linked to a Rihla account. Restore from that account instead.'**
+  String get authEmailLinkErrorAlreadyInUse;
+
+  /// #841 PR-3: fallback humanized auth error surfacing the raw Firebase error code when completing an email link.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong ({code}). Please try again.'**
+  String authEmailLinkErrorGeneric(String code);
+
   /// Boot-time snack shown after a Google/email restore whose swap survived the restart AND (#839) either has data or the presence probe was inconclusive.
   ///
   /// In en, this message translates to:
