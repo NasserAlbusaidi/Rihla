@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>#841 — Arabic type stack: per-script token fix (sign-off gallery)</title>
+<style>
+  :root{
+    --bg:#faf6ef; --card:#fffdf8; --ink:#2b2620; --muted:#8a7f6f;
+    --saffron:#d98e32; --rule:#e8dfd0; --bad:#b3402f; --good:#3f7d4e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif;padding:36px 20px;max-width:1100px;margin:0 auto}
+  h1{font-size:26px;margin-bottom:6px}
+  h2{font-size:19px;margin:40px 0 4px}
+  p.meta{color:var(--muted);font-size:13.5px;max-width:74ch;margin-bottom:14px}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:1px;font-weight:700;padding:2px 8px;border-radius:99px;margin-bottom:8px}
+  .tag.bad{background:#f6ddd7;color:var(--bad)} .tag.good{background:#dcecdf;color:var(--good)}
+  .row{display:flex;flex-wrap:wrap;gap:22px;margin:14px 0 6px}
+  .phone{width:320px;background:var(--card);border:1px solid var(--rule);border-radius:26px;padding:18px 16px 22px;box-shadow:0 6px 18px rgba(60,45,20,.08)}
+  .phone .frame-label{font-size:11px;color:var(--muted);letter-spacing:1.2px;font-weight:700;margin-bottom:12px}
+  .strip{padding:10px 4px;border-bottom:1px dashed var(--rule)}
+  .strip:last-child{border-bottom:none}
+  .cap-label{font-size:10px;color:var(--muted);margin-bottom:3px}
+  /* the current (broken) treatments */
+  .mono-broken{font-family:"Geist Mono","SF Mono",Menlo,monospace;font-size:10.5px;font-weight:600;letter-spacing:1.7px;color:#7d7365;text-transform:uppercase}
+  .display-broken{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-size:26px}
+  /* the proposed treatments */
+  .cap-fixed{font-size:11px;font-weight:700;color:#7d7365}
+  .display-fixed{font-size:25px;font-weight:500}
+  .amount{font-family:"Geist Mono","SF Mono",Menlo,monospace;font-feature-settings:"tnum";font-size:17px;font-weight:600}
+  .note{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70ch}
+  .opt{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px 18px;margin:12px 0;max-width:86ch}
+  .opt b{color:var(--saffron)}
+  code{background:#f1e9db;padding:1px 5px;border-radius:5px;font-size:12.5px}
+  .pill{font-size:11px;color:var(--good);font-weight:700}
+</style>
+</head>
+<body>
+
+<h1>#841 — Arabic type stack</h1>
+<p class="meta">The mono-caption and italic-display treatments are Latin-only by construction: <code>Geist Mono</code> and <code>Instrument Serif</code> carry no Arabic glyphs, so Arabic falls back to the system face <b>while inheriting</b> <code>letterSpacing 1.2–2.0</code> and <code>FontStyle.italic</code>. Letter-spacing visually disconnects joined Arabic letters (rendered live below — this page uses the same CSS the engine applies); synthetic italic slants a script that is never italicized. Money amounts are unaffected (Western digits render fine in Geist Mono). Approved direction: per-script token fix, sign-off on this gallery before code.</p>
+
+<h2>1 · Mono caps captions (section headers, eyebrows — 75 call sites)</h2>
+<p class="meta">Real strings from the ARBs: <code>homeActiveJourneys</code>, <code>homeRecently</code>. The "before" frame is the literal current recipe (<code>section_header.dart:45-49</code>: mono, 10.5px, letterSpacing 1.2–1.7, uppercase).</p>
+<div class="row">
+  <div class="phone">
+    <div class="frame-label">BEFORE — TODAY (AR)</div>
+    <span class="tag bad">BROKEN JOINS</span>
+    <div class="strip" dir="rtl"><div class="cap-label">section header</div><div class="mono-broken">الرحلات النشطة</div></div>
+    <div class="strip" dir="rtl"><div class="cap-label">section header</div><div class="mono-broken">الأحدث</div></div>
+    <div class="strip" dir="rtl"><div class="cap-label">action link</div><div class="mono-broken" style="color:#d98e32">عرض النشاط</div></div>
+  </div>
+  <div class="phone">
+    <div class="frame-label">AFTER — PROPOSED (AR)</div>
+    <span class="tag good">JOINED, DIFFERENTIATED BY WEIGHT</span>
+    <div class="strip" dir="rtl"><div class="cap-label">section header</div><div class="cap-fixed">الرحلات النشطة</div></div>
+    <div class="strip" dir="rtl"><div class="cap-label">section header</div><div class="cap-fixed">الأحدث</div></div>
+    <div class="strip" dir="rtl"><div class="cap-label">action link</div><div class="cap-fixed" style="color:#d98e32">عرض النشاط</div></div>
+  </div>
+  <div class="phone">
+    <div class="frame-label">ENGLISH — UNCHANGED</div>
+    <span class="tag good">NO LATIN REGRESSION</span>
+    <div class="strip"><div class="cap-label">section header</div><div class="mono-broken">ACTIVE JOURNEYS</div></div>
+    <div class="strip"><div class="cap-label">section header</div><div class="mono-broken">RECENTLY</div></div>
+    <div class="strip"><div class="cap-label">action link</div><div class="mono-broken" style="color:#d98e32">VIEW ACTIVITY</div></div>
+  </div>
+</div>
+<p class="note">AR captions drop mono + spacing + uppercase (uppercase is a no-op in Arabic anyway) and differentiate by <b>weight (w700) at 11px</b> in the system Arabic face — same visual role, native rendering. Latin captions keep the exact current recipe.</p>
+
+<h2>2 · Display italic (screen titles, hero numerals' labels)</h2>
+<p class="meta"><code>AppTypography.display()</code> defaults <code>italic: true</code>. Arabic through it gets a synthetic slant (no italic exists in the face or the script). The dedicated <code>arabicDisplay()</code> (Reem Kufi) is wordmark-only by design (#636) — not the fix vehicle.</p>
+<div class="row">
+  <div class="phone">
+    <div class="frame-label">BEFORE — TODAY (AR)</div>
+    <span class="tag bad">SYNTHETIC SLANT</span>
+    <div class="strip" dir="rtl"><div class="display-broken">الرحلات النشطة</div></div>
+  </div>
+  <div class="phone">
+    <div class="frame-label">AFTER — PROPOSED (AR)</div>
+    <span class="tag good">UPRIGHT, w500</span>
+    <div class="strip" dir="rtl"><div class="display-fixed">الرحلات النشطة</div></div>
+  </div>
+  <div class="phone">
+    <div class="frame-label">ENGLISH — UNCHANGED</div>
+    <span class="tag good">SERIF ITALIC STAYS</span>
+    <div class="strip"><div class="display-broken">Active journeys</div></div>
+  </div>
+</div>
+
+<h2>3 · What deliberately does NOT change</h2>
+<div class="row">
+  <div class="phone">
+    <div class="frame-label">MONEY — BOTH LOCALES</div>
+    <span class="tag good">GEIST MONO STAYS</span>
+    <div class="strip" dir="rtl"><div class="cap-label">amount (AR locale)</div><div class="amount">OMR 12.500</div></div>
+    <div class="strip"><div class="cap-label">amount (EN locale)</div><div class="amount">OMR 12.500</div></div>
+  </div>
+</div>
+<p class="note">Amounts, dates, invite codes, currency codes = Western digits/Latin → Geist Mono renders them natively in both locales; tabular figures keep columns aligned. The LTR amount-input contract (3 sites) is untouched.</p>
+
+<h2>Implementation options</h2>
+<div class="opt">
+  <b>Option B — semantic split (recommended).</b> New <code>AppTypography.caption(locale/context, …)</code> for <i>text</i> captions: Latin → the exact current mono recipe; Arabic → sans-fallback w700, spacing 0, no uppercase transform. <code>mono()</code> is re-documented as <b>numerals-only</b> (amounts/dates/codes) and its text-caption call sites (~a dozen of the 75) migrate to <code>caption()</code>. <code>display()</code> gains a locale guard: under AR → upright + w500 (no synthetic italic). Mechanical, testable (goldens optional), no new fonts bundled.
+</div>
+<div class="opt">
+  <b>Option A — locale branch inside the existing helpers.</b> <code>mono()</code>/<code>display()</code> take the ambient locale and branch internally. Smaller diff (no call-site migration) but muddies the token contract: "mono" would silently not be mono in AR, and amounts routed through <code>mono()</code> must NOT branch — so the helper needs a "this is a number" flag anyway, which is Option B wearing a worse name.
+</div>
+<div class="opt">
+  <b>Option C — bundle an Arabic caption face</b> (e.g. IBM Plex Sans Arabic). Best visual control, +~100-300 KB app size, font-licensing/pipeline work. Defer to the 2.0 design pass unless the system-face result above reads as insufficient.
+</div>
+<p class="meta"><span class="pill">RECOMMENDATION:</span> Option B now; revisit Option C at the 2.0 dark/design round. Sign-off on this page approves Option B's three rules: AR captions = sans w700/11px/spacing 0, AR display = upright w500, numerals stay Geist Mono everywhere.</p>
+
+</body>
+</html>
