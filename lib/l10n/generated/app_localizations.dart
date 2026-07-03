@@ -2973,6 +2973,24 @@ abstract class AppLocalizations {
   /// **'Restore with email instead'**
   String get homeRestoreWithEmail;
 
+  /// No description provided for @homeRestoreSectionCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Been here before?'**
+  String get homeRestoreSectionCaption;
+
+  /// No description provided for @homeSetNameChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your name'**
+  String get homeSetNameChip;
+
+  /// No description provided for @homeGuestCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest account — lives on this phone until you back it up in Profile.'**
+  String get homeGuestCaption;
+
   /// No description provided for @restoreGoogleFailed.
   ///
   /// In en, this message translates to:

@@ -1819,6 +1819,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeRestoreWithEmail => 'أو الاستعادة عبر البريد الإلكتروني';
 
   @override
+  String get homeRestoreSectionCaption => 'استخدمت رحلة من قبل؟';
+
+  @override
+  String get homeSetNameChip => 'عيّن اسمك';
+
+  @override
+  String get homeGuestCaption =>
+      'حساب ضيف — يبقى على هذا الهاتف حتى تحفظ نسخة منه في الملف الشخصي.';
+
+  @override
   String get restoreGoogleFailed =>
       'تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.';
 

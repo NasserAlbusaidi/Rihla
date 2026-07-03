@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#818 Wave 4 — first-run identity polish</title>
+<style>
+  :root{
+    --paper:#F6F1E6; --card:#FFFFFF; --card-soft:#FBF7EE;
+    --saffron:#D17B2C; --saffron-tint:#FBEED5; --saffron-soft:#F4DDB8;
+    --ink:#1B1A17; --ink3:#6B675D; --ink4:#948F82;
+    --sage:#5C7A57; --rust:#A84B33; --warning:#F59E0B; --rule:#EAE5D9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#141310;color:#EFEBE2;font:15px/1.55 -apple-system,'Segoe UI',sans-serif;padding:40px 24px 80px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.3px}
+  .sub{color:#A29B8C;margin:6px 0 40px;max-width:70ch}
+  section{margin-bottom:64px}
+  h2{font-size:19px;font-weight:700;margin-bottom:4px}
+  .meta{color:#A29B8C;font-size:13.5px;margin-bottom:18px;max-width:78ch}
+  .meta code{background:#26241F;padding:1px 6px;border-radius:4px;font-size:12px}
+  .frames{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .frame{width:340px}
+  .frame .tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+  .tag.before{color:#C97B6B}.tag.after{color:#8FB08A}
+  .phone{background:var(--paper);border-radius:26px;border:6px solid #2B2925;overflow:hidden;
+         box-shadow:0 18px 40px rgba(0,0,0,.45);color:var(--ink);
+         font:14px/1.45 -apple-system,'Segoe UI',sans-serif}
+  .screen{padding:14px 16px 20px;min-height:120px}
+  .note{margin-top:10px;font-size:12.5px;color:#A29B8C;max-width:340px}
+  /* ---- app primitives ---- */
+  .topbar{display:flex;align-items:center;gap:10px;padding:4px 2px 10px}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--saffron-soft);color:var(--ink);
+          display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
+  .wordmark{font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:17px;letter-spacing:.02em}
+  .bell{width:34px;height:34px;border-radius:50%;border:1px solid var(--rule);background:var(--card);
+        display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+  .grow{flex:1}
+  .greet{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.18em;color:var(--ink3);
+         text-transform:uppercase;padding:2px 2px 0}
+  .namechip{display:inline-flex;align-items:center;gap:5px;background:var(--saffron-tint);
+            border:1px solid var(--saffron-soft);color:var(--saffron);border-radius:999px;
+            padding:4px 10px;font-size:11.5px;font-weight:700}
+  .guestline{display:flex;align-items:center;gap:6px;color:var(--ink3);font-size:11.5px;padding:7px 2px 0}
+  .herocard{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:14px;margin-top:12px}
+  .herocap{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.16em;color:var(--ink3);text-transform:uppercase}
+  .heroamt{font-family:ui-monospace,Menlo,monospace;font-size:24px;font-weight:600;margin-top:4px}
+  .nudge{background:var(--card-soft);border:1px solid var(--saffron-soft);border-radius:16px;padding:13px;margin-top:12px}
+  .nudge .t{font-weight:700;font-size:13.5px;display:flex;gap:8px;align-items:center}
+  .nudge .b{font-size:12px;color:var(--ink3);margin:6px 0 10px}
+  .btn{display:block;text-align:center;border-radius:12px;padding:9px;font-weight:700;font-size:13px}
+  .btn.primary{background:var(--saffron);color:#fff}
+  .btn.ghost{color:var(--ink3);font-weight:600;font-size:12.5px;padding:7px}
+  .btn.outline{border:1.5px solid var(--ink);color:var(--ink);background:transparent}
+  .empty-ico{width:64px;height:64px;border-radius:18px;background:var(--card);border:1px solid var(--rule);
+             margin:8px auto 12px;display:flex;align-items:center;justify-content:center;font-size:26px}
+  .empty-t{text-align:center;font-weight:800;font-size:17px}
+  .empty-b{text-align:center;color:var(--ink3);font-size:12.5px;margin:6px 14px 14px}
+  .caphdr{font-family:ui-monospace,Menlo,monospace;text-align:center;font-size:10px;letter-spacing:.16em;
+          color:var(--ink3);text-transform:uppercase;margin:14px 0 2px}
+  .sheet{background:var(--card);border-radius:22px 22px 0 0;padding:16px;border-top:1px solid var(--rule)}
+  .sheet .st{font-family:Georgia,serif;font-style:italic;font-size:19px;font-weight:700}
+  .sheet .sh{color:var(--ink3);font-size:12px;margin:4px 0 12px}
+  .field{background:var(--card-soft);border:1px solid var(--rule);border-radius:12px;padding:10px 12px;
+         font-size:14px;color:var(--ink);margin-bottom:14px}
+  .field small{display:block;font-size:9.5px;letter-spacing:.14em;color:var(--ink3);text-transform:uppercase;margin-bottom:3px}
+  .initcap{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.14em;color:var(--ink3);
+           text-transform:uppercase;margin-bottom:8px}
+  .initrow{display:flex;gap:8px;margin-bottom:16px}
+  .initopt{flex:1;text-align:center;font-family:ui-monospace,Menlo,monospace;font-weight:600;font-size:14px;
+           padding:12px 0;border-radius:12px;border:1px solid var(--rule);background:var(--card)}
+  .initopt.sel{background:var(--card-soft);border:1.5px solid var(--ink)}
+  .actrow{display:flex;gap:10px}
+  .actrow .cancel{flex:1;text-align:center;color:var(--ink3);font-weight:600;padding:10px;border:1px solid var(--rule);border-radius:12px}
+  .actrow .save{flex:1;text-align:center;background:var(--saffron);color:#fff;font-weight:700;padding:10px;border-radius:12px}
+  .preview{display:flex;align-items:center;gap:12px;background:var(--card-soft);border:1px solid var(--rule);
+           border-radius:14px;padding:12px;margin-bottom:16px}
+  .preview .pavatar{width:44px;height:44px;border-radius:50%;background:var(--saffron-soft);
+                    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+  .preview .pl{font-size:12px;color:var(--ink3)}
+  .decision{background:#1E1C18;border:1px solid #35322B;border-radius:12px;padding:14px 16px;margin-top:16px;font-size:13px;color:#CFC9BC}
+  .decision b{color:#EFEBE2}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>#818 Wave 4 — first-run identity polish</h1>
+  <p class="sub">Four fixes from the first-impressions review, all Gate-exempt copy/UI. Light theme (the shipped default since #821). Every color below is an existing token — no new palette values. Two premise corrections from the code map are baked in: Profile already has a solved "Set your name" treatment (Home doesn't), and Home has no amber pill — its only guest explainer is the dismissible #285 card.</p>
+
+  <!-- ================= 4.1 ================= -->
+  <section>
+    <h2>4.1 — The "?" avatar gets a "Set your name" chip</h2>
+    <p class="meta">Fresh install: <code>deviceName = ''</code> → header avatar renders "?" with zero cue that a name can be set (the greeting falls back to "traveller"). Fix: a small saffron chip beside the avatar, shown <b>only while the name is empty</b> — it self-hides the moment a name is saved, so no new dismissal flag or SharedPreferences key. Tap opens the existing <code>EditNameBottomSheet</code> directly (not the Profile detour). Mirrors Profile's saffron set-name CTA language.</p>
+    <div class="frames">
+      <div class="frame">
+        <div class="tag before">Before</div>
+        <div class="phone"><div class="screen">
+          <div class="topbar">
+            <div class="avatar">?</div>
+            <div class="grow"></div><div class="wordmark">Rihla</div><div class="grow"></div>
+            <div class="bell">🔔</div>
+          </div>
+          <div class="greet">Good morning, traveller</div>
+          <div class="herocard"><div class="herocap">Across your groups</div><div class="heroamt">OMR 0.000</div></div>
+        </div></div>
+        <p class="note">"?" is a dead end — tapping it goes to Profile, but nothing says so.</p>
+      </div>
+      <div class="frame">
+        <div class="tag after">After</div>
+        <div class="phone"><div class="screen">
+          <div class="topbar">
+            <div class="avatar">?</div>
+            <span class="namechip">✎ Set your name</span>
+            <div class="grow"></div><div class="wordmark">Rihla</div><div class="grow"></div>
+            <div class="bell">🔔</div>
+          </div>
+          <div class="greet">Good morning, traveller</div>
+          <div class="herocard"><div class="herocap">Across your groups</div><div class="heroamt">OMR 0.000</div></div>
+        </div></div>
+        <p class="note">Saffron-tint chip (existing <code>selectionFill</code>/<code>saffronSoft</code> tokens, <code>radiusPill</code>), pencil + "Set your name" (new l10n key, EN/AR). Tap → edit-name sheet. Gone once named — the after-save header is byte-identical to today's named state.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4.2 ================= -->
+  <section>
+    <h2>4.2 — Restore CTAs get a "Been here before?" frame</h2>
+    <p class="meta">Home zero-groups empty state: two bare restore <code>TextButton</code>s float under Create/Join with no context — a fresh install reads "Restore <i>what</i>?". Fix: one quiet mono-caps caption above them. Copy-only; the buttons, keys, and #804 tap-time gating are untouched (visibility stays a non-boundary). Profile's restore rows already sit under an ACCOUNT header — unchanged.</p>
+    <div class="frames">
+      <div class="frame">
+        <div class="tag before">Before</div>
+        <div class="phone"><div class="screen">
+          <div class="empty-ico">👥</div>
+          <div class="empty-t">No groups yet</div>
+          <div class="empty-b">Create a group for your next trip, or join one with an invite code.</div>
+          <div class="btn primary">＋ Create group</div>
+          <div style="height:8px"></div>
+          <div class="btn outline">Join with a code</div>
+          <div style="height:10px"></div>
+          <div class="btn ghost">Sign in with Google to restore</div>
+          <div class="btn ghost" style="font-size:12px">Restore with email instead</div>
+        </div></div>
+        <p class="note">The two restore links appear from nowhere.</p>
+      </div>
+      <div class="frame">
+        <div class="tag after">After</div>
+        <div class="phone"><div class="screen">
+          <div class="empty-ico">👥</div>
+          <div class="empty-t">No groups yet</div>
+          <div class="empty-b">Create a group for your next trip, or join one with an invite code.</div>
+          <div class="btn primary">＋ Create group</div>
+          <div style="height:8px"></div>
+          <div class="btn outline">Join with a code</div>
+          <div class="caphdr">— Been here before? —</div>
+          <div class="btn ghost">Sign in with Google to restore</div>
+          <div class="btn ghost" style="font-size:12px">Restore with email instead</div>
+        </div></div>
+        <p class="note">One caption (new l10n key, EN/AR; <code>textSecondary</code>, mono-caps like the greeting strip). Buttons untouched. Both flows kept — Google and email restore are genuinely different paths, collapsing them would change flows, not copy.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4.3 ================= -->
+  <section>
+    <h2>4.3 — Persistent one-line guest explainer</h2>
+    <p class="meta">Today the guest model is explained only by the #285 nudge card — dismiss it once and the fact "your data lives on this phone" vanishes forever (the amber pill exists only on Profile). Fix: a one-line caption under the greeting strip, shown <b>while anonymous</b>, not dismissible, quiet. It reuses the established phrase family. The nudge card itself is untouched — the caption is the residue that survives its dismissal.</p>
+    <div class="frames">
+      <div class="frame">
+        <div class="tag before">Before (nudge dismissed)</div>
+        <div class="phone"><div class="screen">
+          <div class="topbar">
+            <div class="avatar">NA</div>
+            <div class="grow"></div><div class="wordmark">Rihla</div><div class="grow"></div>
+            <div class="bell">🔔</div>
+          </div>
+          <div class="greet">Good morning, Nasser</div>
+          <div class="herocard"><div class="herocap">Across your groups</div><div class="heroamt">OMR 12.500</div></div>
+        </div></div>
+        <p class="note">Anonymous user after dismissing the backup card: zero trace of the guest model.</p>
+      </div>
+      <div class="frame">
+        <div class="tag after">After (nudge dismissed)</div>
+        <div class="phone"><div class="screen">
+          <div class="topbar">
+            <div class="avatar">NA</div>
+            <div class="grow"></div><div class="wordmark">Rihla</div><div class="grow"></div>
+            <div class="bell">🔔</div>
+          </div>
+          <div class="greet">Good morning, Nasser</div>
+          <div class="guestline">🛡 <span>Guest account — lives on this phone until you back it up in Profile.</span></div>
+          <div class="herocard"><div class="herocap">Across your groups</div><div class="heroamt">OMR 12.500</div></div>
+        </div></div>
+        <p class="note">12px <code>textSecondary</code> + small shield icon. Hidden for durable users. New l10n key (EN/AR) using the existing "lives on this phone" phrasing from the nudge body.</p>
+      </div>
+      <div class="frame">
+        <div class="tag after">After (fresh anon: 4.1 + 4.3 together)</div>
+        <div class="phone"><div class="screen">
+          <div class="topbar">
+            <div class="avatar">?</div>
+            <span class="namechip">✎ Set your name</span>
+            <div class="grow"></div><div class="wordmark">Rihla</div><div class="grow"></div>
+            <div class="bell">🔔</div>
+          </div>
+          <div class="greet">Good morning, traveller</div>
+          <div class="guestline">🛡 <span>Guest account — lives on this phone until you back it up in Profile.</span></div>
+          <div class="nudge">
+            <div class="t">🛡 Back up your account</div>
+            <div class="b">Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can't erase them.</div>
+            <div class="btn primary">Link Google account</div>
+            <div class="btn ghost">Not now</div>
+          </div>
+        </div></div>
+        <p class="note">Worst-case stacking check: chip + caption + nudge card coexist without fighting — one accent (saffron chip), everything else neutral ink.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4.4 ================= -->
+  <section>
+    <h2>4.4 — Initials selector becomes an honest static preview</h2>
+    <p class="meta">The edit-name sheet shows three tappable "initials style" chips with a selection ring — but <code>_selectedInitialsStyle</code> is never read by save, the chips reshuffle from the live text on every keystroke, and the caption promises a photo feature ("WHEN NO PHOTO") that doesn't exist. Triple false affordance. Fix: replace the row with one non-interactive preview rendering the REAL <code>RAvatar</code> derivation, honest caption. Deletes <code>_selectedInitialsStyle</code> + <code>_InitialsOption</code> outright (zero test references).</p>
+    <div class="frames">
+      <div class="frame">
+        <div class="tag before">Before</div>
+        <div class="phone"><div class="sheet">
+          <div class="st">What should we call you?</div>
+          <div class="sh">This is how friends will see you in groups.</div>
+          <div class="field"><small>Display name</small>Nasser Albusaidi</div>
+          <div class="initcap">Initials shown when no photo</div>
+          <div class="initrow">
+            <div class="initopt sel">NA</div><div class="initopt">N</div><div class="initopt">Nas</div>
+          </div>
+          <div class="actrow"><div class="cancel">Cancel</div><div class="save">Save</div></div>
+        </div></div>
+        <p class="note">Three tap targets, a selection ring, haptics — configuring nothing.</p>
+      </div>
+      <div class="frame">
+        <div class="tag after">After</div>
+        <div class="phone"><div class="sheet">
+          <div class="st">What should we call you?</div>
+          <div class="sh">This is how friends will see you in groups.</div>
+          <div class="field"><small>Display name</small>Nasser Albusaidi</div>
+          <div class="preview">
+            <div class="pavatar">NA</div>
+            <div class="pl">How you'll appear in groups</div>
+          </div>
+          <div class="actrow"><div class="cancel">Cancel</div><div class="save">Save</div></div>
+        </div></div>
+        <p class="note">One static preview: the real <code>RAvatar</code> (same derivation everywhere — no duplicate initials logic in the sheet) + plain caption (new l10n key replaces <code>editNameInitialsCaption</code>). Live-updates as you type, but nothing is tappable.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="decision">
+    <b>Packaging:</b> PR A = 4.1 + 4.2 + 4.3 (one concern: home first-run identity; they share <code>home_screen.dart</code> + ARBs so parallel PRs would conflict). PR B = 4.4 (edit-name sheet only). Both Gate-exempt; both through /automerge.<br><br>
+    <b>Out of scope, flagged:</b> the dead <code>profileAnonymousTraveller</code> l10n key (found orphaned; separate cleanup), and any change to Profile's existing set-name CTA / backup chip (already solved surfaces, their tests stay untouched).
+  </div>
+</div>
+</body>
+</html>

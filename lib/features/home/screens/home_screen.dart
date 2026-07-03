@@ -23,6 +23,7 @@ import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
+import '../../settings/widgets/edit_name_bottom_sheet.dart';
 import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
 import '../providers/dashboard_providers.dart';
@@ -31,6 +32,7 @@ import '../widgets/activity_row.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
 import '../widgets/group_glyph.dart';
+import '../widgets/guest_account_caption.dart';
 import '../widgets/journey_ticket_card.dart';
 
 /// Home dashboard — saffron travel-journal direction (v2.0).
@@ -127,6 +129,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
         controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(child: _GreetingStrip(name: _firstName())),
+          // #818 Wave 4.3: persistent guest-account explainer — the only
+          // non-dismissible statement of the "lives on this phone" fact,
+          // since the #285 backup nudge below can be dismissed forever.
+          const SliverToBoxAdapter(child: GuestAccountCaption()),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           SliverToBoxAdapter(
             child: BalanceHeroCard(onTap: _scrollToJourneys)
@@ -311,6 +317,19 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 ),
               ),
               SizedBox(height: context.spacing.space20),
+              // #818 Wave 4.2: frames the two restore CTAs below — otherwise
+              // they float with no context ("Restore *what*?" on a fresh
+              // install). Copy-only; the buttons/keys/gating are untouched.
+              Text(
+                context.l10n.homeRestoreSectionCaption.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: AppTypography.mono(
+                  fontSize: 10.5,
+                  color: context.colors.textSecondary,
+                  letterSpacing: 1.7,
+                ),
+              ),
+              SizedBox(height: context.spacing.space8),
               TextButton(
                 key: const Key('home_empty_recover_cta'),
                 // #441 PR3 / #648: cross-UID Google restore (discard-shell
@@ -461,6 +480,10 @@ class _TopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final deviceName = ref.watch(settingsProvider.select((s) => s.deviceName));
+    // #818 Wave 4.1: the "?" avatar is otherwise a dead end — nothing cues
+    // that tapping it lets you set a name. Self-hides the instant a name is
+    // saved; no dismissal flag, no SharedPreferences key.
+    final showSetNameChip = deviceName.trim().isEmpty;
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -476,6 +499,18 @@ class _TopBar extends ConsumerWidget {
               },
               child: RAvatar(name: deviceName, size: 36),
             ),
+            if (showSetNameChip) ...[
+              SizedBox(width: context.spacing.space8),
+              // Flexible (shares flex with the two Spacers below) so a
+              // narrow viewport shrinks the chip — and its label ellipsizes
+              // — rather than overflowing the Row. The avatar/wordmark/bell
+              // stay fixed-size and unaffected either way.
+              Flexible(
+                child: _SetNameChip(
+                  onTap: () => _openEditNameSheet(context, ref),
+                ),
+              ),
+            ],
             const Spacer(),
             const WordmarkLogo(size: 22),
             const Spacer(),
@@ -485,6 +520,72 @@ class _TopBar extends ConsumerWidget {
                 HapticService.lightClick();
                 context.push('/activity');
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openEditNameSheet(BuildContext context, WidgetRef ref) {
+    HapticService.lightClick();
+    // Same idiom as ProfileScreen._openEditSheet — opens EditNameBottomSheet
+    // directly rather than routing through Profile.
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colors.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => EditNameBottomSheet(
+        currentName: '',
+        onSave: (name) async {
+          await ref.read(settingsProvider.notifier).setDeviceName(name);
+        },
+      ),
+    );
+  }
+}
+
+/// Small saffron-tint pill beside the avatar prompting a first-run name
+/// (#818 Wave 4.1). Rendered only while [HomeScreen]'s deviceName is empty.
+class _SetNameChip extends StatelessWidget {
+  const _SetNameChip({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      key: HomeKeys.setNameChip,
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 4),
+        decoration: BoxDecoration(
+          color: colors.selectionFill,
+          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+          border: Border.all(color: colors.saffronSoft),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Iconsax.edit_2, size: 13, color: colors.primary),
+            SizedBox(width: context.spacing.space4),
+            Flexible(
+              child: Text(
+                context.l10n.homeSetNameChip,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.sans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: colors.primary,
+                ),
+              ),
             ),
           ],
         ),

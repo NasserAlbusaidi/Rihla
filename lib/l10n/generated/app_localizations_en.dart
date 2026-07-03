@@ -1772,6 +1772,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeRestoreWithEmail => 'Restore with email instead';
 
   @override
+  String get homeRestoreSectionCaption => 'Been here before?';
+
+  @override
+  String get homeSetNameChip => 'Set your name';
+
+  @override
+  String get homeGuestCaption =>
+      'Guest account — lives on this phone until you back it up in Profile.';
+
+  @override
   String get restoreGoogleFailed =>
       'Couldn\'t sign in with Google. Please try again.';
 

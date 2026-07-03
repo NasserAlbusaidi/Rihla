@@ -17,6 +17,14 @@ abstract final class HomeKeys {
   static const createGroupOption = Key('home_create_group_option');
   static const joinGroupOption = Key('home_join_group_option');
 
+  // #818 Wave 4.1: "Set your name" chip beside the avatar — shown only while
+  // deviceName is empty, tap opens the edit-name sheet directly.
+  static const setNameChip = Key('home_set_name_chip');
+
+  // #818 Wave 4.3: persistent one-line guest explainer under the greeting
+  // strip — shown only while the user is anonymous, never dismissible.
+  static const guestAccountCaption = Key('home_guest_account_caption');
+
   // Dashboard sections
   static const balanceHeroCard = Key('home_balance_hero_card');
   // #244: shown on the hero when the cross-group balance is a partial sum
