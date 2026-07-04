@@ -5,4 +5,4 @@
 - **screens/cross_group_activity_screen.dart**: Reverse-chronological cross-group activity timeline (tab 1)
 - **widgets/bottom_nav_shell.dart**: 3-tab nav — Groups (HomeScreen), Activity (CrossGroupActivityScreen), Profile (ProfileScreen). Tab state preserved via Stack + AnimatedOpacity + IgnorePointer; not GoRouter-driven.
 - **widgets/balance_hero_card.dart**: Aggregated net balance across all groups
-- **widgets/activity_row.dart**, **journey_ticket_card.dart**, **group_glyph.dart** (plus balance_hero_card.dart and bottom_nav_shell.dart above)
+- **widgets/journey_ticket_card.dart**, **group_glyph.dart** (plus balance_hero_card.dart and bottom_nav_shell.dart above). Activity rows (RECENTLY here + the cross-group feed) render via the shared `lib/shared/widgets/activity_row.dart` — there is no home-local activity row widget (#490).

@@ -18,6 +18,7 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
+import 'package:safar/features/home/providers/cross_group_activity_pager.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
@@ -119,6 +120,30 @@ class _PendingService extends GroupActivityService {
     int limit = 50,
   }) async {
     if (!gate.isCompleted) await gate.future;
+    return super.fetchActivityPageRaw(
+      groupId,
+      startAfter: startAfter,
+      limit: limit,
+    );
+  }
+}
+
+/// PR4: resolves normally on the FIRST fetch (the constructor's `_reload`),
+/// then hangs on [gate] on every subsequent fetch (a `loadMore()` pass) —
+/// models "page 1 is visible, page 2 is in flight" so the footer's
+/// `isLoadingMore` branch is observable with non-empty entries.
+class _PendingAfterFirstService extends GroupActivityService {
+  _PendingAfterFirstService(super.db) : super.withFirestore();
+  final Completer<void> gate = Completer<void>();
+  int _calls = 0;
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) async {
+    _calls++;
+    if (_calls > 1) await gate.future;
     return super.fetchActivityPageRaw(
       groupId,
       startAfter: startAfter,
@@ -676,6 +701,98 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('EventHub:g1/ev1'), findsOneWidget);
         expect(find.text('GroupDetail:g1'), findsNothing);
+      },
+    );
+  });
+
+  group('PR4: shared activity chrome (#490)', () {
+    testWidgets(
+      'group context renders as a bordered tag chip, not a plain text line',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final chip = find.ancestor(
+          of: find.text('Trip A'),
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w is Container &&
+                w.decoration is BoxDecoration &&
+                (w.decoration! as BoxDecoration).border != null,
+          ),
+        );
+        expect(chip, findsOneWidget);
+      },
+    );
+
+    testWidgets('today\'s day header shows the dot-date suffix (D-f)', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity('a1', 'Alice', 'created an event', at: DateTime.now()),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.textContaining('·'), findsWidgets);
+    });
+
+    testWidgets(
+      'loading-more footer renders a skeleton row, not a spinner',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        final now = DateTime(2026, 3, 28, 12);
+        await _seed(db, 'g1', [
+          for (var i = 0; i < kCrossGroupActivityPageSize; i++)
+            _activity(
+              'a$i',
+              'Actor-$i',
+              'created an event',
+              at: now.subtract(Duration(minutes: i)),
+            ),
+        ]);
+        final service = _PendingAfterFirstService(db);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: service,
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        final scrollable = find.byType(Scrollable).last;
+        for (
+          var i = 0;
+          i < 30 && find.byType(SkeletonLoader).evaluate().isEmpty;
+          i++
+        ) {
+          await tester.drag(scrollable, const Offset(0, -250));
+          await tester.pump();
+        }
+
+        expect(find.byType(SkeletonLoader), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        service.gate.complete();
+        await tester.pumpAndSettle();
       },
     );
   });

@@ -12,12 +12,14 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/wordmark_logo.dart';
+import '../../activity/utils/activity_display.dart';
 import '../../activity/utils/activity_nav.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../groups/models/group_model.dart';
@@ -30,7 +32,6 @@ import '../providers/active_journeys_provider.dart';
 import '../providers/activity_unread_provider.dart';
 import '../providers/dashboard_providers.dart';
 import '../widgets/account_backup_nudge.dart';
-import '../widgets/activity_row.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
 import '../widgets/group_glyph.dart';
@@ -232,10 +233,16 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                       )
                     : Column(
                         children: entries.take(3).map((entry) {
+                          // D-a: category icon leads, no avatar.
                           return ActivityRow(
-                            activity: entry.log,
+                            glyph: glyphForGroupActivityType(entry.log.type),
+                            actorName: entry.log.actorName,
+                            description: localizedGroupActivityText(
+                              context.l10n,
+                              entry.log,
+                            ),
+                            timestamp: entry.log.timestamp,
                             groupName: entry.groupName,
-                            groupId: entry.groupId,
                             // #852: per-type deep-link, same table as the
                             // History tab (activity_nav.dart).
                             onTap: () => context.push(

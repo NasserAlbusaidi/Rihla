@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -16,11 +17,13 @@ import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
-import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/activity_row.dart';
+import 'package:safar/shared/widgets/r_avatar.dart';
 
 // ---------------------------------------------------------------------------
 // #852: home RECENTLY rows deep-link per activity type, mirroring the History
@@ -369,5 +372,68 @@ void main() {
         expect(find.text('GroupDetail:g1'), findsOneWidget);
       });
     });
+  });
+
+  group('RECENTLY row visuals (PR4 #490, D-a)', () {
+    testWidgets(
+      'leads with the category-icon glyph, drops the avatar; group chip '
+      'and the #852 deep-link both still work',
+      (tester) async {
+        await pumpWith(
+          tester,
+          _makeActivity(
+            's1',
+            'Alice',
+            'recorded a settlement',
+            type: 'group_settlement',
+            metadata: const {
+              'amount': '12.5',
+              'fromUserId': 'uid0',
+              'toUserId': 'uid1',
+              'fromName': 'Alice',
+              'toName': 'Bob',
+              'recipientId': 'uid1',
+            },
+          ),
+        );
+
+        final scrollable = find.byType(CustomScrollView);
+        for (
+          var i = 0;
+          i < 12 && find.byType(ActivityRow).evaluate().isEmpty;
+          i++
+        ) {
+          await tester.drag(scrollable, const Offset(0, -250));
+          await tester.pump();
+        }
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.byKey(HomeKeys.activitySection),
+            matching: find.byType(RAvatar),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(HomeKeys.activitySection),
+            matching: find.byIcon(Iconsax.wallet_3),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(HomeKeys.activitySection),
+            matching: find.text('Desert Crew'),
+          ),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.byType(ActivityRow), warnIfMissed: false);
+        await tester.pumpAndSettle();
+        expect(find.text('GroupSettleUp:g1?'), findsOneWidget);
+      },
+    );
   });
 }

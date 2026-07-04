@@ -7,12 +7,15 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/localized_dates.dart';
+import '../../../core/utils/day_grouping.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../activity/keys/activity_keys.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../activity/utils/activity_nav.dart';
 import '../../groups/providers/group_provider.dart';
+import '../../../shared/widgets/activity_day_section.dart';
+import '../../../shared/widgets/activity_filter_strip.dart';
+import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
@@ -169,9 +172,31 @@ class _CrossGroupActivityScreenState
               ),
               SizedBox(height: context.spacing.space8),
             ],
-            _FilterStrip(
+            ActivityFilterStrip<_Filter>(
               current: _filter,
               onChange: (f) => setState(() => _filter = f),
+              options: [
+                ActivityFilterOption(
+                  value: _Filter.all,
+                  label: context.l10n.activityFilterAll,
+                ),
+                ActivityFilterOption(
+                  value: _Filter.settlements,
+                  label: context.l10n.activityFilterSettlements,
+                ),
+                ActivityFilterOption(
+                  value: _Filter.events,
+                  label: context.l10n.activityFilterEvents,
+                ),
+                ActivityFilterOption(
+                  value: _Filter.members,
+                  label: context.l10n.activityFilterMembers,
+                ),
+                ActivityFilterOption(
+                  value: _Filter.expenses,
+                  label: context.l10n.activityFilterExpenses,
+                ),
+              ],
             ),
             SizedBox(height: context.spacing.space8),
             Expanded(child: _buildBody(context, pager)),
@@ -242,7 +267,12 @@ class _CrossGroupActivityScreenState
       );
     }
 
-    final days = _groupByDay(context, visible, DateTime.now());
+    final days = groupByDay<CrossGroupActivityEntry>(
+      context,
+      visible,
+      DateTime.now(),
+      (e) => e.log.timestamp,
+    );
     // While a query is active and more pages remain, the footer offers an
     // explicit "search older activity" pull (#808 PR3) — in addition to the
     // scroll-near-bottom auto-prefetch.
@@ -273,7 +303,12 @@ class _CrossGroupActivityScreenState
           }
           return Padding(
             padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
-            child: _DaySection(label: days[i].label, entries: days[i].entries),
+            child: ActivityDaySection(
+              label: days[i].label,
+              dateSuffix: days[i].dateSuffix,
+              raised: true,
+              children: _buildRows(context, days[i].entries),
+            ),
           );
         },
       ),
@@ -300,19 +335,7 @@ class _Footer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (pager.isLoadingMore) {
-      return Padding(
-        padding: EdgeInsets.all(context.spacing.space16),
-        child: Center(
-          child: SizedBox(
-            width: context.spacing.space16,
-            height: context.spacing.space16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: context.colors.primary,
-            ),
-          ),
-        ),
-      );
+      return SkeletonLoader.expenseList(count: 1);
     }
     if (pager.partialFailure) {
       // Partial failure (#244 OR-drop): survivors are shown above; offer a
@@ -493,7 +516,7 @@ class _SearchField extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: colors.inputFill,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(context.spacing.radiusInput),
         ),
         padding: EdgeInsets.symmetric(horizontal: context.spacing.space12),
         child: Row(
@@ -539,304 +562,51 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-// ──────────────────────────── Filter chips
+// ──────────────────────────── Rows
 
-class _FilterStrip extends StatelessWidget {
-  const _FilterStrip({required this.current, required this.onChange});
-  final _Filter current;
-  final ValueChanged<_Filter> onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = {
-      _Filter.all: context.l10n.activityFilterAll,
-      _Filter.settlements: context.l10n.activityFilterSettlements,
-      _Filter.events: context.l10n.activityFilterEvents,
-      _Filter.members: context.l10n.activityFilterMembers,
-      _Filter.expenses: context.l10n.activityFilterExpenses,
-    };
-    return SizedBox(
-      height: 32,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-        children: [
-          for (final entry in labels.entries) ...[
-            _Chip(
-              label: entry.value,
-              active: current == entry.key,
-              onTap: () => onChange(entry.key),
-            ),
-            SizedBox(width: context.spacing.space8),
-          ],
-        ],
-      ),
-    );
-  }
+/// Builds one day's rows onto the shared [ActivityRow] — group context as the
+/// bordered tag chip (D-b); `showCurrency` stays always-on here (unchanged
+/// from today), unlike the group timeline's foreign-currency-only label.
+List<Widget> _buildRows(
+  BuildContext context,
+  List<CrossGroupActivityEntry> entries,
+) {
+  return [
+    for (var i = 0; i < entries.length; i++)
+      _buildRow(context, entries[i], i < entries.length - 1),
+  ];
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.active, required this.onTap});
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
+Widget _buildRow(
+  BuildContext context,
+  CrossGroupActivityEntry entry,
+  bool divider,
+) {
+  final log = entry.log;
+  // #808 PR2: single chokepoint — legacy settlement `amount` OR the server
+  // fan-in `amountFils`+`currency` shape (fils never through decimal-units).
+  final amount = activityAmount(log, entry.currency);
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(
-            color: active ? colors.textPrimary : colors.rule,
-            width: 0.5,
+  return ActivityRow(
+    glyph: glyphForGroupActivityType(log.type),
+    actorName: log.actorName,
+    description: localizedGroupActivityText(context.l10n, log),
+    timestamp: log.timestamp,
+    groupName: entry.groupName,
+    trailingAmount: amount == null
+        ? null
+        : RAmount(
+            // #382 PR-4: stamped settlement currency wins; legacy rows fall
+            // back to the entry's group currency. #808 PR2: expense entries
+            // carry their own per-doc currency.
+            value: amount.value,
+            currency: amount.currency,
+            size: 14,
           ),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.sans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: active ? colors.scaffoldBackground : colors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────────────────── Day section
-
-class _DaySection extends StatelessWidget {
-  const _DaySection({required this.label, required this.entries});
-  final String label;
-  final List<CrossGroupActivityEntry> entries;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: AppTypography.caption(
-                context,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: colors.textSecondary,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(child: Container(height: 0.5, color: colors.rule2)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-            boxShadow: context.shadows.raised,
-          ),
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
-          child: Column(
-            children: [
-              for (var i = 0; i < entries.length; i++)
-                _ActivityRow(
-                  entry: entries[i],
-                  divider: i < entries.length - 1,
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ──────────────────────────── Row
-
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.entry, required this.divider});
-  final CrossGroupActivityEntry entry;
-  final bool divider;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final log = entry.log;
-    final description = localizedGroupActivityText(context.l10n, log);
-    // #808 PR2: single chokepoint — legacy settlement `amount` OR the server
-    // fan-in `amountFils`+`currency` shape (fils never through decimal-units).
-    final amount = activityAmount(log, entry.currency);
-
-    return InkWell(
-      onTap: () => GoRouter.of(context)
-          .push(activityRowTarget(groupId: entry.groupId, log: entry.log)),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
-        child: Column(
-          children: [
-            Row(
-              // Top-align so the category icon pins to the first line when a
-              // long actor + verb phrase wraps to two lines (#159).
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _CategoryIcon(type: log.type),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: log.actorName,
-                              style: AppTypography.sans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                            const TextSpan(text: ' '),
-                            TextSpan(
-                              text: description,
-                              style: AppTypography.sans(
-                                fontSize: 14,
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        entry.groupName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: context.spacing.space12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (amount != null)
-                      RAmount(
-                        value: amount.value,
-                        // #382 PR-4: stamped settlement currency wins; legacy
-                        // rows fall back to the entry's group currency. #808
-                        // PR2: expense entries carry their own per-doc currency.
-                        currency: amount.currency,
-                        size: 14,
-                      )
-                    else
-                      const SizedBox.shrink(),
-                    SizedBox(height: amount != null ? 3 : 0),
-                    Text(
-                      formatRelativeShort(context, log.timestamp),
-                      style: AppTypography.caption(
-                        context,
-                        fontSize: 10,
-                        color: colors.textSecondary,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            if (divider) ...[
-              SizedBox(height: context.spacing.space12),
-              Container(height: 0.5, color: colors.rule),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryIcon extends StatelessWidget {
-  const _CategoryIcon({required this.type});
-  final String type;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final (bg, fg, icon) = switch (type) {
-      'group_settlement' => (
-        colors.cardSoft,
-        colors.success,
-        // Money/wallet glyph, not a navigation chevron (#160) — matches the
-        // group activity feed and the settle-up total chip.
-        Iconsax.wallet_3,
-      ),
-      'event_created' => (
-        colors.saffronSoft,
-        colors.primaryDark,
-        Iconsax.calendar_1,
-      ),
-      'event_deleted' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.calendar_remove,
-      ),
-      'member_joined' => (colors.cardSoft, colors.cat2, Iconsax.user_add),
-      'member_left' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.user_minus,
-      ),
-      // #808 PR2: expense fan-in entries (receipt family — a money glyph, not a
-      // navigation chevron; parallels the settlement wallet glyph, #160).
-      'expense_added' => (
-        colors.saffronSoft,
-        colors.primaryDark,
-        Iconsax.receipt_add,
-      ),
-      'expense_edited' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.receipt_edit,
-      ),
-      'expense_deleted' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.receipt_minus,
-      ),
-      _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity),
-    };
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.rule, width: 0.5),
-      ),
-      alignment: Alignment.center,
-      child: Icon(icon, size: 18, color: fg),
-    );
-  }
+    divider: divider,
+    onTap: () => GoRouter.of(context)
+        .push(activityRowTarget(groupId: entry.groupId, log: entry.log)),
+  );
 }
 
 // ──────────────────────────── Helpers
@@ -849,39 +619,4 @@ bool _matchesFilter(String type, _Filter f) {
     _Filter.members => type == 'member_joined' || type == 'member_left',
     _Filter.expenses => type.startsWith('expense_'),
   };
-}
-
-class _DayGroup {
-  const _DayGroup({required this.label, required this.entries});
-  final String label;
-  final List<CrossGroupActivityEntry> entries;
-}
-
-List<_DayGroup> _groupByDay(
-  BuildContext context,
-  List<CrossGroupActivityEntry> entries,
-  DateTime now,
-) {
-  final today = DateTime(now.year, now.month, now.day);
-  final groups = <String, List<CrossGroupActivityEntry>>{};
-  final order = <String>[];
-
-  for (final e in entries) {
-    final ts = e.log.timestamp;
-    final day = DateTime(ts.year, ts.month, ts.day);
-    final diff = today.difference(day).inDays;
-    final label = diff == 0
-        ? context.l10n.timelineToday
-        : diff == 1
-        ? context.l10n.timelineYesterday
-        : formatShortMonthDay(context, ts);
-    if (!groups.containsKey(label)) {
-      groups[label] = [];
-      order.add(label);
-    }
-    groups[label]!.add(e);
-  }
-  return [
-    for (final label in order) _DayGroup(label: label, entries: groups[label]!),
-  ];
 }
