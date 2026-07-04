@@ -1,6 +1,8 @@
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import * as messaging from 'firebase-admin/messaging';
 import { sendToUids } from '../../src/notifications/fcmSender';
+
+const notificationDeliveryTtlMs = 90 * 24 * 60 * 60 * 1000;
 
 async function clearNotificationState(): Promise<void> {
   const db = getFirestore();
@@ -175,10 +177,16 @@ describe('sendToUids', () => {
     expect(sendEach).toHaveBeenCalledTimes(1);
     const markers = await getFirestore().collection('notificationDeliveries').get();
     expect(markers.size).toBe(1);
-    expect(markers.docs[0].data()).toMatchObject({
+    const marker = markers.docs[0].data();
+    expect(marker).toMatchObject({
       key: 'expense:create:g:e:x:event-1',
       data: { type: 'expense', groupId: 'g' },
     });
+    expect(marker.createdAt).toBeInstanceOf(Timestamp);
+    expect(marker.expiresAt).toBeInstanceOf(Timestamp);
+    expect(marker.expiresAt.toMillis() - marker.createdAt.toMillis()).toBe(
+      notificationDeliveryTtlMs,
+    );
   });
 
   test('different dedupeKeys send independently', async () => {
