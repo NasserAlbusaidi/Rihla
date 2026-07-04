@@ -376,6 +376,7 @@ class _EventHeader extends StatelessWidget {
                 icon: Directionality.of(context) == TextDirection.rtl
                     ? Iconsax.arrow_right
                     : Iconsax.arrow_left,
+                semanticLabel: context.l10n.commonBack,
                 onTap: onBack,
               ),
               SizedBox(width: context.spacing.space4),
@@ -424,6 +425,7 @@ class _EventHeader extends StatelessWidget {
               RIconButton(
                 key: EventKeys.settingsButton,
                 icon: Iconsax.setting_2,
+                semanticLabel: context.l10n.ledgerEventSettingsTooltip,
                 onTap: onSettings,
               ),
             ],

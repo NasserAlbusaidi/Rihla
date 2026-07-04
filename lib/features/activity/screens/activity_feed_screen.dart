@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/localized_dates.dart';
+import '../../../core/utils/day_grouping.dart';
+import '../../../shared/widgets/activity_day_section.dart';
+import '../../../shared/widgets/activity_glyph.dart';
+import '../../../shared/widgets/activity_row.dart';
+import '../../../shared/widgets/caption_title_bar.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/embedded_panel_metrics.dart';
 import '../../events/providers/event_provider.dart';
@@ -27,8 +30,8 @@ import '../widgets/expense_audit_detail.dart';
 ///
 /// Layout, top to bottom:
 ///   1. Top bar — back · italic event name · "ACTIVITY" mono caption
-///   2. Day-grouped card-wrapped sections
-///   3. Rows: category icon (MONEY/GEAR/DOCS) · actor + logText · timeago
+///   2. Day-grouped, flat-card sections (dot-date headers, #490 D-f)
+///   3. Rows: category glyph · actor + verb · trailing amount/audit chip
 const _kPageSize = 50;
 
 class ActivityFeedScreen extends ConsumerStatefulWidget {
@@ -132,8 +135,14 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(
+            CaptionTitleBar(
+              caption: context.l10n.activityCaption,
               title: eventAsync.valueOrNull?.name ?? context.l10n.activityTitle,
+              onBack: () {
+                if (GoRouter.of(context).canPop()) {
+                  GoRouter.of(context).pop();
+                }
+              },
             ),
             const SizedBox(height: 6),
             Expanded(child: feed),
@@ -163,7 +172,12 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
         message: context.l10n.activityEventEmptyMessage,
       );
     }
-    final days = _groupByDay(context, _activities, DateTime.now());
+    final days = groupByDay(
+      context,
+      _activities,
+      DateTime.now(),
+      (log) => log.createdAt,
+    );
     return ListView.builder(
       key: ActivityKeys.feedList,
       restorationId: 'activity_feed_scroll',
@@ -182,13 +196,26 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
           // bare spinner, so the screen has ONE loading treatment (#488).
           return SkeletonLoader.expenseList(count: 1);
         }
+        final day = days[i];
         return Padding(
-          key: ValueKey('activity-day-${days[i].label}'),
+          key: ValueKey('activity-day-${day.label}'),
           padding: EdgeInsets.only(top: i == 0 ? context.spacing.space4 : 22),
-          child: _DaySection(
-            label: days[i].label,
-            entries: days[i].entries,
-            participantNames: participantNames,
+          child: ActivityDaySection(
+            label: day.label,
+            dateSuffix: day.dateSuffix,
+            // #866: flat + hairline, not raised — these rows are inert (their
+            // content affordance is the inline ExpenseAuditDetail, not a tap
+            // target); raised is the app's actionable-surface cue (#807).
+            raised: false,
+            children: [
+              for (var j = 0; j < day.entries.length; j++)
+                _activityRowFor(
+                  context,
+                  day.entries[j],
+                  divider: j < day.entries.length - 1,
+                  participantNames: participantNames,
+                ),
+            ],
           ),
         );
       },
@@ -196,312 +223,51 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
   }
 }
 
-// ──────────────────────────── Top bar
+// ──────────────────────────── Row adapter
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title});
-  final String title;
+/// Maps `category`/`eventType` onto the shared glyph vocabulary (#490 D-g).
+/// GEAR/DOCS are dead Phase-39 categories and lose their bespoke icons on
+/// purpose — they, and any unknown category, fall back to the generic glyph.
+ActivityGlyph _glyphFor(ActivityLog log) => switch ((
+  log.category,
+  log.eventType,
+)) {
+  ('MONEY', 'CREATE') => ActivityGlyph.expenseAdded,
+  ('MONEY', 'UPDATE') => ActivityGlyph.expenseEdited,
+  ('MONEY', 'DELETE') => ActivityGlyph.expenseDeleted,
+  _ => ActivityGlyph.generic,
+};
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 20, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkResponse(
-            onTap: () {
-              HapticService.lightClick();
-              if (GoRouter.of(context).canPop()) {
-                GoRouter.of(context).pop();
-              }
-            },
-            radius: 24,
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Icon(
-                Directionality.of(context) == TextDirection.rtl
-                    ? Iconsax.arrow_right
-                    : Iconsax.arrow_left,
-                size: 20,
-                color: colors.textPrimary,
-              ),
-            ),
-          ),
-          SizedBox(width: context.spacing.space4),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    context.l10n.activityCaption,
-                    style: AppTypography.caption(
-                      context,
-                      fontSize: 10,
-                      color: colors.textSecondary,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.displayOf(
-                      context,
-                      fontSize: 22,
-                      color: colors.textPrimary,
-                      letterSpacing: -0.3,
-                      height: 1.05,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ──────────────────────────── Day section + row
-
-class _DaySection extends StatelessWidget {
-  const _DaySection({
-    required this.label,
-    required this.entries,
-    required this.participantNames,
-  });
-  final String label;
-  final List<ActivityLog> entries;
-  final Map<String, String> participantNames;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: AppTypography.caption(
-                context,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: colors.textSecondary,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(child: Container(height: 0.5, color: colors.rule2)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          // #866: flat card + hairline, not raised — these rows are inert
-          // (their content affordance is the inline ExpenseAuditDetail, not a
-          // tap target); the raised treatment is the app's actionable-surface
-          // cue (#807, docs/DESIGN.md flat-vs-raised split). #852 gave the
-          // GroupActivityLog surfaces real per-row targets instead — this
-          // feed's ActivityLog model has none.
-          decoration: BoxDecoration(
-            color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-            border: Border.all(color: colors.rule2),
-          ),
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
-          child: Column(
-            children: [
-              for (var i = 0; i < entries.length; i++)
-                _ActivityRow(
-                  log: entries[i],
-                  divider: i < entries.length - 1,
-                  participantNames: participantNames,
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({
-    required this.log,
-    required this.divider,
-    required this.participantNames,
-  });
-  final ActivityLog log;
-  final bool divider;
-  final Map<String, String> participantNames;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final actor = log.actorName ?? context.l10n.activitySomeone;
-    final text = localizedEventActivityText(context.l10n, log);
-    final diff = log.category == 'MONEY'
-        ? ExpenseAuditDiff.fromMetadata(log.metadata)
-        : const ExpenseAuditDiff();
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
-      child: Column(
-        children: [
-          Row(
-            // Top-align so the category icon pins to the first line when a
-            // long actor + verb phrase wraps to two lines (#159).
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CategoryIcon(category: log.category, eventType: log.eventType),
-              SizedBox(width: context.spacing.space12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: actor,
-                            style: AppTypography.sans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          const TextSpan(text: ' '),
-                          TextSpan(
-                            text: text,
-                            style: AppTypography.sans(
-                              fontSize: 14,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (diff.hasDetail)
-                      ExpenseAuditDetail(
-                        diff: diff,
-                        eventType: log.eventType,
-                        participantNames: participantNames,
-                      ),
-                  ],
-                ),
-              ),
-              SizedBox(width: context.spacing.space8),
-              Text(
-                formatRelativeShort(context, log.createdAt),
-                style: AppTypography.caption(
-                  context,
-                  fontSize: 10,
-                  color: colors.textSecondary,
-                  letterSpacing: 0.4,
-                ),
-              ),
-            ],
-          ),
-          if (divider) ...[
-            SizedBox(height: context.spacing.space12),
-            Container(height: 0.5, color: colors.rule),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Maps `category` (MONEY / GEAR / DOCS) and `eventType` (CREATE / UPDATE /
-/// DELETE) into a colored icon tile. DELETE on any category renders muted.
-class _CategoryIcon extends StatelessWidget {
-  const _CategoryIcon({required this.category, required this.eventType});
-  final String category;
-  final String eventType;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final muted = eventType == 'DELETE';
-    final (bg, fg, icon) = switch (category) {
-      'MONEY' =>
-        muted
-            ? (colors.cardSoft, colors.textSecondary, Iconsax.money_remove)
-            : (colors.saffronSoft, colors.primaryDark, Iconsax.money_3),
-      'GEAR' =>
-        muted
-            ? (colors.cardSoft, colors.textSecondary, Iconsax.box_remove)
-            : (colors.cardSoft, colors.cat2, Iconsax.bag_2),
-      'DOCS' =>
-        muted
-            ? (colors.cardSoft, colors.textSecondary, Iconsax.document_cloud)
-            : (colors.cardSoft, colors.success, Iconsax.document_text),
-      _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity),
-    };
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.rule, width: 0.5),
-      ),
-      alignment: Alignment.center,
-      child: Icon(icon, size: 18, color: fg),
-    );
-  }
-}
-
-// ──────────────────────────── Helpers
-
-class _DayGroup {
-  const _DayGroup({required this.label, required this.entries});
-  final String label;
-  final List<ActivityLog> entries;
-}
-
-List<_DayGroup> _groupByDay(
+ActivityRow _activityRowFor(
   BuildContext context,
-  List<ActivityLog> logs,
-  DateTime now,
-) {
-  final today = DateTime(now.year, now.month, now.day);
-  // #634: hoist the constant l10n strings and the DateFormat out of the
-  // per-log loop — constructing a DateFormat parses the ICU skeleton each call,
-  // which over an unbounded paginated list is re-paid per log on every build.
-  final todayLabel = context.l10n.timelineToday;
-  final yesterdayLabel = context.l10n.timelineYesterday;
-  final monthDayFmt = shortMonthDayFormatter(context);
-  final groups = <String, List<ActivityLog>>{};
-  final order = <String>[];
-  for (final log in logs) {
-    final ts = log.createdAt;
-    final day = DateTime(ts.year, ts.month, ts.day);
-    final diff = today.difference(day).inDays;
-    final label = diff == 0
-        ? todayLabel
-        : diff == 1
-        ? yesterdayLabel
-        : monthDayFmt.format(ts);
-    if (!groups.containsKey(label)) {
-      groups[label] = [];
-      order.add(label);
-    }
-    groups[label]!.add(log);
-  }
-  return [
-    for (final label in order) _DayGroup(label: label, entries: groups[label]!),
-  ];
+  ActivityLog log, {
+  required bool divider,
+  required Map<String, String> participantNames,
+}) {
+  final diff = log.category == 'MONEY'
+      ? ExpenseAuditDiff.fromMetadata(log.metadata)
+      : const ExpenseAuditDiff();
+  final showAuditChip = log.eventType == 'UPDATE' && diff.hasFieldChange;
+  final amount = (!showAuditChip && diff.after != null)
+      ? RAmount(value: diff.after!.amount, currency: diff.after!.currency, size: 14)
+      : null;
+  return ActivityRow(
+    glyph: _glyphFor(log),
+    actorName: log.actorName ?? context.l10n.activitySomeone,
+    description: localizedEventActivityText(context.l10n, log),
+    timestamp: log.createdAt,
+    trailingAmount: amount,
+    detail: showAuditChip
+        ? ExpenseAuditDetail(
+            diff: diff,
+            eventType: log.eventType,
+            participantNames: participantNames,
+          )
+        : null,
+    muted: log.eventType == 'DELETE',
+    maxLines: 3,
+    divider: divider,
+  );
 }
 
 // ──────────────────────────── States
@@ -523,7 +289,7 @@ class _ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyStateView(
       key: ActivityKeys.errorView,
-      icon: Iconsax.activity,
+      icon: Iconsax.warning_2,
       title: context.l10n.activityLoadFailedTitle,
       message: context.l10n.activityLoadFailedMessage,
       actionLabel: context.l10n.activityReload,
