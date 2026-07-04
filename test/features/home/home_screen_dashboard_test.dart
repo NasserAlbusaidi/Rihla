@@ -23,8 +23,8 @@ import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/home/widgets/balance_hero_card.dart';
-import 'package:safar/features/home/widgets/activity_row.dart';
 import 'package:safar/features/home/widgets/journey_ticket_card.dart';
+import 'package:safar/shared/widgets/activity_row.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
