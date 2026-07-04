@@ -10,6 +10,7 @@ import 'package:safar/shared/widgets/activity_filter_strip.dart';
 import 'package:safar/shared/widgets/activity_glyph.dart';
 import 'package:safar/shared/widgets/activity_row.dart';
 import 'package:safar/shared/widgets/caption_title_bar.dart';
+import 'package:safar/shared/widgets/paper_backdrop.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpWidget(
@@ -521,6 +522,26 @@ void main() {
         ),
       );
       expect(find.byKey(const ValueKey('title')), findsOneWidget);
+    });
+  });
+
+  group('PaperBackdrop', () {
+    testWidgets('renders the child content', (tester) async {
+      await _pump(tester, const PaperBackdrop(child: Text('Hello')));
+      expect(find.text('Hello'), findsOneWidget);
+    });
+
+    testWidgets('gradient runs from paperDeep to scaffoldBackground', (
+      tester,
+    ) async {
+      await _pump(tester, const PaperBackdrop(child: SizedBox()));
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find.byType(DecoratedBox).first,
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
+      final gradient = decoration.gradient! as LinearGradient;
+      final colors = AppTheme.lightTheme.extension<AppColorTokens>()!;
+      expect(gradient.colors, [colors.paperDeep, colors.scaffoldBackground]);
     });
   });
 }
