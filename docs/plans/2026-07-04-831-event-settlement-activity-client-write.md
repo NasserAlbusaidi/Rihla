@@ -2,11 +2,13 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** An event-scoped settlement recorded from the event ledger appears as one `event_settlement` row in the group activity feed (group timeline, cross-group History, home RECENTLY, search) — corrections and decomposed settle-up slices stay invisible, exactly like `group_settlement` today.
+**Goal:** An event-scoped settlement recorded from the event ledger appears as one `event_settlement` row in the group activity feed (group timeline, cross-group History, home RECENTLY, search, and BOTH "Settlements" filter chips) — corrections and decomposed settle-up slices stay invisible, exactly like `group_settlement` today.
 
 **Architecture:** Client-side `logGroupEvent` at the event settle-up write site, mirroring the existing `group_settlement` pattern in `group_settle_up_screen.dart` byte-for-byte where possible. NO server trigger, NO schema change, NO new Cloud Function. The only backend surface is one string added to the client-type allow-list in `security/firestore.rules` (Gate-category; requires a rules deploy after merge).
 
 **Tech Stack:** Flutter/Riverpod, FakeFirebaseFirestore, Firestore rules emulator (Jest, Java 21).
+
+**v2 (Gate r1 applied):** settlements-filter predicates added to scope (both copies); rules/service anchors corrected; `eventName` threaded through the stepped walk; write-site imports named; model doc-comment update added.
 
 ---
 
@@ -22,18 +24,18 @@ The client write site KNOWS record-vs-correction at the moment of writing, so su
 
 ## Data contract — the new activity row
 
-Written by `GroupActivityService.logGroupEvent` (fire-and-forget, uuid id, ISO-string timestamp — `group_activity_service.dart:111`):
+Written by `GroupActivityService.logGroupEvent` (fire-and-forget, uuid id, ISO-string timestamp — `lib/features/groups/services/group_activity_service.dart:111`):
 
 | Field | Value |
 |---|---|
 | `type` | `'event_settlement'` |
 | `actorId` | `currentUid` (already non-null in `_recordSettlement`) |
 | `actorName` | `settingsProvider.deviceName` if non-empty else `fromName`, in try/catch falling back to `fromName` (mirror `group_settle_up_screen.dart:797-803`) |
-| `description` | `'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName'` where `counterpartyName = currentUid == toUserId ? fromName : toName` (#282 mirror; fallback-only string, never displayed for known types) |
+| `description` | `'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName'` where `counterpartyName = currentUid == toUserId ? fromName : toName` (#282 mirror; fallback-only string, never displayed for known types; for a #595 third-party recorder this names `toName` — exact parity with `group_settle_up_screen.dart:881`, accepted) |
 | `metadata` | exactly the keys below |
 | `timestamp` | written by the service |
 
-Metadata (8 keys, cap is 16; every named key already typed by `validActivityMetadata` at `security/firestore.rules:1066-1081`; `eventId` rides opaque by design):
+Metadata (8 keys, cap is 16; every named key already typed by `validActivityMetadata` at `security/firestore.rules:1066-1079`; `eventId` rides opaque by design):
 
 ```dart
 {
@@ -51,15 +53,17 @@ Metadata (8 keys, cap is 16; every named key already typed by `validActivityMeta
 Suppression contracts (structural, no classifier):
 
 1. **Correction** (`onCorrect`, `settle_up_screen.dart:366-377`) passes `logActivity: false` — mirror of the #283 comment in the group screen.
-2. **Decomposed group settle-up slices** never pass through `settle_up_screen.dart` at all (`group_settle_up_screen._recordDecomposedSettlement` writes via `addSettlement` directly and logs its ONE aggregate `group_settlement` row) — no code needed, pinned by test in Task 6.
+2. **Decomposed group settle-up slices** never pass through `settle_up_screen.dart` at all (`group_settle_up_screen._recordDecomposedSettlement` writes via `addSettlement` directly and logs its ONE aggregate `group_settlement` row) — no code needed, pinned by test in Task 7.
 
-Read paths for the new row (one per write path, named):
+Read paths for the new row (one per write path, named — the type-FILTER predicates are distinct consumers from search):
 
 - `localizedGroupActivityText` → reuses `_settlementText` direction phrases (`activity_display.dart:61-79`). **Decision:** same person→person vocabulary as `group_settlement` — zero new l10n keys; the money moved between people either way, and the event context is one tap away via the row target. `eventName` is still written for search and future phrasing.
 - `glyphForGroupActivityType` → `ActivityGlyph.settlement`.
+- **Settlements filter chips — TWO independent predicate copies** (Gate r1 [P1]): `_matches` (`lib/features/groups/screens/group_activity_screen.dart:361-368`) and `_matchesFilter` (`lib/features/home/screens/cross_group_activity_screen.dart:617-625`, applied at `:142`). Both currently `_Filter.settlements => type == 'group_settlement'` — without Task 4 the new rows vanish under the very chip named for them.
 - `activityAmount` → served by the `amountFils`+`currency` branch (`activity_display.dart:152-178`), no change.
 - `activityRowTarget` → `/group/{gid}/event/{eid}/ledger/settle-up` (route exists: `app_router.dart:62`); missing/forged `eventId` degrades to `/group/{gid}` via `_navMetadataString`.
 - `activityMatchesQuery` → no change (localized text, from/to names, formatted amount already in the haystacks).
+- Home RECENTLY rows render unfiltered — no change.
 
 ## Out of scope
 
@@ -75,7 +79,7 @@ Read paths for the new row (one per write path, named):
 
 **Files:**
 - Modify: `functions/test/firestore-rules-publish-readiness.test.ts:2857-2869`
-- Modify: `security/firestore.rules:1104-1109` (type allow-list inside `validGroupActivityCreate`)
+- Modify: `security/firestore.rules:1102-1107` (type allow-list inside `validGroupActivityCreate`)
 
 **Step 1: Extend the accept loop (RED)**
 
@@ -176,6 +180,8 @@ Expected: FAIL — falls through to `log.description` / `ActivityGlyph.generic`.
     'event_settlement' => _settlementText(l10n, log),
 ```
 
+Also update the stale type enumeration in the model doc comment (`lib/features/groups/models/group_activity_log_model.dart:8,14`) to include `event_settlement`.
+
 **Step 4: GREEN run** (same command). **Step 5: Commit** `feat(activity): render event_settlement rows with the settlement vocabulary (Refs #831)`.
 
 ### Task 3: Row target (deep link)
@@ -203,13 +209,37 @@ flutter test test/features/activity/activity_nav_test.dart
 
 **Step 4: GREEN run.** **Step 5: Commit** `feat(activity): event_settlement rows deep-link to the event settle-up (Refs #831)`.
 
-### Task 4: The write site — record logs ONE `event_settlement` row
+### Task 4: Settlements filter chips include `event_settlement` (Gate r1 [P1])
+
+**Files:**
+- Test: `test/features/groups/group_activity_filter_memo_test.dart`, `test/features/groups/group_activity_screen_test.dart`, `test/features/home/cross_group_activity_screen_test.dart` (all exist — extend the settlements-filter cases)
+- Modify: `lib/features/groups/screens/group_activity_screen.dart:364` (`_matches`)
+- Modify: `lib/features/home/screens/cross_group_activity_screen.dart:620` (`_matchesFilter`)
+
+**Step 1: Failing tests** — in each file's settlements-filter coverage, add an `event_settlement` row and assert the Settlements filter KEEPS it (alongside `group_settlement`) while events/members/expenses filters still exclude it. Update any existing assertion that pins the settlements set to `group_settlement`-only — that's the wrong set now, not a regression to preserve.
+
+**Step 2: RED run**
+```bash
+flutter test test/features/groups/group_activity_filter_memo_test.dart test/features/groups/group_activity_screen_test.dart test/features/home/cross_group_activity_screen_test.dart
+```
+Expected: FAIL — both predicates match `group_settlement` only.
+
+**Step 3: Implement** — in BOTH copies (they are independent and must not drift):
+
+```dart
+    _Filter.settlements =>
+      type == 'group_settlement' || type == 'event_settlement',
+```
+
+**Step 4: GREEN run** (same command). **Step 5: Commit** `fix(activity): settlements filter includes event_settlement rows (Refs #831)`.
+
+### Task 5: The write site — record logs ONE `event_settlement` row
 
 **Files:**
 - Test: `test/features/ledger/settle_up_screen_test.dart` (existing harness records a settlement through the screen; add an activity-collection assertion)
-- Modify: `lib/features/ledger/screens/settle_up_screen.dart` (`_recordSettlement` at :727, its two callers)
+- Modify: `lib/features/ledger/screens/settle_up_screen.dart` (`_recordSettlement` at :727, its two callers, and the stepped-walk wiring)
 
-**Step 1: Failing test** — after recording via the screen, `groups/{gid}/activity` contains exactly one doc with `type == 'event_settlement'`, `actorId == currentUid`, and the exact 8-key metadata contract (assert `amountFils` is the int subunits of the recorded amount, `eventId == widget.eventId`, direction keys match the tile).
+**Step 1: Failing test** — after recording via the screen, `groups/{gid}/activity` contains exactly one doc with `type == 'event_settlement'`, `actorId == currentUid`, and the exact 8-key metadata contract (assert `amountFils` is the int subunits of the recorded amount, `eventId == widget.eventId`, direction keys match the tile, `eventName` present).
 
 **Step 2: RED run**
 ```bash
@@ -217,7 +247,11 @@ flutter test test/features/ledger/settle_up_screen_test.dart
 ```
 Expected: FAIL — zero activity docs (this is the #831 bug, reproduced).
 
-**Step 3: Implement.** `_recordSettlement` gains two params:
+**Step 3: Implement.**
+
+New imports in `settle_up_screen.dart` (mirror the group screen's paths): `core/services/money_serializer.dart`, `features/settings/providers/settings_provider.dart`, and the groups activity-service provider (`features/groups/services/group_activity_service.dart` / its provider — copy the exact import lines from `group_settle_up_screen.dart`).
+
+`_recordSettlement` gains two params:
 
 ```dart
     bool logActivity = true,
@@ -261,11 +295,16 @@ After the success bookkeeping (after the `ledgerRevisionNotifier.state++` / conn
       }
 ```
 
-Thread `eventName: event.name` from the record caller (the step-runner around :656 already holds `eventName` for the WhatsApp nudge). Log placement is INSIDE the try success path so a failed money write never logs; queued (offline) still logs — the SDK replays both, matching group behavior.
+`eventName` threading — BOTH record paths (Gate r1 [P3]s; the two callsites are NOT both "the step-runner"):
+
+- Single-tile: `_showRecordPaymentSheet` (called at `:346`, already receives `eventName: event.name` at `:357`) forwards it to `_recordSettlement`.
+- Stepped walk: `_runSteppedSettle` currently has no event handle — rewire `onRecordStepped: _runSteppedSettle` (`:360`) to `onRecordStepped: (steps) => _runSteppedSettle(steps, eventName: event.name)` (the `event` object is in scope there), add the param, and pass it through the per-step `_showRecordPaymentSheet` call (`:436`).
+
+Log placement is INSIDE the try success path so a failed money write never logs; queued (offline) still logs — the SDK replays both, matching group behavior.
 
 **Step 4: GREEN run** (same command). **Step 5: Commit** `fix(ledger): event settle-up records an event_settlement activity row (Refs #831)`.
 
-### Task 5: Correction suppression (the #283 mirror)
+### Task 6: Correction suppression (the #283 mirror)
 
 **Files:**
 - Test: `test/features/ledger/settle_up_screen_test.dart` (or the file that exercises `onCorrect` — check `settle_up_revalidation_test.dart` / history tests for the existing correction harness)
@@ -273,7 +312,7 @@ Thread `eventName: event.name` from the record caller (the step-runner around :6
 
 **Step 1: Failing test** — drive the correct affordance on a recorded settlement; assert the offsetting settlement doc IS written and the activity collection gains NO new doc.
 
-**Step 2: RED run** — expected FAIL: after Task 4, `onCorrect` still defaults `logActivity: true`, so a second activity row appears. (Fails for exactly the right reason.)
+**Step 2: RED run** — expected FAIL: after Task 5, `onCorrect` still defaults `logActivity: true`, so a second activity row appears. (Fails for exactly the right reason.)
 
 **Step 3: Implement** — at the `onCorrect` callsite add:
 
@@ -287,7 +326,7 @@ Thread `eventName: event.name` from the record caller (the step-runner around :6
 
 **Step 4: GREEN run.** **Step 5: Commit** `fix(ledger): correction path suppresses the event_settlement activity row (Refs #831)`.
 
-### Task 6: Pin the decomposed settle-up invariant (regression guard, expected green immediately)
+### Task 7: Pin the decomposed settle-up invariant (regression guard, expected green immediately)
 
 **Files:**
 - Test: `test/features/groups/settle_up_logical_history_test.dart`
@@ -301,31 +340,31 @@ flutter test test/features/groups/settle_up_logical_history_test.dart
 
 **Step 3: Commit** `test(groups): decomposed settle-up slices emit no event_settlement rows (Refs #831)`.
 
-### Task 7: Full verification
+### Task 8: Full verification
 
 ```bash
 flutter analyze                        # clean
 bash tool/check_theme_purity.sh        # no display code added, but new widgets = trap; run anyway
-flutter test test/features/activity/ test/features/ledger/ test/features/groups/
+flutter test test/features/activity/ test/features/ledger/ test/features/groups/ test/features/home/
 cd functions && npm run test:emulator  # full rules suite
 ```
 
-### Task 8: Docs + PR
+### Task 9: Docs + PR
 
 - Update `docs/SECURITY-RULES.md` activity section: client type list is now 5 entries; `event_settlement` client-written from the event settle-up record path; corrections/decomposed slices deliberately unlogged.
-- PR body: `Closes #831` + `Spec: docs/plans/2026-07-04-831-event-settlement-activity-client-write.md` + **RED evidence** (paste Task 4 Step 2 failing output) + note **rules deploy required** (joins the pending #882/#875 deploy queue — flag for `deploy-ceremony`).
+- PR body: `Closes #831` + `Spec: docs/plans/2026-07-04-831-event-settlement-activity-client-write.md` + **RED evidence** (paste Task 5 Step 2 failing output) + note **rules deploy required** (joins the pending #882/#875 deploy queue — flag for `deploy-ceremony`).
 - Note the residual per-event-feed gap on #831 in a closing comment (server-only surface, deferred with #889).
 
 ---
 
-## Embedded Verification Pass (7 principles, run 2026-07-04 against `origin/main` @ 906ae982)
+## Embedded Verification Pass (7 principles, run 2026-07-04 against `origin/main` @ 906ae982; filter consumers added after Gate r1)
 
-1. **Callsite classification.** The new write is OUTBOUND (activity doc). Readers of `groups/{gid}/activity` rows: `group_activity_screen.dart`, `cross_group_activity_pager.dart`/History tab, home RECENTLY rows, `activityMatchesQuery` search — ALL INBOUND display-only. Nothing reads activity rows into a money write path (the #366 aggregate is settlement/expense-triggered, not activity-triggered).
-2. **Concrete claims vs code.** Allow-list at `security/firestore.rules:1104-1109` (verified by read); `validActivityMetadata` types all 5 named string keys + `amountFils` int + `currency` allow-list (:1066-1081); monitor skip is `type.startsWith('expense_')` only (`writeRateMonitor.ts:135-137`); route `/group/:gid/event/:eid/ledger/settle-up` exists (`app_router.dart:62`); `logGroupEvent` field set verified (`group_activity_service.dart:111-134`); accept/deny rules tests at `firestore-rules-publish-readiness.test.ts:2857/2869`.
-3. **One read-path per write-path.** Named above: display text (`localizedGroupActivityText`), glyph, amount (`activityAmount` fils branch), nav (`activityRowTarget`), search — each gets a task/test.
+1. **Callsite classification.** The new write is OUTBOUND (activity doc). Readers of `groups/{gid}/activity` rows: `group_activity_screen.dart` (incl. its `_matches` filter), `cross_group_activity_screen.dart`/History tab (incl. `_matchesFilter`), home RECENTLY rows, `activityMatchesQuery` search — ALL INBOUND display-only. Nothing reads activity rows into a money write path (the #366 aggregate is settlement/expense-triggered, not activity-triggered).
+2. **Concrete claims vs code.** Allow-list at `security/firestore.rules:1102-1107` (verified by read); `validActivityMetadata` types all 5 named string keys + `amountFils` int + `currency` allow-list (:1066-1079); monitor skip is `type.startsWith('expense_')` only (`writeRateMonitor.ts:135-137`); route `/group/:gid/event/:eid/ledger/settle-up` exists (`app_router.dart:62`); `logGroupEvent` field set verified (`group_activity_service.dart:111-134`); accept/deny rules tests at `firestore-rules-publish-readiness.test.ts:2857/2869`; filter predicates at `group_activity_screen.dart:361-368` / `cross_group_activity_screen.dart:617-625`; all three filter test files exist.
+3. **One read-path per write-path.** Named above: display text (`localizedGroupActivityText`), glyph, amount (`activityAmount` fils branch), filter predicates (×2, Task 4), nav (`activityRowTarget`), search — each gets a task/test. The type-filter is a distinct consumer from search — conflating them was the round-1 gap.
 4. **Fields from the type.** `GroupActivityLog`: id/type/actorId/actorName/description/metadata/timestamp (model read, `group_activity_log_model.dart:12-33`) — the write supplies all seven via `logGroupEvent`.
 5. **Exact contracts.** Metadata keys + types tabulated above; 8 keys ≤ 16 cap; `eventId` opaque by design (matches `activity_nav.dart` guard comment: rules type 11 named keys, `eventId`/`expenseId` stay opaque).
 6. **Arithmetic decomposition.** No money math changes. `amountFils = MoneySerializer.toSubunits(amount, currency)` — the settlement `amount` is already currency-quantized by the settle-up flow (same value written to the settlement doc), so subunit conversion is exact.
-7. **Orthogonal-axis worked example (corrections × decomposition).** Record OMR 3.000 event settlement A→B → 1 `event_settlement` row. Correct it → offsetting B→A settlement doc, 0 new activity rows (Task 5). Group settle-up decomposing into 2 event slices + residual → 2 event settlement docs + 1 group settlement doc, but activity = exactly 1 `group_settlement` row (Task 6). Closed event: settlements stay writable after close (epic #202 contract — `eventAcceptsExpenseWrites` replaced `eventAllowsClientWrites` for EXPENSE paths only), and `validGroupActivityCreate` gates on `groupAllowsClientWrites`, not event state → the activity row on a closed-event settlement is accepted. Consistent.
+7. **Orthogonal-axis worked example (corrections × decomposition × filter).** Record OMR 3.000 event settlement A→B → 1 `event_settlement` row, visible under "All" AND "Settlements" in both feeds. Correct it → offsetting B→A settlement doc, 0 new activity rows (Task 6). Group settle-up decomposing into 2 event slices + residual → 2 event settlement docs + 1 group settlement doc, but activity = exactly 1 `group_settlement` row (Task 7). Closed event: settlements stay writable after close (epic #202 contract — `eventAcceptsExpenseWrites` replaced `eventAllowsClientWrites` for EXPENSE paths only), and `validGroupActivityCreate` gates on `groupAllowsClientWrites`, not event state → the activity row on a closed-event settlement is accepted. Consistent.
 
 **Deploy note:** rules-only backend delta. After merge, `tool/pending_deploy.sh` will list it alongside the already-pending #882/#875 — one ceremony covers all three.
