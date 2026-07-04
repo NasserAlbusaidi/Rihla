@@ -303,6 +303,55 @@ void main() {
       expect(owedFor(balances, 'p3'), Decimal.parse('3.000'));
     });
 
+    test('shares remainder never lands on a declared-0-share key sorting last '
+        '(#872)', () {
+      // p3 sorts last with 0 shares; 1.000/3 truncates so a 0.001 residual
+      // exists. It must land on p2 (alphabetically-last POSITIVE-share
+      // recipient), never on p3 — 0 share = owes nothing.
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: [
+          expense(
+            amount: '1.000',
+            splitMode: SplitMode.shares,
+            splitDistribution: {
+              'p1': Decimal.fromInt(1),
+              'p2': Decimal.fromInt(2),
+              'p3': Decimal.zero,
+            },
+          ),
+        ],
+        participants: participants,
+      )['OMR']!;
+
+      expect(owedFor(balances, 'p1'), Decimal.parse('0.333'));
+      expect(owedFor(balances, 'p2'), Decimal.parse('0.667'));
+      expect(owedFor(balances, 'p3'), Decimal.zero);
+      expectNoNegativeOwed(balances);
+    });
+
+    test('percent remainder never lands on a declared-0-percent key sorting '
+        'last (#872)', () {
+      final balances = BalanceCalculator.calculateBalances(
+        expenses: [
+          expense(
+            amount: '1.000',
+            splitMode: SplitMode.percent,
+            splitDistribution: {
+              'p1': Decimal.parse('33.33'),
+              'p2': Decimal.parse('66.67'),
+              'p3': Decimal.zero,
+            },
+          ),
+        ],
+        participants: participants,
+      )['OMR']!;
+
+      expect(owedFor(balances, 'p1'), Decimal.parse('0.333'));
+      expect(owedFor(balances, 'p2'), Decimal.parse('0.667'));
+      expect(owedFor(balances, 'p3'), Decimal.zero);
+      expectNoNegativeOwed(balances);
+    });
+
     test(
       'percent mode with a negative entry (summing to 100) falls back to equal split',
       () {

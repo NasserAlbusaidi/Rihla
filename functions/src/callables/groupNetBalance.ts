@@ -158,8 +158,16 @@ function allocateEqual(
   return out;
 }
 
-// Weighted split (shares / percent): non-last recipients quantized; last
-// absorbs the running remainder so sum(slices) == amount exactly.
+// Weighted split (shares / percent): non-remainder recipients quantized; the
+// alphabetically-last POSITIVE-weight recipient absorbs the running remainder
+// so sum(slices) == amount exactly — never a declared-0-share key (#872).
+// Byte-for-byte mirror of the client _allocateWeighted
+// (expense_provider.dart); callers guarantee >=1 positive weight, so the
+// whole-table-last fallback is defensive only. Parity note: remainder
+// selection depends on weight positivity, and both sides decode positivity
+// identically (shares are raw ints; percent persists x1000 and decodes /1000
+// in decodeSplitValue and the client _splitValueFromPersisted alike) — keep
+// those decodes in lockstep or the oracle drifts.
 function allocateWeighted(
   amount: Decimal,
   weights: Map<string, Decimal>,
@@ -167,17 +175,23 @@ function allocateWeighted(
   currency: string,
 ): Map<string, Decimal> {
   const sorted = [...weights.keys()].sort();
-  const out = new Map<string, Decimal>();
+  let remainderKey = sorted[sorted.length - 1];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (weights.get(sorted[i])!.gt(0)) {
+      remainderKey = sorted[i];
+      break;
+    }
+  }
+  const allocations = new Map<string, Decimal>();
   let allocated = new Money(0);
-  sorted.forEach((id, i) => {
-    const isLast = i === sorted.length - 1;
-    const allocation = isLast
-      ? amount.minus(allocated)
-      : quantize(amount.times(weights.get(id)!).div(denominator), currency);
-    out.set(id, allocation);
+  for (const id of sorted) {
+    if (id === remainderKey) continue;
+    const allocation = quantize(amount.times(weights.get(id)!).div(denominator), currency);
+    allocations.set(id, allocation);
     allocated = allocated.plus(allocation);
-  });
-  return out;
+  }
+  allocations.set(remainderKey, amount.minus(allocated));
+  return new Map(sorted.map((id) => [id, allocations.get(id)!]));
 }
 
 function allocateShares(
