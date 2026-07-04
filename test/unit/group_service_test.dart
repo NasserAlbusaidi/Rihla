@@ -1,13 +1,46 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+
+// #874: mocks for the offline-atomicity regression. FakeFirebaseFirestore acks
+// instantly, so it cannot distinguish "member/event chained on commit().then()"
+// (dropped offline) from "member/event in the batch" — both end up written under
+// the fake. Modelling a never-acking commit() needs a mocktail FirebaseFirestore.
+class _MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+
+// Hand-rolled counting WriteBatch. mocktail cannot cleanly match the generic
+// `set<T>` (the group map infers T=Map<String,Object?>, others Map<String,dynamic>),
+// so we implement set<T> directly and count. commit() returns a caller-supplied
+// future so the test can model offline (never acks).
+class _CountingWriteBatch implements WriteBatch {
+  _CountingWriteBatch(this._commit);
+  final Future<void> _commit;
+  int setCount = 0;
+
+  @override
+  void set<T>(DocumentReference<T> document, T data, [SetOptions? options]) {
+    setCount++;
+  }
+
+  @override
+  Future<void> commit() => _commit;
+
+  @override
+  void delete(DocumentReference<Object?> document) {}
+
+  @override
+  void update(DocumentReference<Object?> document, Map<Object, Object?> data) {}
+}
 
 void main() {
   group('GroupService', () {
@@ -379,12 +412,14 @@ void main() {
         expect(event.isClosed, isFalse);
       });
 
-      test('offline (unacked batch) stages no event yet — the seed is chained '
-          'on the group ack like the member write', () async {
-        // stageGroup's guards run synchronously; the event write must not be
-        // issued before the batch acks (rules ordering). FakeFirebaseFirestore
-        // acks instantly, so pin the CHAIN SHAPE instead: after ack, member and
-        // event both exist (the chain completed in order without throwing).
+      test('#874 all four founding docs land in ONE atomic batch — group, '
+          'inviteCode, member, seeded event', () async {
+        // #874: group + inviteCode + creator member + seeded event are written
+        // in a single WriteBatch (one atomic mutation), NOT chained on
+        // batch.commit().then(). FakeFirebaseFirestore acks instantly so this
+        // only checks the end-state (all four present after ack); the offline
+        // discriminator (that member+event are IN the batch, not chained on a
+        // never-acking commit) is the mocktail test below.
         final fakeDb = FakeFirebaseFirestore();
         final service = await seedService(fakeDb);
 
@@ -403,6 +438,69 @@ void main() {
             .get();
         expect(members.docs.length, 1);
         expect(events.docs.length, 1);
+      });
+    });
+
+    // #874: offline group creation must not lose the creator member doc or the
+    // #245 seeded event. The pre-fix code chained both on
+    // `batch.commit().then().then()`; commit()'s future acks only on SERVER ack,
+    // so OFFLINE the .then callbacks never fire → member + event are never issued
+    // to the SDK (empty shell; permanent loss on process-kill). The fix issues
+    // all four writes into ONE WriteBatch (atomic, offline-correct, no FlutterFire
+    // host-call reorder race). This regression pins that the member + event
+    // writes are part of the BATCH, not chained behind a (here, never-acking)
+    // commit — the exact behaviour FakeFirebaseFirestore cannot exercise.
+    group('#874 offline founding batch is atomic', () {
+      test('member + event writes are in the WriteBatch, not chained on '
+          'commit() — batch.set called 4× even when commit never acks', () {
+        final db = _MockFirebaseFirestore();
+        // Model offline: commit() applies the batch to the local cache but its
+        // future never resolves (server never acks) — so any member/event write
+        // chained on commit().then() (pre-fix) never fires.
+        final commit = Completer<void>();
+        final batch = _CountingWriteBatch(commit.future);
+
+        // Build the doc-ref chain (db.collection(g).doc(gid).collection(sub).doc(id))
+        // from a real FakeFirebaseFirestore so we don't implement the sealed
+        // CollectionReference/DocumentReference types; the counting batch ignores
+        // the actual refs. batch() returns the counting fake.
+        final refSource = FakeFirebaseFirestore();
+        when(() => db.collection(any())).thenAnswer(
+          (inv) => refSource.collection(inv.positionalArguments.first as String),
+        );
+        when(db.batch).thenReturn(batch);
+
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Nasser',
+        });
+
+        return SharedPreferences.getInstance().then((prefs) {
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  db,
+                  currentUserId: 'creator-uid-874',
+                ),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+          final service = container.read(groupServiceProvider);
+
+          // stageGroup is SYNCHRONOUS — the four batch.set calls fire during its
+          // body, before commit() (which never acks) could gate anything.
+          service.stageGroup(name: 'Offline Trip', currency: 'OMR');
+
+          verify(db.batch).called(1);
+          // Pre-fix: only group + inviteCode land in the batch → 2; member/event
+          // are chained on commit().then() which never fires offline → RED.
+          // Post-fix: all four are batch.set → 4 → GREEN.
+          expect(batch.setCount, 4);
+          expect(commit.isCompleted, isFalse);
+        });
       });
     });
 
