@@ -112,6 +112,45 @@ describe('writeRateMonitor', () => {
     expect((await counter('g1', 'ga-uid'))?.count).toBe(1);
   });
 
+  // #889: a marked settlement-correction reverse is a server-owned offsetting
+  // row (Admin SDK, stamped createdBy: callerUid) — a 21-slice logical
+  // correction would otherwise bill 22 counted writes to one tap.
+  test('#889 T1 event settlement carrying correctionOfSettlementId is NOT counted', async () => {
+    await wrapEvent(eventCreate(
+      { createdBy: 'caller', amountFils: 500, correctionOfSettlementId: 'orig1' },
+      { gid: 'g1', eid: 'e1', module: 'settlements', docId: 'correction1' },
+    ));
+
+    expect(await counter('g1', 'caller')).toBeUndefined();
+  });
+
+  test('#889 T1 an UNMARKED event settlement (even with a sentinel note) is STILL counted', async () => {
+    await wrapEvent(eventCreate(
+      { createdBy: 'payer', amountFils: 500, note: 'Correction of a recorded payment' },
+      { gid: 'g1', eid: 'e1', module: 'settlements', docId: 's1' },
+    ));
+
+    expect((await counter('g1', 'payer'))?.count).toBe(1);
+  });
+
+  test('#889 T2 group settlement carrying correctionOfSettlementId is NOT counted', async () => {
+    await wrapGroupSettlement(groupSettlementCreate(
+      { createdBy: 'caller', amountFils: 700, correctionOfSettlementId: 'orig2' },
+      { gid: 'g1', settlementId: 'correction2' },
+    ));
+
+    expect(await counter('g1', 'caller')).toBeUndefined();
+  });
+
+  test('#889 T2 an UNMARKED group settlement create is STILL counted', async () => {
+    await wrapGroupSettlement(groupSettlementCreate(
+      { createdBy: 'gs-uid', amountFils: 700 },
+      { gid: 'g1', settlementId: 'gs1' },
+    ));
+
+    expect((await counter('g1', 'gs-uid'))?.count).toBe(1);
+  });
+
   test('#808 a server fan-in expense_* group activity create is NOT counted (T1 already counted the expense)', async () => {
     await wrapGroupActivity(groupActivityCreate(
       { actorId: 'fan-uid', type: 'expense_added', description: 'added Dinner (10.500 OMR)' },

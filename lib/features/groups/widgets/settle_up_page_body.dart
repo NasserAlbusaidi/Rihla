@@ -15,6 +15,7 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/utils/correction_note.dart';
+import '../../ledger/utils/settlement_correction_affordance.dart';
 import '../keys/group_keys.dart';
 import '../services/member_name_resolver.dart';
 import '../widgets/group_settlement_summary.dart';
@@ -716,13 +717,18 @@ class _PaymentHistorySection extends StatelessWidget {
 
     if (onCorrectLogical == null) {
       for (var i = 0; i < settlements.length; i++) {
+        final settlement = settlements[i];
         children.add(
           _HistoryTile(
-            settlement: settlements[i],
+            settlement: settlement,
             displayNames: displayNames,
             subjectName: subjectName,
             index: i,
             onCorrect: onCorrect,
+            soloCorrectionHidden: isSoloCorrectionHidden(
+              settlement,
+              settlements,
+            ),
           ),
         );
       }
@@ -739,6 +745,10 @@ class _PaymentHistorySection extends StatelessWidget {
                 subjectName: subjectName,
                 index: i,
                 onCorrect: onCorrect,
+                soloCorrectionHidden: isSoloCorrectionHidden(
+                  settlement,
+                  settlements,
+                ),
               ),
             );
           case LogicalHistoryRow():
@@ -750,7 +760,7 @@ class _PaymentHistorySection extends StatelessWidget {
                 index: i,
                 overrideAmount: row.totalAmount,
                 isCorrectedLogical: row.isCorrected,
-                onCorrectLogical: row.isCorrected
+                onCorrectLogical: row.affordanceCorrected
                     ? null
                     : () => onCorrectLogical!(row.groupSettleUpId),
               ),
@@ -783,14 +793,19 @@ class SoloHistoryRow extends HistoryRow {
 /// settlements + residual of one decomposed settle-up (#752/#753) collapsed into
 /// ONE row. [totalAmount] folds only the NON-correction docs (= the logical
 /// transfer A); [isCorrected] is true once a tagged reverse (correction note) is
-/// present — the atomic reverse means its presence implies the WHOLE settle-up
-/// was reversed, so it is the idempotency signal that hides the correct button.
+/// present — DISPLAY only (accent/tag), note-based, unchanged by #889.
+/// [affordanceCorrected] is the #889 marker/bounded-legacy write-affordance
+/// signal that hides the correct button — true only when EVERY eligible
+/// original in the tagged set provably has a valid reverse; a partially-marked
+/// set keeps [isCorrected] displaying "corrected" while the action stays live
+/// so the callable can repair the remainder (intentional transient).
 class LogicalHistoryRow extends HistoryRow {
   const LogicalHistoryRow({
     required this.groupSettleUpId,
     required this.representative,
     required this.totalAmount,
     required this.isCorrected,
+    required this.affordanceCorrected,
     required this.settledAt,
   });
 
@@ -800,6 +815,7 @@ class LogicalHistoryRow extends HistoryRow {
   final Settlement representative;
   final Decimal totalAmount;
   final bool isCorrected;
+  final bool affordanceCorrected;
   final DateTime settledAt;
 }
 
@@ -849,6 +865,7 @@ List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
         representative: originals.first,
         totalAmount: total,
         isCorrected: members.any((m) => isCorrectionNote(m.note)),
+        affordanceCorrected: logicalSetAffordanceCorrected(members),
         settledAt: settledAt,
       ),
     );
@@ -866,6 +883,7 @@ class _HistoryTile extends StatelessWidget {
     this.overrideAmount,
     this.isCorrectedLogical = false,
     this.onCorrectLogical,
+    this.soloCorrectionHidden = false,
   });
 
   final Settlement settlement;
@@ -877,6 +895,12 @@ class _HistoryTile extends StatelessWidget {
   /// "correct this payment" affordance that records an offsetting reverse
   /// settlement after a confirmation dialog.
   final void Function(Settlement settlement)? onCorrect;
+
+  /// #889: hides the SOLO Correct button (`onCorrect` branch only, never the
+  /// logical branch) when [settlement] is already a marked correction or a
+  /// bounded-legacy note-only correction target — computed by the caller from
+  /// its OWN screen's settlement list (`isSoloCorrectionHidden`).
+  final bool soloCorrectionHidden;
 
   /// #753 logical-row overrides (set only when this tile renders a
   /// [LogicalHistoryRow]). [overrideAmount] is the logical total A (shown +
@@ -1101,7 +1125,9 @@ class _HistoryTile extends StatelessWidget {
               // not be piecemeal-corrected. A LOGICAL row (onCorrectLogical set)
               // reverses the whole settle-up atomically and hides once corrected
               // (isCorrectedLogical → onCorrectLogical passed null upstream).
-              if (((onCorrect != null && settlement.groupSettleUpId == null) ||
+              if (((onCorrect != null &&
+                          settlement.groupSettleUpId == null &&
+                          !soloCorrectionHidden) ||
                       onCorrectLogical != null) &&
                   payerId != null &&
                   payerId.isNotEmpty &&

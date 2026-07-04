@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/groups/models/claim_models.dart';
+import '../../features/ledger/models/correct_settlement_result.dart';
 import '../config/firebase_config.dart';
 
 /// Provider for [FirebaseFunctionsService]. Override in tests to inject a fake
@@ -123,5 +124,57 @@ class FirebaseFunctionsService {
         .httpsCallable('listGroupClaimRequests')
         .call({'groupId': groupId});
     return GroupClaimRequest.listFromData(result.data);
+  }
+
+  // -------------------------------------------------------------------------
+  // #889 — server-authoritative settlement corrections. Replace the old
+  // client-direct reverse writes (solo `onCorrect` sites + the deleted
+  // `SettlementCorrectionService` WriteBatch) so every reverse row carries the
+  // un-forgeable `correctionOfSettlementId` marker (rules deny the key on
+  // client creates). Corrections are ONLINE-ONLY (HTTPS callables don't use
+  // Firestore's offline write queue) — callers must never show queued-success
+  // copy on these paths. Append-only (B3): originals are never mutated.
+  // -------------------------------------------------------------------------
+
+  /// Invoke the `correctSettlement` callable — a solo correction of one
+  /// recorded payment, `scope: 'event'` (settle_up_screen.dart) or
+  /// `scope: 'group'` (group_settle_up_screen.dart standalone correction).
+  /// Throws [FirebaseFunctionsException] which callers map to UX.
+  Future<CorrectSettlementResult> correctSettlement({
+    required String groupId,
+    required String scope,
+    String? eventId,
+    required String settlementId,
+    required String correctionNote,
+  }) async {
+    final result = await _functions.httpsCallable('correctSettlement').call({
+      'groupId': groupId,
+      'scope': scope,
+      'eventId': ?eventId,
+      'settlementId': settlementId,
+      'correctionNote': correctionNote,
+    });
+    return CorrectSettlementResult.fromData(result.data);
+  }
+
+  /// Invoke the `correctLogicalSettleUp` callable — reverses every live doc
+  /// (event-scope slices + group-scope residual) sharing one `groupSettleUpId`
+  /// atomically. Replaces the deleted `SettlementCorrectionService` client
+  /// `WriteBatch` (#753) — the server validates the FULL logical set, past
+  /// what rules-side `get()` validation on a client batch could afford for a
+  /// large settle-up. Throws [FirebaseFunctionsException].
+  Future<CorrectSettlementResult> correctLogicalSettleUp({
+    required String groupId,
+    required String groupSettleUpId,
+    required String correctionNote,
+  }) async {
+    final result = await _functions
+        .httpsCallable('correctLogicalSettleUp')
+        .call({
+          'groupId': groupId,
+          'groupSettleUpId': groupSettleUpId,
+          'correctionNote': correctionNote,
+        });
+    return CorrectSettlementResult.fromData(result.data);
   }
 }

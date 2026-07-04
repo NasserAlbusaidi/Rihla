@@ -95,6 +95,20 @@ async function recordWrite(gid: string, uid: string): Promise<void> {
   }
 }
 
+// #889: presence-only marker check — same un-forgeability rationale as the
+// #526/#808 activity_logs/expense_* skips below: rules deny a client-created
+// `correctionOfSettlementId` (firestore.rules event/group settlement
+// hasOnly() key lists), so presence alone proves a server-written correction
+// reverse. Deliberately a LOCAL copy, not an import of
+// callables/shared/settlementCorrection.ts's isMarkedCorrection — triggers
+// stay presence-only with no shared-classifier dependency (delta 3). If a
+// future rules edit ever admits a client-written marker, this skip becomes
+// forgeable.
+function isMarkedCorrection(data: DocumentData): boolean {
+  const value = data.correctionOfSettlementId;
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 async function countCreate(
   gid: string,
   snap: { data(): DocumentData; ref: { path: string } } | undefined,
@@ -114,6 +128,12 @@ export const eventWriteRateMonitor = onDocumentCreated(
   'groups/{gid}/events/{eid}/{module}/{docId}',
   (event) => {
     if (!COUNTED_EVENT_MODULES.has(event.params.module)) return Promise.resolve();
+    // #889: a marked settlement-correction reverse is a server-owned
+    // offsetting row (Admin SDK), not a fresh user write — skip it. Cross-ref:
+    // settlementNotifier.ts's same-marker skip; firestore.rules
+    // validEventSettlementBase hasOnly() key list (the marker's absence there
+    // is what makes this skip un-forgeable).
+    if (isMarkedCorrection(event.data?.data() ?? {})) return Promise.resolve();
     return countCreate(event.params.gid, event.data);
   },
 );
@@ -121,7 +141,12 @@ export const eventWriteRateMonitor = onDocumentCreated(
 // T2 — group-level settlements.
 export const groupSettlementWriteRateMonitor = onDocumentCreated(
   'groups/{gid}/settlements/{settlementId}',
-  (event) => countCreate(event.params.gid, event.data),
+  (event) => {
+    // #889: cross-ref: settlementNotifier.ts's same-marker skip;
+    // firestore.rules validGroupSettlementBase hasOnly() key list.
+    if (isMarkedCorrection(event.data?.data() ?? {})) return Promise.resolve();
+    return countCreate(event.params.gid, event.data);
+  },
 );
 
 // T3 — group-level activity. expense_* entries are the expenseAuditLogger's

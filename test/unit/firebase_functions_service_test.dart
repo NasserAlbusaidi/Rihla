@@ -167,6 +167,145 @@ void main() {
       );
     });
   });
+
+  // -------------------------------------------------------------------------
+  // #889 — settlement correction callables. Each test pins the OUTBOUND
+  // payload keys AND the INBOUND parse into the typed CorrectSettlementResult
+  // (the wire shape is shared by both callables).
+  // -------------------------------------------------------------------------
+  group('settlement correction callables (#889)', () {
+    test(
+      'correctSettlement sends {groupId,scope,eventId,settlementId,'
+      'correctionNote} and parses the result',
+      () async {
+        final (:functions, :callable, :service) = _harness(
+          data: {
+            'eventScopeWrites': 1,
+            'groupScopeWrites': 0,
+            'repaired': false,
+            'noop': false,
+            'shouldBumpLedgerRevision': true,
+          },
+        );
+
+        final result = await service.correctSettlement(
+          groupId: 'g1',
+          scope: 'event',
+          eventId: 'e1',
+          settlementId: 's1',
+          correctionNote: 'Correction of a recorded payment',
+        );
+
+        verify(() => functions.httpsCallable('correctSettlement')).called(1);
+        final payload =
+            verify(() => callable.call(captureAny())).captured.single;
+        expect(payload, {
+          'groupId': 'g1',
+          'scope': 'event',
+          'eventId': 'e1',
+          'settlementId': 's1',
+          'correctionNote': 'Correction of a recorded payment',
+        });
+        expect(result.eventScopeWrites, 1);
+        expect(result.groupScopeWrites, 0);
+        expect(result.repaired, isFalse);
+        expect(result.noop, isFalse);
+        expect(result.shouldBumpLedgerRevision, isTrue);
+      },
+    );
+
+    test(
+      'correctSettlement omits eventId from the payload for scope: group',
+      () async {
+        final (:functions, :callable, :service) = _harness(
+          data: {
+            'eventScopeWrites': 0,
+            'groupScopeWrites': 1,
+            'repaired': false,
+            'noop': false,
+            'shouldBumpLedgerRevision': false,
+          },
+        );
+
+        final result = await service.correctSettlement(
+          groupId: 'g1',
+          scope: 'group',
+          settlementId: 's1',
+          correctionNote: 'Correction of a recorded payment',
+        );
+
+        final payload =
+            verify(() => callable.call(captureAny())).captured.single;
+        expect(payload, {
+          'groupId': 'g1',
+          'scope': 'group',
+          'settlementId': 's1',
+          'correctionNote': 'Correction of a recorded payment',
+        });
+        expect(payload, isNot(contains('eventId')));
+        expect(result.shouldBumpLedgerRevision, isFalse);
+      },
+    );
+
+    test(
+      'correctLogicalSettleUp sends {groupId,groupSettleUpId,correctionNote} '
+      'and parses a partial-repair result',
+      () async {
+        final (:functions, :callable, :service) = _harness(
+          data: {
+            'eventScopeWrites': 2,
+            'groupScopeWrites': 1,
+            'repaired': true,
+            'noop': false,
+            'shouldBumpLedgerRevision': true,
+          },
+        );
+
+        final result = await service.correctLogicalSettleUp(
+          groupId: 'g1',
+          groupSettleUpId: 'su-1',
+          correctionNote: 'Correction of a recorded payment',
+        );
+
+        verify(
+          () => functions.httpsCallable('correctLogicalSettleUp'),
+        ).called(1);
+        final payload =
+            verify(() => callable.call(captureAny())).captured.single;
+        expect(payload, {
+          'groupId': 'g1',
+          'groupSettleUpId': 'su-1',
+          'correctionNote': 'Correction of a recorded payment',
+        });
+        expect(result.eventScopeWrites, 2);
+        expect(result.groupScopeWrites, 1);
+        expect(result.repaired, isTrue);
+        expect(result.shouldBumpLedgerRevision, isTrue);
+      },
+    );
+
+    test(
+      'a missing/malformed result field degrades to a safe default, never '
+      'throws',
+      () async {
+        final (:functions, :callable, :service) = _harness(data: <String, dynamic>{});
+
+        final result = await service.correctSettlement(
+          groupId: 'g1',
+          scope: 'event',
+          eventId: 'e1',
+          settlementId: 's1',
+          correctionNote: 'note',
+        );
+
+        expect(result.eventScopeWrites, 0);
+        expect(result.groupScopeWrites, 0);
+        expect(result.repaired, isFalse);
+        expect(result.noop, isFalse);
+        expect(result.shouldBumpLedgerRevision, isFalse);
+      },
+    );
+  });
 }
 
 ({

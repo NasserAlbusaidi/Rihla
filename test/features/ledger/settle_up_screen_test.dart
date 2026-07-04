@@ -13,6 +13,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/shared/widgets/offline_banner.dart';
@@ -29,6 +30,7 @@ import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/groups/widgets/settle_up_page_body.dart';
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
+import 'package:safar/features/ledger/models/correct_settlement_result.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -39,6 +41,8 @@ import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockSettlementService extends Mock implements SettlementService {}
+
+class _MockFunctionsService extends Mock implements FirebaseFunctionsService {}
 
 class _MockUrlLauncher extends Mock
     with MockPlatformInterfaceMixin
@@ -681,10 +685,125 @@ void main() {
   );
 
   testWidgets(
-    '#831/#283: correcting a recorded payment writes the offsetting settlement '
-    'but NO event_settlement activity row',
+    '#831/#283/#889: correcting a recorded payment invokes the '
+    'correctSettlement(scope: event) callable with the original id + '
+    'sentinel note, and NO event_settlement activity row is written',
     (tester) async {
       final fakeDb = FakeFirebaseFirestore();
+      final functionsService = _MockFunctionsService();
+      when(
+        () => functionsService.correctSettlement(
+          groupId: any(named: 'groupId'),
+          scope: any(named: 'scope'),
+          eventId: any(named: 'eventId'),
+          settlementId: any(named: 'settlementId'),
+          correctionNote: any(named: 'correctionNote'),
+        ),
+      ).thenAnswer(
+        (_) async => const CorrectSettlementResult(
+          eventScopeWrites: 1,
+          groupScopeWrites: 0,
+          repaired: false,
+          noop: false,
+          shouldBumpLedgerRevision: true,
+        ),
+      );
+
+      final recorded = Settlement(
+        id: 'settlement-1',
+        tripId: eventId,
+        payerParticipantId: 'bob',
+        recipientParticipantId: 'alice',
+        payerName: 'Bob',
+        recipientName: 'Alice',
+        amount: Decimal.parse('10.000'),
+        currency: 'OMR',
+        createdBy: 'bob',
+        settledAt: DateTime(2026, 5, 17),
+      );
+
+      final overrides = [
+        firebaseFunctionsServiceProvider.overrideWithValue(functionsService),
+      ];
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'bob',
+          settlementsStream: Stream.value([recorded]),
+          extraOverrides: overrides,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SettleUpScreen)),
+      );
+
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record correction'));
+      await tester.pumpAndSettle();
+
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      verify(
+        () => functionsService.correctSettlement(
+          groupId: groupId,
+          scope: 'event',
+          eventId: eventId,
+          settlementId: 'settlement-1',
+          correctionNote: l10n.settleUpCorrectionNote,
+        ),
+      ).called(1);
+
+      // #104/#889: shouldBumpLedgerRevision: true → the home one-shot must see
+      // the new event reverse.
+      expect(container.read(ledgerRevisionProvider), 1);
+
+      // The mocked callable writes NOTHING to the fake client DB — the
+      // reverse is a server (Admin SDK) write, invisible to the client here.
+      final settlements = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .collection('settlements')
+          .get();
+      expect(settlements.docs, isEmpty);
+
+      // …and the feed must not show a reversal as a fresh payment (#283) —
+      // the callable path writes no client activity row either.
+      final activity = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('activity')
+          .get();
+      expect(activity.docs, isEmpty);
+    },
+  );
+
+  testWidgets(
+    '#889: a legacy no-op result (shouldBumpLedgerRevision: false) does NOT '
+    'bump ledgerRevisionProvider',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final functionsService = _MockFunctionsService();
+      when(
+        () => functionsService.correctSettlement(
+          groupId: any(named: 'groupId'),
+          scope: any(named: 'scope'),
+          eventId: any(named: 'eventId'),
+          settlementId: any(named: 'settlementId'),
+          correctionNote: any(named: 'correctionNote'),
+        ),
+      ).thenAnswer(
+        (_) async => const CorrectSettlementResult(
+          eventScopeWrites: 0,
+          groupScopeWrites: 0,
+          repaired: false,
+          noop: true,
+          shouldBumpLedgerRevision: false,
+        ),
+      );
 
       final recorded = Settlement(
         id: 'settlement-1',
@@ -704,9 +823,17 @@ void main() {
           fakeDb,
           currentUid: 'bob',
           settlementsStream: Stream.value([recorded]),
+          extraOverrides: [
+            firebaseFunctionsServiceProvider.overrideWithValue(
+              functionsService,
+            ),
+          ],
         ),
       );
       await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SettleUpScreen)),
+      );
 
       await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
       await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
@@ -714,7 +841,68 @@ void main() {
       await tester.tap(find.text('Record correction'));
       await tester.pumpAndSettle();
 
-      // The offsetting reverse settlement IS written…
+      expect(container.read(ledgerRevisionProvider), 0);
+    },
+  );
+
+  testWidgets(
+    '#889: an offline/failed correction shows the write-error copy and '
+    'writes nothing — never the queued/will-sync success copy',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final functionsService = _MockFunctionsService();
+      when(
+        () => functionsService.correctSettlement(
+          groupId: any(named: 'groupId'),
+          scope: any(named: 'scope'),
+          eventId: any(named: 'eventId'),
+          settlementId: any(named: 'settlementId'),
+          correctionNote: any(named: 'correctionNote'),
+        ),
+      ).thenThrow(Exception('offline'));
+
+      final recorded = Settlement(
+        id: 'settlement-1',
+        tripId: eventId,
+        payerParticipantId: 'bob',
+        recipientParticipantId: 'alice',
+        payerName: 'Bob',
+        recipientName: 'Alice',
+        amount: Decimal.parse('10.000'),
+        currency: 'OMR',
+        createdBy: 'bob',
+        settledAt: DateTime(2026, 5, 17),
+      );
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'bob',
+          settlementsStream: Stream.value([recorded]),
+          extraOverrides: [
+            firebaseFunctionsServiceProvider.overrideWithValue(
+              functionsService,
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SettleUpScreen)),
+      );
+
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record correction'));
+      await tester.pumpAndSettle();
+
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.settleUpRecordFailedGeneric), findsOneWidget);
+      expect(find.text(l10n.settleUpRecordedWillSync), findsNothing);
+      expect(find.text(l10n.settleUpRecorded), findsNothing);
+      expect(container.read(ledgerRevisionProvider), 0);
+
       final settlements = await fakeDb
           .collection('groups')
           .doc(groupId)
@@ -722,17 +910,7 @@ void main() {
           .doc(eventId)
           .collection('settlements')
           .get();
-      expect(settlements.docs, hasLength(1));
-      expect(settlements.docs.first.data()['payerParticipantId'], 'alice');
-      expect(settlements.docs.first.data()['recipientParticipantId'], 'bob');
-
-      // …but the feed must not show a reversal as a fresh payment (#283).
-      final activity = await fakeDb
-          .collection('groups')
-          .doc(groupId)
-          .collection('activity')
-          .get();
-      expect(activity.docs, isEmpty);
+      expect(settlements.docs, isEmpty);
     },
   );
 
@@ -918,6 +1096,118 @@ void main() {
       expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
     },
   );
+
+  // #889: the solo Correct button gate moves to marker/bounded-legacy —
+  // display (the accent/tag on :983-984) stays note-based and is untouched.
+  group('#889 solo Correct-button write-affordance hide', () {
+    testWidgets('a MARKED settlement hides the Correct button', (
+      tester,
+    ) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final marked = Settlement(
+        id: 'settlement-1',
+        tripId: eventId,
+        payerParticipantId: 'alice',
+        recipientParticipantId: 'bob',
+        payerName: 'Alice',
+        recipientName: 'Bob',
+        amount: Decimal.parse('10.000'),
+        currency: 'OMR',
+        createdBy: 'bob',
+        settledAt: DateTime(2026, 5, 17),
+        note: 'Correction of a recorded payment',
+        correctionOfSettlementId: 'orig-1',
+      );
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'bob',
+          settlementsStream: Stream.value([marked]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+    });
+
+    testWidgets(
+      'a bounded-legacy (pre-#889 note-only, exact inverse) correction '
+      'hides the Correct button on its SOURCE row',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        // Source is index 0 (the newest tile) so it carries the keyed button.
+        final source = Settlement(
+          id: 'settlement-1',
+          tripId: eventId,
+          payerParticipantId: 'bob',
+          recipientParticipantId: 'alice',
+          payerName: 'Bob',
+          recipientName: 'Alice',
+          amount: Decimal.parse('10.000'),
+          currency: 'OMR',
+          createdBy: 'bob',
+          settledAt: DateTime(2026, 5, 18),
+        );
+        final legacyReverse = Settlement(
+          id: 'settlement-1-rev',
+          tripId: eventId,
+          payerParticipantId: 'alice',
+          recipientParticipantId: 'bob',
+          payerName: 'Alice',
+          recipientName: 'Bob',
+          amount: Decimal.parse('10.000'),
+          currency: 'OMR',
+          createdBy: 'alice',
+          settledAt: DateTime(2026, 5, 17),
+          note: 'Correction of a recorded payment',
+        );
+
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            currentUid: 'bob',
+            settlementsStream: Stream.value([source, legacyReverse]),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'a sentinel-note settlement with NO exact inverse source stays '
+      'correctable (coincidental sentinel text is not proof of a correction)',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final coincidental = Settlement(
+          id: 'settlement-1',
+          tripId: eventId,
+          payerParticipantId: 'bob',
+          recipientParticipantId: 'alice',
+          payerName: 'Bob',
+          recipientName: 'Alice',
+          amount: Decimal.parse('10.000'),
+          currency: 'OMR',
+          createdBy: 'bob',
+          settledAt: DateTime(2026, 5, 17),
+          note: 'Correction of a recorded payment',
+        );
+
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            currentUid: 'bob',
+            settlementsStream: Stream.value([coincidental]),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
+      },
+    );
+  });
 
   testWidgets(
     '#357: an offline settlement flips connectivity to syncing '
