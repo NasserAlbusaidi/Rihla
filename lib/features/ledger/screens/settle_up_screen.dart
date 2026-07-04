@@ -6,7 +6,9 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
@@ -357,7 +359,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                   eventName: event.name,
                   groupName: group.name,
                 ),
-            onRecordStepped: _runSteppedSettle,
+            // #831: thread the event name so every stepped row's activity
+            // metadata carries it (the walk itself still never nudges).
+            onRecordStepped: (steps) =>
+                _runSteppedSettle(steps, eventName: event.name),
             // #283/#598: correct a recorded payment by recording its
             // offsetting reverse (swap payer↔recipient, same amount +
             // currency) through the same event write path — gated by the
@@ -373,6 +378,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     amount: s.amount,
                     currency: s.currency,
                     note: context.l10n.settleUpCorrectionNote,
+                    // #283/#831: corrections record the offsetting reverse but
+                    // must NOT emit an event_settlement activity entry — the
+                    // type-rendered feed would show a reversal as a fresh
+                    // payment (mirror of the group_settlement suppression).
+                    logActivity: false,
                   )
                 : null,
           );
@@ -414,7 +424,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   /// outcome (L4). Any cancel/validation-reject/write-error STOPS the walk —
   /// steps already recorded stay (append-only); re-entry recomputes the
   /// remaining buckets from live streams (L3/L5).
-  Future<void> _runSteppedSettle(List<SettleStepRequest> steps) async {
+  Future<void> _runSteppedSettle(
+    List<SettleStepRequest> steps, {
+    String? eventName,
+  }) async {
     if (steps.isEmpty) return;
     // #104/#412: capture the notifiers ONCE before the loop so the per-step
     // post-write effects survive a disposal mid-walk (the screen could rebuild
@@ -443,6 +456,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         suggestedAmount: step.suggestedAmount,
         currency: step.currency,
         stepLabel: l10n.settleUpStepIndicator(i + 1, steps.length),
+        eventName: eventName,
         showSuccessSnackbar: false,
         ledgerRevision: ledgerRevision,
         connectivity: connectivity,
@@ -553,9 +567,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     required Decimal suggestedAmount,
     required String currency,
     String? stepLabel,
-    // #367: scope for the post-record WhatsApp notify. Only the single-tile
-    // forward-record path passes these; the stepped walk leaves them null (it
-    // never nudges — see the gate below).
+    // #367: scope for the post-record WhatsApp notify (single-tile only — the
+    // stepped walk never nudges, see the gate below). #831: eventName ALSO
+    // feeds the activity-row metadata, so the stepped walk now passes it too.
     String? eventName,
     String? groupName,
     bool showSuccessSnackbar = true,
@@ -662,6 +676,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       amount: editedAmount,
       note: noteText,
       currency: currency,
+      eventName: eventName,
       showSuccessSnackbar: showSuccessSnackbar,
       ledgerRevision: ledgerRevision,
       connectivity: connectivity,
@@ -733,6 +748,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     required Decimal amount,
     required String currency,
     String? note,
+    String? eventName,
+    bool logActivity = true,
     bool showSuccessSnackbar = true,
     StateController<int>? ledgerRevision,
     ConnectivityNotifier? connectivity,
@@ -779,6 +796,44 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         connectivityNotifier.noteLocalWrite(groupId: widget.groupId); // #357
       } else {
         connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
+      }
+      if (logActivity) {
+        // #831: one activity row per recorded event settlement. Mirrors the
+        // group_settlement client write; corrections pass logActivity: false
+        // (#283: a reversal must not surface as a fresh payment). Guarded as a
+        // whole: activity logging must never affect the money outcome — a
+        // throw here would report an already-succeeded write as failed and
+        // abort a stepped walk.
+        try {
+          final deviceName = ref.read(settingsProvider).deviceName;
+          final actorName = deviceName.isNotEmpty ? deviceName : fromName;
+          final counterpartyName = currentUid == toUserId ? fromName : toName;
+          ref
+              .read(groupActivityServiceProvider)
+              .logGroupEvent(
+                groupId: widget.groupId,
+                type: 'event_settlement',
+                actorId: currentUid,
+                actorName: actorName,
+                description:
+                    'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+                metadata: {
+                  'amountFils': MoneySerializer.toSubunits(amount, currency),
+                  'currency': currency,
+                  'fromUserId': fromUserId,
+                  'toUserId': toUserId,
+                  'fromName': fromName,
+                  'toName': toName,
+                  'eventId': widget.eventId,
+                  if (eventName != null && eventName.isNotEmpty)
+                    'eventName': eventName,
+                },
+              );
+        } catch (_) {
+          // The settlement itself succeeded; a lost activity row is the
+          // accepted fire-and-forget contract (same as logGroupEvent's own
+          // catchError).
+        }
       }
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

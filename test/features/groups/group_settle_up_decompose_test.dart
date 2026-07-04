@@ -294,8 +294,16 @@ void main() {
         expect(groupService.addCalls, isEmpty);
 
         // Activity logged ONCE for the whole logical settle-up, amount = A.
+        // #831: the decomposed event-settlement SLICES must emit no
+        // event_settlement rows — they bypass settle_up_screen.dart's record
+        // path structurally (written via addSettlement here), and the one
+        // aggregate group_settlement row already represents the settle-up.
         expect(activityService.logCalls, hasLength(1));
         expect(activityService.logCalls.single.type, 'group_settlement');
+        expect(
+          activityService.logCalls.where((c) => c.type == 'event_settlement'),
+          isEmpty,
+        );
         expect(activityService.logCalls.single.metadata?['amount'], '7.75');
 
         // #818 Wave 3.1: direction keys stamped alongside the legacy shape —

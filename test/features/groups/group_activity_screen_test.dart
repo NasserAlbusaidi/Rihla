@@ -535,6 +535,22 @@ void main() {
 
       await _seedActivities(fakeDb, 'grp-filter', [
         _todayActivity(), // group_settlement — 'paid Bob'
+        // #831: event-scoped settlements must survive the Settlements chip.
+        GroupActivityLog(
+          id: 'act-event-settlement',
+          type: 'event_settlement',
+          actorId: 'uid-zed',
+          actorName: 'Zed',
+          description: 'settled OMR 2.000 with Yara',
+          metadata: const {
+            'fromUserId': 'uid-zed',
+            'toUserId': 'uid-yara',
+            'fromName': 'Zed',
+            'toName': 'Yara',
+            'eventId': 'evt-1',
+          },
+          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+        ),
         GroupActivityLog(
           id: 'act-event',
           type: 'event_created',
@@ -559,8 +575,9 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.activityFilterSettlements));
       await tester.pumpAndSettle();
 
-      // Only settlement activity visible
+      // Both settlement flavors visible (#831), events hidden
       expect(_richTextContaining('recorded a settlement'), findsOneWidget);
+      expect(_richTextContaining('paid Yara'), findsOneWidget);
       expect(_richTextContaining('created an event'), findsNothing);
     });
 

@@ -558,6 +558,16 @@ Append-only audit log for group-scoped events (member joined, group
 renamed, etc.). `validGroupActivityCreate` enforces the exact key set
 and `actorId == request.auth.uid`.
 
+Client-writable `type` allow-list (5 entries): `event_created`,
+`event_deleted`, `event_settlement` (#831 — written by the event
+settle-up record path; corrections and #752 decomposed settle-up slices
+deliberately log nothing), `group_settlement`, `member_joined`.
+`expense_*` and `member_left` are Admin-SDK-only (fan-in trigger /
+callables) — a client claiming them is a forgery. The
+`writeRateMonitor` skip list covers only the server-written `expense_*`
+types; client-written types (both settlement flavors included) are
+counted as real client writes.
+
 ### 4.10 `groups/{gid}/settlements/{sid}` (group-level, B3)
 
 Same shape as event-level settlements but scoped to the group. Used

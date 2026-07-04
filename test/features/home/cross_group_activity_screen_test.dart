@@ -619,6 +619,15 @@ void main() {
           metadata: const {'amount': '12.5'},
           at: DateTime(2026, 3, 1),
         ),
+        // #831: event-scoped settlements must survive the Settlements chip.
+        _activity(
+          's-event',
+          'Evan-Settler',
+          'settled OMR 2.000 with Yara',
+          type: 'event_settlement',
+          metadata: const {'amountFils': 2000, 'currency': 'OMR', 'eventId': 'e1'},
+          at: DateTime(2026, 3, 2),
+        ),
       ]);
       await tester.pumpWidget(
         _app(
@@ -635,6 +644,10 @@ void main() {
       expect(find.text('Nothing matches this filter'), findsNothing);
       expect(
         find.textContaining('Sara-Settler', findRichText: true),
+        findsWidgets,
+      );
+      expect(
+        find.textContaining('Evan-Settler', findRichText: true),
         findsWidgets,
       );
     });

@@ -33,6 +33,7 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/widgets/pre_settlement_review_sheet.dart';
+import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -133,6 +134,13 @@ void main() {
       ),
       settlementServiceProvider.overrideWithValue(
         settlementService ?? SettlementService.withFirestore(fakeDb),
+      ),
+      // #831: the record path fire-and-forgets an event_settlement activity
+      // row; back it with the same fake so tests can assert on
+      // groups/{gid}/activity (an unoverridden service throws [core/no-app]
+      // into its swallowing catchError → false-empty collection).
+      groupActivityServiceProvider.overrideWithValue(
+        GroupActivityService.withFirestore(fakeDb),
       ),
       ...extraOverrides,
     ];
@@ -629,6 +637,104 @@ void main() {
     expect(snap.docs.first.data()['recipientName'], equals('Alice'));
     expect(find.byType(OfflineBanner), findsOneWidget);
   });
+
+  testWidgets(
+    '#831: recording an event settlement writes ONE event_settlement activity '
+    'row with the direction+event metadata contract',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      await tester.pumpWidget(buildScreen(fakeDb));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      final activity = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('activity')
+          .get();
+
+      // The Dinner (20.000 OMR, alice paid, global split) leaves bob owing
+      // alice 10.000 — the record sheet's suggested transfer.
+      expect(activity.docs, hasLength(1));
+      final data = activity.docs.first.data();
+      expect(data['type'], 'event_settlement');
+      expect(data['actorId'], 'bob');
+      expect(data['metadata'], {
+        'amountFils': 10000, // OMR scale 1000 → 10.000
+        'currency': 'OMR',
+        'fromUserId': 'bob',
+        'toUserId': 'alice',
+        'fromName': 'Bob',
+        'toName': 'Alice',
+        'eventId': eventId,
+        'eventName': 'Beach Trip',
+      });
+    },
+  );
+
+  testWidgets(
+    '#831/#283: correcting a recorded payment writes the offsetting settlement '
+    'but NO event_settlement activity row',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+
+      final recorded = Settlement(
+        id: 'settlement-1',
+        tripId: eventId,
+        payerParticipantId: 'bob',
+        recipientParticipantId: 'alice',
+        payerName: 'Bob',
+        recipientName: 'Alice',
+        amount: Decimal.parse('10.000'),
+        currency: 'OMR',
+        createdBy: 'bob',
+        settledAt: DateTime(2026, 5, 17),
+      );
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'bob',
+          settlementsStream: Stream.value([recorded]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record correction'));
+      await tester.pumpAndSettle();
+
+      // The offsetting reverse settlement IS written…
+      final settlements = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .collection('settlements')
+          .get();
+      expect(settlements.docs, hasLength(1));
+      expect(settlements.docs.first.data()['payerParticipantId'], 'alice');
+      expect(settlements.docs.first.data()['recipientParticipantId'], 'bob');
+
+      // …but the feed must not show a reversal as a fresh payment (#283).
+      final activity = await fakeDb
+          .collection('groups')
+          .doc(groupId)
+          .collection('activity')
+          .get();
+      expect(activity.docs, isEmpty);
+    },
+  );
 
   testWidgets(
     '#595: an event PARTICIPANT who is neither payer nor recipient can record '

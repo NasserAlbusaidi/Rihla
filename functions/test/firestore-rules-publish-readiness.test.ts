@@ -2854,14 +2854,39 @@ describe('Publish readiness Firestore rules', () => {
     };
   }
 
-  test('#808 each client-written group activity type is accepted (event_created/event_deleted/group_settlement/member_joined)', async () => {
+  test('#808/#831 each client-written group activity type is accepted (event_created/event_deleted/group_settlement/member_joined/event_settlement)', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
-    for (const type of ['event_created', 'event_deleted', 'group_settlement', 'member_joined']) {
+    for (const type of ['event_created', 'event_deleted', 'group_settlement', 'member_joined', 'event_settlement']) {
       const id = `ga-ok-${type}`;
       await assertSucceeds(
         member.doc(`groups/g1/activity/${id}`).set(validGroupActivity({ id, type })),
       );
     }
+  });
+
+  // #831 — the event settle-up client write's exact metadata shape (direction
+  // keys typed by #814, eventId opaque by design).
+  test('#831 event_settlement accepts the direction+event metadata shape', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertSucceeds(
+      member.doc('groups/g1/activity/ga-831-shape').set(
+        validGroupActivity({
+          id: 'ga-831-shape',
+          type: 'event_settlement',
+          description: 'settled OMR 10.500 with Owner',
+          metadata: {
+            amountFils: 10500,
+            currency: 'OMR',
+            fromUserId: 'member',
+            toUserId: 'owner',
+            fromName: 'Member',
+            toName: 'Owner',
+            eventId: 'e1',
+            eventName: 'Trip',
+          },
+        }),
+      ),
+    );
   });
 
   test('#808 a client cannot forge server-only or unknown group activity types', async () => {

@@ -6,6 +6,7 @@ import 'package:safar/features/activity/utils/activity_display.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/l10n/generated/app_localizations_ar.dart';
 import 'package:safar/l10n/generated/app_localizations_en.dart';
+import 'package:safar/shared/widgets/activity_glyph.dart';
 
 ActivityLog _eventLog({
   required String category,
@@ -329,6 +330,72 @@ void main() {
         localizedGroupActivityText(en, _groupLog(type: 'expense_deleted')),
         en.activityGroupExpenseDeletedGeneric,
       );
+    });
+  });
+
+  group('event_settlement rows (#831)', () {
+    final en = AppLocalizationsEn();
+
+    test('renders the same direction phrases as group_settlement', () {
+      final base = {
+        'fromUserId': 'uid-payer',
+        'toUserId': 'uid-payee',
+        'fromName': 'Ali',
+        'toName': 'Sarah',
+        'eventId': 'e1',
+        'eventName': 'Muscat',
+      };
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'event_settlement', actorId: 'uid-payer', metadata: base),
+        ),
+        en.activitySettlementPaid('Sarah'),
+      );
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'event_settlement', actorId: 'uid-payee', metadata: base),
+        ),
+        en.activitySettlementReceived('Ali'),
+      );
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'event_settlement', actorId: 'uid-third', metadata: base),
+        ),
+        en.activitySettlementBetween('Ali', 'Sarah'),
+      );
+    });
+
+    test('forged/absent direction keys → generic fallback, never a crash', () {
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'event_settlement', metadata: const {'fromName': 7}),
+        ),
+        en.activityGroupSettlementDescription,
+      );
+    });
+
+    test('uses the settlement glyph', () {
+      expect(
+        glyphForGroupActivityType('event_settlement'),
+        ActivityGlyph.settlement,
+      );
+    });
+
+    test('amount renders from the amountFils shape', () {
+      final amount = activityAmount(
+        _groupLog(
+          type: 'event_settlement',
+          metadata: const {'amountFils': 10500, 'currency': 'OMR'},
+        ),
+        'USD',
+      );
+      expect(amount, isNotNull);
+      expect(amount!.value, Decimal.parse('10.500'));
+      expect(amount.currency, 'OMR');
     });
   });
 
