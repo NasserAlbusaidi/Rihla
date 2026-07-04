@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/localized_dates.dart';
+import '../../../core/utils/day_grouping.dart';
+import '../../../shared/widgets/activity_day_section.dart';
+import '../../../shared/widgets/activity_filter_strip.dart';
+import '../../../shared/widgets/activity_glyph.dart';
+import '../../../shared/widgets/activity_row.dart';
+import '../../../shared/widgets/caption_title_bar.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -23,7 +26,8 @@ import '../providers/group_provider.dart';
 ///
 /// Wireframe ref: `Wireframes/Rihla/hifi/screens-group.jsx` → `Hi_GroupActivity()`.
 /// Layout:
-///   1. Top bar — back button + centered group name
+///   1. Journal top bar — back button, ACTIVITY caption, group name as the
+///      serif display title (`CaptionTitleBar`, shared with the per-event feed)
 ///   2. Pill filter chips — All / Settlements / Events / Members
 ///   3. Day-grouped card-wrapped sections with category-icon-led rows
 ///      Day header: `TODAY · MAR 22` (mono caps, dot-separated date)
@@ -158,14 +162,51 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(title: groupName, groupId: widget.groupId),
-            _FilterStrip(
-              current: _filter,
-              onChange: (f) {
-                // #634: re-tapping the already-active chip is a no-op.
-                if (f == _filter) return;
-                setState(() => _filter = f);
+            CaptionTitleBar(
+              caption: context.l10n.activityCaption,
+              title: groupName,
+              titleKey: GroupKeys.activityScreenTitle,
+              backKey: GroupKeys.activityBackButton,
+              onBack: () {
+                if (GoRouter.of(context).canPop()) {
+                  GoRouter.of(context).pop();
+                } else {
+                  GoRouter.of(context).go('/group/${widget.groupId}');
+                }
               },
+            ),
+            ActivityFilterStrip<_Filter>(
+              current: _filter,
+              onChange: (f) => setState(() => _filter = f),
+              options: [
+                ActivityFilterOption(
+                  value: _Filter.all,
+                  label: context.l10n.activityFilterAll,
+                  key: GroupKeys.activityFilterAll,
+                ),
+                ActivityFilterOption(
+                  // P4: unify on the same key the cross-group screen uses —
+                  // both l10n values are identical today.
+                  value: _Filter.settlements,
+                  label: context.l10n.activityFilterSettlements,
+                  key: GroupKeys.activityFilterSettlements,
+                ),
+                ActivityFilterOption(
+                  value: _Filter.events,
+                  label: context.l10n.activityFilterEvents,
+                  key: GroupKeys.activityFilterEvents,
+                ),
+                ActivityFilterOption(
+                  value: _Filter.members,
+                  label: context.l10n.activityFilterMembers,
+                  key: GroupKeys.activityFilterMembers,
+                ),
+                ActivityFilterOption(
+                  value: _Filter.expenses,
+                  label: context.l10n.activityFilterExpenses,
+                  key: GroupKeys.activityFilterExpenses,
+                ),
+              ],
             ),
             SizedBox(height: context.spacing.space8),
             Expanded(child: _buildBody(context, currency)),
@@ -185,7 +226,7 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
     if (_loadFailed && _activities.isEmpty) {
       return EmptyStateView(
         key: GroupKeys.activityErrorView,
-        icon: Iconsax.activity,
+        icon: Iconsax.warning_2,
         title: context.l10n.activityLoadFailedTitle,
         message: context.l10n.activityLoadFailedMessage,
         actionLabel: context.l10n.activityReload,
@@ -208,7 +249,12 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       );
     }
 
-    final days = _groupByDay(context, filtered, DateTime.now());
+    final days = groupByDay<GroupActivityLog>(
+      context,
+      filtered,
+      DateTime.now(),
+      (log) => log.timestamp,
+    );
 
     return ListView.builder(
       controller: _scrollController,
@@ -234,28 +280,20 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
               ),
             );
           }
-          return Padding(
-            padding: EdgeInsets.all(context.spacing.space16),
-            child: Center(
-              child: SizedBox(
-                width: context.spacing.space16,
-                height: context.spacing.space16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: context.colors.primary,
-                ),
-              ),
-            ),
-          );
+          return SkeletonLoader.expenseList(count: 1);
         }
         return Padding(
           padding: EdgeInsets.only(top: i == 0 ? 4 : 22),
-          child: _DaySection(
+          child: ActivityDaySection(
             label: days[i].label,
             dateSuffix: days[i].dateSuffix,
-            entries: days[i].entries,
-            currency: currency,
-            groupId: widget.groupId,
+            raised: true,
+            children: _buildRows(
+              context,
+              days[i].entries,
+              currency,
+              widget.groupId,
+            ),
           ),
         );
       },
@@ -263,422 +301,73 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   }
 }
 
-// ──────────────────────────── Top bar
+/// Verbatim from the old `_CategoryIcon` type switch — mapped onto the
+/// shared [ActivityGlyph] vocabulary. Will be lifted into
+/// `activity_display.dart` as `glyphForGroupActivityType` in PR 4 so the
+/// cross-group feed shares one copy.
+ActivityGlyph _glyphForType(String type) => switch (type) {
+  'group_settlement' => ActivityGlyph.settlement,
+  'event_created' => ActivityGlyph.eventCreated,
+  'event_deleted' => ActivityGlyph.eventDeleted,
+  'member_joined' => ActivityGlyph.memberJoined,
+  'member_left' => ActivityGlyph.memberLeft,
+  'expense_added' => ActivityGlyph.expenseAdded,
+  'expense_edited' => ActivityGlyph.expenseEdited,
+  'expense_deleted' => ActivityGlyph.expenseDeleted,
+  _ => ActivityGlyph.generic,
+};
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.groupId});
-  final String title;
-  final String groupId;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(
-        context.spacing.space12,
-        context.spacing.space4,
-        context.spacing.space20,
-        context.spacing.space8,
-      ),
-      child: SizedBox(
-        height: 48,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: IconButton(
-                key: GroupKeys.activityBackButton,
-                tooltip: context.l10n.commonBack,
-                icon: Icon(
-                  Directionality.of(context) == TextDirection.rtl
-                      ? Iconsax.arrow_right_2
-                      : Iconsax.arrow_left_2,
-                  size: 20,
-                ),
-                color: colors.textPrimary,
-                onPressed: () {
-                  HapticService.lightClick();
-                  if (GoRouter.of(context).canPop()) {
-                    GoRouter.of(context).pop();
-                  } else {
-                    GoRouter.of(context).go('/group/$groupId');
-                  }
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 52),
-              child: Text(
-                title,
-                key: GroupKeys.activityScreenTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: AppTypography.sans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+List<Widget> _buildRows(
+  BuildContext context,
+  List<GroupActivityLog> entries,
+  String currency,
+  String groupId,
+) {
+  return [
+    for (var i = 0; i < entries.length; i++)
+      _buildRow(context, entries[i], i < entries.length - 1, currency, groupId),
+  ];
 }
 
-// ──────────────────────────── Filter chips
+Widget _buildRow(
+  BuildContext context,
+  GroupActivityLog log,
+  bool divider,
+  String currency,
+  String groupId,
+) {
+  // #808 PR2: single chokepoint — handles both the legacy settlement `amount`
+  // and the server-fan-in `amountFils`+`currency` shape (fils never rendered
+  // through the decimal-units path). #382 PR-4: a stamped bucket currency
+  // wins; legacy rows fall back to the group currency threaded in.
+  final amt = activityAmount(log, currency);
+  final description = localizedGroupActivityText(context.l10n, log);
+  // #852: per-type deep-link shared with the History tab (activity_nav.dart;
+  // total, so safe to resolve during build). A target resolving to this
+  // screen's own group root (member_*, event_deleted, unknown types, or a
+  // guard-degraded eventId) stays inert — pushing a duplicate of the parent
+  // screen is the false affordance this issue removes.
+  final target = activityRowTarget(groupId: groupId, log: log);
+  final selfTarget = target == '/group/$groupId';
 
-class _FilterStrip extends StatelessWidget {
-  const _FilterStrip({required this.current, required this.onChange});
-  final _Filter current;
-  final ValueChanged<_Filter> onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    final options = [
-      // Same key as the cross-group screen's no-filter chip — the two strips
-      // are parallel UI and must read identically.
-      (
-        _Filter.all,
-        context.l10n.activityFilterAll,
-        GroupKeys.activityFilterAll,
-      ),
-      (
-        _Filter.settlements,
-        context.l10n.activityFilterSettles,
-        GroupKeys.activityFilterSettlements,
-      ),
-      (
-        _Filter.events,
-        context.l10n.activityFilterEvents,
-        GroupKeys.activityFilterEvents,
-      ),
-      (
-        _Filter.members,
-        context.l10n.activityFilterMembers,
-        GroupKeys.activityFilterMembers,
-      ),
-      (
-        _Filter.expenses,
-        context.l10n.activityFilterExpenses,
-        GroupKeys.activityFilterExpenses,
-      ),
-    ];
-    return SizedBox(
-      height: context.spacing.space32,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-        children: [
-          for (final opt in options) ...[
-            _Chip(
-              chipKey: opt.$3,
-              label: opt.$2,
-              active: current == opt.$1,
-              onTap: () {
-                HapticService.selection();
-                onChange(opt.$1);
-              },
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.chipKey,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-  final Key chipKey;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      key: chipKey,
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(
-            color: active ? colors.textPrimary : colors.rule,
-            width: 0.5,
+  return ActivityRow(
+    glyph: _glyphForType(log.type),
+    actorName: log.actorName,
+    description: description,
+    timestamp: log.timestamp,
+    trailingAmount: amt == null
+        ? null
+        : RAmount(
+            value: amt.value,
+            currency: amt.currency,
+            size: 14,
+            // Label only foreign amounts; the group's own currency stays bare
+            // (the expense_audit_detail !sameCurrency idiom).
+            showCurrency: amt.currency != currency,
           ),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.sans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: active ? colors.scaffoldBackground : colors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────────────────── Day section + row
-
-class _DaySection extends StatelessWidget {
-  const _DaySection({
-    required this.label,
-    required this.dateSuffix,
-    required this.entries,
-    required this.currency,
-    required this.groupId,
-  });
-  final String label;
-  final String? dateSuffix;
-  final List<GroupActivityLog> entries;
-  final String currency;
-  final String groupId;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final labelStyle = AppTypography.caption(
-      context,
-      fontSize: 10,
-      fontWeight: FontWeight.w600,
-      color: colors.textSecondary,
-      letterSpacing: 2,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(label.toUpperCase(), style: labelStyle),
-            if (dateSuffix != null)
-              Text(' · ${dateSuffix!.toUpperCase()}', style: labelStyle),
-            const SizedBox(width: 10),
-            Expanded(child: Container(height: 0.5, color: colors.rule2)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-            boxShadow: context.shadows.raised,
-          ),
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
-          child: Column(
-            children: [
-              for (var i = 0; i < entries.length; i++)
-                _ActivityRow(
-                  log: entries[i],
-                  divider: i < entries.length - 1,
-                  currency: currency,
-                  groupId: groupId,
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({
-    required this.log,
-    required this.divider,
-    required this.currency,
-    required this.groupId,
-  });
-  final GroupActivityLog log;
-  final bool divider;
-  final String currency;
-  final String groupId;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    // #808 PR2: single chokepoint — handles both the legacy settlement `amount`
-    // and the server-fan-in `amountFils`+`currency` shape (fils never rendered
-    // through the decimal-units path). #382 PR-4: a stamped bucket currency
-    // wins; legacy rows fall back to the group currency threaded in.
-    final amt = activityAmount(log, currency);
-    final description = localizedGroupActivityText(context.l10n, log);
-    // #852: per-type deep-link shared with the History tab (activity_nav.dart;
-    // total, so safe to resolve during build). A target resolving to this
-    // screen's own group root (member_*, event_deleted, unknown types, or a
-    // guard-degraded eventId) stays inert — pushing a duplicate of the parent
-    // screen is the false affordance this issue removes.
-    final target = activityRowTarget(groupId: groupId, log: log);
-    final selfTarget = target == '/group/$groupId';
-
-    return InkWell(
-      onTap: selfTarget ? null : () => GoRouter.of(context).push(target),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
-        child: Column(
-          children: [
-            Row(
-              // Top-align so the category icon pins to the first line when a
-              // long actor + verb phrase wraps to two lines (#159).
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _CategoryIcon(type: log.type),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: log.actorName,
-                          style: AppTypography.sans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const TextSpan(text: ' '),
-                        TextSpan(
-                          text: description,
-                          style: AppTypography.sans(
-                            fontSize: 14,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                SizedBox(width: context.spacing.space12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (amt != null) ...[
-                      RAmount(
-                        value: amt.value,
-                        currency: amt.currency,
-                        size: 14,
-                        // Label only foreign amounts; the group's own currency
-                        // stays bare (the expense_audit_detail !sameCurrency
-                        // idiom).
-                        showCurrency: amt.currency != currency,
-                      ),
-                      const SizedBox(height: 2),
-                    ],
-                    Text(
-                      formatRelativeShort(context, log.timestamp),
-                      style: AppTypography.caption(
-                        context,
-                        fontSize: 10,
-                        color: colors.textSecondary,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            if (divider) ...[
-              SizedBox(height: context.spacing.space12),
-              Container(height: 0.5, color: colors.rule),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryIcon extends StatelessWidget {
-  const _CategoryIcon({required this.type});
-  final String type;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final sageSoft = Color.alphaBlend(
-      colors.success.withValues(alpha: 0.18),
-      colors.cardSurface,
-    );
-    final (bg, fg, icon, hasBorder) = switch (type) {
-      'group_settlement' => (
-        sageSoft,
-        colors.success,
-        // Money/wallet glyph (matches the settle-up total chip, #157) — not a
-        // bare chevron, which read as navigation amid the other category
-        // glyphs (#160).
-        Iconsax.wallet_3,
-        false,
-      ),
-      'event_created' => (
-        colors.saffronSoft,
-        colors.primaryDark,
-        Iconsax.calendar_1,
-        true,
-      ),
-      'event_deleted' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.calendar_remove,
-        true,
-      ),
-      'member_joined' => (colors.cardSoft, colors.cat2, Iconsax.user_add, true),
-      'member_left' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.user_minus,
-        true,
-      ),
-      // #808 PR2: expense fan-in entries (receipt family — a money glyph, not a
-      // navigation chevron; parallels the settlement wallet glyph, #160).
-      'expense_added' => (
-        colors.saffronSoft,
-        colors.primaryDark,
-        Iconsax.receipt_add,
-        true,
-      ),
-      'expense_edited' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.receipt_edit,
-        true,
-      ),
-      'expense_deleted' => (
-        colors.cardSoft,
-        colors.textSecondary,
-        Iconsax.receipt_minus,
-        true,
-      ),
-      _ => (colors.cardSoft, colors.textSecondary, Iconsax.activity, true),
-    };
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        border: hasBorder ? Border.all(color: colors.rule, width: 0.5) : null,
-      ),
-      alignment: Alignment.center,
-      child: Icon(icon, size: 18, color: fg),
-    );
-  }
+    divider: divider,
+    onTap: selfTarget ? null : () => GoRouter.of(context).push(target),
+  );
 }
 
 // ──────────────────────────── Helpers
@@ -691,60 +380,4 @@ bool _matches(String type, _Filter f) {
     _Filter.members => type == 'member_joined' || type == 'member_left',
     _Filter.expenses => type.startsWith('expense_'),
   };
-}
-
-class _DayGroup {
-  const _DayGroup({
-    required this.label,
-    required this.dateSuffix,
-    required this.entries,
-  });
-  final String label;
-  final String? dateSuffix;
-  final List<GroupActivityLog> entries;
-}
-
-List<_DayGroup> _groupByDay(
-  BuildContext context,
-  List<GroupActivityLog> logs,
-  DateTime now,
-) {
-  final today = DateTime(now.year, now.month, now.day);
-  // #634: hoist the constant l10n strings and the DateFormat out of the
-  // per-log loop — constructing a DateFormat parses the ICU skeleton each call.
-  final todayLabel = context.l10n.timelineToday;
-  final yesterdayLabel = context.l10n.timelineYesterday;
-  final monthDayFmt = shortMonthDayFormatter(context);
-  final buckets = <String, _DayBucket>{};
-  final order = <String>[];
-  for (final log in logs) {
-    final ts = log.timestamp;
-    final day = DateTime(ts.year, ts.month, ts.day);
-    final diff = today.difference(day).inDays;
-    final dateText = monthDayFmt.format(ts);
-    final (label, suffix) = switch (diff) {
-      0 => (todayLabel, dateText),
-      1 => (yesterdayLabel, dateText),
-      _ => (dateText, null),
-    };
-    final bucket = buckets.putIfAbsent(label, () {
-      order.add(label);
-      return _DayBucket(suffix: suffix, entries: []);
-    });
-    bucket.entries.add(log);
-  }
-  return [
-    for (final label in order)
-      _DayGroup(
-        label: label,
-        dateSuffix: buckets[label]!.suffix,
-        entries: buckets[label]!.entries,
-      ),
-  ];
-}
-
-class _DayBucket {
-  _DayBucket({required this.suffix, required this.entries});
-  final String? suffix;
-  final List<GroupActivityLog> entries;
 }

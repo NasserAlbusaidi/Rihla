@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +22,10 @@ import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_activity_screen.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/animations/tap_bounce.dart';
+import 'package:safar/shared/widgets/caption_title_bar.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
 // Test fixture data
@@ -102,6 +107,37 @@ Future<void> _seedActivities(
           'metadata': a.metadata,
           'timestamp': a.timestamp.toUtc().toIso8601String(),
         });
+  }
+}
+
+/// A [GroupActivityService] that serves the first page normally but hangs
+/// forever on the second — models an in-flight `_hasMore` pagination fetch so
+/// the loading footer can be observed in a settled widget tree without the
+/// #634-style race of an immediate zero-doc second page flipping `_hasMore`
+/// back to false before the test can assert on it.
+class _SlowSecondPageActivityService extends GroupActivityService {
+  _SlowSecondPageActivityService(super.db)
+    : _delegate = GroupActivityService.withFirestore(db),
+      super.withFirestore();
+
+  final GroupActivityService _delegate;
+  int _calls = 0;
+
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) {
+    _calls++;
+    if (_calls == 1) {
+      return _delegate.fetchActivityPageRaw(
+        groupId,
+        startAfter: startAfter,
+        limit: limit,
+      );
+    }
+    return Completer<QuerySnapshot<Map<String, dynamic>>>().future;
   }
 }
 
@@ -257,6 +293,29 @@ void main() {
       expect(find.text('Test Crew'), findsOneWidget);
     });
 
+    testWidgets(
+      'top bar is the journal CaptionTitleBar — group name as serif title, '
+      'ACTIVITY caption',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          _buildActivityScreen(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(CaptionTitleBar), findsOneWidget);
+        final bar = tester.widget<CaptionTitleBar>(
+          find.byType(CaptionTitleBar),
+        );
+        expect(bar.title, 'Test Crew');
+        expect(bar.caption, 'ACTIVITY');
+        expect(find.byKey(GroupKeys.activityScreenTitle), findsOneWidget);
+        expect(find.byKey(GroupKeys.activityBackButton), findsOneWidget);
+      },
+    );
+
     testWidgets('renders empty state when no activity entries exist', (
       tester,
     ) async {
@@ -346,8 +405,9 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
+      // CaptionTitleBar's back affordance is a bare InkResponse (no tooltip —
+      // matches the per-event feed's top bar convention).
       expect(find.byKey(GroupKeys.activityBackButton), findsOneWidget);
-      expect(find.byTooltip('Back'), findsOneWidget);
     });
 
     testWidgets('direct route back button returns to group detail', (
@@ -425,6 +485,25 @@ void main() {
       expect(find.byKey(GroupKeys.activityFilterEvents), findsOneWidget);
       expect(find.byKey(GroupKeys.activityFilterMembers), findsOneWidget);
     });
+
+    testWidgets(
+      'filter chips are the shared ActivityFilterStrip — wrapped in '
+      'TapBounce, not a bare GestureDetector',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          _buildActivityScreen(groupId: 'grp-1', fakeDb: fakeDb, prefs: prefs),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(
+          tester.widget(find.byKey(GroupKeys.activityFilterAll)),
+          isA<TapBounce>(),
+        );
+      },
+    );
 
     testWidgets('Settlements filter shows only settlement activities', (
       tester,
@@ -553,6 +632,111 @@ void main() {
       // Infinite scroll replaces 'Load more' — must not exist
       expect(find.text('Load more'), findsNothing);
     });
+
+    testWidgets(
+      'pagination footer uses the shared skeleton loader, not a bare '
+      'spinner (#488)',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final prefs = await SharedPreferences.getInstance();
+
+        // Exactly the page size (50) so _hasMore flips true and the
+        // ListView grows a trailing footer item.
+        for (var i = 0; i < 50; i++) {
+          await fakeDb
+              .collection('groups')
+              .doc('grp-footer')
+              .collection('activity')
+              .doc('act-$i')
+              .set({
+                'id': 'act-$i',
+                'type': 'event_created',
+                'actorId': 'uid1',
+                'actorName': 'Alice',
+                'description': 'Event $i',
+                'metadata': <String, dynamic>{},
+                'timestamp': DateTime.now()
+                    .subtract(Duration(minutes: i))
+                    .toUtc()
+                    .toIso8601String(),
+              });
+        }
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupActivityServiceProvider.overrideWith(
+                (ref) => _SlowSecondPageActivityService(fakeDb),
+              ),
+              groupDetailProvider(
+                'grp-footer',
+              ).overrideWith((ref) => Stream.value(_testGroup)),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const GroupActivityScreen(groupId: 'grp-footer'),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // The first (full) page settled with `_hasMore == true`. Scrolling
+        // near the bottom triggers the second page fetch, which hangs
+        // forever (per the fake service above) — the loading footer stays
+        // observable instead of racing to a resolved/empty state.
+        //
+        // The filter strip's own horizontal ListView is Scrollable #0 in the
+        // tree; the vertical activity list is #1 — target it explicitly by
+        // index (NOT `.last`: once the footer skeleton itself mounts, its
+        // internal never-scrollable SingleChildScrollView becomes the new
+        // last match). Positive delta scrolls forward (down).
+        await tester.scrollUntilVisible(
+          find.byType(SkeletonLoader),
+          300,
+          scrollable: find.byType(Scrollable).at(1),
+        );
+
+        expect(find.byType(SkeletonLoader), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'first-load error state uses the warning glyph, not the activity '
+      'glyph (P1)',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupActivityServiceProvider.overrideWith(
+                (ref) => _ThrowingActivityService(),
+              ),
+              groupDetailProvider(
+                'grp-error-icon',
+              ).overrideWith((ref) => Stream.value(_testGroup)),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const GroupActivityScreen(groupId: 'grp-error-icon'),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.activityErrorView), findsOneWidget);
+        expect(find.byIcon(Iconsax.warning_2), findsOneWidget);
+        expect(find.byIcon(Iconsax.activity), findsNothing);
+      },
+    );
 
     // --- Additional new tests ---
 
