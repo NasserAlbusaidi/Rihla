@@ -115,7 +115,7 @@ function allocateWeighted(
 
 ### Known adjacent edge, explicitly out of scope
 
-Percent totals in-tolerance **above** 100 (e.g. 100.001) with a tiny-positive last key could theoretically drive `amount − allocated` negative by a hair; this exists identically **before and after** this change (parity preserved) and is unreachable through the UI (percent editor normalizes). Not touched here; note for a future hardening pass if #192-style server value validation lands.
+Percent totals in-tolerance **above** 100 (e.g. 100.001) with a tiny-positive last key could theoretically drive `amount − allocated` negative by a hair; the fix *reduces* this edge (the remainder target is now the last **positive** key, and truncation keeps the sum of non-remainder shares ≤ amount) but does not claim to close it. Unreachable through the UI (percent editor normalizes). Note for a future hardening pass if #192-style server value validation lands.
 
 ## Verification-principles run (out loud)
 
@@ -256,7 +256,7 @@ git commit -m "fix(functions): mirror #872 weighted-remainder guard in the serve
 **Step 3:** `cd functions && npm run build` (tsc) → clean. Full emulator suite if time permits: `bash tool/run_firebase_emulator_tests.sh`.
 **Step 4:** Push branch, open PR:
 - Title: `fix(money): weighted-split remainder never lands on a 0-share participant (#872)`
-- Body: `Closes #872`, RED evidence (paste the failing-before-fix output from Tasks 1/3), spec pointer to this plan, **pending-deploy note** (server oracle changed ⇒ `tool/pending_deploy.sh` will show drift until the next backend deploy ceremony).
+- Body: `Closes #872`, RED evidence (paste the failing-before-fix output from Tasks 1/3), spec pointer to this plan, **pending-deploy note** (server oracle changed ⇒ `tool/pending_deploy.sh` will show drift until the next backend deploy ceremony). Include: a legacy 0-share-last expense's `aggregates/balance` display cache stays stale until its next write re-triggers `balanceAggregator.ts` — acceptable (no real users yet; client live-fallback path is fixed immediately).
 - Route through `/automerge` (Gate-category: `expense_provider.dart` + `functions/**` ⇒ fresh-context diff review + refuter — never raw merge).
 
 **Step 5:** After merge: leave deploy to the `deploy-ceremony` flow; do NOT advance `backend-deployed` by hand.
@@ -265,5 +265,11 @@ git commit -m "fix(functions): mirror #872 weighted-remainder guard in the serve
 
 ## Gate status
 
-- [ ] Round 1: rubric reviewer + orthogonal adversary (fresh-context, zero session history) — pending
-- Implementation MUST NOT start until both verdicts are P1-clean in the same round.
+- [x] Round 1: rubric reviewer — **0 P1 / 0 P2 / 2 P3** (server percent-zero-last test optional → adopted; parity-survival comment → adopted)
+- [x] Round 1: orthogonal adversary — **0 P1 / 0 P2 / 2 P3** (percent-edge "identical" claim softened; aggregate-cache staleness line added to deploy note)
+- **GATE PASSED 2026-07-04, round 1** — both verdicts P1-clean in the same round. All four P3s folded into this spec.
+
+### Rubric P3 adoptions
+
+- Task 3 also seeds a **percent**-mode expense with a 0-percent key sorting last (server-side belt-and-suspenders; percent has a separate ×1000 decode).
+- Both allocator comments note WHY parity survives the new weight-positivity dependence: remainder selection now keys on `weight > 0`, and both sides decode positivity identically (shares are raw ints; percent persists ×1000 and decodes ÷1000 on client `_splitValueFromPersisted` and server `decodeSplitValue` alike) — a future change to the percent persist scale must keep the two decodes in lockstep or the oracle drifts.
