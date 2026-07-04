@@ -547,6 +547,28 @@ void main() {
       );
       expect(find.byKey(const ValueKey('title')), findsOneWidget);
     });
+
+    testWidgets('back button carries the localized back tooltip (a11y)', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        CaptionTitleBar(
+          caption: 'ACTIVITY',
+          title: 'Beach Trip',
+          onBack: () {},
+        ),
+      );
+      expect(find.byTooltip('Back'), findsOneWidget);
+    });
+
+    testWidgets('no tooltip is present when onBack is null', (tester) async {
+      await _pump(
+        tester,
+        const CaptionTitleBar(caption: 'ACTIVITY', title: 'Beach Trip'),
+      );
+      expect(find.byTooltip('Back'), findsNothing);
+    });
   });
 
   group('PaperBackdrop', () {

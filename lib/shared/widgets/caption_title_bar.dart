@@ -37,20 +37,23 @@ class CaptionTitleBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (onBack != null)
-            InkResponse(
-              key: backKey,
-              onTap: () {
-                HapticService.lightClick();
-                onBack!();
-              },
-              radius: 24,
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: DirectionalIcon(
-                  Iconsax.arrow_left,
-                  size: 20,
-                  color: colors.textPrimary,
+            Tooltip(
+              message: MaterialLocalizations.of(context).backButtonTooltip,
+              child: InkResponse(
+                key: backKey,
+                onTap: () {
+                  HapticService.lightClick();
+                  onBack!();
+                },
+                radius: 24,
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: DirectionalIcon(
+                    Iconsax.arrow_left,
+                    size: 20,
+                    color: colors.textPrimary,
+                  ),
                 ),
               ),
             ),

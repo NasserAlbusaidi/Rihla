@@ -2080,9 +2080,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityFilterAll => 'الكل';
 
   @override
-  String get activityFilterSettles => 'التسويات';
-
-  @override
   String get activityFilterSettlements => 'التسويات';
 
   @override

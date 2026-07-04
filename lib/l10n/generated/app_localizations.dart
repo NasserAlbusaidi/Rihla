@@ -3375,12 +3375,6 @@ abstract class AppLocalizations {
   /// **'All'**
   String get activityFilterAll;
 
-  /// No description provided for @activityFilterSettles.
-  ///
-  /// In en, this message translates to:
-  /// **'Settlements'**
-  String get activityFilterSettles;
-
   /// No description provided for @activityFilterSettlements.
   ///
   /// In en, this message translates to:
