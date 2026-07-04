@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/core/theme/tokens/color_tokens.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/activity_day_section.dart';
+import 'package:safar/shared/widgets/activity_filter_strip.dart';
 import 'package:safar/shared/widgets/activity_glyph.dart';
 import 'package:safar/shared/widgets/activity_row.dart';
 
@@ -349,6 +351,125 @@ void main() {
             .last,
       );
       expect(container.clipBehavior, Clip.antiAlias);
+    });
+  });
+
+  group('ActivityFilterStrip', () {
+    testWidgets('active chip uses the ink fill; inactive uses cardSoft', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        ActivityFilterStrip<String>(
+          options: const [
+            ActivityFilterOption(
+              value: 'all',
+              label: 'All',
+              key: ValueKey('chip-all'),
+            ),
+            ActivityFilterOption(
+              value: 'events',
+              label: 'Events',
+              key: ValueKey('chip-events'),
+            ),
+          ],
+          current: 'all',
+          onChange: (_) {},
+        ),
+      );
+      final colors = AppTheme.lightTheme.extension<AppColorTokens>()!;
+
+      final activeContainer = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('chip-all')),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      final activeDecoration = activeContainer.decoration! as BoxDecoration;
+      expect(activeDecoration.color, colors.textPrimary);
+
+      final inactiveContainer = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('chip-events')),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      final inactiveDecoration =
+          inactiveContainer.decoration! as BoxDecoration;
+      expect(inactiveDecoration.color, colors.cardSoft);
+    });
+
+    testWidgets('re-tapping the active chip does not call onChange', (
+      tester,
+    ) async {
+      var calls = 0;
+      await _pump(
+        tester,
+        ActivityFilterStrip<String>(
+          options: const [
+            ActivityFilterOption(
+              value: 'all',
+              label: 'All',
+              key: ValueKey('chip-all'),
+            ),
+          ],
+          current: 'all',
+          onChange: (_) => calls++,
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('chip-all')));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(calls, 0);
+    });
+
+    testWidgets('tapping an inactive chip calls onChange with its value', (
+      tester,
+    ) async {
+      String? changed;
+      await _pump(
+        tester,
+        ActivityFilterStrip<String>(
+          options: const [
+            ActivityFilterOption(
+              value: 'all',
+              label: 'All',
+              key: ValueKey('chip-all'),
+            ),
+            ActivityFilterOption(
+              value: 'events',
+              label: 'Events',
+              key: ValueKey('chip-events'),
+            ),
+          ],
+          current: 'all',
+          onChange: (v) => changed = v,
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('chip-events')));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(changed, 'events');
+    });
+
+    testWidgets('per-option keys land on the tappable chip', (tester) async {
+      await _pump(
+        tester,
+        ActivityFilterStrip<String>(
+          options: const [
+            ActivityFilterOption(
+              value: 'all',
+              label: 'All',
+              key: ValueKey('chip-all'),
+            ),
+          ],
+          current: 'all',
+          onChange: (_) {},
+        ),
+      );
+      expect(find.byKey(const ValueKey('chip-all')), findsOneWidget);
     });
   });
 }
