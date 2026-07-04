@@ -379,7 +379,8 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     // default). Removes the need for an "uncategorized" pre-settlement warning.
     // Edit mode is exempt: legacy null-category expenses stay editable without a
     // forced retroactive pick (the mandate is "at creation").
-    if (!_isEdit && (_selectedCategoryId == null || _selectedCategoryId!.isEmpty)) {
+    if (!_isEdit &&
+        (_selectedCategoryId == null || _selectedCategoryId!.isEmpty)) {
       setState(() => _categoryError = true);
       _showSnack(context.l10n.editorCategoryRequired);
       return;
@@ -508,7 +509,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       unawaited(Sentry.captureException(e, stackTrace: st));
       if (mounted) {
         _showSnack(
-          context.l10n.editorDeleteExpenseFailed(friendlyMessageFor(context, e)),
+          context.l10n.editorDeleteExpenseFailed(
+            friendlyMessageFor(context, e),
+          ),
         );
       }
     } finally {
@@ -688,7 +691,9 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     // persists as SplitMode.exact, so that's the base mode; carry the existing
     // items only when genuinely reopening an already-itemized expense.
     final alreadyItemized = _splitExplanation != null;
-    final mode = forceItemized ? SplitMode.exact : (requestedMode ?? _splitMode);
+    final mode = forceItemized
+        ? SplitMode.exact
+        : (requestedMode ?? _splitMode);
     final sameMode = forceItemized ? alreadyItemized : (mode == _splitMode);
     // #289: distinguish two same-named members in the custom-split sheet.
     final displayNames = MemberNameResolver.disambiguateEventParticipants(
@@ -1128,16 +1133,21 @@ class _AmountHero extends StatelessWidget {
             children: [
               // Forced LTR like the amount Row below — otherwise the composite
               // 'المبلغ · OMR' inherits the ambient RTL and scrambles (#150).
-              Directionality(
-                textDirection: TextDirection.ltr,
-                child: Text(
-                  context.l10n.editorAmountLabel(currency),
-                  style: AppTypography.caption(
-                    context,
-                    fontSize: 10,
-                    letterSpacing: 1.6,
-                    color: labelColor,
-                    fontWeight: FontWeight.w700,
+              // Excluded from semantics: the transparent TextField below
+              // carries this label as its accessible name (#871) — announcing
+              // the caption too would read the name twice.
+              ExcludeSemantics(
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    context.l10n.editorAmountLabel(currency),
+                    style: AppTypography.caption(
+                      context,
+                      fontSize: 10,
+                      letterSpacing: 1.6,
+                      color: labelColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -1199,37 +1209,47 @@ class _AmountHero extends StatelessWidget {
             ],
           ),
           Positioned.fill(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              onTap: onTap,
-              onChanged: onChanged,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              // The transparent overlay field only types digits; disabling
-              // interactive selection stops iOS selection handles from sticking
-              // over the amount label (#150). Programmatic select-default-zero
-              // still works (it sets controller.selection directly).
-              enableInteractiveSelection: false,
-              textDirection: TextDirection.ltr,
-              inputFormatters: [
-                LocalizedDecimalTextInputFormatter(
-                  decimalDigits:
-                      AppFormatters.currencyConfig[currency]?.decimals ?? 3,
+            // MergeSemantics folds the label onto the TextField's own
+            // semantics node, so TalkBack/VoiceOver announce the name ON the
+            // edit box (WCAG 4.1.2, #871) — a plain Semantics wrapper would
+            // leave the input itself unnamed. The visible caption above is
+            // ExcludeSemantics'd to avoid a double announcement.
+            child: MergeSemantics(
+              child: Semantics(
+                label: context.l10n.editorAmountLabel(currency),
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  onTap: onTap,
+                  onChanged: onChanged,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  // The transparent overlay field only types digits; disabling
+                  // interactive selection stops iOS selection handles from sticking
+                  // over the amount label (#150). Programmatic select-default-zero
+                  // still works (it sets controller.selection directly).
+                  enableInteractiveSelection: false,
+                  textDirection: TextDirection.ltr,
+                  inputFormatters: [
+                    LocalizedDecimalTextInputFormatter(
+                      decimalDigits:
+                          AppFormatters.currencyConfig[currency]?.decimals ?? 3,
+                    ),
+                  ],
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.transparent),
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    filled: false,
+                    fillColor: Colors.transparent,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                  ),
                 ),
-              ],
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.transparent),
-              cursorColor: Colors.transparent,
-              decoration: const InputDecoration(
-                filled: false,
-                fillColor: Colors.transparent,
-                isCollapsed: true,
-                contentPadding: EdgeInsets.zero,
-                border: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                enabledBorder: InputBorder.none,
               ),
             ),
           ),

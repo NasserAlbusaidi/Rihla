@@ -565,6 +565,36 @@ void main() {
       },
     );
   });
+
+  group('#871 — a11y labels on header icon buttons', () {
+    testWidgets('back button exposes a semantic label', (tester) async {
+      final handle = tester.ensureSemantics();
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+
+      await tester.pumpWidget(_wrap(event: event));
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel('Back'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('settings button exposes a semantic label', (tester) async {
+      final handle = tester.ensureSemantics();
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+
+      await tester.pumpWidget(_wrap(event: event));
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel('Event settings'), findsOneWidget);
+      handle.dispose();
+    });
+  });
 }
 
 // ───────────────────────────── Helpers
