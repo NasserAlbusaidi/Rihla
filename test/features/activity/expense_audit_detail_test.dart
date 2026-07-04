@@ -123,7 +123,7 @@ void main() {
       }),
     );
     expect(find.byType(RAmount), findsNothing);
-    expect(find.byType(SizedBox), findsWidgets); // SizedBox.shrink
+    expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
   });
 
   testWidgets('DELETE renders nothing — the row shows a muted trailing amount instead', (
@@ -138,7 +138,7 @@ void main() {
       }),
     );
     expect(find.byType(RAmount), findsNothing);
-    expect(find.byType(SizedBox), findsWidgets); // SizedBox.shrink
+    expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
   });
 
   testWidgets(
@@ -154,7 +154,7 @@ void main() {
         }),
       );
       expect(find.byType(RAmount), findsNothing);
-      expect(find.byType(SizedBox), findsWidgets); // SizedBox.shrink
+      expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
     },
   );
 
@@ -165,6 +165,6 @@ void main() {
       diff: ExpenseAuditDiff.fromMetadata(<String, dynamic>{}),
     );
     expect(find.byType(RAmount), findsNothing);
-    expect(find.byType(SizedBox), findsWidgets); // SizedBox.shrink
+    expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
   });
 }
