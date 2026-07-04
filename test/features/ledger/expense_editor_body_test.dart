@@ -710,4 +710,23 @@ void main() {
     );
     expect(find.text('Category'), findsOneWidget);
   });
+
+  testWidgets('#871 — the amount input itself carries the accessible name '
+      '(not just a nearby decorative Text)', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpEditor(
+      tester,
+      initial: provenanceExpense(createdBy: 'uid-yasmin'),
+    );
+
+    final node = tester.getSemantics(find.bySemanticsLabel('AMOUNT · OMR'));
+    expect(
+      node.flagsCollection.isTextField,
+      isTrue,
+      reason:
+          'TalkBack/VoiceOver must announce the name ON the edit box '
+          '(WCAG 4.1.2); a sibling caption Text is not an accessible name.',
+    );
+    handle.dispose();
+  });
 }
