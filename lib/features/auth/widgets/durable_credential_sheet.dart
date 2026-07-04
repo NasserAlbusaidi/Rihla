@@ -19,10 +19,9 @@ import '../services/durable_credential_exception.dart';
 /// Optional credential sheet shown from account-link prompts.
 ///
 /// Returns `true` only after the Google credential is linked to the current
-/// anonymous user AND the ID token is force-refreshed — the cached token can
-/// still carry `sign_in_provider=anonymous` right after `linkWithCredential`,
-/// and the next rules-gated write depends on it. `false` for "Not now" or a
-/// barrier dismiss.
+/// anonymous user AND the ID token is force-refreshed so downstream auth
+/// observers see the durable credential immediately. `false` for "Not now" or
+/// a barrier dismiss.
 ///
 /// On a link conflict ([GoogleLinkConflictException]) the sheet offers
 /// "switch to that account" (#428) — a discard-shell `restoreWithGoogle`
@@ -65,8 +64,8 @@ class _DurableCredentialSheetState
       final result = await ref
           .read(authRecoveryServiceProvider)
           .linkGoogleToCurrentUser();
-      // The cached ID token can still say sign_in_provider=anonymous right
-      // after linkWithCredential; the very next write is rules-gated on it.
+      // The cached ID token can still report the pre-link provider until the
+      // SDK refreshes it lazily. Refresh now so link completion is observable.
       await result.user?.getIdToken(true);
       if (mounted) Navigator.of(context).pop(true);
     } on GoogleSignInException {

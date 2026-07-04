@@ -1,15 +1,17 @@
 # Anonymous Auth and Account Recovery (durable-credential architecture)
 
-**Status:** rewritten 2026-06-11 for epic #441. This supersedes the email-link
-RECOVER design this doc previously described; the decision record is
+**Status:** rewritten 2026-06-11 for epic #441 and updated 2026-07-04 after
+#818 removed the create-time durable gate. This supersedes the email-link
+RECOVER design this doc previously described; the original decision record is
 `docs/plans/2026-06-11-durable-credential-recovery-rearchitecture.md`.
 
-The one-line architecture: **money data stays keyed to the first-launch
-anonymous UID forever.** A one-tap Google `linkWithCredential` is required
-before the first valuable write (group create/join), which makes that UID
-durable with zero migration. Recovery on a new device is
-`signInWithCredential` → same UID → everything loads. There is no cross-UID
-merge anywhere in the system.
+The one-line architecture: **money data stays keyed to the UID that created or
+joined it.** First launch still starts with an anonymous UID, and that UID can
+own groups. Linking Google/email uses same-UID `linkWithCredential` to make that
+UID recoverable with zero migration. Recovery on a new device is
+`signInWithCredential` -> same UID -> everything loads. There is no cross-UID
+merge anywhere in the system; cross-UID restore/switch paths may discard only a
+provably-empty outgoing shell.
 
 ---
 
@@ -31,17 +33,20 @@ corruption → data orphaned), #216 (ledger partition on partial migration),
 reachability). Every incident traced to the same root: **money data born
 under a throwaway UID, rescued later by a rewrite.**
 
-\#441 deletes the rescue by deleting the need: the UID becomes durable
-*before* it owns anything.
+\#441 deleted the rescue by deleting cross-UID merge. The original create/join
+gate that forced durability before ownership was later relaxed: join was
+ungated in #648, and create was ungated in #818. That makes the empty-shell
+guard, not a server create/join prerequisite, the safety boundary for
+restore/switch.
 
 ## 2. The architecture (four shipped pieces)
 
 | Piece | PR | What it does |
 |---|---|---|
 | Google link foundation | PR1 #443 | `google_sign_in` 7.x (Credential Manager sheet), `linkGoogleToCurrentUser()` — same-UID `linkWithCredential`, `serverClientId` via `config.json` |
-| The gate | PR2 #444 | Inside `GroupService.createGroup`/`joinGroup` (service-level, so offline-queued batches can't bypass it) + **server enforcement**: rules `request.auth.token.firebase.sign_in_provider != 'anonymous'` on group/inviteCode create, anon-reject in `joinGroupByInviteCode`. `fcm_tokens` writes gated `!isAnonymous` so the pre-gate shell stays empty |
-| Google restore | PR3 #447 | Home empty-state CTA → `restoreWithGoogle()`: credential first (cancel-safe), FCM token removal, full cache-isolation protocol (engage → flush → dirty-mark → `signInWithCredential` → guaranteed restart). Discards the provably-empty anon shell |
-| Email fallback | PR4 #449 | `sendRecoveryLink` kept; `restoreWithEmailLink()` replaced the old `completeRecovery` — same discard-shell protocol via `signInWithEmailLink`, **no merge**, op-state cleared in `finally`. `MergeOnRecoverDialog` deleted. Secondary "Restore with email instead" entry under the Google CTA |
+| Optional account-link prompts | #818 follow-up | `showDurableCredentialSheet()` is now entered from helper surfaces (backup nudge, Profile, create-screen account-link CTA), not a create/join blocker. Same-UID linking makes the current UID durable without moving data. |
+| Google restore | PR3 #447 | Home empty-state CTA / Profile restore row → `restoreWithGoogle()`: credential first (cancel-safe), FCM token removal, full cache-isolation protocol (engage → flush → dirty-mark → `signInWithCredential` → guaranteed restart). Allowed only when the outgoing shell is provably empty. |
+| Email fallback | PR4 #449 | `sendRecoveryLink` kept; `restoreWithEmailLink()` replaced the old `completeRecovery` — same no-merge cross-UID swap via `signInWithEmailLink`, guarded by the same empty-shell check, op-state cleared in `finally`. `MergeOnRecoverDialog` deleted. |
 
 PR5 (this change) deleted the merge engine the first four made unreachable:
 the `cleanupAnonUidArtifacts` callable + its test, the
@@ -50,25 +55,28 @@ wrapper (`CleanupOutcome`).
 
 ## 3. Why the shell-discard is safe
 
-- **Post-gate, an anonymous UID cannot own money data.** The gate is
-  server-enforced (rules + callable), not a client promise — an ungated or
-  malicious client gets `PERMISSION_DENIED` on group create/join.
-- **The two pre-gate anon writes are handled:** `fcm_tokens/{uid}` is gated
-  on `!isAnonymous` (and removed pre-swap in both restore paths, because
-  owner-only rules make it un-deletable after the UID changes);
-  `recoveryCleanupIntents` no longer exists.
-- **A populated device is necessarily credentialed**, and swapping away from
-  a credentialed account loses nothing — its data stays server-side under
-  its own UID, recoverable by signing back into it.
-- Restore entries render on the zero-group home empty state and in the
-  Profile Account card — the Profile rows additionally require the user
-  to be anonymous, and hide on a loading/errored group check (fail-safe;
-  #428 PR-B). Both surfaces share the provably-empty-shell guard.
+- **A populated anonymous UID can own money data. It must not be discarded.**
+  The current create/join path allows anonymous ownership; restore/switch safety
+  comes from `outgoingShellProvablyEmpty`, not from assuming anon shells are
+  empty by construction.
+- **Cross-UID restore/switch requires a provably-empty outgoing shell.** Home
+  restore is reachable only from the zero-group empty state; Profile restore and
+  Google conflict-switch additionally run the shared live group-count guard and
+  fail closed on loading/error. A populated shell gets the dead-end copy instead
+  of being signed out or swapped away.
+- **There is still no merge.** The app never rewrites ledger/member references
+  from UID A to UID B. Same-UID link makes UID A durable; cross-UID restore
+  signs into UID B only after proving UID A has no groups.
+- **Device-local cleanup still matters:** FCM token removal, cache-isolation
+  engagement, pending-write flush, dirty-mark, and guaranteed restart remain
+  required before any cross-UID swap so the outgoing UID's cached data cannot
+  render in the incoming session.
 
 ## 4. What stayed (and why)
 
-- **Anonymous-first launch.** Zero-friction browse is untouched; the gate
-  fires at the first create/join (the #288/#352 natural-moment pattern).
+- **Anonymous-first launch.** Zero-friction browse, create, and join are
+  untouched. The durable-credential sheet is a helper/prompt surface, not a
+  create/join prerequisite.
 - **The email LINK half** (`linkEmailToCurrentUser`/`completeEmailLink`) —
   same-UID by construction, never caused a bug. Email remains the fallback
   credential so Google-loss ≠ permanent lockout (D3).
@@ -86,17 +94,16 @@ wrapper (`CleanupOutcome`).
 
 ## 5. Failure modes that remain (accepted)
 
-- **Anon user who never passes the gate loses data on device loss.** Same as
-  every browse-only session; by construction they own no groups.
+- **Anon user who never links a credential loses data on device loss.** They may
+  own groups; without Google/email, the UID only lives on that device.
 - **Google account loss** → restore via the email fallback (if set up) or
-  nothing. D3 keeps both credentials possible; neither is mandatory after
-  the gate fires once.
+  nothing. D3 keeps both credentials possible; neither is mandatory.
 - **Conflict on link** (`credential-already-in-use` / `email-already-in-use`
   — one-account-per-email can surface either; the service wraps both in
-  `GoogleLinkConflictException` carrying the failed credential): the gate
+  `GoogleLinkConflictException` carrying the failed credential): the account-link
   sheet offers "Switch account" → `restoreWithGoogle(credential: reused)` +
   forced restart, but ONLY when the live group count proves the current
-  shell empty — a populated shell (legacy pre-gate anon) gets the dead-end
+  shell empty — a populated shell gets the dead-end
   "use a different account" copy instead (#428). Never auto-resolved by signing
   the anon user out (#414's lesson, now structural).
 
@@ -114,9 +121,10 @@ wrapper (`CleanupOutcome`).
 | `lib/features/auth/screens/link_email_screen.dart` / `link_email_sent_screen.dart` | Profile → Link email form + post-send screen |
 | `lib/features/auth/screens/recover_screen.dart` / `recover_pending_screen.dart` | Email-fallback send side |
 | `lib/main.dart` (`_AuthGateState.initState`) | `FirebaseConfig.ensureAnonymousSession()` — establishes the first UID (cold-boot `CacheUidBarrier` runs inside it) |
-| `functions/src/callables/joinGroupByInviteCode.ts` | Server-side anon-reject on join |
+| `lib/features/auth/services/legacy_auth_marker_cleanup.dart` | One-release removal of the retired create-form prefs marker; no replay/prefill |
+| `functions/src/callables/joinGroupByInviteCode.ts` | Server-side invite-code join; anonymous callers are allowed, App Check + throttling + entropy contain enumeration |
 | `functions/src/callables/deleteAccount.ts` | Server-side cascade delete |
-| `security/firestore.rules` | `isDurableSignIn()` gate on group/inviteCode create + owner/member invariants per UID |
+| `security/firestore.rules` | Owner/member invariants per UID; anonymous group/invite-code create is allowed after #818 |
 
 ## 7. History
 

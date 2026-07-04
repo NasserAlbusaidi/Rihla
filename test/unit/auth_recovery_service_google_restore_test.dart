@@ -55,10 +55,9 @@ void main() {
     when(firestore.waitForPendingWrites).thenAnswer((_) async {});
   });
 
-  // The merge engine must NEVER be touched by the restore swap — the
-  // post-gate shell is provably empty, so there is nothing to migrate. Since
-  // #441 PR4 the pin is structural: the client merge machinery no longer
-  // exists on AuthRecoveryService.
+  // The merge engine must NEVER be touched by the restore swap. Callers must
+  // prove the outgoing shell empty before invoking this raw cross-UID swap; the
+  // service itself has no merge machinery to rescue a populated shell.
   AuthRecoveryService buildService({
     required List<String> events,
     GoogleCredentialFactory? googleCredentialFactory,

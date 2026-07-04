@@ -1,8 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/services/cold_start_coordinator.dart';
 import 'package:safar/core/services/deep_link_service.dart';
+import 'package:safar/features/auth/services/legacy_auth_marker_cleanup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test(
     'suppressed explicit auth link consumes referrer before bootstrap',
     () async {
@@ -20,6 +26,9 @@ void main() {
           calls.add('referrer route=$route');
           return false;
         },
+        clearLegacyAuthMarkers: () async {
+          calls.add('legacy-cleanup');
+        },
         activateAppBootstrap: () async {
           calls.add('bootstrap');
         },
@@ -31,6 +40,7 @@ void main() {
       expect(calls, [
         'deep-links',
         'referrer route=false',
+        'legacy-cleanup',
         'bootstrap',
         'notifications initial=true',
       ]);
@@ -52,6 +62,9 @@ void main() {
         calls.add('referrer route=$route');
         return true;
       },
+      clearLegacyAuthMarkers: () async {
+        calls.add('legacy-cleanup');
+      },
       activateAppBootstrap: () async {
         calls.add('bootstrap');
       },
@@ -63,8 +76,51 @@ void main() {
     expect(calls, [
       'deep-links',
       'referrer route=true',
+      'legacy-cleanup',
       'bootstrap',
       'notifications initial=false',
+    ]);
+  });
+
+  test('legacy auth marker cleanup clears the retired prefs key', () async {
+    SharedPreferences.setMockInitialValues({
+      LegacyAuthMarkerCleanup.legacyPrefsKey:
+          '{"v":1,"type":"create","atMillis":0}',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final calls = <String>[];
+
+    await runColdStartCoordinator(
+      resolveDeepLinks: () async {
+        calls.add('deep-links');
+        return const DeepLinkInitialDecision(
+          joinRouted: false,
+          suppressInstallReferrer: false,
+        );
+      },
+      consumeInstallReferrer: ({required route}) async {
+        calls.add('referrer route=$route');
+        return false;
+      },
+      clearLegacyAuthMarkers: () async {
+        calls.add('legacy-cleanup');
+        await LegacyAuthMarkerCleanup.clear(prefs);
+      },
+      activateAppBootstrap: () async {
+        calls.add('bootstrap');
+      },
+      runInitialNotificationSync: ({required handleInitialMessage}) async {
+        calls.add('notifications initial=$handleInitialMessage');
+      },
+    );
+
+    expect(prefs.getString(LegacyAuthMarkerCleanup.legacyPrefsKey), isNull);
+    expect(calls, [
+      'deep-links',
+      'referrer route=true',
+      'legacy-cleanup',
+      'bootstrap',
+      'notifications initial=true',
     ]);
   });
 
@@ -80,6 +136,9 @@ void main() {
           calls.add('referrer route=$route');
           return false;
         },
+        clearLegacyAuthMarkers: () async {
+          calls.add('legacy-cleanup');
+        },
         activateAppBootstrap: () async {
           calls.add('bootstrap');
         },
@@ -94,6 +153,7 @@ void main() {
       // routed) so the deferred invite still gets a chance and notifications run.
       expect(calls, [
         'referrer route=true',
+        'legacy-cleanup',
         'bootstrap',
         'notifications initial=true',
       ]);
@@ -123,6 +183,33 @@ void main() {
   });
 
   test(
+    'a failing legacy cleanup step still runs bootstrap and notifications',
+    () async {
+      final calls = <String>[];
+      final errors = <Object>[];
+
+      await runColdStartCoordinator(
+        resolveDeepLinks: () async => const DeepLinkInitialDecision(
+          joinRouted: false,
+          suppressInstallReferrer: false,
+        ),
+        consumeInstallReferrer: ({required route}) async => false,
+        clearLegacyAuthMarkers: () async => throw StateError('cleanup boom'),
+        activateAppBootstrap: () async {
+          calls.add('bootstrap');
+        },
+        runInitialNotificationSync: ({required handleInitialMessage}) async {
+          calls.add('notifications initial=$handleInitialMessage');
+        },
+        onStepError: (error, _) => errors.add(error),
+      );
+
+      expect(calls, ['bootstrap', 'notifications initial=true']);
+      expect(errors.single, isA<StateError>());
+    },
+  );
+
+  test(
     'a failing referrer step falls back to not-routed and runs the rest',
     () async {
       final calls = <String>[];
@@ -135,6 +222,9 @@ void main() {
         ),
         consumeInstallReferrer: ({required route}) async =>
             throw StateError('referrer boom'),
+        clearLegacyAuthMarkers: () async {
+          calls.add('legacy-cleanup');
+        },
         activateAppBootstrap: () async {
           calls.add('bootstrap');
         },
@@ -146,7 +236,11 @@ void main() {
 
       // Referrer failure → installReferrerRouted falls back to false, so the
       // join is treated as not-routed and notifications route.
-      expect(calls, ['bootstrap', 'notifications initial=true']);
+      expect(calls, [
+        'legacy-cleanup',
+        'bootstrap',
+        'notifications initial=true',
+      ]);
       expect(errors.single, isA<StateError>());
     },
   );

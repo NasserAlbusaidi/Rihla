@@ -101,11 +101,10 @@ final appBootstrapProvider = Provider<void>((ref) {
   // credential IN PLACE (same uid) — Settings "Link Google", the home backup
   // nudge, create-screen account link, or email-link completion. Those paths
   // neither flip `pushNotificationsEnabled` (so the listener above never
-  // re-fires) nor restart the app (so no cold boot re-runs bootstrap). Without
-  // this, a push-enabled user who upgrades keeps a confident-ON toggle that
-  // delivers nothing — `_saveToken` skips while anonymous (#441) and nothing
-  // re-invokes it after the link. A uid SWAP (recovery restore) is intentionally
-  // excluded: that path restarts and re-runs this provider on its own.
+  // re-fires) nor restart the app (so no cold boot re-runs bootstrap). This keeps
+  // the owner-keyed token doc fresh across the identity upgrade. A uid SWAP
+  // (recovery restore) is intentionally excluded: that path restarts and re-runs
+  // this provider on its own.
   ref.listen<AsyncValue<User?>>(authUserChangesProvider, (previous, next) {
     final before = previous?.valueOrNull;
     final after = next.valueOrNull;
@@ -129,8 +128,7 @@ final appBootstrapProvider = Provider<void>((ref) {
   // server-rendered push copy (localized from `fcm_tokens/{uid}.locale`) follows
   // the switch instead of staying frozen at the language present when the token
   // was first written. `refreshTokenLocale` no-ops while push is off /
-  // uninitialized and stays a silent skip for anonymous shells, so this only
-  // writes for a push-enabled durable user.
+  // uninitialized.
   ref.listen<String>(settingsProvider.select((value) => value.languageCode), (
     previous,
     next,

@@ -153,9 +153,8 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         // the Profile restore affordance and the durable-credential sheet. A
         // populated shell would be silently orphaned: its trips were flushed to
         // the server under the old anon UID, and after the swap the user is the
-        // recovered UID with none of them (#414/#216 lineage). Latent today
-        // (anon can't create/join behind the durable-gate), live once join is
-        // un-gated (#648 — this blocks it).
+        // recovered UID with none of them (#414/#216 lineage). Anonymous
+        // create/join is live after #648/#818, so the guard is required.
         final gateTimeout = ref.read(shellEmptinessGateTimeoutProvider);
         if (!await outgoingShellProvablyEmpty(
           readUser: () => ref.read(firebaseUserProvider.future),

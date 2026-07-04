@@ -55,25 +55,25 @@ seen for the process; if the user later opens the same real invite link, the
 runtime AppLink should still navigate.
 
 Cold-start work is ordered by one coordinator: explicit-link detection,
-install-referrer consume/route, gate replay, then app bootstrap. Auth email-link
-handling starts only after a valid suppressed Play referrer has been consumed,
-so recovery restart cannot race the one-shot marker write. Boot-time
-notification sync still runs, but initial notification-tap routing is skipped
-when an explicit or deferred invite already navigated; later notification taps
-continue to route normally.
+install-referrer consume/route, legacy auth-marker cleanup, then app bootstrap.
+Auth email-link handling starts only after a valid suppressed Play referrer has
+been consumed. Boot-time notification sync still runs, but initial
+notification-tap routing is skipped when an explicit or deferred invite already
+navigated; later notification taps continue to route normally.
 
-The accepted safety model is the current post-#648 model: App Check on the
+The accepted safety model is the current post-#648/#818 model: App Check on the
 callable, 5/hour per-UID throttling, invite-code/name validation server-side,
 and prefill-never-auto-submit client behavior. Do not rely on the old #441
-anonymous-join reject; that gate was intentionally removed in #648.
+anonymous join/create rejects; those gates were intentionally removed.
 
 ## Rejected alternatives
 
 1. **Silent auto-join from the referrer** — rejected because the referrer is
    attacker-controllable and would turn an attribution hint into authorization.
-2. **Reintroduce an anonymous join gate** — rejected because it reverses #648's
-   product decision: participation is allowed anonymously; creation and account
-   recovery remain the durable-credential boundaries.
+2. **Reintroduce an anonymous join/create blocker** — rejected because it reverses
+   #648/#818's product decision: group ownership and participation are allowed
+   anonymously. Cross-UID restore/switch remains protected by the empty-shell
+   guard instead of by blocking create/join.
 3. **Build an iOS clipboard fallback now** — rejected until an App Store build
    exists. The current production acquisition path is Android/Google Play only.
 

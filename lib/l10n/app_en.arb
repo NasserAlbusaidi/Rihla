@@ -2522,15 +2522,15 @@
   },
   "durableGateTitle": "Keep your money safe",
   "@durableGateTitle": {
-    "description": "Title of the durable-credential gate sheet (#441). Shown before the first group create/join while the user is still anonymous."
+    "description": "Title of the optional durable-credential sheet (#441/#818). Shown from account-link prompts while the user is still anonymous."
   },
   "durableGateBody": "Your groups and expenses are tied to this account. Link Google so they can't be lost with this device.",
   "@durableGateBody": {
-    "description": "Body of the durable-credential gate sheet (#441)."
+    "description": "Body of the optional durable-credential sheet (#441/#818)."
   },
   "durableGateContinueGoogle": "Continue with Google",
   "@durableGateContinueGoogle": {
-    "description": "Primary action on the gate sheet — opens the Google Credential Manager sheet and links the credential to the current (anonymous) user."
+    "description": "Primary action on the optional account-link sheet — opens the Google Credential Manager sheet and links the credential to the current anonymous user."
   },
   "durableGateNotNow": "Not now",
   "@durableGateNotNow": {
@@ -2542,7 +2542,7 @@
   },
   "durableGateConflictTitle": "That account already has Rihla data",
   "@durableGateConflictTitle": {
-    "description": "Title of the gate sheet's conflict state (#428): the chosen Google account already backs another Rihla account."
+    "description": "Title of the optional account-link sheet's conflict state (#428): the chosen Google account already backs another Rihla account."
   },
   "durableGateConflictSwitchBody": "This Google account already has Rihla data. Switch to it? This device will continue with that account.",
   "@durableGateConflictSwitchBody": {

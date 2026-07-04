@@ -287,8 +287,8 @@ describe('Publish readiness Firestore rules', () => {
 
   // #818: the #441 durable-credential gate on group creation is REMOVED.
   // Post-#648 an anonymous user can already join groups and add expenses on a
-  // discardable UID ("gate creation, not participation"), so the create gate
-  // no longer protects its founding invariant — anonymous provider tokens now
+  // discardable UID, so the create gate no longer protects its founding
+  // invariant — anonymous provider tokens now
   // pass group + inviteCode creation the same as every other provider.
   describe('#818 anonymous provider can create groups (durable-credential gate removed)', () => {
     function groupCreatePayload(uid: string, groupId: string, code: string) {

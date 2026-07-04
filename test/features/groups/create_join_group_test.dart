@@ -1077,9 +1077,9 @@ void main() {
   // JoinGroupScreen — #818 relocated from durable_gate_wiring_test.dart
   // ---------------------------------------------------------------------------
   //
-  // These pinned that the JOIN path never consulted the #441 durable-
-  // credential gate (#648 "gate creation, not participation"). #818 removed
-  // the gate from the CREATE path too, so there is no gate left anywhere —
+  // These pinned that the JOIN path never required a #441 durable credential.
+  // #818 removed the matching create requirement too, so there is no
+  // create/join credential requirement left anywhere —
   // relocated here (not deleted) rather than lost, because the join-failure
   // test is the ONLY coverage of the groupJoinFailed snackbar.
 

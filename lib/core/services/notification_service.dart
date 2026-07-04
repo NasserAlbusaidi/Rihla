@@ -35,7 +35,6 @@ class NotificationService with WidgetsBindingObserver {
     FirebaseMessaging? messaging,
     FirebaseFirestore? firestore,
     String? Function()? currentUserId,
-    bool Function()? isAnonymous,
     String Function()? localeResolver,
     Stream<String>? tokenRefresh,
     Stream<RemoteMessage>? foregroundMessages,
@@ -47,7 +46,6 @@ class NotificationService with WidgetsBindingObserver {
   }) : _messaging = messaging,
        _firestoreOverride = firestore,
        _currentUserIdOverride = currentUserId,
-       _isAnonymousOverride = isAnonymous,
        _localeResolverOverride = localeResolver,
        _tokenRefreshOverride = tokenRefresh,
        _foregroundMessagesOverride = foregroundMessages,
@@ -62,7 +60,6 @@ class NotificationService with WidgetsBindingObserver {
   FirebaseMessaging? _messaging;
   final FirebaseFirestore? _firestoreOverride;
   final String? Function()? _currentUserIdOverride;
-  final bool Function()? _isAnonymousOverride;
   final String Function()? _localeResolverOverride;
   final Stream<String>? _tokenRefreshOverride;
   final Stream<RemoteMessage>? _foregroundMessagesOverride;
@@ -83,19 +80,6 @@ class NotificationService with WidgetsBindingObserver {
 
   String? get _currentUserId =>
       _currentUserIdOverride?.call() ?? FirebaseConfig.currentUser?.uid;
-
-  bool get _isCurrentUserAnonymous {
-    final override = _isAnonymousOverride;
-    if (override != null) return override();
-    // An injected test uid implies a durable user; FirebaseConfig.currentUser
-    // throws [core/no-app] in unit tests without Firebase (#390).
-    if (_currentUserIdOverride != null) return false;
-    try {
-      return FirebaseConfig.currentUser?.isAnonymous ?? false;
-    } catch (_) {
-      return false;
-    }
-  }
 
   /// Recipient locale persisted alongside the token so the server can localize
   /// push copy for terminated/backgrounded apps (#53). Falls back to 'en' (the
@@ -188,8 +172,7 @@ class NotificationService with WidgetsBindingObserver {
   /// change (#483). The server localizes push copy from `fcm_tokens/{uid}.locale`
   /// (#53), which is otherwise frozen at first-write — a user who switches
   /// EN↔AR would keep receiving the old language until a random token rotation.
-  /// Delegates to [_saveToken], so it no-ops while push is off/uninitialized and
-  /// stays a silent skip for anonymous shells (#441).
+  /// Delegates to [_saveToken], so it no-ops while push is off/uninitialized.
   Future<void> refreshTokenLocale() => _saveToken();
 
   /// Save FCM token to Firestore.
@@ -202,9 +185,6 @@ class NotificationService with WidgetsBindingObserver {
 
       final userId = _currentUserId;
       if (userId == null) return;
-      // #441: anonymous shells must stay empty so a discarded shell never
-      // strands data. Silent skip — by design, not an error state.
-      if (_isCurrentUserAnonymous) return;
 
       await _firestore.collection('fcm_tokens').doc(userId).set({
         'user_id': userId,
@@ -223,7 +203,6 @@ class NotificationService with WidgetsBindingObserver {
   Future<void> _onTokenRefresh(String token) async {
     final userId = _currentUserId;
     if (userId == null) return;
-    if (_isCurrentUserAnonymous) return;
 
     try {
       await _firestore.collection('fcm_tokens').doc(userId).set({

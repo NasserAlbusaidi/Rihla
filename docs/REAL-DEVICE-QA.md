@@ -215,13 +215,14 @@ Airplane mode was restored off after the run.
 
 ## Durable-credential recovery matrix (RD-10–RD-13)
 
-Added 2026-06-11 for the durable-credential recovery rework (epic #441; gate #444,
-restore entry #447, intent persistence #452, conflict dialog #453, Profile rework
-#454, QueuedWork-drain durability fix #457, boot-verified outcome marker
-#458/#460). The Google link/restore path is a **silent-fail surface** — a build
-signed with an unregistered key fails Google sign-in with `DEVELOPER_ERROR` /
-error 10 and the restore quietly does nothing — so build provenance is part of
-the evidence here.
+Added 2026-06-11 for the durable-credential recovery rework (epic #441;
+restore entry #447, conflict dialog #453, Profile rework #454,
+QueuedWork-drain durability fix #457, boot-verified outcome marker #458/#460).
+Post-#818/#825, the matrix verifies optional account linking and account restore;
+create/join form replay is intentionally gone. The Google link/restore path is a
+**silent-fail surface** — a build signed with an unregistered key fails Google
+sign-in with `DEVELOPER_ERROR` / error 10 and the restore quietly does nothing —
+so build provenance is part of the evidence here.
 
 **Not yet run, and intentionally kept OUT of the gated matrix table above.**
 `tool/check_real_device_qa_gate.sh` asserts exactly **9** rows (`total != 9`) and
@@ -276,15 +277,17 @@ adb logcat -c && adb logcat | grep -iE 'Recovery:|Restore:|Firebase session|sign
 
 ### Pending checklist (#40)
 
-- [ ] **RD-10** Durable-credential gate — anon user taps Create/Join → Google link
-  sheet → link succeeds on the **same UID** (`isAnonymous` → false, UID unchanged)
-  → the create/join completes.
+- [ ] **RD-10** Optional account link — anon user with an existing shell opens an
+  account-link prompt from Profile, Home, or the create-screen CTA → Google link
+  succeeds on the **same UID** (`isAnonymous` → false, UID unchanged) → the user
+  returns to the current screen with existing groups intact.
 - [ ] **RD-11** Google restore, fresh install — reinstall → empty home → "Restore
   with Google" lands the **same durable UID**; prior groups + ledger reappear and
   survive the forced restart.
 - [ ] **RD-12** Conflict switch — restoring/linking account **B** (bound elsewhere)
   on an empty anon shell raises the conflict dialog; **switch** discards the shell,
-  signs into B, and the in-flight create/join resumes after restart.
+  signs into B, restarts, and lands on B's restored home without replaying an
+  abandoned create/join form.
 - [ ] **RD-13** Email fallback — fresh install → "Restore with email instead" runs
   the slim email-link recovery and lands the durable account with **no merge and
   no new UID**.
@@ -426,15 +429,15 @@ Pass criteria:
 - The Arabic golden-path integration log completes without render exceptions
   on the same build.
 
-## RD-10: Durable-Credential Gate
+## RD-10: Optional Account Link
 
 Prerequisites: see "Durable-credential recovery matrix" above (registered-SHA
 build, App Check token, prod backend, account A).
 
 1. Start from a fresh anonymous session. Record the boot UID `A` from
    `Firebase session restored (uid: A)` (or the anon sign-in line).
-2. Tap **Create group** or **Join group**. The Google link sheet must appear
-   *before* the create/join proceeds.
+2. Open an optional account-link prompt from Profile, Home, or the create-screen
+   CTA.
 3. Complete Google sign-in with account `A`.
 
 Pass criteria:
@@ -442,10 +445,11 @@ Pass criteria:
 - Logcat shows `Recovery: linked Google to uid A` — the **same** UID as step 1,
   with no UID change.
 - `isAnonymous` flips to false; the account is now durable.
-- The original Create/Join action then completes (group created or joined).
+- The user returns to the current screen; no abandoned create/join form is
+  replayed or prefilled.
 
-Evidence to capture: the linked-uid logline, the resulting group/member doc id,
-and the build SHA / artifact under test.
+Evidence to capture: the linked-uid logline, the current-screen screenshot after
+return, and the build SHA / artifact under test.
 
 ## RD-11: Google Restore, Fresh Install
 
@@ -478,8 +482,8 @@ restored (uid: B)` line, a screenshot of restored groups, and the build SHA.
 Prerequisites: an empty anonymous shell on the device, plus account `B` already
 bound to a different UID.
 
-1. On the empty anon shell (UID `A'`, no groups), start a Create or Join so an
-   intent is in flight; this triggers the Google link sheet.
+1. On the empty anon shell (UID `A'`, no groups), open an optional Google
+   link/restore prompt.
 2. Sign in with account `B` (bound to another UID).
 3. The conflict dialog must appear. Choose **switch**.
 4. Let the app force-restart.
@@ -488,11 +492,11 @@ Pass criteria:
 
 - The conflict dialog appeared (not a silent overwrite).
 - The empty shell `A'` is discarded; boot-after-restart UID == `B`.
-- The in-flight Create/Join **resumes and completes** after the restart (intent
-  persistence, #452).
+- Account `B`'s home appears after restart; no abandoned create/join form is
+  replayed or prefilled.
 
 Evidence to capture: the conflict-dialog screenshot, post-restart boot UID line,
-the completed create/join artifact, and the build SHA.
+a restored-home screenshot, and the build SHA.
 
 ## RD-13: Email Fallback
 

@@ -1,10 +1,8 @@
-// Widget tests for the durable-credential gate sheet (#441 PR2).
+// Widget tests for the optional durable-credential sheet (#441/#818).
 //
-// The sheet blocks the first create/join until the anon user links a Google
-// credential. Contract: pops `true` only after linkGoogleToCurrentUser
-// succeeds AND the ID token is force-refreshed (the cached token can still
-// carry sign_in_provider=anonymous — the very next write is rules-gated on
-// it). Conflicts must NEVER be resolved by signing the anon user out (#213).
+// Contract: pops `true` only after linkGoogleToCurrentUser succeeds AND the ID
+// token is force-refreshed so observers see the linked credential promptly.
+// Conflicts must NEVER be resolved by signing the anon user out (#213).
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -175,9 +173,9 @@ void main() {
   );
 
   testWidgets('network failure shows authErrorOffline', (tester) async {
-    when(() => recovery.linkGoogleToCurrentUser()).thenThrow(
-      FirebaseAuthException(code: 'network-request-failed'),
-    );
+    when(
+      () => recovery.linkGoogleToCurrentUser(),
+    ).thenThrow(FirebaseAuthException(code: 'network-request-failed'));
 
     final l10n = await open(tester);
     await tester.tap(find.text(l10n.durableGateContinueGoogle));
@@ -190,9 +188,9 @@ void main() {
   testWidgets('missing-config StateError shows generic error, stays open', (
     tester,
   ) async {
-    when(() => recovery.linkGoogleToCurrentUser()).thenThrow(
-      StateError('GOOGLE_SERVER_CLIENT_ID is not configured'),
-    );
+    when(
+      () => recovery.linkGoogleToCurrentUser(),
+    ).thenThrow(StateError('GOOGLE_SERVER_CLIENT_ID is not configured'));
 
     final l10n = await open(tester);
     await tester.tap(find.text(l10n.durableGateContinueGoogle));
