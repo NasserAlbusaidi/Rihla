@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/activity_day_section.dart';
 import 'package:safar/shared/widgets/activity_glyph.dart';
 import 'package:safar/shared/widgets/activity_row.dart';
 
@@ -260,6 +261,94 @@ void main() {
           )
           .where((c) => c.color != null);
       expect(dividerContainers, isEmpty);
+    });
+  });
+
+  group('ActivityDaySection', () {
+    testWidgets('raised=true renders shadow without a border', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        ActivityDaySection(label: 'today', children: const [SizedBox()]),
+      );
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(ActivityDaySection),
+              matching: find.byType(Container),
+            )
+            .last,
+      );
+      final decoration = container.decoration! as BoxDecoration;
+      expect(decoration.boxShadow, isNotEmpty);
+      expect(decoration.border, isNull);
+    });
+
+    testWidgets('raised=false renders a border without shadow', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        ActivityDaySection(
+          label: 'today',
+          raised: false,
+          children: const [SizedBox()],
+        ),
+      );
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(ActivityDaySection),
+              matching: find.byType(Container),
+            )
+            .last,
+      );
+      final decoration = container.decoration! as BoxDecoration;
+      expect(decoration.border, isNotNull);
+      expect(decoration.boxShadow, isNull);
+    });
+
+    testWidgets('header uppercases the label and dot-joins the dateSuffix', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        ActivityDaySection(
+          label: 'today',
+          dateSuffix: 'jul 4',
+          children: const [SizedBox()],
+        ),
+      );
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.text(' · JUL 4'), findsOneWidget);
+    });
+
+    testWidgets('header shows only the label when dateSuffix is null', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        ActivityDaySection(label: 'today', children: const [SizedBox()]),
+      );
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.textContaining('·'), findsNothing);
+    });
+
+    testWidgets('card uses antiAlias clip behavior', (tester) async {
+      await _pump(
+        tester,
+        ActivityDaySection(label: 'today', children: const [SizedBox()]),
+      );
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(ActivityDaySection),
+              matching: find.byType(Container),
+            )
+            .last,
+      );
+      expect(container.clipBehavior, Clip.antiAlias);
     });
   });
 }
