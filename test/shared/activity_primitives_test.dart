@@ -9,6 +9,7 @@ import 'package:safar/shared/widgets/activity_day_section.dart';
 import 'package:safar/shared/widgets/activity_filter_strip.dart';
 import 'package:safar/shared/widgets/activity_glyph.dart';
 import 'package:safar/shared/widgets/activity_row.dart';
+import 'package:safar/shared/widgets/caption_title_bar.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpWidget(
@@ -470,6 +471,56 @@ void main() {
         ),
       );
       expect(find.byKey(const ValueKey('chip-all')), findsOneWidget);
+    });
+  });
+
+  group('CaptionTitleBar', () {
+    testWidgets('renders the caption and title text', (tester) async {
+      await _pump(
+        tester,
+        const CaptionTitleBar(caption: 'ACTIVITY', title: 'Beach Trip'),
+      );
+      expect(find.text('ACTIVITY'), findsOneWidget);
+      expect(find.text('Beach Trip'), findsOneWidget);
+    });
+
+    testWidgets('invokes onBack when the back button is tapped', (
+      tester,
+    ) async {
+      var tapped = false;
+      await _pump(
+        tester,
+        CaptionTitleBar(
+          caption: 'ACTIVITY',
+          title: 'Beach Trip',
+          onBack: () => tapped = true,
+          backKey: const ValueKey('back-btn'),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('back-btn')));
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('omits the back button entirely when onBack is null', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const CaptionTitleBar(caption: 'ACTIVITY', title: 'Beach Trip'),
+      );
+      expect(find.byType(InkResponse), findsNothing);
+    });
+
+    testWidgets('applies titleKey to the title text', (tester) async {
+      await _pump(
+        tester,
+        CaptionTitleBar(
+          caption: 'ACTIVITY',
+          title: 'Beach Trip',
+          titleKey: const ValueKey('title'),
+        ),
+      );
+      expect(find.byKey(const ValueKey('title')), findsOneWidget);
     });
   });
 }
