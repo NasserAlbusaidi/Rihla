@@ -97,10 +97,8 @@ wrapper (`CleanupOutcome`).
   sheet offers "Switch account" → `restoreWithGoogle(credential: reused)` +
   forced restart, but ONLY when the live group count proves the current
   shell empty — a populated shell (legacy pre-gate anon) gets the dead-end
-  "use a different account" copy instead (#428). The caller's in-flight
-  create/join form is persisted (`PendingGateIntent`) before the restore and
-  replayed on the post-restart boot. Never auto-resolved by signing the anon
-  user out (#414's lesson, now structural).
+  "use a different account" copy instead (#428). Never auto-resolved by signing
+  the anon user out (#414's lesson, now structural).
 
 ## 6. Files at a glance
 

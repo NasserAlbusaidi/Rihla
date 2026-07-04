@@ -283,11 +283,11 @@ void main() {
   });
 
   // #480: an in-place anon→durable link (Settings "Link Google", home backup
-  // nudge, or email-link completion) keeps the SAME uid, so the pref-listener
-  // (pushNotificationsEnabled unchanged) never re-fires and no restart re-runs
-  // bootstrap. Only the join/create gate re-saved the token. Bootstrap must
-  // re-register on the link transition so a push-enabled user who upgrades by
-  // ANY path actually gets an fcm_tokens doc.
+  // nudge, create-screen account link, or email-link completion) keeps the SAME
+  // uid, so the pref-listener (pushNotificationsEnabled unchanged) never
+  // re-fires and no restart re-runs bootstrap. Bootstrap must re-register on
+  // the link transition so a push-enabled user who upgrades by ANY path actually
+  // gets an fcm_tokens doc.
   group('appBootstrapProvider anon→durable token re-save (#480)', () {
     Future<ProviderContainer> makeContainer(
       StreamController<User?> authChanges, {

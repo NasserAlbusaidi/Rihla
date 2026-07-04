@@ -9,46 +9,37 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shell_emptiness_gate.dart';
 import '../services/durable_credential_exception.dart';
-import '../services/pending_gate_intent.dart';
 
-/// Blocking gate sheet shown before the first valuable write (#441 PR2).
+/// Optional credential sheet shown from account-link prompts.
 ///
 /// Returns `true` only after the Google credential is linked to the current
 /// anonymous user AND the ID token is force-refreshed — the cached token can
 /// still carry `sign_in_provider=anonymous` right after `linkWithCredential`,
-/// and the very next write is rules-gated on it. `false` for "Not now" or a
-/// barrier dismiss (the caller aborts the pending create/join).
+/// and the next rules-gated write depends on it. `false` for "Not now" or a
+/// barrier dismiss.
 ///
 /// On a link conflict ([GoogleLinkConflictException]) the sheet offers
 /// "switch to that account" (#428) — a discard-shell `restoreWithGoogle`
 /// reusing the failed credential — but ONLY when [outgoingShellProvablyEmpty]
-/// proves the current shell empty. [intent] is the caller's in-flight form state,
-/// persisted before the restore so its forced restart can replay the interrupted
-/// create/join.
-Future<bool> showDurableCredentialSheet(
-  BuildContext context, {
-  PendingGateIntent? intent,
-}) async {
+/// proves the current shell empty.
+Future<bool> showDurableCredentialSheet(BuildContext context) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => _DurableCredentialSheet(intent: intent),
+    builder: (_) => const _DurableCredentialSheet(),
   );
   return result ?? false;
 }
 
 class _DurableCredentialSheet extends ConsumerStatefulWidget {
-  const _DurableCredentialSheet({this.intent});
-
-  final PendingGateIntent? intent;
+  const _DurableCredentialSheet();
 
   @override
   ConsumerState<_DurableCredentialSheet> createState() =>
@@ -130,11 +121,10 @@ class _DurableCredentialSheetState
     }
   }
 
-  /// Discard-shell switch (#428): persist the caller's in-flight intent,
-  /// then restore the existing Google-backed account with the credential
-  /// that just failed to link. On success this never returns — the
-  /// isolation protocol restarts the app and the boot replay resumes the
-  /// interrupted flow. Only reachable when the shell is provably empty.
+  /// Discard-shell switch (#428): restore the existing Google-backed account
+  /// with the credential that just failed to link. On success this never
+  /// returns — the isolation protocol restarts the app. Only reachable when
+  /// the shell is provably empty.
   Future<void> _switchAccount() async {
     final conflict = _conflict;
     if (conflict == null || _restoring) return;
@@ -148,13 +138,6 @@ class _DurableCredentialSheetState
           _clearConflict();
         });
         return;
-      }
-      final intent = widget.intent;
-      if (intent != null) {
-        await PendingGateIntent.save(
-          ref.read(sharedPreferencesProvider),
-          intent,
-        );
       }
       await ref
           .read(authRecoveryServiceProvider)

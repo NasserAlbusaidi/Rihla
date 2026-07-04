@@ -174,12 +174,11 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
             ),
           );
           // A blocked recover performed no swap and no restart, so a lingering
-          // inFlightOp='recover' is a PHANTOM that makes GateIntentReplay skip
-          // create/join replay on every boot (gate_intent_replay.dart). Clear
-          // the handshake; the next legitimate recover re-arms it via
-          // sendRecoveryLink. The live anon SESSION is never signed out
-          // (#213/#414). Guarded: a failed prefs write must not crash the
-          // listener.
+          // inFlightOp='recover' is a PHANTOM that would keep dispatching this
+          // stale recovery on later boots. Clear the handshake; the next
+          // legitimate recover re-arms it via sendRecoveryLink. The live anon
+          // SESSION is never signed out (#213/#414). Guarded: a failed prefs
+          // write must not crash the listener.
           try {
             await service.clearInFlightOp();
             await service.clearPendingEmail();

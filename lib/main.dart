@@ -26,7 +26,6 @@ import 'core/services/cache_isolation_controller.dart';
 import 'core/services/cold_start_coordinator.dart';
 import 'core/services/deep_link_service.dart';
 import 'core/services/install_referrer_service.dart';
-import 'features/auth/services/gate_intent_replay.dart';
 import 'features/auth/providers/cache_isolation_controller_provider.dart';
 import 'features/auth/services/auth_email_link_recognizer.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -223,12 +222,6 @@ class _SafarAppState extends ConsumerState<SafarApp> {
           consumeInstallReferrer: ({required route}) => InstallReferrerService
               .instance
               .consumeDeferredInvite(router, prefs, route: route),
-          replayGateIntent: ({required skipNavigation}) =>
-              GateIntentReplay.maybeReplay(
-                prefs,
-                router.go,
-                skipNavigation: skipNavigation,
-              ),
           activateAppBootstrap: () async {
             if (!mounted) return;
             ref.read(appBootstrapProvider);

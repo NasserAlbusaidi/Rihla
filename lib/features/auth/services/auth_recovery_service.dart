@@ -107,9 +107,8 @@ class AuthRecoveryService {
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = inFlightOpPrefsKey;
 
-  /// Public so [GateIntentReplay] can defer to a pending `recover` op (the
-  /// email-restore bootstrap restarts the app; replaying a gate intent into
-  /// that boot would lose the form a second time).
+  /// Public so the email-link bootstrap can dispatch pending link/recover
+  /// operations across app restarts.
   static const String inFlightOpPrefsKey = 'auth.inFlightOp';
 
   /// In-flight email-link operation kind. `'link'` attaches to the current
@@ -231,7 +230,9 @@ class AuthRecoveryService {
     try {
       await result.user?.getIdToken(true);
     } catch (_) {
-      FirebaseConfig.log('Recovery: post-link token refresh failed (non-fatal)');
+      FirebaseConfig.log(
+        'Recovery: post-link token refresh failed (non-fatal)',
+      );
     }
     FirebaseConfig.log('Recovery: linked email to uid ${result.user?.uid}');
     return result;

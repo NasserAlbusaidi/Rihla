@@ -99,14 +99,13 @@ final appBootstrapProvider = Provider<void>((ref) {
 
   // #480: re-register the FCM token when an anonymous session links a durable
   // credential IN PLACE (same uid) — Settings "Link Google", the home backup
-  // nudge, or email-link completion. Those paths neither flip
-  // `pushNotificationsEnabled` (so the listener above never re-fires) nor
-  // restart the app (so no cold boot re-runs bootstrap), and only the
-  // join/create gate re-saved the token. Without this, a push-enabled user who
-  // upgrades by any other path keeps a confident-ON toggle that delivers
-  // nothing — `_saveToken` skips while anonymous (#441) and nothing re-invokes
-  // it after the link. A uid SWAP (recovery restore) is intentionally excluded:
-  // that path restarts and re-runs this provider on its own.
+  // nudge, create-screen account link, or email-link completion. Those paths
+  // neither flip `pushNotificationsEnabled` (so the listener above never
+  // re-fires) nor restart the app (so no cold boot re-runs bootstrap). Without
+  // this, a push-enabled user who upgrades keeps a confident-ON toggle that
+  // delivers nothing — `_saveToken` skips while anonymous (#441) and nothing
+  // re-invokes it after the link. A uid SWAP (recovery restore) is intentionally
+  // excluded: that path restarts and re-runs this provider on its own.
   ref.listen<AsyncValue<User?>>(authUserChangesProvider, (previous, next) {
     final before = previous?.valueOrNull;
     final after = next.valueOrNull;

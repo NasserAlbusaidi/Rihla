@@ -91,9 +91,9 @@ anonymous-join reject; that gate was intentionally removed in #648.
   duplicate window still routes.
 - Auth recovery restart and boot-time notification initial-tap routing cannot
   clobber a winning invite route.
-- A deferred invite should beat stale `auth.pendingGateIntent` replay on the
-  same cold start; when a join wins, that pending create marker is cleared so it
-  cannot hijack the next launch.
+- A deferred invite should still win initial notification handling on the same
+  cold start; when a join wins, notification initial-tap routing is suppressed
+  for that launch.
 - A recognized auth link suppresses an older Play referrer without changing the
   auth-link completion flow.
 - Invalid, missing, unsupported, or native-error referrers are silent no-ops.
