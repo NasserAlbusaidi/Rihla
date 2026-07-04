@@ -333,7 +333,7 @@
   "profileBackupStatusNotBackedUp": "Not backed up",
   "profileBackupStatusBackedUp": "Backed up",
   "profileBackupCardTitle": "Back up this account",
-  "profileBackupCardBody": "Your trips live only on this phone. Add an email or Google so you never lose them.",
+  "profileBackupCardBody": "Your trips live only on this phone. Link Google so you never lose them.",
   "@profileAnonymousTraveller": {
     "description": "Tagline shown under the user's display name on the identity card."
   },
