@@ -34,13 +34,13 @@ import 'event_recap_screen.dart';
 ///
 /// Layout, top to bottom:
 ///   1. Compact paper header — back · eyebrow (type · dates) + title ·
-///      compact amount (only while collapsed) · recap-cup (open events) ·
-///      search · settings.
+///      compact amount (only while collapsed) · search · settings.
 ///   2. Balance block — the current user's per-currency net (reuses the hub
 ///      state machine: empty / settled / youOwed / youOwe / mixed). Collapses
 ///      on scroll into the title row.
-///   3. Closed banner (#723) with the Trip Receipt entry (#708) — now a
-///      Recap-tab switch.
+///   3. Recap banner — closed events show the Trip Receipt entry (#708, a
+///      Recap-tab switch); open events with expenses show a labelled recap
+///      entry (#811, replaced the tooltip-only header cup).
 ///   4. Segmented tab bar: Expenses · Settle up · Activity (· Recap when the
 ///      event is closed, #202).
 ///   5. Tab panels — the standalone screens in `embedded` mode, hosted in a
@@ -189,19 +189,11 @@ class _ContentState extends ConsumerState<_Content> {
                     '/group/${widget.groupId}/event/${widget.eventId}/settings',
                   );
                 },
-                // Open events keep the recap-route entry (#202 Slice 1);
-                // closed events surface Recap as the 4th tab instead.
-                onRecap: (!event.isClosed && expenses.isNotEmpty)
-                    ? () {
-                        HapticService.lightClick();
-                        GoRouter.of(context).push(
-                          '/group/${widget.groupId}/event/${widget.eventId}/recap',
-                        );
-                      }
-                    : null,
               ),
-              // #723: read-only banner once the event is closed. #708: its
-              // Trip Receipt entry now switches to the Recap tab.
+              // Recap entry (#723 / #708 / #811). Closed: read-only banner whose
+              // Trip Receipt entry switches to the Recap tab. Open + has
+              // expenses: a labelled recap entry that pushes the recap route
+              // (replaced the tooltip-only header cup — weak touch scent).
               if (event.isClosed)
                 _ClosedBanner(
                   closedByName: event.closedBy == null
@@ -214,6 +206,15 @@ class _ContentState extends ConsumerState<_Content> {
                           HapticService.lightClick();
                           _selectTab(_EventTab.recap);
                         },
+                )
+              else if (expenses.isNotEmpty)
+                _OpenRecapBanner(
+                  onViewRecap: () {
+                    HapticService.lightClick();
+                    GoRouter.of(context).push(
+                      '/group/${widget.groupId}/event/${widget.eventId}/recap',
+                    );
+                  },
                 ),
               const OfflineBanner(),
               _EventTabBar(
@@ -338,7 +339,6 @@ class _EventHeader extends StatelessWidget {
     required this.onBack,
     required this.onSearch,
     required this.onSettings,
-    this.onRecap,
   });
 
   final Event event;
@@ -348,10 +348,6 @@ class _EventHeader extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onSearch;
   final VoidCallback onSettings;
-
-  /// Recap-route entry for OPEN events with expenses (#202 Slice 1). Null ⇒
-  /// hidden (nothing to wrap up, or the event is closed and Recap is a tab).
-  final VoidCallback? onRecap;
 
   @override
   Widget build(BuildContext context) {
@@ -418,13 +414,6 @@ class _EventHeader extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsetsDirectional.only(start: 6, end: 2),
                   child: _CompactAmounts(lines: lines),
-                ),
-              if (onRecap != null)
-                RIconButton(
-                  key: EventKeys.recapButton,
-                  icon: Iconsax.cup,
-                  tooltip: context.l10n.recapButtonTooltip,
-                  onTap: onRecap!,
                 ),
               RIconButton(
                 key: EventKeys.searchButton,
@@ -847,6 +836,70 @@ class _ClosedBanner extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// #811: open-event counterpart to [_ClosedBanner]. A slim labelled recap
+/// entry that replaced the tooltip-only header cup (weak touch scent). Shown
+/// only for OPEN events that have expenses; pushes the full recap route.
+class _OpenRecapBanner extends StatelessWidget {
+  const _OpenRecapBanner({required this.onViewRecap});
+
+  final VoidCallback onViewRecap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      key: EventKeys.openRecapBanner,
+      width: double.infinity,
+      color: colors.textPrimary.withValues(alpha: 0.04),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 10, 20, 10),
+      child: Row(
+        children: [
+          Icon(Iconsax.cup, size: 14, color: colors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              context.l10n.recapOpenBannerLead,
+              style: AppTypography.sans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            key: EventKeys.openRecapBannerViewRecap,
+            onTap: onViewRecap,
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(6, 4, 4, 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    context.l10n.eventViewReceipt,
+                    style: AppTypography.sans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  DirectionalIcon(
+                    Iconsax.arrow_right,
+                    size: 13,
+                    color: colors.textPrimary,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

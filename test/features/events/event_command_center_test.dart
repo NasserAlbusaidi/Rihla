@@ -287,6 +287,141 @@ void main() {
     });
   });
 
+  group('#811 — open-event recap banner (labelled entry, replaces the cup)', () {
+    testWidgets(
+      'open event with expenses shows the labelled recap banner',
+      (tester) async {
+        final event = _event(
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 1, 3),
+        );
+        final expense = _expense(
+          id: 'x1',
+          eventId: event.id,
+          payer: 'uid-1',
+          amount: Decimal.parse('10.000'),
+        );
+
+        await _pumpEventHubRouter(tester, event, expenses: [expense]);
+
+        expect(find.byKey(EventKeys.openRecapBanner), findsOneWidget);
+        expect(find.byKey(EventKeys.closedBanner), findsNothing);
+      },
+    );
+
+    testWidgets('tapping the banner routes to the recap screen', (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+      final expense = _expense(
+        id: 'x1',
+        eventId: event.id,
+        payer: 'uid-1',
+        amount: Decimal.parse('10.000'),
+      );
+
+      await _pumpEventHubRouter(tester, event, expenses: [expense]);
+
+      await tester.tap(find.byKey(EventKeys.openRecapBannerViewRecap));
+      await tester.pumpAndSettle();
+
+      expect(find.text('RecapRoute:event-1'), findsOneWidget);
+    });
+
+    testWidgets('open event with NO expenses hides the banner', (tester) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+
+      await _pumpEventHubRouter(tester, event);
+
+      expect(find.byKey(EventKeys.openRecapBanner), findsNothing);
+    });
+
+    testWidgets(
+      'closed event uses the Recap tab, NOT the open banner',
+      (tester) async {
+        final event = _event(
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 1, 3),
+          isClosed: true,
+          closedBy: 'uid-1',
+        );
+        final expense = _expense(
+          id: 'x1',
+          eventId: event.id,
+          payer: 'uid-1',
+          amount: Decimal.parse('10.000'),
+        );
+
+        await _pumpEventHubRouter(tester, event, expenses: [expense]);
+
+        expect(find.byKey(EventKeys.openRecapBanner), findsNothing);
+        expect(find.byKey(EventKeys.closedBanner), findsOneWidget);
+        expect(find.byKey(EventKeys.tabRecap), findsOneWidget);
+      },
+    );
+
+    testWidgets('renders without overflow in a narrow RTL layout', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+      final expense = _expense(
+        id: 'x1',
+        eventId: event.id,
+        payer: 'uid-1',
+        amount: Decimal.parse('10.000'),
+      );
+      final eventRef = (groupId: event.groupId, eventId: event.id);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            currentUserIdProvider.overrideWithValue('uid-1'),
+            eventDetailProvider(
+              eventRef,
+            ).overrideWith((_) => Stream<Event?>.value(event)),
+            groupDetailProvider(
+              event.groupId,
+            ).overrideWith((_) => Stream<Group?>.value(_group)),
+            eventExpensesProvider(
+              eventRef,
+            ).overrideWith((_) => Stream.value([expense])),
+            eventSettlementsProvider(
+              eventRef,
+            ).overrideWith((_) => Stream.value(const [])),
+            groupMembersProvider(event.groupId).overrideWith(
+              (_) => Stream.value([
+                _realMember('uid-1', 'Mona'),
+                _realMember('uid-2', 'Nasser'),
+              ]),
+            ),
+          ],
+          child: MaterialApp(
+            locale: const Locale('ar'),
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: EventCommandCenter(groupId: event.groupId, eventId: event.id),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(EventKeys.openRecapBanner), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('#382 PR-5 — per-currency header', () {
     testWidgets('settled in OMR but owing in USD — header is NOT settled', (
       tester,

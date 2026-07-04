@@ -5979,11 +5979,11 @@ abstract class AppLocalizations {
   /// **'No pending claim requests.'**
   String get groupClaimNoRequests;
 
-  /// Tooltip/label for the event recap entry button (#202 Slice 1; #807 unified the surface's name to "Recap" everywhere).
+  /// #811: lead text on the open-event recap banner — the labelled entry that replaced the tooltip-only header cup. Paired with the eventViewReceipt "View recap" action on the same bar.
   ///
   /// In en, this message translates to:
-  /// **'Recap'**
-  String get recapButtonTooltip;
+  /// **'See the trip so far'**
+  String get recapOpenBannerLead;
 
   /// Subtitle under the recap title showing participant and expense counts (#202).
   ///
