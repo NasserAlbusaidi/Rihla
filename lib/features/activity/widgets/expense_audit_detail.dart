@@ -7,17 +7,17 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../utils/expense_audit_diff.dart';
 
-/// Renders the money before/after detail under an expense audit row (#248 PR 3).
+/// Renders the before/after field-change detail under an expense audit row
+/// (#248 PR 3, narrowed by #490 D-g).
 ///
-/// - CREATE / DELETE (and split-only UPDATEs): a single `<description> · <amount>`
-///   summary of the after-snapshot.
-/// - UPDATE with money-field changes: one `before → after` line per changed
-///   field (description, amount, payer). Payer uids resolve to names via
-///   [participantNames]; unknown ids fall back to the localized "Someone".
-/// - DELETE renders the whole detail muted (0.6 opacity).
+/// UPDATE with money-field changes: one `before → after` line per changed
+/// field (description, amount, payer). Payer uids resolve to names via
+/// [participantNames]; unknown ids fall back to the localized "Someone".
 ///
-/// Renders `SizedBox.shrink()` when [diff] has no parseable after-snapshot
-/// (legacy/empty/malformed metadata) — the row keeps just its verb line.
+/// Every other case — CREATE, DELETE, and UPDATEs with no rendered-field
+/// change — renders `SizedBox.shrink()`: those rows show their amount via
+/// `ActivityRow.trailingAmount` instead, so rendering it here too would
+/// duplicate it.
 class ExpenseAuditDetail extends StatelessWidget {
   const ExpenseAuditDetail({
     super.key,
@@ -39,72 +39,40 @@ class ExpenseAuditDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!diff.hasDetail) return const SizedBox.shrink();
-    final after = diff.after!;
-    final muted = eventType == 'DELETE';
-    final showDiff = eventType == 'UPDATE' && diff.hasFieldChange;
-
-    final lines = <Widget>[];
-    if (showDiff) {
-      final before = diff.before!;
-      if (diff.descriptionChanged) {
-        lines.add(
-          _textChangeRow(context, before.description, after.description),
-        );
-      }
-      if (diff.amountChanged) {
-        lines.add(_amountChangeRow(context, before, after));
-      }
-      if (diff.payerChanged) {
-        lines.add(
-          _payerChangeRow(
-            context,
-            before.payerParticipantId,
-            after.payerParticipantId,
-          ),
-        );
-      }
-    } else {
-      lines.add(_summaryRow(context, after));
+    if (eventType != 'UPDATE' || !diff.hasFieldChange) {
+      return const SizedBox.shrink();
     }
+    final before = diff.before!;
+    final after = diff.after!;
 
-    final column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < lines.length; i++)
-          Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 0 : 2),
-            child: lines[i],
-          ),
-      ],
-    );
+    final lines = <Widget>[
+      if (diff.descriptionChanged)
+        _textChangeRow(context, before.description, after.description),
+      if (diff.amountChanged) _amountChangeRow(context, before, after),
+      if (diff.payerChanged)
+        _payerChangeRow(
+          context,
+          before.payerParticipantId,
+          after.payerParticipantId,
+        ),
+    ];
 
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 4),
-      child: muted ? Opacity(opacity: 0.6, child: column) : column,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < lines.length; i++)
+            Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 2),
+              child: lines[i],
+            ),
+        ],
+      ),
     );
   }
 
   // ── line builders ─────────────────────────────────────────────────────
-
-  Widget _summaryRow(BuildContext context, ExpenseAuditSnap snap) {
-    final desc = snap.description;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        if (desc != null)
-          Flexible(
-            child: Text(
-              '$desc  ·  ',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _textStyle(context),
-            ),
-          ),
-        _amount(context, snap),
-      ],
-    );
-  }
 
   Widget _amountChangeRow(
     BuildContext context,
