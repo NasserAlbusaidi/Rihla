@@ -358,11 +358,14 @@ describe('Publish readiness Firestore rules', () => {
       await assertSucceeds(batch.commit());
     });
 
-    // #245: stageGroup chains the seeded event on the group batch ack, BEFORE
-    // the creator's member doc write completes. This pins the ordering
-    // assumption that chain rests on: isGroupMember/groupMembers() read
-    // groups/{gid}.memberIds (the group DOC), never member subcollection docs,
-    // so the event create is valid the instant the batch commits.
+    // #245/#874: STANDARD-PATH property — a seeded event create is valid once its
+    // group exists (isGroupMember/groupMembers() read groups/{gid}.memberIds, the
+    // group DOC, never member subcollection docs), WITHOUT any member doc. Since
+    // #874 stageGroup writes the seeded event in the founding batch (not chained
+    // after the group ack), but this rule property still holds for the
+    // group-committed-first shape and pins that the event rule never depends on a
+    // member subcollection doc. The founding-batch (all-in-one) shape is covered
+    // by the '#874 founding batch' describe below.
     test('#245 seeded event create is valid right after the group batch, '
       + 'WITHOUT any member doc', async () => {
       await testEnv.clearFirestore();
@@ -395,6 +398,157 @@ describe('Publish readiness Firestore rules', () => {
           }),
         ),
       );
+    });
+  });
+
+  // #874: offline group creation writes group + inviteCode + creator member doc
+  // + #245 seeded event in ONE atomic WriteBatch (a single mutation — no
+  // FlutterFire host-call reorder race, offline-correct, survives process-kill).
+  // The member + event create rules accept the group being created in the SAME
+  // batch via after-state (getAfter/existsAfter -> groupFoundingBatchByCreator).
+  // On the PRE-#874 rules the 4-write batch is REJECTED (isGroupMember reads
+  // pre-batch state -> group absent -> deny), so the positive test is RED before
+  // the rules change.
+  describe('#874 founding batch (member + event ride the group-create batch)', () => {
+    function memberDoc(uid: string, role = 'CREATOR'): Record<string, unknown> {
+      return {
+        id: uid,
+        userId: uid,
+        displayName: 'Founder',
+        role,
+        joinedAt: new Date(),
+        isShadow: false,
+      };
+    }
+
+    function seededEventDoc(
+      groupId: string,
+      uid: string,
+      overrides: Record<string, unknown> = {},
+    ): Record<string, unknown> {
+      return validEvent({
+        name: 'Founding Trip',
+        type: 'trip',
+        groupId,
+        createdBy: uid,
+        participantIds: [uid],
+        participantNames: { [uid]: 'Founder' },
+        ...overrides,
+      });
+    }
+
+    test('creator commits group + inviteCode + member + seeded event in ONE '
+      + 'atomic batch', async () => {
+      await testEnv.clearFirestore();
+      const db = testEnv.authenticatedContext('founder').firestore();
+      const batch = db.batch();
+      batch.set(
+        db.doc('groups/fg'),
+        validGroup('fg', {
+          createdBy: 'founder',
+          memberIds: ['founder'],
+          inviteCode: 'FG1234',
+        }),
+      );
+      batch.set(db.doc('inviteCodes/FG1234'), {
+        groupId: 'fg',
+        createdAt: new Date(),
+      });
+      batch.set(db.doc('groups/fg/members/founder'), memberDoc('founder'));
+      batch.set(db.doc('groups/fg/events/seed'), seededEventDoc('fg', 'founder'));
+
+      await assertSucceeds(batch.commit());
+    });
+
+    test('atomic: a malformed group leg (createdBy != caller) sinks the whole '
+      + 'founding batch', async () => {
+      await testEnv.clearFirestore();
+      const db = testEnv.authenticatedContext('founder').firestore();
+      const batch = db.batch();
+      // validGroupCreate requires createdBy == auth.uid; this fails it, and the
+      // atomic batch means the member/event legs cannot persist either.
+      batch.set(
+        db.doc('groups/fg'),
+        validGroup('fg', {
+          createdBy: 'someone-else',
+          memberIds: ['founder'],
+          inviteCode: 'FG1234',
+        }),
+      );
+      batch.set(db.doc('inviteCodes/FG1234'), {
+        groupId: 'fg',
+        createdAt: new Date(),
+      });
+      batch.set(db.doc('groups/fg/members/founder'), memberDoc('founder'));
+
+      await assertFails(batch.commit());
+    });
+
+    test('the !exists guard forces a PRE-EXISTING soft-deleted group down the '
+      + 'standard path — member/event create is denied', async () => {
+      // g1 already exists (seeded) — soft-delete it, then attempt member/event
+      // creates that are NOT part of a group-create batch. groupFoundingBatchByCreator
+      // is off (exists()==true), so groupAllowsClientWrites gates and denies.
+      await updateSeedGroup({ isDeleted: true, deletedAt: new Date() });
+      const db = testEnv.authenticatedContext('owner').firestore();
+
+      await assertFails(
+        db.doc('groups/g1/members/late-owner-doc').set(memberDoc('owner')),
+      );
+      await assertFails(
+        db.doc('groups/g1/events/late').set(
+          seededEventDoc('g1', 'owner', { participantIds: ['owner'] }),
+        ),
+      );
+    });
+
+    test('a standalone member create against a group that neither exists nor is '
+      + 'in the batch is denied (existsAfter false)', async () => {
+      // No group-create in this write and no such group exists -> both
+      // isGroupMember and groupFoundingBatchByCreator are false. Proves the
+      // founding branch cannot be tricked into firing without a real same-batch
+      // group create.
+      await testEnv.clearFirestore();
+      const db = testEnv.authenticatedContext('ghost').firestore();
+      await assertFails(
+        db.doc('groups/no-such-group/members/ghost').set(memberDoc('ghost')),
+      );
+      await assertFails(
+        db.doc('groups/no-such-group/events/e').set(
+          seededEventDoc('no-such-group', 'ghost'),
+        ),
+      );
+    });
+
+    test('founding-batch event with a participant outside the after-memberIds '
+      + 'is denied (isolates the founding event membership guard)', async () => {
+      await testEnv.clearFirestore();
+      const db = testEnv.authenticatedContext('founder').firestore();
+      const batch = db.batch();
+      batch.set(
+        db.doc('groups/fg'),
+        validGroup('fg', {
+          createdBy: 'founder',
+          memberIds: ['founder'],
+          inviteCode: 'FG1234',
+        }),
+      );
+      batch.set(db.doc('inviteCodes/FG1234'), {
+        groupId: 'fg',
+        createdAt: new Date(),
+      });
+      batch.set(db.doc('groups/fg/members/founder'), memberDoc('founder'));
+      // Event smuggles a stranger into participantIds; after-memberIds is
+      // [founder], so hasOnly(...) fails and the whole atomic batch is denied.
+      batch.set(
+        db.doc('groups/fg/events/seed'),
+        seededEventDoc('fg', 'founder', {
+          participantIds: ['founder', 'stranger'],
+          participantNames: { founder: 'Founder', stranger: 'Stranger' },
+        }),
+      );
+
+      await assertFails(batch.commit());
     });
   });
 
