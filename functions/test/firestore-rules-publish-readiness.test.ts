@@ -460,19 +460,23 @@ describe('Publish readiness Firestore rules', () => {
       await assertSucceeds(batch.commit());
     });
 
-    test('atomic: a malformed group leg (createdBy != caller) sinks the whole '
-      + 'founding batch', async () => {
+    test('atomic: an INDIVIDUALLY-VALID member leg is still sunk when only the '
+      + 'group leg is malformed (isolates atomicity)', async () => {
       await testEnv.clearFirestore();
       const db = testEnv.authenticatedContext('founder').firestore();
       const batch = db.batch();
-      // validGroupCreate requires createdBy == auth.uid; this fails it, and the
-      // atomic batch means the member/event legs cannot persist either.
+      // The group leg fails validGroupCreate on currency ALONE, while leaving
+      // createdBy == founder and memberIds == [founder] intact — so the member
+      // leg's own groupFoundingBatchByCreator (existsAfter + after-memberIds +
+      // after-createdBy) is INDIVIDUALLY valid. The batch must still be denied,
+      // proving it's atomicity (not the member leg's own checks) that sinks it.
       batch.set(
         db.doc('groups/fg'),
         validGroup('fg', {
-          createdBy: 'someone-else',
+          createdBy: 'founder',
           memberIds: ['founder'],
           inviteCode: 'FG1234',
+          currency: 'NOTACURRENCY',
         }),
       );
       batch.set(db.doc('inviteCodes/FG1234'), {
