@@ -1,4 +1,4 @@
-import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getMessaging, Message } from 'firebase-admin/messaging';
 import { logger } from 'firebase-functions/v2';
 import { createHash } from 'crypto';
@@ -25,6 +25,7 @@ const PRUNABLE_ERROR_CODES = new Set<string>([
   'messaging/invalid-registration-token',
   'messaging/invalid-argument',
 ]);
+const NOTIFICATION_DELIVERY_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 interface TokenRecord {
   uid: string;
@@ -46,10 +47,12 @@ async function claimDeliveryMarker(
     return await db.runTransaction(async (tx) => {
       const existing = await tx.get(markerRef);
       if (existing.exists) return false;
+      const now = Timestamp.now();
       tx.create(markerRef, {
         key,
         data,
-        createdAt: FieldValue.serverTimestamp(),
+        createdAt: now,
+        expiresAt: Timestamp.fromMillis(now.toMillis() + NOTIFICATION_DELIVERY_TTL_MS),
       });
       return true;
     });
