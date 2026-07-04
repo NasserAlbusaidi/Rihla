@@ -1575,7 +1575,6 @@
   "activityNoFilterTitle": "Nothing matches this filter",
   "activityNoFilterMessage": "Try a different filter, or switch back to All.",
   "activityFilterAll": "All",
-  "activityFilterSettles": "Settlements",
   "activityFilterSettlements": "Settlements",
   "activityFilterEvents": "Events",
   "activityFilterMembers": "Members",

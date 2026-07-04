@@ -2020,9 +2020,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityFilterAll => 'All';
 
   @override
-  String get activityFilterSettles => 'Settlements';
-
-  @override
   String get activityFilterSettlements => 'Settlements';
 
   @override
