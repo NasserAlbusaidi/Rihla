@@ -4,6 +4,102 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.4] — 2026-07-05
+
+Production promotion of the 1.7.x line. Production users are on 1.7.0, so this
+build gathers **everything shipped to the closed "first" track since 1.7.0** into
+one release: the History/activity unification across every feed, the tabbed event
+command screen, group spending insights, the pre-settlement review safety net,
+trip-receipt exports, the first-run/account honesty pass, and a batch of money-,
+offline-, and accessibility-correctness fixes. All backend changes are already
+live in production (`backend-deployed` → `474da89b`) — no further backend deploy
+is required for this client.
+
+### Added
+- **History as a first-class surface across every feed
+  (#808/#810/#815/#816/#849/#852/#865/#881/#883/#886/#887/#891).** Expenses and
+  settlements fan into the group activity feed, the History tab paginates and
+  searches, a shared row vocabulary drives all four feeds (home RECENTLY,
+  cross-group, group timeline, per-event), and every row deep-links to the group,
+  event, expense, or settlement it describes.
+- **Default ledger event for new groups (#245/#793/#794).** Creating a group
+  seeds one ledger event named after the group, and server-side shadow-member
+  fan-in keeps added-by-name members in existing event split rosters.
+- **Persistent Add Expense FAB (#364/#796).** A fast add-expense action with a
+  flattened open-event picker and a one-event direct path.
+- **Tabbed event command screen (#758/#788).** Event detail hosts Expenses,
+  Settle up, Activity, and closed-event Recap in one surface with a pinned
+  balance header.
+- **Group spending summary (#180/#797).** Per-currency spend insights across top
+  events, categories, payers, and consumers.
+- **Trip receipt proof packs (#704/#776/#778) and a shareable recap card (#722).**
+  Event recaps export CSV and PDF proof packs and a shareable PNG summary, and
+  settle-up can open the receipt/export path directly (#836).
+- **Labelled open-event recap entry (#811/#880).** The recap entry is a clear
+  labelled action instead of a tooltip-only glyph.
+- **Add-people account nudge (#847).** The disabled add-people field points toward
+  account linking instead of looking inert.
+- **Numberless WhatsApp settle-up notify (#367/#762)** and clearer event-vs-group
+  settle CTAs and scope notes (#717/#721).
+
+### Changed
+- **Pre-settlement review safety net (#204/#786/#798).** Event and group settle-up
+  flag departed-payer expenses and show the same review sheet across every
+  affected event before payment is recorded.
+- **Settle-up stale-amount revalidation (#719/#773).** Settle-up writes
+  revalidate the amount immediately before commit so a stale screen cannot submit
+  an outdated balance.
+- **Itemized is a first-class split option (#790/#791)** and **a category is
+  required at expense creation (#204/#787)**; legacy edits stay editable without
+  forced backfill.
+- **Split editor honesty (#853/#856/#869).** Exact and Percent editors seed from
+  the equal baseline, and the equal-split preview shows the same allocator shares
+  that get saved.
+- **First-run and account honesty pass (#834/#839/#842/#843/#851).** Guest,
+  set-name, restore, offline-bootstrap, and email-bootstrap states use copy that
+  matches what the app can actually prove.
+- **Theme and localization polish (#821/#835/#845/#857/#858/#890).** Light theme
+  is the default until the dark pass ships, the bottom tab reads History, Arabic
+  activity text drops gendered-verb leaks and gains script-specific
+  caption/display tokens, and the backup card promises Google-only recovery to
+  match the sheet.
+- **Refreshed activity presentation (#490/#867/#888).** The four feeds share a V2
+  grain-and-wash backdrop, and event-feed day cards are flat with a hairline
+  instead of a misleading raised affordance.
+
+### Fixed
+- **Offline group creation is atomic (#874/#876).** A group and its seeded event
+  are founded in one WriteBatch, so an offline create can no longer leave an
+  empty-shell group.
+- **Offline replay balance freshness (#633/#777).** Pending-write replay and
+  balance-aggregate freshness are separate barriers, keeping home balance reads
+  correct after offline replay or join fan-out.
+- **Weighted-split rounding never lands on a zero-share participant (#872/#882),**
+  on both the client allocator and the server oracle.
+- **Notification correctness (#179/#780/#783/#892).** Retry deliveries no longer
+  double-send, claim taps route safely, and idempotency markers now expire on a
+  90-day TTL.
+- **Expense-editor trust (#829/#859/#863).** The editor guards discarded edits,
+  shows human-readable save errors, and surfaces queued-write replay rejections.
+- **False-affordance and accessibility cleanup
+  (#802/#804/#846/#848/#850/#862/#871/#884).** Dead or misleading controls were
+  removed or relabelled, the History bell carries its unread state, settlement
+  transfer arrows are RTL-safe, the profile QR sheet is gone, and the amount
+  input and command-center nav buttons are screen-reader named with unfragmented
+  amount output.
+- **Router and backend restore hardening (#813/#823/#826).** The reverted History
+  fan-in function was restored, unknown routes land on a friendly 404, and
+  anonymous users can create groups after the removed durable-create gate.
+- **Closed-event receipt access (#708/#782)** and **event polish follow-ups
+  (#789/#792).**
+
+### Backend
+- **Settlement-correction foundation (#889/#893).** A machine-readable
+  `correctionOfSettlementId` marker plus Admin-only `correctSettlement` /
+  `correctLogicalSettleUp` callables landed server-side to support future in-app
+  settlement corrections. The balance oracle is unchanged — the marker is
+  oracle-invisible — and the change is already live in production.
+
 ## [1.7.3] — 2026-07-04
 
 Closed-track first-impressions and History hardening release. Activity now works
