@@ -100,10 +100,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       return;
     }
 
-    // #648: "gate creation, not participation" — NO durable-credential gate on
-    // join. Anonymous users may join and add expenses; only group/invite-code
-    // CREATE stays gated. (The populated-anon-shell swap hole this opens is
-    // closed at every swap entry point — #647 + the triggerGoogleRestore gate.)
+    // #648/#818: no durable credential is required to join or create.
+    // Anonymous users may own groups and expenses; cross-UID restore/switch
+    // paths must prove the outgoing shell empty before discarding it.
 
     // #278 PR9: pre-join discovery. Best-effort — any failure (anon, offline,
     // bad code, no-Firebase-in-test) falls through to the normal join, which
@@ -131,8 +130,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   }
 
   /// Execute a plain join (name validation already ran in [_onSubmit]; there is
-  /// no durable gate on join since #648). Used by the no-shadow path and the
-  /// "I'm new" fallback.
+  /// no durable credential requirement on join since #648). Used by the
+  /// no-shadow path and the "I'm new" fallback.
   Future<void> _doJoin({required bool preferClaimHint}) async {
     if (ref.read(groupLoadingProvider)) return;
     ref.read(groupLoadingProvider.notifier).state = true;
@@ -318,8 +317,8 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Please sign in')) {
       return context.l10n.groupJoinPleaseSignIn;
     }
-    // #648: the join path no longer produces a durable-credential rejection
-    // (the gate moved to create-only), so there's no 'linked account' branch.
+    // #648/#818: join/create no longer require durable-credential gating, so
+    // there's no 'linked account' branch.
     return context.l10n.groupJoinFailed;
   }
 

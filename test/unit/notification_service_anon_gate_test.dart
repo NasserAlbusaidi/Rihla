@@ -23,23 +23,21 @@ class _NoopLocalNotifier implements LocalNotifier {
   }) async {}
 }
 
-/// #441 PR2 — anonymous shells must stay provably empty: the two
-/// fcm_tokens set() sites skip silently while the user is anonymous;
-/// removeToken (cleanup) stays open.
+/// Anonymous users can own groups after #648/#818, so push opt-in must write an
+/// owner-keyed token doc for the anonymous UID as well as for durable UIDs.
 void main() {
   late FakeFirebaseFirestore db;
   late _MockFirebaseMessaging messaging;
   late StreamController<String> tokenRefresh;
   late ProviderContainer container;
 
-  Provider<NotificationService> serviceProvider({bool Function()? isAnonymous}) {
+  Provider<NotificationService> serviceProvider() {
     return Provider((ref) {
       final service = NotificationService(
         ref,
         messaging: messaging,
         firestore: db,
         currentUserId: () => 'uid-anon',
-        isAnonymous: isAnonymous,
         tokenRefresh: tokenRefresh.stream,
         foregroundMessages: const Stream<RemoteMessage>.empty(),
         openedMessages: const Stream<RemoteMessage>.empty(),
@@ -67,35 +65,35 @@ void main() {
     await tokenRefresh.close();
   });
 
-  test('initialize skips the token write for an anonymous user '
-      '(silent skip, not an error)', () async {
-    final service = container.read(serviceProvider(isAnonymous: () => true));
+  test('initialize writes the token for an anonymous owner uid', () async {
+    final service = container.read(serviceProvider());
 
     expect(await service.initialize(), isTrue);
 
     final doc = await db.collection('fcm_tokens').doc('uid-anon').get();
-    expect(doc.exists, isFalse);
+    expect(doc.exists, isTrue);
+    expect(doc.data()?['token'], 'token-1');
+    expect(doc.data()?['user_id'], 'uid-anon');
     expect(
       container.read(notificationStatusProvider),
-      isNot(NotificationStatus.error),
+      NotificationStatus.enabled,
     );
   });
 
-  test('token refresh skips the write while anonymous', () async {
-    final service = container.read(serviceProvider(isAnonymous: () => true));
+  test('token refresh updates the anonymous owner token doc', () async {
+    final service = container.read(serviceProvider());
     await service.initialize();
 
     tokenRefresh.add('token-2');
     await Future<void>.delayed(Duration.zero);
 
     final doc = await db.collection('fcm_tokens').doc('uid-anon').get();
-    expect(doc.exists, isFalse);
+    expect(doc.data()?['token'], 'token-2');
   });
 
-  test('removeToken still deletes the doc while anonymous (cleanup stays open)',
-      () async {
+  test('removeToken deletes the anonymous owner token doc', () async {
     await db.collection('fcm_tokens').doc('uid-anon').set({'token': 'stale'});
-    final service = container.read(serviceProvider(isAnonymous: () => true));
+    final service = container.read(serviceProvider());
 
     await service.removeToken();
 
@@ -103,15 +101,16 @@ void main() {
     expect(doc.exists, isFalse);
   });
 
-  test('default (no isAnonymous override, injected uid) keeps writing the token',
-      () async {
+  test('initialized service re-save keeps writing the owner token', () async {
     final service = container.read(serviceProvider());
 
+    expect(await service.initialize(), isTrue);
+    when(messaging.getToken).thenAnswer((_) async => 'token-3');
     expect(await service.initialize(), isTrue);
 
     final doc = await db.collection('fcm_tokens').doc('uid-anon').get();
     expect(doc.exists, isTrue);
-    expect(doc.data()!['token'], 'token-1');
+    expect(doc.data()!['token'], 'token-3');
   });
 }
 

@@ -153,9 +153,8 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         // the Profile restore affordance and the durable-credential sheet. A
         // populated shell would be silently orphaned: its trips were flushed to
         // the server under the old anon UID, and after the swap the user is the
-        // recovered UID with none of them (#414/#216 lineage). Latent today
-        // (anon can't create/join behind the durable-gate), live once join is
-        // un-gated (#648 — this blocks it).
+        // recovered UID with none of them (#414/#216 lineage). Anonymous
+        // create/join is live after #648/#818, so the guard is required.
         final gateTimeout = ref.read(shellEmptinessGateTimeoutProvider);
         if (!await outgoingShellProvablyEmpty(
           readUser: () => ref.read(firebaseUserProvider.future),
@@ -174,12 +173,11 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
             ),
           );
           // A blocked recover performed no swap and no restart, so a lingering
-          // inFlightOp='recover' is a PHANTOM that makes GateIntentReplay skip
-          // create/join replay on every boot (gate_intent_replay.dart). Clear
-          // the handshake; the next legitimate recover re-arms it via
-          // sendRecoveryLink. The live anon SESSION is never signed out
-          // (#213/#414). Guarded: a failed prefs write must not crash the
-          // listener.
+          // inFlightOp='recover' is a PHANTOM that would keep dispatching this
+          // stale recovery on later boots. Clear the handshake; the next
+          // legitimate recover re-arms it via sendRecoveryLink. The live anon
+          // SESSION is never signed out (#213/#414). Guarded: a failed prefs
+          // write must not crash the listener.
           try {
             await service.clearInFlightOp();
             await service.clearPendingEmail();

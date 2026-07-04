@@ -52,9 +52,7 @@ class AccountBackupNudge extends ConsumerWidget {
         decoration: BoxDecoration(
           color: colors.cardSoft,
           borderRadius: BorderRadius.circular(spacing.radiusCard),
-          border: Border.all(
-            color: colors.primary.withValues(alpha: 0.25),
-          ),
+          border: Border.all(color: colors.primary.withValues(alpha: 0.25)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +110,7 @@ class AccountBackupNudge extends ConsumerWidget {
                 key: HomeKeys.accountBackupNudgeCta,
                 onPressed: () {
                   HapticService.lightClick();
-                  // Voluntary Google link — same sheet as the create/join gate.
+                  // Voluntary Google link through the shared credential sheet.
                   showDurableCredentialSheet(context);
                 },
                 child: Text(

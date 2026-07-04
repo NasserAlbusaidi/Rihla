@@ -1,11 +1,11 @@
 import 'deep_link_service.dart';
 
 /// Runs the ordered cold-start side-effects, isolating each step so that a
-/// failure in deep-link resolution, install-referrer consumption or gate-intent
-/// replay can never suppress account-recovery activation (`activateAppBootstrap`
-/// wires the recovery email-link listener + FCM registration) or the initial
-/// notification sync for that launch (#724 moved bootstrap into this chain; an
-/// unguarded throw in an early step would otherwise inert recovery + notifs).
+/// failure in deep-link resolution or install-referrer consumption can never
+/// suppress account-recovery activation (`activateAppBootstrap` wires the
+/// recovery email-link listener + FCM registration) or the initial notification
+/// sync for that launch (#724 moved bootstrap into this chain; an unguarded
+/// throw in an early step would otherwise inert recovery + notifs).
 ///
 /// A dropped decision fails open: deep-link resolution falling over yields a
 /// neutral decision (referrer not suppressed, no join routed) so the deferred
@@ -14,8 +14,7 @@ import 'deep_link_service.dart';
 Future<void> runColdStartCoordinator({
   required Future<DeepLinkInitialDecision> Function() resolveDeepLinks,
   required Future<bool> Function({required bool route}) consumeInstallReferrer,
-  required Future<void> Function({required bool skipNavigation})
-  replayGateIntent,
+  Future<void> Function()? clearLegacyAuthMarkers,
   required Future<void> Function() activateAppBootstrap,
   required Future<void> Function({required bool handleInitialMessage})
   runInitialNotificationSync,
@@ -46,10 +45,9 @@ Future<void> runColdStartCoordinator({
   final joinAlreadyRouted =
       deepLinkDecision.joinRouted || installReferrerRouted;
 
-  await guarded(
-    () => replayGateIntent(skipNavigation: joinAlreadyRouted),
-    null,
-  );
+  if (clearLegacyAuthMarkers != null) {
+    await guarded(clearLegacyAuthMarkers, null);
+  }
   await guarded(activateAppBootstrap, null);
   await guarded(
     () => runInitialNotificationSync(handleInitialMessage: !joinAlreadyRouted),

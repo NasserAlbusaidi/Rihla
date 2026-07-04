@@ -32,8 +32,8 @@ export interface JoinGroupByInviteCodeOutput {
 // It is bypassable by anon-UID rotation (anon sign-in is free, so a scripted
 // `signOut → signInAnonymously` loop mints a fresh counter per rotation). #441
 // USED to close that loop for THIS callable by refusing anon providers outright,
-// but #648 ("gate creation, not participation") REMOVED that reject so anonymous
-// users can join. The rotation bypass is therefore re-opened — and stays
+// but #648 REMOVED that reject so anonymous users can join. #818 later removed
+// the matching create gate too. The rotation bypass is therefore re-opened — and stays
 // contained the same way enumeration is: `enforceAppCheck: true` (below) requires
 // a genuine attested app instance to place the call at all, and the invite-code
 // space is large (Random.secure(), 32-symbol alphabet, 6 chars ≈ 32⁶ ≈ 1.07 B).
@@ -181,9 +181,8 @@ export const joinGroupByInviteCode = onCall<
       throw new HttpsError('unauthenticated', 'Sign-in required.');
     }
 
-    // #648: NO anonymous-provider reject here — "gate creation, not
-    // participation." Anonymous users may join and participate; only group /
-    // invite-code CREATE stays durable-gated (firestore.rules + GroupService).
+    // #648: NO anonymous-provider reject here. Anonymous users may join and
+    // participate; #818 also allows anonymous group/invite-code creation.
     // The re-opened anon-rotation throttle bypass is contained by App Check +
     // invite-code entropy (see the #197/#648 note above). Do not re-add it.
     const uid = request.auth.uid;

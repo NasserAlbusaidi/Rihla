@@ -49,8 +49,9 @@ Future<void> _pump(
     routes: [
       GoRoute(
         path: '/home',
-        builder: (ctx, state) =>
-            const Scaffold(body: SingleChildScrollView(child: AccountBackupNudge())),
+        builder: (ctx, state) => const Scaffold(
+          body: SingleChildScrollView(child: AccountBackupNudge()),
+        ),
       ),
     ],
   );
@@ -100,13 +101,14 @@ void main() {
   });
 
   testWidgets(
-      'hidden for ANY durable user — Google-linked without email included '
-      '(#428: the old linkedEmail==null condition mis-nudged them)',
-      (tester) async {
-    await _pump(tester, prefs: prefs, isDurable: true);
+    'hidden for ANY durable user — Google-linked without email included '
+    '(#428: the old linkedEmail==null condition mis-nudged them)',
+    (tester) async {
+      await _pump(tester, prefs: prefs, isDurable: true);
 
-    expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
-  });
+      expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
+    },
+  );
 
   testWidgets('hidden once the dismiss flag is set', (tester) async {
     SharedPreferences.setMockInitialValues({
@@ -119,8 +121,9 @@ void main() {
     expect(find.byKey(HomeKeys.accountBackupNudge), findsNothing);
   });
 
-  testWidgets('CTA opens the durable-credential (Google) sheet (#428)',
-      (tester) async {
+  testWidgets('CTA opens the durable-credential (Google) sheet (#428)', (
+    tester,
+  ) async {
     await _pump(tester, prefs: prefs);
 
     await tester.tap(find.byKey(HomeKeys.accountBackupNudgeCta));
@@ -130,8 +133,8 @@ void main() {
     expect(find.text(l10n.durableGateTitle), findsOneWidget);
   });
 
-  // #647 box (e): the voluntary backup nudge routes through the SAME gated
-  // sheet as the create/join gate (showDurableCredentialSheet) — it must never
+  // #647 box (e): the voluntary backup nudge routes through the shared
+  // durable-credential sheet (showDurableCredentialSheet) — it must never
   // hand-roll a link. So a Google link-conflict on a POPULATED anon shell hits
   // the empty-shell guard: dead-end copy, and restoreWithGoogle is NEVER
   // reached (a swap would silently orphan this device's groups, #647/#648).
@@ -140,9 +143,7 @@ void main() {
     'CTA → link conflict on a populated shell shows the dead-end copy and '
     'never swaps accounts (#647)',
     (tester) async {
-      when(
-        () => recovery.linkGoogleToCurrentUser(),
-      ).thenThrow(_conflict());
+      when(() => recovery.linkGoogleToCurrentUser()).thenThrow(_conflict());
 
       await _pump(
         tester,

@@ -107,9 +107,8 @@ class AuthRecoveryService {
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = inFlightOpPrefsKey;
 
-  /// Public so [GateIntentReplay] can defer to a pending `recover` op (the
-  /// email-restore bootstrap restarts the app; replaying a gate intent into
-  /// that boot would lose the form a second time).
+  /// Public so the email-link bootstrap can dispatch pending link/recover
+  /// operations across app restarts.
   static const String inFlightOpPrefsKey = 'auth.inFlightOp';
 
   /// In-flight email-link operation kind. `'link'` attaches to the current
@@ -222,16 +221,18 @@ class AuthRecoveryService {
     final result = await user.linkWithCredential(credential);
     await clearPendingEmail();
     await clearInFlightOp();
-    // The cached ID token still carries sign_in_provider=anonymous right after
-    // linkWithCredential; the next rules-gated durable write (group/inviteCode
-    // create) would PERMISSION_DENIED until the SDK lazily refreshes (#522).
+    // The cached ID token can still report the old anonymous provider right
+    // after linkWithCredential. Force-refresh so downstream auth observers and
+    // durable-account checks see the linked credential immediately (#522).
     // Force-refresh now — but best-effort: the link already succeeded, so a
     // transient refresh failure must not surface as a link failure (the
     // bootstrap caller treats FirebaseAuthException as a failed link).
     try {
       await result.user?.getIdToken(true);
     } catch (_) {
-      FirebaseConfig.log('Recovery: post-link token refresh failed (non-fatal)');
+      FirebaseConfig.log(
+        'Recovery: post-link token refresh failed (non-fatal)',
+      );
     }
     FirebaseConfig.log('Recovery: linked email to uid ${result.user?.uid}');
     return result;
@@ -267,18 +268,20 @@ class AuthRecoveryService {
   }
 
   /// Restore the durable Google-backed account on this device, then restart
-  /// (#441 PR3). This is a cross-UID swap (the throwaway anon shell is replaced
-  /// by the Google-owned UID), so it runs the full cache-isolation protocol —
+  /// (#441 PR3). This is a cross-UID swap (the outgoing UID is replaced by the
+  /// Google-owned UID), so it runs the full cache-isolation protocol —
   /// mirroring [restoreWithEmailLink]/[signOutCurrentDevice] but via
   /// [FirebaseAuth.signInWithCredential] and WITHOUT the merge engine: the
-  /// post-gate shell is provably empty (PR2 gates `fcm_tokens` writes; PR4
-  /// deleted the cleanup-intent writer), so there is nothing to migrate.
+  /// caller must prove the outgoing shell empty before invocation. Anonymous
+  /// users can own groups after #648/#818; this raw swap must never be used to
+  /// discard a populated shell.
   ///
   /// Ordering is load-bearing:
   /// 1. Obtain the credential FIRST — interactive, so a user-cancel / missing
   ///    idToken / missing serverClientId throws here with the anon shell fully
-  ///    intact (no overlay, no swap, no restart). [credential] lets the PR2
-  ///    gate-conflict path reuse the Google credential from its failed link.
+  ///    intact (no overlay, no swap, no restart). [credential] lets the
+  ///    durable-credential sheet conflict path reuse the Google credential from
+  ///    its failed link.
   /// 2. Remove the FCM token BEFORE the swap — owner-only `fcm_tokens` rules
   ///    make `fcm_tokens/{oldUid}` un-deletable once `request.auth.uid` changes,
   ///    and [CacheIsolationController.engageIsolation] invalidates the
@@ -345,10 +348,9 @@ class AuthRecoveryService {
   /// Restore the previously-linked account via an email sign-in link, then
   /// restart (#441 PR4 — the slim email fallback, D3). Cross-UID
   /// discard-shell swap: identical protocol to [restoreWithGoogle], WITHOUT
-  /// the merge engine — the post-gate anon shell is provably empty (PR2
-  /// gates `fcm_tokens` writes; the cleanup-intent writer and the server
-  /// cleanup callable were deleted in #441 PR4/PR5), so there is nothing to
-  /// migrate.
+  /// the merge engine. The caller must prove the outgoing shell empty before
+  /// invocation; anonymous users can own groups after #648/#818, so there is no
+  /// longer a server gate that makes this inherently safe.
   ///
   /// Ordering is load-bearing (see [restoreWithGoogle]); the one addition is
   /// the email-path op-state (`pendingLinkEmail` / `inFlightOp`), cleared in
