@@ -1,0 +1,440 @@
+<title>Rihla — Whole-App Quality Scorecard</title>
+<style>
+  :root {
+    --bg: #F4F6F4;
+    --surface: #FFFFFF;
+    --surface-2: #EAEFEC;
+    --ink: #14201D;
+    --ink-soft: #4F5D59;
+    --ink-faint: #808B87;
+    --accent: #0E7268;
+    --accent-ink: #0A544C;
+    --hairline: #E1E6E2;
+    --shadow: 0 1px 2px rgba(20,32,29,.04), 0 8px 24px -12px rgba(20,32,29,.12);
+    --q-a: #2E8B57;
+    --q-bplus: #35875A;
+    --q-b: #6E9A44;
+    --q-bminus: #B0842A;
+    --q-c: #C06E2C;
+    --q-d: #C0453A;
+    --good-bg: rgba(46,139,87,.09);
+    --good-ink: #2E7D52;
+    --warn-bg: rgba(192,110,44,.11);
+    --warn-ink: #B0611F;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C1311; --surface: #141F1C; --surface-2: #1B2724; --ink: #E9EFEC;
+      --ink-soft: #A3B0AB; --ink-faint: #6C7A75; --accent: #33B4A3; --accent-ink: #57C6B7;
+      --hairline: #24322E; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.55);
+      --q-a: #4FBE82; --q-bplus: #56BE86; --q-b: #9BC65C; --q-bminus: #DBA53E; --q-c: #E28C43; --q-d: #E6675C;
+      --good-bg: rgba(79,190,130,.13); --good-ink: #6BCB94; --warn-bg: rgba(226,140,67,.14); --warn-ink: #E0954E;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F4F6F4; --surface: #FFFFFF; --surface-2: #EAEFEC; --ink: #14201D;
+    --ink-soft: #4F5D59; --ink-faint: #808B87; --accent: #0E7268; --accent-ink: #0A544C;
+    --hairline: #E1E6E2; --shadow: 0 1px 2px rgba(20,32,29,.04), 0 8px 24px -12px rgba(20,32,29,.12);
+    --q-a:#2E8B57; --q-bplus:#35875A; --q-b:#6E9A44; --q-bminus:#B0842A; --q-c:#C06E2C; --q-d:#C0453A;
+    --good-bg: rgba(46,139,87,.09); --good-ink:#2E7D52; --warn-bg: rgba(192,110,44,.11); --warn-ink:#B0611F;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0C1311; --surface:#141F1C; --surface-2:#1B2724; --ink:#E9EFEC;
+    --ink-soft:#A3B0AB; --ink-faint:#6C7A75; --accent:#33B4A3; --accent-ink:#57C6B7;
+    --hairline:#24322E; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.55);
+    --q-a:#4FBE82; --q-bplus:#56BE86; --q-b:#9BC65C; --q-bminus:#DBA53E; --q-c:#E28C43; --q-d:#E6675C;
+    --good-bg: rgba(79,190,130,.13); --good-ink:#6BCB94; --warn-bg: rgba(226,140,67,.14); --warn-ink:#E0954E;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: clamp(20px, 4vw, 56px) clamp(16px, 4vw, 40px) 72px; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "zero" 1; }
+
+  .eyebrow { font-size: .72rem; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent-ink); font-weight: 700; margin: 0 0 12px; }
+  h1 { font-size: clamp(1.7rem, 4.5vw, 2.5rem); line-height: 1.05; letter-spacing: -.02em;
+       font-weight: 800; margin: 0 0 8px; text-wrap: balance; }
+  .sub { color: var(--ink-soft); font-size: .96rem; margin: 0; }
+  .sub code { font-family: var(--mono); font-size: .84em; background: var(--surface-2);
+              padding: 1px 6px; border-radius: 5px; color: var(--ink-soft); }
+
+  .hero { margin-top: 28px; background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+  .hero-top { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: clamp(20px, 4vw, 44px);
+              padding: clamp(22px, 3.5vw, 36px); align-items: center; }
+  .score-block { display: flex; flex-direction: column; align-items: flex-start; }
+  .score-line { display: flex; align-items: baseline; gap: 10px; }
+  .score-big { font-size: clamp(3.6rem, 11vw, 5.6rem); font-weight: 800; letter-spacing: -.04em;
+               line-height: .88; color: var(--ink); }
+  .score-max { font-size: 1.5rem; font-weight: 600; color: var(--ink-faint); }
+  .pillrow { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .grade-pill { display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 700; font-size: 1.05rem; padding: 6px 14px 6px 12px; border-radius: 999px;
+    background: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark){ .grade-pill{ color:#06201C; } }
+  :root[data-theme="dark"] .grade-pill{ color:#06201C; }
+  :root[data-theme="light"] .grade-pill{ color:#fff; }
+  .grade-pill .glabel { font-size: .72rem; font-weight: 700; letter-spacing: .08em; opacity: .8; text-transform: uppercase; }
+  .prev-chip { font-size: .78rem; color: var(--ink-soft); background: var(--surface-2);
+    border-radius: 999px; padding: 5px 11px; font-weight: 600; }
+  .prev-chip b { color: var(--good-ink); }
+
+  .hero-verdict { border-left: 1px solid var(--hairline); padding-left: clamp(20px, 3vw, 40px); }
+  .verdict-lead { font-size: 1.12rem; font-weight: 600; margin: 0 0 14px; line-height: 1.4; letter-spacing: -.01em; text-wrap: pretty; }
+  .facts { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0; padding: 0; list-style: none; }
+  .fact { display: flex; align-items: baseline; gap: 8px; }
+  .fact b { font-size: 1.35rem; font-weight: 800; }
+  .fact.good b { color: var(--good-ink); }
+  .fact.warn b { color: var(--warn-ink); }
+  .fact span { color: var(--ink-soft); font-size: .9rem; }
+
+  .track-wrap { padding: 0 clamp(22px, 3.5vw, 36px) clamp(22px, 3vw, 30px); }
+  .track { position: relative; height: 12px; border-radius: 999px; background: var(--surface-2);
+           overflow: visible; margin: 34px 0 26px; }
+  .track-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px;
+                background: linear-gradient(90deg, var(--q-c), var(--q-b) 55%, var(--q-bplus));
+                width: 0; transition: width 1.1s cubic-bezier(.2,.8,.2,1); }
+  .track-tick { position: absolute; top: -8px; bottom: -8px; width: 1px; background: var(--hairline); }
+  .track-tick span { position: absolute; top: -20px; transform: translateX(-50%);
+                     font-size: .66rem; color: var(--ink-faint); font-weight: 600; }
+  .track-prev { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 12px; height: 12px;
+                border-radius: 50%; background: transparent; border: 2px dashed var(--ink-faint); left: 0; opacity: .7; }
+  .track-pin { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 20px; height: 20px;
+               border-radius: 50%; background: var(--surface); border: 3px solid var(--accent);
+               box-shadow: 0 2px 6px rgba(0,0,0,.2); left: 0; transition: left 1.1s cubic-bezier(.2,.8,.2,1); }
+  .track-pin b { position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+                 background: var(--accent); color: #fff; font-size: .74rem; font-weight: 700;
+                 padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+  @media (prefers-color-scheme: dark){ .track-pin b{ color:#06201C; } }
+  :root[data-theme="dark"] .track-pin b{ color:#06201C; }
+  :root[data-theme="light"] .track-pin b{ color:#fff; }
+
+  .callout { margin-top: 20px; background: var(--warn-bg); border: 1px solid transparent;
+    border-radius: 12px; padding: 15px 18px; font-size: .88rem; color: var(--ink-soft); line-height: 1.55; }
+  .callout b { color: var(--ink); }
+  .callout .tag { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--warn-ink); margin-right: 8px; }
+
+  .sec { margin-top: 52px; }
+  .sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+           margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--hairline); }
+  .sec-h h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+  .sec-h .hint { font-size: .82rem; color: var(--ink-faint); }
+
+  .groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .gtile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px;
+           padding: 16px 16px 15px; box-shadow: var(--shadow); }
+  .gtile .gname { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+                  color: var(--ink-soft); margin: 0 0 10px; min-height: 2.2em; }
+  .gtile .gscore { display: flex; align-items: baseline; gap: 5px; }
+  .gtile .gscore b { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; }
+  .gtile .gscore .of { font-size: .9rem; color: var(--ink-faint); font-weight: 600; }
+  .gbar { height: 6px; border-radius: 999px; background: var(--surface-2); margin: 11px 0 9px; overflow: hidden; }
+  .gbar i { display: block; height: 100%; border-radius: 999px; width: 0; transition: width 1s ease .1s; }
+  .gtile .gnote { font-size: .78rem; color: var(--ink-faint); margin: 0; line-height: 1.4; }
+  .gtile .gpct { font-weight: 700; font-size: .82rem; }
+
+  .catgroup + .catgroup { margin-top: 26px; }
+  .catgroup-h { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+                color: var(--ink-faint); margin: 0 0 10px; display: flex; align-items: center; gap: 10px; }
+  .catgroup-h::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
+  .row { display: grid; grid-template-columns: 52px 1fr; gap: 14px; align-items: start;
+         background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+         padding: 13px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
+  .row-score { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; text-align: center; line-height: 1.6; }
+  .row-main { min-width: 0; }
+  .row-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .row-name { font-weight: 700; font-size: .98rem; letter-spacing: -.01em; }
+  .chip { font-size: .68rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+          letter-spacing: .03em; white-space: nowrap; }
+  .chip.grade { color: #fff; }
+  @media (prefers-color-scheme: dark){ .chip.grade{ color:#06201C; } }
+  :root[data-theme="dark"] .chip.grade{ color:#06201C; }
+  :root[data-theme="light"] .chip.grade{ color:#fff; }
+  .chip.wt { background: var(--surface-2); color: var(--ink-soft); }
+  .chip.delta.up { background: var(--good-bg); color: var(--good-ink); }
+  .chip.delta.down { background: var(--warn-bg); color: var(--warn-ink); }
+  .chip.delta.flat { background: var(--surface-2); color: var(--ink-faint); }
+  .row-bar { height: 5px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: 2px 0 8px; }
+  .row-bar i { display: block; height: 100%; border-radius: 999px; width: 0; transition: width .9s ease; }
+  .row-note { font-size: .84rem; color: var(--ink-soft); margin: 0; line-height: 1.45; }
+  .row-note .rej { color: var(--warn-ink); font-weight: 600; }
+
+  .majors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .major { background: var(--surface); border: 1px solid var(--hairline); border-top: 3px solid var(--warn-ink);
+           border-radius: 12px; padding: 16px 16px 15px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+  .major .m-tag { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+                  color: var(--warn-ink); margin: 0 0 8px; }
+  .major h3 { font-size: .98rem; font-weight: 700; margin: 0 0 10px; line-height: 1.3; letter-spacing: -.01em; }
+  .major .m-ev { font-family: var(--mono); font-size: .74rem; color: var(--ink-soft); background: var(--surface-2);
+                 border-radius: 8px; padding: 9px 11px; margin: 0 0 12px; line-height: 1.5; overflow-x: auto; }
+  .major .m-fix { font-size: .85rem; margin: auto 0 0; padding-top: 10px; border-top: 1px dashed var(--hairline); }
+  .major .m-fix b { color: var(--good-ink); font-weight: 700; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .col h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; font-weight: 700; }
+  .col.good h3 { color: var(--good-ink); }
+  .col.risk h3 { color: var(--warn-ink); }
+  .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .list li { position: relative; padding-left: 22px; font-size: .88rem; color: var(--ink-soft); line-height: 1.5; }
+  .list li::before { position: absolute; left: 0; top: -1px; font-size: 1rem; font-weight: 700; }
+  .col.good .list li::before { content: "+"; color: var(--good-ink); }
+  .col.risk .list li::before { content: "\2013"; color: var(--warn-ink); }
+  .list li b { color: var(--ink); font-weight: 700; }
+  .list li code { font-family: var(--mono); font-size: .82em; color: var(--ink-soft); }
+
+  .method { margin-top: 56px; background: var(--surface-2); border-radius: 16px; padding: clamp(20px,3vw,30px); }
+  .method h3 { margin: 0 0 6px; font-size: .95rem; font-weight: 700; }
+  .method p { margin: 0 0 16px; font-size: .86rem; color: var(--ink-soft); max-width: 68ch; line-height: 1.6; }
+  .method p code { font-family: var(--mono); font-size: .82em; background: var(--surface); padding: 1px 5px; border-radius: 4px; }
+  .pipeline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; }
+  .stage { background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px;
+           padding: 7px 12px; font-size: .8rem; font-weight: 600; }
+  .stage b { color: var(--accent-ink); }
+  .arrow { color: var(--ink-faint); font-weight: 700; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 26px; padding: 16px 0 0; margin: 4px 0 0; border-top: 1px solid var(--hairline); list-style: none; }
+  .stats li { font-size: .82rem; color: var(--ink-soft); }
+  .stats li b { color: var(--ink); font-weight: 700; }
+
+  a { color: var(--accent-ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  @media (max-width: 860px) {
+    .groups { grid-template-columns: repeat(2, 1fr); }
+    .majors { grid-template-columns: 1fr; }
+    .hero-top { grid-template-columns: 1fr; }
+    .hero-verdict { border-left: 0; border-top: 1px solid var(--hairline); padding-left: 0; padding-top: 22px; }
+  }
+  @media (max-width: 560px) {
+    .groups { grid-template-columns: 1fr; }
+    .two { grid-template-columns: 1fr; gap: 26px; }
+    .row { grid-template-columns: 44px 1fr; gap: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .track-fill, .track-pin, .gbar i, .row-bar i { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Whole-App Audit · Re-grade #2</p>
+    <h1>Rihla — Quality Scorecard</h1>
+    <p class="sub">Group-expense splitter · Flutter + Firebase · graded against <code>main@b0e02329</code> (post-batch, +10 commits) · 3 Jul 2026</p>
+  </header>
+
+  <section class="hero" aria-label="Composite score">
+    <div class="hero-top">
+      <div class="score-block">
+        <div class="score-line">
+          <span class="score-big num">86.0</span>
+          <span class="score-max num">/100</span>
+        </div>
+        <div class="pillrow">
+          <span class="grade-pill"><span class="glabel">Grade</span> B+</span>
+          <span class="prev-chip num">prev <code style="all:unset">cd37d604</code> 85.7 · <b>+0.3</b></span>
+        </div>
+      </div>
+      <div class="hero-verdict">
+        <p class="verdict-lead">Essentially flat. The spine — money engine, authorization surface, data-loss-critical auth — is best-in-class and verified. The drag is a small cluster of user-facing gaps, not arithmetic or structural rot.</p>
+        <ul class="facts">
+          <li class="fact good"><b class="num">0</b><span>money-wrong / security-hole criticals</span></li>
+          <li class="fact warn"><b class="num">3</b><span>confirmed majors (all cheap, all pre-existing)</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="track-wrap">
+      <div class="track" role="img" aria-label="Score 85.98 out of 100, up from 85.7">
+        <div class="track-fill" id="trackFill"></div>
+        <div class="track-tick" style="left:60%"><span>60</span></div>
+        <div class="track-tick" style="left:70%"><span>70</span></div>
+        <div class="track-tick" style="left:80%"><span>80</span></div>
+        <div class="track-tick" style="left:90%"><span>90</span></div>
+        <div class="track-prev" id="trackPrev" title="previous grade 85.7"></div>
+        <div class="track-pin" id="trackPin"><b class="num">85.98</b></div>
+      </div>
+    </div>
+    <div style="padding:0 clamp(22px,3.5vw,36px) clamp(20px,3vw,26px)">
+      <div class="callout">
+        <span class="tag">Read the findings, not the point moves</span>
+        Two independent fresh panels vary ~±2–3 per category. This batch fixed real low-weight polish (Navigation +3: bell badge, deep-link rows, RTL arrow; Copy +2: honest settle/join/restore). But the headline number barely moved because the heavy categories shifted on <b>re-judgment, not code</b> — most notably <b>Offline −8</b>: <code style="font-family:var(--mono);font-size:.82em">write_ack.dart</code> is byte-identical since the last grade; this panel simply escalated the pre-existing unwired <code style="font-family:var(--mono);font-size:.82em">onLateError</code> from “minor / defense-in-depth” to a confirmed money-loss major. It is a sharper reading, not a regression.
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-label="Scores by group">
+    <div class="sec-h"><h2>Scores by group</h2><span class="hint">weighted contribution · rubric total = 100</span></div>
+    <div class="groups" id="groups"></div>
+  </section>
+
+  <section class="sec" aria-label="Category breakdown">
+    <div class="sec-h"><h2>16 categories</h2><span class="hint">calibrated 0–100 · Δ vs. cd37d604 · verified against code</span></div>
+    <div id="cats"></div>
+  </section>
+
+  <section class="sec" aria-label="Highest-leverage fixes">
+    <div class="sec-h"><h2>Cheapest leverage — the 3 confirmed majors</h2><span class="hint">low-weight · none touched by this batch · together → low 90s</span></div>
+    <div class="majors">
+      <article class="major">
+        <p class="m-tag">Offline · weight 6 · data-loss class</p>
+        <h3>Rejected offline write silently loses money — no user notice</h3>
+        <p class="m-ev">write_ack.dart:36-46 — observeLate() handles a replay failure with only debugPrint + Sentry + onLateError?.call. onLateError is wired at 0 of ~18 callsites. User was told “Saved — will sync”; the balance silently corrects.</p>
+        <p class="m-fix"><b>Fix:</b> wire <code>onLateError</code> to a user-facing “sync failed — re-enter” recovery.</p>
+      </article>
+      <article class="major">
+        <p class="m-tag">Copy / errors · weight 4</p>
+        <h3>Expense flow leaks raw Firebase exception text</h3>
+        <p class="m-ev">expense_editor_body.dart:448-450 passes e.toString() into the add/update snackbar, :500 into delete — bypassing friendlyMessageFor used at 13 other sites. Raw jargon on common permission-denied / offline errors.</p>
+        <p class="m-fix"><b>Fix:</b> route the three catches through <code>friendlyMessageFor</code>.</p>
+      </article>
+      <article class="major">
+        <p class="m-tag">Accessibility · weight 6</p>
+        <h3>Ledger money is unlabeled for screen readers</h3>
+        <p class="m-ev">RAmount emits no Semantics (0 hits in r_amount.dart and across lib/features/ledger/); rows &amp; hero use showCurrency:false, and owe/owed rides on a U+2212 glyph + colour. A blind user hears currency-less numbers in a multi-currency app.</p>
+        <p class="m-fix"><b>Fix:</b> add a <code>semanticsLabel</code> to RAmount (amount + currency + direction).</p>
+      </article>
+    </div>
+    <p style="margin:14px 2px 0;font-size:.82rem;color:var(--ink-faint)">Still open, not re-surfaced this run: the group-delete sheet’s “kept for 30 days” copy (<code style="font-family:var(--mono)">app_en.arb:2090</code>) remains a false promise — no restore backend exists. Carry it forward.</p>
+  </section>
+
+  <section class="sec two" aria-label="Strengths and risks">
+    <div class="col good">
+      <h3>What carries the score</h3>
+      <ul class="list">
+        <li><b>Money engine, byte-for-byte</b>: client BalanceCalculator ↔ TS recomputeNet mirror — matching ROUND_DOWN truncation, negative-owed guard fires first both sides, per-currency bucketing, exact decompose, #596 regression-pinned.</li>
+        <li><b>Server-authoritative security with teeth</b>: App Check on every callable (one documented GDPR exception), per-currency net-zero deletion gates, a claim/merge impersonation seal, 211 rules-emulator assertions.</li>
+        <li><b>Data-loss-critical auth is correct</b>: #213 restored-session-KEPT never re-mints a UID; the #647/#648 swap gate resolves UID first, then groups, through all three entry points — never re-gated on CTA visibility.</li>
+        <li><b>Disciplined #412 offline handling</b>: one bounded-race helper applied uniformly at every money write; connectivity event-driven from SDK metadata; offline traps tested with real never-completing Completers.</li>
+        <li><b>Test rigor where the money is</b>: byte-differential oracle parity across identity/money/currency axes, complete Functions coverage, and a SHA-bound deploy ceremony verified in sync with prod (<code>backend-deployed=abee70e8</code>, zero pending delta).</li>
+      </ul>
+    </div>
+    <div class="col risk">
+      <h3>What drags it</h3>
+      <ul class="list">
+        <li><b>Silent money loss on failed replay</b>: <code>onLateError</code> unwired everywhere — a rejected queued write vanishes with only a background Sentry event. Highest-leverage fix.</li>
+        <li><b>Raw Firebase text leaks</b> on the core expense add/edit/delete flow, bypassing the app’s own friendly-error translator.</li>
+        <li><b>Ledger money invisible to screen readers</b> — RAmount has no Semantics; amounts render currency-less; sign is glyph + colour only.</li>
+        <li><b>Maintainability debt on the riskiest code</b>: 15 files exceed the 800-line cap (to ~2.4×, in expense-entry/settle-up/profile) and events/ledger/groups form a bidirectional import cycle.</li>
+        <li><b>Convention-dependent hardening</b>: PII protection is convention-only (no central beforeSend scrubber), asymmetric date read-fence, and an un-gated bare <code>firebase deploy</code> beside the full ceremony.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="method" aria-label="How this was produced">
+    <h3>How this grade was produced</h3>
+    <p>Identical rubric, weights, and method to the first whole-app grade — re-run against the new HEAD. 16 blind, fresh-context expert reviewers (one per weighted category, zero session history) read the code and graded 0–100 against a shared anchor; every critical/major finding was handed to an independent skeptic prompted to <em>refute</em> it against live code; only survivors reached the Opus judge, which calibrated each category and computed the weighted composite. The composite was independently recomputed by hand — <code>85.98</code>, matching the judge’s <code>85.98</code>. Verification again earned its keep: it downgraded several flagged “majors” to minor (Navigation rename, dark-theme, read-fence) after reading the code.</p>
+    <div class="pipeline">
+      <span class="stage"><b>16</b> category reviewers</span>
+      <span class="arrow">→</span>
+      <span class="stage"><b>refute</b> every major vs. code</span>
+      <span class="arrow">→</span>
+      <span class="stage"><b>Opus</b> judge · weighted composite</span>
+    </div>
+    <ul class="stats">
+      <li><b>29</b> agents · 0 errors</li>
+      <li><b>417</b> tool calls</li>
+      <li><b>2.73M</b> tokens</li>
+      <li>vs. prior run: <b>85.7 → 85.98</b> (within panel variance)</li>
+      <li>First-hour experience graded <b>A−</b> separately</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+  const gradeVar = g => g.startsWith('A') ? 'var(--q-a)'
+    : g === 'B+' ? 'var(--q-bplus)'
+    : g === 'B'  ? 'var(--q-b)'
+    : g === 'B-' ? 'var(--q-bminus)'
+    : g.startsWith('C') ? 'var(--q-c)' : 'var(--q-d)';
+
+  const groups = [
+    { name: 'Product & UX', score: 29.73, max: 35, d: '+0.4', note: 'weakest: Offline shares nothing here; a11y 80', color: 'var(--q-b)' },
+    { name: 'Correctness & Data', score: 25.86, max: 30, d: '−0.2', note: 'money 90 leads; Offline dropped to 79', color: 'var(--q-b)' },
+    { name: 'Security', score: 13.20, max: 15, d: '−0.2', note: 'rules & auth both 88', color: 'var(--q-bplus)' },
+    { name: 'Engineering', score: 17.19, max: 20, d: '+0.2', note: 'CI 89, tests 88 lead', color: 'var(--q-b)' },
+  ];
+
+  const cats = [
+    { n:'First-run & onboarding', g:'Product & UX', s:86, gr:'B', w:5, d:-1, note:'Fully ungated anon create with offline awaitServerAck; #245 auto-seeds the ledger event; non-destructive boot (#213). Only cosmetic minors (no guest caption on empty state).' },
+    { n:'Core money loop UX', g:'Product & UX', s:87, gr:'B+', w:10, d:-1, note:'Offline-safe write at every money site; exact-split staleness guard; live pre-write cap prevents a stale overpay; per-currency bucketed; discard safety via a frozen snapshot.' },
+    { n:'Navigation & IA', g:'Product & UX', s:87, gr:'B+', w:5, d:3, note:'Bell now carries the unread badge (#846); History rows deep-link to what they describe (#849); RTL arrow fixed (#848). Correct back-guard asymmetry; #666 trap avoided; strict invite parsing.' },
+    { n:'Copy & microcopy (EN/AR)', g:'Product & UX', s:82, gr:'B-', w:4, d:2, note:'Honest settle/join/restore copy landed (#843/#845/#851); perfect 1022/1022 EN↔AR parity, full CLDR Arabic plurals. Dragged by the expense flow dumping raw e.toString() into the snackbar.' },
+    { n:'Visual design system', g:'Product & UX', s:86, gr:'B', w:5, d:4, note:'Typed ThemeExtensions (copyWith/lerp), CI theme purity passes, 0 withOpacity, tabular figures, real component reuse. Dark theme is a documented opt-in deferral; radius drift 2–4px only. [partly re-calibration]' },
+    { n:'Accessibility & i18n / RTL', g:'Product & UX', s:80, gr:'B-', w:6, d:2, note:'World-class RTL (126 directional sites, 0 hardcoded L/R) & full Arabic parity — but RAmount emits no Semantics, so a blind user hears currency-less numbers. The a11y major shifted from nav buttons to money labels.' },
+    { n:'Money math & oracle parity', g:'Correctness & Data', s:90, gr:'A-', w:12, d:2, note:'Client & TS oracle byte-for-byte incl. ROUND_DOWN truncation; negative-owed guard fires first both sides; per-currency; decompose conserves exactly; #596 regression-pinned. 3 polish minors only.' },
+    { n:'Data model integrity', g:'Correctness & Data', s:87, gr:'B+', w:6, d:1, note:'Soft-delete/append-only enforced at model+service+rules; createdBy immutable + unforgeable lastEditedBy; symmetric currency read-fence; categoryId-only. Date hard-parse has no reachable bad-write path today.' },
+    { n:'Offline & sync', g:'Correctness & Data', s:79, gr:'C+', w:6, d:-8, rej:true, note:'Excellent infra (awaitServerAck, waitForPendingWrites barrier, real Completer tests) undercut by one confirmed money-loss path: onLateError wired at 0 of ~18 sites, so a rejected replay vanishes with only a Sentry log.' },
+    { n:'Error handling & edge cases', g:'Correctness & Data', s:85, gr:'B', w:6, d:-1, note:'Allocators degrade safely on hostile input; over-cap guarded on BigInt; localized error taxonomy; malformed docs skipped row-by-row. Docked for the expense-path raw-dump miss + two silent-swallow minors.' },
+    { n:'Firestore rules & Functions auth', g:'Security', s:88, gr:'B+', w:9, d:-1, note:'App Check on every callable (documented deleteAccount GDPR exception); per-currency net-zero deletion gates; claim/merge impersonation seal; 211 emulator assertions. Zero verified hole.' },
+    { n:'Auth, recovery, cross-UID & PII', g:'Security', s:88, gr:'B+', w:6, d:-1, note:'#213 restored-session-KEPT; #647/#648 swap gate resolves UID before groups, through all three entry points, never re-gated on CTA visibility. Minor: PII protection is convention-only (no beforeSend scrubber).' },
+    { n:'Architecture & organization', g:'Engineering', s:84, gr:'B', w:6, d:2, note:'Single FirestoreRepository base, strict feature-first, codegen-free Riverpod, typed route constants. 15 files over the 800-line cap; events/ledger/groups form a bidirectional import cycle.' },
+    { n:'Test coverage & quality', g:'Engineering', s:88, gr:'B+', w:7, d:0, note:'Byte-differential oracle parity across identity/money/currency axes; complete Functions coverage; #752 conservation + order-invariance; SHA-bound deploy ceremony verified in sync with prod.' },
+    { n:'State management & performance', g:'Engineering', s:83, gr:'B', w:4, d:0, note:'Home holds O(G), not O(G×E), listeners; one pure reduction feeds live & one-shot; .select() trims rebuilds; pagination dodges the fake_cloud_firestore clause-order trap. Event streams still want autoDispose.' },
+    { n:'CI/CD & release hygiene', g:'Engineering', s:89, gr:'B+', w:3, d:4, note:'Release bound to an approved SHA; backend-deployed tag verified in sync with prod (abee70e8, zero pending delta); dual-extractor Functions drift guard; byte-comparative prod-state verification.' },
+  ];
+
+  const gEl = document.getElementById('groups');
+  groups.forEach(g => {
+    const pct = (100 * g.score / g.max);
+    const up = g.d.indexOf('+') === 0;
+    const d = document.createElement('div');
+    d.className = 'gtile';
+    d.innerHTML = `<p class="gname">${g.name}</p>
+      <div class="gscore"><b class="num" style="color:${g.color}">${g.score.toFixed(1)}</b><span class="of num">/ ${g.max}</span>
+        <span class="chip delta ${up?'up':'down'}" style="margin-left:auto">${g.d}</span></div>
+      <div class="gbar"><i data-w="${pct.toFixed(1)}" style="background:${g.color}"></i></div>
+      <p class="gnote"><span class="gpct num" style="color:${g.color}">${pct.toFixed(0)}%</span> of group weight</p>`;
+    gEl.appendChild(d);
+  });
+
+  const order = ['Product & UX','Correctness & Data','Security','Engineering'];
+  const cEl = document.getElementById('cats');
+  const dchip = d => {
+    if (d > 0) return `<span class="chip delta up">+${d}</span>`;
+    if (d < 0) return `<span class="chip delta down">−${Math.abs(d)}</span>`;
+    return `<span class="chip delta flat">±0</span>`;
+  };
+  order.forEach(gn => {
+    const wrap = document.createElement('div');
+    wrap.className = 'catgroup';
+    const h = document.createElement('p');
+    h.className = 'catgroup-h';
+    h.textContent = gn;
+    wrap.appendChild(h);
+    cats.filter(c => c.g === gn).forEach(c => {
+      const col = gradeVar(c.gr);
+      const note = c.rej
+        ? `${c.note} <span class="rej">Re-judged from minor — code unchanged since last grade.</span>`
+        : c.note;
+      const r = document.createElement('div');
+      r.className = 'row';
+      r.innerHTML = `<div class="row-score num" style="color:${col}">${c.s}</div>
+        <div class="row-main">
+          <div class="row-head">
+            <span class="row-name">${c.n}</span>
+            <span class="chip grade" style="background:${col}">${c.gr}</span>
+            <span class="chip wt">w${c.w}</span>
+            ${dchip(c.d)}
+          </div>
+          <div class="row-bar"><i data-w="${c.s}" style="background:${col}"></i></div>
+          <p class="row-note">${note}</p>
+        </div>`;
+      wrap.appendChild(r);
+    });
+    cEl.appendChild(wrap);
+  });
+
+  requestAnimationFrame(() => setTimeout(() => {
+    document.getElementById('trackFill').style.width = '85.98%';
+    document.getElementById('trackPin').style.left = '85.98%';
+    document.getElementById('trackPrev').style.left = '85.7%';
+    document.querySelectorAll('.gbar i, .row-bar i').forEach(i => { i.style.width = i.dataset.w + '%'; });
+  }, 80));
+</script>

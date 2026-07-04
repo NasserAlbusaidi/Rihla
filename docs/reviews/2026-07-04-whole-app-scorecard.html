@@ -1,0 +1,161 @@
+<title>Rihla scorecard — 2026-07-04 · 86.61 B+</title>
+<style>
+:root{
+  --bg:#FAF7F2; --card:#FFFFFF; --ink:#1B1A17; --muted:#7A7468; --line:#E4DDD1;
+  --sage:#5C7A57; --rust:#A84B33; --sage-soft:#5C7A5722; --rust-soft:#A84B3318;
+  --chip:#F0EBE2; --bar:#E9E3D8;
+  --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
+  --serif:Georgia,'Times New Roman',serif;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#161512; --card:#1E1C18; --ink:#EDE9E1; --muted:#9A9284; --line:#2E2A24;
+  --sage:#8FAF8A; --rust:#D08A73; --sage-soft:#8FAF8A26; --rust-soft:#D08A7320;
+  --chip:#26231E; --bar:#2A2722;
+}}
+:root[data-theme="dark"]{
+  --bg:#161512; --card:#1E1C18; --ink:#EDE9E1; --muted:#9A9284; --line:#2E2A24;
+  --sage:#8FAF8A; --rust:#D08A73; --sage-soft:#8FAF8A26; --rust-soft:#D08A7320;
+  --chip:#26231E; --bar:#2A2722;
+}
+:root[data-theme="light"]{
+  --bg:#FAF7F2; --card:#FFFFFF; --ink:#1B1A17; --muted:#7A7468; --line:#E4DDD1;
+  --sage:#5C7A57; --rust:#A84B33; --sage-soft:#5C7A5722; --rust-soft:#A84B3318;
+  --chip:#F0EBE2; --bar:#E9E3D8;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--ink);margin:0;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:40px 20px 80px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--serif);font-style:italic;font-weight:400;font-size:34px;margin:6px 0 2px;text-wrap:balance}
+.runmeta{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.hero{display:flex;flex-wrap:wrap;gap:28px;align-items:stretch;margin:30px 0 8px}
+.score-block{flex:1 1 260px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 26px}
+.big{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:64px;font-weight:600;line-height:1}
+.big small{font-size:26px;color:var(--muted);font-weight:500}
+.gradechip{display:inline-block;font-family:var(--mono);font-size:15px;font-weight:600;padding:3px 12px;border-radius:999px;background:var(--chip);margin-inline-start:10px;vertical-align:18px}
+.delta-line{font-family:var(--mono);font-size:13px;margin-top:10px;color:var(--muted)}
+.delta-line b{color:var(--sage)}
+.dod{flex:1 1 300px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 22px}
+.dod h2{margin:0 0 10px}
+.dod ul{list-style:none;margin:0;padding:0;font-size:13.5px}
+.dod li{display:flex;gap:10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--line)}
+.dod li:first-child{border-top:0}
+.dot{font-family:var(--mono);font-weight:700}
+.pass .dot{color:var(--sage)} .fail .dot{color:var(--rust)}
+.dod .verdict{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--rust);font-weight:700;margin-top:10px}
+h2{font-family:var(--serif);font-style:italic;font-weight:400;font-size:21px;margin:38px 0 12px}
+.wq{border:1px solid var(--line);border-inline-start:4px solid var(--rust);background:var(--card);border-radius:8px;padding:13px 18px;margin:10px 0;font-size:14px}
+.wq b{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--rust);display:block;margin-bottom:4px}
+.groups{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 4px}
+.gstat{flex:1 1 170px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.gstat .n{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.gstat .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;margin-top:2px}
+.gstat .v small{font-size:13px;color:var(--muted);font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+.tablebox{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 14px;margin-top:14px}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:start;font-weight:600;padding:10px 8px 6px}
+td{padding:9px 8px;border-top:1px solid var(--line);vertical-align:top}
+td.num,th.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.catname{font-weight:600;white-space:nowrap}
+.gtag{font-family:var(--mono);font-size:10px;color:var(--muted);display:block;letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+.bar{height:6px;background:var(--bar);border-radius:3px;min-width:110px;position:relative;top:6px}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--ink);opacity:.75}
+.gr{font-family:var(--mono);font-weight:700}
+.d{font-family:var(--mono);font-weight:700;border-radius:999px;padding:1px 8px;font-size:12px}
+.d.up{color:var(--sage);background:var(--sage-soft)}
+.d.dn{color:var(--rust);background:var(--rust-soft)}
+.d.z{color:var(--muted);background:var(--chip)}
+.note{color:var(--muted);font-size:12.5px;max-width:520px}
+.cols{display:flex;flex-wrap:wrap;gap:22px}
+.col{flex:1 1 320px}
+.col ul{margin:8px 0 0;padding-inline-start:18px;font-size:13.5px}
+.col li{margin:7px 0}
+ol.lev{padding-inline-start:20px;font-size:14px}
+ol.lev li{margin:10px 0}
+ol.lev b{display:block}
+ol.lev span{color:var(--muted);font-size:13px}
+.summary{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 22px;font-size:14.5px;max-width:74ch}
+.method{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:44px;padding-top:14px;max-width:74ch}
+</style>
+<div class="wrap">
+  <div class="eyebrow">Rihla · whole-app quality scorecard · run 3</div>
+  <h1>The backbone holds; the busiest screen owes the polish</h1>
+  <div class="runmeta">2026-07-04 · main @ bab1bf17 · baseline: 2026-07-03 @ b0e02329 (85.98 B+)</div>
+
+  <div class="hero">
+    <div class="score-block">
+      <div class="big" id="big"></div>
+      <div class="delta-line" id="deltaline"></div>
+    </div>
+    <div class="dod">
+      <h2 style="margin-top:0">Definition of done</h2>
+      <ul id="dodlist"></ul>
+      <div class="verdict">Not met</div>
+    </div>
+  </div>
+
+  <h2>Would-quit findings (2)</h2>
+  <div id="wq"></div>
+  <div class="wq" style="border-inline-start-color:var(--sage)"><b style="color:var(--sage)">Post-run note — 2026-07-04</b>Fixed within hours of the graded commit and verified merged to main: would-quit 1 (#853) via PR #868 @1c07b9d8 — the equal preview now renders real allocator shares through <code>allocateExpenseOwed</code> — and the top-risk blank Exact/Percent editors (#856) via PR #869 @3acf791c. Still open from this run: would-quit 2 (amount-field / nav-button accessible names) and the <code>_allocateWeighted</code> zero-share remainder guard. Scores above are NOT restated — they describe @bab1bf17.</div>
+
+  <h2>Scores by group</h2>
+  <div class="groups" id="groups"></div>
+
+  <h2>16 categories</h2>
+  <div class="tablebox"><table>
+    <thead><tr><th>Category</th><th class="num">W</th><th>Score</th><th class="num"></th><th class="num">Grade</th><th class="num">Δ</th><th>Judge's note</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+
+  <h2>Cheapest leverage — three mechanical fixes</h2>
+  <ol class="lev" id="lev"></ol>
+
+  <div class="cols">
+    <div class="col"><h2>What carries the score</h2><ul id="strengths"></ul></div>
+    <div class="col"><h2>What drags it</h2><ul id="risks"></ul></div>
+  </div>
+
+  <h2>Judge's summary</h2>
+  <div class="summary" id="summary"></div>
+
+  <div class="method">
+    <b>How this grade was produced.</b> Identical rubric, weights, and anchor to the two prior runs, re-run against the new HEAD. 16 blind fresh-context category reviewers (Sonnet, zero session history, one per weighted category) graded 0–100 from the code itself; every critical/major finding was handed to an independent Opus skeptic prompted to refute it against live code; only survivors reached the Opus calibration judge, which recomputed the weighted composite by hand — 86.61. Five flagged majors were refuted and discarded this run (token-adoption regression, event-close snapshot loss, join-error pipeline, audit-diff crash reachability, DTO misnaming). Two reviewers initially returned stub reports (Data model integrity; Auth/recovery); both categories were re-reviewed for real before judging — 42 agents total.
+  </div>
+</div>
+<script>
+const V = {"composite": 86.61, "grade": "B+", "dodMet": false, "categories": [{"n": "First-run & onboarding", "g": "Product & UX", "s": 86, "gr": "B", "w": 5, "d": 0, "note": "Anon-auth bootstrap is exceptionally hardened — non-destructive token recovery (firebase_config.dart:184-211, #213), splash offline-vs-generic retry cycle, honest non-nagging guest/backup prompts. One surviving major: CreateGroupScreen/JoinGroupScreen _close() (create_group_screen.dart:294-309) silently discards the first substantive form with zero confirmation; the PopScope+_confirmDiscard pattern shipped for the expense editor was never extended here. Two minors (loud create-event CTA post-#245 auto-seed; stale golden-path integration test)."}, {"n": "Core money loop UX", "g": "Product & UX", "s": 82, "gr": "B-", "w": 10, "d": -5, "note": "Write side is exemplary (awaitServerAck 5s race + burst-safe late-write notice, pre-write balance revalidation, pristine-snapshot discard guard). But two open, code-verified defects sit on the every-expense surface: I confirmed at split_card.dart:150-154 the equal path early-returns _owed=null and renders naive per-head (3.333x3=9.999) under an unconditional green 'Adds up to OMR 10.000' (#853), and custom_split_sheet.dart:298-310 seeds Exact/Percent blank on any mode switch so Apply stays disabled until manual arithmetic (#856). Both display/UX-only (persisted math correct) but on the DEFAULT mode of the highest-traffic screen; -5 reflects these two freshly-surfaced open issues."}, {"n": "Navigation & IA", "g": "Product & UX", "s": 89, "gr": "B+", "w": 5, "d": 2, "note": "Machine-enforced route guards are reference-grade: app_router_test.dart regex-bans Navigator.push/state.extra/goNamed repo-wide, 5 removed routes pinned to 404, a 12-case back-guard pop matrix documents the deliberate top-level-vs-nested asymmetry (#243). Only three minor UX nits survive — EventCommandCenter's default tab hides the per-person roster one tab away, RECENTLY lacks a 'See all', Recap's entry relocates by event state. [calibrated below reviewer's 91 for the real roster-discoverability nit on the core event screen]."}, {"n": "Copy & microcopy (EN/AR)", "g": "Product & UX", "s": 81, "gr": "B-", "w": 4, "d": -1, "note": "ARB infrastructure is meticulous — 1023/1023 CI-enforced parity, zero placeholder mismatches, correct 6-category Arabic plurals on ~27/32 keys. Three surviving Arabic grammar majors, all cosmetic (no money/crash): masculine-defaulted money verbs/adjectives with no gender model (app_ar.arb:490-492, on home hero + settle-up), relative timestamps skip ICU plural ('2 دقيقة' not dual, app_ar.arb:603-605 — skeptic notes MSA-singular is correct for 11+, only counts 2 and 3-10 wrong), and preSettleReview counts omit few/many (app_ar.arb:414-418)."}, {"n": "Visual design system", "g": "Product & UX", "s": 88, "gr": "B+", "w": 5, "d": 2, "note": "Light-mode token system (ThemeExtension + context.colors|spacing, CI-enforced theme purity) and per-script Arabic typography (#857) are genuinely reference-grade. The token-adoption-'got-worse' major was REFUTED (grep-scope mismatch: literal-dimension vs constructor count; the 48%->36% figure doesn't reproduce; it's tracked/accepted debt). Surviving: dark theme drops 5 component ThemeData blocks incl the FAB — but dark is a documented deferred stub with default themeMode=light, so impact is limited to opt-in users. [calibrated up from 87: second major refuted]."}, {"n": "Accessibility & i18n / RTL", "g": "Product & UX", "s": 77, "gr": "C+", "w": 6, "d": -3, "note": "RTL/i18n mechanics are near-exemplary (6-way plurals, WCAG-AA contrast tests both themes, repo-scan RTL guards). But a surviving CRITICAL caps it: the primary expense-amount TextField (expense_editor_body.dart:1201-1234) is transparent/borderless with no labelText/hintText/Semantics — empty accessible name on the app's core input (steelman: adjacent 'Amount (OMR)' text node gives partial context). Plus a surviving major — EventCommandCenter back/settings RIconButtons pass no tooltip/semanticLabel while siblings do."}, {"n": "Money math & oracle parity", "g": "Correctness & Data", "s": 87, "gr": "B+", "w": 12, "d": -3, "note": "Client<->server oracle parity is byte-for-byte with deep adversarial+differential suites. I verified BOTH surviving majors at live code: _allocateWeighted (expense_provider.dart:764-777) picks the remainder recipient by sorted POSITION not weight, so a declared-0-share participant sorting last is charged 0.001, while the sibling _spreadProportional:607-621 explicitly filters e.value>0 ('never a zero-weight key') — a fix never backported, and present identically server-side so parity can't catch it. Second: ExpenseAuditSnap.tryParse lacks the isSupported/isFinite fences its own sibling comment claims, an uncaught-throw crash on legacy/forged activity docs. Tiny magnitude/narrow precondition but real correctness+crash surfaces."}, {"n": "Data model integrity", "g": "Correctness & Data", "s": 91, "gr": "A-", "w": 6, "d": 4, "note": "Money invariants are rules-enforced AND test-pinned: createdBy immutability (firestore.rules:770 + regression test), mandatory unforgeable lastEditedBy, append-only settlements with an atomic N-doc WriteBatch correction, userId-FIELD member keying across deleteAccount/expenseAuditLogger/claimShadow, SUM-on-collision rekeys. Only three minors survive — the intentional-but-underdocumented participantNames snapshot freezing a renamed member's old name on already-touched events, a defensive/unreachable createdBy-mutation branch, and dead legacy fromJson/toJson."}, {"n": "Offline & sync", "g": "Correctness & Data", "s": 87, "gr": "B+", "w": 6, "d": 8, "note": "Ack/queue/replay machinery is strong — single awaitServerAck chokepoint (fakeAsync Completer tests, not FakeFirestore), event-driven ConnectivityNotifier off real isFromCache + pending-writes barrier, and the #863 late-write-rejection notice closing a real silent-loss bug. One surviving major: group_edit_sheet._save() (line 74-84) raw-awaits a Firestore .update() with no timeout, so an offline rename/trip-stamp Save spins forever — the lone write callsite not wrapped in the contract, untested. The large +8 vs baseline reflects the #863 hardening landing since then."}, {"n": "Error handling & edge cases", "g": "Correctness & Data", "s": 88, "gr": "B+", "w": 6, "d": 3, "note": "Centralized FriendlyError taxonomy (~15 sites), four layered hostile-amount guards, hardened Functions validation. Two of three majors REFUTED — event-close 'understated snapshot' (null->omitted key, reversible close, oracle-invisible) and join_group's 'fragile substring' pipeline (client-side English, 3 pinning tests, offline already maps to a connection-worded string). Surviving major: expense/settlement streams call the factory raw in .map() with unsafe casts, so one malformed legacy/Admin doc can blank an event ledger — the decodeDocsSkippingMalformed guard protects events/members but wasn't extended here. [calibrated up: 2 of 3 majors refuted]."}, {"n": "Firestore rules & Functions auth", "g": "Security", "s": 92, "gr": "A-", "w": 9, "d": 4, "note": "Mature defense-in-depth: every privilege-sensitive mutation is server-authoritative through one shared balance oracle, the claim engine re-derives its own eligibility (3-term pre-scan + post-commit simNet==actualNet), 211 adversarial emulator rules tests, per-actor throttles reasoned against real Cloud-Run ingress. The one surviving major is cleanup hygiene not a security hole: joinAttempts/{uid} counters have no TTL override or reaper (unlike every sibling in firestore.indexes.json), leaking orphan docs on anon-UID rotation/abandon — but App-Check-gated, no PII, no auth bypass."}, {"n": "Auth, recovery, cross-UID & PII", "g": "Security", "s": 87, "gr": "B+", "w": 6, "d": -1, "note": "Unusually rigorous — shell-emptiness gate at all three cross-UID swap sites (awaits firebaseUserProvider.future first), non-destructive token recovery, QueuedWork-draining restart, mature idempotent deletion cascade, PII-safe-by-construction telemetry. One surviving major: signOutCurrentDevice waits only 5s for pending writes then proceeds + clears cache on next boot, silently discarding a never-acked local write while the dialog claims 'preserved in the cloud' (release-invisible, no Sentry). Narrow window (offline/within-5s, durable user) but a real data-loss + false-safety claim. [slight calibration down for data-loss severity]."}, {"n": "Architecture & organization", "g": "Engineering", "s": 85, "gr": "B", "w": 6, "d": 1, "note": "Feature-first structure is real (8 uniform feature dirs, layered Firestore access, clean analyze, regression guards). The Participant/'tripId'-holds-eventId major was REFUTED (write-only field never read in prod, tripId=eventId is a documented codebase-wide convention, fromJson/toJson are test-covered). Three surviving majors are all runtime-inert organization debt: a 1966-line file (2.5x the 800 cap) bundling 15+ widget classes, GroupService embedded in its provider file, and bidirectional home<->groups widget coupling (no real import cycle). [calibrated: 1 of 4 majors refuted, survivors zero-runtime-impact]."}, {"n": "Test coverage & quality", "g": "Engineering", "s": 90, "gr": "A-", "w": 7, "d": 2, "note": "Standout is genuine cross-implementation oracle differential testing (Dart BalanceCalculator <-> TS recomputeNet), evidenced RED-first discipline in git history, a real computed 80% lcov gate, and 2991-line emulator rules tests. One surviving major: the 'golden' suite is CI-excluded, renders a synthetic generic shell (not real screens), and 2/8 suites still test Phase-39-stripped Gear/Logistics — so visual regressions have no automated net. Two minors (stale skipped RED stubs; Functions 70% threshold configured but never invoked in CI). [calibrated down from 91: real visual-regression gap]."}, {"n": "State management & performance", "g": "Engineering", "s": 88, "gr": "B+", "w": 4, "d": 5, "note": "Home O(GxE) listener problem was correctly fixed with a one-shot fallback + #366 server aggregate and locked by listener-counting tests; memoization, connectivity.select narrowing, and cursor-then-limit pagination are disciplined and tested. One surviving major (confirmed by the codebase's own contrast test + spec): in-group screens still watch non-autoDispose per-event listeners via groupBalancesProvider, accumulating monotonically across distinct groups/events visited per session — the fix was scoped to the home tree only. Bounded by distinct events and relatively cheap, but unaddressed on the most-visited surface."}, {"n": "CI/CD & release hygiene", "g": "Engineering", "s": 86, "gr": "B", "w": 3, "d": -3, "note": "Deploy ceremony is reference-grade — commit-bound backend-deployed tag verified zero-drift, awk function-extractor cross-checked by an independent Dart regex, branch protection matching its own assertions. One surviving major: RIHLA_REAL_DEVICE_QA_READY was flipped 'yes' 2026-06-05 contradicting the gate script's own documented FAIL, is not commit-scoped, and has silently authorized 10 releases with #40 still open admitting the gate was never satisfied. Governance theater rather than a code defect (RELEASE_APPROVED_SHA is still per-commit)."}], "wouldQuit": ["Equal-split preview shows per-head amounts that don't sum to the total (3.333x3 = 9.999) under a green 'Adds up to OMR 10.000' badge, on the DEFAULT split mode of every expense (#853, confirmed live at split_card.dart:150-154) — a bill-splitter whose arithmetic visibly doesn't add up loses first-impression trust even though the persisted math is correct.", "The primary expense-amount input has no screen-reader accessible name (transparent, borderless, no label/Semantics at expense_editor_body.dart:1201-1234) — for a TalkBack/VoiceOver user this makes the app's central task an unlabeled edit box, an abandonment-grade barrier for the assistive-tech segment."], "topStrengths": ["Byte-for-byte client<->server money-oracle parity (BalanceCalculator <-> recomputeNet) backed by cross-implementation differential + deep adversarial test suites — money truth is verified across two runtimes, not one.", "Server-authoritative privilege model: every sensitive mutation flows through one shared balance oracle, the claim engine re-derives its own eligibility (post-commit simNet==actualNet), and 211 adversarial emulator rules tests pin value-domain edges (NaN/Infinity/negative/forged).", "Hardened identity lifecycle: non-destructive token recovery (#213), a shell-emptiness gate applied identically at all cross-UID swap sites, QueuedWork-draining restart (#456), and an idempotent PII-safe deletion cascade with a 24h reaper backstop.", "Offline write discipline: a single awaitServerAck chokepoint racing a 5s server-ack timeout with burst-safe late-write failure notices (#863), tested with real never-completing Completers rather than the instantly-acking fake.", "Reference-grade light-mode design-token system + machine-enforced routing/theme-purity guards + a commit-bound, zero-drift-verified backend deploy ceremony."], "topRisks": ["Equal-split preview renders per-head figures that don't sum, under an unconditional green 'adds up' checkmark, on the default mode of the every-expense screen (#853) — direct hit to trust in a money app.", "Exact/Percent split editors open blank and keep Apply disabled until the user hand-types a distribution that sums exactly (#856) — real friction on the core splitting feature for any non-trivial group.", "Weighted-split remainder can charge a declared-0-share participant a subunit (client+server identical, untested) — a silent violation of the app's own '0 share = owes nothing' invariant that oracle parity structurally cannot catch.", "Screen-reader accessibility: the primary expense-amount field has no accessible name and core EventCommandCenter/GroupDetail nav buttons are unlabeled — WCAG 4.1.2 failures on the central task.", "Narrow-window silent data loss: signing out while offline (or within the 5s ack window) discards a still-local write while the confirmation dialog claims cloud safety, with the failure invisible in release telemetry."], "leverage": [{"title": "Fix the two split-preview defects (#853/#856) — largest cheap composite gain", "detail": "Drop the _owed=null early return at split_card.dart:150-154 so the equal path uses the same allocateExpenseOwed helper the other modes already do (making the preview WYSIWYG), and seed Exact/Percent from the equal baseline on mode switch at custom_split_sheet.dart:298-310. Both are localized, single-subsystem changes with issues already filed and a seed PR (#869) in flight; lifts Core money loop UX (w10) from 82 toward ~88 (~+0.6 composite), the biggest low-effort move on the board."}, {"title": "Backport the positive-weight remainder filter to _allocateWeighted", "detail": "Mirror _spreadProportional's `if (e.value > 0)` guard (expense_provider.dart:607-621) so the rounding remainder never lands on a 0-share key, and apply the identical one-line change to the TS allocateWeighted (groupNetBalance.ts) to preserve parity. A ~2-line mechanical fix that closes a confirmed money-correctness major on the heaviest category (w12) and satisfies the codebase's own pinned invariant."}, {"title": "Add accessible names to the amount field and core nav buttons", "detail": "Set labelText (or a Semantics wrapper) on the transparent expense-amount TextField (expense_editor_body.dart:1201-1234) and pass semanticLabel/tooltip to the unlabeled EventCommandCenter/GroupDetail back+settings RIconButtons. A handful of one-line additions that clear a confirmed WCAG critical plus a major, lifting Accessibility (w6) from 77 into the low-80s."}], "summary": "Rihla is a genuinely strong, security-mature codebase whose backbone — cross-runtime money-oracle parity, server-authoritative mutations, hardened anon-auth/cross-UID identity, disciplined offline writes, and a commit-bound deploy ceremony — is production-exemplary and well-tested. The calibrated composite is 86.61 (B+), up +0.63 from the prior 85.98, after discarding five refuted findings (the token-adoption-'worsened' claim, the event-close-snapshot data-loss claim, the join-error-pipeline claim, and the Participant-DTO 'misnaming' — each shown to be non-reproducing or runtime-inert). The score is held down by a cluster on the single most-used surface: the equal-split preview shows numbers that visibly don't sum under a green 'adds up' checkmark, and switching to Exact/Percent opens blank editors — both display-only (the persisted math and the shown total are correct), but both on every expense, and I confirmed both against live code at this exact commit despite memory notes claiming fixes had landed. Accessibility is the weakest area at 77 because the primary amount field has no screen-reader name; the remaining majors are a tiny weighted-split correctness nit, a narrow offline sign-out data-loss window, in-group listener accumulation, and a stale release-QA gate. None of the surviving issues corrupt stored money or lose committed data outside that one narrow window, so this is trust-and-polish debt rather than a stability crisis. The three cheapest high-leverage fixes — the two split-preview defects, the one-line weighted-split 0-share guard, and a handful of accessibility labels — are all mechanical and would move the composite most for the least effort; the Definition of Done is not met (multiple categories below 87, composite below 90, two abandonment-plausible findings open).\""};
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+document.getElementById('big').innerHTML = V.composite.toFixed(2) + '<small> /100</small><span class="gradechip">' + V.grade + '</span>';
+document.getElementById('deltaline').innerHTML = '<b>+' + (V.composite - 85.98).toFixed(2) + '</b> vs 2026-07-03 baseline (85.98 B+) · first run: 85.7';
+const below = V.categories.filter(c => c.s < 87).length;
+document.getElementById('dodlist').innerHTML = [
+  {ok:false, t:'Zero would-quit findings — <b>' + V.wouldQuit.length + ' open</b>'},
+  {ok:false, t:'Every category ≥ B+ (87) — <b>' + below + ' of 16 below</b>'},
+  {ok:false, t:'Composite ≥ A− (90) — <b>' + V.composite.toFixed(2) + '</b>'},
+].map(i => '<li class="' + (i.ok?'pass':'fail') + '"><span class="dot">' + (i.ok?'✓':'✗') + '</span><span>' + i.t + '</span></li>').join('');
+document.getElementById('wq').innerHTML = V.wouldQuit.map((w,i) =>
+  '<div class="wq"><b>Would-quit ' + (i+1) + '</b>' + esc(w) + '</div>').join('');
+const groups = {};
+V.categories.forEach(c => { (groups[c.g] = groups[c.g] || []).push(c); });
+document.getElementById('groups').innerHTML = Object.entries(groups).map(([g, cs]) => {
+  const w = cs.reduce((a,c)=>a+c.w,0);
+  const s = cs.reduce((a,c)=>a+c.s*c.w,0)/w;
+  return '<div class="gstat"><div class="n">' + esc(g) + '</div><div class="v">' + s.toFixed(1) + '<small> · w' + w + '</small></div></div>';
+}).join('');
+document.getElementById('rows').innerHTML = V.categories.map(c => {
+  const d = c.d === 0 ? '<span class="d z">±0</span>' : c.d > 0 ? '<span class="d up">+' + c.d + '</span>' : '<span class="d dn">' + c.d + '</span>';
+  return '<tr><td class="catname">' + esc(c.n) + '<span class="gtag">' + esc(c.g) + '</span></td>' +
+    '<td class="num">' + c.w + '</td>' +
+    '<td><div class="bar"><i style="width:' + c.s + '%"></i></div></td>' +
+    '<td class="num"><b>' + c.s + '</b></td>' +
+    '<td class="num gr">' + esc(c.gr) + '</td>' +
+    '<td class="num">' + d + '</td>' +
+    '<td class="note">' + esc(c.note) + '</td></tr>';
+}).join('');
+document.getElementById('lev').innerHTML = V.leverage.map(l =>
+  '<li><b>' + esc(l.title) + '</b><span>' + esc(l.detail) + '</span></li>').join('');
+document.getElementById('strengths').innerHTML = V.topStrengths.map(s => '<li>' + esc(s) + '</li>').join('');
+document.getElementById('risks').innerHTML = V.topRisks.map(s => '<li>' + esc(s) + '</li>').join('');
+document.getElementById('summary').textContent = V.summary;
+</script>
