@@ -4,6 +4,53 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.3] — 2026-07-04
+
+Closed-track first-impressions and History hardening release. Activity now works
+as a real History surface, first-run/account copy is more honest, and the split
+editor's visible math matches the saved allocator. Backend changes through
+`abee70e8` are already live in production.
+
+### Added
+- **History feed expansion (#808/#810/#815/#816/#849/#865).** Expenses now fan
+  into the group Activity feed, the History tab paginates and searches rows, and
+  History entries deep-link to the group, event, expense, or settlement they
+  describe.
+- **Standalone settle-up receipt entry (#836).** Settle-up can now expose the
+  recap/export path directly when a receipt is available.
+- **Add-people account nudge (#847).** The disabled add-people field now points
+  users toward account linking instead of looking inert.
+
+### Changed
+- **First-run and account honesty pass (#834/#839/#842/#843/#851).** Guest,
+  set-name, restore, offline bootstrap, and email-bootstrap states now use copy
+  that matches what the app can actually prove.
+- **Theme and localization polish (#835/#845/#857/#858).** Activity is renamed
+  to History in the bottom tab, Arabic activity text avoids gendered verb leaks,
+  Arabic typography gets script-specific caption/display tokens, and settle-copy
+  wording is more precise.
+- **Light-theme default until dark mode is complete (#821).** The app now stays
+  on the supported light presentation instead of exposing unfinished dark-mode
+  surfaces.
+
+### Fixed
+- **Activity and settlement correctness (#820/#830/#867).** Client-writable
+  group-activity metadata has a server-side value-domain floor, settlement
+  direction is visible in activity rows, and event-feed day cards no longer show
+  a misleading raised-but-inert affordance.
+- **Expense-editor trust fixes (#829/#853/#856/#859/#863/#869).** The editor now
+  guards against discarded edits, shows human-readable save errors, surfaces
+  queued-write replay rejections, seeds Exact/Percent editors from the equal
+  baseline, and shows the same allocator shares used for saved equal splits.
+- **False-affordance and accessibility cleanup (#802/#804/#846/#848/#850/#862).**
+  Dead controls and misleading affordances were removed or relabelled, the
+  History bell carries its unread state, settlement transfer arrows are RTL-safe,
+  the profile QR sheet was removed, and amount screen-reader output is
+  unfragmented.
+- **Router and backend restore hardening (#813/#823/#826).** The reverted History
+  fan-in function was restored, unknown routes now land on a friendly 404, and
+  anonymous users can create groups after the removed durable-create gate.
+
 ## [1.7.2] — 2026-07-02
 
 Closed-track activation and trip-command release. New groups now start with a
