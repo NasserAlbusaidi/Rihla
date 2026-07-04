@@ -48,6 +48,11 @@ String activityRowTarget({
       // Metadata carries no eventId even for #752 decomposed settle-ups —
       // group settle-up is the only honest target. No `?memberId=` in v1.
       return '/group/$groupId/settle-up';
+    case 'event_settlement':
+      final eventId = _navMetadataString(log, 'eventId');
+      return eventId == null
+          ? '/group/$groupId'
+          : '/group/$groupId/event/$eventId/ledger/settle-up';
     // event_deleted (target is gone), member_joined, member_left, and any
     // unknown/default type all fall through to group detail (unchanged).
     default:
