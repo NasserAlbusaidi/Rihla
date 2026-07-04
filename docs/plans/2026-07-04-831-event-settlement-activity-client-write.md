@@ -10,6 +10,8 @@
 
 **v2 (Gate r1 applied):** settlements-filter predicates added to scope (both copies); rules/service anchors corrected; `eventName` threaded through the stepped walk; write-site imports named; model doc-comment update added.
 
+**v3 (Gate r2 passed — 0 P1 from both reviewers; non-blocking refinements applied):** log block wrapped in its own try/catch (activity logging must never affect the money outcome — `toSubunits` is the only throw-capable call in the block); import paths corrected (`settingsProvider` → `lib/core/providers/settings_provider.dart:235`, `groupActivityServiceProvider` → `lib/features/groups/providers/group_balance_provider.dart:41`); per-step row semantics stated (a stepped walk logs one row PER recorded step); test-harness provider-override requirement named; rules-test example uses the file's real `testEnv.authenticatedContext` helper.
+
 ---
 
 ## Why client-write, not server fan-in (Decision record)
@@ -95,7 +97,7 @@ Add one metadata-shape test next to the existing #814 group_settlement metadata 
 
 ```ts
 test('#831 event_settlement accepts the direction+event metadata shape', async () => {
-  const member = memberDb();
+  const member = testEnv.authenticatedContext('member').firestore(); // the file's real helper pattern, see :2858
   await assertSucceeds(member.doc('groups/g1/activity/ga-831-shape').set(
     validGroupActivity({
       id: 'ga-831-shape',
@@ -241,6 +243,10 @@ Expected: FAIL — both predicates match `group_settlement` only.
 
 **Step 1: Failing test** — after recording via the screen, `groups/{gid}/activity` contains exactly one doc with `type == 'event_settlement'`, `actorId == currentUid`, and the exact 8-key metadata contract (assert `amountFils` is the int subunits of the recorded amount, `eventId == widget.eventId`, direction keys match the tile, `eventName` present).
 
+Per-step semantics (Gate r2): a stepped walk logs one row PER recorded step — a 2-currency stepped settle correctly produces TWO rows. Don't assert exactly-one on a multi-step fixture; assert one-per-recorded-step.
+
+Harness requirement: `groupActivityServiceProvider` (defined in `lib/features/groups/providers/group_balance_provider.dart:41`) must be overridden with a `FakeFirebaseFirestore`-backed `GroupActivityService` in the test's `ProviderScope`, or `logGroupEvent`'s real-Firestore `set()` throws `[core/no-app]` into its swallowing `.catchError` and the assertion reads an empty collection — a false RED that stays false at GREEN. Check whether `settle_up_screen_test.dart`'s existing harness already shares the fake instance; if so, reuse it.
+
 **Step 2: RED run**
 ```bash
 flutter test test/features/ledger/settle_up_screen_test.dart
@@ -249,7 +255,7 @@ Expected: FAIL — zero activity docs (this is the #831 bug, reproduced).
 
 **Step 3: Implement.**
 
-New imports in `settle_up_screen.dart` (mirror the group screen's paths): `core/services/money_serializer.dart`, `features/settings/providers/settings_provider.dart`, and the groups activity-service provider (`features/groups/services/group_activity_service.dart` / its provider — copy the exact import lines from `group_settle_up_screen.dart`).
+New imports in `settle_up_screen.dart` (verified against `group_settle_up_screen.dart:11,34`): `../../../core/services/money_serializer.dart`, `../../../core/providers/settings_provider.dart` (`settingsProvider` lives in core/providers, NOT features/settings), and `../../groups/providers/group_balance_provider.dart` (`groupActivityServiceProvider` is defined there at :41, not in the service file).
 
 `_recordSettlement` gains two params:
 
@@ -264,34 +270,39 @@ After the success bookkeeping (after the `ledgerRevisionNotifier.state++` / conn
       if (logActivity) {
         // #831: one activity row per recorded event settlement. Mirrors the
         // group_settlement client write; corrections pass logActivity: false
-        // (#283: a reversal must not surface as a fresh payment).
-        String actorName;
+        // (#283: a reversal must not surface as a fresh payment). The whole
+        // block is guarded: activity logging must never affect the money
+        // outcome (Gate r2 — a throw here would report an already-succeeded
+        // write as failed and abort a stepped walk).
         try {
-          actorName = ref.read(settingsProvider).deviceName.isNotEmpty
+          final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
               ? ref.read(settingsProvider).deviceName
               : fromName;
+          final counterpartyName = currentUid == toUserId ? fromName : toName;
+          ref.read(groupActivityServiceProvider).logGroupEvent(
+            groupId: widget.groupId,
+            type: 'event_settlement',
+            actorId: currentUid,
+            actorName: actorName,
+            description:
+                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+            metadata: {
+              'amountFils': MoneySerializer.toSubunits(amount, currency),
+              'currency': currency,
+              'fromUserId': fromUserId,
+              'toUserId': toUserId,
+              'fromName': fromName,
+              'toName': toName,
+              'eventId': widget.eventId,
+              if (eventName != null && eventName.isNotEmpty)
+                'eventName': eventName,
+            },
+          );
         } catch (_) {
-          actorName = fromName;
+          // Swallow: the settlement itself succeeded; a lost activity row is
+          // the accepted fire-and-forget contract (same as logGroupEvent's
+          // own catchError).
         }
-        final counterpartyName = currentUid == toUserId ? fromName : toName;
-        ref.read(groupActivityServiceProvider).logGroupEvent(
-          groupId: widget.groupId,
-          type: 'event_settlement',
-          actorId: currentUid,
-          actorName: actorName,
-          description:
-              'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-          metadata: {
-            'amountFils': MoneySerializer.toSubunits(amount, currency),
-            'currency': currency,
-            'fromUserId': fromUserId,
-            'toUserId': toUserId,
-            'fromName': fromName,
-            'toName': toName,
-            'eventId': widget.eventId,
-            if (eventName != null && eventName.isNotEmpty) 'eventName': eventName,
-          },
-        );
       }
 ```
 
