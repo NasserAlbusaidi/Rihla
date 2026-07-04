@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity UI polish — consistency pass · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Category-icon tile — mirrors lib _CategoryIcon (36px rounded square).
+     Proposal: radius 10 → r-sm 8 (punch list P6). */
+  .cat-ic { width: 36px; height: 36px; border-radius: 10px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--rule); background: var(--card-soft); color: var(--ink-3); }
+  .cat-ic.r8 { border-radius: var(--r-sm); }
+  .cat-ic svg { width: 18px; height: 18px; stroke-width: 2; fill: none;
+    stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+  .cat-ic.money   { background: var(--saffron-soft); border-color: transparent; color: var(--primary-dark); }
+  .cat-ic.settle  { background: #E4EBE0; border-color: transparent; color: var(--sage-text); }
+  .cat-ic.member  { color: var(--cat2); }
+  .cat-ic.muted   { color: var(--ink-4); }
+
+  /* Activity row (re-uses .list-row; feed rhythm) */
+  .act { align-items: flex-start; padding: 10px var(--s16); }
+  .act .row-body { padding-top: 1px; }
+  .act .act-text { font-size: 13.5px; line-height: 1.35; color: var(--ink-3); }
+  .act .act-text b { color: var(--ink); font-weight: 600; }
+  .act .act-time { font-family: var(--font-mono); font-size: 10px; color: var(--ink-4);
+    letter-spacing: .4px; white-space: nowrap; }
+  .act .act-amt { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+  .act .act-amt.pos { color: var(--sage-text); }
+  .act .act-amt.muted { color: var(--ink-4); font-weight: 500; text-decoration: line-through; }
+  .act .row-trail { flex-direction: column; align-items: flex-end; gap: 2px; }
+  .act.deleted .act-text, .act.deleted .act-text b { color: var(--ink-4); }
+
+  /* audit before/after detail + legacy summary line (per-event) */
+  .audit { margin-top: 5px; font-family: var(--font-mono); font-size: 11px;
+    background: var(--card-soft); border: 1px solid var(--rule); border-radius: var(--r-sm);
+    padding: 5px 8px; color: var(--ink-3); display: inline-flex; gap: 8px; align-items: center; }
+  .audit .was { text-decoration: line-through; color: var(--ink-4); }
+  .audit .now { color: var(--ink); font-weight: 600; }
+  .audit-summary { margin-top: 3px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-3); }
+
+  /* group tag chip (the #490 groupTag slot) */
+  .gtag { display: inline-block; font-size: 10.5px; font-weight: 500; color: var(--ink-3);
+    background: var(--card-soft); border: .5px solid var(--rule); border-radius: var(--r-pill);
+    padding: 1px 8px; margin-top: 4px; }
+  .gname-plain { font-size: 12px; color: var(--ink-3); margin-top: 1px; }
+
+  /* Day header — mono caps + hairline. .with-date adds the wireframe `· JUL 4`. */
+  .day-h { display: flex; align-items: center; gap: 10px; padding: 0 var(--s4);
+    margin: var(--s16) 0 10px; }
+  .day-h:first-of-type { margin-top: var(--s8); }
+  .day-h .lbl { font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+  .day-h .lbl .dt { color: var(--ink-4); }
+  .day-h::after { content: ''; flex: 1; height: 1px; background: var(--rule-2); }
+
+  /* Day card wrappers — flat (per-event, #866) vs raised (tappable feeds, #807) */
+  .day-card { background: var(--card); border-radius: var(--r-card); margin: 0; overflow: hidden; }
+  .day-card.flat { border: 1px solid var(--rule-2); }
+  .day-card.raised { box-shadow: var(--shadow-raised); }
+  .day-card.r16 { border-radius: 16px; }   /* legacy radiusLarge — the current group screen */
+  .day-card .list-row { padding-left: var(--s16); padding-right: var(--s16); }
+
+  /* Screen top bars */
+  .tb { display: flex; align-items: flex-start; gap: 6px; padding: 8px 20px 0 8px; }
+  .tb .back { width: 44px; height: 44px; flex: none; display: flex; align-items: center;
+    justify-content: center; color: var(--ink); }
+  .tb .back svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .tb .tcol { padding-top: 6px; min-width: 0; }
+  .tb .cap { font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--ink-3); }
+  .tb .ttl { font-family: var(--font-serif); font-style: italic; font-size: 22px;
+    letter-spacing: -.3px; color: var(--ink); line-height: 1.05; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* current group-screen bar: centered bold sans */
+  .tb-centered { display: flex; align-items: center; height: 48px; padding: 4px 12px 8px; }
+  .tb-centered .back { width: 40px; }
+  .tb-centered .ct { flex: 1; text-align: center; font-size: 16px; font-weight: 700;
+    color: var(--ink); padding-right: 40px; }
+
+  /* Filter pills — live app convention: ink-filled active (matches ledger strip) */
+  .fpills { display: flex; gap: 8px; padding: 8px 20px 0; overflow: hidden; }
+  .fpill { font-size: 12px; font-weight: 600; color: var(--ink); background: var(--card-soft);
+    border: .5px solid var(--rule); border-radius: var(--r-pill); padding: 7px 14px; white-space: nowrap; }
+  .fpill.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+  /* pagination footers */
+  .foot-spin { display: flex; justify-content: center; padding: var(--s16); }
+  .foot-spin .spin { width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--saffron-soft); border-top-color: var(--primary); animation: rot 1s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  .feed-tag { font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-4);
+    padding: var(--s12) var(--s16) 4px; display: flex; align-items: center; gap: 8px; }
+  .feed-tag::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+
+  .callout { display:inline-block; font-family: var(--font-mono); font-size: 9.5px;
+    color: #1c1a17; background: var(--saffron-soft); padding: 1px 7px;
+    border-radius: var(--r-pill); vertical-align: 2px; }
+
+  /* punch-list table */
+  .punch { width: 100%; border-collapse: collapse; font-size: 13px; color: #C7C1B3; }
+  .punch th { text-align: left; font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase; color: #9a9587; padding: 6px 12px;
+    border-bottom: 1px solid #3a372f; }
+  .punch td { padding: 9px 12px; border-bottom: 1px solid #2c2a24; vertical-align: top; }
+  .punch td:first-child { font-family: var(--font-mono); color: var(--primary); white-space: nowrap; }
+  .punch code { font-family: var(--font-mono); font-size: 11.5px; color: #E8E2D4;
+    background: #2c2a24; padding: 1px 5px; border-radius: 4px; }
+  .punch b { color: #E8E2D4; }
+
+  /* ── §4 screen-background treatments ─────────────────────────────────────
+     Grain = same tileable noise idea as assets/textures/grain.png (GrainOverlay);
+     slightly exaggerated here (~8%) so it survives a laptop screen — the app
+     value is 3.5%. */
+  .bg-grain { background-color: var(--paper);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E"); }
+  .bg-wash { background-color: var(--paper);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E"),
+      linear-gradient(to bottom, var(--paper-deep) 0, var(--paper) 240px); }
+
+  /* #368-style cover blend — cover-art band fading into paper */
+  .cover-band { position: relative; padding: 2px 12px 26px;
+    background:
+      linear-gradient(to bottom, rgba(246,241,230,0) 55%, var(--paper) 100%),
+      linear-gradient(to bottom, rgba(27,26,23,.08), rgba(27,26,23,.38)),
+      linear-gradient(135deg, #E8B878 0%, #D17B2C 55%, #8A4A15 100%); }
+  .cover-band .back { color: #fff; }
+  .cover-band .cap { color: rgba(255,255,255,.82); }
+  .cover-band .ttl { color: #fff; text-shadow: 0 1px 2px rgba(27,26,23,.25); }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>Activity UI · <span class="saffron">consistency pass</span></h1>
+  <p>The three activity feeds (per-event, per-group, cross-group tab) + home “Recently” share data but
+     not chrome. This extends the signed <a href="490-activity-row-unification.html">#490 row
+     unification</a> with the screen-level fixes found in the 2026-07-04 review: the per-event feed’s
+     visual monotony, the per-group screen’s off-brand top bar and legacy radius, day-header and
+     footer drift, screen-background depth (grain parity + wash + cover-blend options), and a small
+     polish punch list. Deliberate splits are kept: flat card on the inert
+     per-event feed (#866) vs raised on the tappable feeds (#807); ink-filled active pills (app-wide
+     convention, ledger strip). <a href="index.html">← gallery</a></p>
+</div>
+
+<!-- ═════════════════════════════════ 1 · Per-event feed ═══════════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">1</span>
+    <h2 class="issue-title">Per-event feed — every row is the same orange tile</h2>
+    <span class="issue-meta">activity_feed_screen.dart · _CategoryIcon + ExpenseAuditDetail</span>
+  </div>
+  <p class="issue-desc">The event feed’s categories are MONEY/GEAR/DOCS — but GEAR and DOCS died with
+     Phase 39, so in practice <b>every non-delete row renders the identical saffron banknote tile</b>:
+     an “added” and an “edited” are indistinguishable at a glance. Amounts exist but are buried in the
+     12px audit summary line under the verb, not in the trailing scan column every other money row in
+     the app uses. The group feed already solved both (#808’s receipt vocabulary + trailing
+     <code>RAmount</code>) — adopt it here.</p>
+  <p class="issue-rec"><b>Proposal:</b> map eventType → per-action glyph (add = saffron receipt+ ·
+     edit = neutral pencil · delete = muted receipt−), move the amount to the trailing column, drop
+     the now-redundant CREATE summary line, add the wireframe day-date. Flat card stays (#866).</p>
+
+  <div class="variant-row">
+    <div class="variant">
+      <div class="variant-label">Current <span class="tag">monotone</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="tb">
+            <div class="back"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></div>
+            <div class="tcol"><div class="cap">Activity</div><div class="ttl">Dinner at Turkish House</div></div>
+          </div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today</span></div>
+            <div class="day-card flat">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Omar</b> added “Dinner”</div>
+                  <div class="audit-summary">Dinner · OMR 24.000</div>
+                </div>
+                <div class="row-trail"><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Layla</b> added “Taxi to airport”</div>
+                  <div class="audit-summary">Taxi to airport · OMR 6.500</div>
+                </div>
+                <div class="row-trail"><span class="act-time">3h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Omar</b> edited “Dinner”</div>
+                  <span class="audit"><span class="was">OMR 24.000</span>→<span class="now">OMR 30.000</span></span>
+                </div>
+                <div class="row-trail"><span class="act-time">5h</span></div>
+              </div>
+            </div>
+            <div class="day-h"><span class="lbl">Yesterday</span></div>
+            <div class="day-card flat">
+              <div class="list-row act deleted">
+                <div class="row-lead"><span class="cat-ic muted"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M9 12h6"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Sara</b> deleted “Snacks”</div>
+                  <div class="audit-summary">Snacks · OMR 3.200</div>
+                </div>
+                <div class="row-trail"><span class="act-time">1d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Three actions, one tile.</b> Add and edit rows both get the saffron
+        banknote — the feed reads as an undifferentiated orange column. The amount hides in the 11px
+        summary line (and duplicates the description already quoted in the verb). Day header is bare
+        “TODAY” while the group screen shows the dot-date.</p>
+    </div>
+
+    <div class="variant pick">
+      <div class="variant-label">Per-action vocabulary + amount column <span class="tag">proposed</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="tb">
+            <div class="back"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></div>
+            <div class="tcol"><div class="cap">Activity</div><div class="ttl">Dinner at Turkish House</div></div>
+          </div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today <span class="dt">· JUL 4</span></span></div>
+            <div class="day-card flat">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money r8"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5Z"/><path d="M12 8v6M9 11h6"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Omar</b> added “Dinner”</div></div>
+                <div class="row-trail"><span class="act-amt">OMR 24.000</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money r8"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5Z"/><path d="M12 8v6M9 11h6"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Layla</b> added “Taxi to airport”</div></div>
+                <div class="row-trail"><span class="act-amt">OMR 6.500</span><span class="act-time">3h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic r8"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Omar</b> edited “Dinner”</div>
+                  <span class="audit"><span class="was">OMR 24.000</span>→<span class="now">OMR 30.000</span></span>
+                </div>
+                <div class="row-trail"><span class="act-time">5h</span></div>
+              </div>
+            </div>
+            <div class="day-h"><span class="lbl">Yesterday <span class="dt">· JUL 3</span></span></div>
+            <div class="day-card flat">
+              <div class="list-row act deleted">
+                <div class="row-lead"><span class="cat-ic muted r8"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5Z"/><path d="M9 11h6"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Sara</b> deleted “Snacks”</div></div>
+                <div class="row-trail"><span class="act-amt muted">OMR 3.200</span><span class="act-time">1d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Scannable.</b> Saffron receipt+ = money in, neutral pencil = change,
+        muted receipt− = removal — the same vocabulary the group feed ships (#808). Amounts sit in the
+        trailing mono column like every other money row (DESIGN.md §10); the CREATE summary line is
+        gone because it repeated the verb’s description and the amount now trails. Edits keep the
+        before→after audit chip — that’s this feed’s unique value. Day headers pick up the wireframe
+        <code>TODAY · JUL 4</code>. Card stays <b>flat + hairline</b> — rows here are inert (#866).</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════ 2 · Group screen top bar ═════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">2</span>
+    <h2 class="issue-title">Group timeline — the only feed with a Material top bar</h2>
+    <span class="issue-meta">group_activity_screen.dart · _TopBar + _DaySection radius</span>
+  </div>
+  <p class="issue-desc">The per-event feed leads with a mono caption over the serif-italic event name;
+     the cross-group tab leads with serif-italic “Activity”. The group timeline is the odd one out:
+     a <b>centered bold sans 16px</b> title — generic Material, no journal voice (DESIGN.md §10:
+     “inner screens show a large serif-italic title”). Its day card also still uses legacy
+     <code>radiusLarge</code> 16 where the other two use <code>radiusCard</code> 20 (D2: don’t use
+     legacy radii).</p>
+  <p class="issue-rec"><b>Proposal:</b> adopt the event feed’s top-bar anatomy — back ·
+     <code>ACTIVITY</code> mono caption · serif-italic group name — and move the day card to
+     <code>radiusCard</code>. Raised shadow stays (rows here deep-link, #807).</p>
+
+  <div class="variant-row">
+    <div class="variant">
+      <div class="variant-label">Current <span class="tag">centered sans</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="tb-centered">
+            <div class="back"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:var(--ink);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M15 18l-6-6 6-6"/></svg></div>
+            <div class="ct">Salalah Trip</div>
+          </div>
+          <div class="fpills"><span class="fpill on">All</span><span class="fpill">Settlements</span><span class="fpill">Events</span><span class="fpill">Members</span><span class="fpill">Exp…</span></div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today <span class="dt">· JUL 4</span></span></div>
+            <div class="day-card raised r16">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic settle"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Layla</b> recorded a payment to you</div></div>
+                <div class="row-trail"><span class="act-amt pos">+OMR 12.500</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic member"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Sara</b> joined the group</div></div>
+                <div class="row-trail"><span class="act-time">1d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Off-brand bar, legacy radius.</b> The centered 16px sans title could
+        be any Material app; the serif voice that marks Rihla’s inner screens is missing. Card corners
+        are 16 (legacy <code>radiusLarge</code>) vs 20 everywhere else — subtle, but it’s exactly the
+        D2 drift the token pass exists to end.</p>
+    </div>
+
+    <div class="variant pick">
+      <div class="variant-label">Journal header + radiusCard <span class="tag">proposed</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="tb">
+            <div class="back"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></div>
+            <div class="tcol"><div class="cap">Activity</div><div class="ttl">Salalah Trip</div></div>
+          </div>
+          <div class="fpills"><span class="fpill on">All</span><span class="fpill">Settlements</span><span class="fpill">Events</span><span class="fpill">Members</span><span class="fpill">Exp…</span></div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today <span class="dt">· JUL 4</span></span></div>
+            <div class="day-card raised">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic settle r8"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Layla</b> recorded a payment to you</div></div>
+                <div class="row-trail"><span class="act-amt pos">+OMR 12.500</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic member r8"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Sara</b> joined the group</div></div>
+                <div class="row-trail"><span class="act-time">1d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Same anatomy as the event feed.</b> <code>ACTIVITY</code> caption over
+        the italic group name — the two in-group activity surfaces now read as siblings, and the serif
+        voice returns. Card moves to <code>radiusCard</code> 20; the raised shadow is kept because
+        these rows deep-link (#807’s actionable-surface cue). Pills unchanged — ink-filled active is
+        the app-wide convention.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════ 3 · Cross-group tab chrome ═══════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">3</span>
+    <h2 class="issue-title">Cross-group tab — day headers, group tag, honest footer</h2>
+    <span class="issue-meta">cross_group_activity_screen.dart · _DaySection / _ActivityRow / _Footer</span>
+  </div>
+  <p class="issue-desc">Three small drifts against its siblings: bare <code>TODAY</code> day headers
+     (group screen shows the dot-date), the group context as a plain grey text line (home “Recently”
+     renders the same context as a bordered tag chip — the #490 <code>groupTag</code> slot), and a
+     bare spinner pagination footer where the event feed already switched to the skeleton row so the
+     screen has one loading treatment (#488).</p>
+  <p class="issue-rec"><b>Proposal:</b> dot-date day headers · <code>groupTag</code> chip (matches
+     home + the signed #490 slot) · skeleton pagination footer. Same footer fix applies to the group
+     screen.</p>
+
+  <div class="variant-row">
+    <div class="variant">
+      <div class="variant-label">Current <span class="tag">drifted</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div style="padding: 8px 20px 0;">
+            <div style="font-family:var(--font-serif);font-style:italic;font-size:28px;letter-spacing:-.5px;">Activity</div>
+            <div style="font-size:13px;color:var(--ink-3);margin-top:4px;">What’s been happening across your groups</div>
+          </div>
+          <div class="fpills"><span class="fpill on">All</span><span class="fpill">Settlements</span><span class="fpill">Events</span><span class="fpill">Members</span><span class="fpill">Exp…</span></div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today</span></div>
+            <div class="day-card raised">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic settle"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Layla</b> recorded a payment to you</div>
+                  <div class="gname-plain">Salalah Trip</div>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 12.500</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5Z"/><path d="M12 8v6M9 11h6"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Omar</b> added “Dinner”</div>
+                  <div class="gname-plain">Weekend Camping</div>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 24.000</span><span class="act-time">5h</span></div>
+              </div>
+            </div>
+            <div class="foot-spin"><div class="spin"></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Each drift is tiny; together they read as three different apps.</b>
+        Bare day label, plain-text group context (vs home’s chip for the identical fact), and the
+        spinner the event feed already retired.</p>
+    </div>
+
+    <div class="variant pick">
+      <div class="variant-label">Aligned chrome <span class="tag">proposed</span></div>
+      <div class="phone short">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div style="padding: 8px 20px 0;">
+            <div style="font-family:var(--font-serif);font-style:italic;font-size:28px;letter-spacing:-.5px;">Activity</div>
+            <div style="font-size:13px;color:var(--ink-3);margin-top:4px;">What’s been happening across your groups</div>
+          </div>
+          <div class="fpills"><span class="fpill on">All</span><span class="fpill">Settlements</span><span class="fpill">Events</span><span class="fpill">Members</span><span class="fpill">Exp…</span></div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today <span class="dt">· JUL 4</span></span></div>
+            <div class="day-card raised">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic settle r8"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Layla</b> recorded a payment to you</div>
+                  <span class="gtag">Salalah Trip</span>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 12.500</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money r8"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5Z"/><path d="M12 8v6M9 11h6"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Omar</b> added “Dinner”</div>
+                  <span class="gtag">Weekend Camping</span>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 24.000</span><span class="act-time">5h</span></div>
+              </div>
+            </div>
+            <div class="skel-row"><div class="skel static" style="width:36px;height:36px;border-radius:var(--r-sm);"></div><div style="flex:1"><div class="skel static skel-line" style="width:70%"></div><div class="skel static skel-line" style="width:40%"></div></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>One chrome for all three feeds.</b> <code>TODAY · JUL 4</code>
+        everywhere, the group context as the #490 <code>groupTag</code> chip (same fact, same
+        treatment as home), and the layout-matched skeleton row as the only loading treatment —
+        pagination included (#488). The group screen’s footer gets the same skeleton.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════ 4 · Screen background ════════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">4</span>
+    <h2 class="issue-title">Screen background — the feeds are flat paper, and inconsistently so</h2>
+    <span class="issue-meta">GrainOverlay parity + optional depth · all three routed activity screens</span>
+  </div>
+  <p class="issue-desc">Found while chasing this: the Activity <b>tab</b> already renders under the
+     shell’s 3.5% paper-grain (<code>BottomNavShell</code> wraps all tabs in <code>GrainOverlay</code>),
+     but the <b>routed</b> entries — <code>/activity</code>, the group timeline, the per-event feed —
+     are bare <code>scaffoldBackground</code>. The <i>same screen</i> has texture as a tab and none via
+     deep-link. Beyond parity, the flat paper is what makes these screens feel blank next to Home’s
+     hero. Three treatments, cheapest to richest:</p>
+  <p class="issue-rec"><b>Proposal:</b> V2 — grain parity + a <code>paperDeep→paper</code> wash behind
+     the header zone, on all three feeds (one shared backdrop widget). V3’s cover blend stays reserved
+     for group detail’s hero — a utility feed doesn’t need to compete with it.</p>
+
+  <div class="variant-row">
+    <div class="variant">
+      <div class="variant-label">V1 · Grain parity <span class="tag">subtle</span></div>
+      <div class="phone short">
+        <div class="phone-screen bg-grain">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div style="padding: 8px 20px 0;">
+            <div style="font-family:var(--font-serif);font-style:italic;font-size:28px;letter-spacing:-.5px;">Activity</div>
+            <div style="font-size:13px;color:var(--ink-3);margin-top:4px;">What’s been happening across your groups</div>
+          </div>
+          <div class="fpills"><span class="fpill on">All</span><span class="fpill">Settlements</span><span class="fpill">Events</span><span class="fpill">Members</span><span class="fpill">Exp…</span></div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today <span class="dt">· JUL 4</span></span></div>
+            <div class="day-card raised">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic settle r8"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Layla</b> recorded a payment to you</div>
+                  <span class="gtag">Salalah Trip</span>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 12.500</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money r8"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5Z"/><path d="M12 8v6M9 11h6"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Omar</b> added “Dinner”</div>
+                  <span class="gtag">Weekend Camping</span>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 24.000</span><span class="act-time">5h</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The parity fix.</b> Routed screens get the same grain the tab already
+        has — arguably a bug fix, not a redesign (one screen, one look, regardless of entry path).
+        One shared wrapper; <code>GrainOverlay</code> already exists. Grain shown at ~8% here so it
+        reads on a laptop; the app value stays 3.5%.</p>
+    </div>
+
+    <div class="variant pick">
+      <div class="variant-label">V2 · Grain + deep wash <span class="tag">proposed</span></div>
+      <div class="phone short">
+        <div class="phone-screen bg-wash">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div style="padding: 8px 20px 0;">
+            <div style="font-family:var(--font-serif);font-style:italic;font-size:28px;letter-spacing:-.5px;">Activity</div>
+            <div style="font-size:13px;color:var(--ink-3);margin-top:4px;">What’s been happening across your groups</div>
+          </div>
+          <div class="fpills"><span class="fpill on">All</span><span class="fpill">Settlements</span><span class="fpill">Events</span><span class="fpill">Members</span><span class="fpill">Exp…</span></div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today <span class="dt">· JUL 4</span></span></div>
+            <div class="day-card raised">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic settle r8"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Layla</b> recorded a payment to you</div>
+                  <span class="gtag">Salalah Trip</span>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 12.500</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic money r8"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5Z"/><path d="M12 8v6M9 11h6"/></svg></span></div>
+                <div class="row-body">
+                  <div class="act-text"><b>Omar</b> added “Dinner”</div>
+                  <span class="gtag">Weekend Camping</span>
+                </div>
+                <div class="row-trail"><span class="act-amt">OMR 24.000</span><span class="act-time">5h</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>Depth without new hues.</b> V1’s grain plus a <code>paperDeep →
+        paper</code> vertical wash fading out ~240px down — the header zone sits “deeper” in the
+        journal and the white day cards lift off it, so the raised shadow finally has something to
+        be raised <i>from</i>. Both colors are existing surface tokens; implementation is one
+        <code>DecoratedBox</code> in the same shared backdrop wrapper as V1. Applies to all three
+        feeds.</p>
+    </div>
+
+    <div class="variant">
+      <div class="variant-label">V3 · Cover blend header <span class="tag">rich · reserve</span></div>
+      <div class="phone short">
+        <div class="phone-screen bg-grain">
+          <div class="status-bar"><span>9:41</span><span class="dots">●●● ▾ ▮</span></div>
+          <div class="cover-band">
+            <div class="tb" style="padding: 0 8px 0 0;">
+              <div class="back"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></div>
+              <div class="tcol"><div class="cap">Activity</div><div class="ttl">Salalah Trip</div></div>
+            </div>
+          </div>
+          <div class="fpills" style="padding-top:0;"><span class="fpill on">All</span><span class="fpill">Settlements</span><span class="fpill">Events</span><span class="fpill">Members</span><span class="fpill">Exp…</span></div>
+          <div style="padding: 0 20px;">
+            <div class="day-h"><span class="lbl">Today <span class="dt">· JUL 4</span></span></div>
+            <div class="day-card raised">
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic settle r8"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Layla</b> recorded a payment to you</div></div>
+                <div class="row-trail"><span class="act-amt pos">+OMR 12.500</span><span class="act-time">2h</span></div>
+              </div>
+              <div class="list-row act">
+                <div class="row-lead"><span class="cat-ic member r8"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span></div>
+                <div class="row-body"><div class="act-text"><b>Sara</b> joined the group</div></div>
+                <div class="row-trail"><span class="act-time">1d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><b>The #368 / group-detail move</b> — the group timeline inherits its
+        group’s cover-art band, dark overlay blending into paper (same language as
+        <code>_CoverHeader</code>). Gorgeous, but it makes a utility feed compete with the group-detail
+        hero one tap away, costs a per-group palette thread into the activity screen, and doesn’t
+        generalise (cross-group and per-event feeds have no single cover). Reserve unless you want the
+        group timeline to feel like a chapter of the group’s journal.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════ 5 · Punch list ═══════════════════════ -->
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">5</span>
+    <h2 class="issue-title">Polish punch list — mechanical, no design decision needed</h2>
+    <span class="issue-meta">each lands inside the #490 consolidation or as a one-line follow-up</span>
+  </div>
+  <table class="punch">
+    <tr><th>#</th><th>Fix</th><th>Where</th></tr>
+    <tr><td>P1</td><td><b>Error-state icon drift</b> — feed load errors use <code>Iconsax.activity</code> on two screens and <code>warning_2</code> on one. Errors should read as errors: <code>warning_2</code> for all three error states; <code>activity</code> stays for true-empty.</td><td>activity_feed_screen · group_activity_screen</td></tr>
+    <tr><td>P2</td><td><b>Chip haptics</b> — group filter chips fire <code>HapticService.selection()</code>, cross-group chips are silent. Add the haptic (free once the strip is shared).</td><td>cross_group_activity_screen</td></tr>
+    <tr><td>P3</td><td><b>Hand-rolled RTL arrows</b> — three top bars do the <code>Directionality == rtl ? arrow_right : arrow_left</code> ternary instead of <code>DirectionalIcon</code> (DESIGN.md §7).</td><td>all three top bars</td></tr>
+    <tr><td>P4</td><td><b>Duplicated filter strip</b> — two copy-pasted <code>_FilterStrip</code>/<code>_Chip</code> pairs; one uses <code>space32</code> height, the other a literal 32; two l10n keys for the same “Settlements” label (<code>activityFilterSettles</code> / <code>activityFilterSettlements</code>). One shared widget, one key.</td><td>group + cross-group</td></tr>
+    <tr><td>P5</td><td><b>Ripple clipping</b> — tappable rows’ <code>InkWell</code> has no border radius; first/last-row ripples poke past the card’s rounded corners. Clip the card or radius the InkWell.</td><td>group + cross-group rows</td></tr>
+    <tr><td>P6</td><td><b>Off-scale literals</b> — icon tile radius 10 → <code>radiusSmall</code> 8 (shown in every “proposed” phone above); search field radius 12 → <code>radiusInput</code> 14; day-gap literal 22 and hairline gaps 10 onto the spacing scale.</td><td>_CategoryIcon · _SearchField · list padding</td></tr>
+    <tr><td>P7</td><td><b>TapBounce on chips</b> — filter pills use bare <code>GestureDetector</code>; the design system’s press feedback is <code>TapBounce</code> (§6).</td><td>shared filter strip</td></tr>
+    <tr><td>P8</td><td><b>maxLines drift</b> — verb line wraps at 3 lines on the event feed, 2 elsewhere. Shared row defaults to 2; event feed keeps 3 via the slot if the audit rows need it.</td><td>shared ActivityRow</td></tr>
+  </table>
+</div>
+
+<p style="max-width:1280px;margin:0 auto;color:#9a9587;font-size:13px;">
+  <b style="color:#D9D3C5;">Sequencing:</b> ship the <a href="490-activity-row-unification.html"
+  style="color:var(--primary);">#490 shared row</a> first (P3/P5/P6/P8 land inside it for free),
+  then §1–§3 as one small PR per screen, §4’s backdrop wrapper as its own tiny PR, then the P-items
+  not already absorbed. Everything is Gate-exempt UI consolidation.
+  <b style="color:#D9D3C5;">Open taste calls:</b> ① home “Recently” drops its avatar for the category
+  icon (the #490 recommendation — say if you want the avatar-keeping variant instead); ② group
+  context = tag chip (shown) vs plain text everywhere; ③ background = V2 wash (recommended) vs
+  grain-only V1 vs the V3 cover blend on the group timeline.
+</p>
+
+</body>
+</html>

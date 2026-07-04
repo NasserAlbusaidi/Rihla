@@ -116,21 +116,24 @@ class GroupService extends FirestoreRepository {
 
   /// Create a new group atomically.
   ///
-  /// Writes 3 documents in a single WriteBatch:
+  /// #874: writes 4 documents in ONE atomic [WriteBatch]:
   /// 1. The group document (groups/{groupId})
   /// 2. The invite code lookup document (inviteCodes/{inviteCode})
   /// 3. The creator's member document (groups/{groupId}/members/{memberId})
+  /// 4. The #245 seeded ledger event (groups/{groupId}/events/{eventId})
   ///
   /// The creator is automatically added as a member with role CREATOR (D-09).
   /// Their display name is read from [settingsProvider] (D-06).
   ///
-  /// NOTE on atomicity: The member subcollection write (Step 2) is intentionally
-  /// separate from the group+inviteCode batch (Step 1). Firestore security rules
-  /// require the group document to exist with the user in `memberIds` before
-  /// allowing writes to the `members` subcollection (via `isGroupMember()`
-  /// helper). If Step 2 fails, the group exists without a member doc — this is
-  /// recoverable (retry on next app launch) vs. the alternative of relaxing
-  /// security rules. Same pattern applies to joinGroup.
+  /// NOTE on atomicity: all four docs are one atomic mutation, so a founding
+  /// group is all-or-nothing (no memberless/eventless shell on partial failure)
+  /// and offline it queues + replays as a single unit that survives a
+  /// process-kill. The members/events create rules accept the group being
+  /// created in the same batch via after-state (getAfter/existsAfter →
+  /// `groupFoundingBatchByCreator`, firestore.rules), which is why the member +
+  /// event writes no longer need the group doc to be committed first. See
+  /// [stageGroup] for the full ordering rationale. joinGroup is unaffected
+  /// (server-side callable).
   ///
   /// Throws if the user is not authenticated.
   Future<Group> createGroup({
@@ -149,19 +152,24 @@ class GroupService extends FirestoreRepository {
     return staged.group;
   }
 
-  /// Stages a new group: applies the group + invite-code batch to the local
-  /// Firestore cache and returns the locally-built [Group] IMMEDIATELY, plus a
-  /// single server-ack future (#412/#520). The ack resolves only when the
-  /// server confirms — offline it stays pending until reconnect while the SDK
-  /// queues the replay, so UI callers race it (`awaitServerAck`) instead of
-  /// awaiting it raw (which falsely reports "couldn't create group" after a 15s
-  /// timeout even though the group was created locally and will sync).
+  /// Stages a new group: applies the founding WriteBatch to the local Firestore
+  /// cache and returns the locally-built [Group] IMMEDIATELY, plus a single
+  /// server-ack future (#412/#520). The ack resolves only when the server
+  /// confirms — offline it stays pending until reconnect while the SDK queues
+  /// the replay, so UI callers race it (`awaitServerAck`) instead of awaiting it
+  /// raw (which falsely reports "couldn't create group" after a 15s timeout even
+  /// though the group was created locally and will sync).
   ///
-  /// The member write is chained AFTER the group batch via `.then` — both
-  /// online and on offline replay the group doc is committed before the member
-  /// `set()` is evaluated, so the members rule (`isGroupMember` → group exists
-  /// with the creator in `memberIds`) holds. This preserves today's sequential
-  /// ordering exactly; it does NOT issue the two writes concurrently.
+  /// #874: the group, invite-code, creator member doc, and #245 seeded event are
+  /// written in ONE atomic [WriteBatch]. They MUST NOT be chained on
+  /// `batch.commit().then()` — commit()'s future acks only on server ack, so
+  /// OFFLINE the callbacks never fire and the member + event writes are dropped
+  /// (empty shell; permanent loss on process-kill). Nor can they be issued as
+  /// separate eager `.set()`s: FlutterFire offloads each host call onto a shared
+  /// thread pool, so separate calls race into the native mutation queue and the
+  /// member/event could replay before the group commits. One atomic batch has no
+  /// ordering to race; the members/events create rules accept the same-batch
+  /// group via after-state (`groupFoundingBatchByCreator`, firestore.rules).
   ///
   /// Throws synchronously if the user is not authenticated.
   ({Group group, Future<void> ack}) stageGroup({
@@ -238,41 +246,49 @@ class GroupService extends FirestoreRepository {
       createdAt: now.toUtc(),
     );
 
-    // Step 2: Add creator as member AFTER the group batch commits. The members
-    // subcollection rule requires the group doc to exist with the user in
-    // memberIds (isGroupMember check), so the member write is chained on the
-    // batch ack — sequential on first-write AND on offline replay. The whole
-    // chain is the single ack future the caller races.
+    // Step 2 + 3 (#874): the creator member doc and the #245 seeded event join
+    // the SAME atomic batch as the group + inviteCode. They cannot be chained on
+    // `batch.commit().then()` — commit()'s future acks only on SERVER ack, so
+    // OFFLINE the callbacks never fire and neither write is ever issued to the
+    // SDK (empty shell; permanent loss on process-kill). And they cannot be
+    // issued as separate eager `.set()`s and left to "SDK write-ordering":
+    // FlutterFire's Android plugin offloads each host call onto a shared
+    // cachedThreadPool, so two separate calls race into the native mutation
+    // queue (program order != enqueue order) and the member/event could replay
+    // before the group commits -> isGroupMember denies -> writes dropped.
     //
-    // Step 3 (#245): the seeded event is chained the same way — the events
-    // rule reads groups/{gid}.memberIds (isGroupMember), so the group doc must
-    // exist first. A failure here rejects the whole ack, identical to the
-    // member leg's failure semantics.
-    final ack = batch
-        .commit()
-        .then((_) {
-          return db
-              .collection('groups')
-              .doc(groupId)
-              .collection('members')
-              .doc(memberId)
-              .set({
-                'id': memberId,
-                'userId': uid,
-                'displayName': displayName,
-                'role': 'CREATOR',
-                'joinedAt': FieldValue.serverTimestamp(),
-                'isShadow': false,
-              });
-        })
-        .then((_) {
-          return db
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(seededEvent.id)
-              .set(seededEvent.toFirestoreMap());
-        });
+    // ONE WriteBatch is one atomic mutation, so there is no ordering to race,
+    // and offline it queues + replays as a single unit that survives a kill. The
+    // members/events create rules accept the same-batch group via after-state
+    // (getAfter/existsAfter -> groupFoundingBatchByCreator in firestore.rules).
+    batch.set(
+      db
+          .collection('groups')
+          .doc(groupId)
+          .collection('members')
+          .doc(memberId),
+      {
+        'id': memberId,
+        'userId': uid,
+        'displayName': displayName,
+        'role': 'CREATOR',
+        'joinedAt': FieldValue.serverTimestamp(),
+        'isShadow': false,
+      },
+    );
+    batch.set(
+      db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(seededEvent.id),
+      seededEvent.toFirestoreMap(),
+    );
+
+    // Single server-ack future for the whole atomic batch. Offline it stays
+    // pending until reconnect while the SDK queues the replay, so UI callers
+    // race it (`awaitServerAck`) instead of awaiting it raw.
+    final ack = batch.commit();
 
     // Return a local Group object — serverTimestamp is not readable until
     // the next Firestore snapshot, so use now() as the local createdAt.

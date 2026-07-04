@@ -155,6 +155,28 @@ service cloud.firestore {
         && request.auth.uid == groupData(groupId).createdBy;
     }
 
+    // #874: a member/event doc created in the SAME atomic batch as its brand-new
+    // group. isGroupMember/groupAllowsClientWrites read BEFORE-batch state (the
+    // group does not exist yet -> they short-circuit false), so the founding
+    // batch is validated against after-state here. The !exists guard restricts
+    // this branch to genuinely-new groups: an EXISTING group (incl.
+    // soft-deleted/deleting/claiming/accountDeletion — groups are never
+    // hard-deleted, so exists() stays true) is forced down the standard
+    // groupAllowsClientWrites path. A founding group is clean by construction —
+    // validGroupCreate forces createdBy==uid, memberIds==[uid], isDeleted==false,
+    // and its keys().hasOnly excludes every *InProgress flag — so no
+    // groupAllowsClientWrites re-check is needed. Atomicity finishes the proof:
+    // if the group leg fails validGroupCreate the member/event legs cannot
+    // persist regardless of their own verdicts, and getAfter reflects only the
+    // caller's own request (no cross-request piggyback).
+    function groupFoundingBatchByCreator(groupId) {
+      return signedIn()
+        && !exists(groupPath(groupId))
+        && existsAfter(groupPath(groupId))
+        && request.auth.uid in groupAfterData(groupId).memberIds
+        && groupAfterData(groupId).createdBy == request.auth.uid;
+    }
+
     function eventPath(groupId, eventId) {
       return /databases/$(database)/documents/groups/$(groupId)/events/$(eventId);
     }
@@ -445,10 +467,40 @@ service cloud.firestore {
           // other path can mutate them.
         }
 
+        // #874: create-only twin of validEventBase's field-shape checks, WITHOUT
+        // the participantIds.hasOnly(groupMembers()) membership coupling
+        // (groupMembers() does get(group), which is null in a founding batch ->
+        // a terminal rule error). The membership check is applied per-branch in
+        // validEventCreate (standard: committed groupMembers(); founding batch:
+        // after-state groupAfterData().memberIds).
+        //
+        // MUST MIRROR validEventBase's field list (this file, validEventBase).
+        // A new event field goes in BOTH. validEventBase and the entire
+        // event-UPDATE OR-chain are deliberately left byte-identical — they sit
+        // near the 1000-expression ceiling (#723), so this create-only path does
+        // NOT touch them (duplication over extraction on purpose).
+        function validEventCreateFields(data) {
+          return isValidDisplayName(data.name)
+            && data.type in ['trip', 'camping', 'travel', 'night_day_out', 'custom']
+            && data.groupId == groupId
+            && data.createdBy is string
+            && data.participantIds is list
+            && data.participantIds.size() > 0
+            && data.participantNames is map
+            && displayNameMapValuesAreValid(data.participantNames)
+            && validModules(data.modules)
+            && (data.startDate == null || data.startDate is timestamp)
+            && (data.endDate == null || data.endDate is timestamp)
+            && data.isDeleted is bool
+            && (data.deletedAt == null || data.deletedAt is timestamp)
+            && (data.createdAt is string || data.createdAt is timestamp)
+            && (data.serverCreatedAt == null || data.serverCreatedAt is timestamp)
+            && (data.updatedAt == null || data.updatedAt is timestamp)
+            && nullableString(data.description);
+        }
+
         function validEventCreate() {
-          return isGroupMember(groupId)
-            && groupAllowsClientWrites(groupId)
-            && request.resource.data.keys().hasOnly([
+          return request.resource.data.keys().hasOnly([
               'name',
               'type',
               'groupId',
@@ -476,7 +528,18 @@ service cloud.firestore {
             && (!('isClosed' in request.resource.data) || request.resource.data.isClosed == false)
             && (!('closedAt' in request.resource.data) || request.resource.data.closedAt == null)
             && (!('closedBy' in request.resource.data) || request.resource.data.closedBy == null)
-            && validEventBase(request.resource.data);
+            && validEventCreateFields(request.resource.data)
+            && (
+              // Standard: existing group, requester is a member, participants
+              // ⊆ committed members.
+              (isGroupMember(groupId) && groupAllowsClientWrites(groupId)
+                && request.resource.data.participantIds.hasOnly(groupMembers()))
+              // #874 founding batch: the #245 seeded event rides in the SAME
+              // atomic batch as its brand-new group. participantIds ⊆ after-state
+              // members (== [creator], so this collapses to exactly [creator]).
+              || (groupFoundingBatchByCreator(groupId)
+                && request.resource.data.participantIds.hasOnly(groupAfterData(groupId).memberIds))
+            );
         }
 
         function validEventUpdateCommon() {
@@ -926,8 +989,15 @@ service cloud.firestore {
         }
 
         function validMemberCreate() {
-          return isGroupMember(groupId)
-            && groupAllowsClientWrites(groupId)
+          return (
+              // Standard path: the group already exists and the requester is a
+              // member (joiner self-add on an existing group).
+              (isGroupMember(groupId) && groupAllowsClientWrites(groupId))
+              // #874 founding batch: the creator's own member doc rides in the
+              // SAME atomic batch as the brand-new group (see
+              // groupFoundingBatchByCreator).
+              || groupFoundingBatchByCreator(groupId)
+            )
             && request.resource.data.keys().hasOnly([
               'id',
               'userId',
@@ -947,8 +1017,13 @@ service cloud.firestore {
             && request.resource.data.userId == request.auth.uid
             && isValidDisplayName(request.resource.data.displayName)
             && request.resource.data.role in ['CREATOR', 'MEMBER']
+            // #874: after-state createdBy. For a standalone create the group is
+            // not in the write so getAfter == get (unchanged); in a founding
+            // batch it sees the new group's createdBy. createdBy is immutable
+            // post-create (absent from every group-update allow-list), so this
+            // never differs from the before-state read on the standard path.
             && (request.resource.data.role == 'MEMBER'
-              || groupData(groupId).createdBy == request.auth.uid)
+              || groupAfterData(groupId).createdBy == request.auth.uid)
             && request.resource.data.joinedAt is timestamp
             && request.resource.data.isShadow is bool;
         }

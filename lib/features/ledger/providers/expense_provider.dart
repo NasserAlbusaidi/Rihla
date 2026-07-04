@@ -758,25 +758,36 @@ class BalanceCalculator {
     String currency,
   ) {
     final sortedRecipients = weights.keys.toList()..sort();
+    // The rounding remainder lands on the alphabetically-last POSITIVE-weight
+    // recipient — never a declared-0-share key (#872), mirroring
+    // _spreadProportional. Callers guarantee at least one positive weight
+    // (negatives → equal fallback, total > 0), so orElse is defensive only.
+    // Parity note: remainder selection now depends on weight positivity, and
+    // both sides decode positivity identically (shares are raw ints; percent
+    // persists ×1000 and decodes ÷1000 in _splitValueFromPersisted and the
+    // server decodeSplitValue alike) — keep those decodes in lockstep or the
+    // oracle drifts.
+    final remainderKey = sortedRecipients.lastWhere(
+      (id) => weights[id]! > Decimal.zero,
+      orElse: () => sortedRecipients.last,
+    );
     final allocations = <String, Decimal>{};
     var allocated = Decimal.zero;
 
-    for (int i = 0; i < sortedRecipients.length; i++) {
-      final recipientId = sortedRecipients[i];
-      final isLast = i == sortedRecipients.length - 1;
-      final allocation = isLast
-          ? amount - allocated
-          : _toCurrencyPrecision(
-              ((amount * weights[recipientId]!) / denominator).toDecimal(
-                scaleOnInfinitePrecision: 10,
-              ),
-              currency,
-            );
+    for (final recipientId in sortedRecipients) {
+      if (recipientId == remainderKey) continue;
+      final allocation = _toCurrencyPrecision(
+        ((amount * weights[recipientId]!) / denominator).toDecimal(
+          scaleOnInfinitePrecision: 10,
+        ),
+        currency,
+      );
       allocations[recipientId] = allocation;
       allocated += allocation;
     }
+    allocations[remainderKey] = amount - allocated;
 
-    return allocations;
+    return {for (final id in sortedRecipients) id: allocations[id]!};
   }
 
   /// Quantize [value] to [currency]'s subunit precision by round-tripping

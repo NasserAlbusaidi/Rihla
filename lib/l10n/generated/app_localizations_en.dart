@@ -3552,7 +3552,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupClaimNoRequests => 'No pending claim requests.';
 
   @override
-  String get recapButtonTooltip => 'Recap';
+  String get recapOpenBannerLead => 'See the trip so far';
 
   @override
   String recapPeopleExpenses(int people, int expenses) {

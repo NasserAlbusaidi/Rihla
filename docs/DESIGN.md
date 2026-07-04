@@ -368,3 +368,23 @@ are the enforcement backlog:
 | D7 | **REOPENED — now orphaned.** `event_type_picker_screen.dart` (their only reader) was deleted with #489's type-picker fold; `moduleLedgerLight`/`moduleMemoriesLight` now have **zero `lib/` readers** (defined only in `color_tokens.dart`). | grep: `colors.module*Light` → 0 hits outside `color_tokens.dart`. | Delete the dead `module*Light` token fields in a cleanup PR. |
 
 Track adherence by re-running the §13 greps; the counts are the metric.
+
+---
+
+## 14. Protected invariants — do NOT break (KEEP list)
+
+Strengths the design review flagged as worth protecting. Treat these as regression
+guardrails: any PR that would change one needs an **explicit decision** (call it out
+in the PR body), not a silent edit. _(Migrated from #149, 2026-07-04, so the KEEP
+list lives in the contract you read each session rather than a perpetually-open
+issue.)_
+
+- **KEEP-1 — Type system:** editorial italic serif + mono labels + sans body. Distinctive; keep (see §3).
+- **KEEP-2 — Palette + semantics:** warm tones, sage = positive, salmon/rust = negative; holds in light + dark (§2).
+- **KEEP-3 — Settle-Up dashed-arrow transfer cards** — clear who-pays-whom.
+- **KEEP-4 — RTL build:** logo lockup, mirroring, localized strings (§7).
+- **KEEP-5 — Copy voice:** "everyone's even" / "كل شيء متوازن" (§11).
+- **KEEP-6 — Ticket / boarding-pass trip cards:** perforated tear-line, side notches, per-trip gradient. Best visual idea — protect and extend.
+- **KEEP-7 — "Expense saved · synced with cloud" modal** — offline-first feedback.
+- **KEEP-8 — Light theme execution:** cream/white card hierarchy (§2, §5).
+- **DEC-3 (shipped invariant):** one deterministic avatar colour per user via `RAvatar._stableHash(name)` → 8 slots; callsites pass **name only**, never override the hue. Keep deterministic. (Cross-ref: #490 consolidation must not reintroduce per-site avatar tints.)

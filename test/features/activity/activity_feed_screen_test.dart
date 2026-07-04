@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:safar/core/services/money_serializer.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/activity/keys/activity_keys.dart';
 import 'package:safar/features/activity/screens/activity_feed_screen.dart';
@@ -240,7 +241,7 @@ void main() {
       ]),
     );
     await tester.pump(const Duration(seconds: 1));
-    // Page-boundary day-merge uses the same _groupByDay(_activities) path; widget-level
+    // Page-boundary day-merge uses the same groupByDay(_activities) path; widget-level
     // boundary counting is unreliable under ListView virtualization, so grouping
     // correctness is asserted here at single-page scale.
     expect(dayHeaderCount(), 2);
@@ -366,6 +367,237 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(RAmount), findsNothing); // verb line only, no detail
   });
+
+  // ── #490 D-g: glyph adapter, trailing amounts, dot-date ───────────────────
+
+  Future<void> seedTyped(
+    FakeFirebaseFirestore db,
+    String category,
+    String eventType,
+  ) async {
+    await db
+        .collection('groups')
+        .doc(groupId)
+        .collection('events')
+        .doc(eventId)
+        .collection('activity_logs')
+        .doc('typed-1')
+        .set({
+          'id': 'typed-1',
+          'eventId': eventId,
+          'category': category,
+          'eventType': eventType,
+          'logText': 'did something',
+          'actorId': 'u1',
+          'actorName': 'Alice',
+          'metadata': <String, dynamic>{},
+          'createdAt': DateTime.utc(2026, 2, 1).toIso8601String(),
+        });
+  }
+
+  Future<void> pumpFeed(WidgetTester tester, FakeFirebaseFirestore db) async {
+    await tester.pumpWidget(
+      buildRoute([
+        activityServiceProvider.overrideWithValue(
+          ActivityService.withFirestore(db),
+        ),
+      ]),
+    );
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  testWidgets('MONEY/CREATE renders the receipt-add glyph', (tester) async {
+    final db = FakeFirebaseFirestore();
+    await seedTyped(db, 'MONEY', 'CREATE');
+    await pumpFeed(tester, db);
+    expect(find.byIcon(Iconsax.receipt_add), findsOneWidget);
+  });
+
+  testWidgets('MONEY/UPDATE renders the receipt-edit glyph', (tester) async {
+    final db = FakeFirebaseFirestore();
+    await seedTyped(db, 'MONEY', 'UPDATE');
+    await pumpFeed(tester, db);
+    expect(find.byIcon(Iconsax.receipt_edit), findsOneWidget);
+  });
+
+  testWidgets('MONEY/DELETE renders the receipt-minus glyph', (tester) async {
+    final db = FakeFirebaseFirestore();
+    await seedTyped(db, 'MONEY', 'DELETE');
+    await pumpFeed(tester, db);
+    expect(find.byIcon(Iconsax.receipt_minus), findsOneWidget);
+  });
+
+  testWidgets(
+    'GEAR/DOCS/unknown categories fall back to the generic glyph '
+    '(Phase-39 legacy categories demoted)',
+    (tester) async {
+      for (final category in ['GEAR', 'DOCS', 'SOMETHING_ELSE']) {
+        final db = FakeFirebaseFirestore();
+        await seedTyped(db, category, 'CREATE');
+        await pumpFeed(tester, db);
+        expect(
+          find.byIcon(Iconsax.activity),
+          findsOneWidget,
+          reason: 'category=$category',
+        );
+      }
+    },
+  );
+
+  testWidgets(
+    'CREATE row shows a trailing amount and drops the old summary line',
+    (tester) async {
+      final db = FakeFirebaseFirestore();
+      await seedAudit(db, 'CREATE', {
+        'expenseId': 'exp1',
+        'after': {
+          'amountFils': 8000,
+          'currency': 'OMR',
+          'payerParticipantId': 'uid-creator',
+          'description': 'Lunch',
+          'isDeleted': false,
+        },
+      });
+      await pumpFeed(tester, db);
+
+      final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+      expect(amounts, hasLength(1));
+      expect(amounts.single.value, MoneySerializer.fromSubunits(8000, 'OMR'));
+      expect(amounts.single.currency, 'OMR');
+      expect(amounts.single.showCurrency, isTrue);
+      expect(amounts.single.size, 14);
+      // Old "<description>  ·  <amount>" summary line is gone.
+      expect(find.text('Lunch  ·  '), findsNothing);
+    },
+  );
+
+  testWidgets('DELETE row is muted, with the trailing amount at 0.6 opacity', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    await seedAudit(db, 'DELETE', {
+      'expenseId': 'exp1',
+      'before': {
+        'amountFils': 3500,
+        'currency': 'OMR',
+        'payerParticipantId': 'uid-creator',
+        'description': 'Taxi',
+        'isDeleted': false,
+      },
+      'after': {
+        'amountFils': 3500,
+        'currency': 'OMR',
+        'payerParticipantId': 'uid-creator',
+        'description': 'Taxi',
+        'isDeleted': true,
+      },
+    });
+    await pumpFeed(tester, db);
+
+    expect(find.byType(RAmount), findsOneWidget);
+    final opacity = tester.widget<Opacity>(
+      find
+          .ancestor(of: find.byType(RAmount), matching: find.byType(Opacity))
+          .first,
+    );
+    expect(opacity.opacity, 0.6);
+  });
+
+  testWidgets(
+    'UPDATE-with-amount-change keeps the audit chip and has no trailing '
+    'amount (no duplication)',
+    (tester) async {
+      final db = FakeFirebaseFirestore();
+      await seedAudit(db, 'UPDATE', {
+        'expenseId': 'exp1',
+        'before': {
+          'amountFils': 10500,
+          'currency': 'OMR',
+          'payerParticipantId': 'uid-creator',
+          'description': 'Dinner',
+          'isDeleted': false,
+        },
+        'after': {
+          'amountFils': 12500,
+          'currency': 'OMR',
+          'payerParticipantId': 'uid-creator',
+          'description': 'Dinner',
+          'isDeleted': false,
+        },
+      });
+      await pumpFeed(tester, db);
+
+      // Exactly the two chip amounts (before + after) — a third would mean a
+      // duplicated trailing amount.
+      expect(find.byType(RAmount), findsNWidgets(2));
+    },
+  );
+
+  testWidgets('day header renders the dot-date suffix for a same-day entry', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    await db
+        .collection('groups')
+        .doc(groupId)
+        .collection('events')
+        .doc(eventId)
+        .collection('activity_logs')
+        .doc('today-1')
+        .set({
+          'id': 'today-1',
+          'eventId': eventId,
+          'category': 'MONEY',
+          'eventType': 'CREATE',
+          'logText': 'paid for item',
+          'actorId': 'u1',
+          'actorName': 'Actor',
+          'metadata': <String, dynamic>{},
+          'createdAt': DateTime.now().toIso8601String(),
+        });
+    await pumpFeed(tester, db);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byKey(ActivityKeys.feedList)),
+    );
+    expect(find.text(l10n.timelineToday.toUpperCase()), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Text && (w.data ?? '').startsWith(' · '),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'error view icon is a warning triangle, not the generic activity icon '
+    '(P1)',
+    (tester) async {
+      final db = FakeFirebaseFirestore();
+      final svc = _FailingActivityService(db);
+      await tester.pumpWidget(
+        buildRoute([activityServiceProvider.overrideWithValue(svc)]),
+      );
+      // Drains EmptyStateView's flutter_animate ticker (error is a terminal
+      // state here, unlike the pagination-footer tests above).
+      await tester.pumpAndSettle();
+      expect(find.byKey(ActivityKeys.errorView), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(ActivityKeys.errorView),
+          matching: find.byIcon(Iconsax.warning_2),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(ActivityKeys.errorView),
+          matching: find.byIcon(Iconsax.activity),
+        ),
+        findsNothing,
+      );
+    },
+  );
 
   // ── #758: embedded mode (tab panel inside the tabbed event view) ─────────
 
