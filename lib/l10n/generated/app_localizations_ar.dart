@@ -260,7 +260,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileBackupCardBody =>
-      'رحلاتك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا أو حساب Google حتى لا تفقدها.';
+      'رحلاتك محفوظة على هذا الهاتف فقط. اربط حساب Google حتى لا تفقدها.';
 
   @override
   String get profileSetYourName => 'عيّن اسمك';

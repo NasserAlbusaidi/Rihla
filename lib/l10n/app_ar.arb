@@ -99,7 +99,7 @@
   "profileBackupStatusNotBackedUp": "غير محفوظ احتياطيًا",
   "profileBackupStatusBackedUp": "محفوظ احتياطيًا",
   "profileBackupCardTitle": "احفظ هذا الحساب احتياطيًا",
-  "profileBackupCardBody": "رحلاتك محفوظة على هذا الهاتف فقط. أضِف بريدًا إلكترونيًا أو حساب Google حتى لا تفقدها.",
+  "profileBackupCardBody": "رحلاتك محفوظة على هذا الهاتف فقط. اربط حساب Google حتى لا تفقدها.",
   "profileSetYourName": "عيّن اسمك",
   "profileHandlePlaceholder": "بدون اسم بعد",
   "profileFinishRecovery": "أكمل استعادة الحساب",
