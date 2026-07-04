@@ -1098,10 +1098,14 @@ service cloud.firestore {
             // expense_* only by the expenseAuditLogger fan-in (both Admin
             // SDK, bypassing rules) — a client claiming them is a forgery.
             // The writeRateMonitor's expense_* skip is only safe because of
-            // this list; extend BOTH together.
+            // this list; extend BOTH together. #831: event_settlement is
+            // CLIENT-written (event settle-up record path) — allow-listed
+            // here and deliberately NOT in the monitor skip (a real client
+            // write is counted, like group_settlement).
             && request.resource.data.type in [
               'event_created',
               'event_deleted',
+              'event_settlement',
               'group_settlement',
               'member_joined'
             ]
