@@ -14,6 +14,8 @@ export { decideClaimRequest } from './callables/decideClaimRequest';
 export { listMyClaimRequests } from './callables/listMyClaimRequests';
 export { listGroupClaimRequests } from './callables/listGroupClaimRequests';
 export { listUnclaimedShadows } from './callables/listUnclaimedShadows';
+export { correctSettlement } from './callables/correctSettlement';
+export { correctLogicalSettleUp } from './callables/correctLogicalSettleUp';
 export {
   eventWriteRateMonitor,
   groupSettlementWriteRateMonitor,

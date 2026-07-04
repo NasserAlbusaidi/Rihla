@@ -2761,6 +2761,69 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
+  // ===========================================================================
+  // #889 — correction marker foundation: deny-by-omission on
+  // `correctionOfSettlementId` (no change to the hasOnly() key lists — pinning
+  // the existing denial), and the tightened non-blank `groupSettleUpId` guard.
+  // ===========================================================================
+  describe('#889 correction marker foundation', () => {
+    test('unmarked event settlement create remains allowed (baseline, no regression)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setUnmarked').set(
+        validSettlement({ id: 'setUnmarked' }),
+      ));
+    });
+
+    test('unmarked group settlement create remains allowed (baseline, no regression)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/settlements/gsetUnmarked').set(
+        validGroupSettlement({ id: 'gsetUnmarked' }),
+      ));
+    });
+
+    test('client-created event settlement carrying correctionOfSettlementId is denied (hasOnly-omission)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1/settlements/setMarked').set(
+        validSettlement({ id: 'setMarked', correctionOfSettlementId: 'orig1' }),
+      ));
+    });
+
+    test('client-created group settlement carrying correctionOfSettlementId is denied (hasOnly-omission)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/settlements/gsetMarked').set(
+        validGroupSettlement({ id: 'gsetMarked', correctionOfSettlementId: 'orig1' }),
+      ));
+    });
+
+    test('blank groupSettleUpId is denied on an event settlement create', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1/settlements/setBlankLink').set(
+        validSettlement({ id: 'setBlankLink', groupSettleUpId: '' }),
+      ));
+    });
+
+    test('whitespace-only groupSettleUpId is denied on an event settlement create', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1/settlements/setWsLink').set(
+        validSettlement({ id: 'setWsLink', groupSettleUpId: '   ' }),
+      ));
+    });
+
+    test('blank groupSettleUpId is denied on a group settlement create', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/settlements/gsetBlankLink').set(
+        validGroupSettlement({ id: 'gsetBlankLink', groupSettleUpId: '' }),
+      ));
+    });
+
+    test('a non-empty groupSettleUpId stays allowed (no regression on #752)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNonBlankLink').set(
+        validSettlement({ id: 'setNonBlankLink', groupSettleUpId: 'su-real' }),
+      ));
+    });
+  });
+
   test('#194 expense update that changes description to a control-char value is denied', async () => {
     await seedExpense({ id: 'expEdit', createdBy: 'member' });
     const member = testEnv.authenticatedContext('member').firestore();

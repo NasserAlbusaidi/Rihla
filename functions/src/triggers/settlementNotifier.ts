@@ -41,6 +41,16 @@ async function notifySettlement(
   if (!snap) return;
   const data = snap.data();
   if (data.isDeleted === true) return;
+  // #889: a marked correction reverse is a server-written offsetting row, not
+  // a fresh payment — skip its push. Presence-only (no read): rules deny a
+  // client-created `correctionOfSettlementId`
+  // (firestore.rules validEventSettlementBase/validGroupSettlementBase
+  // hasOnly() key lists), so presence alone proves an Admin SDK write. If a
+  // future rules edit ever admits a client-written marker, this skip becomes
+  // forgeable.
+  if (typeof data.correctionOfSettlementId === 'string' && data.correctionOfSettlementId.trim().length > 0) {
+    return;
+  }
 
   const amountFils = data.amountFils;
   if (typeof amountFils !== 'number') return;

@@ -116,7 +116,13 @@ service cloud.firestore {
         // `!('x' in data) ||` guard. A direct `data.groupSettleUpId == ...`
         // access on the absent key would deny EVERY keyless settlement write
         // (i.e. all existing settle-ups), since this core runs on every create.
-        && (!('groupSettleUpId' in data) || data.groupSettleUpId is string);
+        // #889: tightened from a bare `is string` — a blank/whitespace-only
+        // value is denied so it isn't normalized three different ways by
+        // rules, model code, and history grouping. `.matches()` is a
+        // FULL-STRING RE2 match (rules has no `trim()`), so this checks for a
+        // non-space char ANYWHERE in the string, not a substring "contains."
+        && (!('groupSettleUpId' in data)
+          || (data.groupSettleUpId is string && data.groupSettleUpId.matches('.*[^ ].*')));
     }
 
     function groupPath(groupId) {
@@ -883,6 +889,12 @@ service cloud.firestore {
           }
 
           function validEventSettlementBase(data) {
+            // #889: deliberately does NOT list `correctionOfSettlementId` —
+            // hasOnly-omission denies any client create carrying it (deny-by-
+            // omission, not an explicit deny). This is what makes the
+            // settlementNotifier.ts / writeRateMonitor.ts presence-only
+            // marker skips un-forgeable: only the Admin SDK (which bypasses
+            // this check) can write the key. Do NOT add the marker here.
             return data.keys().hasOnly([
               'id',
               'eventId',
@@ -1134,6 +1146,12 @@ service cloud.firestore {
 
       match /settlements/{settlementId} {
         function validGroupSettlementBase(data) {
+          // #889: deliberately does NOT list `correctionOfSettlementId` —
+          // hasOnly-omission denies any client create carrying it (deny-by-
+          // omission, not an explicit deny). This is what makes the
+          // settlementNotifier.ts / writeRateMonitor.ts presence-only marker
+          // skips un-forgeable: only the Admin SDK (which bypasses this
+          // check) can write the key. Do NOT add the marker here.
           return data.keys().hasOnly([
             'id',
             'groupId',

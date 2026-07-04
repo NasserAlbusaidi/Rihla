@@ -198,6 +198,51 @@ describe('eventSettlementNotifier', () => {
 
     expect(sendEach).toHaveBeenCalledTimes(1);
   });
+
+  // #889: a marked correction reverse is a server-owned offsetting row, not a
+  // fresh payment — the counterparty must not get a "new settlement" push.
+  test('#889 marked correction (correctionOfSettlementId present) is NOT notified', async () => {
+    await seedGroup('g1', 'Trip');
+    await seedToken('payer');
+    await seedToken('recipient');
+    const sendEach = mockSendEach(0);
+
+    await wrapEvent(
+      eventSettlement(
+        {
+          ...base,
+          payerParticipantId: 'payer',
+          recipientParticipantId: 'recipient',
+          createdBy: 'thirdparty',
+          correctionOfSettlementId: 'orig1',
+        },
+        { gid: 'g1', eid: 'e1', settlementId: 's1' },
+      ),
+    );
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('#889 an UNMARKED settlement whose note equals the legacy correction sentinel is STILL notified', async () => {
+    await seedGroup('g1', 'Trip');
+    await seedToken('recipient');
+    const sendEach = mockSendEach(1);
+
+    await wrapEvent(
+      eventSettlement(
+        {
+          ...base,
+          payerParticipantId: 'payer',
+          recipientParticipantId: 'recipient',
+          createdBy: 'payer',
+          note: 'Correction of a recorded payment',
+        },
+        { gid: 'g1', eid: 'e1', settlementId: 's1' },
+      ),
+    );
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('groupSettlementNotifier', () => {
@@ -230,5 +275,26 @@ describe('groupSettlementNotifier', () => {
     await wrapGroup(event);
 
     expect(sendEach).toHaveBeenCalledTimes(1);
+  });
+
+  test('#889 marked correction (correctionOfSettlementId present) is NOT notified', async () => {
+    await seedGroup('g1', 'Trip');
+    await seedToken('recipient');
+    const sendEach = mockSendEach(0);
+
+    await wrapGroup(
+      groupSettlement(
+        {
+          ...base,
+          payerParticipantId: 'payer',
+          recipientParticipantId: 'recipient',
+          createdBy: 'payer',
+          correctionOfSettlementId: 'orig1',
+        },
+        { gid: 'g1', settlementId: 's1' },
+      ),
+    );
+
+    expect(sendEach).not.toHaveBeenCalled();
   });
 });
