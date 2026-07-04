@@ -348,4 +348,20 @@ void main() {
 
     expect(result, isTrue);
   });
+
+  testWidgets('failed restore (pre-isolation throw) resets to generic error', (
+    tester,
+  ) async {
+    when(
+      () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+    ).thenThrow(StateError('fcm remove failed'));
+
+    final l10n = await openAndConflict(tester, groups: Stream.value(const []));
+    await tester.tap(find.byKey(const Key('durableGate.switch')));
+    await tester.pumpAndSettle();
+
+    expect(result, isNull);
+    expect(find.text(l10n.durableGateError), findsOneWidget);
+    verifyNever(() => recovery.signOutCurrentDevice());
+  });
 }
