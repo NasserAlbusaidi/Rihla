@@ -12,6 +12,7 @@ import '../../../shared/widgets/activity_glyph.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/caption_title_bar.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/paper_backdrop.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/embedded_panel_metrics.dart';
@@ -133,20 +134,23 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
       key: ActivityKeys.screen,
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
-        child: Column(
-          children: [
-            CaptionTitleBar(
-              caption: context.l10n.activityCaption,
-              title: eventAsync.valueOrNull?.name ?? context.l10n.activityTitle,
-              onBack: () {
-                if (GoRouter.of(context).canPop()) {
-                  GoRouter.of(context).pop();
-                }
-              },
-            ),
-            const SizedBox(height: 6),
-            Expanded(child: feed),
-          ],
+        child: PaperBackdrop(
+          child: Column(
+            children: [
+              CaptionTitleBar(
+                caption: context.l10n.activityCaption,
+                title:
+                    eventAsync.valueOrNull?.name ?? context.l10n.activityTitle,
+                onBack: () {
+                  if (GoRouter.of(context).canPop()) {
+                    GoRouter.of(context).pop();
+                  }
+                },
+              ),
+              const SizedBox(height: 6),
+              Expanded(child: feed),
+            ],
+          ),
         ),
       ),
     );

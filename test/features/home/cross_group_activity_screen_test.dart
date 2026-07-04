@@ -21,6 +21,7 @@ import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/home/providers/cross_group_activity_pager.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/paper_backdrop.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
@@ -793,6 +794,27 @@ void main() {
 
         service.gate.complete();
         await tester.pumpAndSettle();
+      },
+    );
+  });
+
+  group('PR5: PaperBackdrop rollout (#490 D-c)', () {
+    testWidgets(
+      'wraps body content in the shared PaperBackdrop — covers both the '
+      'bottom-nav tab and the routed /activity entry',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        await _seed(db, 'g1', [_activity('a1', 'Alice', 'created an event')]);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PaperBackdrop), findsOneWidget);
       },
     );
   });

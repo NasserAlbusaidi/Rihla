@@ -17,6 +17,7 @@ import '../../../shared/widgets/activity_day_section.dart';
 import '../../../shared/widgets/activity_filter_strip.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/paper_backdrop.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -156,51 +157,53 @@ class _CrossGroupActivityScreenState
     return Scaffold(
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
-        child: Column(
-          children: [
-            _TopBar(
-              showBack: widget.showBack,
-              showSearch: pager.entries.isNotEmpty,
-              searching: _searching,
-              onToggleSearch: _toggleSearch,
-            ),
-            const SizedBox(height: 6),
-            if (_searching) ...[
-              _SearchField(
-                controller: _searchController,
-                focusNode: _searchFocus,
+        child: PaperBackdrop(
+          child: Column(
+            children: [
+              _TopBar(
+                showBack: widget.showBack,
+                showSearch: pager.entries.isNotEmpty,
+                searching: _searching,
+                onToggleSearch: _toggleSearch,
+              ),
+              const SizedBox(height: 6),
+              if (_searching) ...[
+                _SearchField(
+                  controller: _searchController,
+                  focusNode: _searchFocus,
+                ),
+                SizedBox(height: context.spacing.space8),
+              ],
+              ActivityFilterStrip<_Filter>(
+                current: _filter,
+                onChange: (f) => setState(() => _filter = f),
+                options: [
+                  ActivityFilterOption(
+                    value: _Filter.all,
+                    label: context.l10n.activityFilterAll,
+                  ),
+                  ActivityFilterOption(
+                    value: _Filter.settlements,
+                    label: context.l10n.activityFilterSettlements,
+                  ),
+                  ActivityFilterOption(
+                    value: _Filter.events,
+                    label: context.l10n.activityFilterEvents,
+                  ),
+                  ActivityFilterOption(
+                    value: _Filter.members,
+                    label: context.l10n.activityFilterMembers,
+                  ),
+                  ActivityFilterOption(
+                    value: _Filter.expenses,
+                    label: context.l10n.activityFilterExpenses,
+                  ),
+                ],
               ),
               SizedBox(height: context.spacing.space8),
+              Expanded(child: _buildBody(context, pager)),
             ],
-            ActivityFilterStrip<_Filter>(
-              current: _filter,
-              onChange: (f) => setState(() => _filter = f),
-              options: [
-                ActivityFilterOption(
-                  value: _Filter.all,
-                  label: context.l10n.activityFilterAll,
-                ),
-                ActivityFilterOption(
-                  value: _Filter.settlements,
-                  label: context.l10n.activityFilterSettlements,
-                ),
-                ActivityFilterOption(
-                  value: _Filter.events,
-                  label: context.l10n.activityFilterEvents,
-                ),
-                ActivityFilterOption(
-                  value: _Filter.members,
-                  label: context.l10n.activityFilterMembers,
-                ),
-                ActivityFilterOption(
-                  value: _Filter.expenses,
-                  label: context.l10n.activityFilterExpenses,
-                ),
-              ],
-            ),
-            SizedBox(height: context.spacing.space8),
-            Expanded(child: _buildBody(context, pager)),
-          ],
+          ),
         ),
       ),
     );

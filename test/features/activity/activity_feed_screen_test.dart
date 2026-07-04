@@ -15,6 +15,7 @@ import 'package:safar/features/activity/services/activity_service.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/paper_backdrop.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
@@ -692,4 +693,51 @@ void main() {
     expect(deco.boxShadow, isNull);
     expect(deco.border, isNotNull);
   });
+
+  // ── #490 D-c: V2 grain+wash backdrop rollout (PR 5) ───────────────────────
+
+  testWidgets(
+    'non-embedded feed wraps its body content in the shared PaperBackdrop',
+    (tester) async {
+      final db = FakeFirebaseFirestore();
+      await seed(db, 2);
+      await pumpFeed(tester, db);
+      expect(find.byType(PaperBackdrop), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#758 embedded mode carries NO PaperBackdrop — the tabbed shell owns '
+    'chrome there',
+    (tester) async {
+      final db = FakeFirebaseFirestore();
+      await seed(db, 2);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            eventDetailProvider(
+              eventRef,
+            ).overrideWith((ref) => Stream<Event?>.value(event)),
+            activityServiceProvider.overrideWithValue(
+              ActivityService.withFirestore(db),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: ActivityFeedScreen(
+                groupId: groupId,
+                eventId: eventId,
+                embedded: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(PaperBackdrop), findsNothing);
+    },
+  );
 }

@@ -12,6 +12,7 @@ import '../../../shared/widgets/activity_filter_strip.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/caption_title_bar.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/paper_backdrop.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../activity/utils/activity_display.dart';
@@ -159,57 +160,59 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
       key: GroupKeys.activityScreen,
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
-        child: Column(
-          children: [
-            CaptionTitleBar(
-              caption: context.l10n.activityCaption,
-              title: groupName,
-              titleKey: GroupKeys.activityScreenTitle,
-              backKey: GroupKeys.activityBackButton,
-              onBack: () {
-                if (GoRouter.of(context).canPop()) {
-                  GoRouter.of(context).pop();
-                } else {
-                  GoRouter.of(context).go('/group/${widget.groupId}');
-                }
-              },
-            ),
-            ActivityFilterStrip<_Filter>(
-              current: _filter,
-              onChange: (f) => setState(() => _filter = f),
-              options: [
-                ActivityFilterOption(
-                  value: _Filter.all,
-                  label: context.l10n.activityFilterAll,
-                  key: GroupKeys.activityFilterAll,
-                ),
-                ActivityFilterOption(
-                  // P4: unify on the same key the cross-group screen uses —
-                  // both l10n values are identical today.
-                  value: _Filter.settlements,
-                  label: context.l10n.activityFilterSettlements,
-                  key: GroupKeys.activityFilterSettlements,
-                ),
-                ActivityFilterOption(
-                  value: _Filter.events,
-                  label: context.l10n.activityFilterEvents,
-                  key: GroupKeys.activityFilterEvents,
-                ),
-                ActivityFilterOption(
-                  value: _Filter.members,
-                  label: context.l10n.activityFilterMembers,
-                  key: GroupKeys.activityFilterMembers,
-                ),
-                ActivityFilterOption(
-                  value: _Filter.expenses,
-                  label: context.l10n.activityFilterExpenses,
-                  key: GroupKeys.activityFilterExpenses,
-                ),
-              ],
-            ),
-            SizedBox(height: context.spacing.space8),
-            Expanded(child: _buildBody(context, currency)),
-          ],
+        child: PaperBackdrop(
+          child: Column(
+            children: [
+              CaptionTitleBar(
+                caption: context.l10n.activityCaption,
+                title: groupName,
+                titleKey: GroupKeys.activityScreenTitle,
+                backKey: GroupKeys.activityBackButton,
+                onBack: () {
+                  if (GoRouter.of(context).canPop()) {
+                    GoRouter.of(context).pop();
+                  } else {
+                    GoRouter.of(context).go('/group/${widget.groupId}');
+                  }
+                },
+              ),
+              ActivityFilterStrip<_Filter>(
+                current: _filter,
+                onChange: (f) => setState(() => _filter = f),
+                options: [
+                  ActivityFilterOption(
+                    value: _Filter.all,
+                    label: context.l10n.activityFilterAll,
+                    key: GroupKeys.activityFilterAll,
+                  ),
+                  ActivityFilterOption(
+                    // P4: unify on the same key the cross-group screen uses —
+                    // both l10n values are identical today.
+                    value: _Filter.settlements,
+                    label: context.l10n.activityFilterSettlements,
+                    key: GroupKeys.activityFilterSettlements,
+                  ),
+                  ActivityFilterOption(
+                    value: _Filter.events,
+                    label: context.l10n.activityFilterEvents,
+                    key: GroupKeys.activityFilterEvents,
+                  ),
+                  ActivityFilterOption(
+                    value: _Filter.members,
+                    label: context.l10n.activityFilterMembers,
+                    key: GroupKeys.activityFilterMembers,
+                  ),
+                  ActivityFilterOption(
+                    value: _Filter.expenses,
+                    label: context.l10n.activityFilterExpenses,
+                    key: GroupKeys.activityFilterExpenses,
+                  ),
+                ],
+              ),
+              SizedBox(height: context.spacing.space8),
+              Expanded(child: _buildBody(context, currency)),
+            ],
+          ),
         ),
       ),
     );
