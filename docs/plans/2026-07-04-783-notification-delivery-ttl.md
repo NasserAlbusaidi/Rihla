@@ -112,3 +112,32 @@ GREEN:
 - Gate round 2 after spec revision: rubric reviewer returned 0 P1 / 0 P2 / 0 P3; adversary returned 0 P1 / 0 P2 / 0 P3.
 - RED: `../tool/run_firebase_emulator_tests.sh test/notifications/fcmSender.test.ts` failed on missing `marker.expiresAt`.
 - GREEN: focused `fcmSender.test.ts`, notification trigger bundle, `npm run build`, `npm run lint`, `git diff --check`, and full `npm run test:emulator` all passed.
+
+RED excerpt captured before implementation:
+
+```text
+FAIL test/notifications/fcmSender.test.ts
+  sendToUids
+    ...
+    x same dedupeKey sends once and writes one marker
+
+  ● sendToUids › same dedupeKey sends once and writes one marker
+
+    expect(received).toBeInstanceOf(expected)
+
+    Expected constructor: Timestamp
+
+    Received value has no prototype
+    Received value: undefined
+
+      184 |     });
+      185 |     expect(marker.createdAt).toBeInstanceOf(Timestamp);
+    > 186 |     expect(marker.expiresAt).toBeInstanceOf(Timestamp);
+          |                              ^
+      187 |     expect(marker.expiresAt.toMillis() - marker.createdAt.toMillis()).toBe(
+      188 |       notificationDeliveryTtlMs,
+      189 |     );
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 10 passed, 11 total
+```
