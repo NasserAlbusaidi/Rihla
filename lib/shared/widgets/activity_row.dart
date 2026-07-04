@@ -53,7 +53,7 @@ class ActivityRow extends StatelessWidget {
     final amount = trailingAmount == null
         ? null
         : (muted
-              ? Opacity(opacity: 0.6, child: trailingAmount)
+              ? Opacity(opacity: 0.6, child: trailingAmount!)
               : trailingAmount!);
 
     final content = Padding(
