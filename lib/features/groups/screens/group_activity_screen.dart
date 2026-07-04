@@ -9,7 +9,6 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/day_grouping.dart';
 import '../../../shared/widgets/activity_day_section.dart';
 import '../../../shared/widgets/activity_filter_strip.dart';
-import '../../../shared/widgets/activity_glyph.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/caption_title_bar.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -301,22 +300,6 @@ class _GroupActivityScreenState extends ConsumerState<GroupActivityScreen> {
   }
 }
 
-/// Verbatim from the old `_CategoryIcon` type switch — mapped onto the
-/// shared [ActivityGlyph] vocabulary. Will be lifted into
-/// `activity_display.dart` as `glyphForGroupActivityType` in PR 4 so the
-/// cross-group feed shares one copy.
-ActivityGlyph _glyphForType(String type) => switch (type) {
-  'group_settlement' => ActivityGlyph.settlement,
-  'event_created' => ActivityGlyph.eventCreated,
-  'event_deleted' => ActivityGlyph.eventDeleted,
-  'member_joined' => ActivityGlyph.memberJoined,
-  'member_left' => ActivityGlyph.memberLeft,
-  'expense_added' => ActivityGlyph.expenseAdded,
-  'expense_edited' => ActivityGlyph.expenseEdited,
-  'expense_deleted' => ActivityGlyph.expenseDeleted,
-  _ => ActivityGlyph.generic,
-};
-
 List<Widget> _buildRows(
   BuildContext context,
   List<GroupActivityLog> entries,
@@ -351,7 +334,7 @@ Widget _buildRow(
   final selfTarget = target == '/group/$groupId';
 
   return ActivityRow(
-    glyph: _glyphForType(log.type),
+    glyph: glyphForGroupActivityType(log.type),
     actorName: log.actorName,
     description: description,
     timestamp: log.timestamp,

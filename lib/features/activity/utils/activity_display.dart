@@ -3,8 +3,23 @@ import 'package:decimal/decimal.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/activity_glyph.dart';
 import '../../groups/models/group_activity_log_model.dart';
 import '../models/activity_log_model.dart';
+
+/// Type→glyph adapter shared by the group timeline and cross-group Activity
+/// feed (#490 PR4) — one copy instead of two drifting switches.
+ActivityGlyph glyphForGroupActivityType(String type) => switch (type) {
+  'group_settlement' => ActivityGlyph.settlement,
+  'event_created' => ActivityGlyph.eventCreated,
+  'event_deleted' => ActivityGlyph.eventDeleted,
+  'member_joined' => ActivityGlyph.memberJoined,
+  'member_left' => ActivityGlyph.memberLeft,
+  'expense_added' => ActivityGlyph.expenseAdded,
+  'expense_edited' => ActivityGlyph.expenseEdited,
+  'expense_deleted' => ActivityGlyph.expenseDeleted,
+  _ => ActivityGlyph.generic,
+};
 
 String localizedEventActivityText(AppLocalizations l10n, ActivityLog log) {
   final category = log.category.toUpperCase();
