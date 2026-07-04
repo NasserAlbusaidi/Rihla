@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#811 — Open-event Recap: a labelled entry · Rihla mockups</title>
+<link rel="stylesheet" href="assets/rihla.css">
+<style>
+  /* Event-command-center header primitives (not in rihla.css). Tokens only. */
+  .ecc-head { padding: 6px 10px 10px; background: var(--paper); flex: none; }
+  .ehrow { display: flex; align-items: center; gap: 8px; }
+  .iconbtn { width: 38px; height: 38px; border-radius: var(--r-pill); border: 1px solid var(--rule);
+    background: var(--card); display: flex; align-items: center; justify-content: center;
+    font-size: 17px; color: var(--ink-2); flex: none; }
+  .ehtitle { flex: 1; min-width: 0; }
+  .evname { font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -.2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ehbal { padding: 12px 6px 2px; }
+  .ehbal .uppercase-label { font-size: 9.5px; }
+  .ehrecap-inline { display: flex; padding: 8px 6px 0; }
+  .recap-pill { display: inline-flex; align-items: center; gap: 4px; background: var(--saffron-tint);
+    border: 1px solid var(--saffron-soft); color: var(--primary-dark); border-radius: var(--r-pill);
+    padding: 4px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; flex: none; }
+  .recap-banner { display: flex; align-items: center; gap: 9px; padding: 10px 14px;
+    background: var(--card-soft); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); flex: none; }
+  .rb-ico { font-size: 14px; }
+  .rb-lead { font-size: 12.5px; font-weight: 600; color: var(--ink-3); }
+  .rb-action { font-size: 12.5px; font-weight: 700; color: var(--ink); display: inline-flex; align-items: center; gap: 3px; }
+  .tabbar { display: flex; gap: 4px; padding: 2px 8px 0; background: var(--paper);
+    border-bottom: 1px solid var(--rule); flex: none; }
+  .tab { flex: 1; text-align: center; padding: 11px 0 10px; font-size: 13px; font-weight: 600;
+    color: var(--ink-3); border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--ink); border-bottom-color: var(--primary); }
+  .tooltip { margin-top: 6px; display: inline-block; background: var(--ink); color: #fff;
+    font-size: 11px; padding: 3px 8px; border-radius: 6px; }
+  .bad { color: var(--rust-text); font-weight: 700; }
+  .clip { border: 1.5px dashed var(--rust); border-radius: 10px; padding: 2px; }
+  .summary { max-width: 1000px; margin: 0 auto var(--s32); background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.08); border-radius: var(--r-card); padding: var(--s24);
+    color: #C7C1B3; font-size: 14px; line-height: 1.6; }
+  .summary h3 { color: #F3EEE2; font-size: 16px; margin: 0 0 var(--s12); }
+  .summary b { color: #EFE8D7; }
+  .summary code { font-family: var(--font-mono); background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .summary li { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1><span class="saffron">#811</span> · Open-event Recap — give it a labelled entry</h1>
+  <p>On an <b>open</b> event the only way into the Recap/closeout screen is a tooltip-only cup icon buried in
+     the header icon row — no touch scent. Closed events already solve this with a labelled
+     <code>_ClosedBanner</code> "View recap →". This mockup relocates the open-event entry to a labelled CTA
+     <b>outside</b> the cramped icon row (issue option C) and drops the cup. Route already exists
+     (<code>/group/:gid/event/:eid/recap</code>) → <b>Gate-exempt</b>, no money/rules/schema.
+     <a href="index.html">← gallery</a></p>
+</div>
+
+<div class="issue-block">
+  <div class="issue-head">
+    <span class="issue-num">#811</span>
+    <h2 class="issue-title">Open-event Recap entry — labelled, out of the icon row</h2>
+    <span class="issue-meta">EventCommandCenter header (open events) · reuses <code>eventViewReceipt</code> · RTL</span>
+  </div>
+  <p class="issue-desc">The header <code>Row</code> already packs back-button + optional compact-amounts (when
+     collapsed) + recap + search + settings around an <b>ellipsizing</b> title. That's why option A (an icon+label
+     pill <i>inside</i> the row) is rejected — it overflows at narrow width / RTL. Option C reuses the proven
+     closed-event affordance for open events and removes the cup. Two placements below; the RTL frame proves the
+     recommended one can't overflow.</p>
+  <p class="issue-rec"><b>Recommendation: P1 — Recap banner.</b> It mirrors an affordance the user already
+     accepted (the closed-event banner), sits in the same header→body seam, is impossible to overflow, and reads
+     as the strongest scent. P2 is the lighter fallback if a persistent bar feels heavy on a live trip.</p>
+
+  <div class="variant-row">
+
+    <!-- ============ BEFORE ============ -->
+    <div class="variant">
+      <div class="variant-label">Before <span class="tag">current</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">● ● ●</span></div>
+          <div class="ecc-head">
+            <div class="ehrow">
+              <div class="iconbtn">‹</div>
+              <div class="ehtitle">
+                <div class="uppercase-label" style="font-size:9.5px">TRIP · 12–15 JUL · DAY 2 OF 4</div>
+                <div class="evname">Musandam Trip</div>
+              </div>
+              <div class="iconbtn" style="background:var(--saffron-tint);border-color:var(--saffron-soft);color:var(--primary-dark)">🏆</div>
+              <div class="iconbtn">⌕</div>
+              <div class="iconbtn">⚙</div>
+            </div>
+            <div style="text-align:right"><span class="tooltip">Recap</span></div>
+            <div class="ehbal">
+              <div class="uppercase-label">Your balance</div>
+              <div class="r-amount lg pos"><span class="ccy">OMR</span>12.<span class="dec">500</span></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab active">Expenses</div><div class="tab">Settle up</div><div class="tab">Activity</div>
+          </div>
+          <div class="content tight">
+            <div class="section-header"><span class="label">Transactions</span></div>
+            <div class="card flush">
+              <div class="list-row"><span class="avatar sm av-1">N</span><div class="row-body"><div class="row-title">Dinner — Al Bustan</div><div class="row-sub">Nasser paid · split 4 ways</div></div><span class="r-amount"><span class="ccy">OMR</span>24.<span class="dec">000</span></span></div>
+              <div class="list-row"><span class="avatar sm av-2">S</span><div class="row-body"><div class="row-title">Boat charter</div><div class="row-sub">Sara paid · split 4 ways</div></div><span class="r-amount"><span class="ccy">OMR</span>60.<span class="dec">000</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note">The cup icon (🏆) carries its label only in a <b>tooltip</b> — invisible to touch.
+        A first-time user never learns Recap exists.</p>
+    </div>
+
+    <!-- ============ REJECTED: A ============ -->
+    <div class="variant">
+      <div class="variant-label">Rejected · A <span class="tag">pill in row</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">● ● ●</span></div>
+          <div class="ecc-head">
+            <div class="ehrow clip">
+              <div class="iconbtn">‹</div>
+              <div class="ehtitle">
+                <div class="uppercase-label" style="font-size:9.5px">TRIP · DAY 2…</div>
+                <div class="evname">Musanda…</div>
+              </div>
+              <span class="recap-pill">🏆 Recap</span>
+              <div class="iconbtn">⌕</div>
+              <div class="iconbtn">⚙</div>
+            </div>
+            <div class="ehbal">
+              <div class="uppercase-label">Your balance</div>
+              <div class="r-amount lg pos"><span class="ccy">OMR</span>12.<span class="dec">500</span></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab active">Expenses</div><div class="tab">Settle up</div><div class="tab">Activity</div>
+          </div>
+          <div class="content tight">
+            <div class="section-header"><span class="label">Transactions</span></div>
+            <div class="card flush">
+              <div class="list-row"><span class="avatar sm av-1">N</span><div class="row-body"><div class="row-title">Dinner — Al Bustan</div><div class="row-sub">Nasser paid · split 4 ways</div></div><span class="r-amount"><span class="ccy">OMR</span>24.<span class="dec">000</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note"><span class="bad">✗ Overflow risk.</span> Adding a text pill to a row that already
+        holds 3 icon buttons + compact amounts crushes the title to <code>Musanda…</code>; in RTL and on narrow
+        phones it clips. This is why the issue flags A as "needs a header relayout."</p>
+    </div>
+
+    <!-- ============ P1 · RECAP BANNER (pick) ============ -->
+    <div class="variant pick">
+      <div class="variant-label">P1 · Recap banner</div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">● ● ●</span></div>
+          <div class="ecc-head">
+            <div class="ehrow">
+              <div class="iconbtn">‹</div>
+              <div class="ehtitle">
+                <div class="uppercase-label" style="font-size:9.5px">TRIP · 12–15 JUL · DAY 2 OF 4</div>
+                <div class="evname">Musandam Trip</div>
+              </div>
+              <div class="iconbtn">⌕</div>
+              <div class="iconbtn">⚙</div>
+            </div>
+            <div class="ehbal">
+              <div class="uppercase-label">Your balance</div>
+              <div class="r-amount lg pos"><span class="ccy">OMR</span>12.<span class="dec">500</span></div>
+            </div>
+          </div>
+          <div class="recap-banner">
+            <span class="rb-ico">🏆</span>
+            <span class="rb-lead">See the trip so far</span>
+            <span class="spacer"></span>
+            <span class="rb-action">View recap <span>›</span></span>
+          </div>
+          <div class="tabbar">
+            <div class="tab active">Expenses</div><div class="tab">Settle up</div><div class="tab">Activity</div>
+          </div>
+          <div class="content tight">
+            <div class="section-header"><span class="label">Transactions</span></div>
+            <div class="card flush">
+              <div class="list-row"><span class="avatar sm av-1">N</span><div class="row-body"><div class="row-title">Dinner — Al Bustan</div><div class="row-sub">Nasser paid · split 4 ways</div></div><span class="r-amount"><span class="ccy">OMR</span>24.<span class="dec">000</span></span></div>
+              <div class="list-row"><span class="avatar sm av-2">S</span><div class="row-body"><div class="row-title">Boat charter</div><div class="row-sub">Sara paid · split 4 ways</div></div><span class="r-amount"><span class="ccy">OMR</span>60.<span class="dec">000</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note">Cup removed from the row (header breathes). Slim tinted bar in the exact
+        <code>_ClosedBanner</code> slot, only when <code>!isClosed &amp;&amp; expenses.isNotEmpty</code>. Action label
+        reuses <code>eventViewReceipt</code> ("View recap"); lead needs one new key. <b>Best scent, zero overflow.</b></p>
+    </div>
+
+    <!-- ============ P2 · INLINE LINK ============ -->
+    <div class="variant">
+      <div class="variant-label">P2 · Inline link <span class="tag">lighter</span></div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span class="dots">● ● ●</span></div>
+          <div class="ecc-head">
+            <div class="ehrow">
+              <div class="iconbtn">‹</div>
+              <div class="ehtitle">
+                <div class="uppercase-label" style="font-size:9.5px">TRIP · 12–15 JUL · DAY 2 OF 4</div>
+                <div class="evname">Musandam Trip</div>
+              </div>
+              <div class="iconbtn">⌕</div>
+              <div class="iconbtn">⚙</div>
+            </div>
+            <div class="ehbal">
+              <div class="uppercase-label">Your balance</div>
+              <div class="r-amount lg pos"><span class="ccy">OMR</span>12.<span class="dec">500</span></div>
+            </div>
+            <div class="ehrecap-inline">
+              <span class="spacer"></span>
+              <span class="rb-action" style="color:var(--primary-dark)">View recap <span>›</span></span>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab active">Expenses</div><div class="tab">Settle up</div><div class="tab">Activity</div>
+          </div>
+          <div class="content tight">
+            <div class="section-header"><span class="label">Transactions</span></div>
+            <div class="card flush">
+              <div class="list-row"><span class="avatar sm av-1">N</span><div class="row-body"><div class="row-title">Dinner — Al Bustan</div><div class="row-sub">Nasser paid · split 4 ways</div></div><span class="r-amount"><span class="ccy">OMR</span>24.<span class="dec">000</span></span></div>
+              <div class="list-row"><span class="avatar sm av-2">S</span><div class="row-body"><div class="row-title">Boat charter</div><div class="row-sub">Sara paid · split 4 ways</div></div><span class="r-amount"><span class="ccy">OMR</span>60.<span class="dec">000</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note">A right-aligned labelled link under the balance block — labelled, out of the icon
+        row, less chrome. Trade-off: it lives in the header zone, so it <b>collapses with the balance on scroll</b>
+        (the banner stays put). Pure copy reuse — no new l10n key.</p>
+    </div>
+
+    <!-- ============ P1 · RTL PROOF ============ -->
+    <div class="variant">
+      <div class="variant-label">P1 · RTL proof <span class="tag">no overflow</span></div>
+      <div class="phone">
+        <div class="phone-screen" dir="rtl">
+          <div class="status-bar"><span>٩:٤١</span><span class="dots">● ● ●</span></div>
+          <div class="ecc-head">
+            <div class="ehrow">
+              <div class="iconbtn">›</div>
+              <div class="ehtitle">
+                <div class="uppercase-label" style="font-size:9.5px">رحلة · ١٢–١٥ يوليو · اليوم ٢ من ٤</div>
+                <div class="evname serif">رحلة مسندم</div>
+              </div>
+              <div class="iconbtn">⌕</div>
+              <div class="iconbtn">⚙</div>
+            </div>
+            <div class="ehbal">
+              <div class="uppercase-label">رصيدك</div>
+              <div class="r-amount lg pos" style="direction:ltr;text-align:right"><span class="ccy">ر.ع</span>12.<span class="dec">500</span></div>
+            </div>
+          </div>
+          <div class="recap-banner">
+            <span class="rb-ico">🏆</span>
+            <span class="rb-lead">ملخّص الرحلة حتى الآن</span>
+            <span class="spacer"></span>
+            <span class="rb-action">عرض الملخّص <span>‹</span></span>
+          </div>
+          <div class="tabbar">
+            <div class="tab active">المصاريف</div><div class="tab">التسوية</div><div class="tab">النشاط</div>
+          </div>
+          <div class="content tight">
+            <div class="section-header"><span class="label">المعاملات</span></div>
+            <div class="card flush">
+              <div class="list-row"><span class="avatar sm av-1">ن</span><div class="row-body"><div class="row-title">عشاء — البستان</div><div class="row-sub">دفع ناصر · قُسّم على ٤</div></div><span class="r-amount"><span class="ccy">ر.ع</span>24.<span class="dec">000</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="variant-note">Mirrored: the banner action moves to the start edge, chevron flips
+        (<code>DirectionalIcon</code>), Arabic action text is <code>eventViewReceipt</code> ("عرض الملخّص", already in
+        <code>app_ar.arb</code>). No clipping — the banner has its own row.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="summary">
+  <h3>Decision &amp; build notes</h3>
+  <ul>
+    <li><b>Pick P1</b> (recap banner) unless a persistent bar reads as too heavy on a live trip → then P2.</li>
+    <li><b>Remove</b> the header cup <code>RIconButton</code> (<code>event_command_center.dart:422-428</code>) — safe, <b>no test references</b> <code>recapButton</code>/<code>recapButtonTooltip</code>.</li>
+    <li><b>Copy:</b> reuse <code>eventViewReceipt</code> = "View recap" / "عرض الملخّص" for the action. P1's lead ("See the trip so far") needs one new EN+AR key; P2 needs none.</li>
+    <li><b>Visibility unchanged:</b> show only when <code>!event.isClosed &amp;&amp; expenses.isNotEmpty</code>. Closed events keep the Recap <i>tab</i> — never both.</li>
+    <li><b>Not Gate-category:</b> route <code>/group/:gid/event/:eid/recap</code> already exists; no money / rules / schema surface. Standard TDD.</li>
+    <li><b>Tests (RED first):</b> visible "View recap" text on open+expenses; tap routes to recap; hidden on 0 expenses; closed still uses the tab; narrow + RTL no <code>RenderFlex</code> overflow.</li>
+  </ul>
+</div>
+
+</body>
+</html>

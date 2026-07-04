@@ -2699,9 +2699,9 @@
   "@groupClaimNoRequests": {
     "description": "Quiet empty-state for the #278 PR9 creator claim-requests section when there are none."
   },
-  "recapButtonTooltip": "Recap",
-  "@recapButtonTooltip": {
-    "description": "Tooltip/label for the event recap entry button (#202 Slice 1; #807 unified the surface's name to \"Recap\" everywhere)."
+  "recapOpenBannerLead": "See the trip so far",
+  "@recapOpenBannerLead": {
+    "description": "#811: lead text on the open-event recap banner — the labelled entry that replaced the tooltip-only header cup. Paired with the eventViewReceipt \"View recap\" action on the same bar."
   },
   "recapPeopleExpenses": "{people, plural, =1{1 person} other{{people} people}} · {expenses, plural, =1{1 expense} other{{expenses} expenses}}",
   "@recapPeopleExpenses": {
