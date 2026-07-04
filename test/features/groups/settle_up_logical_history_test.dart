@@ -21,6 +21,7 @@ Settlement _s(
   String payer = 'uid-sara',
   String recipient = 'uid-ahmed',
   String scope = 'event',
+  String? correctionOfSettlementId,
 }) =>
     Settlement(
       id: id,
@@ -35,6 +36,7 @@ Settlement _s(
       scope: scope,
       note: settlementNote,
       groupSettleUpId: groupSettleUpId,
+      correctionOfSettlementId: correctionOfSettlementId,
     );
 
 void main() {
@@ -119,6 +121,112 @@ void main() {
       expect(rows.length, 1);
       expect(rows.single, isA<SoloHistoryRow>(),
           reason: 'no original → never a phantom logical row');
+    });
+  });
+
+  // #889 — isCorrected (display, note-based) and affordanceCorrected
+  // (marker/bounded-legacy) are SEPARATE fields on LogicalHistoryRow. Only
+  // affordanceCorrected drives the write-affordance null-ing at
+  // settle_up_page_body.dart's onCorrectLogical site.
+  group('#889 LogicalHistoryRow.affordanceCorrected', () {
+    test('a MARKED reverse hides the affordance (both signals agree)', () {
+      final rows = groupSettlementHistory([
+        _s('e1', groupSettleUpId: 'X', amount: '5.000'),
+        _s(
+          'e1-rev',
+          groupSettleUpId: 'X',
+          amount: '5.000',
+          settlementNote: note,
+          payer: 'uid-ahmed',
+          recipient: 'uid-sara',
+          at: DateTime(2026, 6, 30),
+          correctionOfSettlementId: 'e1',
+        ),
+      ]);
+      final row = rows.single as LogicalHistoryRow;
+      expect(row.isCorrected, isTrue);
+      expect(row.affordanceCorrected, isTrue);
+    });
+
+    test(
+      'a bounded-legacy note-only reverse (pre-#889, exact inverse, no '
+      'marker) also hides the affordance — the migration case',
+      () {
+        final rows = groupSettlementHistory([
+          _s('e1', groupSettleUpId: 'X', amount: '5.000'),
+          _s(
+            'e1-rev',
+            groupSettleUpId: 'X',
+            amount: '5.000',
+            settlementNote: note,
+            payer: 'uid-ahmed',
+            recipient: 'uid-sara',
+            at: DateTime(2026, 6, 30),
+          ),
+        ]);
+        final row = rows.single as LogicalHistoryRow;
+        expect(row.isCorrected, isTrue);
+        expect(row.affordanceCorrected, isTrue);
+      },
+    );
+
+    test(
+      'a coincidental sentinel-note member with NO exact inverse in the set '
+      'keeps isCorrected true for display but affordanceCorrected false — '
+      'stays correctable (a normal payment note can equal the sentinel)',
+      () {
+        // e2's note happens to equal the sentinel but is NOT an offsetting
+        // reverse of e1 (same direction, not swapped) — a genuine second
+        // payment, not a correction. e1 stays the non-correction original so
+        // the set still folds into a LogicalHistoryRow (not the defensive
+        // solo-render path, which only fires when EVERY member is
+        // sentinel-noted).
+        final rows = groupSettlementHistory([
+          _s('e1', groupSettleUpId: 'X', amount: '5.000'),
+          _s(
+            'e2',
+            groupSettleUpId: 'X',
+            amount: '3.000',
+            settlementNote: note,
+            at: DateTime(2026, 6, 30),
+          ),
+        ]);
+        final row = rows.single as LogicalHistoryRow;
+        expect(row.isCorrected, isTrue);
+        expect(row.affordanceCorrected, isFalse);
+      },
+    );
+
+    test(
+      'a partially-marked set (2 originals, only 1 reversed) keeps the '
+      'action available so the callable can repair the remainder',
+      () {
+        final rows = groupSettlementHistory([
+          _s('e1', groupSettleUpId: 'X', amount: '3.000'),
+          _s('e2', groupSettleUpId: 'X', amount: '2.000'),
+          _s(
+            'e1-rev',
+            groupSettleUpId: 'X',
+            amount: '3.000',
+            settlementNote: note,
+            payer: 'uid-ahmed',
+            recipient: 'uid-sara',
+            at: DateTime(2026, 6, 30),
+            correctionOfSettlementId: 'e1',
+          ),
+        ]);
+        final row = rows.single as LogicalHistoryRow;
+        expect(row.affordanceCorrected, isFalse);
+      },
+    );
+
+    test('no reverse at all keeps the action available', () {
+      final rows = groupSettlementHistory([
+        _s('e1', groupSettleUpId: 'X', amount: '5.000'),
+      ]);
+      final row = rows.single as LogicalHistoryRow;
+      expect(row.isCorrected, isFalse);
+      expect(row.affordanceCorrected, isFalse);
     });
   });
 }

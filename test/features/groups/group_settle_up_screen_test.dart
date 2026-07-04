@@ -7,12 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
+import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -24,10 +26,13 @@ import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
+import 'package:safar/features/ledger/models/correct_settlement_result.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+
+class _MockFunctionsService extends Mock implements FirebaseFunctionsService {}
 
 /// Widget tests for GroupSettleUpScreen — single-page wireframe layout.
 ///
@@ -626,10 +631,29 @@ void main() {
     );
 
     testWidgets(
-      '#283: correcting a history payment records a SWAPPED offsetting settlement (no activity log)',
+      '#283/#889: correcting a history payment invokes '
+      'correctSettlement(scope: group) with the original id + sentinel '
+      'note (no activity log, no bump — group settlements are live-watched)',
       (tester) async {
-        final settlementService = _RecordingGroupSettlementService();
         final activityService = _RecordingGroupActivityService();
+        final functionsService = _MockFunctionsService();
+        when(
+          () => functionsService.correctSettlement(
+            groupId: any(named: 'groupId'),
+            scope: any(named: 'scope'),
+            eventId: any(named: 'eventId'),
+            settlementId: any(named: 'settlementId'),
+            correctionNote: any(named: 'correctionNote'),
+          ),
+        ).thenAnswer(
+          (_) async => const CorrectSettlementResult(
+            eventScopeWrites: 0,
+            groupScopeWrites: 1,
+            repaired: false,
+            noop: false,
+            shouldBumpLedgerRevision: false,
+          ),
+        );
 
         // History: Bob paid Alice 7.750 (a group settlement).
         final original = Settlement(
@@ -652,14 +676,17 @@ void main() {
             settlements: [original],
             currentUid: 'uid-alice',
             extraOverrides: [
-              groupSettlementServiceProvider.overrideWithValue(
-                settlementService,
-              ),
               groupActivityServiceProvider.overrideWithValue(activityService),
+              firebaseFunctionsServiceProvider.overrideWithValue(
+                functionsService,
+              ),
             ],
           ),
         );
         await tester.pumpAndSettle();
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(GroupSettleUpScreen)),
+        );
 
         final correctButton = find.byKey(GroupKeys.settleUpCorrectButton);
         await tester.ensureVisible(correctButton);
@@ -670,19 +697,25 @@ void main() {
         await tester.tap(find.text('Record correction'));
         await tester.pumpAndSettle();
 
-        // The offset reverses the original: Alice now pays Bob back 7.750.
-        expect(settlementService.addCalls, hasLength(1));
-        final offset = settlementService.addCalls.single;
-        expect(offset.payerParticipantId, 'uid-alice');
-        expect(offset.recipientParticipantId, 'uid-bob');
-        expect(offset.amount, Decimal.parse('7.750'));
-        expect(offset.createdBy, 'uid-alice');
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        verify(
+          () => functionsService.correctSettlement(
+            groupId: _groupId,
+            scope: 'group',
+            eventId: null,
+            settlementId: 'gs1',
+            correctionNote: l10n.settleUpCorrectionNote,
+          ),
+        ).called(1);
 
         // A correction must NOT appear in the activity feed as a fresh payment.
         expect(
           activityService.logCalls.where((c) => c.type == 'group_settlement'),
           isEmpty,
         );
+        // Standalone group-only correction never bumps — group settlements
+        // are live-watched (groupSettlementsProvider).
+        expect(container.read(ledgerRevisionProvider), 0);
       },
     );
 

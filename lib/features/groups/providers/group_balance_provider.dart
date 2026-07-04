@@ -18,7 +18,6 @@ import '../models/group_member_model.dart';
 import '../services/group_activity_service.dart';
 import '../services/group_settlement_service.dart';
 import '../services/member_name_resolver.dart';
-import '../services/settlement_correction_service.dart';
 import 'group_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -29,13 +28,6 @@ import 'group_provider.dart';
 final groupSettlementServiceProvider = Provider<GroupSettlementService>(
   (ref) => GroupSettlementService(),
 );
-
-/// Provider for [SettlementCorrectionService] (#753 — atomic reverse of a
-/// decomposed group settle-up).
-final settlementCorrectionServiceProvider =
-    Provider<SettlementCorrectionService>(
-      (ref) => SettlementCorrectionService(),
-    );
 
 /// Provider for [GroupActivityService].
 final groupActivityServiceProvider = Provider<GroupActivityService>(

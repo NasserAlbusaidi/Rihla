@@ -40,6 +40,22 @@ class Settlement {
   /// Null on legacy docs and on directly-recorded event settlements.
   final String? groupSettleUpId;
 
+  /// The original settlement this row offsets (#889). Written ONLY by the
+  /// server-authoritative `correctSettlement`/`correctLogicalSettleUp`
+  /// callables (Admin SDK) — `firestore.rules` denies the key on any
+  /// client-created settlement (hasOnly-omission), so its presence is
+  /// un-forgeable proof of a server-written correction. Null on every normal
+  /// payment and on legacy pre-#889 note-only corrections.
+  final String? correctionOfSettlementId;
+
+  /// True when [correctionOfSettlementId] is a non-blank marker (#889). The
+  /// un-forgeable signal for write-affordance/idempotency decisions — prefer
+  /// this over the legacy note-based `isCorrectionNote` for any NEW
+  /// persistence/derived-surface decision (display stays note-based).
+  bool get isMarkedCorrection =>
+      correctionOfSettlementId != null &&
+      correctionOfSettlementId!.trim().isNotEmpty;
+
   const Settlement({
     required this.id,
     required this.tripId,
@@ -57,6 +73,7 @@ class Settlement {
     this.createdBy = '',
     this.currency = 'OMR',
     this.groupSettleUpId,
+    this.correctionOfSettlementId,
   });
 
   factory Settlement.fromJson(Map<String, dynamic> json) {
@@ -143,6 +160,12 @@ class Settlement {
       createdBy: data['createdBy'] as String? ?? '',
       currency: currency,
       groupSettleUpId: data['groupSettleUpId'] as String?,
+      // #889: read as a string when present; any other type (or absence)
+      // reads as null/non-marked rather than throwing — the marker is
+      // Admin-only, but a forged/legacy doc must never error the stream.
+      correctionOfSettlementId: data['correctionOfSettlementId'] is String
+          ? data['correctionOfSettlementId'] as String
+          : null,
     );
   }
 }

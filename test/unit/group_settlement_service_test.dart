@@ -151,6 +151,35 @@ void main() {
         expect(settlement.amount, equals(Decimal.parse('10.500')));
       },
     );
+
+    // #889: correctionOfSettlementId is Admin-only, written solely by the
+    // server correction callables. addGroupSettlement has no such parameter,
+    // so a normal forward write can never carry it — even when the caller's
+    // note happens to equal the localized correction sentinel.
+    test(
+      'a normal write omits correctionOfSettlementId, even when note '
+      'equals the correction sentinel',
+      () async {
+        final settlement = await service.addGroupSettlement(
+          createdBy: 'test-uid',
+          groupId: groupId,
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('10.500'),
+          note: 'Correction of a recorded payment', // en sentinel
+        );
+
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('settlements')
+            .doc(settlement.id)
+            .get();
+
+        expect(snap.data(), isNot(contains('correctionOfSettlementId')));
+        expect(settlement.isMarkedCorrection, isFalse);
+      },
+    );
   });
 
   group('groupSettleUpId field (#752)', () {

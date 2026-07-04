@@ -9,6 +9,7 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/settle_notify.dart';
@@ -28,7 +29,7 @@ import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
-import '../../ledger/utils/correction_note.dart';
+import '../../ledger/utils/settlement_correction_affordance.dart';
 import '../../ledger/widgets/pre_settlement_review_sheet.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -263,21 +264,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                       eventOrder: eventOrder,
                       steps: steps,
                     ),
-                    // #283: correct a recorded payment by recording its
-                    // offsetting reverse (swap payer↔recipient, same amount +
-                    // currency) through the group write path. logActivity:false
-                    // — a reversal must not surface as a fresh feed payment.
-                    onCorrect: (s) => _recordSettlement(
+                    // #283/#889: correct a recorded standalone group payment
+                    // via the server-authoritative correctSettlement callable
+                    // (scope: 'group') — the reverse carries the un-forgeable
+                    // correctionOfSettlementId marker and never surfaces as a
+                    // fresh feed payment (no client activity write).
+                    onCorrect: (s) => _correctSettlement(
                       context,
-                      group: group,
-                      fromUserId: s.recipientParticipantId ?? '',
-                      toUserId: s.payerParticipantId ?? '',
-                      fromName: s.recipientName ?? '',
-                      toName: s.payerName ?? '',
-                      amount: s.amount,
-                      currency: s.currency,
-                      note: context.l10n.settleUpCorrectionNote,
-                      logActivity: false,
+                      original: s,
                     ),
                     // #753: correct a DECOMPOSED settle-up — reverse all its
                     // tagged docs atomically. Wiring this also switches the
@@ -955,11 +949,6 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     String? note,
     bool showSuccessSnackbar = true,
     ConnectivityNotifier? connectivity,
-    // #283: corrections record an offsetting reverse settlement but must NOT
-    // emit a `group_settlement` activity entry — the type-rendered feed would
-    // show a reversal as a fresh payment. The correction stays auditable via
-    // settlement history + balances.
-    bool logActivity = true,
   }) async {
     try {
       String? actorName;
@@ -1020,28 +1009,29 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       // #282: name the OTHER party relative to the actor. When the creditor
       // (recipient) records the payment, the counterparty is the payer — not
       // `toName`, which would otherwise read "Alice settled … with Alice".
-      if (logActivity) {
-        final counterpartyName = currentUid == toUserId ? fromName : toName;
-        ref
-            .read(groupActivityServiceProvider)
-            .logGroupEvent(
-              groupId: widget.groupId,
-              type: 'group_settlement',
-              actorId: currentUid,
-              actorName: actorName,
-              description:
-                  'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-              metadata: {
-                'amount': amount.toString(),
-                'recipientId': toUserId,
-                'currency': currency,
-                'fromUserId': fromUserId,
-                'toUserId': toUserId,
-                'fromName': fromName,
-                'toName': toName,
-              },
-            );
-      }
+      // Corrections no longer call this method (#889: they route through the
+      // correctSettlement callable, which writes no client activity row) — so
+      // every remaining caller is a forward record and always logs.
+      final counterpartyName = currentUid == toUserId ? fromName : toName;
+      ref
+          .read(groupActivityServiceProvider)
+          .logGroupEvent(
+            groupId: widget.groupId,
+            type: 'group_settlement',
+            actorId: currentUid,
+            actorName: actorName,
+            description:
+                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+            metadata: {
+              'amount': amount.toString(),
+              'recipientId': toUserId,
+              'currency': currency,
+              'fromUserId': fromUserId,
+              'toUserId': toUserId,
+              'fromName': fromName,
+              'toName': toName,
+            },
+          );
 
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1112,72 +1102,43 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // window the already-corrected guard (which needs the reverse stream to
     // emit) cannot.
     if (_correctingSettleUpIds.contains(groupSettleUpId)) return;
-    // Already corrected (re-entry after the reverse landed) → no-op.
-    if (tagged.any((s) => isCorrectionNote(s.note))) return;
-    final originals = [
-      for (final s in tagged)
-        if (!isCorrectionNote(s.note)) s,
-    ];
-    if (originals.isEmpty) return;
+    // #889: already corrected (re-entry after the reverse landed) → no-op
+    // LOCALLY only when EVERY eligible original provably has a valid marked
+    // reverse or bounded-legacy inverse — a partially-marked set keeps the
+    // action available so the callable can repair the remainder. The server
+    // stays authoritative for selecting originals and writing reverses.
+    if (logicalSetAffordanceCorrected(tagged)) return;
 
-    final correctedBy = ref.read(currentUserIdProvider);
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final successColor = context.colors.success;
     final errorColor = context.colors.error;
-    if (correctedBy == null || correctedBy.isEmpty) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            settlementWriteErrorMessage(l10n, SettlementWriteErrorKind.unknown),
-          ),
-          backgroundColor: errorColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      return;
-    }
 
     _correctingSettleUpIds.add(groupSettleUpId);
-    final connectivityNotifier = ref.read(connectivityProvider.notifier);
-    final skipWait =
-        ref.read(connectivityProvider) != ConnectivityStatus.online;
+    // #104/#412: capture before the await so the effect survives a disposal
+    // during the (now bounded) wait.
+    final ledgerRevisionNotifier = ref.read(ledgerRevisionProvider.notifier);
     try {
-      // One atomic WriteBatch — all reverses commit or none do (rules-checked +
-      // offline-queued atomically); a departed-party residual fails the WHOLE
-      // batch (clean), never a partial reversal (#753 §3c).
-      final ack = await awaitServerAck(
-        ref
-            .read(settlementCorrectionServiceProvider)
-            .reverseLogicalSettleUp(
-              groupId: widget.groupId,
-              groupSettleUpId: groupSettleUpId,
-              originals: originals,
-              correctedBy: correctedBy,
-              correctionNote: l10n.settleUpCorrectionNote,
-            ),
-        skipWait: skipWait,
-      );
-      // The reverse includes EVENT settlements → the home one-shot reads them;
-      // bump after the ack RETURNS (acked OR queued) so home isn't stale offline.
-      ref.read(ledgerRevisionProvider.notifier).state++;
-      if (ack == WriteAck.queued) {
-        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId);
-      } else {
-        connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
+      // #889: the callable validates the FULL logical set server-side (a
+      // large settle-up can exceed what rules-side get() validation on a
+      // client batch could afford) and writes every reverse row — event
+      // slices AND the group residual — atomically, each carrying the
+      // un-forgeable correctionOfSettlementId marker.
+      final result = await ref
+          .read(firebaseFunctionsServiceProvider)
+          .correctLogicalSettleUp(
+            groupId: widget.groupId,
+            groupSettleUpId: groupSettleUpId,
+            correctionNote: l10n.settleUpCorrectionNote,
+          );
+      if (result.shouldBumpLedgerRevision) {
+        ledgerRevisionNotifier.state++; // home one-shot reads event slices
       }
       // No activity log — a reversal must not surface as a fresh feed payment.
       if (context.mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text(
-              ack == WriteAck.queued
-                  ? l10n.settleUpRecordedWillSync
-                  : l10n.settleUpRecorded,
-            ),
+            content: Text(l10n.settleUpRecorded),
             backgroundColor: successColor,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -1206,6 +1167,63 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       }
     } finally {
       _correctingSettleUpIds.remove(groupSettleUpId);
+    }
+  }
+
+  /// #283/#889: correct a recorded STANDALONE group payment via the
+  /// server-authoritative `correctSettlement` callable (`scope: 'group'`).
+  /// Replaces the old client-direct reverse write. Group-only corrections do
+  /// NOT bump `ledgerRevisionProvider` — group settlements are live-watched
+  /// (`groupSettlementsProvider`), unlike the event/logical paths. Corrections
+  /// are ONLINE-ONLY: offline/failure surfaces the existing settlement
+  /// write-error copy and writes nothing — never the queued/"will sync" copy.
+  Future<void> _correctSettlement(
+    BuildContext context, {
+    required Settlement original,
+  }) async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final successColor = context.colors.success;
+    final errorColor = context.colors.error;
+    try {
+      await ref
+          .read(firebaseFunctionsServiceProvider)
+          .correctSettlement(
+            groupId: widget.groupId,
+            scope: 'group',
+            settlementId: original.id,
+            correctionNote: l10n.settleUpCorrectionNote,
+          );
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.settleUpRecorded),
+            backgroundColor: successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              settlementWriteErrorMessage(
+                l10n,
+                classifySettlementWriteError(e),
+              ),
+            ),
+            backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
     }
   }
 }

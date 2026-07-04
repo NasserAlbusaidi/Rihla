@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -33,6 +34,7 @@ import '../../groups/widgets/settle_up_page_body.dart';
 import '../../trip/models/trip_model.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
+import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
 import '../services/pre_settlement_review.dart';
 import '../widgets/pre_settlement_review_sheet.dart';
@@ -363,27 +365,15 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             // metadata carries it (the walk itself still never nudges).
             onRecordStepped: (steps) =>
                 _runSteppedSettle(steps, eventName: event.name),
-            // #283/#598: correct a recorded payment by recording its
-            // offsetting reverse (swap payer↔recipient, same amount +
-            // currency) through the same event write path — gated by the
+            // #283/#889/#598: correct a recorded payment via the
+            // server-authoritative correctSettlement callable — gated by the
             // same write-eligibility as the forward Record, since a
-            // non-participant's offsetting write would server-reject too.
+            // non-participant's correction would server-reject too. The
+            // callable writes the offsetting reverse with an un-forgeable
+            // correctionOfSettlementId marker; it never emits a client
+            // activity row (mirrors the pre-#889 logActivity:false intent).
             onCorrect: canRecord
-                ? (s) => _recordSettlement(
-                    context,
-                    fromUserId: s.recipientParticipantId ?? '',
-                    toUserId: s.payerParticipantId ?? '',
-                    fromName: s.recipientName ?? '',
-                    toName: s.payerName ?? '',
-                    amount: s.amount,
-                    currency: s.currency,
-                    note: context.l10n.settleUpCorrectionNote,
-                    // #283/#831: corrections record the offsetting reverse but
-                    // must NOT emit an event_settlement activity entry — the
-                    // type-rendered feed would show a reversal as a fresh
-                    // payment (mirror of the group_settlement suppression).
-                    logActivity: false,
-                  )
+                ? (s) => _correctSettlement(context, original: s)
                 : null,
           );
         },
@@ -749,7 +739,6 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     required String currency,
     String? note,
     String? eventName,
-    bool logActivity = true,
     bool showSuccessSnackbar = true,
     StateController<int>? ledgerRevision,
     ConnectivityNotifier? connectivity,
@@ -797,43 +786,42 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       } else {
         connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
       }
-      if (logActivity) {
-        // #831: one activity row per recorded event settlement. Mirrors the
-        // group_settlement client write; corrections pass logActivity: false
-        // (#283: a reversal must not surface as a fresh payment). Guarded as a
-        // whole: activity logging must never affect the money outcome — a
-        // throw here would report an already-succeeded write as failed and
-        // abort a stepped walk.
-        try {
-          final deviceName = ref.read(settingsProvider).deviceName;
-          final actorName = deviceName.isNotEmpty ? deviceName : fromName;
-          final counterpartyName = currentUid == toUserId ? fromName : toName;
-          ref
-              .read(groupActivityServiceProvider)
-              .logGroupEvent(
-                groupId: widget.groupId,
-                type: 'event_settlement',
-                actorId: currentUid,
-                actorName: actorName,
-                description:
-                    'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-                metadata: {
-                  'amountFils': MoneySerializer.toSubunits(amount, currency),
-                  'currency': currency,
-                  'fromUserId': fromUserId,
-                  'toUserId': toUserId,
-                  'fromName': fromName,
-                  'toName': toName,
-                  'eventId': widget.eventId,
-                  if (eventName != null && eventName.isNotEmpty)
-                    'eventName': eventName,
-                },
-              );
-        } catch (_) {
-          // The settlement itself succeeded; a lost activity row is the
-          // accepted fire-and-forget contract (same as logGroupEvent's own
-          // catchError).
-        }
+      // #831: one activity row per recorded event settlement. Corrections no
+      // longer call this method (#889: they route through the
+      // correctSettlement callable, which writes no client activity row) — so
+      // every remaining caller is a forward record and always logs. Guarded
+      // as a whole: activity logging must never affect the money outcome — a
+      // throw here would report an already-succeeded write as failed and
+      // abort a stepped walk.
+      try {
+        final deviceName = ref.read(settingsProvider).deviceName;
+        final actorName = deviceName.isNotEmpty ? deviceName : fromName;
+        final counterpartyName = currentUid == toUserId ? fromName : toName;
+        ref
+            .read(groupActivityServiceProvider)
+            .logGroupEvent(
+              groupId: widget.groupId,
+              type: 'event_settlement',
+              actorId: currentUid,
+              actorName: actorName,
+              description:
+                  'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+              metadata: {
+                'amountFils': MoneySerializer.toSubunits(amount, currency),
+                'currency': currency,
+                'fromUserId': fromUserId,
+                'toUserId': toUserId,
+                'fromName': fromName,
+                'toName': toName,
+                'eventId': widget.eventId,
+                if (eventName != null && eventName.isNotEmpty)
+                  'eventName': eventName,
+              },
+            );
+      } catch (_) {
+        // The settlement itself succeeded; a lost activity row is the
+        // accepted fire-and-forget contract (same as logGroupEvent's own
+        // catchError).
       }
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -873,6 +861,69 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         );
       }
       return const _StepOutcome(_StepOutcomeKind.failed);
+    }
+  }
+
+  /// #889: correct a recorded event settlement via the server-authoritative
+  /// `correctSettlement` callable (`scope: 'event'`). Replaces the old
+  /// client-direct reverse write — the server writes the offsetting reverse
+  /// with an un-forgeable `correctionOfSettlementId` marker and emits no
+  /// client activity row on its own (mirrors the pre-#889 `logActivity:
+  /// false` intent). Corrections are ONLINE-ONLY (an HTTPS callable, not a
+  /// Firestore write) — never show the queued/"will sync" success copy;
+  /// offline/failure surfaces the existing settlement write-error copy and
+  /// writes nothing.
+  Future<void> _correctSettlement(
+    BuildContext context, {
+    required Settlement original,
+  }) async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final successColor = context.colors.success;
+    final errorColor = context.colors.error;
+    // #104/#412: capture before the await so the effect survives a disposal
+    // during the (now bounded) wait.
+    final ledgerRevisionNotifier = ref.read(ledgerRevisionProvider.notifier);
+    try {
+      final result = await ref
+          .read(firebaseFunctionsServiceProvider)
+          .correctSettlement(
+            groupId: widget.groupId,
+            scope: 'event',
+            eventId: widget.eventId,
+            settlementId: original.id,
+            correctionNote: l10n.settleUpCorrectionNote,
+          );
+      if (result.shouldBumpLedgerRevision) {
+        ledgerRevisionNotifier.state++; // #104: refresh home balance
+      }
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.settleUpRecorded),
+            backgroundColor: successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              settlementWriteErrorMessage(l10n, classifySettlementWriteError(e)),
+            ),
+            backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
     }
   }
 }
