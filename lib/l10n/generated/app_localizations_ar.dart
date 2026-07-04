@@ -3626,7 +3626,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupClaimNoRequests => 'لا توجد طلبات مطالبة معلّقة.';
 
   @override
-  String get recapButtonTooltip => 'الملخّص';
+  String get recapOpenBannerLead => 'ملخّص الرحلة حتى الآن';
 
   @override
   String recapPeopleExpenses(int people, int expenses) {
