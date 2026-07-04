@@ -109,9 +109,11 @@ void main() {
     expect(richContaining('Someone'), findsOneWidget);
   });
 
-  testWidgets('CREATE renders description + amount summary, no arrow', (
+  testWidgets('CREATE renders nothing — the row shows a trailing amount instead', (
     tester,
   ) async {
+    // #490 D-g: CREATE/DELETE summaries moved to ActivityRow.trailingAmount;
+    // this widget is narrowed to UPDATE-with-field-change only.
     await pump(
       tester,
       eventType: 'CREATE',
@@ -120,12 +122,13 @@ void main() {
         'after': snap(amountFils: 8000, description: 'Lunch'),
       }),
     );
-    expect(richContaining('Lunch'), findsOneWidget);
-    expect(richContaining('8.000'), findsOneWidget);
-    expect(find.byIcon(Iconsax.arrow_right), findsNothing);
+    expect(find.byType(RAmount), findsNothing);
+    expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
   });
 
-  testWidgets('DELETE renders muted summary (Opacity)', (tester) async {
+  testWidgets('DELETE renders nothing — the row shows a muted trailing amount instead', (
+    tester,
+  ) async {
     await pump(
       tester,
       eventType: 'DELETE',
@@ -134,26 +137,26 @@ void main() {
         'after': snap(amountFils: 3500, description: 'Taxi'),
       }),
     );
-    expect(richContaining('3.500'), findsOneWidget);
-    final opacity = tester.widget<Opacity>(find.byType(Opacity).first);
-    expect(opacity.opacity, lessThanOrEqualTo(0.6));
+    expect(find.byType(RAmount), findsNothing);
+    expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
   });
 
-  testWidgets('UPDATE with no money-field change falls back to after summary', (
-    tester,
-  ) async {
-    // e.g. a split-only edit: before == after money snapshot.
-    await pump(
-      tester,
-      eventType: 'UPDATE',
-      diff: ExpenseAuditDiff.fromMetadata({
-        'before': snap(amountFils: 5000, description: 'Coffee'),
-        'after': snap(amountFils: 5000, description: 'Coffee'),
-      }),
-    );
-    expect(richContaining('5.000'), findsOneWidget);
-    expect(find.byIcon(Iconsax.arrow_right), findsNothing); // summary, no diff
-  });
+  testWidgets(
+    'UPDATE with no money-field change renders nothing (row trailing amount covers it)',
+    (tester) async {
+      // e.g. a split-only edit: before == after money snapshot.
+      await pump(
+        tester,
+        eventType: 'UPDATE',
+        diff: ExpenseAuditDiff.fromMetadata({
+          'before': snap(amountFils: 5000, description: 'Coffee'),
+          'after': snap(amountFils: 5000, description: 'Coffee'),
+        }),
+      );
+      expect(find.byType(RAmount), findsNothing);
+      expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
+    },
+  );
 
   testWidgets('legacy/empty metadata renders nothing', (tester) async {
     await pump(
@@ -162,6 +165,6 @@ void main() {
       diff: ExpenseAuditDiff.fromMetadata(<String, dynamic>{}),
     );
     expect(find.byType(RAmount), findsNothing);
-    expect(find.byType(SizedBox), findsWidgets); // SizedBox.shrink
+    expect(tester.getSize(find.byType(ExpenseAuditDetail)), Size.zero);
   });
 }
