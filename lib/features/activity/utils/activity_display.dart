@@ -11,6 +11,7 @@ import '../models/activity_log_model.dart';
 /// feed (#490 PR4) — one copy instead of two drifting switches.
 ActivityGlyph glyphForGroupActivityType(String type) => switch (type) {
   'group_settlement' => ActivityGlyph.settlement,
+  'event_settlement' => ActivityGlyph.settlement,
   'event_created' => ActivityGlyph.eventCreated,
   'event_deleted' => ActivityGlyph.eventDeleted,
   'member_joined' => ActivityGlyph.memberJoined,
@@ -83,7 +84,10 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
   final memberName = _metadataString(log, 'memberName');
   final memberAction = _metadataString(log, 'memberAction');
   return switch (log.type) {
-    'group_settlement' => _settlementText(l10n, log),
+    // #831: event settlements reuse the person→person settlement vocabulary —
+    // the money moved between people either way; the event context is one tap
+    // away via activityRowTarget.
+    'group_settlement' || 'event_settlement' => _settlementText(l10n, log),
     'event_created' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupEventCreatedGeneric

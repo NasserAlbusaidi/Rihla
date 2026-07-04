@@ -6,13 +6,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   - event_created: A new event was created in the group
 ///   - event_deleted: An event was removed from the group
 ///   - group_settlement: A group-level settlement was recorded
+///   - event_settlement: An event-scoped settlement was recorded (#831)
 ///   - member_joined: A new member joined the group
 ///   - member_left: A member left the group
 class GroupActivityLog {
   final String id;
 
   /// Activity type. One of: event_created, event_deleted, group_settlement,
-  /// member_joined, member_left.
+  /// event_settlement, member_joined, member_left.
   final String type;
 
   /// Firebase UID of the actor who triggered this event.
