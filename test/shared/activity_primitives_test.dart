@@ -148,6 +148,35 @@ void main() {
       );
     });
 
+    testWidgets(
+      'top-aligns the leading icon to the first text line so a wrapped '
+      'actor + description does not push it to the vertical centre (#159)',
+      (tester) async {
+        await _pump(
+          tester,
+          SizedBox(
+            width: 360,
+            child: ActivityRow(
+              glyph: ActivityGlyph.expenseAdded,
+              actorName: 'Alice',
+              description: 'added Dinner',
+              timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+            ),
+          ),
+        );
+
+        final outerRow = tester.widget<Row>(
+          find
+              .descendant(
+                of: find.byType(ActivityRow),
+                matching: find.byType(Row),
+              )
+              .first,
+        );
+        expect(outerRow.crossAxisAlignment, CrossAxisAlignment.start);
+      },
+    );
+
     testWidgets('renders group chip only when groupName is given', (
       tester,
     ) async {
