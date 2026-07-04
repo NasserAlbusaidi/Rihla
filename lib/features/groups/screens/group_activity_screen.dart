@@ -28,10 +28,10 @@ import '../providers/group_provider.dart';
 /// Layout:
 ///   1. Journal top bar — back button, ACTIVITY caption, group name as the
 ///      serif display title (`CaptionTitleBar`, shared with the per-event feed)
-///   2. Pill filter chips — All / Settlements / Events / Members
+///   2. Pill filter chips — All / Settlements / Events / Members / Expenses
 ///   3. Day-grouped card-wrapped sections with category-icon-led rows
 ///      Day header: `TODAY · MAR 22` (mono caps, dot-separated date)
-///      Settlement rows: sage-tinted arrow icon + signed share amount
+///      Settlement rows: sage-tinted wallet icon + unsigned amount
 ///
 /// Keeps cursor-based pagination (page size 50, prefetch within 200px
 /// of bottom). Filter is applied client-side to fetched pages.

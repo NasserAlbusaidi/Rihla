@@ -38,7 +38,7 @@ import 'package:safar/shared/widgets/skeleton_loader.dart';
 /// test happened to run in the first hour or two after midnight. Anchoring
 /// at midday gives ~12 hours of slack on each side of the day boundary, so
 /// the bucketing the production code does (calendar-day comparison in
-/// `_groupByDay`) always lands on the intended day.
+/// `groupByDay`) always lands on the intended day.
 DateTime _atMidday(int dayOffset) {
   final n = DateTime.now();
   return DateTime(n.year, n.month, n.day + dayOffset, 12);
@@ -442,7 +442,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // ModuleHeader wraps content in SafeArea — verify it exists
+      // The screen's Scaffold body wraps its content in SafeArea.
       expect(find.byType(SafeArea), findsWidgets);
     });
 
