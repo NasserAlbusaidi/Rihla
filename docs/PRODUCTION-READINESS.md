@@ -158,12 +158,30 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-03, `abee70e8`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-04, `c47bf943`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-03 deploy ceremony the `backend-deployed` tag is `abee70e8`; prod
+    2026-07-04 deploy ceremony the `backend-deployed` tag is `c47bf943`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#830 (Refs #818 Wave 3.1)** — settlement direction in
+    Latest delta: **#892 (Closes #783)** — notification delivery markers now
+    carry a 90-day `expiresAt` and `firestore.indexes.json` enables TTL for
+    `notificationDeliveries.expiresAt`, so idempotency markers stop growing
+    without bound while preserving same-key single-send behavior.
+    Prior delta: **#891 (Closes #831)** — event-scoped settle-up writes a
+    client `event_settlement` group-activity row; `firestore.rules` allow-lists
+    that exact client type while keeping Admin-only `expense_*` forged out.
+    Prior delta: **#882 (Closes #872)** — server oracle weighted allocation now
+    sends rounding remainder to the alphabetically-last positive-weight
+    recipient, never a 0-share/0-percent participant, matching the client.
+    Prior delta: **#875 (Closes #825, Refs #885)** — pending gate intent cleanup;
+    deploy-relevant backend surface is comment/test/docs only around
+    `joinGroupByInviteCode` plus client token behavior, with no runtime
+    rules/index/function-set change.
+    Prior delta: **#874 (#876, deployed 2026-07-04 `68cd3d89`)** — offline group
+    creation is atomic: one founding `WriteBatch` plus after-state create rules
+    for the group, creator member, invite code, and seeded event. See the
+    DEPLOY-LEDGER `68cd3d89` row for the full record.
+    Prior delta: **#830 (Refs #818 Wave 3.1)** — settlement direction in
     activity feeds, rules half: `validActivityMetadata` gains 5 absent-or-typed
     string clauses (`recipientId` promoted to typed; the new direction keys
     `fromUserId`/`toUserId`/`fromName`/`toName`). Pure tightening — type
