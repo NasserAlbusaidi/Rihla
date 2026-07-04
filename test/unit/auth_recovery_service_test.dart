@@ -204,8 +204,8 @@ void main() {
     });
 
     test(
-      'force-refreshes the ID token after linking so the next durable-gated '
-      'write sees a non-anonymous token (#522)',
+      'force-refreshes the ID token after linking so observers see the durable '
+      'credential promptly (#522)',
       () async {
         final credential = _MockUserCredential();
         when(
@@ -229,8 +229,9 @@ void main() {
           () => anonUser.linkWithCredential(any()),
         ).thenAnswer((_) async => credential);
         when(() => credential.user).thenReturn(anonUser);
-        when(() => anonUser.getIdToken(any()))
-            .thenThrow(FirebaseAuthException(code: 'network-request-failed'));
+        when(
+          () => anonUser.getIdToken(any()),
+        ).thenThrow(FirebaseAuthException(code: 'network-request-failed'));
         final service = buildService();
         await service.setPendingEmail('foo@example.com');
 
@@ -288,54 +289,56 @@ void main() {
       expect(events, ['engage', 'signOut', 'restart']);
     });
 
-    test(
-      'engages isolation, marks dirty before signOut, then restarts '
-      '(no in-session anon mint)',
-      () async {
-        when(() => anonUser.email).thenReturn('foo@example.com');
-        when(() => anonUser.isAnonymous).thenReturn(false);
-        final firestore = _MockFirestore();
-        when(firestore.waitForPendingWrites).thenAnswer((_) async {});
-        final events = <String>[];
-        bool? dirtyAtSignOut;
-        when(() => auth.signOut()).thenAnswer((_) async {
-          dirtyAtSignOut = prefs.getBool(kFirestorePersistenceDirtyKey);
-          events.add('signOut');
-        });
-        final service = buildService(
-          firestore: firestore,
-          cacheIsolationController: _RecordingController(events),
-        );
-
-        await service.signOutCurrentDevice();
-
-        verify(firestore.waitForPendingWrites).called(1);
-        expect(events, ['engage', 'signOut', 'restart']);
-        expect(dirtyAtSignOut, isTrue);
-      },
-    );
-
-    test('still restarts when waitForPendingWrites exceeds the timeout', () async {
+    test('engages isolation, marks dirty before signOut, then restarts '
+        '(no in-session anon mint)', () async {
       when(() => anonUser.email).thenReturn('foo@example.com');
       when(() => anonUser.isAnonymous).thenReturn(false);
       final firestore = _MockFirestore();
-      // Future that never completes so we exercise the timeout branch.
-      when(
-        firestore.waitForPendingWrites,
-      ).thenAnswer((_) => Completer<void>().future);
+      when(firestore.waitForPendingWrites).thenAnswer((_) async {});
       final events = <String>[];
-      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      bool? dirtyAtSignOut;
+      when(() => auth.signOut()).thenAnswer((_) async {
+        dirtyAtSignOut = prefs.getBool(kFirestorePersistenceDirtyKey);
+        events.add('signOut');
+      });
       final service = buildService(
         firestore: firestore,
         cacheIsolationController: _RecordingController(events),
       );
 
-      await service.signOutCurrentDevice(
-        pendingWritesTimeout: const Duration(milliseconds: 50),
-      );
+      await service.signOutCurrentDevice();
 
+      verify(firestore.waitForPendingWrites).called(1);
       expect(events, ['engage', 'signOut', 'restart']);
+      expect(dirtyAtSignOut, isTrue);
     });
+
+    test(
+      'still restarts when waitForPendingWrites exceeds the timeout',
+      () async {
+        when(() => anonUser.email).thenReturn('foo@example.com');
+        when(() => anonUser.isAnonymous).thenReturn(false);
+        final firestore = _MockFirestore();
+        // Future that never completes so we exercise the timeout branch.
+        when(
+          firestore.waitForPendingWrites,
+        ).thenAnswer((_) => Completer<void>().future);
+        final events = <String>[];
+        when(
+          () => auth.signOut(),
+        ).thenAnswer((_) async => events.add('signOut'));
+        final service = buildService(
+          firestore: firestore,
+          cacheIsolationController: _RecordingController(events),
+        );
+
+        await service.signOutCurrentDevice(
+          pendingWritesTimeout: const Duration(milliseconds: 50),
+        );
+
+        expect(events, ['engage', 'signOut', 'restart']);
+      },
+    );
 
     test('restarts even if signOut throws (overlay never strands)', () async {
       when(() => anonUser.email).thenReturn('foo@example.com');

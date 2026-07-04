@@ -326,10 +326,10 @@ class GroupService extends FirestoreRepository {
     if (uid == null) {
       throw Exception('User not authenticated');
     }
-    // #648: NO durable gate on join — "gate creation, not participation."
-    // Anonymous users may join and add expenses (the gate stays on create:
-    // see stageGroup). The cross-UID swap hole a populated anon shell opens is
-    // closed at every swap entry point (#647 + triggerGoogleRestore gate).
+    // #648/#818: no durable credential is required to join or create.
+    // Anonymous users may own groups and expenses; cross-UID restore/switch
+    // paths must therefore prove the outgoing shell empty before discarding it
+    // (#647/#428).
 
     final rawName = _ref.read(settingsProvider).deviceName;
     final displayName = rawName.isEmpty ? 'Anonymous' : rawName;

@@ -9,7 +9,6 @@ import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/write_ack.dart';
 
-import '../../../core/constants/supported_currencies.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/notification_prompt.dart';
@@ -19,7 +18,6 @@ import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../auth/services/pending_gate_intent.dart';
 import '../../auth/widgets/durable_credential_sheet.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
@@ -58,8 +56,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   /// #287/trip-stamps: the chosen stamp identity. Both start null = defaulted
   /// (monogram glyph + name-derived ink); a non-null value is an explicit pick
-  /// passed to stageGroup and persisted. NOT carried by PendingGateIntent — on
-  /// the rare #441 gate-restart path the picks fall back to the monogram.
+  /// passed to stageGroup and persisted.
   String? _selectedGlyph;
   int? _selectedInkIndex;
 
@@ -67,37 +64,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   /// state until Create, then fanned out to the addShadowMember callable once
   /// the group doc is acked. Entry-ordered; de-duplicated case-insensitively.
   final List<String> _shadowNames = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _consumePendingGateIntent();
-  }
-
-  /// One-shot prefill from a gate-conflict restart marker (#428). The
-  /// marker's displayName wins over the settings seed in build(); an off-list
-  /// currency code keeps the OMR default. A join-type marker is left
-  /// untouched for its screen.
-  void _consumePendingGateIntent() {
-    final prefs = ref.read(sharedPreferencesProvider);
-    final intent = PendingGateIntent.read(prefs);
-    if (intent == null || intent.type != PendingGateIntent.typeCreate) return;
-
-    final groupName = intent.groupName?.trim() ?? '';
-    if (groupName.isNotEmpty) {
-      _nameController.text = groupName;
-    }
-    final name = intent.displayName?.trim() ?? '';
-    if (name.isNotEmpty) {
-      _displayNameController.text = name;
-      _didInitName = true;
-    }
-    final currency = intent.currencyCode;
-    if (currency != null && kSupportedCurrencies.contains(currency)) {
-      _selectedCurrency = currency;
-    }
-    unawaited(PendingGateIntent.clear(prefs));
-  }
 
   @override
   void dispose() {
@@ -408,15 +374,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                       // #840: link-account CTA — same durability-only
                       // condition as the field's own disabled hint above, so
                       // the two stay in lockstep. Bare showDurableCredentialSheet
-                      // call (no PendingGateIntent, matching every other
-                      // caller); on success `isDurableUserProvider` flips live
-                      // and this CTA self-hides.
+                      // call, matching every other caller; on success
+                      // `isDurableUserProvider` flips live and this CTA self-hides.
                       if (!ref.watch(isDurableUserProvider))
                         Align(
                           alignment: AlignmentDirectional.centerStart,
                           child: TextButton(
                             key: GroupKeys.createLinkAccountCta,
-                            onPressed: () => showDurableCredentialSheet(context),
+                            onPressed: () =>
+                                showDurableCredentialSheet(context),
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               // 40dp floor: sub-40dp Material buttons clip

@@ -97,8 +97,8 @@ describe('joinGroupByInviteCode', () => {
     } as any)).rejects.toMatchObject({ code: 'resource-exhausted' });
   });
 
-  // #648: "gate creation, not participation" — an anonymous user may JOIN and
-  // participate (the durable gate is kept on group/invite-code CREATE only).
+  // #648: an anonymous user may JOIN and participate. #818 later removed the
+  // matching group/invite-code create gate.
   // Anon membership is identity-equivalent to durable at the rules layer
   // (validExpenseCreate → isEventParticipant), so the join callable no longer
   // rejects anonymous providers. (#647 closes the populated-shell swap hole.)

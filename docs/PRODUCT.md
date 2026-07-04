@@ -352,7 +352,7 @@ The Firestore schema still tolerates legacy keys for these features (silent `fro
 - **No general multi-device account workflow.** Anonymous UIDs are device-bound unless the user has linked and restored through email-link recovery.
 - **Soft-delete only** for expenses, events, groups, and settlements where supported — they remain in Firestore until retention tooling exists.
 - **No FX conversion.** Multi-currency balances are bucketed per currency. OMR cannot cancel out AED, so settle-up records one payment per currency instead of inventing exchange rates.
-- **Anon-UID orphan risk closed by the durable-credential gate (#441).** Money data can no longer be born under an anonymous UID (server-enforced at group create/join), so restore is same-UID and the old cross-UID cleanup engine was deleted (PR5).
+- **Anonymous ownership is recoverable only after opt-in linking.** Users can create/join groups while anonymous; if they uninstall or clear app data before linking Google/email, that UID's groups are not recoverable on a new device. Cross-UID restore/switch never migrates data and is allowed only when the outgoing shell is provably empty.
 
 ---
 

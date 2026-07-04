@@ -264,29 +264,26 @@ void main() {
       'credential-already-in-use',
       'provider-already-linked',
     ]) {
-      test(
-        'opLink failing with $code surfaces the conflict and never calls '
-        'restoreWithEmailLink',
-        () async {
-          // #414: auto-falling-back to restoreWithEmailLink signs the anon
-          // account out and orphans its data. Recovery into the other
-          // account is an explicit, consented action via RecoverScreen only.
-          when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-          when(
-            () => service.readInFlightOp(),
-          ).thenReturn(AuthRecoveryService.opLink);
-          when(
-            () => service.completeEmailLink(any()),
-          ).thenThrow(FirebaseAuthException(code: code));
-          await attach();
+      test('opLink failing with $code surfaces the conflict and never calls '
+          'restoreWithEmailLink', () async {
+        // #414: auto-falling-back to restoreWithEmailLink signs the anon
+        // account out and orphans its data. Recovery into the other
+        // account is an explicit, consented action via RecoverScreen only.
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opLink);
+        when(
+          () => service.completeEmailLink(any()),
+        ).thenThrow(FirebaseAuthException(code: code));
+        await attach();
 
-          uriStream.add(_validAuthLink());
-          await pumpEventQueue();
+        uriStream.add(_validAuthLink());
+        await pumpEventQueue();
 
-          verify(() => service.completeEmailLink(any())).called(1);
-          verifyNever(() => service.restoreWithEmailLink(any()));
-        },
-      );
+        verify(() => service.completeEmailLink(any())).called(1);
+        verifyNever(() => service.restoreWithEmailLink(any()));
+      });
     }
 
     test('conflict does not clear a stashed pending link', () async {
@@ -378,31 +375,34 @@ void main() {
   });
 
   group('cold-start dedupe', () {
-    test('same link emitted by initial + stream is handled only once', () async {
-      // app_links emits the cold-start URL through BOTH getInitialLink() and
-      // uriLinkStream on the same launch. Without dedupe, the second pass
-      // clobbers the first's success path with a "no pending email" error
-      // (prefs got cleared by the first completion).
-      when(
-        () => appLinks.getInitialLink(),
-      ).thenAnswer((_) async => _validAuthLink());
-      when(() => service.readPendingEmail()).thenReturn('foo@example.com');
-      when(
-        () => service.readInFlightOp(),
-      ).thenReturn(AuthRecoveryService.opRecover);
-      when(
-        () => service.restoreWithEmailLink(any()),
-      ).thenAnswer((_) async => _MockUserCredential());
+    test(
+      'same link emitted by initial + stream is handled only once',
+      () async {
+        // app_links emits the cold-start URL through BOTH getInitialLink() and
+        // uriLinkStream on the same launch. Without dedupe, the second pass
+        // clobbers the first's success path with a "no pending email" error
+        // (prefs got cleared by the first completion).
+        when(
+          () => appLinks.getInitialLink(),
+        ).thenAnswer((_) async => _validAuthLink());
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opRecover);
+        when(
+          () => service.restoreWithEmailLink(any()),
+        ).thenAnswer((_) async => _MockUserCredential());
 
-      await attach();
-      await pumpEventQueue();
+        await attach();
+        await pumpEventQueue();
 
-      // Re-emit the same URL via the stream — must be ignored.
-      uriStream.add(_validAuthLink());
-      await pumpEventQueue();
+        // Re-emit the same URL via the stream — must be ignored.
+        uriStream.add(_validAuthLink());
+        await pumpEventQueue();
 
-      verify(() => service.restoreWithEmailLink(any())).called(1);
-    });
+        verify(() => service.restoreWithEmailLink(any())).called(1);
+      },
+    );
 
     test('different oobCodes are processed independently', () async {
       // A second, distinct link in the same session must still be handled.
@@ -538,22 +538,25 @@ void main() {
       verify(() => service.restoreWithEmailLink(any())).called(1);
     });
 
-    test('blocked recover clears the recovery handshake (no phantom op)', () async {
-      // A blocked recover performed no swap/restart, so the persisted
-      // inFlightOp='recover' is a phantom that suppresses GateIntentReplay.
-      when(
-        () => groupService.watchUserGroups(any()),
-      ).thenAnswer((_) => Stream.value([_group()]));
-      stubRecover();
+    test(
+      'blocked recover clears the recovery handshake (no phantom op)',
+      () async {
+        // A blocked recover performed no swap/restart, so the persisted
+        // inFlightOp='recover' is a phantom that would keep redispatching.
+        when(
+          () => groupService.watchUserGroups(any()),
+        ).thenAnswer((_) => Stream.value([_group()]));
+        stubRecover();
 
-      await attach();
-      uriStream.add(_validAuthLink());
-      await settle();
+        await attach();
+        uriStream.add(_validAuthLink());
+        await settle();
 
-      verify(() => service.clearInFlightOp()).called(1);
-      verify(() => service.clearPendingEmail()).called(1);
-      verifyNever(() => service.restoreWithEmailLink(any()));
-    });
+        verify(() => service.clearInFlightOp()).called(1);
+        verify(() => service.clearPendingEmail()).called(1);
+        verifyNever(() => service.restoreWithEmailLink(any()));
+      },
+    );
 
     test(
       'guard-rail: op=link conflict (email-already-in-use) never swaps UID',
@@ -587,50 +590,49 @@ void main() {
   // AR users. This drives the REAL provider through a real MaterialApp,
   // mirroring the #843 recovery_outcome_notice_test.dart AR widget test.
   // ---------------------------------------------------------------------
-  testWidgets(
-    'AR l10n: no-pending-email snack shows the localized string',
-    (tester) async {
-      when(() => service.readPendingEmail()).thenReturn(null);
+  testWidgets('AR l10n: no-pending-email snack shows the localized string', (
+    tester,
+  ) async {
+    when(() => service.readPendingEmail()).thenReturn(null);
 
-      container = ProviderContainer(
-        overrides: [
-          appLinksProvider.overrideWithValue(appLinks),
-          authRecoveryServiceProvider.overrideWithValue(service),
-          firebaseUserProvider.overrideWith(
-            (ref) => Stream<User?>.value(_anonUser),
-          ),
-          groupServiceProvider.overrideWithValue(groupService),
-          shellEmptinessGateTimeoutProvider.overrideWithValue(
-            const Duration(seconds: 5),
-          ),
-        ],
-      );
+    container = ProviderContainer(
+      overrides: [
+        appLinksProvider.overrideWithValue(appLinks),
+        authRecoveryServiceProvider.overrideWithValue(service),
+        firebaseUserProvider.overrideWith(
+          (ref) => Stream<User?>.value(_anonUser),
+        ),
+        groupServiceProvider.overrideWithValue(groupService),
+        shellEmptinessGateTimeoutProvider.overrideWithValue(
+          const Duration(seconds: 5),
+        ),
+      ],
+    );
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            scaffoldMessengerKey: appMessengerKey,
-            locale: const Locale('ar'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Consumer(
-              builder: (context, ref, _) {
-                ref.watch(authEmailLinkBootstrapProvider);
-                return const Scaffold(body: SizedBox());
-              },
-            ),
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          scaffoldMessengerKey: appMessengerKey,
+          locale: const Locale('ar'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Consumer(
+            builder: (context, ref, _) {
+              ref.watch(authEmailLinkBootstrapProvider);
+              return const Scaffold(body: SizedBox());
+            },
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
 
-      uriStream.add(_validAuthLink());
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+    uriStream.add(_validAuthLink());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-      final ar = await AppLocalizations.delegate.load(const Locale('ar'));
-      expect(find.text(ar.authEmailLinkNoPendingEmail), findsOneWidget);
-    },
-  );
+    final ar = await AppLocalizations.delegate.load(const Locale('ar'));
+    expect(find.text(ar.authEmailLinkNoPendingEmail), findsOneWidget);
+  });
 }

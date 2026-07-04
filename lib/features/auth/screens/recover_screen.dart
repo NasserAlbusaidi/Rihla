@@ -18,10 +18,10 @@ import '../providers/auth_provider.dart';
 /// link via [AuthRecoveryService.sendRecoveryLink], and the deep-link
 /// bootstrap completes the restore on tap via
 /// [AuthRecoveryService.restoreWithEmailLink] — a no-merge cross-UID
-/// discard-shell swap. There is no merge consent step anymore: post-gate
-/// (#441 PR2) an anonymous shell can hold no money data, and a credentialed
-/// account's data survives server-side under its own UID. See
-/// docs/plans/2026-06-11-durable-credential-recovery-rearchitecture.md.
+/// discard-shell swap. There is no merge consent step anymore: anonymous shells
+/// can hold money data after #648/#818, so restore is allowed only through the
+/// shared empty-shell guard. A credentialed account's data survives server-side
+/// under its own UID.
 class RecoverScreen extends ConsumerStatefulWidget {
   const RecoverScreen({super.key});
 
@@ -127,7 +127,10 @@ class _RecoverScreenState extends ConsumerState<RecoverScreen> {
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20, vertical: context.spacing.space16),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space20,
+              vertical: context.spacing.space16,
+            ),
             children: [
               Text(
                 l10n.authWelcomeBack,

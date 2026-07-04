@@ -5751,19 +5751,19 @@ abstract class AppLocalizations {
   /// **'Turn on'**
   String get notificationRationaleTurnOn;
 
-  /// Title of the durable-credential gate sheet (#441). Shown before the first group create/join while the user is still anonymous.
+  /// Title of the optional durable-credential sheet (#441/#818). Shown from account-link prompts while the user is still anonymous.
   ///
   /// In en, this message translates to:
   /// **'Keep your money safe'**
   String get durableGateTitle;
 
-  /// Body of the durable-credential gate sheet (#441).
+  /// Body of the optional durable-credential sheet (#441/#818).
   ///
   /// In en, this message translates to:
   /// **'Your groups and expenses are tied to this account. Link Google so they can\'t be lost with this device.'**
   String get durableGateBody;
 
-  /// Primary action on the gate sheet — opens the Google Credential Manager sheet and links the credential to the current (anonymous) user.
+  /// Primary action on the optional account-link sheet — opens the Google Credential Manager sheet and links the credential to the current anonymous user.
   ///
   /// In en, this message translates to:
   /// **'Continue with Google'**
@@ -5781,7 +5781,7 @@ abstract class AppLocalizations {
   /// **'That Google account already belongs to another Rihla account. Switching to it would leave this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first, then use a different Google account.'**
   String get durableGateConflict;
 
-  /// Title of the gate sheet's conflict state (#428): the chosen Google account already backs another Rihla account.
+  /// Title of the optional account-link sheet's conflict state (#428): the chosen Google account already backs another Rihla account.
   ///
   /// In en, this message translates to:
   /// **'That account already has Rihla data'**

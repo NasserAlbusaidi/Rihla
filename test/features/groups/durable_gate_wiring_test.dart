@@ -1,7 +1,7 @@
 // #818: the #441 durable-credential create-time gate is REMOVED. This file
 // used to pin the gated create-screen wiring (declined gate aborts, gate
-// receives an in-flight intent, passed gate proceeds, and the
-// DurableCredentialRequiredException defense path). All four are obsolete —
+// receives an in-flight intent, passed gate proceeds, and the old exception
+// defense path). All four are obsolete —
 // stageGroup no longer consults anonymity at all, and durableCredentialGateProvider
 // no longer exists — so they're replaced by ONE pin: an anonymous user taps
 // Create and stageGroup is invoked directly, with no sheet ever presented.
@@ -112,7 +112,9 @@ void main() {
         ).thenReturn((group: _group(), ack: Future<void>.value()));
 
         final sp = await prefs();
-        await tester.pumpWidget(wrap(sp, const CreateGroupScreen(), '/create-group'));
+        await tester.pumpWidget(
+          wrap(sp, const CreateGroupScreen(), '/create-group'),
+        );
         await tester.pumpAndSettle();
 
         await fillAndSubmit(tester);
