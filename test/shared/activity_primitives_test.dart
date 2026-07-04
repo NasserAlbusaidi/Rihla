@@ -102,6 +102,30 @@ void main() {
       final decoration = container.decoration! as BoxDecoration;
       expect(decoration.border, isNotNull);
     });
+
+    testWidgets('every glyph value maps to its expected icon', (
+      tester,
+    ) async {
+      const expected = {
+        ActivityGlyph.expenseAdded: Iconsax.receipt_add,
+        ActivityGlyph.expenseEdited: Iconsax.receipt_edit,
+        ActivityGlyph.expenseDeleted: Iconsax.receipt_minus,
+        ActivityGlyph.settlement: Iconsax.wallet_3,
+        ActivityGlyph.eventCreated: Iconsax.calendar_1,
+        ActivityGlyph.eventDeleted: Iconsax.calendar_remove,
+        ActivityGlyph.memberJoined: Iconsax.user_add,
+        ActivityGlyph.memberLeft: Iconsax.user_minus,
+        ActivityGlyph.generic: Iconsax.activity,
+      };
+      for (final entry in expected.entries) {
+        await _pump(tester, ActivityCategoryIcon(glyph: entry.key));
+        expect(
+          find.byIcon(entry.value),
+          findsOneWidget,
+          reason: 'glyph ${entry.key} should render ${entry.value}',
+        );
+      }
+    });
   });
 
   group('ActivityRow', () {
