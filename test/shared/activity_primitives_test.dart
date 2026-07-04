@@ -274,7 +274,7 @@ void main() {
     ) async {
       await _pump(
         tester,
-        ActivityDaySection(label: 'today', children: const [SizedBox()]),
+        const ActivityDaySection(label: 'today', children: [SizedBox()]),
       );
       final container = tester.widget<Container>(
         find
@@ -294,10 +294,10 @@ void main() {
     ) async {
       await _pump(
         tester,
-        ActivityDaySection(
+        const ActivityDaySection(
           label: 'today',
           raised: false,
-          children: const [SizedBox()],
+          children: [SizedBox()],
         ),
       );
       final container = tester.widget<Container>(
@@ -318,10 +318,10 @@ void main() {
     ) async {
       await _pump(
         tester,
-        ActivityDaySection(
+        const ActivityDaySection(
           label: 'today',
           dateSuffix: 'jul 4',
-          children: const [SizedBox()],
+          children: [SizedBox()],
         ),
       );
       expect(find.text('TODAY'), findsOneWidget);
@@ -333,7 +333,7 @@ void main() {
     ) async {
       await _pump(
         tester,
-        ActivityDaySection(label: 'today', children: const [SizedBox()]),
+        const ActivityDaySection(label: 'today', children: [SizedBox()]),
       );
       expect(find.text('TODAY'), findsOneWidget);
       expect(find.textContaining('·'), findsNothing);
@@ -342,7 +342,7 @@ void main() {
     testWidgets('card uses antiAlias clip behavior', (tester) async {
       await _pump(
         tester,
-        ActivityDaySection(label: 'today', children: const [SizedBox()]),
+        const ActivityDaySection(label: 'today', children: [SizedBox()]),
       );
       final container = tester.widget<Container>(
         find
@@ -515,10 +515,10 @@ void main() {
     testWidgets('applies titleKey to the title text', (tester) async {
       await _pump(
         tester,
-        CaptionTitleBar(
+        const CaptionTitleBar(
           caption: 'ACTIVITY',
           title: 'Beach Trip',
-          titleKey: const ValueKey('title'),
+          titleKey: ValueKey('title'),
         ),
       );
       expect(find.byKey(const ValueKey('title')), findsOneWidget);

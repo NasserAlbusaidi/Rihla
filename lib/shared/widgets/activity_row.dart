@@ -98,7 +98,7 @@ class ActivityRow extends StatelessWidget {
                       maxLines: maxLines,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (detail != null) detail!,
+                    ?detail,
                     if (groupName != null) ...[
                       SizedBox(height: context.spacing.space4),
                       _GroupChip(groupName: groupName!),
