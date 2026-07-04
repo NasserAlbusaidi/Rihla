@@ -1,7 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// One-release cleanup for the prefs marker written by the removed auth-intent
-/// replay flow (#825).
+/// replay flow (#825). Removal is tracked by #885 — delete this file (and its
+/// cold-start wiring) once the first release containing #825 has shipped.
 ///
 /// The marker was only best-effort create-form prefill. This intentionally does
 /// not replay or decode it; it only prevents stale upgrade state from lingering

@@ -59,11 +59,14 @@ wrapper (`CleanupOutcome`).
   The current create/join path allows anonymous ownership; restore/switch safety
   comes from `outgoingShellProvablyEmpty`, not from assuming anon shells are
   empty by construction.
-- **Cross-UID restore/switch requires a provably-empty outgoing shell.** Home
-  restore is reachable only from the zero-group empty state; Profile restore and
-  Google conflict-switch additionally run the shared live group-count guard and
-  fail closed on loading/error. A populated shell gets the dead-end copy instead
-  of being signed out or swapped away.
+- **Cross-UID restore/switch requires a provably-empty outgoing shell.** Every
+  entry point — home empty-state restore (`triggerGoogleRestore`), Profile
+  restore, the Google conflict-switch, and the email-recover bootstrap — runs
+  the shared `outgoingShellProvablyEmpty` guard at the swap itself and fails
+  closed on loading/error. Surface visibility (the zero-group empty state, the
+  Profile anon-only rows) is presentation, never the safety boundary (#647). A
+  populated shell gets the dead-end copy instead of being signed out or swapped
+  away.
 - **There is still no merge.** The app never rewrites ledger/member references
   from UID A to UID B. Same-UID link makes UID A durable; cross-UID restore
   signs into UID B only after proving UID A has no groups.
