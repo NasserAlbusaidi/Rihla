@@ -208,3 +208,108 @@ describe('recomputeNet drill-down extension (#366)', () => {
     expect(result.perEventNet.has('e3')).toBe(false);
   });
 });
+
+// #872: the weighted allocator's rounding remainder must land on the
+// alphabetically-last POSITIVE-weight recipient — never a declared-0-share
+// key that happens to sort last. Client mirror:
+// balance_calculations_test.dart "(#872)" cases.
+describe('#872 weighted remainder vs 0-share key sorting last', () => {
+  const PAYER = 'alice';
+  const POSITIVE = 'bob';
+  const ZERO = 'zed'; // sorts last with a declared 0 weight
+  const GROUP872 = 'g-872';
+  const EVENT872 = 'e-872';
+
+  async function seed872(
+    splitMode: 'shares' | 'percent',
+    splitDistribution: Record<string, number>,
+  ): Promise<void> {
+    const db = getFirestore();
+    await db.doc(`groups/${GROUP872}`).set({
+      id: GROUP872,
+      name: GROUP872,
+      inviteCode: 'ABC872',
+      createdBy: PAYER,
+      memberIds: [PAYER, POSITIVE, ZERO],
+      currency: 'OMR',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isDeleted: false,
+      deletedAt: null,
+    });
+    for (const uid of [PAYER, POSITIVE, ZERO]) {
+      await db.doc(`groups/${GROUP872}/members/${uid}`).set({
+        id: uid,
+        userId: uid,
+        displayName: uid,
+        role: uid === PAYER ? 'CREATOR' : 'MEMBER',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+        isShadow: false,
+        isTombstone: false,
+      });
+    }
+    await db.doc(`groups/${GROUP872}/events/${EVENT872}`).set({
+      id: EVENT872,
+      groupId: GROUP872,
+      name: EVENT872,
+      type: 'trip',
+      createdBy: PAYER,
+      participantIds: [PAYER, POSITIVE, ZERO],
+      participantNames: { [PAYER]: 'Alice', [POSITIVE]: 'Bob', [ZERO]: 'Zed' },
+      modules: { ledger: true },
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+    // 1.000 OMR: 1/3-ish weights force a truncation residual of 0.001.
+    await db.doc(`groups/${GROUP872}/events/${EVENT872}/expenses/x1`).set({
+      id: 'x1',
+      eventId: EVENT872,
+      description: 'Dinner',
+      amountFils: 1000,
+      currency: 'OMR',
+      payerParticipantId: PAYER,
+      scope: 'global',
+      splitMode,
+      splitDistribution,
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-03T00:00:00.000Z',
+      createdBy: PAYER,
+      lastEditedBy: PAYER,
+    });
+  }
+
+  beforeEach(async () => {
+    await clearFirestore();
+  });
+
+  afterAll(async () => {
+    await clearFirestore();
+  });
+
+  it('shares: residual goes to the last positive-share key, 0-share owes nothing', async () => {
+    await seed872('shares', { [PAYER]: 1, [POSITIVE]: 2, [ZERO]: 0 });
+    const db = getFirestore();
+    const result = await recomputeNet(db, db.doc(`groups/${GROUP872}`));
+
+    const omr = result.net.get('OMR')!;
+    // owed: alice 0.333, bob 0.667 (0.666 + 0.001 residual), zed 0.000.
+    // net: alice 1.000 paid − 0.333 owed = +0.667; bob −0.667; zed 0.
+    expect(omr.get(PAYER)!.toFixed(3)).toBe('0.667');
+    expect(omr.get(POSITIVE)!.toFixed(3)).toBe('-0.667');
+    expect(omr.get(ZERO)!.toFixed(3)).toBe('0.000');
+  });
+
+  it('percent: residual goes to the last positive-percent key, 0-percent owes nothing', async () => {
+    // percent persists humanPercent x 1000: 33.33% / 66.67% / 0%.
+    await seed872('percent', { [PAYER]: 33330, [POSITIVE]: 66670, [ZERO]: 0 });
+    const db = getFirestore();
+    const result = await recomputeNet(db, db.doc(`groups/${GROUP872}`));
+
+    const omr = result.net.get('OMR')!;
+    expect(omr.get(PAYER)!.toFixed(3)).toBe('0.667');
+    expect(omr.get(POSITIVE)!.toFixed(3)).toBe('-0.667');
+    expect(omr.get(ZERO)!.toFixed(3)).toBe('0.000');
+  });
+});
