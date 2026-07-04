@@ -24,6 +24,7 @@ import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/animations/tap_bounce.dart';
 import 'package:safar/shared/widgets/caption_title_bar.dart';
+import 'package:safar/shared/widgets/paper_backdrop.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
@@ -445,6 +446,25 @@ void main() {
       // The screen's Scaffold body wraps its content in SafeArea.
       expect(find.byType(SafeArea), findsWidgets);
     });
+
+    testWidgets(
+      'wraps body content in the shared PaperBackdrop (#490 D-c)',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        final prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          _buildActivityScreen(
+            groupId: 'grp-backdrop',
+            fakeDb: fakeDb,
+            prefs: prefs,
+          ),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PaperBackdrop), findsOneWidget);
+      },
+    );
 
     // --- Phase 30 Plan 03 — unskipped stubs ---
 
