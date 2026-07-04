@@ -779,8 +779,14 @@ void main() {
         expect(find.byType(CircularProgressIndicator), findsNothing);
 
         final scrollable = find.byType(Scrollable).last;
-        await tester.drag(scrollable, const Offset(0, -5000));
-        await tester.pump();
+        for (
+          var i = 0;
+          i < 30 && find.byType(SkeletonLoader).evaluate().isEmpty;
+          i++
+        ) {
+          await tester.drag(scrollable, const Offset(0, -250));
+          await tester.pump();
+        }
 
         expect(find.byType(SkeletonLoader), findsOneWidget);
         expect(find.byType(CircularProgressIndicator), findsNothing);

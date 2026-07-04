@@ -415,7 +415,13 @@ void main() {
           ),
           findsNothing,
         );
-        expect(find.byIcon(Iconsax.wallet_3), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(HomeKeys.activitySection),
+            matching: find.byIcon(Iconsax.wallet_3),
+          ),
+          findsOneWidget,
+        );
         expect(
           find.descendant(
             of: find.byKey(HomeKeys.activitySection),
