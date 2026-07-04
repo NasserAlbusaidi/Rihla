@@ -587,7 +587,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileBackupCardBody.
   ///
   /// In en, this message translates to:
-  /// **'Your trips live only on this phone. Add an email or Google so you never lose them.'**
+  /// **'Your trips live only on this phone. Link Google so you never lose them.'**
   String get profileBackupCardBody;
 
   /// Placeholder shown in place of the display name when the user has not yet set a name.
