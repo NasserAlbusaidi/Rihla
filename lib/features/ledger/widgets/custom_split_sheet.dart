@@ -12,6 +12,7 @@ import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../models/expense_model.dart' show ExpenseScope;
 import '../models/split_explanation.dart';
 import '../providers/expense_provider.dart' show BalanceCalculator;
 
@@ -279,6 +280,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
       for (final p in widget.participants)
         p.id: TextEditingController(text: _readInitialExact(p.id)),
     };
+    if (widget.initialMode == SplitMode.exact) {
+      _seedExactIfBlank();
+    }
   }
 
   void _initPercent() {
@@ -286,6 +290,50 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
       for (final p in widget.participants)
         p.id: TextEditingController(text: _readInitialPercent(p.id)),
     };
+    if (widget.initialMode == SplitMode.percent) {
+      _seedPercentIfBlank();
+    }
+  }
+
+  bool _controllersAllBlank(Map<String, TextEditingController> controllers) =>
+      controllers.values.every((c) => c.text.trim().isEmpty);
+
+  void _seedExactIfBlank() {
+    if (!_controllersAllBlank(_exactCtrls)) return;
+    final Map<String, Decimal> seed = BalanceCalculator.allocateExpenseOwed(
+      amount: widget.total,
+      splitMode: SplitMode.equally,
+      splitDistribution: null,
+      scope: ExpenseScope.global,
+      customSplitParticipants: null,
+      payerId: '',
+      participantIds: _participantIds,
+      currency: widget.currency,
+      onFallback: null,
+    );
+    for (final entry in _exactCtrls.entries) {
+      final value = seed[entry.key];
+      if (value == null) continue;
+      entry.value.text = _formatPlainDecimal(value);
+    }
+  }
+
+  void _seedPercentIfBlank() {
+    if (!_controllersAllBlank(_percentCtrls)) return;
+    final ids = _participantIds..sort();
+    final count = ids.length;
+    if (count == 0) return;
+
+    final base = (_hundred / Decimal.fromInt(count)).toDecimal(
+      scaleOnInfinitePrecision: 3,
+    );
+    final lastId = ids.last;
+    final lastValue = _hundred - (base * Decimal.fromInt(count - 1));
+
+    for (final entry in _percentCtrls.entries) {
+      final value = entry.key == lastId ? lastValue : base;
+      entry.value.text = _formatPlainDecimal(value);
+    }
   }
 
   int? _readInitialShare(String id) {
@@ -571,6 +619,11 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
                   setState(() {
                     _mode = next;
                     _itemized = false;
+                    if (next == SplitMode.exact) {
+                      _seedExactIfBlank();
+                    } else if (next == SplitMode.percent) {
+                      _seedPercentIfBlank();
+                    }
                   });
                 },
                 onItemized: () {
