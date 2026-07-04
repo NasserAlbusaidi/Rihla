@@ -405,9 +405,11 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      // CaptionTitleBar's back affordance is a bare InkResponse (no tooltip —
-      // matches the per-event feed's top bar convention).
+      // CaptionTitleBar now wraps the back InkResponse in a localized
+      // Tooltip (a11y fix) — restored after the initial adoption pass
+      // dropped it.
       expect(find.byKey(GroupKeys.activityBackButton), findsOneWidget);
+      expect(find.byTooltip('Back'), findsOneWidget);
     });
 
     testWidgets('direct route back button returns to group detail', (
