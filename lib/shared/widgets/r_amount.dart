@@ -73,8 +73,9 @@ class RAmount extends StatelessWidget {
   /// (vertical glyph) — never mirrors under RTL. No-op when the value is zero.
   /// When a caret renders, it becomes the SOLE visual polarity mark: the
   /// `+`/`−` prefix from [sign] is suppressed (two polarity marks would
-  /// stack redundantly) — the spoken [semanticsLabel] still carries the
-  /// ASCII sign regardless.
+  /// stack redundantly). The spoken label carries the ASCII sign only when
+  /// [sign] is also true — pass `sign: true` alongside this flag so screen
+  /// readers hear the polarity the caret shows (the hero site does).
   final bool polarityCaret;
 
   /// Explicit color override. Wins over sign-based auto-coloring.
