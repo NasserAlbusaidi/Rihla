@@ -317,7 +317,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     brightness: Brightness.dark,
     primary: Color(0xFFD9A845), // Saffron-light for dark mode
     scaffoldBackground: Color(0xFF111514), // Paper-dark
-    cardSurface: Color(0xFF1A201E), // Card-dark
+    cardSurface: Color(0xFF1E2422), // Card-dark — lifted from #1A201E (#900): elevation reads by tint, not shadow
     inputFill: Color(0xFF242B28), // Card-soft-dark
     border: Color(0xFF2A322F), // Rule on dark
     textPrimary: Color(0xFFECEFEA), // Ink-light
