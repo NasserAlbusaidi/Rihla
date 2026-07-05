@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/core/theme/tokens/color_tokens.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/directional_icon.dart';
+import 'package:safar/shared/widgets/falaj_fork.dart';
 import 'package:safar/shared/widgets/r_avatar.dart';
 
 void main() {
@@ -105,7 +107,80 @@ void main() {
       expect(find.textContaining('Bob', findRichText: true), findsWidgets);
       expect(find.textContaining('->', findRichText: true), findsNothing);
       expect(find.textContaining('Smith', findRichText: true), findsNothing);
-      expect(find.byType(DirectionalIcon), findsNWidgets(2));
+      // One DirectionalIcon: the direction-line caption arrow. The rail's
+      // trailing arrow retired with comp-8 — the fork connector carries the
+      // direction cue there.
+      expect(find.byType(DirectionalIcon), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'comp-8 (#900): transfer connector is the structural falaj fork — rule2, '
+    'never brass (usage law: connector is channel-work, not the brand mark)',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: GroupSettlementTile(
+              fromName: 'Alice',
+              toName: 'Bob',
+              amount: Decimal.parse('10.000'),
+              currency: 'OMR',
+              breakdown: const {},
+              isYourAction: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final forkFinder = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is FalajForkPainter,
+      );
+      expect(forkFinder, findsOneWidget);
+      final painter =
+          tester.widget<CustomPaint>(forkFinder).painter! as FalajForkPainter;
+      expect(painter.color, AppColorTokens.light.rule2);
+      expect(painter.color, isNot(AppColorTokens.light.primary));
+      expect(painter.textDirection, TextDirection.ltr);
+    },
+  );
+
+  testWidgets(
+    'comp-8 (#900): fork connector mirrors under RTL — branches fan into the '
+    'payee in reading direction',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: GroupSettlementTile(
+                fromName: 'Sam',
+                toName: 'Bob',
+                amount: Decimal.parse('5.000'),
+                currency: 'OMR',
+                breakdown: const {},
+                isYourAction: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final forkFinder = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is FalajForkPainter,
+      );
+      final painter =
+          tester.widget<CustomPaint>(forkFinder).painter! as FalajForkPainter;
+      expect(painter.textDirection, TextDirection.rtl);
     },
   );
 

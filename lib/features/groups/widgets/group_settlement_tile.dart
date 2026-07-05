@@ -8,6 +8,7 @@ import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/directional_icon.dart';
+import '../../../shared/widgets/falaj_fork.dart';
 import '../../../shared/widgets/r_avatar.dart';
 
 /// A card-style settlement tile showing payer → payee, amount, and a
@@ -117,10 +118,22 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
+                            // comp-8 (#900): structural rule2 fork, NOT brass —
+                            // the connector is channel-work, so N tiles per
+                            // screen don't breach the ≤1-full-fork usage law.
+                            // Branches fan into the payee; the fork itself is
+                            // the direction cue (mirrors via Directionality).
                             Positioned.fill(
-                              child: CustomPaint(
-                                painter: _TransferRailPainter(
-                                  color: context.colors.rule2,
+                              child: Center(
+                                child: SizedBox(
+                                  height: 14,
+                                  width: double.infinity,
+                                  child: CustomPaint(
+                                    painter: FalajForkPainter(
+                                      color: context.colors.rule2,
+                                      textDirection: Directionality.of(context),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -147,15 +160,6 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                   fontWeight: FontWeight.w800,
                                   color: _amountColor,
                                 ),
-                              ),
-                            ),
-                            PositionedDirectional(
-                              end: 0,
-                              child: DirectionalIcon(
-                                Iconsax.arrow_right_1,
-                                size: 14,
-                                // textMuted-decorative-justified: transfer direction arrow is decorative; payer/payee text carries the meaning.
-                                color: context.colors.textMuted,
                               ),
                             ),
                           ],
@@ -330,32 +334,3 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
   }
 }
 
-class _TransferRailPainter extends CustomPainter {
-  const _TransferRailPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    const dashWidth = 5.0;
-    const dashSpace = 4.0;
-    var startX = 0.0;
-    final y = size.height / 2;
-
-    while (startX < size.width) {
-      canvas.drawLine(
-        Offset(startX, y),
-        Offset((startX + dashWidth).clamp(0, size.width), y),
-        paint,
-      );
-      startX += dashWidth + dashSpace;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TransferRailPainter oldDelegate) =>
-      oldDelegate.color != color;
-}
