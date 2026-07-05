@@ -6,6 +6,7 @@ import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/models/event_recap.dart';
 import 'package:safar/features/events/widgets/recap_share_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/falaj_fork.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
 
 Decimal _d(String s) => Decimal.parse(s);
@@ -113,6 +114,25 @@ void main() {
     expect(find.text('People'), findsOneWidget);
     // The hero total + several breakdowns render via RAmount.
     expect(find.byType(RAmount), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'footer carries the document-close ritual: fork underscore + caption, '
+      'no polarity caret', (tester) async {
+    final recap = _recap(
+      total: {'OMR': _d('142.350')},
+      settled: {'OMR': true},
+    );
+
+    await _pumpCard(tester, recap: recap);
+
+    expect(find.byType(FalajFork), findsOneWidget);
+    expect(find.text('recorded in Rihla'), findsOneWidget);
+    // The recap hero is a total-spent readout (never a net) — no owed/owe
+    // polarity, so the ▲/▼ caret must never appear on this card (comp 6).
+    expect(find.textContaining('▲', findRichText: true), findsNothing);
+    expect(find.textContaining('▼', findRichText: true), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

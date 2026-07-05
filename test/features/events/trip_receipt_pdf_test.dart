@@ -254,4 +254,14 @@ void main() {
     final bytes = await tripReceiptToPdf(receipt(expenses: [expense()]), l10n);
     expect(isValidPdf(bytes), isTrue);
   });
+
+  test('document-close ritual caption is present (text-only, no fork)', () {
+    // The composite Noto face draws glyph IDs in the byte stream, not literal
+    // ASCII, so this asserts against the widget tree (closeRitualSectionForTest)
+    // rather than grepping the finished PDF bytes.
+    final widgets = closeRitualSectionForTest(l10n);
+    final texts = widgets.whereType<pw.Center>().map((c) => c.child).whereType<pw.Text>();
+    final spanTexts = texts.map((t) => (t.text as pw.TextSpan).text);
+    expect(spanTexts, contains('recorded in Rihla'));
+  });
 }

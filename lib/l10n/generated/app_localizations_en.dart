@@ -3711,4 +3711,7 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get recapRecordedInRihla => 'recorded in Rihla';
 }
