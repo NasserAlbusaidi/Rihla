@@ -109,6 +109,7 @@ void main() {
         '/group/g1/event/e1/ledger/settle-up',
         '/group/g1/event/e1/activity',
         '/group/g1/event/e1/settings',
+        '/search',
       ];
 
       for (final path in paths) {

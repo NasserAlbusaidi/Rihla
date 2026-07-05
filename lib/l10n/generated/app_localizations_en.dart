@@ -1504,7 +1504,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get currencyExplainerBody =>
-      'We never invent exchange rates, so OMR can\'t cancel out AED. You\'ll record one payment per currency.';
+      'We never invent exchange rates, so one currency can\'t cancel out another. You\'ll record one payment per currency.';
 
   @override
   String get currencyExplainerGotIt => 'Got it';
@@ -3728,4 +3728,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recapRecordedInRihla => 'recorded in Rihla';
+
+  @override
+  String get searchTitle => 'Search';
+
+  @override
+  String get searchHint => 'Search groups and events';
+
+  @override
+  String get searchEmpty => 'No matches';
+
+  @override
+  String get searchSectionGroups => 'Groups';
+
+  @override
+  String get searchSectionEvents => 'Events';
+
+  @override
+  String get searchEventEnded => 'Ended';
+
+  @override
+  String get searchScopeLabel => 'Groups and events, including past events';
 }

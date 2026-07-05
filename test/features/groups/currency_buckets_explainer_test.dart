@@ -8,6 +8,8 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/widgets/currency_buckets_explainer.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/l10n/generated/app_localizations_ar.dart';
+import 'package:safar/l10n/generated/app_localizations_en.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -42,6 +44,17 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+  });
+
+  test('explainer copy does not hard-code the OMR/AED example', () {
+    final englishBody = AppLocalizationsEn().currencyExplainerBody;
+    final arabicBody = AppLocalizationsAr().currencyExplainerBody;
+
+    expect(englishBody, isNot(contains('OMR')));
+    expect(englishBody, isNot(contains('AED')));
+    expect(arabicBody, isNot(contains('الريال العماني')));
+    expect(arabicBody, isNot(contains('للريال العماني')));
+    expect(arabicBody, isNot(contains('الدرهم الإماراتي')));
   });
 
   testWidgets('shown when there are 2 buckets and the flag is unseen', (

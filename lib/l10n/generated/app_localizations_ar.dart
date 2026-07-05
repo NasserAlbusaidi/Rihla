@@ -1553,7 +1553,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get currencyExplainerBody =>
-      'لا نخترع أسعار صرف، لذا لا يمكن للريال العماني أن يلغي الدرهم الإماراتي. ستسجّل دفعة واحدة لكل عملة.';
+      'لا نخترع أسعار صرف، لذا لا يمكن لعملة أن تلغي عملة أخرى. ستسجّل دفعة واحدة لكل عملة.';
 
   @override
   String get currencyExplainerGotIt => 'فهمت';
@@ -3818,4 +3818,26 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get recapRecordedInRihla => 'مُسجَّل في رِحلة';
+
+  @override
+  String get searchTitle => 'بحث';
+
+  @override
+  String get searchHint => 'البحث في المجموعات والفعاليات';
+
+  @override
+  String get searchEmpty => 'لا توجد نتائج';
+
+  @override
+  String get searchSectionGroups => 'المجموعات';
+
+  @override
+  String get searchSectionEvents => 'الفعاليات';
+
+  @override
+  String get searchEventEnded => 'منتهية';
+
+  @override
+  String get searchScopeLabel =>
+      'المجموعات والفعاليات، بما فيها الفعاليات السابقة';
 }

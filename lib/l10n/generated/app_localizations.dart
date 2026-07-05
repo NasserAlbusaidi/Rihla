@@ -2534,10 +2534,10 @@ abstract class AppLocalizations {
   /// **'Each currency settles separately'**
   String get currencyExplainerTitle;
 
-  /// Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): no rates are invented, one currency can't cancel another, one payment per currency.
+  /// Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): Rihla does not invent exchange rates, currencies never net against each other, and users record one payment per currency.
   ///
   /// In en, this message translates to:
-  /// **'We never invent exchange rates, so OMR can\'t cancel out AED. You\'ll record one payment per currency.'**
+  /// **'We never invent exchange rates, so one currency can\'t cancel out another. You\'ll record one payment per currency.'**
   String get currencyExplainerBody;
 
   /// Dismiss button on the one-time settle-up currencies-don't-net explainer (#382 PR-5); tapping it hides the card for good.
@@ -6254,6 +6254,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'recorded in Rihla'**
   String get recapRecordedInRihla;
+
+  /// Global search entry-point semantic label (home top-bar icon) and back-button destination title (#900 friction #3 — PR-5b).
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get searchTitle;
+
+  /// Placeholder text in the global search field. Cold /search (no query) shows this same hint — no separate empty-state panel (PR-5b).
+  ///
+  /// In en, this message translates to:
+  /// **'Search groups and events'**
+  String get searchHint;
+
+  /// Global search zero-results state for a non-empty query. STATIC — no {query} placeholder, unlike activitySearchNoMatchesMessage (PR-5b).
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get searchEmpty;
+
+  /// Global search results section header for matched groups (rendered uppercase by SectionHeader, PR-5b).
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get searchSectionGroups;
+
+  /// Global search results section header for matched events, open and closed (rendered uppercase by SectionHeader, PR-5b).
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get searchSectionEvents;
+
+  /// Compact pill on a closed event's search result row — a lifecycle marker (event.isClosed), never the balance-state 'settled' (PR-5b).
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get searchEventEnded;
+
+  /// Rendered scope line above global search results, making the v1 search scope (groups + events, no expenses) honest on screen (PR-5b Gate R2 P1 fix).
+  ///
+  /// In en, this message translates to:
+  /// **'Groups and events, including past events'**
+  String get searchScopeLabel;
 }
 
 class _AppLocalizationsDelegate
