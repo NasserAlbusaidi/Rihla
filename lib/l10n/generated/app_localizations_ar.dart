@@ -1910,6 +1910,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeBalanceHeroHint => 'عرض رحلاتك';
 
   @override
+  String get heroBreakdownTitle => 'الرصيد حسب المجموعة';
+
+  @override
+  String get heroBreakdownEmpty => 'كل حساباتك مُسوّاة';
+
+  @override
   String get homeNetYoureOwed => 'الصافي — مستحق لك';
 
   @override

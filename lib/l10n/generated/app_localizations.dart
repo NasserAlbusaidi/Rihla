@@ -3093,6 +3093,18 @@ abstract class AppLocalizations {
   /// **'See your journeys'**
   String get homeBalanceHeroHint;
 
+  /// PR-5 §3 — title of the sheet opened by tapping the balance hero; lists each group's non-zero net, per currency.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance by group'**
+  String get heroBreakdownTitle;
+
+  /// PR-5 §3 — empty state in the hero breakdown sheet when the user has zero net across every group.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all settled up'**
+  String get heroBreakdownEmpty;
+
   /// No description provided for @homeNetYoureOwed.
   ///
   /// In en, this message translates to:

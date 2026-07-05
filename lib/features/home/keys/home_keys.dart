@@ -66,4 +66,7 @@ abstract final class HomeKeys {
   static const addExpenseSheetCreateGroup = Key(
     'home_add_expense_sheet_create_group',
   );
+
+  // PR-5 §3: per-group balance breakdown sheet opened from the hero tap.
+  static const heroBreakdownSheet = Key('home_hero_breakdown_sheet');
 }

@@ -1493,6 +1493,14 @@
   "@homeBalanceHeroHint": {
     "description": "#807 — visible cue on the tappable balance hero (its only action is scrolling to the journeys strip, #284); shown only when the card is tappable."
   },
+  "heroBreakdownTitle": "Balance by group",
+  "@heroBreakdownTitle": {
+    "description": "PR-5 §3 — title of the sheet opened by tapping the balance hero; lists each group's non-zero net, per currency."
+  },
+  "heroBreakdownEmpty": "You're all settled up",
+  "@heroBreakdownEmpty": {
+    "description": "PR-5 §3 — empty state in the hero breakdown sheet when the user has zero net across every group."
+  },
   "homeNetYoureOwed": "Net — you're owed",
   "homeNetYouOwe": "Net — you owe",
   "homeAllSettledAcrossJourneys": "All settled across journeys",

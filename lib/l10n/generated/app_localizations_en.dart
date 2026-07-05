@@ -1855,6 +1855,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeBalanceHeroHint => 'See your journeys';
 
   @override
+  String get heroBreakdownTitle => 'Balance by group';
+
+  @override
+  String get heroBreakdownEmpty => 'You\'re all settled up';
+
+  @override
   String get homeNetYoureOwed => 'Net — you\'re owed';
 
   @override
