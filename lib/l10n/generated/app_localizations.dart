@@ -2534,10 +2534,10 @@ abstract class AppLocalizations {
   /// **'Each currency settles separately'**
   String get currencyExplainerTitle;
 
-  /// Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): no rates are invented, one currency can't cancel another, one payment per currency.
+  /// Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): Rihla does not invent exchange rates, currencies never net against each other, and users record one payment per currency.
   ///
   /// In en, this message translates to:
-  /// **'We never invent exchange rates, so OMR can\'t cancel out AED. You\'ll record one payment per currency.'**
+  /// **'We never invent exchange rates, so one currency can\'t cancel out another. You\'ll record one payment per currency.'**
   String get currencyExplainerBody;
 
   /// Dismiss button on the one-time settle-up currencies-don't-net explainer (#382 PR-5); tapping it hides the card for good.

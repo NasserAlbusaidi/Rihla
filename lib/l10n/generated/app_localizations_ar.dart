@@ -1553,7 +1553,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get currencyExplainerBody =>
-      'لا نخترع أسعار صرف، لذا لا يمكن للريال العماني أن يلغي الدرهم الإماراتي. ستسجّل دفعة واحدة لكل عملة.';
+      'لا نخترع أسعار صرف، لذا لا يمكن لعملة أن تلغي عملة أخرى. ستسجّل دفعة واحدة لكل عملة.';
 
   @override
   String get currencyExplainerGotIt => 'فهمت';

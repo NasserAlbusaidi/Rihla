@@ -441,7 +441,7 @@
   "settleUpSteppedRecordedPartial": "تم تسجيل {recorded} من {total} دفعات.",
   "settleUpSteppedRecordedPartialWillSync": "تم تسجيل {recorded} من {total} دفعات — ستتم المزامنة عند الاتصال.",
   "currencyExplainerTitle": "كل عملة تُسوّى على حدة",
-  "currencyExplainerBody": "لا نخترع أسعار صرف، لذا لا يمكن للريال العماني أن يلغي الدرهم الإماراتي. ستسجّل دفعة واحدة لكل عملة.",
+  "currencyExplainerBody": "لا نخترع أسعار صرف، لذا لا يمكن لعملة أن تلغي عملة أخرى. ستسجّل دفعة واحدة لكل عملة.",
   "currencyExplainerGotIt": "فهمت",
   "settleScopeNoteEvent": "هذه تسوية أرصدة {eventName} فقط. المبالغ المستحقة في بقية المجموعة تُسوّى من تسوية المجموعة.",
   "settleScopeNoteGroup": "هذا هو الرصيد الكامل للجميع عبر المجموعة بأكملها. تسجيل دفعة هنا يوزّعها على دفتر كل فعالية قدر الإمكان — وما تبقى منها يُسجَّل على مستوى المجموعة.",
