@@ -1,0 +1,199 @@
+<title>Rihla scorecard - 2026-07-04 run 5 - 89.78 B+</title>
+<style>
+:root {
+  --bg: #faf7f2;
+  --card: #ffffff;
+  --ink: #1b1a17;
+  --muted: #7a7468;
+  --line: #e4ddd1;
+  --sage: #5c7a57;
+  --rust: #a84b33;
+  --chip: #f0ebe2;
+  --bar: #e9e3d8;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161512;
+    --card: #1e1c18;
+    --ink: #ede9e1;
+    --muted: #9a9284;
+    --line: #2e2a24;
+    --sage: #8faf8a;
+    --rust: #d08a73;
+    --chip: #26231e;
+    --bar: #2a2722;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 42px 20px 84px; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.05;
+  margin: 8px 0 4px;
+}
+h2 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 23px;
+  margin: 38px 0 12px;
+}
+code, .mono { font-family: var(--mono); }
+.meta { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.hero { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; margin-top: 28px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; }
+.score { font-family: var(--mono); font-size: 64px; font-weight: 650; line-height: 1; }
+.score small { font-size: 26px; color: var(--muted); font-weight: 500; }
+.grade { display: inline-block; margin-left: 10px; padding: 3px 12px; border-radius: 999px; background: var(--chip); font-family: var(--mono); font-size: 15px; vertical-align: 18px; }
+.delta { margin-top: 10px; color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.delta b { color: var(--sage); }
+.dod { list-style: none; padding: 0; margin: 6px 0 0; font-size: 13.5px; }
+.dod li { display: flex; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.dod li:first-child { border-top: 0; }
+.bad { color: var(--rust); font-weight: 700; }
+.good { color: var(--sage); font-weight: 700; }
+.callout { border-inline-start: 4px solid var(--rust); background: var(--card); border-radius: 8px; padding: 13px 18px; margin: 10px 0; font-size: 14px; }
+.callout b { display: block; color: var(--rust); font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+.wins { border-inline-start-color: var(--sage); }
+.wins b { color: var(--sage); }
+.groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.g { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.g .n { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.g .v { font-family: var(--mono); font-size: 24px; margin-top: 3px; }
+.tablebox { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 9px 8px 6px; }
+td { border-top: 1px solid var(--line); padding: 9px 8px; vertical-align: top; }
+td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { min-width: 100px; height: 6px; border-radius: 999px; background: var(--bar); margin-top: 7px; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--ink); opacity: .72; }
+.cat { font-weight: 650; white-space: nowrap; }
+.cat span { display: block; color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; font-weight: 400; }
+.note { color: var(--muted); font-size: 12.5px; max-width: 520px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.cols ul, ol { margin-top: 8px; padding-left: 20px; font-size: 14px; }
+.cols li, ol li { margin: 8px 0; }
+.summary { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px; font-size: 14.5px; max-width: 76ch; }
+.method { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; margin-top: 44px; padding-top: 14px; max-width: 76ch; }
+@media (max-width: 760px) {
+  .hero, .cols, .groups { grid-template-columns: 1fr; }
+}
+</style>
+<div class="wrap">
+  <div class="eyebrow">Rihla whole-app quality scorecard - run 5</div>
+  <h1>No surviving would-quit blocker; still just short of A-minus</h1>
+  <div class="meta">2026-07-04 - scored against origin/main @ c78bd531 - baseline: run 4 @ 1a4bcf39, 88.45 B+</div>
+
+  <section class="hero">
+    <div class="card">
+      <div><span class="score">89.78<small> /100</small></span><span class="grade">B+</span></div>
+      <div class="delta"><b>+1.33</b> vs run 4 (88.45 B+) - still below A- threshold</div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">Definition of done</h2>
+      <ul class="dod">
+        <li><span class="good">OK</span><span>Zero would-quit findings - <b>0 open</b></span></li>
+        <li><span class="bad">x</span><span>Every category >= 87 - <b>1 of 16 below</b></span></li>
+        <li><span class="bad">x</span><span>Composite >= 90 - <b>89.78</b></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <h2>What changed since run 4</h2>
+  <div class="callout wins"><b>Would-quit fixed</b>#884 closed #871: the expense amount input now has an accessible name through merged field semantics, and the event command-center back/settings icon buttons now expose semantic labels.</div>
+  <div class="callout wins"><b>Activity system tightened</b>#883, #886, and #887 moved per-event, group, cross-group, and home RECENTLY activity surfaces onto the shared row/header/day/filter vocabulary. The changed screens are smaller and better aligned, with new behavior tests.</div>
+  <div class="callout wins"><b>Auth/bootstrap cleanup landed</b>#875 removed the obsolete PendingGateIntent and GateIntentReplay path, added one-release stale marker cleanup, and made anonymous push-token writes honest for opted-in anonymous owners.</div>
+  <div class="callout wins"><b>Release signal is green</b>The latest GitHub Readiness Check for c78bd531 completed successfully. The real-device QA doc is more honest, but the two-physical-device gate is still not closed.</div>
+
+  <h2>Would-quit findings</h2>
+  <div class="callout wins"><b>None remaining in this pass</b>The previous surviving accessibility blocker is fixed on current origin/main. This does not mean the app has no defects; it means this rescore did not find an abandonment-plausible blocker equivalent to the earlier money-truth, offline-loss, or inaccessible-core-task findings.</div>
+
+  <h2>Scores by group</h2>
+  <div class="groups">
+    <div class="g"><div class="n">Product & UX</div><div class="v">88.7 avg / w35</div></div>
+    <div class="g"><div class="n">Correctness & Data</div><div class="v">90.4 avg / w30</div></div>
+    <div class="g"><div class="n">Security</div><div class="v">90.8 avg / w15</div></div>
+    <div class="g"><div class="n">Engineering</div><div class="v">90.0 avg / w20</div></div>
+  </div>
+
+  <h2>16 categories</h2>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Category</th><th class="num">W</th><th>Score</th><th class="num"></th><th class="num">Grade</th><th>Judge note</th></tr></thead>
+      <tbody>
+        <tr><td class="cat">First-run & onboarding<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">Cold-start/auth cleanup removes stale replay machinery and one old marker path. Still capped by limited first-run guidance and silent discard risk on create/join exits.</td></tr>
+        <tr><td class="cat">Core money loop UX<span>Product & UX</span></td><td class="num">10</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">Run 4's money-trust fixes still carry this. No new money-loop blocker found, but this pass did not add a major money-flow redesign.</td></tr>
+        <tr><td class="cat">Navigation & IA<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">Shared activity chrome gives event, group, cross-group, and home RECENTLY flows a clearer common map while preserving pager/search/back-guard behavior.</td></tr>
+        <tr><td class="cat">Copy & microcopy (EN/AR)<span>Product & UX</span></td><td class="num">4</td><td><div class="bar"><i style="width:83%"></i></div></td><td class="num"><b>83</b></td><td class="num">B-</td><td class="note">Activity action vocabulary is cleaner and one duplicate filter key was removed. Arabic grammar/plural polish remains the main sub-87 drag.</td></tr>
+        <tr><td class="cat">Visual design system<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:91%"></i></div></td><td class="num"><b>91</b></td><td class="num">A-</td><td class="note">CaptionTitleBar, ActivityRow, day headers, filter strip, trailing RAmount, and skeleton footers now read as one system instead of three close-but-different implementations.</td></tr>
+        <tr><td class="cat">Accessibility & i18n / RTL<span>Product & UX</span></td><td class="num">6</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">#871 is resolved: the amount edit box and command-center icon buttons have accessible names. Remaining risk is broader semantic coverage, focus order, and Arabic copy quality.</td></tr>
+        <tr><td class="cat">Money math & oracle parity<span>Correctness & Data</span></td><td class="num">12</td><td><div class="bar"><i style="width:91%"></i></div></td><td class="num"><b>91</b></td><td class="num">A-</td><td class="note">The cross-runtime money oracle and weighted-remainder fix remain strong. No new money-parity regression found in this pass.</td></tr>
+        <tr><td class="cat">Data model integrity<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">CreatedBy, append-only settlement, member, and founding-batch invariants remain the backbone. This run did not materially change the data model score.</td></tr>
+        <tr><td class="cat">Offline & sync<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:90%"></i></div></td><td class="num"><b>90</b></td><td class="num">A-</td><td class="note">The atomic offline group creation fix still holds. The group edit identity update path and pending-write sign-out copy/window remain the main open edges.</td></tr>
+        <tr><td class="cat">Error handling & edge cases<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">Friendly error taxonomy remains solid. Activity error states are a little cleaner, but malformed stream decode remains a narrow edge case.</td></tr>
+        <tr><td class="cat">Firestore rules & Functions auth<span>Security</span></td><td class="num">9</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">Rules and callable boundaries remain strong. The #875 push-token correction aligns client behavior with the existing owner-keyed rules contract.</td></tr>
+        <tr><td class="cat">Auth, recovery, cross-UID & PII<span>Security</span></td><td class="num">6</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">Removing dead gate replay code reduces bootstrap complexity and stale recovery semantics. The category is still capped by the pending-write sign-out false-safety window.</td></tr>
+        <tr><td class="cat">Architecture & organization<span>Engineering</span></td><td class="num">6</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">Large activity screens shrank, duplicate row code was deleted, and obsolete auth services/tests were removed. Oversized feature files still keep this below A-.</td></tr>
+        <tr><td class="cat">Test coverage & quality<span>Engineering</span></td><td class="num">7</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">New a11y, shared primitive, activity screen, prefill, cleanup, and notification tests are in place, and readiness is green. Golden visual coverage remains the notable weak net.</td></tr>
+        <tr><td class="cat">State management & performance<span>Engineering</span></td><td class="num">4</td><td><div class="bar"><i style="width:90%"></i></div></td><td class="num"><b>90</b></td><td class="num">A-</td><td class="note">Shared primitives reduce repeated render paths and PR #887 preserved memo caches/pager wiring. The in-group per-event listener accumulation concern still deserves a follow-up.</td></tr>
+        <tr><td class="cat">CI/CD & release hygiene<span>Engineering</span></td><td class="num">3</td><td><div class="bar"><i style="width:87%"></i></div></td><td class="num"><b>87</b></td><td class="num">B+</td><td class="note">Readiness Check is green on the scored commit and the QA doc now names the physical-device gap clearly. The two-device QA gate is still not actually complete.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Cheapest leverage</h2>
+  <ol>
+    <li><b>Polish Arabic copy and plural/gender phrasing.</b> Copy is now the only sub-87 category, so this is the cleanest path to satisfying the category floor.</li>
+    <li><b>Close the real two-physical-device QA gate on a commit-scoped build.</b> The doc is honest now; the process still needs the actual device evidence.</li>
+    <li><b>Add meaningful visual regression coverage for the shared activity surfaces.</b> The activity UI refactor is a good time to pin the new system with goldens or screenshot tests.</li>
+    <li><b>Harden the remaining offline/sign-out edge cases.</b> Group identity edits and pending-write sign-out messaging are no longer would-quit, but they are still trust debt.</li>
+  </ol>
+
+  <div class="cols">
+    <div>
+      <h2>What carries the score</h2>
+      <ul>
+        <li>No current would-quit finding survived this pass.</li>
+        <li>Money truth remains strong after the allocator, Exact/Percent, and weighted-remainder fixes from run 4.</li>
+        <li>Activity surfaces now share a coherent visual and interaction vocabulary.</li>
+        <li>Rules, callable auth, data invariants, and cross-runtime tests remain above the product polish layer.</li>
+        <li>Latest GitHub readiness is green on the scored commit.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>What drags it</h2>
+      <ul>
+        <li>Arabic copy quality still lags behind the app's architecture and rule coverage.</li>
+        <li>Real two-device physical QA is documented as incomplete.</li>
+        <li>Golden/screenshot coverage is not yet strong enough for the visual system now landing.</li>
+        <li>Some large feature files remain, even after the activity simplification.</li>
+        <li>The pending-write sign-out copy/window and group edit offline path still need a clean close.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Judge summary</h2>
+  <div class="summary">Rihla is now in the high-B+ zone. The important change is not just the numeric bump from 88.45 to 89.78; it is that the score no longer has a surviving would-quit blocker attached to it. The app's money truth, security model, and activity UI consistency are strong enough for A- territory, but the total score is held just under 90 by one weak product-language category, incomplete physical-device QA, thin visual regression coverage, and a few known offline/auth edge cases.</div>
+
+  <div class="method"><b>Method.</b> Current-state operator rescore using the same 16-category weighting as runs 3 and 4. Inputs: live <code>origin/main</code> at <code>c78bd53102e25c8b5ef2bbfb797f0e2128a32b05</code>, merged PR/issue state for #871/#884, #875, #883, #886, and #887, direct code spot-checks for the prior accessibility blocker, diff/stat review against run 4 target <code>1a4bcf39</code>, and green GitHub Readiness Check run 28705426449. This is not represented as a fresh 42-agent blind panel.</div>
+</div>
