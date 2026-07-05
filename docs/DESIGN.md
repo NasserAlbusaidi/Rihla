@@ -55,8 +55,9 @@ generic Material app, and not the prior era's warm journal-diary read.
 — a single channel branching into 3 rivulets — as the wordmark underscore and
 the recap-share-card close ritual (**usage law: full fork ≤1 per screen**); the
 brass **share-notch tick** as its *only* ambient/unlimited form
-(`SectionHeader`'s leading diamond); the dashed-rail **settle-up transfer
-connector** (KEEP-3, unswapped — see [§13](#13-known-drift--debt)); a faint
+(`SectionHeader`'s leading diamond); the **settle-up transfer connector** — the
+fork in *structural* `rule2`, never brass (channel-work, not the brand mark, so
+N tiles per screen don't count against the fork law; comp-8, #918); a faint
 **night star-grid** on dark hero surfaces only; a **polarity caret** (▲/▼)
 on the home hero balance; a brass **port-seal** ring on journey tickets
 (interim placeholder — 12-glyph redraw is a fast-follow).
@@ -480,7 +481,7 @@ program itself, so raw counts moved even where the underlying debt didn't.
 | D5a | **✅ Resolved (#900 PR-4, #913).** App now defaults to `AppThemeMode.system` again (was pinned to `light` since #818/2026-07-03 while D5's dark pass was a stub). | `AppSettings.themeMode` default + `SettingsService.loadSettings` fallbacks. | Done. |
 | D6 | **Motion tokens landed; adoption pending.** `context.motion` (quick/standard/emphasis + curves, plus the new `stamp`/`flow` devices) exists; ~12 ad-hoc `flutter_animate` duration literals not yet migrated. `flow` additionally has **no consumer at all yet** — reserved for a future sync indicator. | §6. | ✅ Phase 1 (tokens). Phase 2: migrate ad-hoc durations; wire `flow` when the sync indicator ships. |
 | D7 | **Still orphaned.** `moduleLedgerLight`/`moduleGearLight`/etc. have **zero `lib/` readers** (defined only in `color_tokens.dart`); `event_type_picker_screen.dart`, their last reader, stays deleted. | grep: `colors.module*Light` → 0 hits outside `color_tokens.dart`. | Delete the dead `module*Light` token fields in a cleanup PR. |
-| D8 | **Settle-up transfer connector still the dashed rail, not the falaj fork.** PR-3's component 8 (fork-painted connector) was deferred: "dashed arrow stays until the painter passes 16px/24px/RTL goldens." `_TransferRailPainter` (`group_settlement_tile.dart`) is the live KEEP-3 implementation today. | `group_settlement_tile.dart` `_TransferRailPainter`. | Owner decision — swap once a fork-painted connector clears goldens at both sizes + RTL. |
+| D8 | **✅ Resolved (comp-8, #918).** Owner decided 2026-07-05: the connector is the falaj fork in **structural `rule2`, never brass** — channel-work, not the brand mark, so N tiles/screen don't breach the ≤1-full-fork law. `FalajForkPainter` replaced the dashed `_TransferRailPainter` in `group_settlement_tile.dart`; the rail's trailing arrow retired with it (the branch fan is the direction cue, Directionality-mirrored). | `group_settlement_tile.dart`; RTL + non-brass pins in `group_settlement_tile_test.dart`. | Done. |
 | D9 | **#915 open — unrouted full-chrome event module screens pending deletion.** PR-5 consolidated routes into `EventCommandCenter` `?tab=` redirects but *kept* the `embedded:false` full-chrome branches of `LedgerScreen`/`ActivityFeedScreen` (unreachable) because ~12 `test/features/ledger/*` + `activity_feed_screen_test.dart` construct them directly. | Issue #915. | Delete the unreachable branches + migrate/retire their tests. `EventRecapScreen`/`SettleUpScreen` are real routed screens, not part of this cleanup. |
 | D10 | **#916 open — stale hero hint copy.** `BalanceHeroCard`'s `homeBalanceHeroHint` ("See your journeys") + down-arrow cue still describe the pre-PR-5 scroll-to-journeys behavior; PR-5 rewired the tap to the per-group breakdown sheet and left copy untouched per its "no other copy changes" scope rule. | Issue #916. | Re-copy the EN+AR hint pair + swap the cue, one-sentence-diff, no Gate needed. |
 | D11 | **Port-seal SVG redraw — optional fast-follow, not started.** The journey ticket's brass corner seal is a plain ring placeholder (`_BrassSeal` in `journey_ticket_card.dart`), not a redraw of the 12 trip-stamp glyphs as brass seals. | `journey_ticket_card.dart` `_BrassSeal`. | Optional; the 12 glyph ids + monogram fallback are unaffected either way — see CLAUDE.md trip-stamp glyph invariant. |
@@ -505,8 +506,10 @@ three prior KEEPs were explicitly broken by the rebrand, the rest hold.
   emerald positive, pomegranate negative — the positive/negative *semantic*
   mapping (green=owed, red=owe) is the part that survived; the hues did not
   (§2).
-- **KEEP-3 — Settle-Up dashed-rail transfer connector** — clear who-pays-whom.
-  Still the dashed rail today, not yet the falaj-fork painter (§13 D8).
+- **KEEP-3 — Settle-Up transfer connector** — clear who-pays-whom. The
+  *clarity* is the invariant; the material was re-dressed by comp-8 (#918):
+  structural `rule2` falaj fork whose branch fan points into the payee and
+  mirrors under RTL (§13 D8).
 - **KEEP-4 — RTL build:** logo lockup, mirroring, localized strings (§7).
 - **KEEP-5 — Copy voice:** "everyone's even" / "الجميع متوازن"
   (`settleUpEveryoneEvenHeadline`; the ledger surface says "All square." /
