@@ -31,6 +31,23 @@ void main() {
       expect(m.standard, const Duration(milliseconds: 250));
       expect(m.quick, AppMotionTokens.base.quick);
       expect(m.emphasis, AppMotionTokens.base.emphasis);
+      expect(m.stamp, AppMotionTokens.base.stamp);
+      expect(m.flow, AppMotionTokens.base.flow);
+    });
+
+    test('stamp is the seal-settle device (300ms, easeOutBack overshoot)',
+        () {
+      const m = AppMotionTokens.base;
+      expect(m.stamp.duration, const Duration(milliseconds: 300));
+      expect(m.stamp.curve, Curves.easeOutBack);
+      expect(m.stamp.beginScale, 1.08);
+      expect(m.stamp.beginTurns, -3 / 360);
+    });
+
+    test('flow is the syncing-only channel-fill device (1100ms, linear)', () {
+      const m = AppMotionTokens.base;
+      expect(m.flow.period, const Duration(milliseconds: 1100));
+      expect(m.flow.curve, Curves.linear);
     });
 
     test('lerp snaps at the t=0.5 threshold', () {
