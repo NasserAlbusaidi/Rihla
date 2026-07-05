@@ -84,6 +84,24 @@ List<ReviewFlag> detectReviewWorthyExpenses(
   return flags;
 }
 
+/// #898: drop flags whose expense currency has nothing outstanding. Suppression
+/// is bucket-level on purpose — an individual expense's "contribution" is not
+/// well-defined after netting, so a currency whose nets are all zero is the
+/// signal that its history no longer matters to this settle-up. INBOUND-only:
+/// callers pass outstanding currencies computed from the same balance basis
+/// their screen displays; this file still does no money calculation.
+///
+/// Keep this aligned with the canonical settled definition used by
+/// `nonZeroNetsGccFirst`: exact `netBalance != Decimal.zero`, no tolerance.
+List<ReviewFlag> filterFlagsToOutstandingCurrencies(
+  List<ReviewFlag> flags,
+  Set<String> outstandingCurrencies,
+) {
+  return flags
+      .where((f) => outstandingCurrencies.contains(f.expense.currency))
+      .toList();
+}
+
 /// Max review rows shown PER currency (#521). A single-currency event still
 /// shows up to this many (no regression vs the old flat cap); in a mixed-currency
 /// event each currency is capped INDEPENDENTLY, so a high-value row in one

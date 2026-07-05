@@ -130,21 +130,24 @@ void main() {
       );
     });
 
-    test('the large-amount heuristic is per-currency (no cross-currency mix)', () {
-      final flags = detectReviewWorthyExpenses([
-        _exp(id: 'omr-big', amount: '100.000', currency: 'OMR'),
-        _exp(id: 'omr-small', amount: '1.000', currency: 'OMR'),
-        _exp(id: 'usd-big', amount: '100.00', currency: 'USD'),
-        _exp(id: 'usd-small', amount: '1.00', currency: 'USD'),
-      ]);
-      expect(
-        flags
-            .where((f) => f.reason == ReviewReason.largeAmount)
-            .map((f) => f.expense.id)
-            .toSet(),
-        {'omr-big', 'usd-big'},
-      );
-    });
+    test(
+      'the large-amount heuristic is per-currency (no cross-currency mix)',
+      () {
+        final flags = detectReviewWorthyExpenses([
+          _exp(id: 'omr-big', amount: '100.000', currency: 'OMR'),
+          _exp(id: 'omr-small', amount: '1.000', currency: 'OMR'),
+          _exp(id: 'usd-big', amount: '100.00', currency: 'USD'),
+          _exp(id: 'usd-small', amount: '1.00', currency: 'USD'),
+        ]);
+        expect(
+          flags
+              .where((f) => f.reason == ReviewReason.largeAmount)
+              .map((f) => f.expense.id)
+              .toSet(),
+          {'omr-big', 'usd-big'},
+        );
+      },
+    );
 
     test('one expense can carry multiple reasons (exact + large)', () {
       final flags = detectReviewWorthyExpenses([
@@ -155,7 +158,10 @@ void main() {
           .where((f) => f.expense.id == 'big')
           .map((f) => f.reason)
           .toSet();
-      expect(reasonsForBig, {ReviewReason.exactSplit, ReviewReason.largeAmount});
+      expect(reasonsForBig, {
+        ReviewReason.exactSplit,
+        ReviewReason.largeAmount,
+      });
     });
 
     test('an expense paid by a departed (non-live) member is flagged', () {
@@ -212,6 +218,87 @@ void main() {
     });
   });
 
+  group('filterFlagsToOutstandingCurrencies', () {
+    test('flags whose currency is outstanding pass through in order', () {
+      final flags = [
+        ReviewFlag(
+          _exp(id: 'omr-1', currency: 'OMR', splitMode: SplitMode.exact),
+          ReviewReason.exactSplit,
+        ),
+        ReviewFlag(
+          _exp(id: 'usd-1', currency: 'USD', splitMode: SplitMode.exact),
+          ReviewReason.exactSplit,
+        ),
+        ReviewFlag(
+          _exp(id: 'omr-2', currency: 'OMR', splitMode: SplitMode.exact),
+          ReviewReason.largeAmount,
+        ),
+      ];
+
+      final filtered = filterFlagsToOutstandingCurrencies(flags, {
+        'OMR',
+        'USD',
+      });
+
+      expect(filtered, hasLength(3));
+      expect(filtered.map((f) => f.expense.id), ['omr-1', 'usd-1', 'omr-2']);
+    });
+
+    test(
+      'settled-currency flags are dropped while outstanding flags remain',
+      () {
+        final flags = [
+          ReviewFlag(
+            _exp(
+              id: 'omr-settled',
+              currency: 'OMR',
+              splitMode: SplitMode.exact,
+            ),
+            ReviewReason.exactSplit,
+          ),
+          ReviewFlag(
+            _exp(id: 'usd-outstanding', currency: 'USD', amount: '120.00'),
+            ReviewReason.largeAmount,
+          ),
+        ];
+
+        final filtered = filterFlagsToOutstandingCurrencies(flags, {'USD'});
+
+        expect(filtered.map((f) => f.expense.id), ['usd-outstanding']);
+      },
+    );
+
+    test('empty outstanding set drops every flag', () {
+      final flags = [
+        ReviewFlag(
+          _exp(id: 'omr', currency: 'OMR', splitMode: SplitMode.exact),
+          ReviewReason.exactSplit,
+        ),
+        ReviewFlag(
+          _exp(id: 'usd', currency: 'USD', splitMode: SplitMode.exact),
+          ReviewReason.exactSplit,
+        ),
+      ];
+
+      expect(filterFlagsToOutstandingCurrencies(flags, const {}), isEmpty);
+    });
+
+    test('all review reasons are dropped identically for settled currency', () {
+      final expense = _exp(
+        id: 'settled',
+        currency: 'OMR',
+        splitMode: SplitMode.exact,
+        scope: ExpenseScope.personal,
+        payerParticipantId: 'uid-gone',
+      );
+      final flags = [
+        for (final reason in ReviewReason.values) ReviewFlag(expense, reason),
+      ];
+
+      expect(filterFlagsToOutstandingCurrencies(flags, {'USD'}), isEmpty);
+    });
+  });
+
   group('reviewItemList (#521 — per-currency bucket cap)', () {
     test(
       'a high-value row in a later-alphabet currency is never hidden by the cap',
@@ -221,8 +308,13 @@ void main() {
         // list and the only OMR row is dropped. Per-currency bucketing must
         // still surface it.
         final flags = [
-          ..._exactFlags('JPY', ['1000', '900', '800', '700', '600'],
-              prefix: 'jpy'),
+          ..._exactFlags('JPY', [
+            '1000',
+            '900',
+            '800',
+            '700',
+            '600',
+          ], prefix: 'jpy'),
           ReviewFlag(
             _exp(
               id: 'omr-only',
@@ -246,25 +338,33 @@ void main() {
       },
     );
 
-    test('a single-currency event still shows up to the cap (no regression)', () {
-      final flags = _exactFlags(
-        'OMR',
-        ['9.000', '8.000', '7.000', '6.000', '5.000', '4.000', '3.000'],
-      );
+    test(
+      'a single-currency event still shows up to the cap (no regression)',
+      () {
+        final flags = _exactFlags('OMR', [
+          '9.000',
+          '8.000',
+          '7.000',
+          '6.000',
+          '5.000',
+          '4.000',
+          '3.000',
+        ]);
 
-      final result = reviewItemList(flags);
+        final result = reviewItemList(flags);
 
-      expect(result.shown.length, kReviewPerCurrencyCap); // 5
-      expect(result.overflow, 2);
-      // Highest amounts first within the (single) currency bucket.
-      expect(result.shown.map((e) => e.id), [
-        'e-0',
-        'e-1',
-        'e-2',
-        'e-3',
-        'e-4',
-      ]);
-    });
+        expect(result.shown.length, kReviewPerCurrencyCap); // 5
+        expect(result.overflow, 2);
+        // Highest amounts first within the (single) currency bucket.
+        expect(result.shown.map((e) => e.id), [
+          'e-0',
+          'e-1',
+          'e-2',
+          'e-3',
+          'e-4',
+        ]);
+      },
+    );
 
     test('each currency is capped independently', () {
       final flags = [
@@ -280,41 +380,44 @@ void main() {
       expect(result.overflow, 1);
     });
 
-    test('equal same-currency amounts tiebreak by createdAt desc then id asc', () {
-      final flags = [
-        ReviewFlag(
-          _exp(
-            id: 'older',
-            amount: '5.000',
-            splitMode: SplitMode.exact,
-            createdAt: DateTime(2026, 6, 1),
+    test(
+      'equal same-currency amounts tiebreak by createdAt desc then id asc',
+      () {
+        final flags = [
+          ReviewFlag(
+            _exp(
+              id: 'older',
+              amount: '5.000',
+              splitMode: SplitMode.exact,
+              createdAt: DateTime(2026, 6, 1),
+            ),
+            ReviewReason.exactSplit,
           ),
-          ReviewReason.exactSplit,
-        ),
-        ReviewFlag(
-          _exp(
-            id: 'newer',
-            amount: '5.000',
-            splitMode: SplitMode.exact,
-            createdAt: DateTime(2026, 6, 3),
+          ReviewFlag(
+            _exp(
+              id: 'newer',
+              amount: '5.000',
+              splitMode: SplitMode.exact,
+              createdAt: DateTime(2026, 6, 3),
+            ),
+            ReviewReason.exactSplit,
           ),
-          ReviewReason.exactSplit,
-        ),
-        ReviewFlag(
-          _exp(
-            id: 'aaa',
-            amount: '5.000',
-            splitMode: SplitMode.exact,
-            createdAt: DateTime(2026, 6, 3),
+          ReviewFlag(
+            _exp(
+              id: 'aaa',
+              amount: '5.000',
+              splitMode: SplitMode.exact,
+              createdAt: DateTime(2026, 6, 3),
+            ),
+            ReviewReason.exactSplit,
           ),
-          ReviewReason.exactSplit,
-        ),
-      ];
+        ];
 
-      final result = reviewItemList(flags);
+        final result = reviewItemList(flags);
 
-      // newer before older; among the two newest (same createdAt), id ascending.
-      expect(result.shown.map((e) => e.id), ['aaa', 'newer', 'older']);
-    });
+        // newer before older; among the two newest (same createdAt), id ascending.
+        expect(result.shown.map((e) => e.id), ['aaa', 'newer', 'older']);
+      },
+    );
   });
 }
