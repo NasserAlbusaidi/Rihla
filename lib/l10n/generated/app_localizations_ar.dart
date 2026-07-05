@@ -235,15 +235,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileDisplayThemeDarkValue => 'داكن';
 
   @override
-  String get profileSupportSectionLabel => 'الدعم';
-
-  @override
-  String get profileSupportCoffeeTile => 'ادعمني بكوب قهوة';
-
-  @override
-  String get profileSupportPaypalFailed => 'تعذّر فتح PayPal';
-
-  @override
   String get profileTitle => 'الملف الشخصي';
 
   @override

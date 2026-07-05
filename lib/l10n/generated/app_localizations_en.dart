@@ -235,15 +235,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileDisplayThemeDarkValue => 'Dark';
 
   @override
-  String get profileSupportSectionLabel => 'SUPPORT';
-
-  @override
-  String get profileSupportCoffeeTile => 'Buy me a coffee';
-
-  @override
-  String get profileSupportPaypalFailed => 'Couldn\'t open PayPal';
-
-  @override
   String get profileTitle => 'Profile';
 
   @override
