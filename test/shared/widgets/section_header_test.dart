@@ -50,4 +50,46 @@ void main() {
       expect(style.letterSpacing, 0);
     },
   );
+
+  testWidgets('Falaj PR-3: leading share-notch tick renders before the title', (
+    tester,
+  ) async {
+    await pumpRihlaApp(
+      tester,
+      const Scaffold(body: SectionHeader(title: 'Active journeys')),
+    );
+
+    final tickFinder = find.byKey(const Key('section_header_tick'));
+    expect(tickFinder, findsOneWidget);
+
+    final row = tester.widget<Row>(find.byType(Row));
+    final tickIndex = row.children.indexWhere(
+      (w) => w.key == const Key('section_header_tick'),
+    );
+    final titleIndex = row.children.indexWhere(
+      (w) => w is Text && w.data == 'ACTIVE JOURNEYS',
+    );
+    expect(tickIndex, greaterThanOrEqualTo(0));
+    expect(titleIndex, greaterThan(tickIndex));
+  });
+
+  testWidgets('Falaj PR-3: RTL keeps the tick on the leading (right) edge', (
+    tester,
+  ) async {
+    await pumpRihlaApp(
+      tester,
+      const Scaffold(body: SectionHeader(title: 'الرحلات النشطة')),
+      locale: const Locale('ar'),
+    );
+
+    final tickRect = tester.getRect(
+      find.byKey(const Key('section_header_tick')),
+    );
+    final titleRect = tester.getRect(find.text('الرحلات النشطة'));
+    expect(
+      tickRect.left,
+      greaterThan(titleRect.left),
+      reason: 'under RTL the leading edge is visually on the right',
+    );
+  });
 }
