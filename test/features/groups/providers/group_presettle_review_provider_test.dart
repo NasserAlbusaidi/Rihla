@@ -8,9 +8,11 @@ import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_presettle_review_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/services/pre_settlement_review.dart';
 
@@ -50,10 +52,7 @@ Expense _makeExpense({
   );
 }
 
-GroupMember _makeMember({
-  required String userId,
-  bool isTombstone = false,
-}) {
+GroupMember _makeMember({required String userId, bool isTombstone = false}) {
   return GroupMember(
     id: userId,
     groupId: 'group-1',
@@ -63,6 +62,46 @@ GroupMember _makeMember({
     isTombstone: isTombstone,
     joinedAt: DateTime(2026, 1, 1),
   );
+}
+
+UserBalance _balance(String uid, String net) {
+  return UserBalance(
+    participantId: uid,
+    displayName: 'User $uid',
+    totalPaid: Decimal.zero,
+    totalOwed: Decimal.zero,
+    netBalance: Decimal.parse(net),
+  );
+}
+
+final _outstandingBalances = (
+  balances: <String, List<UserBalance>>{
+    'OMR': [_balance('uid-alice', '5'), _balance('uid-bob', '-5')],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.zero},
+  eventCount: 1,
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
+  memberNames: <String, String>{
+    'uid-alice': 'User uid-alice',
+    'uid-bob': 'User uid-bob',
+  },
+  memberRawNames: <String, String>{
+    'uid-alice': 'User uid-alice',
+    'uid-bob': 'User uid-bob',
+  },
+);
+
+List<Override> _resolvedMoneyOverrides(String groupId, List<Event> events) {
+  return [
+    groupBalancesProvider(
+      groupId,
+    ).overrideWith((_) => AsyncValue.data(_outstandingBalances)),
+    for (final event in events)
+      eventSettlementsProvider((
+        groupId: groupId,
+        eventId: event.id,
+      )).overrideWith((_) => Stream.value(const <Settlement>[])),
+  ];
 }
 
 Future<void> _pump(ProviderContainer container, String groupId) async {
@@ -92,8 +131,10 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider(groupId)
-              .overrideWith((_) => Stream.value([eventA, eventB])),
+          ..._resolvedMoneyOverrides(groupId, [eventA, eventB]),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA, eventB])),
           groupMembersProvider(groupId).overrideWith(
             (_) => Stream.value([
               _makeMember(userId: 'uid-alice'),
@@ -101,8 +142,10 @@ void main() {
               _makeMember(userId: 'uid-gone', isTombstone: true),
             ]),
           ),
-          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
-              .overrideWith(
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith(
             (_) => Stream.value([
               _makeExpense(
                 id: 'x-exact',
@@ -112,8 +155,10 @@ void main() {
               ),
             ]),
           ),
-          eventExpensesProvider((groupId: groupId, eventId: 'event-b'))
-              .overrideWith(
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-b',
+          )).overrideWith(
             (_) => Stream.value([
               _makeExpense(
                 id: 'x-gone',
@@ -146,8 +191,10 @@ void main() {
       final eventB = _makeEvent(id: 'event-b', groupId: groupId);
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider(groupId)
-              .overrideWith((_) => Stream.value([eventA, eventB])),
+          ..._resolvedMoneyOverrides(groupId, [eventA, eventB]),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA, eventB])),
           groupMembersProvider(groupId).overrideWith(
             (_) => Stream.value([
               _makeMember(userId: 'uid-alice'),
@@ -155,8 +202,10 @@ void main() {
             ]),
           ),
           // event-a: 10 of 12 total → dominant within its event.
-          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
-              .overrideWith(
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith(
             (_) => Stream.value([
               _makeExpense(id: 'x-big', tripId: 'event-a', amount: '10'),
               _makeExpense(id: 'x-small', tripId: 'event-a', amount: '2'),
@@ -164,8 +213,10 @@ void main() {
           ),
           // event-b: 100 is the LONE expense in its event → never "large",
           // even though it dominates the group-wide total.
-          eventExpensesProvider((groupId: groupId, eventId: 'event-b'))
-              .overrideWith(
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-b',
+          )).overrideWith(
             (_) => Stream.value([
               _makeExpense(id: 'x-lone', tripId: 'event-b', amount: '100'),
             ]),
@@ -190,13 +241,17 @@ void main() {
       final eventB = _makeEvent(id: 'event-b', groupId: groupId);
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider(groupId)
-              .overrideWith((_) => Stream.value([eventA, eventB])),
+          ..._resolvedMoneyOverrides(groupId, [eventA, eventB]),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA, eventB])),
           groupMembersProvider(groupId).overrideWith(
             (_) => Stream.value([_makeMember(userId: 'uid-alice')]),
           ),
-          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
-              .overrideWith(
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith(
             (_) => Stream.value([
               _makeExpense(
                 id: 'x-exact',
@@ -207,8 +262,10 @@ void main() {
             ]),
           ),
           // Never emits: event-b's basis is still assembling.
-          eventExpensesProvider((groupId: groupId, eventId: 'event-b'))
-              .overrideWith((_) => const Stream<List<Expense>>.empty()),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-b',
+          )).overrideWith((_) => const Stream<List<Expense>>.empty()),
         ],
       );
       addTearDown(container.dispose);
@@ -225,13 +282,17 @@ void main() {
       final eventB = _makeEvent(id: 'event-b', groupId: groupId);
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider(groupId)
-              .overrideWith((_) => Stream.value([eventA, eventB])),
+          ..._resolvedMoneyOverrides(groupId, [eventA, eventB]),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA, eventB])),
           groupMembersProvider(groupId).overrideWith(
             (_) => Stream.value([_makeMember(userId: 'uid-alice')]),
           ),
-          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
-              .overrideWith(
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith(
             (_) => Stream.value([
               _makeExpense(
                 id: 'x-exact',
@@ -241,8 +302,10 @@ void main() {
               ),
             ]),
           ),
-          eventExpensesProvider((groupId: groupId, eventId: 'event-b'))
-              .overrideWith(
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-b',
+          )).overrideWith(
             (_) => Stream<List<Expense>>.error(Exception('denied')),
           ),
         ],
@@ -253,58 +316,65 @@ void main() {
       final review = container.read(groupPreSettleReviewProvider(groupId));
 
       expect(review.resolved, isTrue);
-      expect(
-        review.flags.map((f) => (f.expense.id, f.reason)),
-        [('x-exact', ReviewReason.exactSplit)],
-      );
+      expect(review.flags.map((f) => (f.expense.id, f.reason)), [
+        ('x-exact', ReviewReason.exactSplit),
+      ]);
     });
 
-    test('members error -> payer check skipped, other reasons still fire',
-        () async {
-      final eventA = _makeEvent(id: 'event-a', groupId: groupId);
-      final container = ProviderContainer(
-        overrides: [
-          groupEventsProvider(groupId)
-              .overrideWith((_) => Stream.value([eventA])),
-          groupMembersProvider(groupId).overrideWith(
-            (_) => Stream<List<GroupMember>>.error(Exception('denied')),
-          ),
-          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
-              .overrideWith(
-            (_) => Stream.value([
-              _makeExpense(
-                id: 'x-exact',
-                tripId: 'event-a',
-                amount: '10',
-                payer: 'uid-unknown',
-                splitMode: SplitMode.exact,
-              ),
-            ]),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      await _pump(container, groupId);
+    test(
+      'members error -> payer check skipped, other reasons still fire',
+      () async {
+        final eventA = _makeEvent(id: 'event-a', groupId: groupId);
+        final container = ProviderContainer(
+          overrides: [
+            ..._resolvedMoneyOverrides(groupId, [eventA]),
+            groupEventsProvider(
+              groupId,
+            ).overrideWith((_) => Stream.value([eventA])),
+            groupMembersProvider(groupId).overrideWith(
+              (_) => Stream<List<GroupMember>>.error(Exception('denied')),
+            ),
+            eventExpensesProvider((
+              groupId: groupId,
+              eventId: 'event-a',
+            )).overrideWith(
+              (_) => Stream.value([
+                _makeExpense(
+                  id: 'x-exact',
+                  tripId: 'event-a',
+                  amount: '10',
+                  payer: 'uid-unknown',
+                  splitMode: SplitMode.exact,
+                ),
+              ]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await _pump(container, groupId);
 
-      final review = container.read(groupPreSettleReviewProvider(groupId));
+        final review = container.read(groupPreSettleReviewProvider(groupId));
 
-      expect(review.resolved, isTrue);
-      expect(
-        review.flags.map((f) => f.reason),
-        [ReviewReason.exactSplit],
-      );
-    });
+        expect(review.resolved, isTrue);
+        expect(review.flags.map((f) => f.reason), [ReviewReason.exactSplit]);
+      },
+    );
 
     test('unresolved while members are still loading', () async {
       final eventA = _makeEvent(id: 'event-a', groupId: groupId);
       final container = ProviderContainer(
         overrides: [
-          groupEventsProvider(groupId)
-              .overrideWith((_) => Stream.value([eventA])),
-          groupMembersProvider(groupId)
-              .overrideWith((_) => const Stream<List<GroupMember>>.empty()),
-          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
-              .overrideWith(
+          ..._resolvedMoneyOverrides(groupId, [eventA]),
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([eventA])),
+          groupMembersProvider(
+            groupId,
+          ).overrideWith((_) => const Stream<List<GroupMember>>.empty()),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: 'event-a',
+          )).overrideWith(
             (_) => Stream.value([
               _makeExpense(
                 id: 'x-exact',

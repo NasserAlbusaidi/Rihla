@@ -87,12 +87,16 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   void _maybeShowReviewSheet(
     BuildContext context,
     List<Expense> expenses, [
+    Set<String> outstandingCurrencies = const {},
     Set<String> activeParticipantIds = const {},
   ]) {
     if (_reviewSheetShown) return;
-    final flags = detectReviewWorthyExpenses(
-      expenses,
-      activeParticipantIds: activeParticipantIds,
+    final flags = filterFlagsToOutstandingCurrencies(
+      detectReviewWorthyExpenses(
+        expenses,
+        activeParticipantIds: activeParticipantIds,
+      ),
+      outstandingCurrencies,
     );
     if (flags.isEmpty) return;
     _reviewSheetShown = true;
@@ -225,20 +229,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       banner: true,
       expensesAsync.when(
         data: (expenses) {
-          final settlements = settlementsAsync.valueOrNull ?? const [];
-          // #204: gate membership-sensitive detection on resolved members so
-          // the one-shot does not latch before live members are authoritative.
-          // If members error, fall back to the old detector path so existing
-          // exact/custom/personal/large warnings still show; only the
-          // payer-left reason is skipped.
-          if (groupMembersAsync.hasValue) {
-            final activeParticipantIds = event.participantIds
-                .toSet()
-                .intersection(liveMemberIds);
-            _maybeShowReviewSheet(context, expenses, activeParticipantIds);
-          } else if (groupMembersAsync.hasError) {
-            _maybeShowReviewSheet(context, expenses);
-          }
+          final settlements = settlementsAsync.hasError
+              ? const <Settlement>[]
+              : settlementsAsync.valueOrNull ?? const [];
 
           // #249: fold departed-member split recipients into the
           // balance universe so settle-up suggestions conserve. The
@@ -285,6 +278,34 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             settlements: settlements,
             participants: participants,
           );
+          final outstandingCurrencies = {
+            for (final entry in bucketed.entries)
+              if (entry.value.any((b) => b.netBalance != Decimal.zero))
+                entry.key,
+          };
+
+          // #204/#898: gate membership-sensitive detection on resolved members
+          // and settled-bucket suppression on resolved settlements so the
+          // one-shot does not latch before live members and money-flow basis are
+          // authoritative. If members error, fall back to the old detector path
+          // so exact/custom/personal/large warnings still show; only the
+          // payer-left reason is skipped. If settlements error, the balance
+          // basis above uses empty settlements and warnings fail open.
+          if (settlementsAsync.hasValue || settlementsAsync.hasError) {
+            if (groupMembersAsync.hasValue) {
+              final activeParticipantIds = event.participantIds
+                  .toSet()
+                  .intersection(liveMemberIds);
+              _maybeShowReviewSheet(
+                context,
+                expenses,
+                outstandingCurrencies,
+                activeParticipantIds,
+              );
+            } else if (groupMembersAsync.hasError) {
+              _maybeShowReviewSheet(context, expenses, outstandingCurrencies);
+            }
+          }
 
           // #382 PR-1: one section per currency bucket, the optimizer
           // run per bucket (no cross-currency netting, ever). No money
@@ -914,7 +935,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              settlementWriteErrorMessage(l10n, classifySettlementWriteError(e)),
+              settlementWriteErrorMessage(
+                l10n,
+                classifySettlementWriteError(e),
+              ),
             ),
             backgroundColor: errorColor,
             behavior: SnackBarBehavior.floating,
