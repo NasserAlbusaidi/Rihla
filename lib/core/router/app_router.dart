@@ -21,6 +21,7 @@ import '../../features/ledger/screens/edit_expense_screen.dart';
 import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
 import '../../features/activity/screens/activity_feed_screen.dart';
+import '../../features/search/screens/search_screen.dart';
 import '../../features/auth/screens/link_email_screen.dart';
 import '../../features/auth/screens/link_email_sent_screen.dart';
 import '../../features/auth/screens/recover_pending_screen.dart';
@@ -65,6 +66,8 @@ class AppRoutes {
   static const String eventRecap = '/group/:gid/event/:eid/recap';
   // Cross-group activity (Phase 23)
   static const String activity = '/activity';
+  // Global search (#900 friction #3 — PR-5b)
+  static const String search = '/search';
 }
 
 @visibleForTesting
@@ -501,6 +504,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           // #666: top-level route entry → render the back affordance with a
           // /home fallback. The bottom-nav tab keeps the showBack:false default.
           child: const CrossGroupActivityScreen(showBack: true),
+          transitionsBuilder: _sharedAxisTransition,
+        ),
+      ),
+
+      // Global search (#900 friction #3 — PR-5b)
+      GoRoute(
+        path: AppRoutes.search,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: SearchScreen(query: state.uri.queryParameters['q']),
           transitionsBuilder: _sharedAxisTransition,
         ),
       ),
