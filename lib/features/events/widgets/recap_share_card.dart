@@ -8,6 +8,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/cover_art.dart';
+import '../../../shared/widgets/falaj_fork.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../ledger/utils/ledger_categories.dart';
@@ -463,7 +464,7 @@ class RecapShareCard extends StatelessWidget {
     );
   }
 
-  // ── Footer: settlement status pill + Rihla wordmark. ─────────────────────
+  // ── Footer: settlement status pill + Rihla wordmark + close ritual. ──────
   Widget _footer(BuildContext context, String hero) {
     final c = context.colors;
     return Column(
@@ -485,22 +486,31 @@ class RecapShareCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Row(
+            Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Container(
-                  width: 4,
-                  height: 4,
-                  decoration:
-                      BoxDecoration(color: c.primary, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 5),
                 Text('Rihla',
                     style: AppTypography.display(
                         fontSize: 17, color: c.textPrimary)),
+                const SizedBox(height: 2),
+                FalajFork(size: const Size(30, 6), color: c.primary),
               ],
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: Text(
+            context.l10n.recapRecordedInRihla,
+            style: AppTypography.caption(
+              context,
+              fontSize: 8,
+              color: c.textSecondary,
+              letterSpacing: 2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );

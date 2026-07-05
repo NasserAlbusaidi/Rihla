@@ -2883,5 +2883,9 @@
     "placeholders": {
       "count": { "type": "int" }
     }
+  },
+  "recapRecordedInRihla": "recorded in Rihla",
+  "@recapRecordedInRihla": {
+    "description": "Document-close ritual caption under the recap share card's footer wordmark, and the PDF trip receipt's closing line (Falaj rebrand PR-3 #900)."
   }
 }

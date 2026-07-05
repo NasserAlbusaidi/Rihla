@@ -6224,6 +6224,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 still to settle} other{{count} still to settle}}'**
   String recapCardStillToSettle(int count);
+
+  /// Document-close ritual caption under the recap share card's footer wordmark, and the PDF trip receipt's closing line (Falaj rebrand PR-3 #900).
+  ///
+  /// In en, this message translates to:
+  /// **'recorded in Rihla'**
+  String get recapRecordedInRihla;
 }
 
 class _AppLocalizationsDelegate

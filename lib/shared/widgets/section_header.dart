@@ -40,6 +40,28 @@ class SectionHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
+          // Leading share-notch tick — brass diamond, the ambient Falaj
+          // fork cousin (spec: the only unlimited-use form of the fork).
+          // Row order alone puts it on the leading edge under RTL; the
+          // diamond is point-symmetric so it never needs a mirror. A
+          // rotated Container has no text baseline, so in this
+          // baseline-aligned Row it would otherwise sit low against the
+          // mono label's cap-height — the bottom nudge below re-centers it.
+          Padding(
+            key: const Key('section_header_tick'),
+            padding: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
+            child: Transform.rotate(
+              angle: 0.785398, // pi/4
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            ),
+          ),
           Text(
             title.toUpperCase(),
             style: AppTypography.caption(

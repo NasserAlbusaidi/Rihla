@@ -8,6 +8,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/star_grid.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../keys/home_keys.dart';
 
@@ -163,18 +164,36 @@ class _LoadedCard extends StatelessWidget {
       );
     }
 
+    final isDarkHero = Theme.of(context).brightness == Brightness.dark;
     final card = Container(
       key: HomeKeys.balanceHeroCard,
       margin: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      padding: const EdgeInsetsDirectional.fromSTEB(22, 20, 22, 22),
       decoration: BoxDecoration(
         color: colors.cardSurface,
         borderRadius: BorderRadius.circular(context.spacing.radiusSheet),
         boxShadow: context.shadows.raised,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(context.spacing.radiusSheet),
+        child: Stack(
+          children: [
+            if (isDarkHero)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: StarGridPainter(color: colors.textPrimary),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(22, 20, 22, 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
+          ],
+        ),
       ),
     );
     if (onTap == null) return card;
@@ -258,6 +277,7 @@ class _CurrencyBlock extends StatelessWidget {
           showCurrency: false,
           size: 44,
           sign: !net.isZero,
+          polarityCaret: true,
           tone: tone,
           weight: FontWeight.w500,
         ),

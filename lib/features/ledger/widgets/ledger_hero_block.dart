@@ -5,6 +5,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/animations/stamp_entrance.dart';
 
 /// V5R hero kind — drives copy, sign treatment, and tonal color.
 enum LedgerHeroKind { positive, negative, settled, empty }
@@ -245,21 +246,25 @@ class _SettledRow extends StatelessWidget {
       runSpacing: 6,
       children: [
         Text(l10n.ledgerAllSquare, style: baseStyle),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: context.spacing.space4),
-          decoration: BoxDecoration(
-            // sage-soft tint approximation against paper bg.
-            color: colors.success.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          ),
-          child: Text(
-            l10n.ledgerSettledBadge,
-            style: AppTypography.caption(
-              context,
-              fontSize: 10,
-              color: colors.successText,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w600,
+        // Seal-settle entrance (StampMotion): the sage badge is the "seal"
+        // that presses in once the ledger reports all-square.
+        StampEntrance(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: context.spacing.space4),
+            decoration: BoxDecoration(
+              // sage-soft tint approximation against paper bg.
+              color: colors.success.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+            ),
+            child: Text(
+              l10n.ledgerSettledBadge,
+              style: AppTypography.caption(
+                context,
+                fontSize: 10,
+                color: colors.successText,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

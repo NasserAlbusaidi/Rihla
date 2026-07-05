@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -58,6 +59,7 @@ Future<Uint8List> tripReceiptToPdf(
         ..._corrections(r),
         ..._settlements(r),
         ..._balances(r),
+        ..._closeRitual(l10n),
       ],
     ),
   );
@@ -220,6 +222,29 @@ List<pw.Widget> _balances(TripReceipt r) => [
       numericColumns: {2},
     ),
 ];
+
+/// Document-close ritual caption (#900 PR-3). Text-only: the falaj fork
+/// underscore is a Flutter `CustomPaint` and isn't portable to the `pdf`
+/// package's canvas without a separate pdf-primitives redraw, so the PDF gets
+/// the caption alone (see `recap_share_card.dart` for the full fork + caption
+/// ritual on the poster surface).
+List<pw.Widget> _closeRitual(AppLocalizations l10n) => [
+  pw.SizedBox(height: 10),
+  pw.Center(
+    child: pw.Text(
+      l10n.recapRecordedInRihla,
+      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+    ),
+  ),
+];
+
+/// Test-only accessor for [_closeRitual] — the rendered `pw.Text.text.text`
+/// isn't recoverable from the finished PDF's byte stream (the embedded
+/// Type0/composite font draws glyph IDs, not literal ASCII), so tests assert
+/// against the widget tree directly instead of grepping PDF bytes.
+@visibleForTesting
+List<pw.Widget> closeRitualSectionForTest(AppLocalizations l10n) =>
+    _closeRitual(l10n);
 
 // ── Shared primitives ───────────────────────────────────────────────────────
 

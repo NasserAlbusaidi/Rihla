@@ -16,7 +16,6 @@ import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/empty_state_view.dart';
-import 'package:safar/shared/widgets/grain_overlay.dart';
 import 'package:safar/shared/widgets/loading_button.dart';
 import 'package:safar/shared/widgets/r_avatar.dart';
 import 'package:safar/shared/widgets/module_header.dart';
@@ -72,9 +71,6 @@ void main() {
           message: 'Tap below',
           actionLabel: 'Create',
           onAction: () {},
-        ),
-    'GrainOverlay': () => const GrainOverlay(
-          child: SizedBox(width: 100, height: 100),
         ),
     'RAvatar': () => const RAvatar(size: 48, name: 'Alice Smith'),
     'LoadingButton (idle)': () => LoadingButton(

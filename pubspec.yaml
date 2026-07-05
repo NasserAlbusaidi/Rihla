@@ -129,7 +129,6 @@ flutter:
 
 
   assets:
-    - assets/textures/grain.png
     - assets/glyphs/
     # Bundled-font licenses (SIL OFL 1.1) — registered at runtime via LicenseRegistry.
     - assets/fonts/OFL-Bricolage.txt

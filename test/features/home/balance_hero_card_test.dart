@@ -334,5 +334,27 @@ void main() {
         expect(find.textContaining('7.000'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'Test 10 (#900 comp 6): hero net renders the polarity caret, '
+      'legend lines do not',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(
+            child: const BalanceHeroCard(),
+            overrides: [
+              crossGroupHomeBalanceProvider.overrideWith(
+                (ref) => AsyncValue.data(_once(_omr('3.250', groupCount: 1))),
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+
+        // The hero net (owed) shows the caret; only that one RAmount opts in.
+        expect(find.textContaining('▲', findRichText: true), findsOneWidget);
+        expect(find.textContaining('▼', findRichText: true), findsNothing);
+      },
+    );
   });
 }

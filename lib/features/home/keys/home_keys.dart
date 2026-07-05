@@ -27,6 +27,8 @@ abstract final class HomeKeys {
 
   // Dashboard sections
   static const balanceHeroCard = Key('home_balance_hero_card');
+  // Falaj rebrand PR-3: brass corner seal on the journey ticket stub.
+  static const journeyTicketSeal = Key('home_journey_ticket_seal');
   // #244: shown on the hero when the cross-group balance is a partial sum
   // (a per-event money read failed for some group).
   static const balanceIncompleteNotice = Key('home_balance_incomplete_notice');

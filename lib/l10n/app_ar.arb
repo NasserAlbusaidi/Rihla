@@ -1072,5 +1072,6 @@
   "recapCardBiggest": "أكبر مصروف",
   "recapCardWhereItWent": "إلى أين ذهبت",
   "recapCardAllSettled": "تمت التسوية",
-  "recapCardStillToSettle": "{count, plural, =0{لا شيء للتسوية} =1{واحد بانتظار التسوية} =2{اثنان بانتظار التسوية} few{{count} بانتظار التسوية} many{{count} بانتظار التسوية} other{{count} بانتظار التسوية}}"
+  "recapCardStillToSettle": "{count, plural, =0{لا شيء للتسوية} =1{واحد بانتظار التسوية} =2{اثنان بانتظار التسوية} few{{count} بانتظار التسوية} many{{count} بانتظار التسوية} other{{count} بانتظار التسوية}}",
+  "recapRecordedInRihla": "مُسجَّل في رِحلة"
 }

@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/utils/localized_dates.dart';
+import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
 
 /// "Ticket stub"-styled card for one journey on the home Active Journeys
@@ -93,71 +95,86 @@ class JourneyTicketCard extends StatelessWidget {
             // own bounds and the parent card's antiAlias clip turns them into
             // half-moon bites at the card's vertical edges.
             _Perforation(
-              ruleColor: colors.rule2,
+              // Brass tear-line — hairline-weight so it doesn't shout.
+              ruleColor: colors.primary.withValues(alpha: 0.35),
               holeColor: colors.scaffoldBackground,
             ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.displayOf(
-                      context,
-                      fontSize: 18,
-                      color: colors.textPrimary,
-                      letterSpacing: -0.2,
-                      height: 1.15,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+            Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: entry.memberNames.isEmpty
-                            ? const SizedBox.shrink()
-                            : RAvatarStack(
-                                names: entry.memberNames,
-                                size: 20,
-                                max: 3,
-                              ),
+                      Text(
+                        entry.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.displayOf(
+                          context,
+                          fontSize: 18,
+                          color: colors.textPrimary,
+                          letterSpacing: -0.2,
+                          height: 1.15,
+                        ),
                       ),
-                      // One line per non-zero currency bucket (#382 PR-5);
-                      // empty → today's single zero line in fallbackCurrency.
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          if (entry.nets.isEmpty)
-                            RAmount(
-                              value: Decimal.zero,
-                              currency: entry.fallbackCurrency,
-                              size: 14,
-                              sign: true,
-                            )
-                          else
-                            for (var i = 0; i < entry.nets.length; i++)
-                              Padding(
-                                padding: EdgeInsetsDirectional.only(
-                                  top: i == 0 ? 0 : 2,
-                                ),
-                                child: RAmount(
-                                  value: entry.nets[i].net,
-                                  currency: entry.nets[i].currency,
-                                  size: entry.nets.length == 1 ? 14 : 12,
+                          Expanded(
+                            child: entry.memberNames.isEmpty
+                                ? const SizedBox.shrink()
+                                : RAvatarStack(
+                                    names: entry.memberNames,
+                                    size: 20,
+                                    max: 3,
+                                  ),
+                          ),
+                          // One line per non-zero currency bucket (#382
+                          // PR-5); empty → today's single zero line in
+                          // fallbackCurrency.
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (entry.nets.isEmpty)
+                                RAmount(
+                                  value: Decimal.zero,
+                                  currency: entry.fallbackCurrency,
+                                  size: 14,
                                   sign: true,
-                                ),
-                              ),
+                                )
+                              else
+                                for (var i = 0; i < entry.nets.length; i++)
+                                  Padding(
+                                    padding: EdgeInsetsDirectional.only(
+                                      top: i == 0 ? 0 : 2,
+                                    ),
+                                    child: RAmount(
+                                      value: entry.nets[i].net,
+                                      currency: entry.nets[i].currency,
+                                      size: entry.nets.length == 1 ? 14 : 12,
+                                      sign: true,
+                                    ),
+                                  ),
+                            ],
+                          ),
                         ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                // "Port stamp" placeholder — a plain brass ring, not a glyph
+                // (the 12 glyph stamps are an explicit fast-follow). Sits
+                // off the cover band, on the content stub's outer corner.
+                Positioned.directional(
+                  textDirection: Directionality.of(context),
+                  top: 10,
+                  end: 10,
+                  child: _BrassSeal(key: HomeKeys.journeyTicketSeal, colors: colors),
+                ),
+              ],
             ),
           ],
         ),
@@ -180,6 +197,27 @@ class JourneyTicketCard extends StatelessWidget {
     }
     return null;
   }
+}
+
+// ────────── Brass corner seal ("port stamp" placeholder) ──────────
+
+/// A plain brass ring seal — the interim "port stamp" until the 12 glyph
+/// stamps get a full redraw (explicit fast-follow, out of scope here).
+class _BrassSeal extends StatelessWidget {
+  const _BrassSeal({super.key, required this.colors});
+
+  final AppColorTokens colors;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 18,
+    height: 18,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: colors.saffronTint,
+      border: Border.all(color: colors.primary, width: 1.5),
+    ),
+  );
 }
 
 // ────────── Perforation (dashed rule + edge punch holes) ──────────
