@@ -3818,4 +3818,26 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get recapRecordedInRihla => 'مُسجَّل في رِحلة';
+
+  @override
+  String get searchTitle => 'بحث';
+
+  @override
+  String get searchHint => 'البحث في المجموعات والفعاليات';
+
+  @override
+  String get searchEmpty => 'لا توجد نتائج';
+
+  @override
+  String get searchSectionGroups => 'المجموعات';
+
+  @override
+  String get searchSectionEvents => 'الفعاليات';
+
+  @override
+  String get searchEventEnded => 'منتهية';
+
+  @override
+  String get searchScopeLabel =>
+      'المجموعات والفعاليات، بما فيها الفعاليات السابقة';
 }

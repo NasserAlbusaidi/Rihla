@@ -1077,5 +1077,12 @@
   "recapCardWhereItWent": "إلى أين ذهبت",
   "recapCardAllSettled": "تمت التسوية",
   "recapCardStillToSettle": "{count, plural, =0{لا شيء للتسوية} =1{واحد بانتظار التسوية} =2{اثنان بانتظار التسوية} few{{count} بانتظار التسوية} many{{count} بانتظار التسوية} other{{count} بانتظار التسوية}}",
-  "recapRecordedInRihla": "مُسجَّل في رِحلة"
+  "recapRecordedInRihla": "مُسجَّل في رِحلة",
+  "searchTitle": "بحث",
+  "searchHint": "البحث في المجموعات والفعاليات",
+  "searchEmpty": "لا توجد نتائج",
+  "searchSectionGroups": "المجموعات",
+  "searchSectionEvents": "الفعاليات",
+  "searchEventEnded": "منتهية",
+  "searchScopeLabel": "المجموعات والفعاليات، بما فيها الفعاليات السابقة"
 }
