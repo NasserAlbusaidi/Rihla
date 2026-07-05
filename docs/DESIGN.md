@@ -383,7 +383,7 @@ issue.)_
 - **KEEP-2 — Palette + semantics:** warm tones, sage = positive, salmon/rust = negative; holds in light + dark (§2).
 - **KEEP-3 — Settle-Up dashed-arrow transfer cards** — clear who-pays-whom.
 - **KEEP-4 — RTL build:** logo lockup, mirroring, localized strings (§7).
-- **KEEP-5 — Copy voice:** "everyone's even" / "كل شيء متوازن" (§11).
+- **KEEP-5 — Copy voice:** "everyone's even" / "الجميع متوازن" (`settleUpEveryoneEvenHeadline`; the ledger surface says "All square." / "كل شيء متوازن" — don't splice the pairs) (§11).
 - **KEEP-6 — Ticket / boarding-pass trip cards:** perforated tear-line, side notches, per-trip gradient. Best visual idea — protect and extend.
 - **KEEP-7 — "Expense saved · synced with cloud" modal** — offline-first feedback.
 - **KEEP-8 — Light theme execution:** cream/white card hierarchy (§2, §5).
