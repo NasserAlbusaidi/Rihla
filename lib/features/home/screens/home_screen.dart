@@ -549,8 +549,23 @@ class _TopBar extends ConsumerWidget {
             const Spacer(),
             const WordmarkLogo(size: 22),
             const Spacer(),
+            // #900 friction #3 — PR-5b: global search entry point. Sits left
+            // of the bell in the right cluster; accepted composition shift
+            // (avatar left vs bell+search right) per the Gate-cleared spec.
+            _IconCircle(
+              key: HomeKeys.searchButton,
+              badgeKey: HomeKeys.searchButtonBadge,
+              icon: Iconsax.search_normal,
+              semanticLabel: context.l10n.searchTitle,
+              onTap: () {
+                HapticService.lightClick();
+                context.push('/search');
+              },
+            ),
+            SizedBox(width: context.spacing.space4),
             _IconCircle(
               key: HomeKeys.activityBell,
+              badgeKey: HomeKeys.bellUnreadBadge,
               icon: Iconsax.activity,
               showBadge: ref.watch(activityUnreadProvider),
               semanticLabel: context.l10n.homeBottomNavActivity,
@@ -647,6 +662,7 @@ class _IconCircle extends StatelessWidget {
     super.key,
     required this.icon,
     required this.onTap,
+    required this.badgeKey,
     this.showBadge = false,
     this.semanticLabel,
   });
@@ -659,6 +675,12 @@ class _IconCircle extends StatelessWidget {
   // NavigationDestination icon) so `isLabelVisible` alone toggles the dot.
   final bool showBadge;
   final String? semanticLabel;
+
+  // PR-5b: the internal Badge's key is per-instance now (was hardcoded to
+  // HomeKeys.bellUnreadBadge) — a second _IconCircle (the search button)
+  // would otherwise collide on that key and break `find.byKey`/
+  // `tester.widget<Badge>` lookups for BOTH icons.
+  final Key badgeKey;
 
   @override
   Widget build(BuildContext context) {
@@ -673,7 +695,7 @@ class _IconCircle extends StatelessWidget {
           width: 40,
           height: 40,
           child: Badge(
-            key: HomeKeys.bellUnreadBadge,
+            key: badgeKey,
             isLabelVisible: showBadge,
             smallSize: 8,
             backgroundColor: colors.primary,

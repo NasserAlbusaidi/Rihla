@@ -2908,5 +2908,34 @@
   "recapRecordedInRihla": "recorded in Rihla",
   "@recapRecordedInRihla": {
     "description": "Document-close ritual caption under the recap share card's footer wordmark, and the PDF trip receipt's closing line (Falaj rebrand PR-3 #900)."
+  },
+
+  "searchTitle": "Search",
+  "@searchTitle": {
+    "description": "Global search entry-point semantic label (home top-bar icon) and back-button destination title (#900 friction #3 — PR-5b)."
+  },
+  "searchHint": "Search groups and events",
+  "@searchHint": {
+    "description": "Placeholder text in the global search field. Cold /search (no query) shows this same hint — no separate empty-state panel (PR-5b)."
+  },
+  "searchEmpty": "No matches",
+  "@searchEmpty": {
+    "description": "Global search zero-results state for a non-empty query. STATIC — no {query} placeholder, unlike activitySearchNoMatchesMessage (PR-5b)."
+  },
+  "searchSectionGroups": "Groups",
+  "@searchSectionGroups": {
+    "description": "Global search results section header for matched groups (rendered uppercase by SectionHeader, PR-5b)."
+  },
+  "searchSectionEvents": "Events",
+  "@searchSectionEvents": {
+    "description": "Global search results section header for matched events, open and closed (rendered uppercase by SectionHeader, PR-5b)."
+  },
+  "searchEventEnded": "Ended",
+  "@searchEventEnded": {
+    "description": "Compact pill on a closed event's search result row — a lifecycle marker (event.isClosed), never the balance-state 'settled' (PR-5b)."
+  },
+  "searchScopeLabel": "Groups and events, including past events",
+  "@searchScopeLabel": {
+    "description": "Rendered scope line above global search results, making the v1 search scope (groups + events, no expenses) honest on screen (PR-5b Gate R2 P1 fix)."
   }
 }
