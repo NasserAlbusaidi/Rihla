@@ -94,7 +94,7 @@ void main() {
         offenders,
         isEmpty,
         reason:
-            'Material buttons below 40dp can clip Geist descenders; use the '
+            'Material buttons below 40dp can clip Zain descenders; use the '
             'theme defaults or a compact 40dp+ override with explicit line height.',
       );
     },

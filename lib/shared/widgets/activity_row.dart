@@ -154,10 +154,12 @@ class _GroupChip extends StatelessWidget {
       ),
       child: Text(
         groupName,
+        // #900 Falaj w500 mitigation: size bump (was 11) + one ink-step
+        // darker (textSecondary -> ink2) — Zain collapses w500->w400.
         style: AppTypography.sans(
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: colors.textSecondary,
+          color: colors.ink2,
         ),
       ),
     );

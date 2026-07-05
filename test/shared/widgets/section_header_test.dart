@@ -15,7 +15,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets(
-    'EN: title keeps the mono caption recipe — Geist Mono, 1.2 tracking, '
+    'EN: title keeps the mono caption recipe — Spline Sans Mono, 1.2 tracking, '
     'uppercase',
     (tester) async {
       await pumpRihlaApp(

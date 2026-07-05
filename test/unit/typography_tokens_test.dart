@@ -36,13 +36,13 @@ Future<BuildContext> _localizedContext(
 /// family name (no synthetic `Family_variant` suffix), so these are plain
 /// `test()`s with no async font-load machinery.
 void main() {
-  group('AppTypography.sans (Geist)', () {
+  group('AppTypography.sans (Zain)', () {
     test(
-      'uses the bundled Geist family, defaults to w400, no tabular by default',
+      'uses the bundled Zain family, defaults to w400, no tabular by default',
       () {
         final style = AppTypography.sans(fontSize: 16);
         expect(style.fontFamily, AppTypography.sansFamily);
-        expect(style.fontFamily, 'Geist');
+        expect(style.fontFamily, 'Zain');
         expect(style.fontWeight, FontWeight.w400);
         expect(style.fontStyle, isNot(FontStyle.italic));
         expect(style.fontFeatures, isNull);
@@ -55,13 +55,13 @@ void main() {
     });
   });
 
-  group('AppTypography.mono (Geist Mono)', () {
+  group('AppTypography.mono (Spline Sans Mono)', () {
     test(
-      'uses the bundled Geist Mono family, defaults to w500, always tabular',
+      'uses the bundled Spline Sans Mono family, defaults to w500, always tabular',
       () {
         final style = AppTypography.mono(fontSize: 14);
         expect(style.fontFamily, AppTypography.monoFamily);
-        expect(style.fontFamily, 'Geist Mono');
+        expect(style.fontFamily, 'Spline Sans Mono');
         expect(style.fontWeight, FontWeight.w500);
         expect(style.fontFeatures, AppTypography.tabularNumberFeatures);
       },
@@ -91,15 +91,15 @@ void main() {
     });
   });
 
-  group('AppTypography.display (Instrument Serif)', () {
+  group('AppTypography.display (Bricolage Grotesque)', () {
     test(
-      'uses the bundled Instrument Serif family, italic by default, w400',
+      'uses the bundled Bricolage Grotesque family, upright by default, w700',
       () {
         final style = AppTypography.display(fontSize: 28);
         expect(style.fontFamily, AppTypography.displayFamily);
-        expect(style.fontFamily, 'Instrument Serif');
-        expect(style.fontStyle, FontStyle.italic);
-        expect(style.fontWeight, FontWeight.w400);
+        expect(style.fontFamily, 'Bricolage Grotesque');
+        expect(style.fontStyle, isNot(FontStyle.italic));
+        expect(style.fontWeight, FontWeight.w700);
       },
     );
 
@@ -146,7 +146,7 @@ void main() {
         );
         final monoStyle = AppTypography.mono(fontSize: 11, letterSpacing: 1.2);
         expect(style.fontFamily, AppTypography.monoFamily);
-        expect(style.fontFamily, 'Geist Mono');
+        expect(style.fontFamily, 'Spline Sans Mono');
         expect(
           style.fontWeight,
           FontWeight.w500,
@@ -170,7 +170,7 @@ void main() {
         letterSpacing: 1.2,
       );
       expect(style.fontFamily, AppTypography.sansFamily);
-      expect(style.fontFamily, 'Geist');
+      expect(style.fontFamily, 'Zain');
       expect(style.fontWeight, FontWeight.w700);
       expect(style.letterSpacing, 0);
       expect(style.fontSize, 11);
@@ -186,25 +186,29 @@ void main() {
   });
 
   group('AppTypography.displayOf (locale-aware display, #841)', () {
-    testWidgets('EN: italic Instrument Serif, w400 default — display() as-is', (
-      tester,
-    ) async {
-      final context = await _localizedContext(tester, const Locale('en'));
-      final style = AppTypography.displayOf(context, fontSize: 28);
-      expect(style.fontFamily, AppTypography.displayFamily);
-      expect(style.fontStyle, FontStyle.italic);
-      expect(style.fontWeight, FontWeight.w400);
-      expect(style, AppTypography.display(fontSize: 28));
-    });
+    testWidgets(
+      'EN: upright Bricolage Grotesque, w700 default — display() as-is',
+      (tester) async {
+        final context = await _localizedContext(tester, const Locale('en'));
+        final style = AppTypography.displayOf(context, fontSize: 28);
+        expect(style.fontFamily, AppTypography.displayFamily);
+        expect(style.fontStyle, isNot(FontStyle.italic));
+        expect(style.fontWeight, FontWeight.w700);
+        expect(style, AppTypography.display(fontSize: 28));
+      },
+    );
 
-    testWidgets('AR: upright w500 default — no synthetic italic', (
-      tester,
-    ) async {
-      final context = await _localizedContext(tester, const Locale('ar'));
-      final style = AppTypography.displayOf(context, fontSize: 28);
-      expect(style.fontStyle, FontStyle.normal);
-      expect(style.fontWeight, FontWeight.w500);
-    });
+    testWidgets(
+      'AR: MANDATORY reroute to sans/Zain w700 — Bricolage has no Arabic '
+      'glyphs (R1)',
+      (tester) async {
+        final context = await _localizedContext(tester, const Locale('ar'));
+        final style = AppTypography.displayOf(context, fontSize: 28);
+        expect(style.fontFamily, AppTypography.sansFamily);
+        expect(style.fontStyle, isNot(FontStyle.italic));
+        expect(style.fontWeight, FontWeight.w700);
+      },
+    );
 
     testWidgets('AR: explicit fontWeight is honored', (tester) async {
       final context = await _localizedContext(tester, const Locale('ar'));
@@ -225,7 +229,7 @@ void main() {
         fontSize: 28,
         italic: true,
       );
-      expect(style.fontStyle, FontStyle.normal);
+      expect(style.fontStyle, isNot(FontStyle.italic));
     });
   });
 }

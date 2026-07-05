@@ -4,18 +4,19 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Maps each bundled font license asset to the family names it covers.
 const Map<String, List<String>> _fontLicenseAssets = {
-  'assets/fonts/OFL-Geist.txt': ['Geist'],
-  'assets/fonts/OFL-GeistMono.txt': ['Geist Mono'],
+  'assets/fonts/OFL-Bricolage.txt': ['Bricolage Grotesque'],
+  'assets/fonts/OFL-Zain.txt': ['Zain'],
+  'assets/fonts/OFL-SplineSansMono.txt': ['Spline Sans Mono'],
   'assets/fonts/OFL-ReemKufi.txt': ['Rihla Arabic Display'],
-  'assets/fonts/OFL-InstrumentSerif.txt': ['Instrument Serif'],
   // PDF-only face (#704 Slice B): embedded in the Trip Receipt PDF for Arabic
   // glyph fallback, not a Flutter UI font — still bundled, so its license shows.
   'assets/fonts/OFL-NotoSansArabic.txt': ['Noto Sans Arabic'],
 };
 
-/// Brand faces (Geist / Geist Mono / Instrument Serif plus a Reem Kufi Arabic
-/// wordmark subset) are bundled as app assets and resolved natively by the
-/// Flutter font engine, so no font is ever fetched at runtime (#103).
+/// Brand faces (Bricolage Grotesque / Zain / Spline Sans Mono plus a Reem
+/// Kufi Arabic wordmark subset) are bundled as app assets and resolved
+/// natively by the Flutter font engine, so no font is ever fetched at
+/// runtime (#103).
 ///
 /// This disables `google_fonts` runtime CDN fetching as a regression guard —
 /// any stray runtime google-fonts lookup that slips back in will throw loudly

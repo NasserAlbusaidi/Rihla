@@ -2,15 +2,15 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Brand typography system for the saffron travel-journal direction.
+/// Brand typography system for the Falaj travel-journal direction.
 ///
-/// - [display] — Instrument Serif italic. Hero numerals, screen titles, the
-///   "Rihla" wordmark. Use sparingly; this is the emotional voice.
+/// - [display] — Bricolage Grotesque, upright. Hero numerals, screen titles,
+///   the "Rihla" wordmark. Use sparingly; this is the emotional voice.
 ///   Locale-visible text goes through [displayOf] instead (#841).
-/// - [sans] — Geist. Default UI text, labels, buttons.
-/// - [mono] — Geist Mono with tabular figures. Numerals/codes only: money
-///   amounts, currency codes, invite codes, dates-as-figures. Translatable
-///   captions go through [caption] instead (#841).
+/// - [sans] — Zain. Default UI text, labels, buttons.
+/// - [mono] — Spline Sans Mono with tabular figures. Numerals/codes only:
+///   money amounts, currency codes, invite codes, dates-as-figures.
+///   Translatable captions go through [caption] instead (#841).
 ///
 /// Use the helper methods (`AppTypography.display(...)`) when you need a
 /// one-off style outside the [TextTheme] hierarchy. For ambient text styles,
@@ -19,15 +19,15 @@ import 'package:flutter/material.dart';
 class AppTypography {
   const AppTypography._();
 
-  /// Geist family name. Matches the `family:` declared in `pubspec.yaml`
-  /// `flutter: fonts:` for the bundled `Geist[wght].ttf` variable face.
-  static const String sansFamily = 'Geist';
+  /// Zain family name. Matches the `family:` declared in `pubspec.yaml`
+  /// `flutter: fonts:` for the bundled static `Zain-{400,700,800}.ttf` cuts.
+  static const String sansFamily = 'Zain';
 
-  /// Instrument Serif family name (italic by default in display helpers).
-  static const String displayFamily = 'Instrument Serif';
+  /// Bricolage Grotesque family name (upright — no italic cut is bundled).
+  static const String displayFamily = 'Bricolage Grotesque';
 
-  /// Geist Mono family name.
-  static const String monoFamily = 'Geist Mono';
+  /// Spline Sans Mono family name.
+  static const String monoFamily = 'Spline Sans Mono';
 
   /// Arabic display family name. Backed by a tiny Reem Kufi subset containing
   /// only the current Arabic wordmark glyphs (#636).
@@ -41,17 +41,18 @@ class AppTypography {
     FontFeature.tabularFigures(),
   ];
 
-  /// Italic display style — Instrument Serif.
+  /// Display style — Bricolage Grotesque, upright.
   ///
-  /// Italic is the default because the wireframe uses italic display
-  /// almost exclusively. Pass `italic: false` to opt out.
+  /// Bricolage ships no italic cut, so italic defaults off (would otherwise
+  /// synthesize a fake slant). Pass `italic: true` only for a deliberate
+  /// one-off synthetic slant.
   static TextStyle display({
     required double fontSize,
     Color? color,
-    FontWeight fontWeight = FontWeight.w400,
+    FontWeight fontWeight = FontWeight.w700,
     double? letterSpacing,
     double? height,
-    bool italic = true,
+    bool italic = false,
   }) {
     return TextStyle(
       fontFamily: displayFamily,
@@ -89,7 +90,7 @@ class AppTypography {
     );
   }
 
-  /// Sans style — Geist. Body, labels, buttons.
+  /// Sans style — Zain. Body, labels, buttons.
   static TextStyle sans({
     required double fontSize,
     Color? color,
@@ -109,7 +110,7 @@ class AppTypography {
     );
   }
 
-  /// Mono style — Geist Mono with tabular figures (plain, un-slashed zero).
+  /// Mono style — Spline Sans Mono with tabular figures (plain, un-slashed zero).
   ///
   /// Numerals and codes ONLY: money amounts, currency codes, invite codes,
   /// dates-as-figures, version strings. Never translatable copy — that's
@@ -165,9 +166,10 @@ class AppTypography {
     );
   }
 
-  /// Locale-aware display. Latin: italic Instrument Serif (unchanged).
-  /// Arabic: Instrument Serif carries no Arabic glyphs — the renderer falls
-  /// back to the system face; upright w500 replaces the synthetic slant.
+  /// Locale-aware display. Latin: upright Bricolage Grotesque (#900).
+  /// Arabic: Bricolage Grotesque carries ZERO Arabic glyphs — MANDATORY
+  /// reroute to [sans] (Zain), upright w700, never [display] (tofu/system
+  /// fallback otherwise). Do not revert this branch to `display(...)`.
   static TextStyle displayOf(
     BuildContext context, {
     required double fontSize,
@@ -175,26 +177,25 @@ class AppTypography {
     FontWeight? fontWeight,
     double? letterSpacing,
     double? height,
-    bool italic = true,
+    bool italic = false,
   }) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     if (!isArabic) {
       return display(
         fontSize: fontSize,
         color: color,
-        fontWeight: fontWeight ?? FontWeight.w400,
+        fontWeight: fontWeight ?? FontWeight.w700,
         letterSpacing: letterSpacing,
         height: height,
         italic: italic,
       );
     }
-    return display(
+    return sans(
       fontSize: fontSize,
       color: color,
-      fontWeight: fontWeight ?? FontWeight.w500,
+      fontWeight: fontWeight ?? FontWeight.w700,
       letterSpacing: 0,
       height: height,
-      italic: false,
     );
   }
 }
