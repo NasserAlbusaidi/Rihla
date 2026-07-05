@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Falaj — Rihla design proposal</title>
+<style>
+/* Falaj rebrand proposal - approved 2026-07-05 (3/3 judge panel, owner-approved).
+   Canonical rendered version (embedded fonts): claude.ai artifact 852544d4-a009-4253-833a-8424e2ab68db
+   Program plan: docs/plans/2026-07-05-falaj-rebrand.md
+   Fonts load from Google Fonts when online; offline degrades to system faces. */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Zain:wght@400;700;800&family=Spline+Sans+Mono:wght@400;500;700&display=swap');
+
+:root {
+  --bg:#F6F7F5; --bg2:#ECEEE8; --card:#FFFFFF; --soft:#F1F2ED;
+  --ink:#1B1F1E; --ink2:#333A38; --ink3:#5C6462; --mut:#8B918D;
+  --line:#E3E6E0; --line2:#CDD2CA;
+  --brass:#8A5D0D; --brassBright:#96660F; --brassDark:#6F4A08;
+  --tint:#F1F2DF; --softAccent:#E3E4C9;
+  --pos:#175A44; --posS:#1F7A5C; --neg:#8A2430; --negS:#B03A48; --warn:#C2410C;
+  --heroInk:#1B1F1E; --heroCard:#FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#111514; --bg2:#0C0F0E; --card:#1A201E; --soft:#242B28;
+    --ink:#ECEFEA; --ink2:#C9CFC9; --ink3:#9AA39E; --mut:#6E7773;
+    --line:#2A322F; --line2:#3A433F;
+    --brass:#D9A845; --brassBright:#D9A845; --brassDark:#B8862B;
+    --tint:#2C2A20; --softAccent:#3A3626;
+    --pos:#7FD6AE; --posS:#4FBE8F; --neg:#F0A3AB; --negS:#E0707B; --warn:#E8703A;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#111514; --bg2:#0C0F0E; --card:#1A201E; --soft:#242B28;
+  --ink:#ECEFEA; --ink2:#C9CFC9; --ink3:#9AA39E; --mut:#6E7773;
+  --line:#2A322F; --line2:#3A433F;
+  --brass:#D9A845; --brassBright:#D9A845; --brassDark:#B8862B;
+  --tint:#2C2A20; --softAccent:#3A3626;
+  --pos:#7FD6AE; --posS:#4FBE8F; --neg:#F0A3AB; --negS:#E0707B; --warn:#E8703A;
+}
+:root[data-theme="light"] {
+  --bg:#F6F7F5; --bg2:#ECEEE8; --card:#FFFFFF; --soft:#F1F2ED;
+  --ink:#1B1F1E; --ink2:#333A38; --ink3:#5C6462; --mut:#8B918D;
+  --line:#E3E6E0; --line2:#CDD2CA;
+  --brass:#8A5D0D; --brassBright:#96660F; --brassDark:#6F4A08;
+  --tint:#F1F2DF; --softAccent:#E3E4C9;
+  --pos:#175A44; --posS:#1F7A5C; --neg:#8A2430; --negS:#B03A48; --warn:#C2410C;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'Zain', 'Segoe UI', system-ui, sans-serif;
+  font-size:17.5px; line-height:1.62; font-weight:400;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:1060px; margin:0 auto; padding:0 28px; }
+h1,h2,h3 { font-family:'Bricolage Grotesque', 'Zain', system-ui, sans-serif; color:var(--ink); line-height:1.12; text-wrap:balance; margin:0 0 14px; }
+h1 { font-size:56px; font-weight:800; letter-spacing:-0.015em; }
+h2 { font-size:34px; font-weight:700; letter-spacing:-0.01em; margin-top:8px; }
+h3 { font-size:21px; font-weight:700; margin-top:26px; }
+p { margin:0 0 14px; max-width:72ch; }
+a { color:var(--brass); }
+strong { font-weight:700; color:var(--ink); }
+.mono { font-family:'Spline Sans Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-variant-numeric:tabular-nums; }
+.muted { color:var(--ink3); }
+section { padding:64px 0 40px; }
+section + section { border-top:1px solid var(--line); }
+
+.eyebrow {
+  font-family:'Spline Sans Mono', ui-monospace, monospace;
+  font-size:12.5px; font-weight:500; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ink3); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.eyebrow::before { content:""; width:7px; height:7px; background:var(--brass); transform:rotate(45deg); flex:0 0 auto; }
+
+.fork { color:var(--brass); display:block; }
+[dir="rtl"] .fork { transform:scaleX(-1); }
+
+/* ---------- hero ---------- */
+.hero { padding:84px 0 56px; }
+.lockup { display:flex; align-items:baseline; gap:22px; flex-wrap:wrap; }
+.lockup .latin { font-family:'Bricolage Grotesque'; font-weight:800; font-size:84px; letter-spacing:-0.02em; line-height:1; }
+.lockup .arabic { font-family:'Zain'; font-weight:800; font-size:72px; line-height:1; }
+.tagline { font-size:22px; color:var(--ink3); margin:18px 0 6px; }
+.tagline .ar { font-weight:700; color:var(--ink2); }
+.chips { display:flex; gap:10px; flex-wrap:wrap; margin-top:26px; }
+.chip {
+  font-family:'Spline Sans Mono', monospace; font-size:12.5px; letter-spacing:.02em;
+  border:1px solid var(--line2); border-radius:999px; padding:7px 14px; color:var(--ink2);
+  background:var(--card);
+}
+.chip b { color:var(--brass); font-weight:700; }
+
+/* ---------- generic cards / tables ---------- */
+.card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:24px 26px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+@media (max-width:880px){ .grid2,.grid3{ grid-template-columns:1fr; } }
+
+.tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:16px; background:var(--card); }
+table { border-collapse:collapse; width:100%; font-size:15.5px; }
+th { font-family:'Spline Sans Mono', monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:500; color:var(--ink3); text-align:left; padding:12px 16px; border-bottom:1px solid var(--line2); white-space:nowrap; }
+td { padding:11px 16px; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:last-child td { border-bottom:none; }
+td.num { font-family:'Spline Sans Mono', monospace; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.up { color:var(--pos); font-weight:700; } .down { color:var(--neg); font-weight:700; }
+
+pre.tree {
+  font-family:'Spline Sans Mono', monospace; font-size:13px; line-height:1.55;
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:20px 24px; overflow-x:auto; color:var(--ink2); margin:0;
+}
+.treecap { font-size:13.5px; color:var(--mut); margin-top:8px; }
+
+/* ---------- swatches ---------- */
+.swgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+.sw { border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--card); }
+.sw .c { height:58px; }
+.sw .m { padding:9px 12px 10px; }
+.sw .role { font-size:13px; font-weight:700; line-height:1.25; }
+.sw .hex { font-family:'Spline Sans Mono', monospace; font-size:11.5px; color:var(--ink3); margin-top:2px; }
+.sw .note { font-size:11.5px; color:var(--mut); line-height:1.35; margin-top:2px; }
+
+.strip { display:flex; border-radius:14px; overflow:hidden; border:1px solid var(--line); height:72px; }
+.strip > div { flex:1; display:flex; align-items:flex-end; padding:8px 10px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; }
+
+/* ---------- direction boards ---------- */
+.dir { display:flex; flex-direction:column; gap:14px; }
+.dir .mini { display:flex; height:44px; border-radius:10px; overflow:hidden; border:1px solid var(--line); }
+.dir .mini div { flex:1; }
+.dir h3 { margin-top:2px; }
+.dir .win { font-family:'Spline Sans Mono',monospace; font-size:11px; letter-spacing:.12em; color:var(--brass); font-weight:700; text-transform:uppercase; }
+.score { font-family:'Spline Sans Mono',monospace; font-size:13px; color:var(--ink3); }
+
+/* ---------- type specimens ---------- */
+.spec { display:flex; flex-direction:column; gap:6px; padding:26px; background:var(--card); border:1px solid var(--line); border-radius:20px; }
+.spec .lab { font-family:'Spline Sans Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mut); margin-top:14px; }
+.spec .lab:first-child { margin-top:0; }
+
+/* ---------- phones ---------- */
+.phones { display:flex; gap:26px; overflow-x:auto; padding:10px 4px 26px; }
+.phcol { flex:0 0 auto; width:340px; }
+.phcap { font-size:14px; color:var(--ink3); margin-top:12px; line-height:1.45; padding:0 6px; }
+.phcap b { color:var(--ink); }
+.phone {
+  width:340px; border-radius:44px; padding:9px;
+  background:#181c1a;
+  box-shadow:0 18px 40px rgba(10,14,12,.22);
+}
+.screen { border-radius:36px; overflow:hidden; height:672px; display:flex; flex-direction:column; background:var(--p-bg); color:var(--p-ink); font-size:14px; line-height:1.4; position:relative; }
+.ph-light { --p-bg:#F6F7F5; --p-bg2:#ECEEE8; --p-card:#FFFFFF; --p-soft:#F1F2ED; --p-ink:#1B1F1E; --p-ink2:#333A38; --p-ink3:#5C6462; --p-mut:#8B918D; --p-line:#E3E6E0; --p-line2:#CDD2CA; --p-brass:#8A5D0D; --p-brassS:#E3E4C9; --p-tint:#F1F2DF; --p-pos:#175A44; --p-posS:#1F7A5C; --p-neg:#8A2430; --p-negS:#B03A48; --p-onbrass:#FFFFFF; --p-hdr1:#1B1F1E; --p-hdr2:#333A38; }
+.ph-dark  { --p-bg:#111514; --p-bg2:#0C0F0E; --p-card:#1A201E; --p-soft:#242B28; --p-ink:#ECEFEA; --p-ink2:#C9CFC9; --p-ink3:#9AA39E; --p-mut:#6E7773; --p-line:#2A322F; --p-line2:#3A433F; --p-brass:#D9A845; --p-brassS:#3A3626; --p-tint:#2C2A20; --p-pos:#7FD6AE; --p-posS:#4FBE8F; --p-neg:#F0A3AB; --p-negS:#E0707B; --p-onbrass:#1B1F1E; --p-hdr1:#0C0F0E; --p-hdr2:#1A201E; }
+
+.sbar { display:flex; justify-content:space-between; align-items:center; padding:14px 22px 6px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; color:var(--p-ink3); }
+.sbar .batt { display:flex; gap:4px; align-items:center; }
+.dot { width:4px; height:4px; border-radius:50%; background:var(--p-ink3); display:inline-block; }
+
+.pbody { flex:1; overflow:hidden; padding:6px 18px 0; display:flex; flex-direction:column; gap:12px; }
+.peyebrow { font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:500; letter-spacing:.13em; text-transform:uppercase; color:var(--p-ink3); display:flex; align-items:center; gap:7px; }
+.peyebrow::before { content:""; width:5px; height:5px; background:var(--p-brass); transform:rotate(45deg); }
+[lang="ar"] .peyebrow { font-family:'Zain', sans-serif; font-weight:700; letter-spacing:.03em; font-size:10.5px; }
+.pcard { background:var(--p-card); border:1px solid var(--p-line); border-radius:18px; padding:14px 16px; }
+.amount { font-family:'Spline Sans Mono',monospace; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.amount .cur { font-size:.58em; font-weight:500; color:var(--p-ink3); margin-inline-end:3px; }
+.amount .dec { font-size:.62em; }
+.apos { color:var(--p-pos); font-weight:700; } .aneg { color:var(--p-neg); font-weight:700; }
+.caret { font-size:.55em; vertical-align:.25em; letter-spacing:0; }
+
+.pnav { display:flex; align-items:center; border-top:1px solid var(--p-line); background:var(--p-bg); padding:10px 8px 14px; position:relative; }
+.pnav .tab { flex:1; text-align:center; font-size:10px; font-family:'Spline Sans Mono',monospace; letter-spacing:.06em; color:var(--p-mut); display:flex; flex-direction:column; gap:3px; align-items:center; }
+.pnav .tab.on { color:var(--p-brass); font-weight:700; }
+.pnav svg { display:block; }
+.fab {
+  position:absolute; inset-inline-end:18px; top:-26px; width:52px; height:52px; border-radius:999px;
+  background:var(--p-brass); color:var(--p-onbrass); display:flex; align-items:center; justify-content:center;
+  font-size:26px; font-weight:400; box-shadow:0 8px 20px rgba(20,18,8,.28); line-height:1;
+}
+
+.avatar { width:26px; height:26px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; font-family:'Zain'; }
+.av1{background:#41708F}.av2{background:#6C7A33}.av3{background:#984B7C}.av4{background:#9C4F2E}.av5{background:#575E93}
+
+.prow { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--p-line); }
+.prow:last-child { border-bottom:none; }
+.prow .t { flex:1; min-width:0; }
+.prow .t .n { font-weight:700; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.prow .t .s { font-size:11px; color:var(--p-ink3); }
+.catdot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+
+/* ticket */
+.ticket { background:var(--p-card); border:1px solid var(--p-line); border-radius:18px; position:relative; overflow:hidden; }
+.cover { height:60px; position:relative; background:linear-gradient(160deg,#2E4054 0%, #6E5A73 48%, #C98A4B 100%); }
+.cover .ridge { position:absolute; inset:auto 0 0 0; height:34px; background:#22303C; clip-path:polygon(0 100%, 0 62%, 12% 38%, 24% 58%, 37% 22%, 52% 55%, 66% 30%, 80% 52%, 100% 40%, 100% 100%); opacity:.85; }
+.tmain { padding:12px 16px 10px; }
+.tear { position:relative; border-top:2px dashed var(--p-line2); margin:0 10px; }
+.tear::before,.tear::after { content:""; position:absolute; top:-8px; width:16px; height:16px; border-radius:50%; background:var(--p-bg); border:1px solid var(--p-line); }
+.tear::before{ inset-inline-start:-19px; } .tear::after{ inset-inline-end:-19px; }
+.tstub { padding:9px 16px 12px; display:flex; justify-content:space-between; align-items:center; }
+.seal { width:34px; height:34px; border:2px solid var(--p-brass); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--p-brass); transform:rotate(-8deg); font-family:'Spline Sans Mono',monospace; font-size:7px; letter-spacing:.08em; text-align:center; line-height:1.15; }
+
+/* event header */
+.ehdr { margin:0 -18px; padding:14px 22px 0; background:linear-gradient(180deg,var(--p-hdr1),var(--p-hdr2)); color:#ECEFEA; }
+.ehdr .peyebrow { color:#9AA39E; }
+.etabs { display:flex; gap:20px; margin-top:12px; }
+.etab { font-size:12px; color:#9AA39E; padding-bottom:9px; position:relative; font-weight:400; }
+.etab.on { color:#ECEFEA; font-weight:700; }
+.etab.on::after { content:""; position:absolute; bottom:0; inset-inline-start:50%; transform:translateX(-50%) rotate(45deg); width:6px; height:6px; background:var(--p-brass); }
+[dir="rtl"] .etab.on::after { transform:translateX(50%) rotate(45deg); }
+
+/* transfer card fork connector */
+.xfer { position:relative; }
+.xfer .who { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.xfer .names { font-size:13px; font-weight:700; }
+.forkline { margin:8px 2px 6px; }
+.markbtn { font-size:11.5px; font-weight:700; color:var(--p-onbrass); background:var(--p-brass); border-radius:999px; padding:7px 14px; display:inline-block; }
+.ghostbtn { font-size:11.5px; font-weight:700; color:var(--p-brass); border:1px solid var(--p-line2); border-radius:999px; padding:6px 13px; display:inline-block; }
+.settled { position:absolute; inset-inline-end:14px; bottom:10px; border:2px solid var(--p-brass); color:var(--p-brass); border-radius:8px; transform:rotate(6deg); font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.1em; padding:3px 7px; text-align:center; line-height:1.3; opacity:.9; }
+
+/* dark hero stars */
+.stars { background-image:
+  radial-gradient(circle, rgba(217,168,69,.30) 1px, transparent 1.6px),
+  radial-gradient(circle, rgba(236,239,234,.14) 1px, transparent 1.4px);
+  background-size:74px 74px, 46px 46px; background-position:8px 12px, 30px 26px; }
+
+.hbar { height:6px; border-radius:4px; overflow:hidden; display:flex; margin:10px 0 6px; background:var(--p-soft); }
+.hbar .p { background:var(--p-posS); } .hbar .n { background:var(--p-negS); }
+.legend { display:flex; gap:14px; font-size:10.5px; color:var(--p-ink3); font-family:'Spline Sans Mono',monospace; }
+.legend i { width:7px; height:7px; border-radius:2px; display:inline-block; margin-inline-end:5px; }
+
+.pillcta { position:absolute; bottom:76px; inset-inline-start:50%; transform:translateX(-50%); background:var(--p-brass); color:var(--p-onbrass); font-weight:700; font-size:13px; padding:11px 20px; border-radius:999px; box-shadow:0 10px 24px rgba(20,18,8,.30); white-space:nowrap; }
+[dir="rtl"] .pillcta { transform:translateX(50%); }
+
+.badge { font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; border:1px solid var(--p-line2); color:var(--p-ink3); border-radius:6px; padding:2px 6px; }
+.fwd { color:var(--p-brass); }
+
+/* misc doc */
+.klist { list-style:none; padding:0; margin:0 0 8px; }
+.klist li { padding:10px 0 10px 26px; position:relative; border-bottom:1px solid var(--line); max-width:none; }
+.klist li::before { content:""; position:absolute; left:4px; top:19px; width:7px; height:7px; background:var(--brass); transform:rotate(45deg); }
+.klist li:last-child { border-bottom:none; }
+.klist b { display:inline; }
+.footer { padding:40px 0 80px; color:var(--ink3); font-size:14px; }
+.small { font-size:14px; color:var(--ink3); }
+.decision { font-family:'Spline Sans Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; }
+.keep { color:var(--pos); } .break { color:var(--neg); }
+.flowdemo { height:3px; background:var(--line); border-radius:2px; position:relative; overflow:hidden; margin:16px 0 6px; }
+.flowdemo::after { content:""; position:absolute; inset:0; width:34%; background:var(--brass); border-radius:2px; animation:flow 2.2s ease-in-out infinite; }
+@keyframes flow { 0%{ transform:translateX(-110%);} 100%{ transform:translateX(320%);} }
+@media (prefers-reduced-motion: reduce){ .flowdemo::after{ animation:none; width:100%; opacity:.5; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="eyebrow">Design proposal · A+ sprint · 2026-07-05</div>
+  <div class="lockup">
+    <span class="latin">Rihla</span>
+    <span class="arabic">رحلة</span>
+  </div>
+  <svg class="fork" width="220" height="26" viewBox="0 0 220 26" fill="none" aria-hidden="true" style="margin-top:6px">
+    <path d="M2 13 H150 M150 13 C170 13 170 4 192 4 M150 13 H192 M150 13 C170 13 170 22 192 22"
+      stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+  </svg>
+  <h1 style="margin-top:34px">Falaj <span style="font-weight:700; color:var(--ink3)">فَلَج</span></h1>
+  <p class="tagline">One flow, split fairly. · <span class="ar">ساقية واحدة، قسمة عادلة</span></p>
+  <p style="max-width:76ch">A new identity and lower-friction structure for Rihla, drawn from the thing Oman actually
+  invented for fair splitting: the UNESCO-listed <strong>aflaj</strong> — one water channel divided into
+  measured shares so every household gets exactly what it is owed. That is this product's mechanic,
+  from home ground instead of a borrowed editorial recipe. <span class="muted">This page is set in the proposed
+  system itself — plaster &amp; brass by day, kohl &amp; lantern by night (toggle your theme), Bricolage Grotesque + Zain + Spline Sans Mono throughout.</span></p>
+  <div class="chips">
+    <span class="chip"><b>3/3</b> judges picked Falaj</span>
+    <span class="chip"><b>11</b> research agents</span>
+    <span class="chip"><b>2</b> runner-up directions explored</span>
+    <span class="chip"><b>8</b> frictions ranked, <b>5</b> IA fixes</span>
+    <span class="chip">every ratio on this page is computed, not claimed</span>
+  </div>
+</section>
+
+<!-- ================= DIAGNOSIS ================= -->
+<section id="diagnosis">
+  <div class="eyebrow">01 · Diagnosis</div>
+  <h2>Why the current design reads “Claude”</h2>
+  <p>It isn't one token — it's that all three legs of Anthropic's own recipe are present at once:
+  a warm ivory ground, a terracotta-family accent, and an editorial serif doing the display voice.
+  Each alone is defensible; together they are the Claude aesthetic family.</p>
+  <div class="grid2" style="margin-top:22px">
+    <div>
+      <h3 style="margin-top:0">Anthropic / Claude brand</h3>
+      <div class="strip">
+        <div style="background:#F0EEE5;color:#57534e">#F0EEE5 ivory</div>
+        <div style="background:#D97757;color:#fff">#D97757 terracotta</div>
+        <div style="background:#191919;color:#F0EEE5;font-family:Georgia,serif;font-size:13px;align-items:center;justify-content:center;display:flex"><em>editorial serif</em></div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Rihla today (“Saffron travel-journal”)</h3>
+      <div class="strip">
+        <div style="background:#F6F1E6;color:#6B675D">#F6F1E6 cream</div>
+        <div style="background:#D17B2C;color:#fff">#D17B2C saffron</div>
+        <div style="background:#1B1A17;color:#F6F1E6;font-family:Georgia,serif;font-size:13px;align-items:center;justify-content:center;display:flex"><em>Instrument Serif italic</em></div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:20px">The identity-forensics pass confirmed the resemblance is <strong>combinatorial</strong>: warm paper
+  (both R≫B warm whites), a burnt-orange accent within a few degrees of hue, serif-italic display, paper-grain
+  texture, sepia hairlines. Meanwhile the genuinely <strong>Rihla-owned</strong> assets — the perforated ticket cards,
+  the trip-stamp ritual, mono tabular money, the sage/rust polarity contract, the quiet “everyone's even” voice —
+  have nothing to do with Claude at all. The fix: break all three legs at once, keep everything that was already ours.</p>
+  <p class="small">Market scan: every splitter is flat friendly SaaS — Splitwise mint, Tricount petrol, Settle Up orange,
+  Splid turquoise, Spliit stock-shadcn. Nobody owns a travel narrative, nobody owns a real dark theme, nobody owns the Gulf.
+  The whitespace is exactly where Rihla already lives.</p>
+</section>
+
+<!-- ================= FRICTION ================= -->
+<section id="friction">
+  <div class="eyebrow">02 · Friction audit</div>
+  <h2>Where the taps go today</h2>
+  <p>Eight core jobs were tap-counted against the live router and screens. The structure is mostly sound —
+  the balance question is already answered above the fold — but the most frequent job in the app pays a
+  picker sheet it shouldn't, and one hierarchy level taxes the common case.</p>
+
+  <div class="tablewrap" style="margin:18px 0">
+    <table>
+      <tr><th>Job</th><th>Today</th><th>Proposed</th><th>How</th></tr>
+      <tr><td>Add expense to the current event</td><td class="num">2 taps</td><td class="num up">1 tap</td><td>FAB goes straight to the top-priority event; “Adding to &lt;event&gt; · change” lives inside the editor</td></tr>
+      <tr><td>“Am I owed money overall?”</td><td class="num">0 taps</td><td class="num">0 taps</td><td>Already above the fold — keep</td></tr>
+      <tr><td>Who owes whom in a group</td><td class="num">2 taps</td><td class="num up">1 tap</td><td>Hero balance opens a per-group breakdown sheet (it's currently a dead end)</td></tr>
+      <tr><td>Record a group settlement</td><td class="num">4 taps</td><td class="num up">3 taps</td><td>Same hero sheet deep-links to settle-up with member preselected</td></tr>
+      <tr><td>Open the ledger of a 1-event group</td><td class="num">2 hops</td><td class="num up">1 hop</td><td>Group row smart-forwards into its only open event</td></tr>
+      <tr><td>Find an expense from 2 weeks ago</td><td class="num">4 taps + recall</td><td class="num up">2 taps</td><td>New global <span class="mono">/search</span> across groups, events, expenses</td></tr>
+      <tr><td>Join a group (already have groups)</td><td class="num">3 taps</td><td class="num up">2 taps</td><td>“New · Join” split action — today the populated-home entry is labeled “New group”, with Join one sheet deeper</td></tr>
+    </table>
+  </div>
+
+  <h3>The five structural fixes</h3>
+  <ul class="klist">
+    <li><b>One-tap FAB.</b> The fast path exists but is dead for every multi-group user — a self-inflicted wound: create-group auto-seeds an open event per group, so the “sole open event” condition never holds. Default to the ranked top-priority event (the ranking already exists), demote the sheet to an escape hatch.</li>
+    <li><b>Smart-forward group rows.</b> A group with exactly one open event skips the group screen and lands in the event workspace; the group overview stays one tap away in the header. Multi-event groups keep the overview. URLs unchanged.</li>
+    <li><b>Honest hero.</b> The home balance card advertises the money answer but taps to a scroll animation. Make it open a per-group breakdown whose rows deep-link to settle-up (<span class="mono">?memberId=</span> preselect already supported).</li>
+    <li><b>One chrome per surface.</b> Every event module exists twice — as a workspace tab and a standalone full-chrome route. Keep the URLs as thin shims that open the workspace on the right tab (tab from the path segment); delete the duplicate chrome.</li>
+    <li><b>Global search.</b> Search today is event-scoped only; finding an old expense requires remembering group AND event. Add top-level <span class="mono">/search</span> over groups, events, expenses.</li>
+  </ul>
+
+  <details style="margin-top:18px">
+    <summary style="cursor:pointer; font-weight:700">Proposed route tree (URLs stable, deep links untouched)</summary>
+    <pre class="tree" style="margin-top:12px">Shell (persists at /home)
+├── Tab Groups    /home        hero balance → per-group settle sheet (was: dead-end scroll)
+│                              journeys strip · groups list (“New · Join” split action)
+├── Tab Activity  /activity    full-range search (backend query, not loaded-pages filter)
+└── Tab Profile   /profile
+Shell FAB: one-tap add → top-priority event · picker sheet = escape hatch
+
+/search                        NEW — global find (groups / events / expenses)
+
+/group/:gid                    overview — kept for multi-event groups + all deep links
+│                              home row SMART-FORWARDS here → event/:eid when 1 open event
+└── event/:eid                 EventCommandCenter = THE event surface (single chrome)
+    ├── ledger                 shim → workspace @ Expenses tab   (URL kept, chrome deleted)
+    │   ├── add · edit/:expId  real screens (unchanged)
+    │   └── settle-up          shim → workspace @ Settle tab
+    ├── activity · recap       shims → workspace tabs
+    └── settings               unchanged</pre>
+    <p class="treecap">All routing constraints honored: no <span class="mono">state.extra</span>, tab derived from path segment,
+    canPop asymmetry (#243) untouched, dual-mode <span class="mono">showBack</span> pattern kept, <span class="mono">/join/:code</span> and recovery links byte-stable.
+    Router changes are a Gate category — <span class="mono">/run-the-gate</span> before implementation.</p>
+  </details>
+</section>
+
+<!-- ================= CONTEST ================= -->
+<section id="contest">
+  <div class="eyebrow">03 · The contest</div>
+  <h2>Three directions, three judges, one unanimous verdict</h2>
+  <p>Three identities were authored independently on deliberately different axes, then scored blind by three
+  judges (brand, product/UX, engineering) on six criteria: true-to-Rihla, kills-the-Claude-signature,
+  money trust, Arabic-first quality, feasibility, distinctiveness.</p>
+
+  <div class="grid3" style="margin-top:24px">
+    <div class="card dir" style="border-color:var(--brass); border-width:1.5px">
+      <span class="win">Winner · 3/3 judges</span>
+      <h3 style="margin:0">Falaj فَلَج</h3>
+      <p class="small" style="margin:0">Gulf Modern travel ledger. Muscat plaster, Hajar shale ink, burnished brass;
+      palm-emerald / pomegranate money; the falaj fork as brand device. Bricolage Grotesque + Zain + Spline Sans Mono.</p>
+      <div class="mini">
+        <div style="background:#F6F7F5"></div><div style="background:#1B1F1E"></div>
+        <div style="background:#8A5D0D"></div><div style="background:#1F7A5C"></div>
+        <div style="background:#B03A48"></div><div style="background:#111514"></div>
+      </div>
+      <span class="score">totals 51 · 49 · 48 — first on every card</span>
+    </div>
+    <div class="card dir">
+      <span class="win" style="color:var(--ink3)">Runner-up</span>
+      <h3 style="margin:0">Kamal — Field Atlas</h3>
+      <p class="small" style="margin:0">Expedition instrument: survey-white, sounding-ink blue, one magenta signal;
+      chart-table precision, Space Grotesk + IBM Plex. Cleanest possible break — but coolest toward the product's warmth.</p>
+      <div class="mini">
+        <div style="background:#F2F5F7"></div><div style="background:#14212B"></div>
+        <div style="background:#B4256E"></div><div style="background:#2F7A52"></div>
+        <div style="background:#B23A2A"></div><div style="background:#0E1620"></div>
+      </div>
+      <span class="score">totals 45 · 48 · 43 — best money-instrument ideas (grafted below)</span>
+    </div>
+    <div class="card dir">
+      <span class="win" style="color:var(--ink3)">Runner-up</span>
+      <h3 style="margin:0">Jawaz — Midnight Passport</h3>
+      <p class="small" style="margin:0">Dark-first premium travel document: midnight cover, foil gold, visa-page cards,
+      MRZ money strip. Great dark story — but dark-first fights daylight use and costs the most to ship.</p>
+      <div class="mini">
+        <div style="background:#F1F4F7"></div><div style="background:#161B22"></div>
+        <div style="background:#A8842F"></div><div style="background:#2F7A52"></div>
+        <div style="background:#B23A2A"></div><div style="background:#101623"></div>
+      </div>
+      <span class="score">totals 46 · 40 · 41 — its stamp physics &amp; dark discipline grafted below</span>
+    </div>
+  </div>
+
+  <p style="margin-top:22px"><strong>Why Falaj won:</strong> it is the only direction whose story <strong>is</strong> the product's
+  mechanic (a channel divided into fair shares), it upgrades Arabic from companion to co-author (Zain is a
+  Gulf-drawn dual-script family — LTR and RTL match by construction), and it breaks all three Claude legs while
+  keeping every Rihla-owned asset. Kamal reads as a beautiful instrument for someone else's app; Jawaz's
+  dark-first premium fights the sunlit, casual reality of splitting lunch.</p>
+</section>
+
+<!-- ================= FALAJ SYSTEM ================= -->
+<section id="system">
+  <div class="eyebrow">04 · The Falaj system</div>
+  <h2>Materials: plaster, shale, brass</h2>
+  <p>Surfaces are Muscat gypsum-plaster white — a <strong>cool mineral white</strong> (G ≥ R; Anthropic ivory is
+  yellow-warm). Ink is Hajar-shale near-black with a faint green-gray cast. The single accent is burnished
+  brass — mandoos studs, dhow fittings, astrolabes — a golden-olive a full hue family away from terracotta.
+  Money speaks in its own two voices, disjoint from the brand accent: date-palm emerald and pomegranate crimson.</p>
+
+  <h3>Light — “Muscat plaster”</h3>
+  <div class="swgrid">
+    <div class="sw"><div class="c" style="background:#F6F7F5"></div><div class="m"><div class="role">page</div><div class="hex">#F6F7F5</div><div class="note">ink on this: 15.5:1</div></div></div>
+    <div class="sw"><div class="c" style="background:#FFFFFF; border-bottom:1px solid var(--line)"></div><div class="m"><div class="role">card</div><div class="hex">#FFFFFF</div><div class="note">two-level hierarchy kept</div></div></div>
+    <div class="sw"><div class="c" style="background:#ECEEE8"></div><div class="m"><div class="role">deep wash</div><div class="hex">#ECEEE8</div><div class="note">limestone / sarooj</div></div></div>
+    <div class="sw"><div class="c" style="background:#1B1F1E"></div><div class="m"><div class="role">ink</div><div class="hex">#1B1F1E</div><div class="note">Hajar shale · AAA</div></div></div>
+    <div class="sw"><div class="c" style="background:#5C6462"></div><div class="m"><div class="role">ink-3 secondary</div><div class="hex">#5C6462</div><div class="note">5.7:1 · AA body</div></div></div>
+    <div class="sw"><div class="c" style="background:#8A5D0D"></div><div class="m"><div class="role">primary · brass</div><div class="hex">#8A5D0D</div><div class="note">white on it: 5.75:1 ✓</div></div></div>
+    <div class="sw"><div class="c" style="background:#6F4A08"></div><div class="m"><div class="role">brass dark</div><div class="hex">#6F4A08</div><div class="note">CTA gradient end · 7.9:1</div></div></div>
+    <div class="sw"><div class="c" style="background:#1F7A5C"></div><div class="m"><div class="role">positive · palm emerald</div><div class="hex">#1F7A5C</div><div class="note">text variant #175A44 · 7.6:1</div></div></div>
+    <div class="sw"><div class="c" style="background:#B03A48"></div><div class="m"><div class="role">negative · pomegranate</div><div class="hex">#B03A48</div><div class="note">text variant #8A2430 · 8.2:1</div></div></div>
+    <div class="sw"><div class="c" style="background:#C2410C"></div><div class="m"><div class="role">warning · re-hued</div><div class="hex">#C2410C</div><div class="note">moved off brass's gold family</div></div></div>
+    <div class="sw"><div class="c" style="background:#E3E6E0"></div><div class="m"><div class="role">hairline</div><div class="hex">#E3E6E0</div><div class="note">stone-green — kills the sepia rule</div></div></div>
+    <div class="sw"><div class="c" style="background:#F1F2DF"></div><div class="m"><div class="role">selection tint</div><div class="hex">#F1F2DF</div><div class="note">cooled; always + hairline &amp; tick</div></div></div>
+  </div>
+
+  <h3>Dark — “Night navigation”</h3>
+  <p class="small" style="max-width:76ch">Not an inversion — its own register: night sailing by Ibn Majid's stars.
+  Kohl ground, lantern brass, a faint star-line grid where paper grain used to be. The current dark theme is a
+  documented stub (D5 debt); this direction makes the dark pass a <strong>first-class rebrand deliverable</strong>, not a trailing chore.</p>
+  <div class="swgrid">
+    <div class="sw"><div class="c" style="background:#111514"></div><div class="m"><div class="role">page · kohl</div><div class="hex">#111514</div></div></div>
+    <div class="sw"><div class="c" style="background:#1A201E"></div><div class="m"><div class="role">card</div><div class="hex">#1A201E</div></div></div>
+    <div class="sw"><div class="c" style="background:#ECEFEA"></div><div class="m"><div class="role">ink · moonlit plaster</div><div class="hex">#ECEFEA</div><div class="note">14.3:1 on card</div></div></div>
+    <div class="sw"><div class="c" style="background:#D9A845"></div><div class="m"><div class="role">primary · lantern brass</div><div class="hex">#D9A845</div><div class="note">8.4:1 on page; ink-on-brass CTAs 7.6:1</div></div></div>
+    <div class="sw"><div class="c" style="background:#4FBE8F"></div><div class="m"><div class="role">positive lifted</div><div class="hex">#4FBE8F</div><div class="note">text #7FD6AE · 9.6:1</div></div></div>
+    <div class="sw"><div class="c" style="background:#E0707B"></div><div class="m"><div class="role">negative lifted</div><div class="hex">#E0707B</div><div class="note">text #F0A3AB · 8.3:1</div></div></div>
+  </div>
+
+  <h3>Type: the Gulf writes both scripts</h3>
+  <div class="spec" style="margin-top:14px">
+    <div class="lab">Display — Bricolage Grotesque 800 (editorial punch, zero serif, upright — survives translation)</div>
+    <div style="font-family:'Bricolage Grotesque'; font-weight:800; font-size:44px; line-height:1.08; letter-spacing:-0.015em">One flow, split fairly.</div>
+    <div class="lab">Arabic display — Zain 800 (drawn by Boutros for the Gulf; Arabic does hero work, not translation duty)</div>
+    <div style="font-family:'Zain'; font-weight:800; font-size:42px; line-height:1.25" dir="rtl" lang="ar">ساقية واحدة، قسمة عادلة</div>
+    <div class="lab">UI &amp; body — Zain 400 / 700, one dual-script family for everything readable</div>
+    <div style="max-width:64ch">The first rial you log sets the trip total. We'll split it fairly — down to the baisa. Removing an expense updates everyone's balances for this event.</div>
+    <div style="max-width:64ch" dir="rtl" lang="ar">أول ريال تسجّله سيحدد إجمالي الرحلة. سنقسمه بالعدل — حتى آخر بيسة.</div>
+    <div class="lab">Money — Spline Sans Mono, tabular, tiered; digits stay Latin-mono in every locale</div>
+    <div class="mono" style="font-size:34px; font-weight:500"><span style="font-size:.5em; color:var(--ink3)">OMR</span> 1,234<span style="font-size:.62em">.567</span>&nbsp;&nbsp;<span class="up" style="font-size:22px">▲ 23.150</span>&nbsp;&nbsp;<span class="down" style="font-size:22px">▼ 4.900</span></div>
+    <div class="lab">Eyebrow — mono caps with the falaj share-notch</div>
+    <div class="eyebrow" style="margin:0">Active journeys · <span lang="ar" style="font-family:'Zain'; font-weight:700; letter-spacing:0">الرحلات النشطة</span></div>
+  </div>
+  <p class="small" style="margin-top:14px"><strong>Named risk, tested here:</strong> Zain has no 500/600 weights, so UI emphasis becomes a
+  two-step 400/700 ladder — and its rounded Latin is the judges' biggest flagged bet. This very page is the first
+  spike: if the dense tables above read informal to you, the pre-agreed fallback is IBM Plex Sans for Latin UI with
+  Zain retained for Arabic + display. Decide at the type-spike PR, not after remapping 215 weight call sites.</p>
+
+  <h3>The brand device: the falaj fork</h3>
+  <p>A single rule that branches into shares — wordmark underscore, settle-up transfer connector, section tick,
+  and sync indicator. Usage law (to prevent dilution): <strong>the full fork appears at most once per screen</strong>;
+  the share-notch tick is the only ambient form. Continuous “water flow” motion is reserved exclusively for
+  the syncing state — if something flows, the app is syncing, nothing else ever animates continuously.</p>
+  <div class="flowdemo" role="img" aria-label="sync flow animation"></div>
+  <p class="small muted">The flow, as the offline→sync indicator.</p>
+
+  <h3>Signature moves</h3>
+  <ul class="klist">
+    <li><b>Manifest tickets, re-dressed.</b> The perforated ticket silhouette stays (it's the most Rihla-owned asset); materials change to plaster, shale ink, one brass tear-line rule, a brass corner seal — and CoverArt bands repaint to five Omani landscape palettes (Hajar dawn, Wadi pool, Khareef, Sharqiya night, Muscat harbor).</li>
+    <li><b>Brass port-seal stamps.</b> The 12 trip-stamp glyphs redraw as engraved circular port-registry seals. Settling a debt lands a physical stamp: <span class="mono" style="font-size:.85em">SETTLED · تمّت التسوية</span> — the app's one celebratory flourish, with Jawaz's grafted stamp physics (300ms scale 1.08→1.0, −3°→0°, one-frame ink bloom).</li>
+    <li><b>Night-navigation dark.</b> Kohl ground, lantern brass, faint star-grid on hero surfaces (≤3% opacity, tokenized). No competitor has a designed dark theme; this one has a story.</li>
+    <li><b>Bilingual Kufi-grid lockup.</b> “Rihla” and “رحلة” drawn on one square grid at equal cap height, fork-underscore mirroring with reading direction. The fork alone, as a brass seal on kohl, is the app icon — legible at 16px.</li>
+    <li><b>Polarity carets.</b> Grafted from Kamal: every hero money readout carries a ▲/▼ share-notch caret beside the color — owed/owe is never color-alone (colorblind-safe).</li>
+    <li><b>Document-close ritual.</b> Grafted from Jawaz: every artifact that leaves the app (receipts, share cards) ends with the fork underscore + “recorded in Rihla”.</li>
+  </ul>
+</section>
+
+<!-- ================= SCREENS ================= -->
+<section id="screens">
+  <div class="eyebrow">05 · Screens</div>
+  <h2>The system on real surfaces</h2>
+  <p>Five key surfaces in the new identity <strong>and</strong> the new structure — one-tap FAB, smart-forward rows,
+  honest hero, single event chrome. Real copy from the live l10n files, real OMR precision. Scroll →</p>
+
+  <div class="phones">
+
+    <!-- ============ PHONE 1: HOME LIGHT ============ -->
+    <div class="phcol">
+      <div class="phone"><div class="screen ph-light">
+        <div class="sbar"><span>9:41</span><span class="batt"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;98</span></div>
+        <div class="pbody">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+              <div style="font-size:11px; color:var(--p-ink3)">Good evening,</div>
+              <div style="font-family:'Bricolage Grotesque'; font-weight:700; font-size:20px">Nasser</div>
+            </div>
+            <span class="avatar av1">N</span>
+          </div>
+
+          <!-- hero -->
+          <div class="pcard">
+            <div class="peyebrow">Across your groups</div>
+            <div class="amount apos" style="font-size:30px; margin-top:6px"><span class="cur">OMR</span>23<span class="dec">.150</span> <span class="caret">▲</span></div>
+            <div style="font-size:11.5px; color:var(--p-ink3)">You're up across 3 people.</div>
+            <div class="hbar"><span class="p" style="width:72%"></span><span class="n" style="width:28%"></span></div>
+            <div class="legend"><span><i style="background:var(--p-posS)"></i>owed 28.050</span><span><i style="background:var(--p-negS)"></i>owe 4.900</span></div>
+            <div style="border-top:1px solid var(--p-line); margin-top:10px; padding-top:8px; display:flex; justify-content:space-between; font-size:11px; color:var(--p-brass); font-weight:700">
+              <span>By group</span><span>›</span>
+            </div>
+          </div>
+
+          <!-- journeys -->
+          <div class="peyebrow" style="margin-top:2px">Active journeys</div>
+          <div class="ticket">
+            <div class="cover"><div class="ridge"></div></div>
+            <div class="tmain">
+              <div style="font-weight:800; font-size:15px; font-family:'Bricolage Grotesque'">Jebel Akhdar Weekend</div>
+              <div style="font-size:11px; color:var(--p-ink3)">Muscat Crew · Fri 3 – Sun 5 Jul</div>
+            </div>
+            <div class="tear"></div>
+            <div class="tstub">
+              <div class="amount" style="font-size:15px; font-weight:700"><span class="cur">OMR</span>132<span class="dec">.900</span> <span style="font-size:10px; color:var(--p-ink3); font-weight:400">total</span></div>
+              <div class="seal">RIHLA<br>SEAL</div>
+            </div>
+          </div>
+
+          <!-- groups -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px">
+            <div class="peyebrow" style="margin:0">Groups</div>
+            <div style="font-size:11px; font-family:'Spline Sans Mono',monospace"><span style="color:var(--p-brass); font-weight:700">New</span><span style="color:var(--p-mut)"> · </span><span style="color:var(--p-ink3)">Join</span></div>
+          </div>
+          <div class="pcard" style="padding:4px 16px">
+            <div class="prow">
+              <span class="avatar av2">M</span>
+              <div class="t"><div class="n">Muscat Crew</div><div class="s">5 members</div></div>
+              <svg class="fwd" width="20" height="14" viewBox="0 0 20 14" fill="none" aria-label="opens event directly"><path d="M1 7 H11 M11 7 C14 7 14 3 18 3 M11 7 H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+            <div class="prow">
+              <span class="avatar av3">S</span>
+              <div class="t"><div class="n">Salalah Khareef 2026</div><div class="s">8 members</div></div>
+              <span class="badge">3 EVENTS</span>
+            </div>
+          </div>
+        </div>
+        <div class="pnav">
+          <div class="tab on"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="10" width="6" height="6" rx="3" stroke="currentColor" stroke-width="1.6"/></svg>Groups</div>
+          <div class="tab"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M1.5 9h3l2-5 3.5 10 2.5-7 1.5 2h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Activity</div>
+          <div class="tab"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 16c1-3.2 3.5-4.6 6.5-4.6s5.5 1.4 6.5 4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Profile</div>
+          <div style="flex:0 0 58px" aria-hidden="true"></div>
+          <div class="fab">+</div>
+        </div>
+      </div></div>
+      <div class="phcap"><b>Home · light.</b> Honest hero (tap → per-group sheet), one brass object per screen (the FAB — now one-tap),
+      manifest ticket with Hajar-dawn cover, smart-forward fork marks vs “3 EVENTS” count, “New · Join” split action.</div>
+    </div>
+
+    <!-- ============ PHONE 2: EVENT WORKSPACE ============ -->
+    <div class="phcol">
+      <div class="phone"><div class="screen ph-light">
+        <div class="sbar"><span>9:41</span><span class="batt"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;98</span></div>
+        <div class="pbody" style="padding-top:0">
+          <div class="ehdr">
+            <div class="peyebrow" style="margin-top:4px">Muscat Crew</div>
+            <div style="font-family:'Bricolage Grotesque'; font-weight:800; font-size:22px; margin-top:2px">Jebel Akhdar Weekend</div>
+            <div style="font-size:11px; color:#9AA39E">5 travellers · Fri 3 – Sun 5 Jul</div>
+            <div class="etabs">
+              <span class="etab on">Expenses</span><span class="etab">Settle up</span><span class="etab">Activity</span><span class="etab">Recap</span>
+            </div>
+          </div>
+
+          <div class="pcard" style="display:flex; justify-content:space-between; align-items:center; padding:11px 16px">
+            <div>
+              <div class="peyebrow" style="margin:0">You are owed</div>
+              <div class="amount apos" style="font-size:21px"><span class="cur">OMR</span>23<span class="dec">.150</span> <span class="caret">▲</span></div>
+            </div>
+            <span class="ghostbtn">Settle up</span>
+          </div>
+
+          <div class="peyebrow">Thu 2 Jul</div>
+          <div class="pcard" style="padding:4px 16px">
+            <div class="prow">
+              <span class="catdot" style="background:#6C7A33"></span>
+              <div class="t"><div class="n">Grocery run — Lulu</div><div class="s">Salim paid · split 5 ways</div></div>
+              <div class="amount" style="font-size:13.5px"><span class="cur">OMR</span>28<span class="dec">.350</span></div>
+            </div>
+            <div class="prow">
+              <span class="catdot" style="background:#575E93"></span>
+              <div class="t"><div class="n">Fuel — Wadi drive</div><div class="s">You paid · split 5 ways</div></div>
+              <div class="amount apos" style="font-size:13.5px"><span class="cur">OMR</span>12<span class="dec">.400</span></div>
+            </div>
+            <div class="prow">
+              <span class="catdot" style="background:#9C4F2E"></span>
+              <div class="t"><div class="n">Campsite BBQ</div><div class="s">Fatma paid · split 4 ways</div></div>
+              <div class="amount" style="font-size:13.5px"><span class="cur">OMR</span>15<span class="dec">.000</span></div>
+            </div>
+          </div>
+          <div class="peyebrow">Wed 1 Jul</div>
+          <div class="pcard" style="padding:4px 16px">
+            <div class="prow">
+              <span class="catdot" style="background:#9C4F2E"></span>
+              <div class="t"><div class="n">Coffee stop — Nizwa</div><div class="s">You paid · split 3 ways</div></div>
+              <div class="amount apos" style="font-size:13.5px"><span class="cur">OMR</span>4<span class="dec">.200</span></div>
+            </div>
+            <div class="prow" style="opacity:.75">
+              <span class="catdot" style="background:var(--p-line2)"></span>
+              <div class="t"><div class="n">Salim → You</div><div class="s">Settlement · Tue 30 Jun</div></div>
+              <span class="badge">SETTLED</span>
+            </div>
+          </div>
+        </div>
+        <div class="pillcta">+ Add expense</div>
+        <div class="pnav" style="opacity:.35">
+          <div class="tab">Groups</div><div class="tab">Activity</div><div class="tab">Profile</div>
+        </div>
+      </div></div>
+      <div class="phcap"><b>Event workspace · the only event chrome.</b> Shale header = “inside an event”; brass
+      star-point marks the active tab; balance strip with polarity caret; ledger rows in the two-step
+      Zain ladder with mono amounts. Old <span class="mono">/ledger</span> URLs become shims into these tabs.</div>
+    </div>
+
+    <!-- ============ PHONE 3: SETTLE UP ============ -->
+    <div class="phcol">
+      <div class="phone"><div class="screen ph-light">
+        <div class="sbar"><span>9:41</span><span class="batt"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;98</span></div>
+        <div class="pbody" style="padding-top:0">
+          <div class="ehdr">
+            <div class="peyebrow" style="margin-top:4px">Muscat Crew</div>
+            <div style="font-family:'Bricolage Grotesque'; font-weight:800; font-size:22px; margin-top:2px">Jebel Akhdar Weekend</div>
+            <div style="font-size:11px; color:#9AA39E">5 travellers · Fri 3 – Sun 5 Jul</div>
+            <div class="etabs">
+              <span class="etab">Expenses</span><span class="etab on">Settle up</span><span class="etab">Activity</span><span class="etab">Recap</span>
+            </div>
+          </div>
+
+          <div style="font-family:'Bricolage Grotesque'; font-weight:700; font-size:19px; line-height:1.2; margin-top:4px">Three transfers<br>until everyone's even.</div>
+
+          <div class="pcard xfer">
+            <div class="who">
+              <span style="display:flex; align-items:center; gap:7px"><span class="avatar av2">S</span><span class="names">Salim → You</span></span>
+              <div class="amount apos" style="font-size:16px; font-weight:700"><span class="cur">OMR</span>18<span class="dec">.250</span></div>
+            </div>
+            <svg class="forkline" aria-hidden="true" width="100%" height="16" viewBox="0 0 260 16" preserveAspectRatio="none" fill="none"><path d="M4 8 H180 M180 8 C200 8 200 3 224 3 M180 8 H224 M180 8 C200 8 200 13 224 13" stroke="var(--p-brass)" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <span style="font-size:10.5px; color:var(--p-ink3)">covers BBQ · fuel · groceries</span>
+              <span class="markbtn">Mark as paid</span>
+            </div>
+          </div>
+
+          <div class="pcard xfer">
+            <div class="who">
+              <span style="display:flex; align-items:center; gap:7px"><span class="avatar av3">F</span><span class="names">Fatma → You</span></span>
+              <div class="amount apos" style="font-size:16px; font-weight:700"><span class="cur">OMR</span>4<span class="dec">.900</span></div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:8px"><span class="markbtn">Mark as paid</span></div>
+          </div>
+
+          <div class="pcard xfer" style="opacity:.92; padding-bottom:20px">
+            <div class="settled">SETTLED<br>تمّت التسوية</div>
+            <div class="who">
+              <span style="display:flex; align-items:center; gap:7px"><span class="avatar av4">H</span><span class="names">Hamed → Aisha</span></span>
+              <div class="amount" style="font-size:16px; color:var(--p-ink3)"><span class="cur">OMR</span>2<span class="dec">.100</span></div>
+            </div>
+            <div style="font-size:10.5px; color:var(--p-ink3); margin-top:8px">Recorded · synced with cloud ✓</div>
+          </div>
+
+          <div style="font-size:11px; color:var(--p-mut); text-align:center; margin-top:2px">Recording here doesn't move money — it updates the ledger.</div>
+        </div>
+        <div class="pnav" style="opacity:.35"><div class="tab">Groups</div><div class="tab">Activity</div><div class="tab">Profile</div></div>
+      </div></div>
+      <div class="phcap"><b>Settle up.</b> The dashed arrow becomes the falaj channel forking payer → payees
+      (KEEP-3 clarity preserved, restyled). Completed transfers get the brass seal moment —
+      <span class="mono">SETTLED · تمّت التسوية</span> with grafted stamp physics.</div>
+    </div>
+
+    <!-- ============ PHONE 4: HOME DARK ============ -->
+    <div class="phcol">
+      <div class="phone"><div class="screen ph-dark">
+        <div class="sbar"><span>21:04</span><span class="batt"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;61</span></div>
+        <div class="pbody">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+              <div style="font-size:11px; color:var(--p-ink3)">Good evening,</div>
+              <div style="font-family:'Bricolage Grotesque'; font-weight:700; font-size:20px">Nasser</div>
+            </div>
+            <span class="avatar av1">N</span>
+          </div>
+
+          <div class="pcard stars">
+            <div class="peyebrow">Across your groups</div>
+            <div class="amount apos" style="font-size:30px; margin-top:6px"><span class="cur">OMR</span>23<span class="dec">.150</span> <span class="caret">▲</span></div>
+            <div style="font-size:11.5px; color:var(--p-ink3)">You're up across 3 people.</div>
+            <div class="hbar"><span class="p" style="width:72%"></span><span class="n" style="width:28%"></span></div>
+            <div class="legend"><span><i style="background:var(--p-posS)"></i>owed 28.050</span><span><i style="background:var(--p-negS)"></i>owe 4.900</span></div>
+          </div>
+
+          <div class="peyebrow" style="margin-top:2px">Active journeys</div>
+          <div class="ticket">
+            <div class="cover" style="background:linear-gradient(160deg,#0B1524 0%, #1E2C4A 55%, #6E5A2B 100%)"><div class="ridge" style="background:#060B12"></div></div>
+            <div class="tmain">
+              <div style="font-weight:800; font-size:15px; font-family:'Bricolage Grotesque'">Jebel Akhdar Weekend</div>
+              <div style="font-size:11px; color:var(--p-ink3)">Muscat Crew · Fri 3 – Sun 5 Jul</div>
+            </div>
+            <div class="tear"></div>
+            <div class="tstub">
+              <div class="amount" style="font-size:15px; font-weight:700"><span class="cur">OMR</span>132<span class="dec">.900</span></div>
+              <div class="seal">RIHLA<br>SEAL</div>
+            </div>
+          </div>
+
+          <div class="pcard" style="display:flex; gap:10px; align-items:center; border-color:var(--p-line2)">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex:0 0 auto"><path d="M2 11c1.5-4.5 4-6.5 6-6.5s4.5 2 6 6.5" stroke="#E8703A" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="12" r="1.4" fill="#E8703A"/></svg>
+            <div style="font-size:11.5px; color:var(--p-ink2)">Offline — 2 expenses will sync when you're back.</div>
+          </div>
+        </div>
+        <div class="pnav">
+          <div class="tab on"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="10" width="6" height="6" rx="3" stroke="currentColor" stroke-width="1.6"/></svg>Groups</div>
+          <div class="tab"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M1.5 9h3l2-5 3.5 10 2.5-7 1.5 2h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Activity</div>
+          <div class="tab"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 16c1-3.2 3.5-4.6 6.5-4.6s5.5 1.4 6.5 4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Profile</div>
+          <div style="flex:0 0 58px" aria-hidden="true"></div>
+          <div class="fab">+</div>
+        </div>
+      </div></div>
+      <div class="phcap"><b>Home · night navigation.</b> Kohl ground, lantern brass, star-grid on the hero
+      (Ibn Majid's stars replacing paper grain), Sharqiya-night ticket cover. Offline banner re-hued off the
+      brass family and icon-led. Dark ships as a first-class deliverable — it absorbs the D5 debt.</div>
+    </div>
+
+    <!-- ============ PHONE 5: ARABIC RTL ============ -->
+    <div class="phcol">
+      <div class="phone"><div class="screen ph-light" dir="rtl" lang="ar">
+        <div class="sbar" dir="ltr"><span>9:41</span><span class="batt"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;98</span></div>
+        <div class="pbody" style="padding-top:0">
+          <div class="ehdr">
+            <div class="peyebrow" style="margin-top:4px">شلة مسقط</div>
+            <div style="font-family:'Zain'; font-weight:800; font-size:22px; margin-top:2px">نهاية أسبوع الجبل الأخضر</div>
+            <div style="font-size:11px; color:#9AA39E">٥ مسافرين · الجمعة ٣ – الأحد ٥ يوليو</div>
+            <div class="etabs">
+              <span class="etab on">المصاريف</span><span class="etab">التسوية</span><span class="etab">النشاط</span><span class="etab">الملخّص</span>
+            </div>
+          </div>
+
+          <div class="pcard" style="display:flex; justify-content:space-between; align-items:center; padding:11px 16px">
+            <div>
+              <div class="peyebrow" style="margin:0">مستحق لك</div>
+              <div class="amount apos" style="font-size:21px" dir="ltr"><span class="cur">OMR</span>23<span class="dec">.150</span> <span class="caret">▲</span></div>
+            </div>
+            <span class="ghostbtn">تسوية</span>
+          </div>
+
+          <div class="peyebrow">الخميس ٢ يوليو</div>
+          <div class="pcard" style="padding:4px 16px">
+            <div class="prow">
+              <span class="catdot" style="background:#6C7A33"></span>
+              <div class="t"><div class="n">مشتريات — لولو</div><div class="s">دفع سالم · قسمة على ٥</div></div>
+              <div class="amount" style="font-size:13.5px" dir="ltr"><span class="cur">OMR</span>28<span class="dec">.350</span></div>
+            </div>
+            <div class="prow">
+              <span class="catdot" style="background:#575E93"></span>
+              <div class="t"><div class="n">وقود — طريق الوادي</div><div class="s">دفعتَ أنت · قسمة على ٥</div></div>
+              <div class="amount apos" style="font-size:13.5px" dir="ltr"><span class="cur">OMR</span>12<span class="dec">.400</span></div>
+            </div>
+            <div class="prow">
+              <span class="catdot" style="background:#9C4F2E"></span>
+              <div class="t"><div class="n">شواء المخيّم</div><div class="s">دفعت فاطمة · قسمة على ٤</div></div>
+              <div class="amount" style="font-size:13.5px" dir="ltr"><span class="cur">OMR</span>15<span class="dec">.000</span></div>
+            </div>
+          </div>
+
+          <div class="pcard" style="text-align:center; background:var(--p-tint); border-color:var(--p-line2)">
+            <div style="font-family:'Zain'; font-weight:800; font-size:17px">الجميع متوازن.</div>
+            <div style="font-size:11px; color:var(--p-ink3)">لا مبالغ معلّقة في هذه الفعالية.</div>
+          </div>
+        </div>
+        <div class="pillcta">+ إضافة مصروف</div>
+        <div class="pnav" style="opacity:.35"><div class="tab">المجموعات</div><div class="tab">النشاط</div><div class="tab">الملف</div></div>
+      </div></div>
+      <div class="phcap"><b>Arabic · RTL.</b> Zain 800 does real display work (no synthetic italic, no tracking —
+      the #841 per-script rules hold by construction). Amounts stay LTR mono, ISO-code-first. The fork,
+      tabs and ticket all mirror natively.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= DECISIONS ================= -->
+<section id="decisions">
+  <div class="eyebrow">06 · Decisions &amp; guardrails</div>
+  <h2>What breaks, what stays, what got fixed in synthesis</h2>
+
+  <h3>KEEP-list decisions (explicit, per the contract)</h3>
+  <div class="tablewrap" style="margin:14px 0">
+    <table>
+      <tr><th>Invariant</th><th>Decision</th><th>Rationale</th></tr>
+      <tr><td>KEEP-1 · type system (serif italic + mono + sans)</td><td><span class="decision break">Break faces</span></td><td>The italic serif is the sharpest Claude signal and has no Arabic form. The three-tier <em>structure</em> (display / mono money / sans UI) and the #841 per-script engine survive intact.</td></tr>
+      <tr><td>KEEP-2 · warm cream palette + sage/rust</td><td><span class="decision break">Break hues</span></td><td>Cream <em>is</em> the resemblance. The structural money contract survives exactly: surface + darker AA text per polarity, disjoint from brand accent, green=owed prior kept.</td></tr>
+      <tr><td>KEEP-3 · dashed-arrow transfer cards</td><td><span class="decision keep">Keep</span></td><td>Restyled — the connector becomes the falaj fork; who-pays-whom clarity unchanged.</td></tr>
+      <tr><td>KEEP-4 · RTL build</td><td><span class="decision keep">Keep + strengthen</span></td><td>Zain is Arabic-first; the lockup is bilingual by construction; the fork mirrors natively.</td></tr>
+      <tr><td>KEEP-5 · copy voice</td><td><span class="decision keep">Keep verbatim</span></td><td>The voice was never the problem — “everyone's even” finally gets a visual system as quiet as it is.</td></tr>
+      <tr><td>KEEP-6 · perforated ticket cards</td><td><span class="decision keep">Keep silhouette</span></td><td>The most Rihla-owned asset. Materials re-dress: plaster, shale, brass seal, Omani landscape covers.</td></tr>
+      <tr><td>KEEP-7 · “saved · synced” modal</td><td><span class="decision keep">Keep</span></td><td>Structural trust pattern; restyle only.</td></tr>
+      <tr><td>KEEP-8 · light card hierarchy</td><td><span class="decision break">Break values</span></td><td>Two-level page-vs-card pattern kept on the new plaster/white stack.</td></tr>
+      <tr><td>DEC-3 · deterministic avatars</td><td><span class="decision keep">Keep contract</span></td><td>Same hash, same 8 slots — retinted as a set to the seal-ink palette.</td></tr>
+    </table>
+  </div>
+
+  <h3>Judge-flagged issues, fixed before you're reading this</h3>
+  <ul class="klist">
+    <li><b>Brass was AA-knife-edge.</b> Authored primary #96660F gave white 4.99:1. Fixed: light primary darkens to <span class="mono">#8A5D0D</span> (5.75:1, margin for pressed states); #96660F survives only as a decorative bright variant. Dark mode already ran ink-on-brass at 7.6:1. Add an automated contrast test over token pairs to CI so drift can't re-break it.</li>
+    <li><b>Warning collided with brass.</b> Amber #F59E0B sits in the gold family the brand now owns — an offline banner reading as “brand accent” damages the offline-honesty trust pattern. Fixed: warning re-hues to burnt orange-red (<span class="mono">#C2410C</span> light / <span class="mono">#E8703A</span> dark), banners become icon-led, and brass + warning are forbidden in the same component.</li>
+    <li><b>The last cream echo.</b> The authored selection tints (#E9DFC2/#F3EDDB) were the one bridge back to the saffron look. Fixed: cooled to <span class="mono">#E3E4C9</span>/<span class="mono">#F1F2DF</span>, with two written rules — the page ground must stay G≥R, and a tint is never the only selection signal (always + hairline + tick).</li>
+    <li><b>Fork dilution risk.</b> Usage law written into the spec: full fork max once per screen; the share-notch tick is the only ambient form; continuous flow-motion means “syncing” and nothing else. Test the app icon at 16px against the git-fork association before committing the lockup.</li>
+  </ul>
+
+  <h3>The one open bet: Zain's Latin</h3>
+  <p>Every judge flagged it: Zain is superb Arabic and characterful Latin, but it ships no 500/600 weights
+  (two-step 400/700 ladder — ~215 <span class="mono">w500/w600</span> call sites would remap) and its rounded Latin is
+  unproven at dense 13sp ledger rows. <strong>Decision path:</strong> this page is spike #1; spike #2 is one Flutter screen
+  (ledger + hero + settings) in both scripts <strong>before</strong> the font PR. Pre-agreed fallback, so it's a decision and
+  not a scramble: IBM Plex Sans takes Latin UI, Zain keeps Arabic + display. Either way the identity holds —
+  the palette, fork, and structure carry it.</p>
+</section>
+
+<!-- ================= MIGRATION ================= -->
+<section id="migration">
+  <div class="eyebrow">07 · Shipping it</div>
+  <h2>Five PRs, each independently shippable</h2>
+  <p>The token architecture makes this cheap: color, spacing, radius, shadow and motion all flow from
+  <span class="mono">lib/core/theme/tokens/</span>, and field names never change — only values. Money math, routing,
+  l10n, Iconsax call sites, spacing/radius/motion values: untouched.</p>
+
+  <div class="tablewrap" style="margin:16px 0">
+    <table>
+      <tr><th>PR</th><th>Scope</th><th>Size</th><th>Notes</th></tr>
+      <tr><td class="num">0</td><td>Type spike — one screen, both scripts, Zain vs Plex-fallback decision</td><td class="num">½ day</td><td>Gate: not needed (throwaway spike)</td></tr>
+      <tr><td class="num">1</td><td><b>Token swap</b> — full light+dark AppColorTokens values, shadows, CoverArt palettes, avatar/seal inks + CI contrast test</td><td class="num">1–2 days</td><td>Ships the signature-kill alone; goldens regenerate (macOS); stranger-test screenshots before PR-2</td></tr>
+      <tr><td class="num">2</td><td><b>Font swap</b> — bundle Bricolage/Zain/Spline Sans Mono statics, rewrite AppTypography recipes, weight-ladder remap</td><td class="num">2–3 days</td><td>displayOf() simplifies (no italic); per-script branching already exists (#841)</td></tr>
+      <tr><td class="num">3</td><td><b>Components</b> — wordmark + fork painter, transfer connector, star-grid overlay, ticket re-dress, seal-settle animation (<span class="mono">stamp</span>/<span class="mono">flow</span> as named motion tokens)</td><td class="num">~1 wk</td><td>Individually revertable; dashed arrow stays until fork painter passes 16px/24px/RTL goldens</td></tr>
+      <tr><td class="num">4</td><td><b>Dark pass</b> — tune night-navigation dark, then revisit the light-only default (D5a)</td><td class="num">2–3 days</td><td>Absorbs the D5 debt as a brand deliverable</td></tr>
+      <tr><td class="num">5</td><td><b>IA fixes</b> — one-tap FAB, smart-forward rows, hero sheet, chrome shims, /search</td><td class="num">3–5 days</td><td><b>Gate category</b> (routing) — /run-the-gate first; can land before or after the reskin</td></tr>
+    </table>
+  </div>
+  <p class="small">Realistic solo total: 2–3 weeks. PR-1 alone changes the answer to “is this made by the Claude people?” —
+  ship it first, test with strangers, then decide how fast to run.</p>
+
+  <h3>Next steps</h3>
+  <ul class="klist">
+    <li><b>Pick:</b> Falaj as proposed · Falaj-with-Plex-Latin · or ask for a deeper look at Kamal/Jawaz before deciding.</li>
+    <li><b>If Falaj:</b> I write the full spec to <span class="mono">docs/plans/2026-07-05-falaj-rebrand.md</span> + a DESIGN.md v2 draft, run the Gate on the routing spec, and start PR-0/PR-1.</li>
+    <li><b>Optional:</b> sync this system to a claude.ai/design project (component library: tokens, type, tickets, seals, transfer cards) for ongoing design work.</li>
+  </ul>
+</section>
+
+<div class="footer">
+  <svg class="fork" aria-hidden="true" width="120" height="18" viewBox="0 0 120 18" fill="none"><path d="M2 9 H78 M78 9 C90 9 90 3 104 3 M78 9 H104 M78 9 C90 9 90 15 104 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  <p style="margin-top:10px">recorded in Rihla · research: 11 agents (5 audits · 3 directions · 3 judges), 2026-07-05.
+  Full data in session scratchpad: <span class="mono">wf-friction / wf-identity / wf-voice / wf-priorArt / wf-market / wf-directions / wf-judges</span>.</p>
+</div>
+
+</div>
+
+</body>
+</html>
