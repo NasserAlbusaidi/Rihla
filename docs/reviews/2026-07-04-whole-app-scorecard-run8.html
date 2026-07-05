@@ -1,0 +1,198 @@
+<title>Rihla scorecard - 2026-07-04 run 8 - 90.42 A-</title>
+<style>
+:root {
+  --bg: #faf7f2;
+  --card: #ffffff;
+  --ink: #1b1a17;
+  --muted: #7a7468;
+  --line: #e4ddd1;
+  --sage: #5c7a57;
+  --rust: #a84b33;
+  --chip: #f0ebe2;
+  --bar: #e9e3d8;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161512;
+    --card: #1e1c18;
+    --ink: #ede9e1;
+    --muted: #9a9284;
+    --line: #2e2a24;
+    --sage: #8faf8a;
+    --rust: #d08a73;
+    --chip: #26231e;
+    --bar: #2a2722;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 42px 20px 84px; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.05;
+  margin: 8px 0 4px;
+}
+h2 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 23px;
+  margin: 38px 0 12px;
+}
+code, .mono { font-family: var(--mono); }
+.meta { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.hero { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; margin-top: 28px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; }
+.score { font-family: var(--mono); font-size: 64px; font-weight: 650; line-height: 1; }
+.score small { font-size: 26px; color: var(--muted); font-weight: 500; }
+.grade { display: inline-block; margin-left: 10px; padding: 3px 12px; border-radius: 999px; background: var(--chip); font-family: var(--mono); font-size: 15px; vertical-align: 18px; }
+.delta { margin-top: 10px; color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.delta b { color: var(--sage); }
+.dod { list-style: none; padding: 0; margin: 6px 0 0; font-size: 13.5px; }
+.dod li { display: flex; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.dod li:first-child { border-top: 0; }
+.bad { color: var(--rust); font-weight: 700; }
+.good { color: var(--sage); font-weight: 700; }
+.callout { border-inline-start: 4px solid var(--rust); background: var(--card); border-radius: 8px; padding: 13px 18px; margin: 10px 0; font-size: 14px; }
+.callout b { display: block; color: var(--rust); font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+.wins { border-inline-start-color: var(--sage); }
+.wins b { color: var(--sage); }
+.groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.g { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.g .n { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.g .v { font-family: var(--mono); font-size: 24px; margin-top: 3px; }
+.tablebox { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 9px 8px 6px; }
+td { border-top: 1px solid var(--line); padding: 9px 8px; vertical-align: top; }
+td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { min-width: 100px; height: 6px; border-radius: 999px; background: var(--bar); margin-top: 7px; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--ink); opacity: .72; }
+.cat { font-weight: 650; white-space: nowrap; }
+.cat span { display: block; color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; font-weight: 400; }
+.note { color: var(--muted); font-size: 12.5px; max-width: 520px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.cols ul, ol { margin-top: 8px; padding-left: 20px; font-size: 14px; }
+.cols li, ol li { margin: 8px 0; }
+.summary { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px; font-size: 14.5px; max-width: 76ch; }
+.method { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; margin-top: 44px; padding-top: 14px; max-width: 76ch; }
+@media (max-width: 760px) {
+  .hero, .cols, .groups { grid-template-columns: 1fr; }
+}
+</style>
+<div class="wrap">
+  <div class="eyebrow">Rihla whole-app quality scorecard - run 8</div>
+  <h1>A-minus on main; not a release GO yet</h1>
+  <div class="meta">2026-07-04 - scored against origin/main @ 6cda9da3 - baseline: run 7 @ f51acd2c, 89.99 B+</div>
+
+  <section class="hero">
+    <div class="card">
+      <div><span class="score">90.42<small> /100</small></span><span class="grade">A-</span></div>
+      <div class="delta"><b>+0.43</b> vs run 7 (89.99 B+) - first honest A-minus on main</div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">Definition of done</h2>
+      <ul class="dod">
+        <li><span class="good">OK</span><span>Zero would-quit findings - <b>0 open</b></span></li>
+        <li><span class="good">OK</span><span>Every category >= 87 - <b>0 below</b></span></li>
+        <li><span class="good">OK</span><span>Composite >= 90 - <b>90.42</b></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <h2>What changed since run 7</h2>
+  <div class="callout wins"><b>Settlement visibility fixed on main</b>#891 closed #831: event-scoped settlements now write an <code>event_settlement</code> group activity row from the event settle-up record path.</div>
+  <div class="callout wins"><b>Surfaces wired</b>The row reuses directional settlement text, amount metadata, settlement glyphs, search haystacks, both settlement filters, and deep-links to <code>/group/:gid/event/:eid/ledger/settle-up</code>.</div>
+  <div class="callout wins"><b>False positives suppressed</b>Correction reversals and decomposed settlement slices do not create fresh activity rows, avoiding misleading "new payment" history.</div>
+  <div class="callout wins"><b>Evidence is broad</b>The merged main commit passed Readiness Check, including Functions build/lint/audit, analyzer, theme purity, ARB completeness, Firebase emulator rules and Functions tests, full Flutter tests with coverage, and raw coverage threshold.</div>
+  <div class="callout"><b>Production caveat</b><code>tool/pending_deploy.sh</code> reports backend deploy drift: #891, #875, and #882 are merged but not deployed. Until Firebase rules are deployed, prod rejects the new client-written <code>event_settlement</code> activity rows. Money writes still succeed, but the #831 visibility fix is not live in prod yet.</div>
+
+  <h2>Would-quit findings</h2>
+  <div class="callout wins"><b>None remaining in this pass</b>No abandonment-plausible blocker was found in the run-8 delta. The remaining blockers are operational or roadmap debt, not current would-quit defects in main.</div>
+
+  <h2>Scores by group</h2>
+  <div class="groups">
+    <div class="g"><div class="n">Product & UX</div><div class="v">89.7 avg / w35</div></div>
+    <div class="g"><div class="n">Correctness & Data</div><div class="v">90.8 avg / w30</div></div>
+    <div class="g"><div class="n">Security</div><div class="v">91.4 avg / w15</div></div>
+    <div class="g"><div class="n">Engineering</div><div class="v">90.3 avg / w20</div></div>
+  </div>
+
+  <h2>16 categories</h2>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Category</th><th class="num">W</th><th>Score</th><th class="num"></th><th class="num">Grade</th><th>Judge note</th></tr></thead>
+      <tbody>
+        <tr><td class="cat">First-run & onboarding<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">No material change. Cold-start cleanup still helps; create/join exit discard risk still caps the score.</td></tr>
+        <tr><td class="cat">Core money loop UX<span>Product & UX</span></td><td class="num">10</td><td><div class="bar"><i style="width:90%"></i></div></td><td class="num"><b>90</b></td><td class="num">A-</td><td class="note">Settlement history now tells the truth across group/cross-group surfaces after an event settlement. This is money trust, not just feed polish.</td></tr>
+        <tr><td class="cat">Navigation & IA<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:93%"></i></div></td><td class="num"><b>93</b></td><td class="num">A</td><td class="note">Event settlements now have an honest activity target back to the event settle-up screen. The activity system feels joined-up instead of partial.</td></tr>
+        <tr><td class="cat">Copy & microcopy (EN/AR)<span>Product & UX</span></td><td class="num">4</td><td><div class="bar"><i style="width:87%"></i></div></td><td class="num"><b>87</b></td><td class="num">B+</td><td class="note">No change since #855. The backup prompt is honest, but broader Arabic polish keeps this just at the floor.</td></tr>
+        <tr><td class="cat">Visual design system<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">No change since #888. Activity feeds share row, header, day, filter, and backdrop vocabulary.</td></tr>
+        <tr><td class="cat">Accessibility & i18n / RTL<span>Product & UX</span></td><td class="num">6</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">No change. #871 remains fixed; broader semantic and RTL eyeball coverage still need routine attention.</td></tr>
+        <tr><td class="cat">Money math & oracle parity<span>Correctness & Data</span></td><td class="num">12</td><td><div class="bar"><i style="width:91%"></i></div></td><td class="num"><b>91</b></td><td class="num">A-</td><td class="note">No money arithmetic changed. The improvement is visibility/auditability around settlement rows, not calculation.</td></tr>
+        <tr><td class="cat">Data model integrity<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:93%"></i></div></td><td class="num"><b>93</b></td><td class="num">A</td><td class="note">#831 closes a real write/read model gap: event settlement docs now have a matching group activity representation with typed direction metadata.</td></tr>
+        <tr><td class="cat">Offline & sync<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:90%"></i></div></td><td class="num"><b>90</b></td><td class="num">A-</td><td class="note">No direct change. The new activity log is fire-and-forget so it cannot block the money write, which preserves the bounded write behavior.</td></tr>
+        <tr><td class="cat">Error handling & edge cases<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">Correction/decomposed-slice suppression and forged metadata fallbacks reduce misleading or crashing edge cases in activity display.</td></tr>
+        <tr><td class="cat">Firestore rules & Functions auth<span>Security</span></td><td class="num">9</td><td><div class="bar"><i style="width:93%"></i></div></td><td class="num"><b>93</b></td><td class="num">A</td><td class="note">Rules now allow-list <code>event_settlement</code> explicitly, keep server-only activity types blocked, and have emulator coverage for the new shape. Deployment is still pending.</td></tr>
+        <tr><td class="cat">Auth, recovery, cross-UID & PII<span>Security</span></td><td class="num">6</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">No change since run 7.</td></tr>
+        <tr><td class="cat">Architecture & organization<span>Engineering</span></td><td class="num">6</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">The client-write decision is documented and bounded. Server fan-in remains blocked behind the future correction marker work (#889).</td></tr>
+        <tr><td class="cat">Test coverage & quality<span>Engineering</span></td><td class="num">7</td><td><div class="bar"><i style="width:93%"></i></div></td><td class="num"><b>93</b></td><td class="num">A</td><td class="note">Run 8 adds regression coverage at the write site, display vocabulary, navigation target, rules allow-list, filters, and correction suppression. Main readiness is green.</td></tr>
+        <tr><td class="cat">State management & performance<span>Engineering</span></td><td class="num">4</td><td><div class="bar"><i style="width:90%"></i></div></td><td class="num"><b>90</b></td><td class="num">A-</td><td class="note">No material performance movement. The new activity row is fire-and-forget and does not add new feed listeners.</td></tr>
+        <tr><td class="cat">CI/CD & release hygiene<span>Engineering</span></td><td class="num">3</td><td><div class="bar"><i style="width:87%"></i></div></td><td class="num"><b>87</b></td><td class="num">B+</td><td class="note">Readiness Check is green on 6cda9da3, but #40 remains open and backend deploy drift means #831 is not live in prod until the Firebase deploy ceremony runs.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Cheapest leverage</h2>
+  <ol>
+    <li><b>Run the Firebase backend deploy ceremony.</b> This is required for #831 to work in production because the rules allow-list changed.</li>
+    <li><b>Close #40 with real two-physical-device evidence.</b> The app score is A-minus on main; release truth still is not a clean GO while #40 is open.</li>
+    <li><b>Add pixel/golden coverage for the activity visual system.</b> The UI system is now polished but still thinly protected visually.</li>
+    <li><b>Do a small Arabic copy sweep.</b> Copy is above the floor now, but it is still the softest product category.</li>
+  </ol>
+
+  <div class="cols">
+    <div>
+      <h2>What carries the score</h2>
+      <ul>
+        <li>All three A-minus gates now pass on <code>origin/main</code>.</li>
+        <li>No current would-quit finding survived this pass.</li>
+        <li>#831 closes a real money-history trust gap with broad tests.</li>
+        <li>Rules, callable auth, data invariants, and cross-runtime money tests remain strong.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>What drags it</h2>
+      <ul>
+        <li>#40 is still an open release-blocker.</li>
+        <li>Backend deploy drift means the #831 visibility fix is not live in prod yet.</li>
+        <li>Visual regression coverage still trails the polished activity layer.</li>
+        <li>The future server-fan-in/correction marker track is still open as #889.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Judge summary</h2>
+  <div class="summary">Run 8 reaches 90.42 A-minus on main. The reason is straightforward: #831 fixes a trust gap in the money/history loop, not just a cosmetic feed issue. Event settlements now produce group activity rows, appear in history/search/filter surfaces, and deep-link back to the relevant event settle-up context, with tests and rules coverage. The score is not a release GO: #40 is still open and the Firebase backend deploy is required before the #831 row writes succeed in production.</div>
+
+  <div class="method"><b>Method.</b> Current-state operator rescore using the same 16-category weighting as runs 3 through 7. Inputs: live <code>origin/main</code> at <code>6cda9da360409b0dbbc97d4af48b7ba4d2f8dc7c</code>, merged PR #891, closed issue #831, open release-blocker #40, open follow-up #889, direct code/test/rules spot-checks for the event-settlement activity path, <code>tool/pending_deploy.sh</code> deploy-drift output, and green GitHub Readiness Check run 28709569396. This is not represented as a fresh 42-agent blind panel.</div>
+</div>

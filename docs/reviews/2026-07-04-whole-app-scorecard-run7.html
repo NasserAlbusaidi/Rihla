@@ -1,0 +1,197 @@
+<title>Rihla scorecard - 2026-07-04 run 7 - 89.99 B+</title>
+<style>
+:root {
+  --bg: #faf7f2;
+  --card: #ffffff;
+  --ink: #1b1a17;
+  --muted: #7a7468;
+  --line: #e4ddd1;
+  --sage: #5c7a57;
+  --rust: #a84b33;
+  --chip: #f0ebe2;
+  --bar: #e9e3d8;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161512;
+    --card: #1e1c18;
+    --ink: #ede9e1;
+    --muted: #9a9284;
+    --line: #2e2a24;
+    --sage: #8faf8a;
+    --rust: #d08a73;
+    --chip: #26231e;
+    --bar: #2a2722;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 42px 20px 84px; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.05;
+  margin: 8px 0 4px;
+}
+h2 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 23px;
+  margin: 38px 0 12px;
+}
+code, .mono { font-family: var(--mono); }
+.meta { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.hero { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; margin-top: 28px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; }
+.score { font-family: var(--mono); font-size: 64px; font-weight: 650; line-height: 1; }
+.score small { font-size: 26px; color: var(--muted); font-weight: 500; }
+.grade { display: inline-block; margin-left: 10px; padding: 3px 12px; border-radius: 999px; background: var(--chip); font-family: var(--mono); font-size: 15px; vertical-align: 18px; }
+.delta { margin-top: 10px; color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.delta b { color: var(--sage); }
+.dod { list-style: none; padding: 0; margin: 6px 0 0; font-size: 13.5px; }
+.dod li { display: flex; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.dod li:first-child { border-top: 0; }
+.bad { color: var(--rust); font-weight: 700; }
+.good { color: var(--sage); font-weight: 700; }
+.callout { border-inline-start: 4px solid var(--rust); background: var(--card); border-radius: 8px; padding: 13px 18px; margin: 10px 0; font-size: 14px; }
+.callout b { display: block; color: var(--rust); font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+.wins { border-inline-start-color: var(--sage); }
+.wins b { color: var(--sage); }
+.groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.g { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.g .n { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.g .v { font-family: var(--mono); font-size: 24px; margin-top: 3px; }
+.tablebox { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 9px 8px 6px; }
+td { border-top: 1px solid var(--line); padding: 9px 8px; vertical-align: top; }
+td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { min-width: 100px; height: 6px; border-radius: 999px; background: var(--bar); margin-top: 7px; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--ink); opacity: .72; }
+.cat { font-weight: 650; white-space: nowrap; }
+.cat span { display: block; color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; font-weight: 400; }
+.note { color: var(--muted); font-size: 12.5px; max-width: 520px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.cols ul, ol { margin-top: 8px; padding-left: 20px; font-size: 14px; }
+.cols li, ol li { margin: 8px 0; }
+.summary { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px; font-size: 14.5px; max-width: 76ch; }
+.method { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; margin-top: 44px; padding-top: 14px; max-width: 76ch; }
+@media (max-width: 760px) {
+  .hero, .cols, .groups { grid-template-columns: 1fr; }
+}
+</style>
+<div class="wrap">
+  <div class="eyebrow">Rihla whole-app quality scorecard - run 7</div>
+  <h1>The category floor clears; the composite misses by a hair</h1>
+  <div class="meta">2026-07-04 - scored against origin/main @ f51acd2c - baseline: run 6 @ 906ae982, 89.83 B+</div>
+
+  <section class="hero">
+    <div class="card">
+      <div><span class="score">89.99<small> /100</small></span><span class="grade">B+</span></div>
+      <div class="delta"><b>+0.16</b> vs run 6 (89.83 B+) - still technically below A- threshold</div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">Definition of done</h2>
+      <ul class="dod">
+        <li><span class="good">OK</span><span>Zero would-quit findings - <b>0 open</b></span></li>
+        <li><span class="good">OK</span><span>Every category >= 87 - <b>0 below</b></span></li>
+        <li><span class="bad">x</span><span>Composite >= 90 - <b>89.99</b></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <h2>What changed since run 6</h2>
+  <div class="callout wins"><b>Copy truth fixed</b>#890 closed #855: the Profile backup card no longer promises "email or Google" while opening a Google-only sheet. EN now says "Link Google"; AR now uses the same Google-linking verb as the sheet and home nudge.</div>
+  <div class="callout wins"><b>Old promise removed from main</b>Direct grep against origin/main finds zero remaining instances of the old "email or Google" promise under <code>lib/</code> and <code>test/</code>.</div>
+  <div class="callout wins"><b>Readiness is green</b>The merged main commit <code>f51acd2c</code> passed GitHub Readiness Check run 28707913405.</div>
+  <div class="callout"><b>Still not A-minus</b>This clears the category floor, but it does not close #40 physical-device QA, #831 settlement activity visibility, or the missing pixel/golden protection for the new activity visual system.</div>
+
+  <h2>Would-quit findings</h2>
+  <div class="callout wins"><b>None remaining in this pass</b>No abandonment-plausible blocker was found in the run-7 delta. The app now has no current would-quit finding under this scorecard rubric.</div>
+
+  <h2>Scores by group</h2>
+  <div class="groups">
+    <div class="g"><div class="n">Product & UX</div><div class="v">89.3 avg / w35</div></div>
+    <div class="g"><div class="n">Correctness & Data</div><div class="v">90.4 avg / w30</div></div>
+    <div class="g"><div class="n">Security</div><div class="v">90.8 avg / w15</div></div>
+    <div class="g"><div class="n">Engineering</div><div class="v">90.0 avg / w20</div></div>
+  </div>
+
+  <h2>16 categories</h2>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Category</th><th class="num">W</th><th>Score</th><th class="num"></th><th class="num">Grade</th><th>Judge note</th></tr></thead>
+      <tbody>
+        <tr><td class="cat">First-run & onboarding<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">No material change since run 6. Cold-start cleanup still helps; create/join exit discard risk still caps the score.</td></tr>
+        <tr><td class="cat">Core money loop UX<span>Product & UX</span></td><td class="num">10</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">No new money-loop change. The allocator, Exact/Percent, and weighted-remainder fixes remain the main support.</td></tr>
+        <tr><td class="cat">Navigation & IA<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">No change. Activity routed and embedded surfaces remain coherent after the backdrop pass.</td></tr>
+        <tr><td class="cat">Copy & microcopy (EN/AR)<span>Product & UX</span></td><td class="num">4</td><td><div class="bar"><i style="width:87%"></i></div></td><td class="num"><b>87</b></td><td class="num">B+</td><td class="note">#855 is fixed on main: the data-safety backup prompt no longer lies about the available action. Broader Arabic polish remains, so this clears the floor but does not become an A-range category.</td></tr>
+        <tr><td class="cat">Visual design system<span>Product & UX</span></td><td class="num">5</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">No change since #888: activity feeds share row, header, day, filter, and backdrop vocabulary.</td></tr>
+        <tr><td class="cat">Accessibility & i18n / RTL<span>Product & UX</span></td><td class="num">6</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">No change. #871 remains fixed; broader semantic and RTL eyeball coverage still need routine attention.</td></tr>
+        <tr><td class="cat">Money math & oracle parity<span>Correctness & Data</span></td><td class="num">12</td><td><div class="bar"><i style="width:91%"></i></div></td><td class="num"><b>91</b></td><td class="num">A-</td><td class="note">No change in this copy-only delta.</td></tr>
+        <tr><td class="cat">Data model integrity<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">No model change. #831 remains the most important open data-integrity issue.</td></tr>
+        <tr><td class="cat">Offline & sync<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:90%"></i></div></td><td class="num"><b>90</b></td><td class="num">A-</td><td class="note">No change. Atomic group creation still holds; group edit and sign-out pending-write edges remain.</td></tr>
+        <tr><td class="cat">Error handling & edge cases<span>Correctness & Data</span></td><td class="num">6</td><td><div class="bar"><i style="width:88%"></i></div></td><td class="num"><b>88</b></td><td class="num">B+</td><td class="note">No change in this delta.</td></tr>
+        <tr><td class="cat">Firestore rules & Functions auth<span>Security</span></td><td class="num">9</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">No rules or Functions change in #890.</td></tr>
+        <tr><td class="cat">Auth, recovery, cross-UID & PII<span>Security</span></td><td class="num">6</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">The backup prompt is now honest, but the underlying auth/recovery mechanics are unchanged.</td></tr>
+        <tr><td class="cat">Architecture & organization<span>Engineering</span></td><td class="num">6</td><td><div class="bar"><i style="width:89%"></i></div></td><td class="num"><b>89</b></td><td class="num">B+</td><td class="note">No architecture movement from this two-string l10n fix.</td></tr>
+        <tr><td class="cat">Test coverage & quality<span>Engineering</span></td><td class="num">7</td><td><div class="bar"><i style="width:92%"></i></div></td><td class="num"><b>92</b></td><td class="num">A-</td><td class="note">Readiness is green and #890 ran focused settings tests, but no new automated assertion pinned the backup card body.</td></tr>
+        <tr><td class="cat">State management & performance<span>Engineering</span></td><td class="num">4</td><td><div class="bar"><i style="width:90%"></i></div></td><td class="num"><b>90</b></td><td class="num">A-</td><td class="note">No change.</td></tr>
+        <tr><td class="cat">CI/CD & release hygiene<span>Engineering</span></td><td class="num">3</td><td><div class="bar"><i style="width:87%"></i></div></td><td class="num"><b>87</b></td><td class="num">B+</td><td class="note">Readiness Check is green on f51acd2c. The #40 physical-device release-blocker still caps the category.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Cheapest leverage</h2>
+  <ol>
+    <li><b>Close #40 with real two-physical-device evidence.</b> This is now the cleanest non-code way to push the score over the line honestly.</li>
+    <li><b>Fix #831 if you want the highest-impact code issue.</b> Event settlements being invisible to every activity feed is a money/data-integrity trust gap.</li>
+    <li><b>Add pixel/golden coverage for the activity visual system.</b> That would turn the recent visual polish into durable CI protection.</li>
+    <li><b>Do a small Arabic copy sweep.</b> Copy cleared the floor, but it is still only barely B+.</li>
+  </ol>
+
+  <div class="cols">
+    <div>
+      <h2>What carries the score</h2>
+      <ul>
+        <li>All 16 categories are now at least 87.</li>
+        <li>No current would-quit finding survived this pass.</li>
+        <li>Money truth and server trust boundaries remain strong.</li>
+        <li>Activity UI consistency is much better than it was at run 4.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>What drags it</h2>
+      <ul>
+        <li>The weighted composite is still 0.01 short of 90.</li>
+        <li>#40 is still an open release-blocker.</li>
+        <li>#831 still leaves event settlements out of history/activity surfaces.</li>
+        <li>Visual regression coverage still trails the polished activity layer.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Judge summary</h2>
+  <div class="summary">Run 7 lands at 89.99. The backup-card copy merge matters because it removes a truth mismatch in the account-safety path and finally lifts Copy & microcopy to the category floor. But this is still technically B+, not A-, because the composite is one one-hundredth short of 90 and the release QA blocker remains open. The next real move is either close #40, fix #831, or add durable visual proof for the newly unified activity UI.</div>
+
+  <div class="method"><b>Method.</b> Current-state operator rescore using the same 16-category weighting as runs 3 through 6. Inputs: live <code>origin/main</code> at <code>f51acd2c8f3a3fcf6daca3b3d7bdd1adad126e3f</code>, merged PR #890, closed issue #855, open release-blocker #40, open data-integrity issue #831, direct origin/main grep and diff spot-checks for the old backup copy, and green GitHub Readiness Check run 28707913405. This is not represented as a fresh 42-agent blind panel.</div>
+</div>
