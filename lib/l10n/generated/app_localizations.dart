@@ -536,24 +536,6 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get profileDisplayThemeDarkValue;
 
-  /// Section header for ProfileSupportSection widget. English stays uppercase; Arabic renders natural-case.
-  ///
-  /// In en, this message translates to:
-  /// **'SUPPORT'**
-  String get profileSupportSectionLabel;
-
-  /// Tile label in ProfileSupportSection that opens the PayPal donate URL.
-  ///
-  /// In en, this message translates to:
-  /// **'Buy me a coffee'**
-  String get profileSupportCoffeeTile;
-
-  /// SnackBar shown when the PayPal launch fails.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t open PayPal'**
-  String get profileSupportPaypalFailed;
-
   /// Top-bar title on the Profile screen.
   ///
   /// In en, this message translates to:

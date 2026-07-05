@@ -11,7 +11,7 @@
 
 **Status decision log:**
 - 2026-07-05 — Direction approved by owner: **Falaj as proposed** (3/3 judge panel). Runners-up (Kamal — Field Atlas, Jawaz — Midnight Passport) rejected; their grafts are folded in below.
-- Open bet: **Zain as Latin UI face** (no 500/600 weights → two-step 400/700 ladder across ~215 `w500/w600` call sites). PR-0 spike decides; pre-agreed fallback = IBM Plex Sans for Latin UI, Zain keeps Arabic + display. Do NOT start PR-2 before the spike verdict is recorded here.
+- ~~Open bet: **Zain as Latin UI face**~~ **RESOLVED 2026-07-05 — PR-0 verdict: GO (owner call, from measured spike screenshots).** Zain carries Latin UI. Measured facts: w500→400 and w600→700 (pixel-identity), so the ledger title tier loses weight emphasis while w600 surfaces gain a clean Zain-700 bold. **PR-2 mitigation (part of the verdict):** at the ~215 `w500` call sites, compensate with size (+0.5–1sp) and/or an ink-step (textPrimary vs textSecondary) instead of weight, golden-reviewed on the dense ledger; the pre-agreed IBM-Plex-Latin fallback stays available as a later mechanical remap if mitigation goldens disappoint. Arabic display recipes that requested w500 map to Zain 700 (the spike's rerouted-bold reading was approved). Spike evidence: scratchpad `spike/01–07*.png` + verdict artifact d0e4303f.
 
 ---
 
