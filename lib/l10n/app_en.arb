@@ -1203,9 +1203,9 @@
   "@currencyExplainerTitle": {
     "description": "Title of the one-time settle-up explainer (#382 PR-5) shown when a group has balances in two or more currencies, explaining why currencies never net against each other."
   },
-  "currencyExplainerBody": "We never invent exchange rates, so OMR can't cancel out AED. You'll record one payment per currency.",
+  "currencyExplainerBody": "We never invent exchange rates, so one currency can't cancel out another. You'll record one payment per currency.",
   "@currencyExplainerBody": {
-    "description": "Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): no rates are invented, one currency can't cancel another, one payment per currency."
+    "description": "Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): Rihla does not invent exchange rates, currencies never net against each other, and users record one payment per currency."
   },
   "currencyExplainerGotIt": "Got it",
   "@currencyExplainerGotIt": {

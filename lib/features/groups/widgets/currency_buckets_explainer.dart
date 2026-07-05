@@ -13,9 +13,9 @@ import '../keys/group_keys.dart';
 /// balances in two or more currency buckets (#382 PR-5).
 ///
 /// Each currency settles on its own — Rihla never invents an exchange rate, so
-/// e.g. OMR can't cancel out AED, and the optimizer plans one payment per
-/// currency. That can read as "simplify is broken" the first time a user sees
-/// it, so this card says why up front.
+/// one currency can't cancel out another. The optimizer still plans one payment
+/// per currency. That can read as "simplify is broken" the first time a user
+/// sees it, so this card says why up front.
 ///
 /// Inline-and-always-presentable (the #285 [AccountBackupNudge] pattern, not
 /// the #352 modal tri-state): no null-gate is needed because a widget in the
