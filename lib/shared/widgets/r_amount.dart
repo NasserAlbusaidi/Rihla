@@ -40,6 +40,7 @@ class RAmount extends StatelessWidget {
     this.showCurrency = true,
     this.size = 16,
     this.sign = false,
+    this.polarityCaret = false,
     this.tone = AmountTone.auto,
     this.weight = FontWeight.w500,
     this.semanticsLabel,
@@ -65,6 +66,16 @@ class RAmount extends StatelessWidget {
   /// sign (sage / rust). When false, the absolute value is rendered with
   /// neutral [tone].
   final bool sign;
+
+  /// When true, a leading ▲ (positive/owed) or ▼ (negative/owe) caret encodes
+  /// polarity by SHAPE so owed/owe is legible without color (colorblind-safe).
+  /// HERO surfaces only — leave false on dense rows. Directionally NEUTRAL
+  /// (vertical glyph) — never mirrors under RTL. No-op when the value is zero.
+  /// When a caret renders, it becomes the SOLE visual polarity mark: the
+  /// `+`/`−` prefix from [sign] is suppressed (two polarity marks would
+  /// stack redundantly) — the spoken [semanticsLabel] still carries the
+  /// ASCII sign regardless.
+  final bool polarityCaret;
 
   /// Explicit color override. Wins over sign-based auto-coloring.
   final AmountTone tone;
@@ -99,7 +110,12 @@ class RAmount extends StatelessWidget {
         : formatted.substring(0, dotIndex);
     final decimalPart = dotIndex == -1 ? '' : formatted.substring(dotIndex);
 
-    final prefix = sign ? (isPositive ? '+' : (isNegative ? _minus : '')) : '';
+    // #900 comp 6: a rendered caret is the sole visual polarity mark — the
+    // +/− prefix is suppressed so the two marks don't stack redundantly.
+    final showCaret = polarityCaret && (isPositive || isNegative);
+    final prefix = showCaret
+        ? ''
+        : (sign ? (isPositive ? '+' : (isNegative ? _minus : '')) : '');
 
     final codeStyle = AppTypography.mono(
       fontSize: size * 0.42,
@@ -120,11 +136,20 @@ class RAmount extends StatelessWidget {
       color: color.withValues(alpha: 0.7),
       height: 1.0,
     );
+    final caretStyle = AppTypography.mono(
+      fontSize: size * 0.42,
+      fontWeight: weight,
+      color: color,
+      height: 1.0,
+    );
 
     final codeText = showCurrency
         ? '$prefix$currency '
         : (prefix.isEmpty ? '' : '$prefix ');
 
+    // Spoken label keeps the ASCII sign regardless of caret suppression above
+    // — semanticsLabel replaces the visual text for screen readers, so the
+    // caret glyph is never announced and the sign must still be spoken.
     final asciiPrefix = sign ? (isPositive ? '+' : (isNegative ? '-' : '')) : '';
     final spokenLabel = semanticsLabel ??
         '$asciiPrefix${showCurrency ? '$currency ' : ''}$formatted';
@@ -132,6 +157,11 @@ class RAmount extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: [
+          if (showCaret)
+            TextSpan(
+              text: '${isPositive ? '▲' : '▼'} ',
+              style: caretStyle,
+            ),
           if (codeText.isNotEmpty) TextSpan(text: codeText, style: codeStyle),
           TextSpan(text: wholePart, style: wholeStyle),
           if (decimalPart.isNotEmpty)

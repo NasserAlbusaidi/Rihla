@@ -277,6 +277,7 @@ class _CurrencyBlock extends StatelessWidget {
           showCurrency: false,
           size: 44,
           sign: !net.isZero,
+          polarityCaret: true,
           tone: tone,
           weight: FontWeight.w500,
         ),
