@@ -126,5 +126,17 @@ void main() {
         expect(t.dialogTheme.backgroundColor, dark.cardSurface);
       });
     });
+
+    // #900 PR-4: dark hintStyle read textMuted (~3.1:1 on inputFill, below
+    // AA) — swapped to textSecondary (~5.6:1).
+    testWidgets('darkTheme input hint uses textSecondary, not textMuted',
+        (tester) async {
+      _suppressFontErrors(() {
+        final hintColor =
+            AppTheme.darkTheme.inputDecorationTheme.hintStyle?.color;
+        expect(hintColor, AppColorTokens.dark.textSecondary);
+        expect(hintColor, isNot(AppColorTokens.dark.textMuted));
+      });
+    });
   });
 }

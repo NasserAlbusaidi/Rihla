@@ -327,7 +327,7 @@ class AppTheme {
           borderSide: BorderSide(color: AppColorTokens.dark.error, width: 1),
         ),
         hintStyle: AppTypography.sans(
-          color: AppColorTokens.dark.textMuted,
+          color: AppColorTokens.dark.textSecondary,
           fontSize: 15,
           fontWeight: FontWeight.w400,
         ),
