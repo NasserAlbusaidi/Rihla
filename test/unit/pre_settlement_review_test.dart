@@ -240,7 +240,7 @@ void main() {
         'USD',
       });
 
-      expect(filtered, same(flags));
+      expect(filtered, hasLength(3));
       expect(filtered.map((f) => f.expense.id), ['omr-1', 'usd-1', 'omr-2']);
     });
 

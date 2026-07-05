@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:safar/core/models/split_mode.dart';
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
@@ -22,6 +23,7 @@ import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/services/pre_settlement_review.dart';
 import 'package:safar/features/ledger/widgets/pre_settlement_review_sheet.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// #204 (group trigger): the group settle-up screen fires the pre-settlement
 /// review sheet ONCE when the resolved group basis holds review-worthy
@@ -451,9 +453,14 @@ void main() {
   testWidgets('mixed buckets suppress settled OMR and keep outstanding USD', (
     tester,
   ) async {
+    // Two currency buckets mount CurrencyBucketsExplainer, which reads
+    // sharedPreferencesProvider — the single-bucket tests never hit it.
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
-      _wrap(
-        _overrides(
+      _wrap([
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ..._overrides(
           events: [_makeEvent(id: 'event-a')],
           expensesByEvent: {
             'event-a': Stream.value([
@@ -481,7 +488,7 @@ void main() {
           },
           balances: AsyncValue.data(_mixedBalances),
         ),
-      ),
+      ]),
     );
     await tester.pumpAndSettle();
 
