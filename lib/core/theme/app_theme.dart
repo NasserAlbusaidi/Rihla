@@ -205,9 +205,9 @@ class AppTheme {
     );
   }
 
-  /// Dark theme — saffron-direction stub. Visual quality target deferred per
-  /// plan; values come from [AppColorTokens.dark] which compile and don't
-  /// produce illegible text but have not been tuned.
+  /// Dark theme — Falaj night-navigation, tuned (#900 PR-4). Values come from
+  /// [AppColorTokens.dark]; component themes mirror [_buildLightTheme]'s
+  /// structure with dark-token colors.
   static final ThemeData darkTheme = _buildDarkTheme();
 
   static ThemeData _buildDarkTheme() {

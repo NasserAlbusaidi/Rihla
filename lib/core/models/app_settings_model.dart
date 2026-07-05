@@ -31,9 +31,9 @@ class AppSettings {
   final SplitMode defaultSplitMode;
 
   const AppSettings({
-    // Default light, not system: dark theme is an untuned stub (DESIGN.md §13
-    // D5) — revisit at the 2.0 dark pass.
-    this.themeMode = AppThemeMode.light,
+    // D5a reverted (#900): the dark pass shipped (DESIGN.md §13 D5), so the
+    // default follows system again.
+    this.themeMode = AppThemeMode.system,
     this.languageCode = 'en',
     this.currencyCode = 'OMR',
     this.pushNotificationsEnabled = false,

@@ -838,7 +838,8 @@ void main() {
       expect(settings.deviceName, equals(''));
       expect(settings.currencyCode, equals('OMR'));
       expect(settings.languageCode, equals('en'));
-      expect(settings.themeMode, equals(AppThemeMode.light));
+      // D5a reverted (#900): default follows system now the dark pass shipped.
+      expect(settings.themeMode, equals(AppThemeMode.system));
       expect(settings.pushNotificationsEnabled, isFalse);
     });
 

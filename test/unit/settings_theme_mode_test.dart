@@ -47,10 +47,10 @@ void main() {
       await svc.saveThemeMode(AppThemeMode.light);
       expect(svc.loadSettings().themeMode, AppThemeMode.light);
     });
-    test('default when unset is light', () async {
+    test('default when unset is system (D5a reverted, #900)', () async {
       final prefs = await SharedPreferences.getInstance();
       final svc = SettingsService(prefs);
-      expect(svc.loadSettings().themeMode, AppThemeMode.light);
+      expect(svc.loadSettings().themeMode, AppThemeMode.system);
     });
   });
 }

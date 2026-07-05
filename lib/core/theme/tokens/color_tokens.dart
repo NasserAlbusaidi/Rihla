@@ -310,9 +310,9 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
 
   /// Dark palette instance — saffron direction, dark variant.
   ///
-  /// Visual quality target for dark mode is deferred to a later phase; values
-  /// here are plausible and prevent crashes/illegible text but have not been
-  /// tuned for production. Per locked plan: light first.
+  /// Tuned for production (#900 PR-4 — DESIGN.md §13 D5 resolved): card
+  /// surface tint, the five previously-missing component themes, and input
+  /// hint contrast were all brought up to the night-navigation spec.
   static const AppColorTokens dark = AppColorTokens(
     brightness: Brightness.dark,
     primary: Color(0xFFD9A845), // Saffron-light for dark mode
