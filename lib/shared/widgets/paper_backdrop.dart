@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens/domain_aliases.dart';
-import 'grain_overlay.dart';
 
-/// Paper-wash gradient + grain texture backdrop for a full-screen surface.
+/// Paper-wash gradient backdrop for a full-screen surface.
 ///
 /// A [washHeight]-tall gradient fades from [AppColorTokens.paperDeep] into
-/// the scaffold background at the top of the screen, and the whole area
-/// (including [child]) carries the shared grain texture.
+/// the scaffold background at the top of the screen.
 class PaperBackdrop extends StatelessWidget {
   const PaperBackdrop({super.key, required this.child, this.washHeight = 240});
 
@@ -34,7 +32,7 @@ class PaperBackdrop extends StatelessWidget {
             ),
           ),
         ),
-        Positioned.fill(child: GrainOverlay(child: child)),
+        Positioned.fill(child: child),
       ],
     );
   }

@@ -6,7 +6,6 @@ import 'package:haptic_feedback/haptic_feedback.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../features/settings/screens/profile_screen.dart';
-import '../../../shared/widgets/grain_overlay.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
 import '../providers/activity_unread_provider.dart';
@@ -99,27 +98,24 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   }
 
   Widget _buildBody(BuildContext context) {
-    return GrainOverlay(
-      opacity: 0.035,
-      child: Stack(
-        children: List.generate(3, (index) {
-          // Lazy-build (#113): don't construct a tab's subtree until it has
-          // been visited at least once. Once visited it stays mounted so
-          // AnimatedOpacity preserves its state across tab switches.
-          if (!_visited.contains(index)) {
-            return const SizedBox.shrink();
-          }
-          return AnimatedOpacity(
-            duration: context.motion.standard,
-            curve: context.motion.curveStandard,
-            opacity: index == _currentIndex ? 1.0 : 0.0,
-            child: IgnorePointer(
-              ignoring: index != _currentIndex,
-              child: _buildTab(index),
-            ),
-          );
-        }),
-      ),
+    return Stack(
+      children: List.generate(3, (index) {
+        // Lazy-build (#113): don't construct a tab's subtree until it has
+        // been visited at least once. Once visited it stays mounted so
+        // AnimatedOpacity preserves its state across tab switches.
+        if (!_visited.contains(index)) {
+          return const SizedBox.shrink();
+        }
+        return AnimatedOpacity(
+          duration: context.motion.standard,
+          curve: context.motion.curveStandard,
+          opacity: index == _currentIndex ? 1.0 : 0.0,
+          child: IgnorePointer(
+            ignoring: index != _currentIndex,
+            child: _buildTab(index),
+          ),
+        );
+      }),
     );
   }
 

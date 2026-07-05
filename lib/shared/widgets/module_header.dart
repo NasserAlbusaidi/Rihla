@@ -117,13 +117,6 @@ class ModuleHeader extends StatelessWidget {
                 width: 0.5,
               ),
             ),
-            image: const DecorationImage(
-              image: AssetImage('assets/textures/grain.png'),
-              repeat: ImageRepeat.repeat,
-              opacity: 0.02,
-              fit: BoxFit.none,
-              alignment: Alignment.topLeft,
-            ),
           ),
           child: SafeArea(
             bottom: false,
