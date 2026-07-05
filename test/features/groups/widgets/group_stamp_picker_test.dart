@@ -38,7 +38,7 @@ Future<void> pumpPicker(
 }
 
 /// Saffron primary, the selection-ring colour (`AppColorTokens.light.primary`).
-const _saffron = Color(0xFFD17B2C);
+const _saffron = Color(0xFF8A5D0D);
 
 /// True iff the keyed ring container paints a saffron (primary) border — the
 /// picker wraps every selectable cell in a ring container keyed `*_ring`; the

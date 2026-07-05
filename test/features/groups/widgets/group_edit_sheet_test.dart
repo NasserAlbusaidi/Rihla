@@ -81,7 +81,7 @@ Future<RecordingGroupService> pumpSheet(
   return service;
 }
 
-const _saffron = Color(0xFFD17B2C);
+const _saffron = Color(0xFF8A5D0D);
 
 /// True iff the keyed ring container paints a saffron (primary) border — the
 /// picker's selection signal (same helper as `group_stamp_picker_test.dart`).

@@ -252,59 +252,59 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Default saffron light palette instance.
   static const AppColorTokens light = AppColorTokens(
     brightness: Brightness.light,
-    primary: Color(0xFFD17B2C), // Saffron
-    scaffoldBackground: Color(0xFFF6F1E6), // Paper
+    primary: Color(0xFF8A5D0D), // Saffron
+    scaffoldBackground: Color(0xFFF6F7F5), // Paper
     cardSurface: Color(0xFFFFFFFF), // White
-    inputFill: Color(0xFFFBF7EE), // Card-soft
-    border: Color(0xFFEAE5D9), // 8% ink approximation
-    textPrimary: Color(0xFF1B1A17), // Ink
-    textSecondary: Color(0xFF6B675D), // Ink-3
-    textMuted: Color(0xFF948F82), // Ink-4 (decorative only)
+    inputFill: Color(0xFFF1F2ED), // Card-soft
+    border: Color(0xFFE3E6E0), // 8% ink approximation
+    textPrimary: Color(0xFF1B1F1E), // Ink
+    textSecondary: Color(0xFF5C6462), // Ink-3
+    textMuted: Color(0xFF8B918D), // Ink-4 (decorative only)
     textOnPrimary: Color(0xFFFFFFFF),
-    success: Color(0xFF5C7A57), // Sage
-    successText: Color(0xFF3F5A3B), // Sage-dark
-    error: Color(0xFFA84B33), // Rust
-    errorText: Color(0xFF7A2F1F), // Rust-dark
-    disabled: Color(0xFFFBF7EE), // Card-soft
-    disabledText: Color(0xFF948F82), // Ink-4
-    focusRing: Color(0xFFD17B2C), // Saffron
-    selectionFill: Color(0xFFFBEED5), // Saffron-tint
-    moduleLedger: Color(0xFFD17B2C), // Saffron — sole colored module
-    moduleLedgerLight: Color(0xFFFBEED5),
-    moduleGear: Color(0xFF6B675D), // Ink-3 — neutral
-    moduleGearLight: Color(0xFFFBF7EE),
-    moduleLogistics: Color(0xFF6B675D),
-    moduleLogisticsLight: Color(0xFFFBF7EE),
-    moduleVault: Color(0xFF6B675D),
-    moduleVaultLight: Color(0xFFFBF7EE),
-    moduleActivity: Color(0xFF6B675D),
-    moduleActivityLight: Color(0xFFFBF7EE),
-    moduleMemories: Color(0xFF6B675D),
-    moduleMemoriesLight: Color(0xFFFBF7EE),
-    headerGradientStart: Color(0xFF1B1A17), // Ink
-    headerGradientEnd: Color(0xFF3D3A33), // Ink-2
-    offlineBannerBackground: Color(0xFFF59E0B), // Amber (semantic, kept)
-    bottomNavBackground: Color(0xFFF6F1E6), // Paper
-    bottomNavActiveIcon: Color(0xFFD17B2C), // Saffron
-    bottomNavInactiveIcon: Color(0xFF948F82), // Ink-4
-    inputFillWarm: Color(0xFFFBF7EE), // Card-soft alias
-    focusBorderWarm: Color(0xFFD17B2C), // Saffron
-    borderWarm: Color(0xFFEAE5D9), // 8% ink alias
-    warning: Color(0xFFF59E0B), // Amber
-    primaryDark: Color(0xFFB5641A), // Saffron-dark
+    success: Color(0xFF1F7A5C), // Sage
+    successText: Color(0xFF175A44), // Sage-dark
+    error: Color(0xFFB03A48), // Rust
+    errorText: Color(0xFF8A2430), // Rust-dark
+    disabled: Color(0xFFF1F2ED), // Card-soft
+    disabledText: Color(0xFF8B918D), // Ink-4
+    focusRing: Color(0xFF8A5D0D), // Saffron
+    selectionFill: Color(0xFFF1F2DF), // Saffron-tint
+    moduleLedger: Color(0xFF8A5D0D), // Saffron — sole colored module
+    moduleLedgerLight: Color(0xFFF1F2DF),
+    moduleGear: Color(0xFF5C6462), // Ink-3 — neutral
+    moduleGearLight: Color(0xFFF1F2ED),
+    moduleLogistics: Color(0xFF5C6462),
+    moduleLogisticsLight: Color(0xFFF1F2ED),
+    moduleVault: Color(0xFF5C6462),
+    moduleVaultLight: Color(0xFFF1F2ED),
+    moduleActivity: Color(0xFF5C6462),
+    moduleActivityLight: Color(0xFFF1F2ED),
+    moduleMemories: Color(0xFF5C6462),
+    moduleMemoriesLight: Color(0xFFF1F2ED),
+    headerGradientStart: Color(0xFF1B1F1E), // Ink
+    headerGradientEnd: Color(0xFF333A38), // Ink-2
+    offlineBannerBackground: Color(0xFFC2410C), // Amber (semantic, kept)
+    bottomNavBackground: Color(0xFFF6F7F5), // Paper
+    bottomNavActiveIcon: Color(0xFF8A5D0D), // Saffron
+    bottomNavInactiveIcon: Color(0xFF8B918D), // Ink-4
+    inputFillWarm: Color(0xFFF1F2ED), // Card-soft alias
+    focusBorderWarm: Color(0xFF8A5D0D), // Saffron
+    borderWarm: Color(0xFFE3E6E0), // 8% ink alias
+    warning: Color(0xFFC2410C), // Amber
+    primaryDark: Color(0xFF6F4A08), // Saffron-dark
     // Appended saffron tokens:
-    paperDeep: Color(0xFFEFE8D7),
-    cardSoft: Color(0xFFFBF7EE),
-    ink2: Color(0xFF3D3A33),
-    saffronSoft: Color(0xFFF4DDB8),
-    saffronTint: Color(0xFFFBEED5),
-    rule: Color(0xFFEAE5D9), // 8% ink solid approximation
-    rule2: Color(0xFFD9D3C5), // 14% ink solid approximation
-    cat1: Color(0xFFC2693B), // food
-    cat2: Color(0xFF4F7B96), // lodging
-    cat3: Color(0xFF8C6A2F), // transit
-    cat4: Color(0xFF6F7A3A), // groceries
-    cat5: Color(0xFF94517A), // activities
+    paperDeep: Color(0xFFECEEE8),
+    cardSoft: Color(0xFFF1F2ED),
+    ink2: Color(0xFF333A38),
+    saffronSoft: Color(0xFFE3E4C9),
+    saffronTint: Color(0xFFF1F2DF),
+    rule: Color(0xFFE3E6E0), // 8% ink solid approximation
+    rule2: Color(0xFFCDD2CA), // 14% ink solid approximation
+    cat1: Color(0xFF9C4F2E), // food
+    cat2: Color(0xFF41708F), // lodging
+    cat3: Color(0xFF575E93), // transit
+    cat4: Color(0xFF6C7A33), // groceries
+    cat5: Color(0xFF984B7C), // activities
     cat6: Color(0xFF4D5A6A), // other
   );
 
@@ -315,59 +315,59 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// tuned for production. Per locked plan: light first.
   static const AppColorTokens dark = AppColorTokens(
     brightness: Brightness.dark,
-    primary: Color(0xFFE89A4F), // Saffron-light for dark mode
-    scaffoldBackground: Color(0xFF1A1714), // Paper-dark
-    cardSurface: Color(0xFF25211C), // Card-dark
-    inputFill: Color(0xFF1F1B17), // Card-soft-dark
-    border: Color(0xFF3D3A33), // Rule on dark
-    textPrimary: Color(0xFFF4EEE0), // Ink-light
-    textSecondary: Color(0xFF9C9486), // Ink-3-light
-    textMuted: Color(0xFF6E6759), // Ink-4-light
-    textOnPrimary: Color(0xFF1A1714),
-    success: Color(0xFF8AA982), // Sage-light
-    successText: Color(0xFFB7CFB0),
-    error: Color(0xFFD77962), // Rust-light
-    errorText: Color(0xFFEEB7A8),
-    disabled: Color(0xFF1F1B17),
-    disabledText: Color(0xFF6E6759),
-    focusRing: Color(0xFFE89A4F),
-    selectionFill: Color(0xFF2E2113),
-    moduleLedger: Color(0xFFE89A4F),
-    moduleLedgerLight: Color(0xFF2E2113),
-    moduleGear: Color(0xFF9C9486),
-    moduleGearLight: Color(0xFF1F1B17),
-    moduleLogistics: Color(0xFF9C9486),
-    moduleLogisticsLight: Color(0xFF1F1B17),
-    moduleVault: Color(0xFF9C9486),
-    moduleVaultLight: Color(0xFF1F1B17),
-    moduleActivity: Color(0xFF9C9486),
-    moduleActivityLight: Color(0xFF1F1B17),
-    moduleMemories: Color(0xFF9C9486),
-    moduleMemoriesLight: Color(0xFF1F1B17),
-    headerGradientStart: Color(0xFF1A1714),
-    headerGradientEnd: Color(0xFF25211C),
-    offlineBannerBackground: Color(0xFFF59E0B),
-    bottomNavBackground: Color(0xFF1A1714),
-    bottomNavActiveIcon: Color(0xFFE89A4F),
-    bottomNavInactiveIcon: Color(0xFF6E6759),
-    inputFillWarm: Color(0xFF1F1B17),
-    focusBorderWarm: Color(0xFFE89A4F),
-    borderWarm: Color(0xFF3D3A33),
-    warning: Color(0xFFF59E0B),
-    primaryDark: Color(0xFFF5B069),
-    paperDeep: Color(0xFF221E1A),
-    cardSoft: Color(0xFF1F1B17),
-    ink2: Color(0xFFD8D1C0),
-    saffronSoft: Color(0xFF4A3618),
-    saffronTint: Color(0xFF2E2113),
-    rule: Color(0xFF3D3A33),
-    rule2: Color(0xFF4A4640),
-    cat1: Color(0xFFD4845B),
-    cat2: Color(0xFF7AA0B6),
-    cat3: Color(0xFFB69254),
-    cat4: Color(0xFF9AA660),
-    cat5: Color(0xFFB57A98),
-    cat6: Color(0xFF7B8898),
+    primary: Color(0xFFD9A845), // Saffron-light for dark mode
+    scaffoldBackground: Color(0xFF111514), // Paper-dark
+    cardSurface: Color(0xFF1A201E), // Card-dark
+    inputFill: Color(0xFF242B28), // Card-soft-dark
+    border: Color(0xFF2A322F), // Rule on dark
+    textPrimary: Color(0xFFECEFEA), // Ink-light
+    textSecondary: Color(0xFF9AA39E), // Ink-3-light
+    textMuted: Color(0xFF6E7773), // Ink-4-light
+    textOnPrimary: Color(0xFF1B1F1E),
+    success: Color(0xFF4FBE8F), // Sage-light
+    successText: Color(0xFF7FD6AE),
+    error: Color(0xFFE0707B), // Rust-light
+    errorText: Color(0xFFF0A3AB),
+    disabled: Color(0xFF242B28),
+    disabledText: Color(0xFF6E7773),
+    focusRing: Color(0xFFD9A845),
+    selectionFill: Color(0xFF2C2A20),
+    moduleLedger: Color(0xFFD9A845),
+    moduleLedgerLight: Color(0xFF2C2A20),
+    moduleGear: Color(0xFF9AA39E),
+    moduleGearLight: Color(0xFF242B28),
+    moduleLogistics: Color(0xFF9AA39E),
+    moduleLogisticsLight: Color(0xFF242B28),
+    moduleVault: Color(0xFF9AA39E),
+    moduleVaultLight: Color(0xFF242B28),
+    moduleActivity: Color(0xFF9AA39E),
+    moduleActivityLight: Color(0xFF242B28),
+    moduleMemories: Color(0xFF9AA39E),
+    moduleMemoriesLight: Color(0xFF242B28),
+    headerGradientStart: Color(0xFF0C0F0E),
+    headerGradientEnd: Color(0xFF1A201E),
+    offlineBannerBackground: Color(0xFFE8703A),
+    bottomNavBackground: Color(0xFF111514),
+    bottomNavActiveIcon: Color(0xFFD9A845),
+    bottomNavInactiveIcon: Color(0xFF6E7773),
+    inputFillWarm: Color(0xFF242B28),
+    focusBorderWarm: Color(0xFFD9A845),
+    borderWarm: Color(0xFF2A322F),
+    warning: Color(0xFFE8703A),
+    primaryDark: Color(0xFFB8862B),
+    paperDeep: Color(0xFF0C0F0E),
+    cardSoft: Color(0xFF242B28),
+    ink2: Color(0xFFC9CFC9),
+    saffronSoft: Color(0xFF3A3626),
+    saffronTint: Color(0xFF2C2A20),
+    rule: Color(0xFF2A322F),
+    rule2: Color(0xFF3A433F),
+    cat1: Color(0xFFD08A63),
+    cat2: Color(0xFF7FA9C4),
+    cat3: Color(0xFF8E96C9),
+    cat4: Color(0xFFA6B56A),
+    cat5: Color(0xFFC98BB0),
+    cat6: Color(0xFF98A2A8),
   );
 
   @override

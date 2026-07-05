@@ -76,8 +76,8 @@ void main() {
 
     testWidgets('explicit hue overrides name hash', (tester) async {
       await tester.pumpWidget(_wrap(const RAvatar(name: 'X', hue: 0)));
-      // Slot 0 background is #FBEED5 (saffron-tint) per the journal palette.
-      expect(bgColor(tester), const Color(0xFFFBEED5));
+      // Slot 0 background is #DCE6EC (harbor-blue) per the journal palette.
+      expect(bgColor(tester), const Color(0xFFDCE6EC));
     });
   });
 
