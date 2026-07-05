@@ -90,10 +90,6 @@
   "profileDisplayThemeLightValue": "فاتح",
   "profileDisplayThemeDarkValue": "داكن",
 
-  "profileSupportSectionLabel": "الدعم",
-  "profileSupportCoffeeTile": "ادعمني بكوب قهوة",
-  "profileSupportPaypalFailed": "تعذّر فتح PayPal",
-
   "profileTitle": "الملف الشخصي",
   "profileAnonymousTraveller": "مسافر مجهول",
   "profileBackupStatusNotBackedUp": "غير محفوظ احتياطيًا",

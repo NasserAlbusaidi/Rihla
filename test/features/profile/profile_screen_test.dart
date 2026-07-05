@@ -270,6 +270,28 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
   });
 
+  group('ProfileScreen -- support surface (#897)', () {
+    testWidgets('does not expose the unsupported PayPal coffee CTA', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Test User',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byKey(const Key('profile_coffee_tile')), findsNothing);
+      expect(find.text('Buy me a coffee'), findsNothing);
+    });
+  });
+
   group('ProfileScreen — IDENT-01', () {
     testWidgets('shows display name when set', (tester) async {
       SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});

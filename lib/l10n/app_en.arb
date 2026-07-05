@@ -312,19 +312,6 @@
     "description": "Trailing label on the theme tile when the Dark theme is selected."
   },
 
-  "profileSupportSectionLabel": "SUPPORT",
-  "@profileSupportSectionLabel": {
-    "description": "Section header for ProfileSupportSection widget. English stays uppercase; Arabic renders natural-case."
-  },
-  "profileSupportCoffeeTile": "Buy me a coffee",
-  "@profileSupportCoffeeTile": {
-    "description": "Tile label in ProfileSupportSection that opens the PayPal donate URL."
-  },
-  "profileSupportPaypalFailed": "Couldn't open PayPal",
-  "@profileSupportPaypalFailed": {
-    "description": "SnackBar shown when the PayPal launch fails."
-  },
-
   "profileTitle": "Profile",
   "@profileTitle": {
     "description": "Top-bar title on the Profile screen."
