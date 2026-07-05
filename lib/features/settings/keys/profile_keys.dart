@@ -15,13 +15,12 @@ abstract final class ProfileKeys {
   // #488: explicit error state for the stats grid (≠ the loading skeleton).
   static const statsErrorCard = Key('profile_stats_error_card');
 
-  // Phase 26 keys — notifications, about, and support sections
+  // Phase 26 keys — notifications and about sections.
   static const notificationToggleTile = Key('profile_notification_toggle_tile');
   static const notificationSwitch = Key('profile_notification_switch');
   static const versionTile = Key('profile_version_tile');
   static const feedbackTile = Key('profile_feedback_tile');
   static const licensesTile = Key('profile_licenses_tile');
-  static const coffeeTile = Key('profile_coffee_tile');
 
   // P3 — account recovery (linked email)
   static const linkedEmailTile = Key('profile_linked_email_tile');

@@ -45,7 +45,6 @@ import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
 import '../widgets/profile_display_section.dart';
-import '../widgets/profile_support_section.dart';
 
 /// Profile tab — saffron travel-journal direction.
 ///
@@ -142,13 +141,6 @@ class ProfileScreen extends ConsumerWidget {
                       delay: 380.ms,
                       duration: 400.ms,
                     ),
-                    const SizedBox(height: 18),
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.spacing.space20,
-                      ),
-                      child: const ProfileSupportSection(),
-                    ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
                     const SizedBox(height: 18),
                     const _VersionStamp(),
                   ],
