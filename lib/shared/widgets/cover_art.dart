@@ -46,38 +46,38 @@ class CoverPalette {
 
   static const _trip = CoverPalette(
     // design-token-justified: procedural cover art palette is decorative artwork.
-    sky: Color(0xFFE8B074),
-    mid: Color(0xFFC2693B),
-    land: Color(0xFF7A3F22),
-    sun: Color(0xFFF5DCA0),
+    sky: Color(0xFF3E4A63),
+    mid: Color(0xFF9E6B78),
+    land: Color(0xFF26303F),
+    sun: Color(0xFFE8C77A),
   );
   static const _camping = CoverPalette(
     // design-token-justified: procedural cover art palette is decorative artwork.
-    sky: Color(0xFFA8BA8A),
-    mid: Color(0xFF6F7A3A),
-    land: Color(0xFF3F5A3B),
-    sun: Color(0xFFE0E5D0),
+    sky: Color(0xFFAEC4A6),
+    mid: Color(0xFF5E8A5A),
+    land: Color(0xFF234A2C),
+    sun: Color(0xFFDDE8D2),
   );
   static const _travel = CoverPalette(
     // design-token-justified: procedural cover art palette is decorative artwork.
-    sky: Color(0xFF9CB8C9),
-    mid: Color(0xFFD9B080),
-    land: Color(0xFF7A8FA0),
-    sun: Color(0xFFFFE4A8),
+    sky: Color(0xFF6E9AB8),
+    mid: Color(0xFFC3CDD2),
+    land: Color(0xFF3A566A),
+    sun: Color(0xFFC9962F),
   );
   static const _night = CoverPalette(
     // design-token-justified: procedural cover art palette is decorative artwork.
-    sky: Color(0xFF4D5A6A),
-    mid: Color(0xFF94517A),
-    land: Color(0xFF2C2435),
-    sun: Color(0xFFF4DDB8),
+    sky: Color(0xFF26264A),
+    mid: Color(0xFF38466E),
+    land: Color(0xFF14182C),
+    sun: Color(0xFFD9A845),
   );
   static const _custom = CoverPalette(
     // design-token-justified: procedural cover art palette is decorative artwork.
-    sky: Color(0xFFE8E4E0),
-    mid: Color(0xFFA0AAB4),
-    land: Color(0xFF5C6878),
-    sun: Color(0xFFFFFFFF),
+    sky: Color(0xFF7FB0AE),
+    mid: Color(0xFF2E6E66),
+    land: Color(0xFF1C4A45),
+    sun: Color(0xFFDCE2DA),
   );
 
   static const _all = [_trip, _camping, _travel, _night, _custom];

@@ -103,14 +103,14 @@ void main() {
   });
 
   group('AppColorTokens — saffron palette', () {
-    test('light.primary equals saffron #D17B2C', () {
-      expect(AppColorTokens.light.primary, equals(const Color(0xFFD17B2C)));
+    test('light.primary equals brass #8A5D0D', () {
+      expect(AppColorTokens.light.primary, equals(const Color(0xFF8A5D0D)));
     });
 
-    test('light.scaffoldBackground equals paper #F6F1E6', () {
+    test('light.scaffoldBackground equals plaster #F6F7F5', () {
       expect(
         AppColorTokens.light.scaffoldBackground,
-        equals(const Color(0xFFF6F1E6)),
+        equals(const Color(0xFFF6F7F5)),
       );
     });
 
@@ -118,16 +118,16 @@ void main() {
       expect(AppColorTokens.light.cardSurface, equals(const Color(0xFFFFFFFF)));
     });
 
-    test('light.textPrimary equals ink #1B1A17', () {
-      expect(AppColorTokens.light.textPrimary, equals(const Color(0xFF1B1A17)));
+    test('light.textPrimary equals ink #1B1F1E', () {
+      expect(AppColorTokens.light.textPrimary, equals(const Color(0xFF1B1F1E)));
     });
 
-    test('light.success equals sage #5C7A57', () {
-      expect(AppColorTokens.light.success, equals(const Color(0xFF5C7A57)));
+    test('light.success equals emerald #1F7A5C', () {
+      expect(AppColorTokens.light.success, equals(const Color(0xFF1F7A5C)));
     });
 
-    test('light.error equals rust #A84B33', () {
-      expect(AppColorTokens.light.error, equals(const Color(0xFFA84B33)));
+    test('light.error equals pomegranate #B03A48', () {
+      expect(AppColorTokens.light.error, equals(const Color(0xFFB03A48)));
     });
 
     test('light.textOnPrimary equals white #FFFFFF', () {
@@ -139,11 +139,11 @@ void main() {
 
     test('light appended saffron tokens are populated', () {
       const t = AppColorTokens.light;
-      expect(t.paperDeep, equals(const Color(0xFFEFE8D7)));
-      expect(t.cardSoft, equals(const Color(0xFFFBF7EE)));
-      expect(t.ink2, equals(const Color(0xFF3D3A33)));
-      expect(t.saffronSoft, equals(const Color(0xFFF4DDB8)));
-      expect(t.saffronTint, equals(const Color(0xFFFBEED5)));
+      expect(t.paperDeep, equals(const Color(0xFFECEEE8)));
+      expect(t.cardSoft, equals(const Color(0xFFF1F2ED)));
+      expect(t.ink2, equals(const Color(0xFF333A38)));
+      expect(t.saffronSoft, equals(const Color(0xFFE3E4C9)));
+      expect(t.saffronTint, equals(const Color(0xFFF1F2DF)));
     });
 
     test('light category palette has six distinct colors', () {
@@ -182,7 +182,7 @@ void main() {
     test('copyWith does not mutate original instance', () {
       const original = AppColorTokens.light;
       original.copyWith(primary: const Color(0xFF000000));
-      expect(original.primary, equals(const Color(0xFFD17B2C)));
+      expect(original.primary, equals(const Color(0xFF8A5D0D)));
     });
 
     test('lerp at t=0.0 returns this', () {
@@ -364,7 +364,7 @@ void main() {
 
     test('AppColorTokens from test theme has correct primary color', () {
       final tokens = _testTheme().extension<AppColorTokens>()!;
-      expect(tokens.primary, equals(const Color(0xFFD17B2C)));
+      expect(tokens.primary, equals(const Color(0xFF8A5D0D)));
     });
 
     testWidgets('AppTheme.lightTheme registers all three extensions', (
@@ -400,7 +400,7 @@ void main() {
           ),
         ),
       );
-      expect(colors.primary, equals(const Color(0xFFD17B2C)));
+      expect(colors.primary, equals(const Color(0xFF8A5D0D)));
     });
 
     testWidgets('context.spacing returns AppSpacingTokens', (tester) async {

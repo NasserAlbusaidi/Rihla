@@ -18,15 +18,15 @@ class _AvatarColorPair {
 /// app upgrades because [_stableHash] folds `codeUnits` with a fixed constant.
 const List<_AvatarColorPair> _palette = [
   // design-token-justified: deterministic avatar stamps are decorative identity colors.
-  _AvatarColorPair(Color(0xFFD17B2C), Color(0xFFFBEED5)),
-  _AvatarColorPair(Color(0xFF4F7B96), Color(0xFFDAE5EC)),
-  _AvatarColorPair(Color(0xFF8C6A2F), Color(0xFFEDE0C8)),
-  _AvatarColorPair(Color(0xFF6F7A3A), Color(0xFFE0E5D0)),
+  _AvatarColorPair(Color(0xFF2F5A74), Color(0xFFDCE6EC)),
+  _AvatarColorPair(Color(0xFF4C5A28), Color(0xFFE2E6D4)),
+  _AvatarColorPair(Color(0xFF7A3B62), Color(0xFFECDCE6)),
+  _AvatarColorPair(Color(0xFF8A4428), Color(0xFFF0DFD5)),
   // design-token-justified: deterministic avatar stamps are decorative identity colors.
-  _AvatarColorPair(Color(0xFF94517A), Color(0xFFE9D8E0)),
-  _AvatarColorPair(Color(0xFF4D5A6A), Color(0xFFD9DEE4)),
-  _AvatarColorPair(Color(0xFFA84B33), Color(0xFFF2DAD0)),
-  _AvatarColorPair(Color(0xFF5C7A57), Color(0xFFDCE5D5)),
+  _AvatarColorPair(Color(0xFF3B4270), Color(0xFFDEE0EC)),
+  _AvatarColorPair(Color(0xFF1F6B54), Color(0xFFD6E7DF)),
+  _AvatarColorPair(Color(0xFF6F4A08), Color(0xFFECE6D4)),
+  _AvatarColorPair(Color(0xFF3F4A54), Color(0xFFDEE3E8)),
 ];
 
 int _stableHash(String s) {

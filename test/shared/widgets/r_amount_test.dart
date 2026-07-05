@@ -159,16 +159,16 @@ void main() {
       await tester.pumpWidget(
         _wrap(RAmount(value: Decimal.parse('10'), sign: true)),
       );
-      // Sage = #5C7A57
-      expect(wholeColor(tester), const Color(0xFF5C7A57));
+      // Sage/emerald = #1F7A5C
+      expect(wholeColor(tester), const Color(0xFF1F7A5C));
     });
 
     testWidgets('negative sign mode → error/rust tone', (tester) async {
       await tester.pumpWidget(
         _wrap(RAmount(value: Decimal.parse('-10'), sign: true)),
       );
-      // Rust = #A84B33
-      expect(wholeColor(tester), const Color(0xFFA84B33));
+      // Rust/pomegranate = #B03A48
+      expect(wholeColor(tester), const Color(0xFFB03A48));
     });
 
     testWidgets('explicit tone:rust overrides positive value', (tester) async {
@@ -179,14 +179,14 @@ void main() {
           tone: AmountTone.rust,
         )),
       );
-      expect(wholeColor(tester), const Color(0xFFA84B33));
+      expect(wholeColor(tester), const Color(0xFFB03A48));
     });
 
     testWidgets('zero in sign mode → ink/textPrimary tone', (tester) async {
       await tester.pumpWidget(
         _wrap(RAmount(value: Decimal.zero, sign: true)),
       );
-      expect(wholeColor(tester), const Color(0xFF1B1A17));
+      expect(wholeColor(tester), const Color(0xFF1B1F1E));
     });
   });
 

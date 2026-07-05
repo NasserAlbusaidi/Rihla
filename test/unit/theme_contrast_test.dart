@@ -51,8 +51,8 @@ class _Pair {
 }
 
 void main() {
-  final l = AppColorTokens.light;
-  final d = AppColorTokens.dark;
+  const l = AppColorTokens.light;
+  const d = AppColorTokens.dark;
 
   final pairs = <_Pair>[
     // clean: body + on-primary text
