@@ -115,7 +115,7 @@ Gated on PR-0 verdict. Bundle static cuts in `pubspec.yaml`; rewrite `AppTypogra
 
 ### PR-3 — Components (each revertable)
 
-Wordmark fork underscore (swash retired; ReemKufi Arabic stays) · transfer-connector fork painter (**dashed arrow stays until the painter passes 16px/24px/RTL goldens**) · `GrainOverlay` → delete light grain, add ≤3%-opacity star-grid for dark heroes (tokenized) · ticket re-dress + brass corner seal · share-tick in `SectionHeader` · `stamp`/`flow` motion tokens + seal-settle animation · polarity carets in the hero `RAmount` surfaces. Detailed breakdown at kickoff.
+Wordmark fork underscore (swash retired; ReemKufi Arabic stays) · transfer-connector fork painter (**goldens passed in PR-3; comp-8 DECIDED 2026-07-05: structural non-brass — `rule2` fork replaces the dashed rail in `GroupSettlementTile`; the connector is channel-work, not the brand mark, so N tiles/screen don't breach the ≤1-full-fork law; the rail's trailing arrow retired with it — the fork's branch fan is the direction cue, mirrored via Directionality**) · `GrainOverlay` → delete light grain, add ≤3%-opacity star-grid for dark heroes (tokenized) · ticket re-dress + brass corner seal · share-tick in `SectionHeader` · `stamp`/`flow` motion tokens + seal-settle animation · polarity carets in the hero `RAmount` surfaces. Detailed breakdown at kickoff.
 
 ### PR-4 — Dark pass (absorbs D5)
 
