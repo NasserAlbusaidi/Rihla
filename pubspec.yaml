@@ -132,10 +132,10 @@ flutter:
     - assets/textures/grain.png
     - assets/glyphs/
     # Bundled-font licenses (SIL OFL 1.1) — registered at runtime via LicenseRegistry.
-    - assets/fonts/OFL-Geist.txt
-    - assets/fonts/OFL-GeistMono.txt
+    - assets/fonts/OFL-Bricolage.txt
+    - assets/fonts/OFL-Zain.txt
+    - assets/fonts/OFL-SplineSansMono.txt
     - assets/fonts/OFL-ReemKufi.txt
-    - assets/fonts/OFL-InstrumentSerif.txt
     # Static Noto Sans Arabic (Regular) — loaded via rootBundle ONLY by the #704
     # PDF proof pack for Arabic glyph fallback (the PDF renderer embeds it, the
     # Flutter UI never uses it). Not declared under `fonts:` on purpose.
@@ -143,26 +143,40 @@ flutter:
     - assets/fonts/OFL-NotoSansArabic.txt
 
   # Brand typography — bundled so first-launch branding works offline and never
-  # hits the Google Fonts CDN (#103). Geist / Geist Mono are variable (wght
-  # axis); TextStyle.fontWeight drives the axis directly. The Arabic display
-  # face is a small Reem Kufi subset for the current Arabic wordmark only
-  # (#636). Family names MUST match the const strings in
+  # hits the Google Fonts CDN (#103). Bricolage Grotesque / Zain / Spline Sans
+  # Mono are STATIC per-weight cuts (not variable) — every asset needs an
+  # explicit `weight:` descriptor, or it silently nearest-weight-falls-back.
+  # The Arabic display face is a small Reem Kufi subset for the current
+  # Arabic wordmark only (#636). Family names MUST match the const strings in
   # lib/core/theme/tokens/typography_tokens.dart byte-for-byte.
   fonts:
-    - family: Geist
+    - family: Bricolage Grotesque
       fonts:
-        - asset: assets/fonts/Geist-Variable.ttf
-    - family: Geist Mono
+        - asset: assets/fonts/BricolageGrotesque-600.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque-700.ttf
+          weight: 700
+        - asset: assets/fonts/BricolageGrotesque-800.ttf
+          weight: 800
+    - family: Zain
       fonts:
-        - asset: assets/fonts/GeistMono-Variable.ttf
+        - asset: assets/fonts/Zain-400.ttf
+          weight: 400
+        - asset: assets/fonts/Zain-700.ttf
+          weight: 700
+        - asset: assets/fonts/Zain-800.ttf
+          weight: 800
+    - family: Spline Sans Mono
+      fonts:
+        - asset: assets/fonts/SplineSansMono-400.ttf
+          weight: 400
+        - asset: assets/fonts/SplineSansMono-500.ttf
+          weight: 500
+        - asset: assets/fonts/SplineSansMono-700.ttf
+          weight: 700
     - family: Rihla Arabic Display
       fonts:
         - asset: assets/fonts/ReemKufi-RihlaWordmark.ttf
-    - family: Instrument Serif
-      fonts:
-        - asset: assets/fonts/InstrumentSerif-Regular.ttf
-        - asset: assets/fonts/InstrumentSerif-Italic.ttf
-          style: italic
 
   # To add more assets to your application, add entries to the assets section:
   # assets:

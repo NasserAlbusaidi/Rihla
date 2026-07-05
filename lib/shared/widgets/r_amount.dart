@@ -12,7 +12,7 @@ import '../../core/utils/formatters.dart';
 /// zero → ink. The explicit tones override regardless of value sign.
 enum AmountTone { auto, sage, rust, ink }
 
-/// Money amount rendered in Geist Mono with the wireframe's tiered sizing.
+/// Money amount rendered in Spline Sans Mono with the wireframe's tiered sizing.
 ///
 /// - Currency code prefix at 0.42× size, 0.78 opacity.
 /// - Whole part at full [size].

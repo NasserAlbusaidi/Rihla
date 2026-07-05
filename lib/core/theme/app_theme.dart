@@ -9,10 +9,11 @@ import 'tokens/typography_tokens.dart';
 /// App theme configuration.
 ///
 /// Three font families:
-/// - Display (Instrument Serif italic) — display* and headlineLarge sizes
-/// - Sans (Geist) — body, title, label, button text
-/// - Mono (Geist Mono, tabular figures) — accessed via [AppTypography.mono]
-///   when needed inline (money widgets, timestamps); not part of [TextTheme].
+/// - Display (Bricolage Grotesque, upright) — display* and headlineLarge sizes
+/// - Sans (Zain, dual-script) — body, title, label, button text
+/// - Mono (Spline Sans Mono, tabular figures) — accessed via
+///   [AppTypography.mono] when needed inline (money widgets, timestamps);
+///   not part of [TextTheme].
 class AppTheme {
   // Built once and cached: themes derive only from compile-time tokens (no
   // runtime/context inputs), so a `get` accessor needlessly rebuilt the full
@@ -369,7 +370,7 @@ class AppTheme {
 
   /// Builds the [TextTheme] for the given brightness.
   ///
-  /// Display sizes use Instrument Serif italic. Everything else uses Geist.
+  /// Display sizes use upright Bricolage Grotesque. Everything else uses Zain.
   /// All body/title/label sizes carry tabular figures so inline numbers
   /// render with consistent column widths.
   static TextTheme _buildTextTheme(Brightness brightness) {
@@ -380,32 +381,32 @@ class AppTheme {
     final secondary = tokens.textSecondary;
 
     return TextTheme(
-      // Display — Instrument Serif italic. Hero numerals, big titles.
+      // Display — upright Bricolage Grotesque. Hero numerals, big titles.
       displayLarge: AppTypography.display(
         fontSize: 44,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w800,
         color: color,
         letterSpacing: -1.0,
         height: 1.02,
       ),
       displayMedium: AppTypography.display(
         fontSize: 36,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w800,
         color: color,
         letterSpacing: -0.6,
         height: 1.05,
       ),
       displaySmall: AppTypography.display(
         fontSize: 28,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w700,
         color: color,
         letterSpacing: -0.4,
         height: 1.1,
       ),
-      // Headline — Instrument Serif italic for the largest, then Geist.
+      // Headline — upright Bricolage Grotesque for the largest, then Zain.
       headlineLarge: AppTypography.display(
         fontSize: 24,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w700,
         color: color,
         letterSpacing: -0.3,
         height: 1.15,
@@ -422,7 +423,7 @@ class AppTheme {
         color: color,
         tabularNums: true,
       ),
-      // Title — Geist.
+      // Title — Zain.
       titleLarge: AppTypography.sans(
         fontSize: 17,
         fontWeight: FontWeight.w600,
@@ -441,7 +442,7 @@ class AppTheme {
         color: color,
         tabularNums: true,
       ),
-      // Body — Geist with tabular figures.
+      // Body — Zain with tabular figures.
       bodyLarge: AppTypography.sans(
         fontSize: 16,
         fontWeight: FontWeight.w400,
@@ -460,7 +461,7 @@ class AppTheme {
         color: secondary,
         tabularNums: true,
       ),
-      // Labels — Geist.
+      // Labels — Zain.
       labelLarge: AppTypography.sans(
         fontSize: 14,
         fontWeight: FontWeight.w600,

@@ -33,7 +33,7 @@ class AppFormatters {
   ///
   /// One app-wide rule: `<ISO_CODE> <amount>` (e.g. `OMR 12.450`), Western
   /// digits, LTR — in every locale. The `symbol` field is intentionally NOT
-  /// used for amount display: money renders in Geist Mono, which has no Arabic
+  /// used for amount display: money renders in Spline Sans Mono, which has no Arabic
   /// glyphs, so an Arabic symbol would break alignment and bidi. Precision
   /// still comes from the currency config.
   static String formatCurrency(Decimal amount, String currencyCode) {

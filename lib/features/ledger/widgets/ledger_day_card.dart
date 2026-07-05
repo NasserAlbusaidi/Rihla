@@ -241,8 +241,10 @@ class _ExpenseRow extends StatelessWidget {
                             : categoryNameForId(expense.categoryId, l10n),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        // #900 Falaj w500 mitigation: Zain collapses w500->w400,
+                        // so this row title compensates with size (was 14).
                         style: AppTypography.sans(
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w500,
                           color: colors.textPrimary,
                         ),
@@ -437,8 +439,10 @@ class LedgerSettleRow extends StatelessWidget {
                     '$recipientName',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    // #900 Falaj w500 mitigation: Zain collapses w500->w400,
+                    // so this row title compensates with size (was 13.5).
                     style: AppTypography.sans(
-                      fontSize: 13.5,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w500,
                       color: colors.textPrimary,
                     ),
@@ -448,7 +452,10 @@ class LedgerSettleRow extends StatelessWidget {
                     child: _Overline(
                       sageText: sageText,
                       note: note,
-                      secondary: colors.textSecondary,
+                      // #900 Falaj w500 mitigation: one ink-step darker
+                      // (textSecondary -> ink2) compensates for Zain
+                      // collapsing w500->w400 on the note tail below.
+                      secondary: colors.ink2,
                     ),
                   ),
                 ],
@@ -519,9 +526,11 @@ class _Overline extends StatelessWidget {
           TextSpan(text: context.l10n.ledgerSettlementLabel, style: base),
           TextSpan(
             // User-authored free text — sans in every locale (#841).
+            // #900 Falaj w500 mitigation: size bump (was 10.5) alongside the
+            // ink-step-darker `secondary` passed in above.
             text: ' · ${note!}',
             style: AppTypography.sans(
-              fontSize: 10.5,
+              fontSize: 11.5,
               color: secondary,
               fontWeight: FontWeight.w500,
             ),

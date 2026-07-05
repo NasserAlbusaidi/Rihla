@@ -14,20 +14,29 @@ void main() {
 
   // family name -> the variable/static .ttf assets that must back it.
   const families = <String, List<String>>{
-    'Geist': ['assets/fonts/Geist-Variable.ttf'],
-    'Geist Mono': ['assets/fonts/GeistMono-Variable.ttf'],
-    'Rihla Arabic Display': ['assets/fonts/ReemKufi-RihlaWordmark.ttf'],
-    'Instrument Serif': [
-      'assets/fonts/InstrumentSerif-Regular.ttf',
-      'assets/fonts/InstrumentSerif-Italic.ttf',
+    'Bricolage Grotesque': [
+      'assets/fonts/BricolageGrotesque-600.ttf',
+      'assets/fonts/BricolageGrotesque-700.ttf',
+      'assets/fonts/BricolageGrotesque-800.ttf',
     ],
+    'Zain': [
+      'assets/fonts/Zain-400.ttf',
+      'assets/fonts/Zain-700.ttf',
+      'assets/fonts/Zain-800.ttf',
+    ],
+    'Spline Sans Mono': [
+      'assets/fonts/SplineSansMono-400.ttf',
+      'assets/fonts/SplineSansMono-500.ttf',
+      'assets/fonts/SplineSansMono-700.ttf',
+    ],
+    'Rihla Arabic Display': ['assets/fonts/ReemKufi-RihlaWordmark.ttf'],
   };
 
   const licenseAssets = [
-    'assets/fonts/OFL-Geist.txt',
-    'assets/fonts/OFL-GeistMono.txt',
+    'assets/fonts/OFL-Bricolage.txt',
+    'assets/fonts/OFL-Zain.txt',
+    'assets/fonts/OFL-SplineSansMono.txt',
     'assets/fonts/OFL-ReemKufi.txt',
-    'assets/fonts/OFL-InstrumentSerif.txt',
   ];
 
   group('bundled brand fonts (#103)', () {
@@ -36,10 +45,10 @@ void main() {
 
     test('every AppTypography family const is declared in pubspec fonts', () {
       // The const family literals the helpers use, byte-for-byte.
-      expect(tokens, contains("static const String sansFamily = 'Geist';"));
+      expect(tokens, contains("static const String sansFamily = 'Zain';"));
       expect(
         tokens,
-        contains("static const String monoFamily = 'Geist Mono';"),
+        contains("static const String monoFamily = 'Spline Sans Mono';"),
       );
       expect(
         tokens,
@@ -49,7 +58,9 @@ void main() {
       );
       expect(
         tokens,
-        contains("static const String displayFamily = 'Instrument Serif';"),
+        contains(
+          "static const String displayFamily = 'Bricolage Grotesque';",
+        ),
       );
       for (final family in families.keys) {
         expect(
