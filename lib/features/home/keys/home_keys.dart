@@ -69,4 +69,11 @@ abstract final class HomeKeys {
 
   // PR-5 §3: per-group balance breakdown sheet opened from the hero tap.
   static const heroBreakdownSheet = Key('home_hero_breakdown_sheet');
+
+  // #900 friction #3 — PR-5b: top-bar global search entry point.
+  static const searchButton = Key('home_search_button');
+  // Internal Badge key for the search _IconCircle — never shows a dot
+  // (showBadge always false), but every _IconCircle instance needs its own
+  // key now that a second one exists beside the bell.
+  static const searchButtonBadge = Key('home_search_button_badge');
 }
