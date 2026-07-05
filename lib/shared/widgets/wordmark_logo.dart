@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
 import '../../core/theme/tokens/typography_tokens.dart';
 
-/// "Rihla" wordmark in italic Instrument Serif with a hand-drawn saffron
+/// "Rihla" wordmark in upright Bricolage Grotesque with a brass
 /// underline flourish — the app's signature mark.
 ///
 /// Use at small sizes for top bars and at large sizes for splash/onboarding.

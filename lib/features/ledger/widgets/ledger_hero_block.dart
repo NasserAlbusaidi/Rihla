@@ -13,7 +13,7 @@ enum LedgerHeroKind { positive, negative, settled, empty }
 /// bucket plus the count of people they are unsettled with in it.
 typedef LedgerHeroLine = ({String currency, Decimal net, int peopleCount});
 
-/// Italic Instrument Serif statement hero. The money is *inline* with the prose.
+/// Display-face (Bricolage Grotesque, upright) statement hero. The money is *inline* with the prose.
 ///
 /// Copy variants:
 ///   positive   →  localized balance owed to the current user.
