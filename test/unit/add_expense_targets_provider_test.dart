@@ -291,4 +291,141 @@ void main() {
       expect(targets.active.single.groupName, 'Salalah Khareef');
     });
   });
+
+  group('AddExpenseTargets.preferred (#900)', () {
+    test('null when any group stream has not resolved', () async {
+      final g1 = _makeGroup(id: 'g1');
+      final g2 = _makeGroup(id: 'g2');
+      final open = _makeEvent(id: 'open', groupId: 'g1');
+      final never = StreamController<List<Event>>();
+      addTearDown(never.close);
+
+      final container = _container([
+        currentUserIdProvider.overrideWith((_) => _uid),
+        userGroupsProvider.overrideWith((_) => Stream.value([g1, g2])),
+        groupEventsProvider('g1').overrideWith((_) => Stream.value([open])),
+        groupEventsProvider('g2').overrideWith((_) => never.stream),
+      ]);
+      await _pump();
+
+      final targets = container.read(addExpenseTargetsProvider).valueOrNull!;
+      expect(targets.allResolved, isFalse);
+      // Without the guard, `active.first` (non-empty from g1) would fire.
+      expect(targets.preferred, isNull);
+    });
+
+    test('null when there are zero open targets anywhere', () async {
+      final group = _makeGroup(id: 'g1');
+      final closed = _makeEvent(id: 'closed', groupId: 'g1', isClosed: true);
+
+      final container = _container([
+        currentUserIdProvider.overrideWith((_) => _uid),
+        userGroupsProvider.overrideWith((_) => Stream.value([group])),
+        groupEventsProvider('g1').overrideWith((_) => Stream.value([closed])),
+      ]);
+      await _pump();
+
+      final targets = container.read(addExpenseTargetsProvider).valueOrNull!;
+      expect(targets.preferred, isNull);
+    });
+
+    test(
+        'returns the _priority-first active target when active is non-empty '
+        '(fires even with 2+ open events in one group)', () async {
+      final now = DateTime.now();
+      final group = _makeGroup(id: 'g1');
+      final undated = _makeEvent(
+        id: 'undated',
+        groupId: 'g1',
+        createdAt: now.subtract(const Duration(days: 2)),
+      );
+      final ongoing = _makeEvent(
+        id: 'ongoing',
+        groupId: 'g1',
+        startDate: now.subtract(const Duration(days: 1)),
+        endDate: now.add(const Duration(days: 1)),
+      );
+
+      final container = _container([
+        currentUserIdProvider.overrideWith((_) => _uid),
+        userGroupsProvider.overrideWith((_) => Stream.value([group])),
+        groupEventsProvider(
+          'g1',
+        ).overrideWith((_) => Stream.value([undated, ongoing])),
+      ]);
+      await _pump();
+
+      final targets = container.read(addExpenseTargetsProvider).valueOrNull!;
+      expect(targets.active, hasLength(2));
+      expect(targets.preferred?.eventId, 'ongoing');
+    });
+
+    test(
+        'falls back to sole when nothing is in the active window and only '
+        'one open target exists', () async {
+      final now = DateTime.now();
+      final group = _makeGroup(id: 'g1');
+      final longEnded = _makeEvent(
+        id: 'long-ended',
+        groupId: 'g1',
+        startDate: now.subtract(const Duration(days: 30)),
+        endDate: now.subtract(const Duration(days: 20)),
+      );
+
+      final container = _container([
+        currentUserIdProvider.overrideWith((_) => _uid),
+        userGroupsProvider.overrideWith((_) => Stream.value([group])),
+        groupEventsProvider(
+          'g1',
+        ).overrideWith((_) => Stream.value([longEnded])),
+      ]);
+      await _pump();
+
+      final targets = container.read(addExpenseTargetsProvider).valueOrNull!;
+      expect(targets.active, isEmpty);
+      expect(targets.sole?.eventId, 'long-ended');
+      expect(targets.preferred?.eventId, 'long-ended');
+    });
+
+    test(
+        'falls back across groups (best of each group'
+        "'s own best) when nothing is in the active window and more than "
+        'one open target exists', () async {
+      final now = DateTime.now();
+      final g1 = _makeGroup(id: 'g1');
+      final g2 = _makeGroup(id: 'g2');
+      // g1's own best is further from now than g2's own best.
+      final farEnded = _makeEvent(
+        id: 'far-ended',
+        groupId: 'g1',
+        startDate: now.subtract(const Duration(days: 60)),
+        endDate: now.subtract(const Duration(days: 50)),
+      );
+      final closerEnded = _makeEvent(
+        id: 'closer-ended',
+        groupId: 'g2',
+        startDate: now.subtract(const Duration(days: 30)),
+        endDate: now.subtract(const Duration(days: 20)),
+      );
+
+      final container = _container([
+        currentUserIdProvider.overrideWith((_) => _uid),
+        userGroupsProvider.overrideWith((_) => Stream.value([g1, g2])),
+        groupEventsProvider(
+          'g1',
+        ).overrideWith((_) => Stream.value([farEnded])),
+        groupEventsProvider(
+          'g2',
+        ).overrideWith((_) => Stream.value([closerEnded])),
+      ]);
+      await _pump();
+
+      final targets = container.read(addExpenseTargetsProvider).valueOrNull!;
+      expect(targets.active, isEmpty);
+      // Two open targets total ⇒ sole is null ⇒ falls through to the
+      // cross-group best.
+      expect(targets.sole, isNull);
+      expect(targets.preferred?.eventId, 'closer-ended');
+    });
+  });
 }

@@ -298,6 +298,8 @@
   "editorAmountsVary": "تختلف المبالغ لكل شخص.",
   "editorEvent": "الفعالية",
   "editorDate": "التاريخ",
+  "editorAddingToEvent": "تُضاف إلى {eventName}",
+  "editorChangeDestination": "تغيير",
   "editorDeleteThisExpense": "حذف هذا المصروف",
   "editorDeleteThisExpenseBody": "يزيله للجميع في هذه الفعالية.",
   "editorDiscardAddTitle": "تجاهل هذا المصروف؟",

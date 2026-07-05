@@ -944,6 +944,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorDate => 'Date';
 
   @override
+  String editorAddingToEvent(String eventName) {
+    return 'Adding to $eventName';
+  }
+
+  @override
+  String get editorChangeDestination => 'change';
+
+  @override
   String get editorDeleteThisExpense => 'Delete this expense';
 
   @override

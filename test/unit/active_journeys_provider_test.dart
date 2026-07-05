@@ -293,5 +293,72 @@ void main() {
         ]);
       },
     );
+
+    test(
+      '_priority ordering: ongoing < upcoming < recently-ended (#900)',
+      () async {
+        final now = DateTime.now();
+        const groupId = 'priority-group';
+        final group = _makeGroup(id: groupId);
+        // Constructed out of _priority order on purpose — the sort must
+        // reorder them, not just preserve input order.
+        final upcoming = _makeEvent(
+          id: 'upcoming',
+          groupId: groupId,
+          startDate: now.add(const Duration(days: 5)),
+          endDate: now.add(const Duration(days: 7)),
+        );
+        final recentlyEnded = _makeEvent(
+          id: 'recently-ended',
+          groupId: groupId,
+          startDate: now.subtract(const Duration(days: 10)),
+          endDate: now.subtract(const Duration(days: 3)),
+        );
+        final ongoing = _makeEvent(
+          id: 'ongoing',
+          groupId: groupId,
+          startDate: now.subtract(const Duration(days: 1)),
+          endDate: now.add(const Duration(days: 1)),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            currentUserIdProvider.overrideWith((_) => 'uid-user'),
+            userGroupsProvider.overrideWith((_) => Stream.value([group])),
+            groupEventsProvider(groupId).overrideWith(
+              (_) => Stream.value([upcoming, recentlyEnded, ongoing]),
+            ),
+            groupBalancesOnceProvider(groupId).overrideWith(
+              (_) => (
+                balances: (
+                  balances: <String, List<UserBalance>>{},
+                  totalSpent: <String, Decimal>{},
+                  eventCount: 3,
+                  perEventBreakdown:
+                      <String, Map<String, Map<String, Decimal>>>{},
+                  memberNames: <String, String>{},
+                  memberRawNames: <String, String>{},
+                ),
+                failedEventIds: const <String>{},
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.listen(
+          activeJourneysProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
+        await _pump(container);
+
+        final entries = container.read(activeJourneysProvider).valueOrNull!;
+        expect(
+          entries.map((e) => e.eventId).toList(),
+          ['ongoing', 'upcoming', 'recently-ended'],
+        );
+      },
+    );
   });
 }

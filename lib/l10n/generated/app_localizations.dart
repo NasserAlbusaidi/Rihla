@@ -1700,6 +1700,18 @@ abstract class AppLocalizations {
   /// **'Date'**
   String get editorDate;
 
+  /// Add-mode-only Where card title naming the target event, paired with the trailing 'change' button (#900).
+  ///
+  /// In en, this message translates to:
+  /// **'Adding to {eventName}'**
+  String editorAddingToEvent(String eventName);
+
+  /// Trailing tap target next to editorAddingToEvent that opens the target picker to switch which event the expense is added to (#900).
+  ///
+  /// In en, this message translates to:
+  /// **'change'**
+  String get editorChangeDestination;
+
   /// No description provided for @editorDeleteThisExpense.
   ///
   /// In en, this message translates to:

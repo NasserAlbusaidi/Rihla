@@ -971,6 +971,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorDate => 'التاريخ';
 
   @override
+  String editorAddingToEvent(String eventName) {
+    return 'تُضاف إلى $eventName';
+  }
+
+  @override
+  String get editorChangeDestination => 'تغيير';
+
+  @override
   String get editorDeleteThisExpense => 'حذف هذا المصروف';
 
   @override
