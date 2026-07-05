@@ -182,6 +182,52 @@ class AddExpenseTargets {
   /// False while any group's event stream is still loading (or errored) —
   /// the fast path must never fire on partial data.
   final bool allResolved;
+
+  /// The FAB fast-path target (#900 / friction #1): the ranked top pick
+  /// whenever one exists, so a 2+-group user stops paying the picker sheet
+  /// on every add. **First line is the guard** — never fires on partial
+  /// data, mirroring [sole]'s own `allResolved` guard. Falls through
+  /// `active.first` (window-filtered, `_priority`-sorted) → [sole] (a single
+  /// open event outside the window) → the highest-priority open target
+  /// across ALL groups (still outside the window, but more than one open
+  /// target exists). Zero open targets anywhere → null. A wrong guess is
+  /// recoverable via the editor's "change destination" affordance — this is
+  /// deliberately not gated on being "certainly correct."
+  AddExpenseTarget? get preferred {
+    if (!allResolved) return null;
+    if (active.isNotEmpty) return active.first;
+    return sole ?? _firstAcrossOpenByGroup(openByGroup);
+  }
+}
+
+/// Flattens [openByGroup], preserving each group's own `_priority` order
+/// (already sorted ascending at construction), and returns the globally
+/// highest-priority target — i.e. the best of each group's own best. Only
+/// reached by [AddExpenseTargets.preferred] when nothing is in the active
+/// window and more than one open target exists (so [AddExpenseTargets.sole]
+/// is null).
+AddExpenseTarget? _firstAcrossOpenByGroup(
+  Map<String, List<AddExpenseTarget>> openByGroup,
+) {
+  if (openByGroup.isEmpty) return null;
+  final now = DateTime.now();
+  AddExpenseTarget? best;
+  int? bestPriority;
+  for (final targets in openByGroup.values) {
+    if (targets.isEmpty) continue;
+    final candidate = targets.first;
+    final priority = _priority(
+      start: candidate.startDate,
+      end: candidate.endDate,
+      fallback: candidate.createdAt,
+      now: now,
+    );
+    if (bestPriority == null || priority < bestPriority) {
+      bestPriority = priority;
+      best = candidate;
+    }
+  }
+  return best;
 }
 
 /// Flattens every event across the user's groups into add-expense targets

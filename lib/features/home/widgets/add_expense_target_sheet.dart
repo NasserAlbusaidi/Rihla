@@ -21,9 +21,19 @@ enum _SheetView { flattened, groups, groupEvents }
 /// the browse-all footer falls back to a two-step group → event flow for the
 /// long tail. Every tap ends in a path-based push of the existing add route.
 class AddExpenseTargetSheet extends ConsumerStatefulWidget {
-  const AddExpenseTargetSheet({super.key});
+  const AddExpenseTargetSheet({super.key, this.replaceCurrent = false});
 
-  static Future<void> show(BuildContext context) {
+  /// True when opened from the editor's "change destination" affordance
+  /// (#900 / PR-5 §1): the picked target REPLACES the current route instead
+  /// of stacking on top of it, so an abandoned add-editor draft is never left
+  /// as a ghost page under Back. The FAB path keeps the default `false` (a
+  /// plain push onto the tab shell).
+  final bool replaceCurrent;
+
+  static Future<void> show(
+    BuildContext context, {
+    bool replaceCurrent = false,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -31,7 +41,7 @@ class AddExpenseTargetSheet extends ConsumerStatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => const AddExpenseTargetSheet(),
+      builder: (_) => AddExpenseTargetSheet(replaceCurrent: replaceCurrent),
     );
   }
 
@@ -51,7 +61,11 @@ class _AddExpenseTargetSheetState extends ConsumerState<AddExpenseTargetSheet> {
     HapticService.lightClick();
     final router = GoRouter.of(context);
     Navigator.of(context).pop();
-    router.push(addExpensePathFor(target));
+    if (widget.replaceCurrent) {
+      router.pushReplacement(addExpensePathFor(target));
+    } else {
+      router.push(addExpensePathFor(target));
+    }
   }
 
   void _pushCreateGroup() {

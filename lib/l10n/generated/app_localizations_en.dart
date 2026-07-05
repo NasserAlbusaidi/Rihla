@@ -944,6 +944,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorDate => 'Date';
 
   @override
+  String editorAddingToEvent(String eventName) {
+    return 'Adding to $eventName';
+  }
+
+  @override
+  String get editorChangeDestination => 'change';
+
+  @override
   String get editorDeleteThisExpense => 'Delete this expense';
 
   @override
@@ -1845,6 +1853,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeBalanceHeroHint => 'See your journeys';
+
+  @override
+  String get heroBreakdownTitle => 'Balance by group';
+
+  @override
+  String get heroBreakdownEmpty => 'You\'re all settled up';
 
   @override
   String get homeNetYoureOwed => 'Net — you\'re owed';

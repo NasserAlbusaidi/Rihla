@@ -17,9 +17,11 @@ String addExpensePathFor(AddExpenseTarget target) {
 
 /// Persistent add-expense FAB for the tab shell (#364).
 ///
-/// Fast path: exactly one open event anywhere (and every group's event
-/// stream resolved) → push its add route directly; the editor's Where card
-/// names the target. Otherwise open the flattened target picker sheet.
+/// Fast path (#900 / friction #1): a ranked `preferred` target exists (every
+/// group's event stream resolved, and at least one open event anywhere) →
+/// push its add route directly; the editor's Where card names the target and
+/// offers "change" if the guess is wrong. Otherwise open the flattened target
+/// picker sheet.
 class AddExpenseFab extends ConsumerWidget {
   const AddExpenseFab({super.key});
 
@@ -31,9 +33,9 @@ class AddExpenseFab extends ConsumerWidget {
       tooltip: context.l10n.homeQuickAddExpense,
       onPressed: () {
         HapticService.lightClick();
-        final sole = targetsAsync.valueOrNull?.sole;
-        if (sole != null) {
-          context.push(addExpensePathFor(sole));
+        final target = targetsAsync.valueOrNull?.preferred;
+        if (target != null) {
+          context.push(addExpensePathFor(target));
           return;
         }
         AddExpenseTargetSheet.show(context);

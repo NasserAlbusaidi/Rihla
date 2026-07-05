@@ -971,6 +971,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorDate => 'التاريخ';
 
   @override
+  String editorAddingToEvent(String eventName) {
+    return 'تُضاف إلى $eventName';
+  }
+
+  @override
+  String get editorChangeDestination => 'تغيير';
+
+  @override
   String get editorDeleteThisExpense => 'حذف هذا المصروف';
 
   @override
@@ -1900,6 +1908,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeBalanceHeroHint => 'عرض رحلاتك';
+
+  @override
+  String get heroBreakdownTitle => 'الرصيد حسب المجموعة';
+
+  @override
+  String get heroBreakdownEmpty => 'كل حساباتك مُسوّاة';
 
   @override
   String get homeNetYoureOwed => 'الصافي — مستحق لك';

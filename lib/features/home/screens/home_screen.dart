@@ -34,6 +34,7 @@ import '../providers/dashboard_providers.dart';
 import '../widgets/account_backup_nudge.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
+import '../widgets/group_balance_breakdown_sheet.dart';
 import '../widgets/group_glyph.dart';
 import '../widgets/guest_account_caption.dart';
 import '../widgets/journey_ticket_card.dart';
@@ -70,8 +71,6 @@ class _DashboardContent extends ConsumerStatefulWidget {
 }
 
 class _DashboardContentState extends ConsumerState<_DashboardContent> {
-  // #284: the balance hero scrolls down to the journeys list (the path to
-  // per-group settle-up) — there is no cross-group settle screen to route to.
   final _scrollController = ScrollController();
   final _journeysSectionKey = GlobalKey();
 
@@ -79,17 +78,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _scrollToJourneys() {
-    HapticService.lightClick();
-    final sectionContext = _journeysSectionKey.currentContext;
-    if (sectionContext == null) return;
-    Scrollable.ensureVisible(
-      sectionContext,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutCubic,
-    );
   }
 
   @override
@@ -116,6 +104,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   Widget _buildLoaded(BuildContext context, List<Group> groups) {
     final activityAsync = ref.watch(crossGroupActivityProvider);
     final journeysAsync = ref.watch(activeJourneysProvider);
+    final targetsAsync = ref.watch(addExpenseTargetsProvider);
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -138,7 +127,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           const SliverToBoxAdapter(child: GuestAccountCaption()),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           SliverToBoxAdapter(
-            child: BalanceHeroCard(onTap: _scrollToJourneys)
+            child:
+                BalanceHeroCard(
+                  onTap: () => GroupBalanceBreakdownSheet.show(context),
+                )
                 .animate()
                 .fadeIn(delay: 250.ms, duration: 500.ms)
                 .slideY(begin: 0.15, curve: Curves.easeOutQuart),
@@ -197,7 +189,25 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                       isLast: isLast,
                       onTap: () {
                         HapticService.lightClick();
-                        context.push('/group/${groups[index].id}');
+                        // #900 friction #2: smart-forward to the sole open
+                        // event so a one-open-event group skips the
+                        // zero-expense group overview. Client-side only —
+                        // never a router redirect (see PR-5 §2).
+                        final gid = groups[index].id;
+                        final targets =
+                            targetsAsync.valueOrNull ?? AddExpenseTargets.empty;
+                        final open = targets.openByGroup[gid];
+                        final soleEvent =
+                            (targets.allResolved &&
+                                open != null &&
+                                open.length == 1)
+                            ? open.single
+                            : null;
+                        if (soleEvent != null) {
+                          context.push('/group/$gid/event/${soleEvent.eventId}');
+                        } else {
+                          context.push('/group/$gid');
+                        }
                       },
                     )
                     .animate()

@@ -122,10 +122,19 @@ void main() {
     );
   }
 
+  // Opens the sheet directly rather than via the FAB (#900): the FAB now
+  // fast-paths through `AddExpenseTargets.preferred` whenever ANY open
+  // target exists anywhere (in-window or not), so tapping it no longer
+  // reliably reaches the sheet for these multi-target fixtures — that
+  // routing decision has its own dedicated coverage in
+  // add_expense_fab_navigation_test.dart. This file tests the sheet's own
+  // rendering/filtering/navigation once shown, independent of how it opened.
   Future<void> openSheet(WidgetTester tester) async {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(HomeKeys.addExpenseFab));
+    unawaited(
+      AddExpenseTargetSheet.show(tester.element(find.text('Dashboard'))),
+    );
     await tester.pumpAndSettle();
   }
 

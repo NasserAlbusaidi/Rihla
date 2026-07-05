@@ -27,6 +27,11 @@ abstract final class LedgerKeys {
   // #818 Wave 5.3: standalone settle-up → recap/export nav entry
   static const settleUpRecapCta = Key('settle_up_recap_cta');
 
+  // #900 (PR-5 §1): editor "change destination" affordance, add mode only
+  static const editorChangeDestinationButton = Key(
+    'editor_change_destination_button',
+  );
+
   // Parameterized keys for list items
   static Key expenseCard(String id) => Key('ledger_expense_card_$id');
 }

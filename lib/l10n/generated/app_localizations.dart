@@ -1700,6 +1700,18 @@ abstract class AppLocalizations {
   /// **'Date'**
   String get editorDate;
 
+  /// Add-mode-only Where card title naming the target event, paired with the trailing 'change' button (#900).
+  ///
+  /// In en, this message translates to:
+  /// **'Adding to {eventName}'**
+  String editorAddingToEvent(String eventName);
+
+  /// Trailing tap target next to editorAddingToEvent that opens the target picker to switch which event the expense is added to (#900).
+  ///
+  /// In en, this message translates to:
+  /// **'change'**
+  String get editorChangeDestination;
+
   /// No description provided for @editorDeleteThisExpense.
   ///
   /// In en, this message translates to:
@@ -3080,6 +3092,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'See your journeys'**
   String get homeBalanceHeroHint;
+
+  /// PR-5 §3 — title of the sheet opened by tapping the balance hero; lists each group's non-zero net, per currency.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance by group'**
+  String get heroBreakdownTitle;
+
+  /// PR-5 §3 — empty state in the hero breakdown sheet when the user has zero net across every group.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all settled up'**
+  String get heroBreakdownEmpty;
 
   /// No description provided for @homeNetYoureOwed.
   ///

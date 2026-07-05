@@ -27,6 +27,7 @@ import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../groups/widgets/currency_picker_sheet.dart';
+import '../../home/widgets/add_expense_target_sheet.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../keys/ledger_keys.dart';
 import '../models/expense_category_model.dart';
@@ -519,13 +520,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     }
   }
 
-  /// #818 Wave 3.2: shown when a dirty editor is about to be dismissed (X or
-  /// system back — see [_handleClose] and the `PopScope` in [build]). Mirrors
-  /// [_confirmDelete]'s house idiom but with no icon row (discarding a draft
-  /// is lighter than deleting a persisted record) and the destructive action
-  /// labeled "Discard" rather than "Delete".
-  Future<void> _confirmDiscard() async {
-    final confirmed = await showDialog<bool>(
+  /// Shared dialog behind both [_confirmDiscard] (X / system back) and
+  /// [_handleChangeDestination] (#900 — the editor's "change destination"
+  /// tap): same copy, same stakes (the user is abandoning the current
+  /// draft), different post-confirm action.
+  Future<bool?> _showDiscardConfirmDialog() {
+    return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
@@ -552,6 +552,15 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
         ],
       ),
     );
+  }
+
+  /// #818 Wave 3.2: shown when a dirty editor is about to be dismissed (X or
+  /// system back — see [_handleClose] and the `PopScope` in [build]). Mirrors
+  /// [_confirmDelete]'s house idiom but with no icon row (discarding a draft
+  /// is lighter than deleting a persisted record) and the destructive action
+  /// labeled "Discard" rather than "Delete".
+  Future<void> _confirmDiscard() async {
+    final confirmed = await _showDiscardConfirmDialog();
 
     if (confirmed == true && mounted) {
       // Imperative pop — bypasses `PopScope.canPop` by design (verified
@@ -559,6 +568,23 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       // `NavigatorState.pop` directly, never `maybePop`).
       context.pop();
     }
+  }
+
+  /// #900 (PR-5 §1): the trailing "change" tap on `_WhereCard`, add mode
+  /// only — wired at the [_WhereCard] callsite as `_isEdit ? null :
+  /// _handleChangeDestination`, so the null-check there IS the mode gate. A
+  /// dirty form runs the SAME add-discard confirm as X/back (same stakes:
+  /// abandoning this event's draft); on confirm (or when pristine) opens the
+  /// target picker with `replaceCurrent: true` so the abandoned add editor is
+  /// replaced, never stacked under Back.
+  Future<void> _handleChangeDestination() async {
+    HapticService.lightClick();
+    if (_isDirty) {
+      final confirmed = await _showDiscardConfirmDialog();
+      if (confirmed != true || !mounted) return;
+    }
+    if (!mounted) return;
+    await AddExpenseTargetSheet.show(context, replaceCurrent: true);
   }
 
   /// #818 Wave 3.2: single chokepoint for both dismissal paths (X tap; system
@@ -962,7 +988,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         ),
                         _Section(
                           title: context.l10n.editorWhere,
-                          child: _WhereCard(event: event),
+                          child: _WhereCard(
+                            event: event,
+                            // Add mode only — the null-check on the other
+                            // side IS the mode gate (#900). An existing
+                            // expense is pinned to its event.
+                            onChangeDestination:
+                                _isEdit ? null : _handleChangeDestination,
+                          ),
                         ),
                       ] else
                         Padding(
@@ -1675,23 +1708,40 @@ class _CategoryChip extends StatelessWidget {
 int debugEditorNameMapComputes = 0;
 
 class _WhereCard extends StatelessWidget {
-  const _WhereCard({required this.event});
+  const _WhereCard({required this.event, this.onChangeDestination});
 
   final Event event;
+
+  /// Add-mode-only "change destination" tap target (#900 / PR-5 §1). `null`
+  /// hides the affordance — this is the mode gate; edit mode never wires it
+  /// since an existing expense is pinned to its event.
+  final VoidCallback? onChangeDestination;
 
   @override
   Widget build(BuildContext context) {
     final date = event.startDate ?? event.createdAt;
+    final onChangeDestination = this.onChangeDestination;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
       child: _CardShell(
         child: Column(
           children: [
-            _InfoRow(
-              title: context.l10n.editorEvent,
-              trailingText: event.name,
-              dense: true,
-            ),
+            if (onChangeDestination != null)
+              _InfoRow(
+                title: context.l10n.editorAddingToEvent(event.name),
+                dense: true,
+                trailing: TextButton(
+                  key: LedgerKeys.editorChangeDestinationButton,
+                  onPressed: onChangeDestination,
+                  child: Text(context.l10n.editorChangeDestination),
+                ),
+              )
+            else
+              _InfoRow(
+                title: context.l10n.editorEvent,
+                trailingText: event.name,
+                dense: true,
+              ),
             _InfoRow(
               title: context.l10n.editorDate,
               trailingText: AppFormatters.formatShortMonthDay(
