@@ -343,6 +343,47 @@ class AppTheme {
           letterSpacing: 0.8,
         ),
       ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColorTokens.dark.primary,
+        foregroundColor: AppColorTokens.dark.textOnPrimary,
+        elevation: 4,
+        shape: const CircleBorder(),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.transparent,
+        selectedColor: AppColorTokens.dark.textPrimary,
+        labelStyle: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColorTokens.dark.textSecondary,
+        ),
+        secondaryLabelStyle: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColorTokens.dark.textOnPrimary,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(9999),
+          side: BorderSide(color: AppColorTokens.dark.rule2, width: 1),
+        ),
+        side: BorderSide.none,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      ),
+      dividerTheme: DividerThemeData(
+        color: AppColorTokens.dark.rule,
+        thickness: 0.5,
+        space: 1,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColorTokens.dark.cardSurface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColorTokens.dark.cardSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
       extensions: <ThemeExtension>[
         AppColorTokens.dark,
         AppSpacingTokens.standard,
