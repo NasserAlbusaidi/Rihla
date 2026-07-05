@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -97,6 +96,46 @@ void main() {
         (tester) async {
       _suppressFontErrors(() {
         expect(identical(AppTheme.darkTheme, AppTheme.darkTheme), isTrue);
+      });
+    });
+
+    // #900 PR-4: dark previously fell back to M3 defaults for these five
+    // component themes (light already defined them). Pins each against the
+    // dark token instance so the fallback can't silently regress.
+    testWidgets('darkTheme defines the previously-missing component themes',
+        (tester) async {
+      _suppressFontErrors(() {
+        final t = AppTheme.darkTheme;
+        const dark = AppColorTokens.dark;
+
+        expect(t.floatingActionButtonTheme.backgroundColor, dark.primary);
+        expect(t.floatingActionButtonTheme.foregroundColor,
+            dark.textOnPrimary);
+
+        expect(t.chipTheme.selectedColor, dark.textPrimary);
+        expect(t.chipTheme.labelStyle?.color, dark.textSecondary);
+        expect(t.chipTheme.secondaryLabelStyle?.color, dark.textOnPrimary);
+        expect(
+          (t.chipTheme.shape as RoundedRectangleBorder?)?.side.color,
+          dark.rule2,
+        );
+
+        expect(t.dividerTheme.color, dark.rule);
+
+        expect(t.bottomSheetTheme.backgroundColor, dark.cardSurface);
+        expect(t.dialogTheme.backgroundColor, dark.cardSurface);
+      });
+    });
+
+    // #900 PR-4: dark hintStyle read textMuted (~3.1:1 on inputFill, below
+    // AA) — swapped to textSecondary (~5.6:1).
+    testWidgets('darkTheme input hint uses textSecondary, not textMuted',
+        (tester) async {
+      _suppressFontErrors(() {
+        final hintColor =
+            AppTheme.darkTheme.inputDecorationTheme.hintStyle?.color;
+        expect(hintColor, AppColorTokens.dark.textSecondary);
+        expect(hintColor, isNot(AppColorTokens.dark.textMuted));
       });
     });
   });

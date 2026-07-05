@@ -205,9 +205,9 @@ class AppTheme {
     );
   }
 
-  /// Dark theme — saffron-direction stub. Visual quality target deferred per
-  /// plan; values come from [AppColorTokens.dark] which compile and don't
-  /// produce illegible text but have not been tuned.
+  /// Dark theme — Falaj night-navigation, tuned (#900 PR-4). Values come from
+  /// [AppColorTokens.dark]; component themes mirror [_buildLightTheme]'s
+  /// structure with dark-token colors.
   static final ThemeData darkTheme = _buildDarkTheme();
 
   static ThemeData _buildDarkTheme() {
@@ -327,7 +327,7 @@ class AppTheme {
           borderSide: BorderSide(color: AppColorTokens.dark.error, width: 1),
         ),
         hintStyle: AppTypography.sans(
-          color: AppColorTokens.dark.textMuted,
+          color: AppColorTokens.dark.textSecondary,
           fontSize: 15,
           fontWeight: FontWeight.w400,
         ),
@@ -342,6 +342,47 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
         ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColorTokens.dark.primary,
+        foregroundColor: AppColorTokens.dark.textOnPrimary,
+        elevation: 4,
+        shape: const CircleBorder(),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.transparent,
+        selectedColor: AppColorTokens.dark.textPrimary,
+        labelStyle: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColorTokens.dark.textSecondary,
+        ),
+        secondaryLabelStyle: AppTypography.sans(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColorTokens.dark.textOnPrimary,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(9999),
+          side: BorderSide(color: AppColorTokens.dark.rule2, width: 1),
+        ),
+        side: BorderSide.none,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      ),
+      dividerTheme: DividerThemeData(
+        color: AppColorTokens.dark.rule,
+        thickness: 0.5,
+        space: 1,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColorTokens.dark.cardSurface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColorTokens.dark.cardSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       extensions: <ThemeExtension>[
         AppColorTokens.dark,
