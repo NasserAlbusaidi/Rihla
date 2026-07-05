@@ -57,10 +57,16 @@ class EventCommandCenter extends ConsumerWidget {
     super.key,
     required this.groupId,
     required this.eventId,
+    this.initialTab = EventTab.expenses,
   });
 
   final String groupId;
   final String eventId;
+
+  /// PR-5 §4: seeds the hub's tab from the `?tab=` query param on cold
+  /// landing (route-level redirects into `…/event/:eid?tab=…`). Query param
+  /// only — nav data never travels via the router's opaque extra payload.
+  final EventTab initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -80,7 +86,12 @@ class EventCommandCenter extends ConsumerWidget {
         ),
         data: (event) {
           if (event == null) return const _NotFoundState();
-          return _Content(event: event, groupId: groupId, eventId: eventId);
+          return _Content(
+            event: event,
+            groupId: groupId,
+            eventId: eventId,
+            initialTab: initialTab,
+          );
         },
       ),
     );
@@ -89,7 +100,32 @@ class EventCommandCenter extends ConsumerWidget {
 
 // ──────────────────────────── Tabs
 
-enum _EventTab { expenses, settleUp, activity, recap }
+/// Promoted from the file-private `_EventTab` (PR-5 §4) — zero external refs
+/// before this change, so the rename is collision-free. Order matches the
+/// [_LazyIndexedStack] panel order (`tab.index` indexes the panels).
+enum EventTab {
+  expenses,
+  settleUp,
+  activity,
+  recap;
+
+  /// Maps the hub's `?tab=` query param to a tab, EXPLICITLY:
+  /// `expenses`/`activity`/`recap` map to themselves; `settleUp`, absent, or
+  /// any unknown value falls back to Expenses — a cold `?tab=settleUp` must
+  /// not fire the #204 settle-review sheet with no settle context.
+  static EventTab fromQuery(String? value) {
+    switch (value) {
+      case 'expenses':
+        return EventTab.expenses;
+      case 'activity':
+        return EventTab.activity;
+      case 'recap':
+        return EventTab.recap;
+      default:
+        return EventTab.expenses;
+    }
+  }
+}
 
 // ──────────────────────────── Content
 
@@ -98,21 +134,32 @@ class _Content extends ConsumerStatefulWidget {
     required this.event,
     required this.groupId,
     required this.eventId,
+    required this.initialTab,
   });
 
   final Event event;
   final String groupId;
   final String eventId;
+  final EventTab initialTab;
 
   @override
   ConsumerState<_Content> createState() => _ContentState();
 }
 
 class _ContentState extends ConsumerState<_Content> {
-  _EventTab _tab = _EventTab.expenses;
+  late EventTab _tab;
   bool _collapsed = false;
 
-  void _selectTab(_EventTab tab) {
+  @override
+  void initState() {
+    super.initState();
+    // All producers `push` the hub URL (imperative pageKey) — no
+    // `didUpdateWidget` path is needed; a warm in-app push with a different
+    // `?tab=` stacks a second hub instance instead (known + accepted).
+    _tab = widget.initialTab;
+  }
+
+  void _selectTab(EventTab tab) {
     if (tab == _tab) return;
     HapticService.lightClick();
     setState(() {
@@ -155,8 +202,8 @@ class _ContentState extends ConsumerState<_Content> {
     final showRecap = event.isClosed;
     // The Recap tab exists only while closed; if the event reopens under a
     // recap-active screen, fall back to Expenses.
-    final tab = (!showRecap && _tab == _EventTab.recap)
-        ? _EventTab.expenses
+    final tab = (!showRecap && _tab == EventTab.recap)
+        ? EventTab.expenses
         : _tab;
 
     return SafeArea(
@@ -204,7 +251,7 @@ class _ContentState extends ConsumerState<_Content> {
                       ? null
                       : () {
                           HapticService.lightClick();
-                          _selectTab(_EventTab.recap);
+                          _selectTab(EventTab.recap);
                         },
                 )
               else if (expenses.isNotEmpty)
@@ -587,32 +634,32 @@ class _EventTabBar extends StatelessWidget {
     required this.onSelect,
   });
 
-  final _EventTab active;
+  final EventTab active;
   final bool showRecap;
-  final ValueChanged<_EventTab> onSelect;
+  final ValueChanged<EventTab> onSelect;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final tabs = <({_EventTab tab, Key key, String label})>[
+    final tabs = <({EventTab tab, Key key, String label})>[
       (
-        tab: _EventTab.expenses,
+        tab: EventTab.expenses,
         key: EventKeys.tabExpenses,
         label: context.l10n.eventTabExpenses,
       ),
       (
-        tab: _EventTab.settleUp,
+        tab: EventTab.settleUp,
         key: EventKeys.tabSettleUp,
         label: context.l10n.eventTabSettleUp,
       ),
       (
-        tab: _EventTab.activity,
+        tab: EventTab.activity,
         key: EventKeys.tabActivity,
         label: context.l10n.eventTabActivity,
       ),
       if (showRecap)
         (
-          tab: _EventTab.recap,
+          tab: EventTab.recap,
           key: EventKeys.tabRecap,
           label: context.l10n.eventTabRecap,
         ),

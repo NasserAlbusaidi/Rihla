@@ -265,8 +265,11 @@ class _Body extends ConsumerWidget {
       restorationId: 'ledger_scroll',
       slivers: [
         // #758 embedded: the tabbed shell owns the header, balance display,
-        // offline banner, and per-person surface (Settle tab) — only the
-        // timeline (caption, chips, day cards) renders as the Expenses panel.
+        // and offline banner — only the timeline (caption, chips, day cards)
+        // renders as the Expenses panel. PR-5 §4: the roster strip's
+        // per-person settle-up preselect tap stays in BOTH modes (below) — the
+        // embedded Settle tab panel takes no preselect, so this is the only
+        // in-app producer for `…/ledger/settle-up?memberId=`.
         if (!embedded) ...[
           SliverToBoxAdapter(
             child: _CoverHeader(
@@ -317,19 +320,18 @@ class _Body extends ConsumerWidget {
               settledCount: settlements.length,
             ),
           ),
-        if (!embedded)
-          SliverToBoxAdapter(
-            child: LedgerRosterStrip(
-              state: rosterState,
-              others: roster,
-              currency: currency,
-              currentUserDisplayName: myDisplayName ?? context.l10n.ledgerYou,
-              onPersonTap: (p) => GoRouter.of(context).push(
-                '/group/$groupId/event/$eventId/ledger/'
-                'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',
-              ),
+        SliverToBoxAdapter(
+          child: LedgerRosterStrip(
+            state: rosterState,
+            others: roster,
+            currency: currency,
+            currentUserDisplayName: myDisplayName ?? context.l10n.ledgerYou,
+            onPersonTap: (p) => GoRouter.of(context).push(
+              '/group/$groupId/event/$eventId/ledger/'
+              'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',
             ),
           ),
+        ),
         if (hasExpenses)
           SliverToBoxAdapter(
             child: LedgerCategoryStrip(

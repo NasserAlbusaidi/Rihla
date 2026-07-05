@@ -201,7 +201,7 @@ void main() {
       );
     }
 
-    testWidgets('renders the timeline without cover/hero/roster/CTA chrome', (
+    testWidgets('renders the timeline without cover/hero/CTA chrome', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -215,12 +215,10 @@ void main() {
       expect(find.text('Item e1'), findsOneWidget);
       expect(find.byType(LedgerCategoryStrip), findsOneWidget);
       // …but the shell-owned chrome does not: no cover header, no hero
-      // statement (balance lives in the tabbed header), no roster strip, no
-      // sticky CTA (FAB + Settle tab replace it), no offline banner, no
-      // nested Scaffold.
+      // statement (balance lives in the tabbed header), no sticky CTA (FAB +
+      // Settle tab replace it), no offline banner, no nested Scaffold.
       expect(find.byType(CoverArt), findsNothing);
       expect(find.byType(LedgerHeroStatement), findsNothing);
-      expect(find.byType(LedgerRosterStrip), findsNothing);
       expect(find.byType(LedgerStickyCta), findsNothing);
       expect(find.byType(OfflineBanner), findsNothing);
       expect(
@@ -231,6 +229,22 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgets(
+      'PR-5 §4: roster strip survives embedding — its per-person tap is the '
+      'only in-app producer of ledger/settle-up?memberId= once the '
+      'full-chrome ledger route stops routing',
+      (tester) async {
+        await tester.pumpWidget(
+          buildEmbedded(
+            expenses: [expense(id: 'e1', payer: 'uid-a', amount: '10.000')],
+          ),
+        );
+        await tester.pump();
+
+        expect(find.byType(LedgerRosterStrip), findsOneWidget);
+      },
+    );
   });
 
   group('all-bucket settled gate (#382 PR-5)', () {

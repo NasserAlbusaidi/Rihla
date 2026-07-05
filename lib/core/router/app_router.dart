@@ -76,6 +76,33 @@ String? appRouteRedirect(String matchedLocation) {
   return null;
 }
 
+/// Route-level redirect for `AppRoutes.eventLedger` (PR-5 §4): a cold
+/// `…/ledger` lands on the hub's Expenses tab instead of the full-chrome
+/// route (kept, but unrouted).
+///
+/// The null-for-children guard is LOAD-BEARING: go_router 13.2.5 runs
+/// ancestor route-level redirects for descendant matches too
+/// (`_getRouteLevelRedirect` walks the full matched chain from index 0), and
+/// `state.uri` is always the FULL matched location (`buildState` passes
+/// `matches.uri`) — so without the `endsWith` guard this would also hijack
+/// `…/ledger/add`, `…/ledger/edit/:expId`, and `…/ledger/settle-up`.
+@visibleForTesting
+String? eventLedgerModuleRedirect(GoRouterState state) {
+  final loc = state.uri.path;
+  if (!loc.endsWith('/ledger')) return null;
+  return '${loc.substring(0, loc.length - 7)}?tab=expenses';
+}
+
+/// Route-level redirect for `AppRoutes.eventActivity` (PR-5 §4) — same
+/// pattern as [eventLedgerModuleRedirect], `…/activity` has no children to
+/// guard but keeps the same `endsWith` shape for symmetry.
+@visibleForTesting
+String? eventActivityModuleRedirect(GoRouterState state) {
+  final loc = state.uri.path;
+  if (!loc.endsWith('/activity')) return null;
+  return '${loc.substring(0, loc.length - 9)}?tab=activity';
+}
+
 String _emailFromRouteState(GoRouterState state) {
   return state.uri.queryParameters['email'] ?? '';
 }
@@ -318,13 +345,22 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: EventCommandCenter(
                 groupId: state.pathParameters['gid']!,
                 eventId: state.pathParameters['eid']!,
+                initialTab: EventTab.fromQuery(
+                  state.uri.queryParameters['tab'],
+                ),
               ),
               transitionsBuilder: _sharedAxisTransition,
             ),
             routes: [
-              // Ledger module
+              // Ledger module — PR-5 §4: route-level redirect into the hub's
+              // Expenses tab. The pageBuilder below is KEPT (full-chrome
+              // screen stays alive for its ~12 direct widget tests) but is
+              // unrouted in practice: the redirect fires for every exact
+              // `…/ledger` match, before the builder ever runs.
               GoRoute(
                 path: 'ledger',
+                redirect: (context, state) =>
+                    eventLedgerModuleRedirect(state),
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
                   child: LedgerScreen(
@@ -374,9 +410,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ],
               ),
 
-              // Activity module
+              // Activity module — PR-5 §4: route-level redirect into the
+              // hub's Activity tab. The pageBuilder below is KEPT (full-chrome
+              // screen stays alive for its direct widget tests) but is
+              // unrouted in practice: the redirect fires for every exact
+              // `…/activity` match, before the builder ever runs.
               GoRoute(
                 path: 'activity',
+                redirect: (context, state) =>
+                    eventActivityModuleRedirect(state),
                 pageBuilder: (context, state) => CustomTransitionPage(
                   key: state.pageKey,
                   child: ActivityFeedScreen(
