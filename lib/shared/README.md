@@ -12,7 +12,8 @@
 - **loading_button.dart**: Button with loading spinner state.
 - **skeleton_loader.dart**: Named-factory skeleton layouts (`expenseList`, `eventCard`, `groupList`, `dashboardHero`, `generic`, …).
 - **skeleton_primitives.dart**: Reusable skeleton shapes used by the loaders above.
-- **grain_overlay.dart**: Subtle noise texture overlay (`assets/textures/grain.png`).
+- **star_grid.dart**: `StarGridPainter` — deterministic night star-grid for dark hero surfaces (opacity from `kStarGridOpacity`).
+- **falaj_fork.dart**: `FalajFork` — the falaj-fork brand device (mirrors via ambient `Directionality`).
 - **directional_icon.dart**: `DirectionalIcon` — horizontally mirrors an icon when ambient Directionality is RTL. Use for navigational arrows/chevrons (Iconsax glyphs don't auto-flip in Arabic).
 
 ### animations/
