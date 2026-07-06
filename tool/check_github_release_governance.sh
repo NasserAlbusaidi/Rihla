@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Verifies GitHub-side release governance before a Play upload. This script is
-# read-only: it checks repository variables and branch protection, but does not
-# mutate repository settings.
+# Verifies GitHub-side release governance for tool/release.sh's PR-based
+# release flow before a Play upload. main's branch protection requires the
+# "readiness" status check, which rejects a direct push — so release commits
+# merge via an auto-merged release PR instead (#985). This script is
+# read-only: it checks repository variables, branch protection, and
+# auto-merge/squash-merge settings, but does not mutate repository settings.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -108,6 +111,27 @@ check_branch_protection() {
   fi
 }
 
+check_auto_merge_configured() {
+  local repo_json="$TMP_DIR/repo.json"
+
+  if ! gh api "repos/${REPO_SLUG}" >"$repo_json"; then
+    fail "Unable to read repository settings for ${REPO_SLUG}"
+    return
+  fi
+
+  if jq -e '.allow_auto_merge == true' "$repo_json" >/dev/null; then
+    pass "Auto-merge is allowed on ${REPO_SLUG}"
+  else
+    fail "Auto-merge must be allowed on ${REPO_SLUG} (Settings > General > Pull Requests > Allow auto-merge) — tool/release.sh's release PR relies on gh pr merge --auto to self-merge on green readiness"
+  fi
+
+  if jq -e '.allow_squash_merge == true' "$repo_json" >/dev/null; then
+    pass "Squash merge is allowed on ${REPO_SLUG}"
+  else
+    fail "Squash merge must be allowed on ${REPO_SLUG} — tool/release.sh merges the release PR with gh pr merge --squash"
+  fi
+}
+
 cd "$ROOT_DIR"
 
 require_cmd gh || true
@@ -126,6 +150,7 @@ echo "Checking GitHub release governance for ${REPO_SLUG} at ${TARGET_SHA}"
 
 check_release_variables
 check_branch_protection
+check_auto_merge_configured
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "GitHub release governance check FAILED (${FAILURES} issue(s))" >&2
