@@ -1715,7 +1715,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeSeeAll => 'عرض الكل';
 
   @override
-  String get homeSeeActivity => 'عرض النشاط';
+  String get homeSeeActivity => 'عرض السجل';
 
   @override
   String get homeGroups => 'المجموعات';

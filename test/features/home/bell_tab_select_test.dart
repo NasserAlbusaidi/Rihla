@@ -24,7 +24,7 @@ import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-/// #818 Wave 5.2: the bell and the journeys "View activity" action select the
+/// #818 Wave 5.2: the bell and the journeys "View history" action select the
 /// History tab in place (`BottomNavTabScope.selectTab(1)`) instead of pushing
 /// the `/activity` route. Coverage: (a) the bell lands on the tab with no
 /// back affordance and never pushes `/activity`; (b) a bell tap clears the
@@ -85,7 +85,7 @@ GroupBalances _emptyGroupBalances() => (
   memberRawNames: const <String, String>{},
 );
 
-/// Base overrides: one group with one event (so the journeys "View activity"
+/// Base overrides: one group with one event (so the journeys "View history"
 /// action is offered) and an empty activity feed (no unread dot). Individual
 /// tests layer `crossGroupActivityProvider` on top to seed unread state.
 List<Override> _baseOverrides() => [
@@ -268,15 +268,15 @@ void main() {
       );
     });
 
-    testWidgets('journeys View-activity action selects the tab', (
+    testWidgets('journeys View-history action selects the tab', (
       tester,
     ) async {
       await tester.pumpWidget(_buildTestApp(prefs, _baseOverrides()));
       await tester.pumpAndSettle();
 
-      expect(find.text('View activity'), findsOneWidget);
+      expect(find.text('View history'), findsOneWidget);
 
-      await tester.tap(find.text('View activity'));
+      await tester.tap(find.text('View history'));
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
