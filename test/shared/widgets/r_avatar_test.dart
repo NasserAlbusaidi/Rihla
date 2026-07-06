@@ -110,4 +110,31 @@ void main() {
       expect(find.byType(SizedBox), findsWidgets);
     });
   });
+
+  group('RAvatarStack — RTL start-anchoring (#967)', () {
+    testWidgets('avatars + overflow chip anchor to the start (right) edge '
+        'with mirrored overlap order', (tester) async {
+      await tester.pumpWidget(
+        _wrap(const Directionality(
+          textDirection: TextDirection.rtl,
+          child: RAvatarStack(
+            names: ['Alice', 'Bob', 'Cara', 'Dan', 'Eve', 'Fay'],
+            max: 3,
+          ),
+        )),
+      );
+
+      final a0 = tester.getRect(find.byType(RAvatar).at(0));
+      final a1 = tester.getRect(find.byType(RAvatar).at(1));
+      final a2 = tester.getRect(find.byType(RAvatar).at(2));
+      final chip = tester.getRect(find.text('+3'));
+
+      // Start = right in RTL: the first avatar hugs the right (start) edge,
+      // each later avatar sits further left, and the +N chip is furthest from
+      // the start. A non-directional Positioned(left:) would invert this.
+      expect(a0.left, greaterThan(a1.left));
+      expect(a1.left, greaterThan(a2.left));
+      expect(a2.left, greaterThan(chip.left));
+    });
+  });
 }
