@@ -22,6 +22,7 @@ class ActiveJourneyEntry {
     required this.createdAt,
     required this.nets,
     required this.fallbackCurrency,
+    this.unresolvedBalance = false,
   });
 
   /// Event ID — used for routing taps to the event hub.
@@ -31,7 +32,8 @@ class ActiveJourneyEntry {
   final String groupId;
 
   /// The current user's net balance per currency for this event — one entry
-  /// per NON-ZERO bucket, GCC-first (#382 PR-5). Empty ⇔ settled everywhere.
+  /// per NON-ZERO bucket, GCC-first (#382 PR-5). Empty ⇔ settled everywhere,
+  /// UNLESS [unresolvedBalance] is true (then it's "unknown", not settled).
   /// Each net is honest to its own currency (never relabeled to the group
   /// default).
   final List<({String currency, Decimal net})> nets;
@@ -40,6 +42,14 @@ class ActiveJourneyEntry {
   /// — the card otherwise has no currency source for the all-zero render
   /// (#382 PR-5).
   final String fallbackCurrency;
+
+  /// True when this event's group balance facade was loading/errored at
+  /// build time — [nets] is a forced-empty placeholder, NOT a real "settled"
+  /// read (#997 refute follow-up). Display-layer only: never persisted, and
+  /// never gates whether the ticket itself appears (that comes from
+  /// [groupEventsProvider] alone) — it only tells the ticket card to render
+  /// a neutral placeholder instead of a false 0.000 net.
+  final bool unresolvedBalance;
 
   /// Event name — `Event.name`.
   final String title;
@@ -59,8 +69,9 @@ class ActiveJourneyEntry {
   /// When the event was created — fallback sort key for undated events.
   final DateTime createdAt;
 
-  /// Settled ⇔ every bucket zero (no non-zero lines).
-  bool get isSettled => nets.isEmpty;
+  /// Settled ⇔ every bucket zero (no non-zero lines) AND the balance is
+  /// actually known — an unresolved facade is "unknown", never "settled".
+  bool get isSettled => nets.isEmpty && !unresolvedBalance;
 }
 
 /// Window for "active": ongoing right now, OR starts within the next 60 days,
@@ -357,23 +368,32 @@ final activeJourneysProvider =
     // either way. The active-window filter above still watches the LIVE
     // groupEventsProvider, so event add/remove refreshes the strip.
     //
-    // #997: a loading/errored facade has no reliable money — defaulting to
-    // `{}` rendered every ticket in this group as a false "settled" net.
-    // Skip the group's tickets entirely rather than guess (mirrors #570's
-    // "drop the unreadable" rule); they reappear once the facade resolves.
+    // #997 refute follow-up: ticket EXISTENCE must never depend on this
+    // facade — dropping a group's tickets while its balance is
+    // loading/errored (the original #997 fix) turns into a false "No
+    // upcoming journeys" empty state under sustained flaky network, worse
+    // than the false 0.000 net it was fixing. So a loading/errored facade
+    // only suppresses the NET DISPLAY for this group's tickets (via
+    // `unresolvedBalance`) — the tickets themselves stay, sourced from
+    // `activeEvents` above regardless of balance state.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
-    if (balanceAsync.isLoading && !balanceAsync.hasValue) continue;
-    if (balanceAsync.hasError && !balanceAsync.hasValue) continue;
+    final unresolvedBalance =
+        (balanceAsync.isLoading && !balanceAsync.hasValue) ||
+        (balanceAsync.hasError && !balanceAsync.hasValue);
     final userEventBalances = balanceAsync.valueOrNull?.userPerEventNet ??
         const <String, Map<String, Decimal>>{};
 
     for (final event in activeEvents) {
       // One line per non-zero currency bucket, GCC-first, each honest to its
       // own currency (#382 PR-5). Empty ⇔ settled — the card renders a single
-      // zero line in `fallbackCurrency` (= group.currency).
-      final nets = nonZeroNetsGccFirst(
-        userEventBalances[event.id] ?? const <String, Decimal>{},
-      );
+      // zero line in `fallbackCurrency` (= group.currency). Forced empty
+      // while `unresolvedBalance` — the card renders a neutral placeholder
+      // instead (never a false settled zero).
+      final nets = unresolvedBalance
+          ? const <({String currency, Decimal net})>[]
+          : nonZeroNetsGccFirst(
+              userEventBalances[event.id] ?? const <String, Decimal>{},
+            );
       entries.add(ActiveJourneyEntry(
         eventId: event.id,
         groupId: group.id,
@@ -388,6 +408,7 @@ final activeJourneysProvider =
         createdAt: event.createdAt,
         nets: nets,
         fallbackCurrency: group.currency,
+        unresolvedBalance: unresolvedBalance,
       ));
     }
   }

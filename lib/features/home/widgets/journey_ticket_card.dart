@@ -137,12 +137,26 @@ class JourneyTicketCard extends StatelessWidget {
                           ),
                           // One line per non-zero currency bucket (#382
                           // PR-5); empty → today's single zero line in
-                          // fallbackCurrency.
+                          // fallbackCurrency. #997 refute follow-up: an
+                          // unresolved balance facade renders a neutral dash,
+                          // never a false 0.000 "settled" amount.
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (entry.nets.isEmpty)
+                              if (entry.unresolvedBalance)
+                                Semantics(
+                                  label: context.l10n.homeBalanceUnavailable,
+                                  child: Text(
+                                    key: HomeKeys.journeyTicketBalanceUnresolved,
+                                    '—',
+                                    style: AppTypography.mono(
+                                      fontSize: 14,
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                )
+                              else if (entry.nets.isEmpty)
                                 RAmount(
                                   value: Decimal.zero,
                                   currency: entry.fallbackCurrency,

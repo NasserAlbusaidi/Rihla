@@ -91,4 +91,12 @@ abstract final class HomeKeys {
   static const groupRowBalanceIncomplete = Key(
     'home_group_row_balance_incomplete',
   );
+
+  // #997 refute follow-up: neutral placeholder shown on a journey ticket's
+  // trailing net when its group's homeGroupBalanceProvider is
+  // loading/errored — the ticket itself stays visible, only the net display
+  // suppresses (see ActiveJourneyEntry.unresolvedBalance).
+  static const journeyTicketBalanceUnresolved = Key(
+    'home_journey_ticket_balance_unresolved',
+  );
 }

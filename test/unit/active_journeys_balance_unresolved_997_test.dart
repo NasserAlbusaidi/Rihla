@@ -12,9 +12,16 @@ import 'package:safar/features/home/providers/active_journeys_provider.dart';
 // ---------------------------------------------------------------------------
 // #997 — `activeJourneysProvider` used to default a loading/errored group's
 // per-event nets to `{}`, so every one of that group's tickets rendered a
-// false "settled" (0.000) net. This pins the fix: an unresolved balance
-// facade drops the group's tickets from the strip rather than guessing zero
-// — they reappear once the facade resolves.
+// false "settled" (0.000) net.
+//
+// #997 refute follow-up — the first fix instead `continue`-skipped the whole
+// group's tickets while unresolved. When EVERY active group's facade was
+// unresolved, the provider returned `data([])`, which the home strip renders
+// as a false "No upcoming journeys" empty state — worse than the false zero
+// it replaced. This pins the corrected contract: ticket EXISTENCE never
+// depends on the balance facade (it comes from `groupEventsProvider` alone);
+// an unresolved facade only flags the entry via `unresolvedBalance` (nets
+// forced empty, real numbers reappear once the facade resolves).
 // ---------------------------------------------------------------------------
 
 Group _makeGroup({required String id}) => Group(
@@ -67,7 +74,8 @@ ProviderContainer _make({
 void main() {
   group('activeJourneysProvider balance-facade states (#997)', () {
     test(
-      'a loading facade drops the group\'s tickets instead of a false-zero net',
+      'a loading facade keeps the ticket, flagged unresolved rather than a '
+      'false-zero net',
       () async {
         final group = _makeGroup(id: 'g1');
         final event = _makeActiveEvent(id: 'e1', groupId: 'g1');
@@ -89,15 +97,28 @@ void main() {
         final entries = container.read(activeJourneysProvider).valueOrNull!;
         expect(
           entries,
-          isEmpty,
+          hasLength(1),
           reason:
-              'a still-loading balance must not fabricate a settled ticket',
+              'ticket existence must come from groupEventsProvider, not the '
+              'balance facade — a still-loading balance must not drop it',
+        );
+        expect(entries.single.unresolvedBalance, isTrue);
+        expect(
+          entries.single.nets,
+          isEmpty,
+          reason: 'a still-loading balance must not fabricate a settled net',
+        );
+        expect(
+          entries.single.isSettled,
+          isFalse,
+          reason: 'unresolved is "unknown", not "settled"',
         );
       },
     );
 
     test(
-      'an errored facade drops the group\'s tickets instead of a false-zero net',
+      'an errored facade keeps the ticket, flagged unresolved rather than a '
+      'false-zero net',
       () async {
         final group = _makeGroup(id: 'g1');
         final event = _makeActiveEvent(id: 'e1', groupId: 'g1');
@@ -119,8 +140,16 @@ void main() {
         final entries = container.read(activeJourneysProvider).valueOrNull!;
         expect(
           entries,
+          hasLength(1),
+          reason:
+              'ticket existence must come from groupEventsProvider, not the '
+              'balance facade — an unreadable balance must not drop it',
+        );
+        expect(entries.single.unresolvedBalance, isTrue);
+        expect(
+          entries.single.nets,
           isEmpty,
-          reason: 'an unreadable balance must not fabricate a settled ticket',
+          reason: 'an unreadable balance must not fabricate a settled net',
         );
       },
     );
@@ -153,6 +182,7 @@ void main() {
 
       final entries = container.read(activeJourneysProvider).valueOrNull!;
       expect(entries, hasLength(1));
+      expect(entries.single.unresolvedBalance, isFalse);
       expect(entries.single.nets, [
         (currency: 'OMR', net: Decimal.parse('4.250')),
       ]);
