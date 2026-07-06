@@ -247,6 +247,106 @@ void main() {
       );
     });
 
+    // #929: buildSettlementDoc is the SINGLE source of the event-settlement
+    // write shape (addSettlement AND the atomic decompose batch both call it).
+    // These pin the exact 14-key map and that addSettlement stays byte-identical
+    // to the builder — a revert that inlines a second map turns them red.
+    group('buildSettlementDoc single-source shape (#929)', () {
+      test('produces the exact 14-key event-settlement doc', () {
+        final settledAt = DateTime.utc(2026, 4, 1, 9, 30);
+        final doc = SettlementService.buildSettlementDoc(
+          id: 'set-1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('10.500'),
+          createdBy: 'uid',
+          currency: 'OMR',
+          settledAtUtc: settledAt,
+          payerName: 'Ali',
+          recipientName: 'Sara',
+          note: 'dinner',
+          groupSettleUpId: 'su-1',
+        );
+
+        expect(doc, {
+          'id': 'set-1',
+          'eventId': 'e1',
+          'payerParticipantId': 'p1',
+          'recipientParticipantId': 'p2',
+          'payerName': 'Ali',
+          'recipientName': 'Sara',
+          'amountFils': 10500,
+          'currency': 'OMR',
+          'note': 'dinner',
+          'isDeleted': false,
+          'deletedAt': null,
+          'settledAt': settledAt.toIso8601String(),
+          'createdBy': 'uid',
+          'groupSettleUpId': 'su-1',
+        });
+      });
+
+      test('omits groupSettleUpId when null', () {
+        final doc = SettlementService.buildSettlementDoc(
+          id: 'set-1',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('1.000'),
+          createdBy: 'uid',
+          currency: 'OMR',
+          settledAtUtc: DateTime.utc(2026),
+        );
+        expect(doc.containsKey('groupSettleUpId'), isFalse);
+      });
+
+      test(
+        'addSettlement persists exactly buildSettlementDoc output (byte parity)',
+        () async {
+          final s = await service.addSettlement(
+            createdBy: 'uid',
+            groupId: 'g1',
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            recipientParticipantId: 'p2',
+            amount: Decimal.parse('7.250'),
+            currency: 'OMR',
+            payerName: 'Ali',
+            recipientName: 'Sara',
+            note: 'n',
+            groupSettleUpId: 'su-9',
+          );
+          final snap = await fakeDb
+              .collection('groups')
+              .doc('g1')
+              .collection('events')
+              .doc('e1')
+              .collection('settlements')
+              .doc(s.id)
+              .get();
+          final persisted = snap.data()!;
+          // Rebuild with the id + settledAt addSettlement stamped, then assert
+          // the persisted doc equals the builder output field-for-field.
+          final expected = SettlementService.buildSettlementDoc(
+            id: persisted['id'] as String,
+            eventId: 'e1',
+            payerParticipantId: 'p1',
+            recipientParticipantId: 'p2',
+            amount: Decimal.parse('7.250'),
+            createdBy: 'uid',
+            currency: 'OMR',
+            settledAtUtc: DateTime.parse(persisted['settledAt'] as String),
+            payerName: 'Ali',
+            recipientName: 'Sara',
+            note: 'n',
+            groupSettleUpId: 'su-9',
+          );
+          expect(persisted, equals(expected));
+        },
+      );
+    });
+
     group('groupSettleUpId field (#752)', () {
       test('addSettlement writes groupSettleUpId when provided', () async {
         final s = await service.addSettlement(

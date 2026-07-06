@@ -81,75 +81,28 @@ GroupBalances _balances(String net) => (
   memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
 );
 
-class _RecordingEventSettlementService extends SettlementService {
-  _RecordingEventSettlementService()
-    : super.withFirestore(FakeFirebaseFirestore());
-
-  int addCalls = 0;
-
-  @override
-  Future<Settlement> addSettlement({
-    required String groupId,
-    required String eventId,
-    required String payerParticipantId,
-    required String recipientParticipantId,
-    required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
-    String? payerName,
-    String? recipientName,
-    String? note,
-    String? groupSettleUpId,
-  }) async {
-    addCalls++;
-    return Settlement(
-      id: 'evt-set-$addCalls',
-      tripId: eventId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      currency: currency,
-      createdBy: createdBy,
-      settledAt: DateTime(2026, 4, 1),
-      groupSettleUpId: groupSettleUpId,
-    );
-  }
+// #929: the decompose write is now ONE atomic WriteBatch staged by
+// GroupSettlementService, so event legs no longer flow through
+// SettlementService.addSettlement. These tests use REAL services on ONE shared
+// FakeFirebaseFirestore and count the persisted docs.
+Future<int> _eventSettlementCount(FakeFirebaseFirestore fake) async {
+  final snap = await fake
+      .collection('groups')
+      .doc(_groupId)
+      .collection('events')
+      .doc('event-1')
+      .collection('settlements')
+      .get();
+  return snap.docs.length;
 }
 
-class _RecordingGroupSettlementService extends GroupSettlementService {
-  _RecordingGroupSettlementService()
-    : super.withFirestore(FakeFirebaseFirestore());
-
-  int addCalls = 0;
-
-  @override
-  Future<Settlement> addGroupSettlement({
-    required String groupId,
-    required String payerParticipantId,
-    required String recipientParticipantId,
-    required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
-    String? note,
-    String? payerName,
-    String? recipientName,
-    String? groupSettleUpId,
-  }) async {
-    addCalls++;
-    return Settlement(
-      id: 'grp-set-$addCalls',
-      tripId: groupId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      currency: currency,
-      createdBy: createdBy,
-      settledAt: DateTime(2026, 4, 1),
-      scope: 'group',
-      groupId: groupId,
-      groupSettleUpId: groupSettleUpId,
-    );
-  }
+Future<int> _groupSettlementCount(FakeFirebaseFirestore fake) async {
+  final snap = await fake
+      .collection('groups')
+      .doc(_groupId)
+      .collection('settlements')
+      .get();
+  return snap.docs.length;
 }
 
 void main() {
@@ -157,8 +110,9 @@ void main() {
     '#719: outstanding shrinks while the record sheet is open → block with '
     'review-again, no settlement written',
     (tester) async {
-      final eventService = _RecordingEventSettlementService();
-      final groupService = _RecordingGroupSettlementService();
+      final fake = FakeFirebaseFirestore();
+      final eventService = SettlementService.withFirestore(fake);
+      final groupService = GroupSettlementService.withFirestore(fake);
 
       await tester.pumpWidget(
         ProviderScope(
@@ -212,16 +166,17 @@ void main() {
       expect(find.textContaining('Balance changed'), findsOneWidget);
       expect(find.textContaining('2.000'), findsWidgets);
       // …and nothing was written.
-      expect(eventService.addCalls, 0);
-      expect(groupService.addCalls, 0);
+      expect(await _eventSettlementCount(fake), 0);
+      expect(await _groupSettlementCount(fake), 0);
     },
   );
 
   testWidgets('#719: unchanged balance records normally (no false block)', (
     tester,
   ) async {
-    final eventService = _RecordingEventSettlementService();
-    final groupService = _RecordingGroupSettlementService();
+    final fake = FakeFirebaseFirestore();
+    final eventService = SettlementService.withFirestore(fake);
+    final groupService = GroupSettlementService.withFirestore(fake);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -262,6 +217,6 @@ void main() {
 
     // No staleness → the single-event write lands, no review-again block.
     expect(find.textContaining('Balance changed'), findsNothing);
-    expect(eventService.addCalls, 1);
+    expect(await _eventSettlementCount(fake), 1);
   });
 }
