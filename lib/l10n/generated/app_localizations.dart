@@ -3087,10 +3087,10 @@ abstract class AppLocalizations {
   /// **'Across all journeys'**
   String get homeAcrossAllJourneys;
 
-  /// #807 — visible cue on the tappable balance hero (its only action is scrolling to the journeys strip, #284); shown only when the card is tappable.
+  /// #807/#916 — visible cue on the tappable balance hero (its action is opening the per-group balance breakdown sheet, PR-5 §3); shown only when the card is tappable. Mirrors heroBreakdownTitle wording.
   ///
   /// In en, this message translates to:
-  /// **'See your journeys'**
+  /// **'See balance by group'**
   String get homeBalanceHeroHint;
 
   /// PR-5 §3 — title of the sheet opened by tapping the balance hero; lists each group's non-zero net, per currency.
