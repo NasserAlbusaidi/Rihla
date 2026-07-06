@@ -324,4 +324,43 @@ void main() {
       expect(streamed.length, 3);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Test 6 — reconcile-cache fence. The incremental `_reconcileExpenses`
+  // docChanges path carries a salvaged expense that arrives on a LATER tick
+  // (cache-miss → build-loop parse), not just the initial snapshot; the good
+  // rows survive. (A doc whose decode STILL throws is unreachable through the
+  // total factory — the inline catch is a documented doc-catastrophe backstop
+  // covered by review + the totality test 7.)
+  // ---------------------------------------------------------------------------
+  group('test 6 — reconcile cache carries a salvaged doc on a later tick', () {
+    test('a payer:42 expense added after the first tick is salvaged, not lost',
+        () async {
+      final db = FakeFirebaseFirestore();
+      final expenses = db
+          .collection('groups')
+          .doc('g')
+          .collection('events')
+          .doc('e')
+          .collection('expenses');
+      await expenses.doc('good1').set(goodExpense({'id': 'good1'}));
+
+      final service = ExpenseService.withFirestore(db);
+      final emissions = <List<Expense>>[];
+      final sub = service.watchExpenses('g', 'e').listen(emissions.add);
+
+      // Let the first tick land, then add a malformed-but-salvageable doc.
+      await Future<void>.delayed(Duration.zero);
+      await expenses.doc('bad').set(goodExpense({
+            'id': 'bad',
+            'payerParticipantId': 42,
+          }));
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+
+      final last = emissions.last;
+      expect(last.map((e) => e.id), containsAll(['good1', 'bad']));
+      expect(last.singleWhere((e) => e.id == 'bad').payerParticipantId, '');
+    });
+  });
 }

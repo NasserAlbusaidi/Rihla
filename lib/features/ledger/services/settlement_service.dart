@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/utils/safe_deserialize.dart';
 import '../models/settlement_model.dart';
 
 /// Firestore-backed service for Settlement CRUD operations.
@@ -36,12 +37,17 @@ class SettlementService extends FirestoreRepository {
         .orderBy('settledAt', descending: true)
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map(
-                (doc) =>
-                    Settlement.fromFirestore({...doc.data(), 'id': doc.id}),
-              )
-              .toList(),
+          // #928 money-fence backstop: a doc-level catastrophe is skipped
+          // rather than erroring the settle-up stream. Skip has no server-oracle
+          // counterpart for a money doc (the oracle is total) — the factory's
+          // totality (test 7) is the real invariant, this is a last resort.
+          (snap) => decodeDocsSkippingMalformed(
+            snap.docs,
+            (d) => Settlement.fromFirestore(
+              {...d.data()! as Map<String, dynamic>, 'id': d.id},
+            ),
+            context: 'SettlementService.watchSettlements',
+          ),
         );
   }
 
@@ -54,9 +60,16 @@ class SettlementService extends FirestoreRepository {
         .where('isDeleted', isEqualTo: false)
         .orderBy('settledAt', descending: true)
         .get();
-    return snap.docs
-        .map((doc) => Settlement.fromFirestore({...doc.data(), 'id': doc.id}))
-        .toList();
+    // #928 money-fence backstop (home once-path): skip a doc-level catastrophe,
+    // never error the aggregation. No server-oracle counterpart (oracle is
+    // total); the factory's totality (test 7) is the invariant.
+    return decodeDocsSkippingMalformed(
+      snap.docs,
+      (d) => Settlement.fromFirestore(
+        {...d.data()! as Map<String, dynamic>, 'id': d.id},
+      ),
+      context: 'SettlementService.getSettlements',
+    );
   }
 
   /// Creates a new settlement document in Firestore and returns the resulting
