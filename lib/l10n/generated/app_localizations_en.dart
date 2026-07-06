@@ -1397,7 +1397,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeActiveJourneys => 'Active journeys';
 
   @override
-  String get homeSeeActivity => 'View activity';
+  String get homeSeeActivity => 'View history';
 
   @override
   String get homeGroups => 'Groups';

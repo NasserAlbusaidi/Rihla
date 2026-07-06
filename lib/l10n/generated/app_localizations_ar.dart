@@ -1419,7 +1419,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeActiveJourneys => 'الرحلات النشطة';
 
   @override
-  String get homeSeeActivity => 'عرض النشاط';
+  String get homeSeeActivity => 'عرض السجل';
 
   @override
   String get homeGroups => 'المجموعات';

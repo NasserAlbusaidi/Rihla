@@ -1221,9 +1221,9 @@
   "nameValidationReserved": "That name uses reserved wording.",
 
   "homeActiveJourneys": "Active journeys",
-  "homeSeeActivity": "View activity",
+  "homeSeeActivity": "View history",
   "@homeSeeActivity": {
-    "description": "#807 — action beside the Active journeys header; it routes to the cross-group Activity log, so the label names the real destination (was the lying \"See all\")."
+    "description": "#807/#966 — action beside the Active journeys header; it routes to the cross-group History tab, so the label names the real destination (was the lying \"See all\", then \"View activity\" which disagreed with the renamed History tab)."
   },
   "homeGroups": "Groups",
   "homeNewGroup": "New group",
