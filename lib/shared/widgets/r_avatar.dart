@@ -161,9 +161,15 @@ class RAvatarStack extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           for (var i = 0; i < visible.length; i++)
-            Positioned(left: step * i, child: ringedAvatar(visible[i])),
+            PositionedDirectional(
+              start: step * i,
+              child: ringedAvatar(visible[i]),
+            ),
           if (extra > 0)
-            Positioned(left: step * visible.length, child: overflowChip()),
+            PositionedDirectional(
+              start: step * visible.length,
+              child: overflowChip(),
+            ),
         ],
       ),
     );

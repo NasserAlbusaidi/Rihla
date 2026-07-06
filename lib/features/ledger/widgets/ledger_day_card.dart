@@ -112,6 +112,7 @@ class LedgerDayCard extends StatelessWidget {
   final Map<String, String> expensePayerDisplayNames;
   final Map<String, ({String payerName, String recipientName})>
   settlementDisplayNames;
+
   /// #629: per-expense gross owed-by-uid for the NON-equal-split expenses in
   /// [items], memoized by `ledgerViewProvider`. A row looks up its own expense's
   /// map (absent ⇒ equal split ⇒ the row's cheap arithmetic branch handles it).
@@ -199,6 +200,7 @@ class _ExpenseRow extends StatelessWidget {
   final bool divider;
   final String? currentParticipantId;
   final int participantCount;
+
   /// #629: gross owed-by-uid for THIS expense, precomputed by `ledgerViewProvider`
   /// for non-equal splits (null for equal splits). Replaces the per-row
   /// `allocateExpenseOwed` call in [_userShare].
@@ -217,83 +219,91 @@ class _ExpenseRow extends StatelessWidget {
     final splitCount = splitIds?.length ?? participantCount;
     final share = _userShare(expense);
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space16, vertical: 14),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space16,
+              vertical: 14,
+            ),
+            child: Column(
               children: [
-                _CategoryBadge(bucket: bucket),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        // #789: a no-description row falls back to its category
-                        // name (#689-spirit) rather than the generic "Expense".
-                        (expense.description?.isNotEmpty ?? false)
-                            ? expense.description!
-                            : categoryNameForId(expense.categoryId, l10n),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        // #900 Falaj w500 mitigation: Zain collapses w500->w400,
-                        // so this row title compensates with size (was 14).
-                        style: AppTypography.sans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$payerName ${l10n.ledgerPaidConnector} · '
-                        '${l10n.ledgerSplitWays(splitCount)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.sans(
-                          fontSize: 11.5,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: context.spacing.space8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    RAmount(
-                      value: expense.amount,
-                      currency: expense.currency,
-                      size: 14,
-                      showCurrency: false,
-                    ),
-                    if (share != Decimal.zero) ...[
-                      const SizedBox(height: 2),
-                      RAmount(
-                        value: share,
-                        currency: expense.currency,
-                        size: 11,
-                        sign: true,
-                        weight: FontWeight.w500,
-                        showCurrency: false,
+                    _CategoryBadge(bucket: bucket),
+                    SizedBox(width: context.spacing.space12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            // #789: a no-description row falls back to its category
+                            // name (#689-spirit) rather than the generic "Expense".
+                            (expense.description?.isNotEmpty ?? false)
+                                ? expense.description!
+                                : categoryNameForId(expense.categoryId, l10n),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            // #900 Falaj w500 mitigation: Zain collapses w500->w400,
+                            // so this row title compensates with size (was 14).
+                            style: AppTypography.sans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$payerName ${l10n.ledgerPaidConnector} · '
+                            '${l10n.ledgerSplitWays(splitCount)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.sans(
+                              fontSize: 11.5,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                    SizedBox(width: context.spacing.space8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RAmount(
+                          value: expense.amount,
+                          currency: expense.currency,
+                          size: 14,
+                          showCurrency: false,
+                        ),
+                        if (share != Decimal.zero) ...[
+                          const SizedBox(height: 2),
+                          RAmount(
+                            value: share,
+                            currency: expense.currency,
+                            size: 11,
+                            sign: true,
+                            weight: FontWeight.w500,
+                            showCurrency: false,
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
+                if (divider) ...[
+                  const SizedBox(height: 14),
+                  Container(height: 0.5, color: colors.rule),
+                ],
               ],
             ),
-            if (divider) ...[
-              const SizedBox(height: 14),
-              Container(height: 0.5, color: colors.rule),
-            ],
-          ],
+          ),
         ),
       ),
     );
