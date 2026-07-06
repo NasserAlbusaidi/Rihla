@@ -15,6 +15,7 @@ import '../providers/event_provider.dart';
 import '../utils/event_permissions.dart';
 import '../widgets/event_danger_section.dart';
 import '../widgets/event_info_section.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Screen for managing event settings — name, dates, description, and
 /// danger zone (delete event for creators).
@@ -72,7 +73,7 @@ class EventSettingsScreen extends ConsumerWidget {
                     SizedBox(height: context.spacing.space16),
                     Text(
                       context.l10n.eventSettingsTitle,
-                      style: TextStyle(
+                      style: AppTypography.sans(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         color: context.colors.textPrimary,
@@ -152,7 +153,7 @@ class EventSettingsScreen extends ConsumerWidget {
                 SizedBox(height: context.spacing.space8),
                 Text(
                   context.l10n.eventSettingsLoadFailed,
-                  style: TextStyle(
+                  style: AppTypography.sans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: context.colors.textPrimary,
@@ -161,7 +162,7 @@ class EventSettingsScreen extends ConsumerWidget {
                 SizedBox(height: context.spacing.space4),
                 Text(
                   context.l10n.activityLoadFailedMessage,
-                  style: TextStyle(
+                  style: AppTypography.sans(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: context.colors.textSecondary,

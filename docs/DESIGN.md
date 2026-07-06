@@ -472,7 +472,7 @@ program itself, so raw counts moved even where the underlying debt didn't.
 
 | # | Drift | Evidence | Action |
 |---|---|---|---|
-| D1 | **Token adoption ~43%.** ~151 `lib` files hardcode spacing/radius/text. | 115/266 files use `context.*`; 230 literal `SizedBox(...: <num>)`, 166 literal `BorderRadius.circular(<num>)`, 142 raw `TextStyle(` outside `AppTypography`. | Phased per-feature refactor → tokens/primitives continues. Re-run these greps to track — the counts, not the doc, are the metric. |
+| D1 | **Token adoption ~43%.** ~151 `lib` files hardcode spacing/radius/text. | 115/266 files use `context.*`; 230 literal `SizedBox(...: <num>)`, 166 literal `BorderRadius.circular(<num>)`, 28 raw `TextStyle(` outside `AppTypography` (post-#932 sweep; the 28 are justified partial-overrides / 1 italic / 2 RichText-root spans / 1 `leadingDistribution` no helper expresses). | Phased per-feature refactor → tokens/primitives continues. Re-run these greps to track — the counts, not the doc, are the metric. |
 | D2 | **Radius — semantic tokens landed; call sites pending.** Canonical `radiusInput/Card/Sheet/Pill` match `AppTheme`; ~51 legacy `radiusMedium`/`radiusLarge` call sites not yet migrated (grew from ~19 as the app added surfaces). | §4. | ✅ Phase 1 (tokens). Phase 2: migrate call sites per screen. |
 | D3 | **`AppGradients` deleted.** ✅ terracotta/olive/teal/gray + `AppGradientPair` + the `context.gradient()` helper removed (zero live callers). | — | ✅ Done. |
 | D4 | **Group avatar dead code deleted.** ✅ `AppGroupAvatarColors` + `groupAvatarSlot()` + `_stableGroupHash` removed (zero live callers; groups render via `RAvatar`). | — | ✅ Done. |

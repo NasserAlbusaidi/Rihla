@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/keys/shared_keys.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
+import '../../core/theme/tokens/typography_tokens.dart';
 
 class EmptyStateView extends StatelessWidget {
   final IconData icon;
@@ -65,7 +66,7 @@ class EmptyStateView extends StatelessWidget {
             SizedBox(height: context.spacing.space20),
             Text(
               title,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: context.colors.textPrimary,
@@ -75,7 +76,7 @@ class EmptyStateView extends StatelessWidget {
             SizedBox(height: context.spacing.space8),
             Text(
               message,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: context.colors.textSecondary,

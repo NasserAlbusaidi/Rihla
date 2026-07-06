@@ -111,7 +111,14 @@ Set<String> eventBalanceUniverse({
   required Set<String> liveMemberIds,
 }) {
   final payersAndSettlers = <String>{
-    for (final e in expenses) e.payerParticipantId,
+    // #928: the total-parse factory salvages a non-string expense payer to ''.
+    // The oracle gates the payer with `typeof === 'string'` before the universe
+    // fold (groupNetBalance.ts:651), so guard the '' sentinel out here too — an
+    // ungated '' would seed a phantom row and inflate the equal-split divisor,
+    // diverging from the server. Settlement parties are nullable (salvaged to
+    // null) and already null-gated below, matching the oracle's typeof gates.
+    for (final e in expenses)
+      if (e.payerParticipantId.isNotEmpty) e.payerParticipantId,
     for (final s in settlements) ...[
       if (s.payerParticipantId != null) s.payerParticipantId!,
       if (s.recipientParticipantId != null) s.recipientParticipantId!,

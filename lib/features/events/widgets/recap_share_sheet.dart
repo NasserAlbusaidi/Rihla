@@ -16,6 +16,7 @@ import '../providers/trip_receipt_provider.dart';
 import '../utils/trip_receipt_csv.dart';
 import '../utils/trip_receipt_pdf.dart';
 import 'recap_share_card.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Opens the #722 share-recap preview: the [RecapShareCard] poster (WYSIWYG, in
 /// a forced-light theme so the export looks the same in any app theme) above a
@@ -162,7 +163,7 @@ class _RecapShareSheetState extends ConsumerState<_RecapShareSheet> {
           children: [
             Text(
               context.l10n.recapShareButton,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: c.textPrimary,

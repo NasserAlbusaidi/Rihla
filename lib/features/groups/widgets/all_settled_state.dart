@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../keys/group_keys.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Empty-state widget displayed when all balances are settled.
 ///
@@ -34,7 +35,7 @@ class AllSettledState extends StatelessWidget {
           Text(
             context.l10n.settleUpAllSettledTitle,
             key: GroupKeys.settleUpAllSettledMessage,
-            style: TextStyle(
+            style: AppTypography.sans(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: context.colors.textPrimary,
@@ -44,7 +45,7 @@ class AllSettledState extends StatelessWidget {
           SizedBox(height: context.spacing.space8),
           Text(
             context.l10n.settleUpAllSettledMessage,
-            style: TextStyle(
+            style: AppTypography.sans(
               fontSize: 14,
               fontWeight: FontWeight.w500,
               color: context.colors.textSecondary,

@@ -10,6 +10,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/falaj_fork.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// A card-style settlement tile showing payer → payee, amount, and a
 /// collapsible per-event breakdown (D-04).
@@ -155,7 +156,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                   widget.amount,
                                   widget.currency,
                                 ),
-                                style: TextStyle(
+                                style: AppTypography.sans(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                   color: _amountColor,
@@ -284,7 +285,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                       Expanded(
                                         child: Text(
                                           e.key,
-                                          style: TextStyle(
+                                          style: AppTypography.sans(
                                             fontSize: 12,
                                             color: context.colors.textSecondary,
                                             fontWeight: FontWeight.w500,
@@ -297,7 +298,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                           e.value,
                                           widget.currency,
                                         ),
-                                        style: TextStyle(
+                                        style: AppTypography.sans(
                                           fontSize: 12,
                                           color: context.colors.textSecondary,
                                           fontWeight: FontWeight.w600,

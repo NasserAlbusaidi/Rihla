@@ -11,6 +11,7 @@ import '../../../core/utils/write_ack.dart';
 import '../keys/event_keys.dart';
 import '../models/event_model.dart';
 import '../providers/event_provider.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Editable event details section for EventSettingsScreen.
 ///
@@ -200,7 +201,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
         const SizedBox(width: 6),
         Text(
           context.l10n.eventDetailsSection,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: context.colors.textSecondary,
@@ -241,7 +242,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
   Widget _buildNameField() {
     return TextField(
       controller: _nameController,
-      style: TextStyle(
+      style: AppTypography.sans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: context.colors.textPrimary,
@@ -286,7 +287,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
           ),
           child: Text(
             _formatDate(date),
-            style: TextStyle(
+            style: AppTypography.sans(
               fontSize: 13,
               fontWeight: FontWeight.w400,
               color: date == null
@@ -303,7 +304,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
     return TextField(
       controller: _descriptionController,
       maxLines: 4,
-      style: TextStyle(
+      style: AppTypography.sans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: context.colors.textPrimary,
@@ -355,7 +356,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
               )
             : Text(
                 context.l10n.eventSaveChanges,
-                style: const TextStyle(
+                style: AppTypography.sans(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
