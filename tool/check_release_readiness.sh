@@ -93,6 +93,27 @@ check_raw_coverage() {
   awk -v coverage="$coverage" 'BEGIN { exit (coverage >= 80.0) ? 0 : 1 }'
 }
 
+# Diff/new-code coverage floor: lines changed relative to origin/main must clear
+# a higher bar (90%) than the repo-wide 80% aggregate above, so an under-tested
+# new module can't merge on the healthy baseline. Mirrors the CI step in
+# .github/workflows/readiness_check.yml. diff-cover ignores diff lines with no
+# coverage data, so an assets-only / docs-only tree passes vacuously.
+check_diff_coverage() {
+  if ! require_cmd diff-cover; then
+    echo "WARNING: diff-cover is not installed locally; skipping the diff coverage floor."
+    echo "         CI enforces it (readiness_check.yml, --fail-under=90). Install with: pipx install diff-cover"
+    return 0
+  fi
+
+  if ! git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+    echo "WARNING: origin/main is not available locally; skipping the diff coverage floor."
+    echo "         Run 'git fetch origin main' so diff-cover can compute the merge-base."
+    return 0
+  fi
+
+  diff-cover coverage/lcov.info --compare-branch=origin/main --fail-under=90
+}
+
 check_app_check_enforced() {
   if grep -R "TODO: enforce App Check" functions/src lib >/dev/null 2>&1; then
     echo "App Check public-launch TODO is still present."
@@ -151,6 +172,7 @@ run_step "Flutter tests with coverage" \
     test/unit \
     test/widget_test.dart
 run_step "Raw coverage threshold" check_raw_coverage
+run_step "Diff coverage floor" check_diff_coverage
 run_step "Android release app bundle" \
   flutter build appbundle \
     --release \
