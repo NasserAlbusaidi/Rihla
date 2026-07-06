@@ -12,6 +12,7 @@ import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
 import 'add_expense_fab.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 enum _SheetView { flattened, groups, groupEvents }
 
@@ -163,7 +164,7 @@ class _AddExpenseTargetSheetState extends ConsumerState<AddExpenseTargetSheet> {
                 SizedBox(height: context.spacing.space4),
                 Text(
                   subtitle,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                  style: AppTypography.sans(color: colors.textSecondary, fontSize: 13),
                 ),
               ],
             ],
@@ -180,7 +181,7 @@ class _AddExpenseTargetSheetState extends ConsumerState<AddExpenseTargetSheet> {
       title: Text(target.eventName),
       subtitle: Text(
         _subtitleFor(target, now),
-        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+        style: AppTypography.sans(color: colors.textSecondary, fontSize: 12),
       ),
       trailing: DirectionalIcon(
         Iconsax.arrow_right_3,
@@ -271,7 +272,7 @@ class _AddExpenseTargetSheetState extends ConsumerState<AddExpenseTargetSheet> {
         open.isEmpty
             ? context.l10n.addExpenseSheetNoOpenEventsHint
             : context.l10n.addExpenseSheetOpenEventCount(open.length),
-        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+        style: AppTypography.sans(color: colors.textSecondary, fontSize: 12),
       ),
       trailing: open.isEmpty
           ? null
@@ -368,7 +369,7 @@ class _EmptyBody extends StatelessWidget {
         SizedBox(height: context.spacing.space4),
         Text(
           l10n.addExpenseSheetEmptyBody,
-          style: TextStyle(color: context.colors.textSecondary, fontSize: 13),
+          style: AppTypography.sans(color: context.colors.textSecondary, fontSize: 13),
         ),
         SizedBox(height: context.spacing.space16),
         SizedBox(

@@ -7,6 +7,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../utils/localized_category_name.dart';
 import '../models/expense_model.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Success dialog shown after saving an expense.
 class ExpenseSuccessDialog extends StatelessWidget {
@@ -103,7 +104,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
                       synced
                           ? context.l10n.expenseSuccessSyncedToCloud
                           : context.l10n.expenseSuccessWillSync,
-                      style: const TextStyle(
+                      style: AppTypography.sans(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
@@ -192,7 +193,7 @@ class _ExpenseSummaryCard extends StatelessWidget {
           SizedBox(height: context.spacing.space4),
           Text(
             AppFormatters.formatCurrency(expense.amount, currency),
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            style: AppTypography.sans(fontSize: 32, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: context.spacing.space16),
 

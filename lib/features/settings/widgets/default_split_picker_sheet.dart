@@ -7,6 +7,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/split_mode_display_name.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Bottom sheet for picking the default split mode used when adding a new
 /// expense.
@@ -46,7 +47,7 @@ class DefaultSplitPickerSheet extends ConsumerWidget {
             SizedBox(height: context.spacing.space4),
             Text(
               l10n.defaultSplitSheetSubtitle,
-              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+              style: AppTypography.sans(color: colors.textSecondary, fontSize: 13),
             ),
             SizedBox(height: context.spacing.space16),
             RadioGroup<SplitMode>(

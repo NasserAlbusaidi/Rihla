@@ -40,6 +40,7 @@ import '../widgets/record_payment_sheet.dart';
 import '../widgets/settle_notify_sheet.dart';
 import '../widgets/settle_up_page_body.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Cross-event settlement screen — single-page layout per the Hi_GroupSettle
 /// wireframe (Wireframes/Rihla/hifi/screens-group.jsx).
@@ -317,7 +318,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                             Expanded(
                               child: Text(
                                 context.l10n.settleUpIncompleteBalanceWarning,
-                                style: TextStyle(
+                                style: AppTypography.sans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: context.colors.textPrimary,
@@ -346,7 +347,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                         SizedBox(height: context.spacing.space16),
                         Text(
                           context.l10n.settleUpCouldNotLoadBalances,
-                          style: TextStyle(
+                          style: AppTypography.sans(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: context.colors.textPrimary,
@@ -1272,7 +1273,7 @@ class _SettlementTopBar extends StatelessWidget {
             ),
             Text(
               l10n.settleUpTitle,
-              style: TextStyle(
+              style: AppTypography.sans(
                 color: context.colors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,

@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../extensions/build_context_l10n.dart';
 import 'tokens/domain_aliases.dart';
+import 'tokens/typography_tokens.dart';
 
 /// Reusable error state widget for network/connection errors.
 ///
@@ -96,7 +97,7 @@ class NetworkErrorWidget extends StatelessWidget {
             SizedBox(height: context.spacing.space24),
             Text(
               title,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: context.colors.textPrimary,
@@ -107,7 +108,7 @@ class NetworkErrorWidget extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 14,
                 color: context.colors.textSecondary,
               ),
@@ -164,7 +165,7 @@ class InlineErrorWidget extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 13,
                 color: context.colors.textSecondary,
               ),

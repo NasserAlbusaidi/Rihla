@@ -22,6 +22,7 @@ import '../models/event_recap.dart';
 import '../providers/event_provider.dart';
 import '../providers/event_recap_provider.dart';
 import '../widgets/recap_share_sheet.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// On-demand event recap (#202 Slice 1 + #721 Slice 2): total spent, the current
 /// user's position, plus the full money summary — biggest expense, top payer,
@@ -177,7 +178,7 @@ class EventRecapScreen extends ConsumerWidget {
     return [
       Text(
         recap.eventName,
-        style: TextStyle(
+        style: AppTypography.sans(
           fontSize: 28,
           fontWeight: FontWeight.w700,
           color: context.colors.textPrimary,
@@ -189,7 +190,7 @@ class EventRecapScreen extends ConsumerWidget {
           recap.participantCount,
           recap.expenseCount,
         ),
-        style: TextStyle(
+        style: AppTypography.sans(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: context.colors.textSecondary,
@@ -249,7 +250,7 @@ class EventRecapScreen extends ConsumerWidget {
           children: [
             Text(
               context.l10n.recapSettleCtaTitle,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: c.textPrimary,
@@ -258,7 +259,7 @@ class EventRecapScreen extends ConsumerWidget {
             SizedBox(height: context.spacing.space4),
             Text(
               context.l10n.recapSettleCtaBody,
-              style: TextStyle(fontSize: 13, color: c.textSecondary),
+              style: AppTypography.sans(fontSize: 13, color: c.textSecondary),
             ),
             SizedBox(height: context.spacing.space16),
             FilledButton(
@@ -319,7 +320,7 @@ class EventRecapScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   context.l10n.recapNet,
-                  style: TextStyle(
+                  style: AppTypography.sans(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: c.textPrimary,
@@ -356,7 +357,7 @@ class EventRecapScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     ccy,
-                    style: TextStyle(fontSize: 14, color: c.textSecondary),
+                    style: AppTypography.sans(fontSize: 14, color: c.textSecondary),
                   ),
                 ),
                 RAmount(
@@ -375,7 +376,7 @@ class EventRecapScreen extends ConsumerWidget {
         SizedBox(height: context.spacing.space12),
         Text(
           context.l10n.recapMultiCurrencyNote,
-          style: TextStyle(fontSize: 12, color: c.textSecondary),
+          style: AppTypography.sans(fontSize: 12, color: c.textSecondary),
         ),
       ]);
     }
@@ -404,7 +405,7 @@ class EventRecapScreen extends ConsumerWidget {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 13,
                 color: context.colors.textSecondary,
               ),
@@ -425,7 +426,7 @@ class EventRecapScreen extends ConsumerWidget {
         children: [
           Text(
             ccy,
-            style: TextStyle(
+            style: AppTypography.sans(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -435,7 +436,7 @@ class EventRecapScreen extends ConsumerWidget {
           if (total != null) ...[
             Text(
               '  ·  ',
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 13,
                 color: context.colors.textSecondary,
               ),
@@ -513,7 +514,7 @@ class EventRecapScreen extends ConsumerWidget {
                   child: Text(
                     name,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: context.colors.textPrimary,
@@ -542,7 +543,7 @@ class EventRecapScreen extends ConsumerWidget {
               label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: context.colors.textPrimary,
@@ -617,7 +618,7 @@ class EventRecapScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     categoryNameForId(cats[i].categoryId, context.l10n),
-                    style: TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 13,
                       color: context.colors.textPrimary,
                     ),
@@ -729,7 +730,7 @@ class EventRecapScreen extends ConsumerWidget {
           if (isZero)
             Text(
               context.l10n.recapSettledRow,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 13,
                 color: context.colors.textSecondary,
               ),
@@ -764,7 +765,7 @@ class EventRecapScreen extends ConsumerWidget {
         ],
       ),
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
+      style: AppTypography.sans(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: context.colors.textPrimary,
@@ -822,7 +823,7 @@ class EventRecapScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
+                  style: AppTypography.sans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: context.colors.textPrimary,
@@ -834,7 +835,7 @@ class EventRecapScreen extends ConsumerWidget {
           SizedBox(height: context.spacing.space8),
           Text(
             subtitle,
-            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
+            style: AppTypography.sans(fontSize: 13, color: context.colors.textSecondary),
           ),
         ],
       ),
@@ -909,7 +910,7 @@ class EventRecapScreen extends ConsumerWidget {
           Flexible(
             child: Text(
               text,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 12,
                 color: context.colors.textSecondary,
               ),
@@ -925,7 +926,7 @@ class EventRecapScreen extends ConsumerWidget {
       padding: EdgeInsetsDirectional.only(bottom: context.spacing.space8),
       child: Text(
         label,
-        style: TextStyle(
+        style: AppTypography.sans(
           fontSize: 13,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
@@ -940,7 +941,7 @@ class EventRecapScreen extends ConsumerWidget {
   Widget _microLabel(BuildContext context, String label) {
     return Text(
       label,
-      style: TextStyle(
+      style: AppTypography.sans(
         fontSize: 10,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.5,
