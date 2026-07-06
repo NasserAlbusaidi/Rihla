@@ -220,6 +220,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     rawNames: balancesData.memberRawNames,
                     settlementsAsync: settlementsAsync,
                     currentUid: currentUid,
+                    // Actor policy: Correct renders per-settlement for the
+                    // group creator or a party only (mirrors the
+                    // correctSettlement/correctLogicalSettleUp gate).
+                    groupCreatorId: group.createdBy,
                     tileKeys: _tileKeys,
                     // #595: group settlement-create only requires isGroupMember,
                     // and every viewer of this screen is already a member (read

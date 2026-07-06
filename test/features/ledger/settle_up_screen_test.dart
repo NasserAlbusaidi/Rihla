@@ -1097,6 +1097,114 @@ void main() {
     },
   );
 
+  // Actor policy: the Correct affordance is per-settlement — visible only to
+  // a party (payer/recipient) of that settlement or the group creator, on top
+  // of the #598 participant gate. The correctSettlement callable enforces the
+  // same policy server-side; hiding here kills the accidental case.
+  group('actor policy (creator-or-party)', () {
+    final threeWay = Event(
+      id: eventId,
+      groupId: groupId,
+      name: 'Beach Trip',
+      type: EventType.trip,
+      createdBy: 'alice',
+      participantIds: const ['alice', 'bob', 'dana'],
+      participantNames: const {
+        'alice': 'Alice',
+        'bob': 'Bob',
+        'dana': 'Dana',
+      },
+      modules: const EventModules(),
+      createdAt: DateTime(2026, 5, 16),
+    );
+
+    Settlement recorded({String payer = 'bob', String recipient = 'alice'}) =>
+        Settlement(
+          id: 'settlement-1',
+          tripId: eventId,
+          payerParticipantId: payer,
+          recipientParticipantId: recipient,
+          payerName: payer,
+          recipientName: recipient,
+          amount: Decimal.parse('10.000'),
+          currency: 'OMR',
+          createdBy: 'bob',
+          settledAt: DateTime(2026, 5, 17),
+        );
+
+    testWidgets(
+      'a participant who is neither party nor group creator sees NO correct '
+      'button',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+
+        // Dana is an event participant (the #598 write-eligibility gate
+        // passes for her) but is not a party to bob→alice and not the group
+        // creator (bob in this fixture) — the affordance must be hidden.
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            currentUid: 'dana',
+            eventStream: Stream.value(threeWay),
+            settlementsStream: Stream.value([recorded()]),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // The history row renders…
+        expect(
+          find.byKey(GroupKeys.settleUpShareReceiptButton),
+          findsOneWidget,
+        );
+        // …but Dana gets no correct affordance.
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'a party who is NOT the group creator still sees the correct button',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+
+        // Alice is the recipient of bob→alice; the group creator is bob.
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            currentUid: 'alice',
+            settlementsStream: Stream.value([recorded()]),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'the group creator sees the correct button on a settlement they are '
+      'not a party to',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+
+        // Bob is the group creator AND an event participant (the kept #598
+        // gate requires participation), but not a party to alice→dana.
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            currentUid: 'bob',
+            eventStream: Stream.value(threeWay),
+            settlementsStream: Stream.value(
+              [recorded(payer: 'alice', recipient: 'dana')],
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
+      },
+    );
+  });
+
   // #889: the solo Correct button gate moves to marker/bounded-legacy —
   // display (the accent/tag on :983-984) stays note-based and is untouched.
   group('#889 solo Correct-button write-affordance hide', () {
