@@ -18,9 +18,7 @@ import '../../features/home/screens/cross_group_activity_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/ledger/screens/add_expense_screen.dart';
 import '../../features/ledger/screens/edit_expense_screen.dart';
-import '../../features/ledger/screens/ledger_screen.dart';
 import '../../features/ledger/screens/settle_up_screen.dart';
-import '../../features/activity/screens/activity_feed_screen.dart';
 import '../../features/search/screens/search_screen.dart';
 import '../../features/auth/screens/link_email_screen.dart';
 import '../../features/auth/screens/link_email_sent_screen.dart';
@@ -355,23 +353,17 @@ final routerProvider = Provider<GoRouter>((ref) {
               transitionsBuilder: _sharedAxisTransition,
             ),
             routes: [
-              // Ledger module — PR-5 §4: route-level redirect into the hub's
-              // Expenses tab. The pageBuilder below is KEPT (full-chrome
-              // screen stays alive for its ~12 direct widget tests) but is
-              // unrouted in practice: the redirect fires for every exact
-              // `…/ledger` match, before the builder ever runs.
+              // Ledger module — PR-5 §4 / #915: redirect-only into the hub's
+              // Expenses tab (no builder — go_router skips builderless
+              // ancestors when building the page stack, so a cold link to a
+              // child editor materializes [GroupDetail, Hub, Editor] and Back
+              // lands on the hub). The endsWith('/ledger') null-for-children
+              // guard in the redirect stays LOAD-BEARING: ancestor redirects
+              // run for descendant matches too.
               GoRoute(
                 path: 'ledger',
                 redirect: (context, state) =>
                     eventLedgerModuleRedirect(state),
-                pageBuilder: (context, state) => CustomTransitionPage(
-                  key: state.pageKey,
-                  child: LedgerScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
-                  transitionsBuilder: _sharedAxisTransition,
-                ),
                 routes: [
                   GoRoute(
                     path: 'add',
@@ -413,23 +405,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ],
               ),
 
-              // Activity module — PR-5 §4: route-level redirect into the
-              // hub's Activity tab. The pageBuilder below is KEPT (full-chrome
-              // screen stays alive for its direct widget tests) but is
-              // unrouted in practice: the redirect fires for every exact
-              // `…/activity` match, before the builder ever runs.
+              // Activity module — PR-5 §4 / #915: redirect-only into the
+              // hub's Activity tab (no builder; no children to guard).
               GoRoute(
                 path: 'activity',
                 redirect: (context, state) =>
                     eventActivityModuleRedirect(state),
-                pageBuilder: (context, state) => CustomTransitionPage(
-                  key: state.pageKey,
-                  child: ActivityFeedScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
-                  transitionsBuilder: _sharedAxisTransition,
-                ),
               ),
 
               // Event settings (Phase 31 P02)

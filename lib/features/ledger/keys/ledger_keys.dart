@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 abstract final class LedgerKeys {
   // Screen keys
-  static const screen = Key('ledger_screen');
   static const addExpenseScreen = Key('ledger_add_expense_screen');
   static const editExpenseSheet = Key('ledger_edit_expense_sheet');
   static const settleUpScreen = Key('ledger_settle_up_screen');
@@ -10,9 +9,6 @@ abstract final class LedgerKeys {
   // Section label keys
   static const spendingLabel = Key('ledger_spending_label');
   static const payerSectionLabel = Key('ledger_payer_section_label');
-
-  // App-bar actions
-  static const activityButton = Key('ledger_activity_button');
 
   // Per-expense currency picker row (#382 PR-6)
   static const expenseCurrencyField = Key('ledger_expense_currency_field');

@@ -47,21 +47,4 @@ void main() {
     expect(find.textContaining('1200.000'), findsNothing);
   });
 
-  testWidgets('hero statement uses the passed currency code, not OMR', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      host(
-        LedgerHeroStatement(
-          kind: LedgerHeroKind.positive,
-          amount: Decimal.parse('12.50'),
-          currency: 'USD',
-          peopleCount: 2,
-        ),
-      ),
-    );
-    // The inline money prefix is '+USD' (was hardcoded '+OMR').
-    expect(find.textContaining('USD'), findsAtLeastNWidgets(1));
-    expect(find.textContaining('OMR'), findsNothing);
-  });
 }

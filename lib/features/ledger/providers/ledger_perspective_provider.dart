@@ -23,10 +23,9 @@ typedef LedgerRosterEntry = ({
 /// depend on the ledger's category filter, so hoisting it here (#628) means a
 /// category-chip `setState` no longer re-runs the per-person balance pivots.
 ///
-/// Hero ENUMS (`LedgerHeroKind`/`LedgerRosterState`) and `heroLines` are NOT
-/// returned: they are O(1)/O(lines) assemblies the widget does from [myLines] +
-/// [peopleCountByCurrency] + its own `hasExpenses`, which keeps this provider
-/// free of any widget-layer import.
+/// Widget-layer enums (`LedgerRosterState`) are NOT returned: they are O(1)
+/// assemblies the widget does from [myLines] + its own `hasExpenses`, which
+/// keeps this provider free of any widget-layer import.
 typedef LedgerPerspective = ({
   /// Raw resolved name of the current user; null ⇒ widget applies `l10n.ledgerYou`.
   String? myDisplayName,

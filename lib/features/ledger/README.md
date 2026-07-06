@@ -17,4 +17,4 @@
 - **add_expense_screen.dart**, **edit_expense_screen.dart**, **ledger_screen.dart**, **settle_up_screen.dart**
 
 ### widgets/
-- **custom_split_sheet.dart**, **expense_editor_body.dart**, **expense_success_dialog.dart**, **ledger_category_strip.dart**, **ledger_day_card.dart**, **ledger_hero_block.dart**, **ledger_roster_strip.dart**, **ledger_search_sheet.dart**, **ledger_sticky_cta.dart**, **split_scope_selector.dart**
+- **custom_split_sheet.dart**, **expense_editor_body.dart**, **expense_success_dialog.dart**, **ledger_category_strip.dart**, **ledger_day_card.dart**, **ledger_hero_block.dart**, **ledger_roster_strip.dart**, **ledger_search_sheet.dart**, **split_scope_selector.dart**

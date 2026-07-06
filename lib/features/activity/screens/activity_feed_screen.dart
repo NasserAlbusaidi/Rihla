@@ -10,9 +10,7 @@ import '../../../core/utils/day_grouping.dart';
 import '../../../shared/widgets/activity_day_section.dart';
 import '../../../shared/widgets/activity_glyph.dart';
 import '../../../shared/widgets/activity_row.dart';
-import '../../../shared/widgets/caption_title_bar.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../shared/widgets/paper_backdrop.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/embedded_panel_metrics.dart';
@@ -27,12 +25,12 @@ import '../widgets/expense_audit_detail.dart';
 /// Event activity feed — saffron travel-journal direction.
 ///
 /// Chronological day-grouped feed of event-scoped activity logs (expense
-/// creation/edits, member actions, and settlement changes).
+/// creation/edits, member actions, and settlement changes), rendered as the
+/// Activity panel of the tabbed event view (#758; panel-only since #915 —
+/// the tabbed shell owns chrome + back affordance).
 ///
-/// Layout, top to bottom:
-///   1. Top bar — back · italic event name · "ACTIVITY" mono caption
-///   2. Day-grouped, flat-card sections (dot-date headers, #490 D-f)
-///   3. Rows: category glyph · actor + verb · trailing amount/audit chip
+/// Layout: day-grouped, flat-card sections (dot-date headers, #490 D-f);
+/// rows: category glyph · actor + verb · trailing amount/audit chip.
 const _kPageSize = 50;
 
 class ActivityFeedScreen extends ConsumerStatefulWidget {
@@ -40,15 +38,10 @@ class ActivityFeedScreen extends ConsumerStatefulWidget {
     super.key,
     required this.groupId,
     required this.eventId,
-    this.embedded = false,
   });
 
   final String groupId;
   final String eventId;
-
-  /// #758: content-only mode for the tabbed event view — skips the Scaffold
-  /// and top bar (the tabbed shell owns chrome + back affordance).
-  final bool embedded;
 
   @override
   ConsumerState<ActivityFeedScreen> createState() =>
@@ -119,7 +112,7 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
   Widget build(BuildContext context) {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
-    final feed = eventAsync.when(
+    return eventAsync.when(
       loading: () => const _LoadingShimmer(),
       error: (_, _) => _ErrorView(
         onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
@@ -128,31 +121,6 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
         if (event == null) return const _NotFoundView();
         return _buildActivityBody(context, event.participantNames);
       },
-    );
-    if (widget.embedded) return feed;
-    return Scaffold(
-      key: ActivityKeys.screen,
-      backgroundColor: context.colors.scaffoldBackground,
-      body: SafeArea(
-        child: PaperBackdrop(
-          child: Column(
-            children: [
-              CaptionTitleBar(
-                caption: context.l10n.activityCaption,
-                title:
-                    eventAsync.valueOrNull?.name ?? context.l10n.activityTitle,
-                onBack: () {
-                  if (GoRouter.of(context).canPop()) {
-                    GoRouter.of(context).pop();
-                  }
-                },
-              ),
-              const SizedBox(height: 6),
-              Expanded(child: feed),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -186,12 +154,12 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
       key: ActivityKeys.feedList,
       restorationId: 'activity_feed_scroll',
       controller: _scrollController,
-      // #789: embedded panel clears the workspace's floating FAB.
-      padding: EdgeInsetsDirectional.fromSTEB(
+      // #789: the panel clears the workspace's floating FAB.
+      padding: const EdgeInsetsDirectional.fromSTEB(
         20,
         4,
         20,
-        widget.embedded ? kEmbeddedEventPanelFabClearance : 24,
+        kEmbeddedEventPanelFabClearance,
       ),
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {

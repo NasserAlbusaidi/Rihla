@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
 import 'package:safar/features/events/models/event_model.dart';
@@ -419,6 +420,23 @@ void main() {
 
       expect(find.byKey(EventKeys.openRecapBanner), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      // #915 (relocated from the deleted ledger_back_arrow_rtl_test): the
+      // hub's back arrow mirrors under RTL (#126). The button has no Key and
+      // Iconsax.arrow_right also appears in forward chevrons, so scope the
+      // check via its commonBack semantics label.
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(EventCommandCenter)),
+      );
+      final backButton = find.bySemanticsLabel(l10n.commonBack);
+      expect(backButton, findsOneWidget);
+      expect(
+        find.descendant(
+          of: backButton,
+          matching: find.byIcon(Iconsax.arrow_right),
+        ),
+        findsOneWidget,
+      );
     });
   });
 
