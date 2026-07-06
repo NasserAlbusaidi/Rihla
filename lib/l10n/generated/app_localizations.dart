@@ -128,12 +128,6 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get commonDelete;
 
-  /// Generic OK confirmation label. Pre-added for PR2b/PR3 reuse.
-  ///
-  /// In en, this message translates to:
-  /// **'OK'**
-  String get commonOK;
-
   /// Display name for the Omani Rial currency.
   ///
   /// In en, this message translates to:
@@ -223,12 +217,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This group\'s currency. It can\'t be changed later.'**
   String get createGroupCurrencyHint;
-
-  /// Subtitle text under CurrencyPickerSheet title explaining the scope of the preference.
-  ///
-  /// In en, this message translates to:
-  /// **'Default for new trips. Existing trips keep their currency.'**
-  String get currencySheetSubtitle;
 
   /// Title of the ThemePickerSheet bottom sheet.
   ///
@@ -392,30 +380,6 @@ abstract class AppLocalizations {
   /// **'DISPLAY'**
   String get profileSectionDisplay;
 
-  /// Section header for ProfileStatsSection (cross-group stats). English stays uppercase; Arabic renders natural-case.
-  ///
-  /// In en, this message translates to:
-  /// **'YOUR JOURNEY'**
-  String get profileSectionJourney;
-
-  /// Stat card label (singular form) in ProfileStatsSection.
-  ///
-  /// In en, this message translates to:
-  /// **'Groups'**
-  String get profileStatsGroups;
-
-  /// Stat card label (singular form) in ProfileStatsSection.
-  ///
-  /// In en, this message translates to:
-  /// **'Events'**
-  String get profileStatsEvents;
-
-  /// Stat card label (singular form) in ProfileStatsSection.
-  ///
-  /// In en, this message translates to:
-  /// **'Spent'**
-  String get profileStatsSpent;
-
   /// All-caps mono stat label in active _StatCard widget on the Profile screen. English stays uppercase; Arabic renders natural-case.
   ///
   /// In en, this message translates to:
@@ -433,24 +397,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'SPENT'**
   String get profileStatsSpentLabel;
-
-  /// Section header for ProfileNotificationsSection widget AND row title 'Notifications' in active _NotificationPrefRow on Profile screen. English stays uppercase in the widget header; rendered as the row title in profile_screen via the same key.
-  ///
-  /// In en, this message translates to:
-  /// **'NOTIFICATIONS'**
-  String get profileNotificationsSectionLabel;
-
-  /// Tile title in ProfileNotificationsSection widget (currently dead/not-wired).
-  ///
-  /// In en, this message translates to:
-  /// **'Push Notifications'**
-  String get profileNotificationsTitle;
-
-  /// Pre-add for a future enabled-state status label. Not wired in PR2a.
-  ///
-  /// In en, this message translates to:
-  /// **'Enabled'**
-  String get profileNotificationsEnabled;
 
   /// Subtitle shown when push notifications are blocked by OS permission. Used by both the active _NotificationPrefRow and ProfileNotificationsSection widgets.
   ///
@@ -470,35 +416,11 @@ abstract class AppLocalizations {
   /// **'Couldn\'t register — tap to retry'**
   String get profileNotificationsErrorHint;
 
-  /// About-section tile label showing the app version (ProfileAboutSection widget).
-  ///
-  /// In en, this message translates to:
-  /// **'Version'**
-  String get profileAboutVersion;
-
-  /// About-section tile that opens a mailto: feedback link. Note: profile_screen.dart's About card uses the lowercase 'Send feedback' variant — see profileAboutSendFeedbackRow.
-  ///
-  /// In en, this message translates to:
-  /// **'Send Feedback'**
-  String get profileAboutSendFeedback;
-
   /// About-card row label in active profile_screen.dart _AboutCard.
   ///
   /// In en, this message translates to:
   /// **'Send feedback'**
   String get profileAboutSendFeedbackRow;
-
-  /// About-section tile that opens the open-source licenses dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Open-source Licenses'**
-  String get profileAboutLicenses;
-
-  /// Fallback SnackBar shown when mailto: launch fails. The email value is a literal ASCII address; Unicode bidi handles RTL/LTR mixing without explicit marks.
-  ///
-  /// In en, this message translates to:
-  /// **'Email: {email}'**
-  String profileAboutFallbackEmail(String email);
 
   /// About-card row that opens the external help URL (active profile_screen.dart _AboutCard).
   ///
@@ -541,12 +463,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Profile'**
   String get profileTitle;
-
-  /// Tagline shown under the user's display name on the identity card.
-  ///
-  /// In en, this message translates to:
-  /// **'Anonymous traveller'**
-  String get profileAnonymousTraveller;
 
   /// No description provided for @profileBackupStatusNotBackedUp.
   ///
@@ -596,17 +512,11 @@ abstract class AppLocalizations {
   /// **'A recovery link is waiting. Enter the email it was sent to.'**
   String get profileRecoverySubtitle;
 
-  /// Row label for the notifications toggle in the Preferences card (the live preferences-row label; the dead ProfileNotificationsSection widget uses profileNotificationsTitle = 'Push Notifications' instead).
+  /// Row label for the notifications toggle in the Preferences card.
   ///
   /// In en, this message translates to:
   /// **'Notifications'**
   String get profilePreferencesNotifications;
-
-  /// Row label for the currency preference in the Preferences card.
-  ///
-  /// In en, this message translates to:
-  /// **'Currency'**
-  String get profilePreferencesCurrency;
 
   /// Row label for the language preference in the Preferences card.
   ///
@@ -860,12 +770,6 @@ abstract class AppLocalizations {
   /// **'Couldn\'t delete the account. Try again.'**
   String get profileDeletionError;
 
-  /// No description provided for @commonApply.
-  ///
-  /// In en, this message translates to:
-  /// **'Apply'**
-  String get commonApply;
-
   /// No description provided for @commonRetry.
   ///
   /// In en, this message translates to:
@@ -890,18 +794,6 @@ abstract class AppLocalizations {
   /// **'Go Home'**
   String get commonGoHome;
 
-  /// No description provided for @commonSemanticBackspace.
-  ///
-  /// In en, this message translates to:
-  /// **'Backspace'**
-  String get commonSemanticBackspace;
-
-  /// No description provided for @commonSemanticDecimalPoint.
-  ///
-  /// In en, this message translates to:
-  /// **'Decimal point'**
-  String get commonSemanticDecimalPoint;
-
   /// No description provided for @timelineToday.
   ///
   /// In en, this message translates to:
@@ -919,42 +811,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'—'**
   String get timelineRangeSeparator;
-
-  /// No description provided for @ledgerBucketFood.
-  ///
-  /// In en, this message translates to:
-  /// **'Food'**
-  String get ledgerBucketFood;
-
-  /// No description provided for @ledgerBucketLodging.
-  ///
-  /// In en, this message translates to:
-  /// **'Lodging'**
-  String get ledgerBucketLodging;
-
-  /// No description provided for @ledgerBucketTransit.
-  ///
-  /// In en, this message translates to:
-  /// **'Transit'**
-  String get ledgerBucketTransit;
-
-  /// No description provided for @ledgerBucketGroceries.
-  ///
-  /// In en, this message translates to:
-  /// **'Groceries'**
-  String get ledgerBucketGroceries;
-
-  /// No description provided for @ledgerBucketActivities.
-  ///
-  /// In en, this message translates to:
-  /// **'Activities'**
-  String get ledgerBucketActivities;
-
-  /// No description provided for @ledgerBucketOther.
-  ///
-  /// In en, this message translates to:
-  /// **'Other'**
-  String get ledgerBucketOther;
 
   /// No description provided for @categoryFood.
   ///
@@ -1027,12 +883,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Event settings'**
   String get ledgerEventSettingsTooltip;
-
-  /// No description provided for @ledgerPeopleCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 PERSON} other{{count} PEOPLE}}'**
-  String ledgerPeopleCount(int count);
 
   /// No description provided for @ledgerAllFilter.
   ///
@@ -1190,12 +1040,6 @@ abstract class AppLocalizations {
   /// **'someone'**
   String get ledgerSomeoneLower;
 
-  /// No description provided for @ledgerUnknown.
-  ///
-  /// In en, this message translates to:
-  /// **'Unknown'**
-  String get ledgerUnknown;
-
   /// No description provided for @ledgerExpenseFallback.
   ///
   /// In en, this message translates to:
@@ -1262,84 +1106,6 @@ abstract class AppLocalizations {
   /// **'Nothing in this event matches \"{query}\".'**
   String ledgerSearchNoMatchesMessage(Object query);
 
-  /// No description provided for @ledgerRecentExpenses.
-  ///
-  /// In en, this message translates to:
-  /// **'RECENT EXPENSES'**
-  String get ledgerRecentExpenses;
-
-  /// No description provided for @ledgerRecordedHistory.
-  ///
-  /// In en, this message translates to:
-  /// **'RECORDED HISTORY'**
-  String get ledgerRecordedHistory;
-
-  /// No description provided for @ledgerPaymentDue.
-  ///
-  /// In en, this message translates to:
-  /// **'PAYMENT DUE'**
-  String get ledgerPaymentDue;
-
-  /// No description provided for @ledgerYouAreOwed.
-  ///
-  /// In en, this message translates to:
-  /// **'YOU ARE OWED'**
-  String get ledgerYouAreOwed;
-
-  /// No description provided for @ledgerYouOwe.
-  ///
-  /// In en, this message translates to:
-  /// **'YOU OWE'**
-  String get ledgerYouOwe;
-
-  /// No description provided for @ledgerTripTotalPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Trip Total Pending'**
-  String get ledgerTripTotalPending;
-
-  /// No description provided for @ledgerTotalPaidByYou.
-  ///
-  /// In en, this message translates to:
-  /// **'Total Paid by You'**
-  String get ledgerTotalPaidByYou;
-
-  /// No description provided for @ledgerGeneralCategory.
-  ///
-  /// In en, this message translates to:
-  /// **'General'**
-  String get ledgerGeneralCategory;
-
-  /// No description provided for @ledgerOwedToYou.
-  ///
-  /// In en, this message translates to:
-  /// **'Owed to you {currency} {amount}'**
-  String ledgerOwedToYou(Object currency, Object amount);
-
-  /// No description provided for @ledgerYouOweAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'You owe {currency} {amount}'**
-  String ledgerYouOweAmount(Object currency, Object amount);
-
-  /// No description provided for @ledgerSettled.
-  ///
-  /// In en, this message translates to:
-  /// **'Settled'**
-  String get ledgerSettled;
-
-  /// No description provided for @ledgerPeople.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 person} other{{count} people}}'**
-  String ledgerPeople(int count);
-
-  /// No description provided for @ledgerGroup.
-  ///
-  /// In en, this message translates to:
-  /// **'group'**
-  String get ledgerGroup;
-
   /// No description provided for @ledgerAddExpense.
   ///
   /// In en, this message translates to:
@@ -1376,12 +1142,6 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get editorActionSave;
 
-  /// No description provided for @editorCategoryPrompt.
-  ///
-  /// In en, this message translates to:
-  /// **'What was this for?'**
-  String get editorCategoryPrompt;
-
   /// No description provided for @editorCategory.
   ///
   /// In en, this message translates to:
@@ -1406,12 +1166,6 @@ abstract class AppLocalizations {
   /// **'Change'**
   String get editorChange;
 
-  /// No description provided for @editorSplitBetween.
-  ///
-  /// In en, this message translates to:
-  /// **'Split between'**
-  String get editorSplitBetween;
-
   /// No description provided for @editorHow.
   ///
   /// In en, this message translates to:
@@ -1423,12 +1177,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Where'**
   String get editorWhere;
-
-  /// No description provided for @editorCustomise.
-  ///
-  /// In en, this message translates to:
-  /// **'Customise'**
-  String get editorCustomise;
 
   /// No description provided for @editorAmountLabel.
   ///
@@ -1538,12 +1286,6 @@ abstract class AppLocalizations {
   /// **'Selected payer'**
   String get editorSelectedPayer;
 
-  /// No description provided for @editorSelectedPaidFullAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'Selected · paid the full amount'**
-  String get editorSelectedPaidFullAmount;
-
   /// No description provided for @editorProvenanceAdded.
   ///
   /// In en, this message translates to:
@@ -1562,18 +1304,6 @@ abstract class AppLocalizations {
   /// **'EVENT DEFAULT'**
   String get editorEventDefault;
 
-  /// No description provided for @editorTapCustomiseSplit.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap Customise to pick who splits this.'**
-  String get editorTapCustomiseSplit;
-
-  /// No description provided for @editorSplitSummary.
-  ///
-  /// In en, this message translates to:
-  /// **'{scope} · {count, plural, =1{1 way} other{{count} ways}}'**
-  String editorSplitSummary(Object scope, int count);
-
   /// No description provided for @editorEachAmount.
   ///
   /// In en, this message translates to:
@@ -1591,30 +1321,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick at least two people to split.'**
   String get editorPickAtLeastTwoToSplit;
-
-  /// No description provided for @editorSplitEvenly.
-  ///
-  /// In en, this message translates to:
-  /// **'Split evenly across {count, plural, =1{1 way} other{{count} ways}}.'**
-  String editorSplitEvenly(int count);
-
-  /// No description provided for @editorWeightedByShares.
-  ///
-  /// In en, this message translates to:
-  /// **'Weighted by shares.'**
-  String get editorWeightedByShares;
-
-  /// No description provided for @editorPerPersonAmounts.
-  ///
-  /// In en, this message translates to:
-  /// **'Per-person amounts.'**
-  String get editorPerPersonAmounts;
-
-  /// No description provided for @editorPerPersonPercents.
-  ///
-  /// In en, this message translates to:
-  /// **'Per-person percents.'**
-  String get editorPerPersonPercents;
 
   /// No description provided for @editorAmountsVary.
   ///
@@ -1688,12 +1394,6 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get editorDiscardConfirm;
 
-  /// No description provided for @editorCustomiseSplit.
-  ///
-  /// In en, this message translates to:
-  /// **'Customise split'**
-  String get editorCustomiseSplit;
-
   /// No description provided for @editorSelectParticipants.
   ///
   /// In en, this message translates to:
@@ -1729,18 +1429,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hasn\'t joined yet'**
   String get editorShadowProfile;
-
-  /// No description provided for @editorPaidByLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'PAID BY'**
-  String get editorPaidByLabel;
-
-  /// No description provided for @editorParticipantMe.
-  ///
-  /// In en, this message translates to:
-  /// **'{name} (Me)'**
-  String editorParticipantMe(Object name);
 
   /// No description provided for @editorCouldNotLoadExpenseTitle.
   ///
@@ -1826,53 +1514,11 @@ abstract class AppLocalizations {
   /// **'Exact'**
   String get editorSplitModeExactShort;
 
-  /// No description provided for @editorSplitModePercentShort.
-  ///
-  /// In en, this message translates to:
-  /// **'%'**
-  String get editorSplitModePercentShort;
-
   /// No description provided for @editorSplitAddsUpTo.
   ///
   /// In en, this message translates to:
   /// **'Adds up to {amount}'**
   String editorSplitAddsUpTo(String amount);
-
-  /// No description provided for @editorReceiptOptional.
-  ///
-  /// In en, this message translates to:
-  /// **'RECEIPT (OPTIONAL)'**
-  String get editorReceiptOptional;
-
-  /// No description provided for @editorReceiptUploading.
-  ///
-  /// In en, this message translates to:
-  /// **'Uploading receipt...'**
-  String get editorReceiptUploading;
-
-  /// No description provided for @editorReceiptAttached.
-  ///
-  /// In en, this message translates to:
-  /// **'Receipt attached'**
-  String get editorReceiptAttached;
-
-  /// No description provided for @editorReceiptTapToChange.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap to change'**
-  String get editorReceiptTapToChange;
-
-  /// No description provided for @editorReceiptAddPhoto.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a receipt photo'**
-  String get editorReceiptAddPhoto;
-
-  /// No description provided for @customSplitTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Customise split'**
-  String get customSplitTitle;
 
   /// No description provided for @customSplitCancel.
   ///
@@ -1897,30 +1543,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'TOTAL'**
   String get customSplitTotal;
-
-  /// No description provided for @customSplitModeEqually.
-  ///
-  /// In en, this message translates to:
-  /// **'Equally'**
-  String get customSplitModeEqually;
-
-  /// No description provided for @customSplitModeShares.
-  ///
-  /// In en, this message translates to:
-  /// **'Shares'**
-  String get customSplitModeShares;
-
-  /// No description provided for @customSplitModeExact.
-  ///
-  /// In en, this message translates to:
-  /// **'Exact'**
-  String get customSplitModeExact;
-
-  /// No description provided for @customSplitModePercent.
-  ///
-  /// In en, this message translates to:
-  /// **'Percent'**
-  String get customSplitModePercent;
 
   /// No description provided for @editorSplitItemized.
   ///
@@ -2113,66 +1735,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get adjustmentDone;
-
-  /// No description provided for @categoryPickerTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'What\'s this for?'**
-  String get categoryPickerTitle;
-
-  /// No description provided for @categoryPickerCouldNotLoad.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not load categories.'**
-  String get categoryPickerCouldNotLoad;
-
-  /// No description provided for @categoryPickerRestaurantsBarsCafes.
-  ///
-  /// In en, this message translates to:
-  /// **'Restaurants, bars, cafes'**
-  String get categoryPickerRestaurantsBarsCafes;
-
-  /// No description provided for @categoryPickerHotelsRentals.
-  ///
-  /// In en, this message translates to:
-  /// **'Hotels, rentals'**
-  String get categoryPickerHotelsRentals;
-
-  /// No description provided for @categoryPickerTaxiTrainFuel.
-  ///
-  /// In en, this message translates to:
-  /// **'Taxi, train, fuel'**
-  String get categoryPickerTaxiTrainFuel;
-
-  /// No description provided for @categoryPickerMarketsSupplies.
-  ///
-  /// In en, this message translates to:
-  /// **'Markets, supplies'**
-  String get categoryPickerMarketsSupplies;
-
-  /// No description provided for @categoryPickerToursTickets.
-  ///
-  /// In en, this message translates to:
-  /// **'Tours, tickets'**
-  String get categoryPickerToursTickets;
-
-  /// No description provided for @categoryPickerPetrolCharging.
-  ///
-  /// In en, this message translates to:
-  /// **'Petrol, charging'**
-  String get categoryPickerPetrolCharging;
-
-  /// No description provided for @categoryPickerEquipmentSupplies.
-  ///
-  /// In en, this message translates to:
-  /// **'Equipment, supplies'**
-  String get categoryPickerEquipmentSupplies;
-
-  /// No description provided for @categoryPickerAnythingElse.
-  ///
-  /// In en, this message translates to:
-  /// **'Anything else'**
-  String get categoryPickerAnythingElse;
 
   /// No description provided for @settleUpTitle.
   ///
@@ -2401,12 +1963,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Optimized to reduce the number of payments across {subjectName}.'**
   String settleUpOptimizedPayments(Object subjectName);
-
-  /// No description provided for @settleUpSummaryTransfers.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 transfer} other{{count} transfers}}'**
-  String settleUpSummaryTransfers(int count);
 
   /// No description provided for @settleUpSummaryTotal.
   ///
@@ -2769,12 +2325,6 @@ abstract class AppLocalizations {
   /// **'Done'**
   String get commonDone;
 
-  /// No description provided for @commonContinue.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue'**
-  String get commonContinue;
-
   /// No description provided for @nameValidationEmpty.
   ///
   /// In en, this message translates to:
@@ -2804,12 +2354,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Active journeys'**
   String get homeActiveJourneys;
-
-  /// No description provided for @homeSeeAll.
-  ///
-  /// In en, this message translates to:
-  /// **'See all'**
-  String get homeSeeAll;
 
   /// #807 — action beside the Active journeys header; it routes to the cross-group Activity log, so the label names the real destination (was the lying "See all").
   ///
@@ -3087,24 +2631,6 @@ abstract class AppLocalizations {
   /// **'Some data couldn\'t load — balance may be incomplete'**
   String get homeBalanceIncompleteNotice;
 
-  /// No description provided for @homeSpendingUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Spending data unavailable'**
-  String get homeSpendingUnavailable;
-
-  /// No description provided for @homeWeeklySpending.
-  ///
-  /// In en, this message translates to:
-  /// **'Weekly Spending ({currency})'**
-  String homeWeeklySpending(Object currency);
-
-  /// No description provided for @homeNoSpendingThisWeek.
-  ///
-  /// In en, this message translates to:
-  /// **'No spending this week'**
-  String get homeNoSpendingThisWeek;
-
   /// No description provided for @homeBottomNavGroups.
   ///
   /// In en, this message translates to:
@@ -3134,24 +2660,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add Expense'**
   String get homeQuickAddExpense;
-
-  /// No description provided for @homeQuickSettleUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Settle Up'**
-  String get homeQuickSettleUp;
-
-  /// No description provided for @homeQuickInviteFriend.
-  ///
-  /// In en, this message translates to:
-  /// **'Invite Friend'**
-  String get homeQuickInviteFriend;
-
-  /// No description provided for @homeQuickActivity.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity'**
-  String get homeQuickActivity;
 
   /// No description provided for @addExpenseSheetTitle.
   ///
@@ -3584,42 +3092,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'deleted an expense'**
   String get activityGroupExpenseDeletedGeneric;
-
-  /// No description provided for @activityTitlePaymentRecorded.
-  ///
-  /// In en, this message translates to:
-  /// **'Payment recorded'**
-  String get activityTitlePaymentRecorded;
-
-  /// No description provided for @activityTitleEventCreated.
-  ///
-  /// In en, this message translates to:
-  /// **'Event created'**
-  String get activityTitleEventCreated;
-
-  /// No description provided for @activityTitleEventRemoved.
-  ///
-  /// In en, this message translates to:
-  /// **'Event removed'**
-  String get activityTitleEventRemoved;
-
-  /// No description provided for @activityTitleMemberJoined.
-  ///
-  /// In en, this message translates to:
-  /// **'Member joined'**
-  String get activityTitleMemberJoined;
-
-  /// No description provided for @activityTitleMemberLeft.
-  ///
-  /// In en, this message translates to:
-  /// **'Member left'**
-  String get activityTitleMemberLeft;
-
-  /// No description provided for @activityTitleGeneric.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity'**
-  String get activityTitleGeneric;
 
   /// No description provided for @eventTypeTripLabel.
   ///
@@ -4065,30 +3537,6 @@ abstract class AppLocalizations {
   /// **'Nothing to settle yet'**
   String get eventNothingToSettleYet;
 
-  /// No description provided for @eventEveryoneSquare.
-  ///
-  /// In en, this message translates to:
-  /// **'Everyone is square on this trip.'**
-  String get eventEveryoneSquare;
-
-  /// No description provided for @eventAddFirstExpenseHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Add the first expense to start splitting.'**
-  String get eventAddFirstExpenseHint;
-
-  /// No description provided for @eventBreakdownOwesYou.
-  ///
-  /// In en, this message translates to:
-  /// **'owes you'**
-  String get eventBreakdownOwesYou;
-
-  /// No description provided for @eventBreakdownYouOwe.
-  ///
-  /// In en, this message translates to:
-  /// **'you owe'**
-  String get eventBreakdownYouOwe;
-
   /// No description provided for @eventTripTotal.
   ///
   /// In en, this message translates to:
@@ -4113,72 +3561,6 @@ abstract class AppLocalizations {
   /// **'Event total'**
   String get eventTotalLabelEvent;
 
-  /// No description provided for @eventExpenseCountInline.
-  ///
-  /// In en, this message translates to:
-  /// **'· {count, plural, =1{1 expense} other{{count} expenses}}'**
-  String eventExpenseCountInline(int count);
-
-  /// No description provided for @eventLedgerLink.
-  ///
-  /// In en, this message translates to:
-  /// **'Ledger →'**
-  String get eventLedgerLink;
-
-  /// No description provided for @eventRecent.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent'**
-  String get eventRecent;
-
-  /// No description provided for @eventSeeAll.
-  ///
-  /// In en, this message translates to:
-  /// **'See all →'**
-  String get eventSeeAll;
-
-  /// No description provided for @eventYouPaid.
-  ///
-  /// In en, this message translates to:
-  /// **'You paid'**
-  String get eventYouPaid;
-
-  /// No description provided for @eventPaidByName.
-  ///
-  /// In en, this message translates to:
-  /// **'{name} paid'**
-  String eventPaidByName(Object name);
-
-  /// No description provided for @eventAddFirstExpenseTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Add the first expense'**
-  String get eventAddFirstExpenseTitle;
-
-  /// No description provided for @eventAddFirstExpenseBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick who paid, split it fairly.'**
-  String get eventAddFirstExpenseBody;
-
-  /// No description provided for @eventPeopleOverline.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 person} other{{count} people}}'**
-  String eventPeopleOverline(int count);
-
-  /// No description provided for @eventSplittingBetweenYouAndOthers.
-  ///
-  /// In en, this message translates to:
-  /// **'{othersCount, plural, =1{Splitting between you and 1 other} other{Splitting between you and {othersCount} others}}'**
-  String eventSplittingBetweenYouAndOthers(int othersCount);
-
-  /// No description provided for @eventYou.
-  ///
-  /// In en, this message translates to:
-  /// **'You'**
-  String get eventYou;
-
   /// No description provided for @eventDayOf.
   ///
   /// In en, this message translates to:
@@ -4196,24 +3578,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It may have been deleted, or the link is incorrect.'**
   String get eventMissingMessage;
-
-  /// No description provided for @eventSemanticCard.
-  ///
-  /// In en, this message translates to:
-  /// **'{eventName}, {count, plural, =1{1 person} other{{count} people}}'**
-  String eventSemanticCard(Object eventName, int count);
-
-  /// No description provided for @eventYouOweAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'You owe {currency} {amount}'**
-  String eventYouOweAmount(Object amount, Object currency);
-
-  /// No description provided for @eventYouAreOwedAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'You are owed {currency} {amount}'**
-  String eventYouAreOwedAmount(Object amount, Object currency);
 
   /// No description provided for @groupNameLabel.
   ///
@@ -4287,12 +3651,6 @@ abstract class AppLocalizations {
   /// **'A group is a circle of people you share expenses with — a household, a travel crew, a project team.'**
   String get groupMoodBody;
 
-  /// #287 trip-stamps: section header above the group stamp picker on the Create-Group screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Stamp'**
-  String get groupGlyph;
-
   /// #287 trip-stamps: label for the ink-colour swatch row in the group stamp picker.
   ///
   /// In en, this message translates to:
@@ -4334,12 +3692,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invite code copied'**
   String get groupInviteCodeCopied;
-
-  /// No description provided for @groupShareMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Join my group on Rihla! Use code {code} to join.'**
-  String groupShareMessage(Object code);
 
   /// No description provided for @groupShareSubject.
   ///
@@ -4484,18 +3836,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t join the group. Check your connection and try again.'**
   String get groupJoinFailed;
-
-  /// No description provided for @groupMemberJoinedDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'joined the group'**
-  String get groupMemberJoinedDescription;
-
-  /// No description provided for @groupMemberLeftDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'left the group'**
-  String get groupMemberLeftDescription;
 
   /// No description provided for @groupEvents.
   ///
@@ -4658,12 +3998,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading members…'**
   String get groupMembersLoading;
-
-  /// No description provided for @groupFormerMember.
-  ///
-  /// In en, this message translates to:
-  /// **'Former member'**
-  String get groupFormerMember;
 
   /// No description provided for @groupRoleYou.
   ///
@@ -5601,12 +4935,6 @@ abstract class AppLocalizations {
   /// **'Across events'**
   String get groupSettleUpAcrossEventsLabel;
 
-  /// Fallback errorBuilder text shown by GoRouter when the requested location does not match any route.
-  ///
-  /// In en, this message translates to:
-  /// **'Page not found: {location}'**
-  String errorPageNotFound(Object location);
-
   /// Title on the friendly 404 screen shown by GoRouter's errorBuilder when the requested location does not match any route — e.g. a broken or expired share link.
   ///
   /// In en, this message translates to:
@@ -5901,12 +5229,6 @@ abstract class AppLocalizations {
   /// **'Couldn\'t complete the claim. Try again.'**
   String get groupClaimApproveError;
 
-  /// Quiet empty-state for the #278 PR9 creator claim-requests section when there are none.
-  ///
-  /// In en, this message translates to:
-  /// **'No pending claim requests.'**
-  String get groupClaimNoRequests;
-
   /// #811: lead text on the open-event recap banner — the labelled entry that replaced the tooltip-only header cup. Paired with the eventViewReceipt "View recap" action on the same bar.
   ///
   /// In en, this message translates to:
@@ -5937,12 +5259,6 @@ abstract class AppLocalizations {
   /// **'Spending frozen'**
   String get recapSpendingFrozenNoDate;
 
-  /// Section label for the current user's money summary in the recap (#202).
-  ///
-  /// In en, this message translates to:
-  /// **'You'**
-  String get recapYouTitle;
-
   /// Row label: amount the current user paid into event expenses (#202).
   ///
   /// In en, this message translates to:
@@ -5954,12 +5270,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your share'**
   String get recapYourShare;
-
-  /// Row label: the current user's net settlements; positive = given, negative = received (#202).
-  ///
-  /// In en, this message translates to:
-  /// **'Settlements'**
-  String get recapSettlements;
 
   /// Row label: the current user's net balance for the event (#202).
   ///

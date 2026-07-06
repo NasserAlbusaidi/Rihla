@@ -169,8 +169,8 @@ void main() {
     // The method card correctly notes a split method needs 2+ people…
     expect(find.text('Pick at least two people to split.'), findsOneWidget);
     // …so the preview must NOT simultaneously claim a finished "1 way · X each"
-    // split. RED today: editorSplitSummary renders "Equally · 1 way" and
-    // editorEachAmount renders "5.000 each".
+    // split — the split-summary line ("Equally · 1 way") and the per-person
+    // amount ("5.000 each") must both stay hidden for a sub-two-person selection.
     expect(find.textContaining('1 way'), findsNothing);
     expect(find.textContaining('each'), findsNothing);
   });

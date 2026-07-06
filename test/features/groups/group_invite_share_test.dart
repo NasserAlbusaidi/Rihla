@@ -13,8 +13,8 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// #277 — the shared invite text must carry a tappable join link, not just the
 /// bare 6-char code. Both share callsites must use [groupShareInviteMessage]
-/// (which embeds the `web.app/join/<code>` URI), never the link-less
-/// [groupShareMessage].
+/// (which embeds the `web.app/join/<code>` URI), never a link-less bare-code
+/// message.
 void main() {
   const shareChannel = MethodChannel('dev.fluttercommunity.plus/share');
 
@@ -83,18 +83,6 @@ void main() {
         source,
         contains('groupShareInviteMessage('),
         reason: '$path must share the link-bearing invite message',
-      );
-    }
-    for (final path in const [
-      'lib/features/groups/screens/create_group_screen.dart',
-      'lib/features/groups/widgets/qr_invite_sheet.dart',
-      'lib/features/groups/widgets/group_info_section.dart',
-    ]) {
-      final source = File(path).readAsStringSync();
-      expect(
-        source,
-        isNot(contains('groupShareMessage(')),
-        reason: '$path must not share the link-less bare-code message (#277)',
       );
     }
     expect(
