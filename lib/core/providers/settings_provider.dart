@@ -122,6 +122,23 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     }
   }
 
+  /// INBOUND-only deviceName seed (#990): writes the local name from the
+  /// user's own member doc after a cross-device restore. Unlike
+  /// [setDeviceName] it never runs the #390 collision check and never
+  /// propagates to Firestore — the value CAME from the member docs.
+  /// No-ops (returns false) unless the local name is still empty and
+  /// [name] normalizes to a valid display name. The emptiness re-check at
+  /// write time is the race guard: if the user typed a name while the heal's
+  /// fetch was in flight, the USER wins.
+  Future<bool> seedDeviceName(String name) async {
+    if (state.deviceName.trim().isNotEmpty) return false;
+    final normalized = normalizeDisplayName(name);
+    if (displayNameValidationError(normalized) != null) return false;
+    await _service.saveDeviceName(normalized);
+    state = state.copyWith(deviceName: normalized);
+    return true;
+  }
+
   /// Throws [DisplayNameTakenException] if [normalized] collides with another
   /// live member in any group the current user belongs to (#390).
   ///

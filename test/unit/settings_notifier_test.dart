@@ -13,6 +13,22 @@ import 'package:safar/core/models/app_settings_model.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/settings_service.dart';
 
+/// Records [propagateDisplayName] invocations so the #990 INBOUND-only
+/// contract (seedDeviceName never propagates; setDeviceName does) is pinned
+/// against future refactors — the real method fire-and-forgets into a silent
+/// catch, so only an override can observe it.
+class _PropagationSpySettingsNotifier extends SettingsNotifier {
+  _PropagationSpySettingsNotifier(super.service)
+    : super(deviceLanguageCode: 'en');
+
+  final List<String> propagateCalls = [];
+
+  @override
+  Future<void> propagateDisplayName(String displayName) async {
+    propagateCalls.add(displayName);
+  }
+}
+
 void main() {
   group('SettingsNotifier', () {
     Future<ProviderContainer> makeContainer() async {
@@ -260,6 +276,106 @@ void main() {
       const settings = AppSettings(themeMode: AppThemeMode.system);
       expect(settings.theme, equals(ThemeMode.system));
     });
+
+    // -----------------------------------------------------------------------
+    // seedDeviceName (#990) — INBOUND-only: seeds the local name from the
+    // user's own member doc after a verified restore. Never runs the #390
+    // collision check, never propagates to Firestore, and no-ops unless the
+    // local name is still empty.
+    // -----------------------------------------------------------------------
+
+    test('seedDeviceName seeds when empty + valid; persists; returns true',
+        () async {
+      final container = await makeContainer();
+      final notifier = container.read(settingsProvider.notifier);
+      final prefs = container.read(sharedPreferencesProvider);
+
+      final seeded = await notifier.seedDeviceName('  Nasser   Albusaidi ');
+
+      expect(seeded, isTrue);
+      expect(
+        container.read(settingsProvider).deviceName,
+        equals('Nasser Albusaidi'),
+      );
+      expect(
+        prefs.getString('settings_device_name'),
+        equals('Nasser Albusaidi'),
+      );
+    });
+
+    test('seedDeviceName no-ops (false) when a name is already set', () async {
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'Alice',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          deviceLocalesProvider.overrideWithValue(const [Locale('en')]),
+        ],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(settingsProvider.notifier);
+
+      expect(await notifier.seedDeviceName('Bob'), isFalse);
+      expect(container.read(settingsProvider).deviceName, equals('Alice'));
+      expect(prefs.getString('settings_device_name'), equals('Alice'));
+    });
+
+    test(
+      'seedDeviceName no-ops after the user typed a name mid-flight '
+      '(last writer is the USER)',
+      () async {
+        final container = await makeContainer();
+        final notifier = container.read(settingsProvider.notifier);
+
+        await notifier.setDeviceName('Typed By User');
+        expect(await notifier.seedDeviceName('Fetched Name'), isFalse);
+        expect(
+          container.read(settingsProvider).deviceName,
+          equals('Typed By User'),
+        );
+      },
+    );
+
+    test('seedDeviceName no-ops (false, no throw) on invalid input', () async {
+      final container = await makeContainer();
+      final notifier = container.read(settingsProvider.notifier);
+      final prefs = container.read(sharedPreferencesProvider);
+
+      expect(await notifier.seedDeviceName('A' * 33), isFalse);
+      // NB: '\n' would NOT reject — normalizeDisplayName collapses whitespace
+      // (incl. newlines) BEFORE validation, so 'Eve\nMallory' legitimately
+      // seeds as 'Eve Mallory'. A non-whitespace control char survives
+      // normalization and is rejected.
+      expect(await notifier.seedDeviceName('EveMallory'), isFalse);
+      expect(await notifier.seedDeviceName('   '), isFalse);
+      expect(container.read(settingsProvider).deviceName, equals(''));
+      expect(prefs.getString('settings_device_name'), isNull);
+    });
+
+    test(
+      'seedDeviceName NEVER propagates to Firestore — setDeviceName does '
+      '(the INBOUND-only contract pin)',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final spy = _PropagationSpySettingsNotifier(SettingsService(prefs));
+
+        await spy.seedDeviceName('Nasser');
+        expect(spy.state.deviceName, equals('Nasser'));
+        expect(
+          spy.propagateCalls,
+          isEmpty,
+          reason: 'the seeded value CAME from the member docs — writing it '
+              'back is the #990 anti-contract',
+        );
+
+        // Sanity: the user-initiated path still propagates.
+        await spy.setDeviceName('Renamed');
+        expect(spy.propagateCalls, equals(['Renamed']));
+      },
+    );
 
     test('propagateDisplayName is called when setDeviceName is called', () async {
       // This test verifies that setDeviceName triggers propagateDisplayName.

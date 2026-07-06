@@ -111,3 +111,39 @@ RecoveryOutcome? readAndClearRecoveryOutcome(SharedPreferences prefs) {
 /// PII-safe error identifier for the marker.
 String recoveryOutcomeCodeOf(Object error) =>
     error is FirebaseAuthException ? error.code : error.runtimeType.toString();
+
+/// #990 breadcrumb: the uid of a VERIFIED restore whose deviceName self-heal
+/// is still pending. Written only by `surfaceRecoveryOutcome`'s verified
+/// success arm (expectedUid recorded AND matching the live uid); cleared by
+/// the heal on a successful seed, a terminal-empty roster, an observed
+/// non-empty name, or a stale (different, non-null) uid. Unlike the one-shot
+/// outcome marker above, this persists across boots until resolved — a
+/// restore whose first boot is offline must not lose its only seeding chance.
+const String recoveryNameSeedUidKey = 'recovery_name_seed_uid';
+
+/// Guarded like [writeRecoveryOutcome]: a throwing prefs write must never
+/// reject `surfaceRecoveryOutcome` and suppress the #839/#458 notice —
+/// losing the breadcrumb costs the heal, never the notice.
+Future<void> writePendingNameSeed(SharedPreferences prefs, String uid) async {
+  try {
+    await prefs.setString(recoveryNameSeedUidKey, uid);
+  } catch (_) {
+    // Losing the breadcrumb costs the heal, never the notice.
+  }
+}
+
+String? readPendingNameSeed(SharedPreferences prefs) {
+  try {
+    return prefs.getString(recoveryNameSeedUidKey);
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> clearPendingNameSeed(SharedPreferences prefs) async {
+  try {
+    await prefs.remove(recoveryNameSeedUidKey);
+  } catch (_) {
+    // Best-effort cleanup only.
+  }
+}

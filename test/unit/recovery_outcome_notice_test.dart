@@ -306,6 +306,115 @@ void main() {
     expect(probedUids, isEmpty);
   });
 
+  // ---------------------------------------------------------------------
+  // #990 breadcrumb: ONLY the VERIFIED restore-success arm (expectedUid
+  // recorded AND matching the current uid) writes `recovery_name_seed_uid`;
+  // every other arm leaves it absent. The deviceName self-heal is scoped to
+  // this breadcrumb — a false write here would reopen the #293 shadow-claim
+  // promotion the Gate killed twice.
+  // ---------------------------------------------------------------------
+
+  const seedKey = 'recovery_name_seed_uid';
+
+  test('#990: verified google restore writes the seed breadcrumb — before '
+      'the async probe runs', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    String? breadcrumbAtProbe;
+    await run(
+      currentUid: () => 'durable-uid',
+      hasData: (uid) async {
+        breadcrumbAtProbe = prefs.getString(seedKey);
+        return true;
+      },
+    );
+
+    expect(prefs.getString(seedKey), 'durable-uid');
+    expect(
+      breadcrumbAtProbe,
+      'durable-uid',
+      reason: 'the breadcrumb must land before the probe — the probe only '
+          'picks snack copy and must not gate the heal',
+    );
+  });
+
+  test('#990: verified email-link restore writes the seed breadcrumb',
+      () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opRecover,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(currentUid: () => 'durable-uid');
+
+    expect(prefs.getString(seedKey), 'durable-uid');
+  });
+
+  test('#990: failure marker does NOT write the breadcrumb', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: false,
+      code: 'user-disabled',
+    );
+
+    await run(currentUid: () => 'whoever');
+
+    expect(prefs.containsKey(seedKey), isFalse);
+  });
+
+  test('#990: uid mismatch (swap not durable) does NOT write the breadcrumb',
+      () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(currentUid: () => 'stale-anon-uid');
+
+    expect(prefs.containsKey(seedKey), isFalse);
+  });
+
+  test('#990: sign-out does NOT write the breadcrumb', () async {
+    await writeRecoveryOutcome(prefs, op: RecoveryOutcome.opSignOut, ok: true);
+
+    await run(currentUid: () => 'whoever');
+
+    expect(prefs.containsKey(seedKey), isFalse);
+  });
+
+  test('#990: legacy marker without expectedUid (unverifiable) does NOT '
+      'write the breadcrumb', () async {
+    await writeRecoveryOutcome(prefs, op: RecoveryOutcome.opGoogle, ok: true);
+
+    await run(currentUid: () => 'uid-current');
+
+    expect(prefs.containsKey(seedKey), isFalse);
+  });
+
+  test('#990: unreadable auth (uid throws) does NOT write the breadcrumb',
+      () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: RecoveryOutcome.opGoogle,
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(currentUid: () => throw StateError('[core/no-app]'));
+
+    expect(prefs.containsKey(seedKey), isFalse);
+  });
+
   test('one-shot: a second boot surfaces nothing', () async {
     await writeRecoveryOutcome(
       prefs,
