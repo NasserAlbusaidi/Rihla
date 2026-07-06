@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Full history so diff-cover can find the merge-base with origin/main.
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -95,3 +98,17 @@ jobs:
             exit 1
           fi
           echo "Raw coverage ${COVERAGE}% meets 80% threshold"
+
+      - name: Check diff coverage floor (new/changed lib lines)
+        run: |
+          # Aggregate 80% protects the existing average; this floor makes lines
+          # CHANGED in the PR clear a higher bar (90%) so an under-tested new
+          # module can't ride in on the repo's healthy baseline. diff-cover reads
+          # lcov directly and ignores diff lines with no coverage data, so an
+          # assets-only / docs-only PR (no measurable lib lines) passes vacuously.
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          python3 -m venv "${RUNNER_TEMP:-/tmp}/diffcover-venv"
+          "${RUNNER_TEMP:-/tmp}/diffcover-venv/bin/pip" install --quiet diff-cover
+          "${RUNNER_TEMP:-/tmp}/diffcover-venv/bin/diff-cover" coverage/lcov.info \
+            --compare-branch=origin/main \
+            --fail-under=90
