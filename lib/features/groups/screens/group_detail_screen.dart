@@ -24,7 +24,6 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/section_header.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../events/providers/event_provider.dart';
