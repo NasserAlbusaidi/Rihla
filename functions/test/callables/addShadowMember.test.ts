@@ -174,17 +174,33 @@ describe('addShadowMember callable — creator adds placeholder members by name 
     ).rejects.toMatchObject({ code: 'unauthenticated' });
   });
 
-  test('2. anonymous caller → permission-denied; memberIds unchanged', async () => {
+  test('2. anonymous CREATOR succeeds — shadow minted, memberIds appended (D6-R)', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);
+    const res = await wrapped({
+      data: { groupId: 'g', displayName: 'Sara' },
+      auth: { uid: OWNER, token: { firebase: { sign_in_provider: 'anonymous' } } },
+    } as any);
+
+    const memberId = (res as { memberId: string }).memberId;
+    expect(typeof memberId).toBe('string');
+    const doc = await memberDoc('g', memberId);
+    expect(doc).toMatchObject({ userId: memberId, isShadow: true });
+    expect((await groupData('g')).memberIds as string[]).toContain(memberId);
+  });
+
+  test('2b. anonymous NON-creator → permission-denied via the creator check, not the provider', async () => {
+    await seedGroup('g', { memberIds: [OWNER, OUTSIDER] });
+    await seedMember('g', OWNER);
+    await seedMember('g', OUTSIDER);
     await expect(
       wrapped({
         data: { groupId: 'g', displayName: 'Sara' },
-        auth: { uid: OWNER, token: { firebase: { sign_in_provider: 'anonymous' } } },
+        auth: { uid: OUTSIDER, token: { firebase: { sign_in_provider: 'anonymous' } } },
       } as any),
     ).rejects.toMatchObject({ code: 'permission-denied' });
-    expect((await groupData('g')).memberIds).toEqual([OWNER]);
-    expect(await memberDocCount('g')).toBe(1);
+    expect((await groupData('g')).memberIds).toEqual([OWNER, OUTSIDER]);
+    expect(await memberDocCount('g')).toBe(2);
   });
 
   test('3. invalid groupId ("" and "a/b") → invalid-argument', async () => {
