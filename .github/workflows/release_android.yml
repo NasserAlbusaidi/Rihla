@@ -167,20 +167,31 @@ jobs:
         run: |
           flutter build appbundle --release --obfuscate --split-debug-info=./build/app/outputs/symbols --dart-define-from-file=config.json --android-skip-build-dependency-validation
 
+      # `secrets` is not available in step-level `if:` — gate the upload via a
+      # check step that reads the secret from env and exports a step output.
+      - name: 🔎 Check Sentry symbol upload configured
+        id: sentry_check
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          if [ -n "$SENTRY_AUTH_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SENTRY_AUTH_TOKEN secret is not set — obfuscated release Dart debug symbols will NOT be uploaded to Sentry. Prod crash frames will be unsymbolicated until SENTRY_AUTH_TOKEN, SENTRY_ORG and SENTRY_PROJECT repo secrets are set (see #933)."
+          fi
+
       - name: 🩹 Upload Dart Debug Symbols to Sentry
-        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+        if: steps.sentry_check.outputs.enabled == 'true'
+        continue-on-error: true
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: dart run sentry_dart_plugin
 
-      - name: ⚠️ Sentry symbol upload skipped
-        if: ${{ secrets.SENTRY_AUTH_TOKEN == '' }}
-        run: |
-          echo "::warning::SENTRY_AUTH_TOKEN secret is not set — obfuscated release Dart debug symbols were NOT uploaded to Sentry. Prod crash frames will be unsymbolicated until SENTRY_AUTH_TOKEN, SENTRY_ORG and SENTRY_PROJECT repo secrets are set (see #933)."
-
       - name: 📦 Retain Dart Debug Symbols Artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: dart-debug-symbols

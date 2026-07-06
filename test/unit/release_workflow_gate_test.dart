@@ -53,6 +53,7 @@ void main() {
       final buildIndex = workflow.indexOf(
         '--obfuscate --split-debug-info=./build/app/outputs/symbols',
       );
+      final checkIndex = workflow.indexOf('id: sentry_check');
       final sentryUploadIndex = workflow.indexOf(
         'dart run sentry_dart_plugin',
       );
@@ -60,20 +61,28 @@ void main() {
 
       // pubspec: sentry_dart_plugin wired as a dev dependency with an
       // explicit sentry: config block (org/project/token stay in env, never
-      // hardcoded here).
+      // hardcoded here). commits stays off: the default `auto` runs
+      // `sentry-cli releases set-commits --auto`, which fails on CI's
+      // shallow checkout and must never block the release.
       expect(pubspec, contains('sentry_dart_plugin:'));
       expect(pubspec, contains('upload_debug_symbols: true'));
       expect(pubspec, contains('upload_sources: true'));
+      expect(pubspec, contains('commits: false'));
       expect(pubspec, isNot(contains('auth_token:')));
 
-      // Workflow: the Sentry upload step runs after the obfuscated build and
-      // is gated on the SENTRY_AUTH_TOKEN secret being present, so a fork/PR
-      // run without the secret never hard-fails the release.
+      // Workflow: `secrets` is NOT available in step-level `if:`, so the
+      // upload is gated through a check step that reads the secret from env
+      // and exports a step output. A `secrets.*` reference inside any step
+      // `if:` is the broken pattern this pins against.
+      expect(workflow, isNot(contains(r'if: ${{ secrets.')));
       expect(buildIndex, greaterThan(-1));
-      expect(sentryUploadIndex, greaterThan(buildIndex));
+      expect(checkIndex, greaterThan(buildIndex));
+      expect(sentryUploadIndex, greaterThan(checkIndex));
+      expect(workflow, contains(r'echo "enabled=true" >> "$GITHUB_OUTPUT"'));
+      expect(workflow, contains(r'echo "enabled=false" >> "$GITHUB_OUTPUT"'));
       expect(
         workflow,
-        contains(r"if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}"),
+        contains("if: steps.sentry_check.outputs.enabled == 'true'"),
       );
       expect(
         workflow,
@@ -85,17 +94,20 @@ void main() {
         contains(r'SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}'),
       );
 
-      // A companion step makes the gap loud instead of silent when the
-      // secret is absent (never a quiet no-op).
-      expect(
-        workflow,
-        contains(r"if: ${{ secrets.SENTRY_AUTH_TOKEN == '' }}"),
-      );
+      // The check step makes the gap loud instead of silent when the secret
+      // is absent (never a quiet no-op).
       expect(workflow, contains('::warning::'));
       expect(workflow, contains('SENTRY_AUTH_TOKEN'));
       expect(
         workflow,
         contains('will be unsymbolicated'),
+      );
+
+      // Neither the Sentry upload nor the artifact retention may ever block
+      // the Play upload — both precede it and both are best-effort.
+      expect(
+        'continue-on-error: true'.allMatches(workflow).length,
+        greaterThanOrEqualTo(2),
       );
 
       // Symbols dir is also retained as a plain CI artifact — belt-and-braces
