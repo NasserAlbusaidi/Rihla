@@ -11,6 +11,7 @@ import '../../events/models/event_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../trip/models/trip_model.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Derive participants directly from event data (logistics provider removed in
 /// Phase 39). [shadowUserIds] marks placeholder ("shadow") members — added by
@@ -83,7 +84,7 @@ class CustomParticipantSelector extends ConsumerWidget {
           children: [
             Text(
               context.l10n.editorSelectParticipants,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 color: context.colors.textSecondary,
@@ -92,7 +93,7 @@ class CustomParticipantSelector extends ConsumerWidget {
             ),
             Text(
               context.l10n.editorSelectedCount(customSplitParticipants.length),
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: customSplitParticipants.isNotEmpty
@@ -183,7 +184,7 @@ class _ParticipantTile extends StatelessWidget {
       leading: RAvatar(name: displayName, size: 36),
       title: Text(
         displayName,
-        style: TextStyle(
+        style: AppTypography.sans(
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           color: context.colors.textPrimary,
@@ -192,7 +193,7 @@ class _ParticipantTile extends StatelessWidget {
       subtitle: participant.isShadow
           ? Text(
               context.l10n.editorShadowProfile,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 11,
                 color: context.colors.textSecondary,
               ),

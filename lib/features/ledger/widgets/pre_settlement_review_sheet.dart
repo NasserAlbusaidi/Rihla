@@ -5,6 +5,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
 import '../services/pre_settlement_review.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Test/automation hooks for the pre-settlement review sheet (#204).
 abstract final class PreSettleReviewKeys {
@@ -121,7 +122,7 @@ class _PreSettlementReviewSheet extends StatelessWidget {
           children: [
             Text(
               context.l10n.preSettleReviewTitle,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: context.colors.textPrimary,
@@ -134,7 +135,7 @@ class _PreSettlementReviewSheet extends StatelessWidget {
                   padding: EdgeInsets.only(bottom: spacing.space4),
                   child: Text(
                     _countLine(context, reason, counts[reason]!),
-                    style: TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 13,
                       color: context.colors.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -157,7 +158,7 @@ class _PreSettlementReviewSheet extends StatelessWidget {
                 padding: EdgeInsets.only(top: spacing.space4),
                 child: Text(
                   context.l10n.preSettleReviewMore(overflow),
-                  style: TextStyle(
+                  style: AppTypography.sans(
                     fontSize: 12,
                     color: context.colors.textSecondary,
                   ),
@@ -228,7 +229,7 @@ class _ReviewItem extends StatelessWidget {
                         : reasonLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: context.colors.textPrimary,
@@ -237,7 +238,7 @@ class _ReviewItem extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     reasonLabel,
-                    style: TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 11,
                       color: context.colors.textSecondary,
                       fontWeight: FontWeight.w500,
@@ -249,7 +250,7 @@ class _ReviewItem extends StatelessWidget {
             SizedBox(width: spacing.space8),
             Text(
               AppFormatters.formatCurrency(expense.amount, expense.currency),
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: context.colors.textPrimary,

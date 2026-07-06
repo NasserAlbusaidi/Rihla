@@ -38,6 +38,7 @@ import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
 import '../services/pre_settlement_review.dart';
 import '../widgets/pre_settlement_review_sheet.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Event-scoped Settle Up screen.
 ///
@@ -409,7 +410,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                 SizedBox(height: context.spacing.space16),
                 Text(
                   context.l10n.settleUpCouldNotLoadBalances,
-                  style: TextStyle(
+                  style: AppTypography.sans(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: context.colors.textPrimary,
@@ -995,7 +996,7 @@ class _SettleUpTopBar extends StatelessWidget {
             ),
             Text(
               context.l10n.settleUpTitle,
-              style: TextStyle(
+              style: AppTypography.sans(
                 color: context.colors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
