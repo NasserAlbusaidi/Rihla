@@ -160,7 +160,7 @@ run_step "Navigation smoke tests" \
     test/features/groups/qr_invite_sheet_test.dart \
     test/features/groups/group_detail_navigation_test.dart \
     test/features/events/event_command_center_test.dart \
-    test/features/ledger/ledger_screen_overflow_test.dart
+    test/features/ledger/ledger_roster_strip_overflow_test.dart
 run_step "Flutter tests with coverage" \
   flutter test --coverage \
     test/architecture \
