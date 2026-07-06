@@ -2811,10 +2811,10 @@ abstract class AppLocalizations {
   /// **'See all'**
   String get homeSeeAll;
 
-  /// #807 — action beside the Active journeys header; it routes to the cross-group Activity log, so the label names the real destination (was the lying "See all").
+  /// #807/#966 — action beside the Active journeys header; it routes to the cross-group History tab, so the label names the real destination (was the lying "See all", then "View activity" which disagreed with the renamed History tab).
   ///
   /// In en, this message translates to:
-  /// **'View activity'**
+  /// **'View history'**
   String get homeSeeActivity;
 
   /// No description provided for @homeGroups.
