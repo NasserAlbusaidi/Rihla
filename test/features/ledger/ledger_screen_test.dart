@@ -181,10 +181,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Bob is owed in both buckets → two negative chips from Alice's
-      // perspective, each formatted at its bucket's precision.
-      expect(find.text('−5.000'), findsOneWidget);
-      expect(find.text('−15.00'), findsOneWidget);
+      // #998: chips show Bob's OWN standing — the group owes him in both
+      // buckets → two positive chips, each formatted at its bucket's precision.
+      expect(find.text('+5.000'), findsOneWidget);
+      expect(find.text('+15.00'), findsOneWidget);
     });
   });
 

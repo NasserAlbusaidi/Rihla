@@ -142,6 +142,10 @@ class _GroupRow extends ConsumerWidget {
             ? open.single
             : null;
         if (soleEvent != null) {
+          // #996: push the /group/:gid ancestor FIRST (imperative push does
+          // not materialize ancestors) so Back walks hub → overview → these
+          // results with the query intact.
+          context.push('/group/$gid');
           context.push('/group/$gid/event/${soleEvent.eventId}');
         } else {
           context.push('/group/$gid');
@@ -170,6 +174,9 @@ class _EventRow extends StatelessWidget {
       trailingBadge: event.isClosed ? const _EndedBadge() : null,
       onTap: () {
         HapticService.lightClick();
+        // Deliberately SINGLE push (#996): an event-intent tap — Back
+        // returns to these results, not to the group overview. Don't "fix"
+        // this into the group-row double-push.
         context.push('/group/${event.groupId}/event/${event.id}');
       },
     );
