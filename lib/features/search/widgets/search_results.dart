@@ -226,72 +226,77 @@ class _ResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacing.space12,
-          vertical: context.spacing.space12,
-        ),
-        decoration: BoxDecoration(
-          color: colors.cardSurface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: context.shadows.flat,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: colors.inputFill,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 18, color: colors.textSecondary),
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.space12,
+              vertical: context.spacing.space12,
             ),
-            SizedBox(width: context.spacing.space12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.sans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+            decoration: BoxDecoration(
+              color: colors.cardSurface,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: context.shadows.flat,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: colors.inputFill,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.sans(
-                        fontSize: 12,
-                        color: colors.textSecondary,
+                  child: Icon(icon, size: 18, color: colors.textSecondary),
+                ),
+                SizedBox(width: context.spacing.space12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.sans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
                       ),
-                    ),
-                  ],
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.sans(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (trailingBadge != null) ...[
+                  SizedBox(width: context.spacing.space8),
+                  trailingBadge!,
                 ],
-              ),
+                SizedBox(width: context.spacing.space8),
+                DirectionalIcon(
+                  Iconsax.arrow_right_3,
+                  size: 16,
+                  color: colors.textSecondary,
+                ),
+              ],
             ),
-            if (trailingBadge != null) ...[
-              SizedBox(width: context.spacing.space8),
-              trailingBadge!,
-            ],
-            SizedBox(width: context.spacing.space8),
-            DirectionalIcon(
-              Iconsax.arrow_right_3,
-              size: 16,
-              color: colors.textSecondary,
-            ),
-          ],
+          ),
         ),
       ),
     );
