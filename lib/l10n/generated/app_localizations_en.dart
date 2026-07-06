@@ -25,9 +25,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDelete => 'Delete';
 
   @override
-  String get commonOK => 'OK';
-
-  @override
   String get currencyOMR => 'Omani rial';
 
   @override
@@ -72,10 +69,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get createGroupCurrencyHint =>
       'This group\'s currency. It can\'t be changed later.';
-
-  @override
-  String get currencySheetSubtitle =>
-      'Default for new trips. Existing trips keep their currency.';
 
   @override
   String get themeSheetTitle => 'Theme';
@@ -160,18 +153,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSectionDisplay => 'DISPLAY';
 
   @override
-  String get profileSectionJourney => 'YOUR JOURNEY';
-
-  @override
-  String get profileStatsGroups => 'Groups';
-
-  @override
-  String get profileStatsEvents => 'Events';
-
-  @override
-  String get profileStatsSpent => 'Spent';
-
-  @override
   String get profileStatsJourneysLabel => 'JOURNEYS';
 
   @override
@@ -179,15 +160,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileStatsSpentLabel => 'SPENT';
-
-  @override
-  String get profileNotificationsSectionLabel => 'NOTIFICATIONS';
-
-  @override
-  String get profileNotificationsTitle => 'Push Notifications';
-
-  @override
-  String get profileNotificationsEnabled => 'Enabled';
 
   @override
   String get profileNotificationsDisabledHint => 'Enable in device Settings';
@@ -200,21 +172,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t register — tap to retry';
 
   @override
-  String get profileAboutVersion => 'Version';
-
-  @override
-  String get profileAboutSendFeedback => 'Send Feedback';
-
-  @override
   String get profileAboutSendFeedbackRow => 'Send feedback';
-
-  @override
-  String get profileAboutLicenses => 'Open-source Licenses';
-
-  @override
-  String profileAboutFallbackEmail(String email) {
-    return 'Email: $email';
-  }
 
   @override
   String get profileAboutHelpCenter => 'Help center';
@@ -236,9 +194,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileTitle => 'Profile';
-
-  @override
-  String get profileAnonymousTraveller => 'Anonymous traveller';
 
   @override
   String get profileBackupStatusNotBackedUp => 'Not backed up';
@@ -268,9 +223,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profilePreferencesNotifications => 'Notifications';
-
-  @override
-  String get profilePreferencesCurrency => 'Currency';
 
   @override
   String get profilePreferencesLanguage => 'Language';
@@ -408,9 +360,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileDeletionError => 'Couldn\'t delete the account. Try again.';
 
   @override
-  String get commonApply => 'Apply';
-
-  @override
   String get commonRetry => 'Retry';
 
   @override
@@ -423,12 +372,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonGoHome => 'Go Home';
 
   @override
-  String get commonSemanticBackspace => 'Backspace';
-
-  @override
-  String get commonSemanticDecimalPoint => 'Decimal point';
-
-  @override
   String get timelineToday => 'Today';
 
   @override
@@ -436,24 +379,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get timelineRangeSeparator => '—';
-
-  @override
-  String get ledgerBucketFood => 'Food';
-
-  @override
-  String get ledgerBucketLodging => 'Lodging';
-
-  @override
-  String get ledgerBucketTransit => 'Transit';
-
-  @override
-  String get ledgerBucketGroceries => 'Groceries';
-
-  @override
-  String get ledgerBucketActivities => 'Activities';
-
-  @override
-  String get ledgerBucketOther => 'Other';
 
   @override
   String get categoryFood => 'Food';
@@ -490,17 +415,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerEventSettingsTooltip => 'Event settings';
-
-  @override
-  String ledgerPeopleCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count PEOPLE',
-      one: '1 PERSON',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get ledgerAllFilter => 'All';
@@ -609,9 +523,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerSomeoneLower => 'someone';
 
   @override
-  String get ledgerUnknown => 'Unknown';
-
-  @override
   String get ledgerExpenseFallback => 'Expense';
 
   @override
@@ -658,57 +569,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get ledgerRecentExpenses => 'RECENT EXPENSES';
-
-  @override
-  String get ledgerRecordedHistory => 'RECORDED HISTORY';
-
-  @override
-  String get ledgerPaymentDue => 'PAYMENT DUE';
-
-  @override
-  String get ledgerYouAreOwed => 'YOU ARE OWED';
-
-  @override
-  String get ledgerYouOwe => 'YOU OWE';
-
-  @override
-  String get ledgerTripTotalPending => 'Trip Total Pending';
-
-  @override
-  String get ledgerTotalPaidByYou => 'Total Paid by You';
-
-  @override
-  String get ledgerGeneralCategory => 'General';
-
-  @override
-  String ledgerOwedToYou(Object currency, Object amount) {
-    return 'Owed to you $currency $amount';
-  }
-
-  @override
-  String ledgerYouOweAmount(Object currency, Object amount) {
-    return 'You owe $currency $amount';
-  }
-
-  @override
-  String get ledgerSettled => 'Settled';
-
-  @override
-  String ledgerPeople(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count people',
-      one: '1 person',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get ledgerGroup => 'group';
-
-  @override
   String get ledgerAddExpense => 'Add expense';
 
   @override
@@ -727,9 +587,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorActionSave => 'Save';
 
   @override
-  String get editorCategoryPrompt => 'What was this for?';
-
-  @override
   String get editorCategory => 'Category';
 
   @override
@@ -742,16 +599,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorChange => 'Change';
 
   @override
-  String get editorSplitBetween => 'Split between';
-
-  @override
   String get editorHow => 'How';
 
   @override
   String get editorWhere => 'Where';
-
-  @override
-  String get editorCustomise => 'Customise';
 
   @override
   String editorAmountLabel(Object currency) {
@@ -820,9 +671,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSelectedPayer => 'Selected payer';
 
   @override
-  String get editorSelectedPaidFullAmount => 'Selected · paid the full amount';
-
-  @override
   String editorProvenanceAdded(Object name) {
     return 'Added by $name';
   }
@@ -834,21 +682,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editorEventDefault => 'EVENT DEFAULT';
-
-  @override
-  String get editorTapCustomiseSplit =>
-      'Tap Customise to pick who splits this.';
-
-  @override
-  String editorSplitSummary(Object scope, int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count ways',
-      one: '1 way',
-    );
-    return '$scope · $_temp0';
-  }
 
   @override
   String editorEachAmount(Object amount) {
@@ -863,26 +696,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editorPickAtLeastTwoToSplit =>
       'Pick at least two people to split.';
-
-  @override
-  String editorSplitEvenly(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count ways',
-      one: '1 way',
-    );
-    return 'Split evenly across $_temp0.';
-  }
-
-  @override
-  String get editorWeightedByShares => 'Weighted by shares.';
-
-  @override
-  String get editorPerPersonAmounts => 'Per-person amounts.';
-
-  @override
-  String get editorPerPersonPercents => 'Per-person percents.';
 
   @override
   String get editorAmountsVary => 'Amounts vary per person.';
@@ -924,9 +737,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorDiscardConfirm => 'Discard';
 
   @override
-  String get editorCustomiseSplit => 'Customise split';
-
-  @override
   String get editorSelectParticipants => 'SELECT PARTICIPANTS';
 
   @override
@@ -951,14 +761,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editorShadowProfile => 'Hasn\'t joined yet';
-
-  @override
-  String get editorPaidByLabel => 'PAID BY';
-
-  @override
-  String editorParticipantMe(Object name) {
-    return '$name (Me)';
-  }
 
   @override
   String get editorCouldNotLoadExpenseTitle => 'Could not load expense';
@@ -1006,30 +808,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSplitModeExactShort => 'Exact';
 
   @override
-  String get editorSplitModePercentShort => '%';
-
-  @override
   String editorSplitAddsUpTo(String amount) {
     return 'Adds up to $amount';
   }
-
-  @override
-  String get editorReceiptOptional => 'RECEIPT (OPTIONAL)';
-
-  @override
-  String get editorReceiptUploading => 'Uploading receipt...';
-
-  @override
-  String get editorReceiptAttached => 'Receipt attached';
-
-  @override
-  String get editorReceiptTapToChange => 'Tap to change';
-
-  @override
-  String get editorReceiptAddPhoto => 'Add a receipt photo';
-
-  @override
-  String get customSplitTitle => 'Customise split';
 
   @override
   String get customSplitCancel => 'Cancel';
@@ -1042,18 +823,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get customSplitTotal => 'TOTAL';
-
-  @override
-  String get customSplitModeEqually => 'Equally';
-
-  @override
-  String get customSplitModeShares => 'Shares';
-
-  @override
-  String get customSplitModeExact => 'Exact';
-
-  @override
-  String get customSplitModePercent => 'Percent';
 
   @override
   String get editorSplitItemized => 'Itemized';
@@ -1165,36 +934,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adjustmentDone => 'Done';
-
-  @override
-  String get categoryPickerTitle => 'What\'s this for?';
-
-  @override
-  String get categoryPickerCouldNotLoad => 'Could not load categories.';
-
-  @override
-  String get categoryPickerRestaurantsBarsCafes => 'Restaurants, bars, cafes';
-
-  @override
-  String get categoryPickerHotelsRentals => 'Hotels, rentals';
-
-  @override
-  String get categoryPickerTaxiTrainFuel => 'Taxi, train, fuel';
-
-  @override
-  String get categoryPickerMarketsSupplies => 'Markets, supplies';
-
-  @override
-  String get categoryPickerToursTickets => 'Tours, tickets';
-
-  @override
-  String get categoryPickerPetrolCharging => 'Petrol, charging';
-
-  @override
-  String get categoryPickerEquipmentSupplies => 'Equipment, supplies';
-
-  @override
-  String get categoryPickerAnythingElse => 'Anything else';
 
   @override
   String get settleUpTitle => 'Settle Up';
@@ -1375,17 +1114,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String settleUpOptimizedPayments(Object subjectName) {
     return 'Optimized to reduce the number of payments across $subjectName.';
-  }
-
-  @override
-  String settleUpSummaryTransfers(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count transfers',
-      one: '1 transfer',
-    );
-    return '$_temp0';
   }
 
   @override
@@ -1651,9 +1379,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDone => 'Done';
 
   @override
-  String get commonContinue => 'Continue';
-
-  @override
   String get nameValidationEmpty => 'Name can\'t be empty.';
 
   @override
@@ -1670,9 +1395,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeActiveJourneys => 'Active journeys';
-
-  @override
-  String get homeSeeAll => 'See all';
 
   @override
   String get homeSeeActivity => 'View history';
@@ -1836,17 +1558,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Some data couldn\'t load — balance may be incomplete';
 
   @override
-  String get homeSpendingUnavailable => 'Spending data unavailable';
-
-  @override
-  String homeWeeklySpending(Object currency) {
-    return 'Weekly Spending ($currency)';
-  }
-
-  @override
-  String get homeNoSpendingThisWeek => 'No spending this week';
-
-  @override
   String get homeBottomNavGroups => 'Groups';
 
   @override
@@ -1860,15 +1571,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeQuickAddExpense => 'Add Expense';
-
-  @override
-  String get homeQuickSettleUp => 'Settle Up';
-
-  @override
-  String get homeQuickInviteFriend => 'Invite Friend';
-
-  @override
-  String get homeQuickActivity => 'Activity';
 
   @override
   String get addExpenseSheetTitle => 'Add expense to…';
@@ -2138,24 +1840,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activityGroupExpenseDeletedGeneric => 'deleted an expense';
 
   @override
-  String get activityTitlePaymentRecorded => 'Payment recorded';
-
-  @override
-  String get activityTitleEventCreated => 'Event created';
-
-  @override
-  String get activityTitleEventRemoved => 'Event removed';
-
-  @override
-  String get activityTitleMemberJoined => 'Member joined';
-
-  @override
-  String get activityTitleMemberLeft => 'Member left';
-
-  @override
-  String get activityTitleGeneric => 'Activity';
-
-  @override
   String get eventTypeTripLabel => 'Trip';
 
   @override
@@ -2397,19 +2081,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventNothingToSettleYet => 'Nothing to settle yet';
 
   @override
-  String get eventEveryoneSquare => 'Everyone is square on this trip.';
-
-  @override
-  String get eventAddFirstExpenseHint =>
-      'Add the first expense to start splitting.';
-
-  @override
-  String get eventBreakdownOwesYou => 'owes you';
-
-  @override
-  String get eventBreakdownYouOwe => 'you owe';
-
-  @override
   String get eventTripTotal => 'Trip total';
 
   @override
@@ -2422,65 +2093,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventTotalLabelEvent => 'Event total';
 
   @override
-  String eventExpenseCountInline(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count expenses',
-      one: '1 expense',
-    );
-    return '· $_temp0';
-  }
-
-  @override
-  String get eventLedgerLink => 'Ledger →';
-
-  @override
-  String get eventRecent => 'Recent';
-
-  @override
-  String get eventSeeAll => 'See all →';
-
-  @override
-  String get eventYouPaid => 'You paid';
-
-  @override
-  String eventPaidByName(Object name) {
-    return '$name paid';
-  }
-
-  @override
-  String get eventAddFirstExpenseTitle => 'Add the first expense';
-
-  @override
-  String get eventAddFirstExpenseBody => 'Pick who paid, split it fairly.';
-
-  @override
-  String eventPeopleOverline(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count people',
-      one: '1 person',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String eventSplittingBetweenYouAndOthers(int othersCount) {
-    String _temp0 = intl.Intl.pluralLogic(
-      othersCount,
-      locale: localeName,
-      other: 'Splitting between you and $othersCount others',
-      one: 'Splitting between you and 1 other',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get eventYou => 'You';
-
-  @override
   String eventDayOf(int currentDay, int totalDays) {
     return 'Day $currentDay of $totalDays';
   }
@@ -2491,27 +2103,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get eventMissingMessage =>
       'It may have been deleted, or the link is incorrect.';
-
-  @override
-  String eventSemanticCard(Object eventName, int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count people',
-      one: '1 person',
-    );
-    return '$eventName, $_temp0';
-  }
-
-  @override
-  String eventYouOweAmount(Object amount, Object currency) {
-    return 'You owe $currency $amount';
-  }
-
-  @override
-  String eventYouAreOwedAmount(Object amount, Object currency) {
-    return 'You are owed $currency $amount';
-  }
 
   @override
   String get groupNameLabel => 'Group Name';
@@ -2554,9 +2145,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'A group is a circle of people you share expenses with — a household, a travel crew, a project team.';
 
   @override
-  String get groupGlyph => 'Stamp';
-
-  @override
   String get groupStampInk => 'Ink';
 
   @override
@@ -2577,11 +2165,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupInviteCodeCopied => 'Invite code copied';
-
-  @override
-  String groupShareMessage(Object code) {
-    return 'Join my group on Rihla! Use code $code to join.';
-  }
 
   @override
   String groupShareSubject(Object name) {
@@ -2665,12 +2248,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get groupJoinFailed =>
       'Couldn\'t join the group. Check your connection and try again.';
-
-  @override
-  String get groupMemberJoinedDescription => 'joined the group';
-
-  @override
-  String get groupMemberLeftDescription => 'left the group';
 
   @override
   String get groupEvents => 'Events';
@@ -2763,9 +2340,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupMembersLoading => 'Loading members…';
-
-  @override
-  String get groupFormerMember => 'Former member';
 
   @override
   String get groupRoleYou => 'You';
@@ -3316,11 +2890,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupSettleUpAcrossEventsLabel => 'Across events';
 
   @override
-  String errorPageNotFound(Object location) {
-    return 'Page not found: $location';
-  }
-
-  @override
   String get errorPageNotFoundTitle => 'Page not found';
 
   @override
@@ -3493,9 +3062,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t complete the claim. Try again.';
 
   @override
-  String get groupClaimNoRequests => 'No pending claim requests.';
-
-  @override
   String get recapOpenBannerLead => 'See the trip so far';
 
   @override
@@ -3527,16 +3093,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapSpendingFrozenNoDate => 'Spending frozen';
 
   @override
-  String get recapYouTitle => 'You';
-
-  @override
   String get recapYouPaid => 'You paid';
 
   @override
   String get recapYourShare => 'Your share';
-
-  @override
-  String get recapSettlements => 'Settlements';
 
   @override
   String get recapNet => 'Net';

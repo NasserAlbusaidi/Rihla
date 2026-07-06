@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/screens/splash_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/l10n/generated/app_localizations_ar.dart';
 
 /// Wraps [SplashScreen] in a MaterialApp carrying the localization delegates,
 /// mirroring how main.dart's three boot MaterialApps now wire l10n (#286).
@@ -114,12 +115,8 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('لا يوجد اتصال'), findsOneWidget);
-    expect(
-      find.text(
-        'يحتاج رحلة إلى اتصال بالإنترنت عند تشغيله لأول مرة. اتصل بالإنترنت وحاول مرة أخرى.',
-      ),
-      findsOneWidget,
-    );
+    final ar = AppLocalizationsAr();
+    expect(find.text(ar.splashOfflineTitle), findsOneWidget);
+    expect(find.text(ar.splashOfflineBody), findsOneWidget);
   });
 }

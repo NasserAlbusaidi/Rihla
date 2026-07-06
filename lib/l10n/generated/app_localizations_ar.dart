@@ -25,9 +25,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonDelete => 'حذف';
 
   @override
-  String get commonOK => 'موافق';
-
-  @override
   String get currencyOMR => 'ريال عُماني';
 
   @override
@@ -72,10 +69,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get createGroupCurrencyHint =>
       'عملة هذه المجموعة. لا يمكن تغييرها لاحقًا.';
-
-  @override
-  String get currencySheetSubtitle =>
-      'الافتراضية للرحلات الجديدة. تحتفظ الرحلات الحالية بعملتها.';
 
   @override
   String get themeSheetTitle => 'المظهر';
@@ -160,18 +153,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileSectionDisplay => 'العرض';
 
   @override
-  String get profileSectionJourney => 'رحلتك';
-
-  @override
-  String get profileStatsGroups => 'مجموعات';
-
-  @override
-  String get profileStatsEvents => 'فعاليات';
-
-  @override
-  String get profileStatsSpent => 'المنفق';
-
-  @override
   String get profileStatsJourneysLabel => 'رحلات';
 
   @override
@@ -179,15 +160,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileStatsSpentLabel => 'المنفق';
-
-  @override
-  String get profileNotificationsSectionLabel => 'الإشعارات';
-
-  @override
-  String get profileNotificationsTitle => 'إشعارات الدفع';
-
-  @override
-  String get profileNotificationsEnabled => 'مُفعّل';
 
   @override
   String get profileNotificationsDisabledHint => 'فعّل من إعدادات الجهاز';
@@ -200,21 +172,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر التسجيل — اضغط لإعادة المحاولة';
 
   @override
-  String get profileAboutVersion => 'الإصدار';
-
-  @override
-  String get profileAboutSendFeedback => 'إرسال ملاحظات';
-
-  @override
   String get profileAboutSendFeedbackRow => 'إرسال ملاحظات';
-
-  @override
-  String get profileAboutLicenses => 'التراخيص مفتوحة المصدر';
-
-  @override
-  String profileAboutFallbackEmail(String email) {
-    return 'البريد: $email';
-  }
 
   @override
   String get profileAboutHelpCenter => 'مركز المساعدة';
@@ -236,9 +194,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileTitle => 'الملف الشخصي';
-
-  @override
-  String get profileAnonymousTraveller => 'مسافر مجهول';
 
   @override
   String get profileBackupStatusNotBackedUp => 'غير محفوظ احتياطيًا';
@@ -270,9 +225,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profilePreferencesNotifications => 'الإشعارات';
 
   @override
-  String get profilePreferencesCurrency => 'العملة';
-
-  @override
   String get profilePreferencesLanguage => 'اللغة';
 
   @override
@@ -298,7 +250,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get deleteAccountContent =>
-      'سيؤدي هذا إلى حذف حسابك في رحلة نهائيًا. سيُحرَّر بريدك الإلكتروني المرتبط (إن وُجد) ليُتاح استخدامه مجددًا. ستصبح الرحلات والنفقات والأرصدة المرتبطة بحسابك غير قابلة للوصول. لا يمكن التراجع.';
+      'سيؤدي هذا إلى حذف حسابك في Rihla نهائيًا. سيُحرَّر بريدك الإلكتروني المرتبط (إن وُجد) ليُتاح استخدامه مجددًا. ستصبح الرحلات والنفقات والأرصدة المرتبطة بحسابك غير قابلة للوصول. لا يمكن التراجع.';
 
   @override
   String get deleteAccountConfirm => 'حذف الحساب';
@@ -380,7 +332,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get profileShareMessage => 'أقسم مصاريف الرحلات مع رحلة. جرّبها.';
+  String get profileShareMessage => 'أقسم مصاريف الرحلات مع Rihla. جرّبها.';
 
   @override
   String get profileSnackHandleCopied => 'تم نسخ المعرّف';
@@ -407,9 +359,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileDeletionError => 'تعذّر حذف الحساب. أعد المحاولة.';
 
   @override
-  String get commonApply => 'تطبيق';
-
-  @override
   String get commonRetry => 'إعادة المحاولة';
 
   @override
@@ -422,12 +371,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonGoHome => 'العودة للرئيسية';
 
   @override
-  String get commonSemanticBackspace => 'حذف للخلف';
-
-  @override
-  String get commonSemanticDecimalPoint => 'فاصلة عشرية';
-
-  @override
   String get timelineToday => 'اليوم';
 
   @override
@@ -435,24 +378,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get timelineRangeSeparator => '—';
-
-  @override
-  String get ledgerBucketFood => 'طعام';
-
-  @override
-  String get ledgerBucketLodging => 'إقامة';
-
-  @override
-  String get ledgerBucketTransit => 'تنقل';
-
-  @override
-  String get ledgerBucketGroceries => 'مشتريات غذائية';
-
-  @override
-  String get ledgerBucketActivities => 'أنشطة';
-
-  @override
-  String get ledgerBucketOther => 'أخرى';
 
   @override
   String get categoryFood => 'طعام';
@@ -489,21 +414,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get ledgerEventSettingsTooltip => 'إعدادات الفعالية';
-
-  @override
-  String ledgerPeopleCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصان',
-      one: 'شخص واحد',
-      zero: 'لا أشخاص',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get ledgerAllFilter => 'الكل';
@@ -618,9 +528,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ledgerSomeoneLower => 'شخص ما';
 
   @override
-  String get ledgerUnknown => 'غير معروف';
-
-  @override
   String get ledgerExpenseFallback => 'مصروف';
 
   @override
@@ -670,61 +577,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get ledgerRecentExpenses => 'المصاريف الأخيرة';
-
-  @override
-  String get ledgerRecordedHistory => 'السجل المسجل';
-
-  @override
-  String get ledgerPaymentDue => 'دفعة مستحقة';
-
-  @override
-  String get ledgerYouAreOwed => 'مستحق لك';
-
-  @override
-  String get ledgerYouOwe => 'عليك دفع';
-
-  @override
-  String get ledgerTripTotalPending => 'إجمالي المعلّق في الرحلة';
-
-  @override
-  String get ledgerTotalPaidByYou => 'إجمالي ما دفعته';
-
-  @override
-  String get ledgerGeneralCategory => 'عام';
-
-  @override
-  String ledgerOwedToYou(Object currency, Object amount) {
-    return 'مستحق لك $currency $amount';
-  }
-
-  @override
-  String ledgerYouOweAmount(Object currency, Object amount) {
-    return 'أنت مدين $currency $amount';
-  }
-
-  @override
-  String get ledgerSettled => 'مُسوّى';
-
-  @override
-  String ledgerPeople(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصان',
-      one: 'شخص واحد',
-      zero: 'لا أشخاص',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get ledgerGroup => 'المجموعة';
-
-  @override
   String get ledgerAddExpense => 'إضافة مصروف';
 
   @override
@@ -743,9 +595,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorActionSave => 'حفظ';
 
   @override
-  String get editorCategoryPrompt => 'ما كان الغرض منه؟';
-
-  @override
   String get editorCategory => 'الفئة';
 
   @override
@@ -758,16 +607,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorChange => 'تغيير';
 
   @override
-  String get editorSplitBetween => 'التقسيم بين';
-
-  @override
   String get editorHow => 'الطريقة';
 
   @override
   String get editorWhere => 'المكان';
-
-  @override
-  String get editorCustomise => 'تخصيص';
 
   @override
   String editorAmountLabel(Object currency) {
@@ -835,9 +678,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorSelectedPayer => 'الدافع المحدد';
 
   @override
-  String get editorSelectedPaidFullAmount => 'محدد · دفع المبلغ كاملًا';
-
-  @override
   String editorProvenanceAdded(Object name) {
     return 'أضافه $name';
   }
@@ -851,24 +691,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorEventDefault => 'افتراضي الفعالية';
 
   @override
-  String get editorTapCustomiseSplit =>
-      'اضغط تخصيص لاختيار من يشارك في التقسيم.';
-
-  @override
-  String editorSplitSummary(Object scope, int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصان',
-      one: 'شخص واحد',
-    );
-    return '$scope · $_temp0';
-  }
-
-  @override
   String editorEachAmount(Object amount) {
     return '$amount لكل شخص';
   }
@@ -880,29 +702,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get editorPickAtLeastTwoToSplit => 'اختر شخصين على الأقل للتقسيم.';
-
-  @override
-  String editorSplitEvenly(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصين',
-      one: 'شخص واحد',
-    );
-    return 'قسّم بالتساوي بين $_temp0.';
-  }
-
-  @override
-  String get editorWeightedByShares => 'موزون حسب الحصص.';
-
-  @override
-  String get editorPerPersonAmounts => 'مبالغ لكل شخص.';
-
-  @override
-  String get editorPerPersonPercents => 'نِسب لكل شخص.';
 
   @override
   String get editorAmountsVary => 'تختلف المبالغ لكل شخص.';
@@ -943,9 +742,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorDiscardConfirm => 'تجاهل';
 
   @override
-  String get editorCustomiseSplit => 'تخصيص التقسيم';
-
-  @override
   String get editorSelectParticipants => 'اختيار المشاركين';
 
   @override
@@ -974,14 +770,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get editorShadowProfile => 'لم ينضم بعد';
-
-  @override
-  String get editorPaidByLabel => 'دفع بواسطة';
-
-  @override
-  String editorParticipantMe(Object name) {
-    return '$name (أنا)';
-  }
 
   @override
   String get editorCouldNotLoadExpenseTitle => 'تعذّر تحميل المصروف';
@@ -1028,30 +816,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorSplitModeExactShort => 'محدّد';
 
   @override
-  String get editorSplitModePercentShort => '٪';
-
-  @override
   String editorSplitAddsUpTo(String amount) {
     return 'المجموع $amount';
   }
-
-  @override
-  String get editorReceiptOptional => 'الإيصال (اختياري)';
-
-  @override
-  String get editorReceiptUploading => 'جارٍ رفع الإيصال...';
-
-  @override
-  String get editorReceiptAttached => 'تم إرفاق الإيصال';
-
-  @override
-  String get editorReceiptTapToChange => 'اضغط للتغيير';
-
-  @override
-  String get editorReceiptAddPhoto => 'إضافة صورة إيصال';
-
-  @override
-  String get customSplitTitle => 'تخصيص التقسيم';
 
   @override
   String get customSplitCancel => 'إلغاء';
@@ -1064,18 +831,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get customSplitTotal => 'الإجمالي';
-
-  @override
-  String get customSplitModeEqually => 'بالتساوي';
-
-  @override
-  String get customSplitModeShares => 'حصص';
-
-  @override
-  String get customSplitModeExact => 'محدد';
-
-  @override
-  String get customSplitModePercent => 'نسبة مئوية';
 
   @override
   String get editorSplitItemized => 'حسب الأصناف';
@@ -1188,36 +943,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get adjustmentDone => 'تم';
-
-  @override
-  String get categoryPickerTitle => 'ما الغرض منه؟';
-
-  @override
-  String get categoryPickerCouldNotLoad => 'تعذّر تحميل الفئات.';
-
-  @override
-  String get categoryPickerRestaurantsBarsCafes => 'مطاعم ومقاهٍ';
-
-  @override
-  String get categoryPickerHotelsRentals => 'فنادق وإيجارات';
-
-  @override
-  String get categoryPickerTaxiTrainFuel => 'تاكسي وقطار ووقود';
-
-  @override
-  String get categoryPickerMarketsSupplies => 'أسواق ومستلزمات';
-
-  @override
-  String get categoryPickerToursTickets => 'جولات وتذاكر';
-
-  @override
-  String get categoryPickerPetrolCharging => 'وقود وشحن';
-
-  @override
-  String get categoryPickerEquipmentSupplies => 'معدات ومستلزمات';
-
-  @override
-  String get categoryPickerAnythingElse => 'أي شيء آخر';
 
   @override
   String get settleUpTitle => 'تسوية الحساب';
@@ -1401,21 +1126,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String settleUpOptimizedPayments(Object subjectName) {
     return 'تم تقليل عدد الدفعات ضمن $subjectName.';
-  }
-
-  @override
-  String settleUpSummaryTransfers(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count تحويل',
-      many: '$count تحويلًا',
-      few: '$count تحويلات',
-      two: 'تحويلان',
-      one: 'تحويل واحد',
-      zero: 'لا تحويلات',
-    );
-    return '$_temp0';
   }
 
   @override
@@ -1692,9 +1402,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonDone => 'تم';
 
   @override
-  String get commonContinue => 'متابعة';
-
-  @override
   String get nameValidationEmpty => 'لا يمكن أن يكون الاسم فارغًا.';
 
   @override
@@ -1710,9 +1417,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeActiveJourneys => 'الرحلات النشطة';
-
-  @override
-  String get homeSeeAll => 'عرض الكل';
 
   @override
   String get homeSeeActivity => 'عرض السجل';
@@ -1752,7 +1456,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeRestoreWithEmail => 'أو الاستعادة عبر البريد الإلكتروني';
 
   @override
-  String get homeRestoreSectionCaption => 'استخدمت رحلة من قبل؟';
+  String get homeRestoreSectionCaption => 'استخدمت Rihla من قبل؟';
 
   @override
   String get homeSetNameChip => 'عيّن اسمك';
@@ -1884,17 +1588,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تحميل بعض البيانات — قد يكون الرصيد غير مكتمل';
 
   @override
-  String get homeSpendingUnavailable => 'بيانات الإنفاق غير متاحة';
-
-  @override
-  String homeWeeklySpending(Object currency) {
-    return 'الإنفاق الأسبوعي ($currency)';
-  }
-
-  @override
-  String get homeNoSpendingThisWeek => 'لا يوجد إنفاق هذا الأسبوع';
-
-  @override
   String get homeBottomNavGroups => 'المجموعات';
 
   @override
@@ -1908,15 +1601,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeQuickAddExpense => 'إضافة مصروف';
-
-  @override
-  String get homeQuickSettleUp => 'تسوية';
-
-  @override
-  String get homeQuickInviteFriend => 'دعوة صديق';
-
-  @override
-  String get homeQuickActivity => 'النشاط';
 
   @override
   String get addExpenseSheetTitle => 'إضافة مصروف إلى…';
@@ -2191,24 +1875,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activityGroupExpenseDeletedGeneric => 'حذف مصروف';
 
   @override
-  String get activityTitlePaymentRecorded => 'تم تسجيل دفعة';
-
-  @override
-  String get activityTitleEventCreated => 'تم إنشاء فعالية';
-
-  @override
-  String get activityTitleEventRemoved => 'تم حذف فعالية';
-
-  @override
-  String get activityTitleMemberJoined => 'انضمام عضو';
-
-  @override
-  String get activityTitleMemberLeft => 'مغادرة عضو';
-
-  @override
-  String get activityTitleGeneric => 'نشاط';
-
-  @override
   String get eventTypeTripLabel => 'رحلة';
 
   @override
@@ -2451,18 +2117,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get eventNothingToSettleYet => 'لا شيء للتسوية بعد';
 
   @override
-  String get eventEveryoneSquare => 'الجميع متوازن في هذه الرحلة.';
-
-  @override
-  String get eventAddFirstExpenseHint => 'أضف أول مصروف لبدء التقسيم.';
-
-  @override
-  String get eventBreakdownOwesYou => 'مدين لك';
-
-  @override
-  String get eventBreakdownYouOwe => 'أنت مدين';
-
-  @override
   String get eventTripTotal => 'إجمالي الرحلة';
 
   @override
@@ -2475,77 +2129,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get eventTotalLabelEvent => 'إجمالي الفعالية';
 
   @override
-  String eventExpenseCountInline(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count مصروف',
-      many: '$count مصروفًا',
-      few: '$count مصاريف',
-      two: 'مصروفان',
-      one: 'مصروف واحد',
-      zero: 'لا مصاريف',
-    );
-    return '· $_temp0';
-  }
-
-  @override
-  String get eventLedgerLink => 'الدفتر ←';
-
-  @override
-  String get eventRecent => 'الأحدث';
-
-  @override
-  String get eventSeeAll => 'عرض الكل ←';
-
-  @override
-  String get eventYouPaid => 'أنت دفعت';
-
-  @override
-  String eventPaidByName(Object name) {
-    return '$name دفع';
-  }
-
-  @override
-  String get eventAddFirstExpenseTitle => 'أضف أول مصروف';
-
-  @override
-  String get eventAddFirstExpenseBody => 'اختر من دفع، وقسّمه بعدل.';
-
-  @override
-  String eventPeopleOverline(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصان',
-      one: 'شخص واحد',
-      zero: 'لا أشخاص',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String eventSplittingBetweenYouAndOthers(int othersCount) {
-    String _temp0 = intl.Intl.pluralLogic(
-      othersCount,
-      locale: localeName,
-      other: 'التقسيم بينك وبين $othersCount شخص آخر',
-      many: 'التقسيم بينك وبين $othersCount شخصًا آخر',
-      few: 'التقسيم بينك وبين $othersCount أشخاص آخرين',
-      two: 'التقسيم بينك وبين شخصين آخرين',
-      one: 'التقسيم بينك وبين شخص آخر',
-      zero: 'التقسيم عليك فقط',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get eventYou => 'أنت';
-
-  @override
   String eventDayOf(int currentDay, int totalDays) {
     return 'اليوم $currentDay من $totalDays';
   }
@@ -2555,31 +2138,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get eventMissingMessage => 'ربما تم حذفها، أو أن الرابط غير صحيح.';
-
-  @override
-  String eventSemanticCard(Object eventName, int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصان',
-      one: 'شخص واحد',
-      zero: 'لا أشخاص',
-    );
-    return '$eventName، $_temp0';
-  }
-
-  @override
-  String eventYouOweAmount(Object amount, Object currency) {
-    return 'أنت مدين $currency $amount';
-  }
-
-  @override
-  String eventYouAreOwedAmount(Object amount, Object currency) {
-    return 'مستحق لك $currency $amount';
-  }
 
   @override
   String get groupNameLabel => 'اسم المجموعة';
@@ -2623,9 +2181,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'المجموعة هي دائرة أشخاص تتشاركون معهم المصاريف — بيت، فريق سفر، أو فريق مشروع.';
 
   @override
-  String get groupGlyph => 'الطابع';
-
-  @override
   String get groupStampInk => 'اللون';
 
   @override
@@ -2645,11 +2200,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupInviteCodeCopied => 'تم نسخ رمز الدعوة';
-
-  @override
-  String groupShareMessage(Object code) {
-    return 'انضم إلى مجموعتي على Rihla! استخدم الرمز $code للانضمام.';
-  }
 
   @override
   String groupShareSubject(Object name) {
@@ -2733,12 +2283,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get groupJoinFailed =>
       'تعذّر الانضمام إلى المجموعة. تحقق من اتصالك وحاول مرة أخرى.';
-
-  @override
-  String get groupMemberJoinedDescription => 'انضم إلى المجموعة';
-
-  @override
-  String get groupMemberLeftDescription => 'غادر المجموعة';
 
   @override
   String get groupEvents => 'الفعاليات';
@@ -2834,9 +2378,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupMembersLoading => 'جارٍ تحميل الأعضاء…';
-
-  @override
-  String get groupFormerMember => 'عضو سابق';
 
   @override
   String get groupRoleYou => 'أنت';
@@ -3385,11 +2926,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupSettleUpAcrossEventsLabel => 'عبر الفعاليات';
 
   @override
-  String errorPageNotFound(Object location) {
-    return 'الصفحة غير موجودة: $location';
-  }
-
-  @override
   String get errorPageNotFoundTitle => 'الصفحة غير موجودة';
 
   @override
@@ -3412,7 +2948,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splashOfflineBody =>
-      'يحتاج رحلة إلى اتصال بالإنترنت عند تشغيله لأول مرة. اتصل بالإنترنت وحاول مرة أخرى.';
+      'يحتاج Rihla إلى اتصال بالإنترنت عند تشغيله لأول مرة. اتصل بالإنترنت وحاول مرة أخرى.';
 
   @override
   String get notificationRationaleTitle => 'ابقَ على اطّلاع';
@@ -3442,15 +2978,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get durableGateConflict =>
-      'حساب Google هذا يخص حساب رحلة آخر بالفعل. التبديل إليه سيترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً، ثم استخدم حساب Google مختلفًا.';
+      'حساب Google هذا يخص حساب Rihla آخر بالفعل. التبديل إليه سيترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً، ثم استخدم حساب Google مختلفًا.';
 
   @override
   String get durableGateConflictTitle =>
-      'هذا الحساب يحتوي على بيانات رحلة بالفعل';
+      'هذا الحساب يحتوي على بيانات Rihla بالفعل';
 
   @override
   String get durableGateConflictSwitchBody =>
-      'حساب Google هذا يحتوي على بيانات رحلة بالفعل. التبديل إليه؟ سيتابع هذا الجهاز بذلك الحساب.';
+      'حساب Google هذا يحتوي على بيانات Rihla بالفعل. التبديل إليه؟ سيتابع هذا الجهاز بذلك الحساب.';
 
   @override
   String get durableGateSwitch => 'تبديل الحساب';
@@ -3560,9 +3096,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupClaimApproveError => 'تعذّر إكمال المطالبة. حاول مرة أخرى.';
 
   @override
-  String get groupClaimNoRequests => 'لا توجد طلبات مطالبة معلّقة.';
-
-  @override
   String get recapOpenBannerLead => 'ملخّص الرحلة حتى الآن';
 
   @override
@@ -3602,16 +3135,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get recapSpendingFrozenNoDate => 'الإنفاق مجمّد';
 
   @override
-  String get recapYouTitle => 'أنت';
-
-  @override
   String get recapYouPaid => 'دفعت';
 
   @override
   String get recapYourShare => 'حصتك';
-
-  @override
-  String get recapSettlements => 'التسويات';
 
   @override
   String get recapNet => 'الصافي';
