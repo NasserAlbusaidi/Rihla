@@ -118,11 +118,11 @@ void main() {
     expect(p.myDisplayName, 'Sara');
     expect(p.myLines, [(currency: 'OMR', net: Decimal.fromInt(15))]);
 
-    // Bob owes you → POSITIVE chip (signedAmount = -bobNet = -(-15) = +15).
+    // #998: chip = Bob's OWN net. He owes the group 15 → NEGATIVE (rust).
     expect(p.roster, hasLength(1));
     expect(p.roster.single.participantId, 'uid-bob');
     expect(p.roster.single.displayName, 'Bob'); // resolved, NOT a deferred null
-    expect(p.roster.single.signedAmount, Decimal.fromInt(15));
+    expect(p.roster.single.signedAmount, Decimal.fromInt(-15));
     expect(p.roster.single.currency, 'OMR');
 
     expect(p.peopleCountByCurrency, {'OMR': 1});
@@ -172,10 +172,11 @@ void main() {
     ]);
 
     // One roster entry per (Bob, non-zero bucket); sorted by |signedAmount| desc
-    // ⇒ USD (15) before OMR (5). Sara owes Bob ⇒ NEGATIVE chips.
+    // ⇒ USD (15) before OMR (5). #998: chips are Bob's OWN nets — the group
+    // owes him in both buckets ⇒ POSITIVE chips.
     expect(p.roster.map((r) => (r.currency, r.signedAmount)).toList(), [
-      ('USD', Decimal.fromInt(-15)),
-      ('OMR', Decimal.fromInt(-5)),
+      ('USD', Decimal.fromInt(15)),
+      ('OMR', Decimal.fromInt(5)),
     ]);
     expect(p.roster.every((r) => r.participantId == 'uid-bob'), isTrue);
     expect(p.peopleCountByCurrency, {'OMR': 1, 'USD': 1});
