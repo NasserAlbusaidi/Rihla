@@ -2553,10 +2553,6 @@
   "@createGroupShadowOfflineHint": {
     "description": "Shown under the #278 chips field while offline — adding placeholder members needs the addShadowMember callable, which has no offline replay. The group still creates with just the creator."
   },
-  "shadowAddRequiresLink": "Link your account to add people by name — anyone can still join with the invite code.",
-  "@shadowAddRequiresLink": {
-    "description": "#818: shown instead of the offline hint / creator explanation when the current (anonymous) creator has no durable credential — addShadowMember hard-rejects anonymous callers server-side. Reused on the create-screen chips field and the group-settings members section footer."
-  },
   "createGroupShadowNameTaken": "\"{name}\" is already used in this group.",
   "@createGroupShadowNameTaken": {
     "description": "Snackbar when a seeded placeholder name (#278) collides with an existing member; the group is already created and the other names still proceed.",

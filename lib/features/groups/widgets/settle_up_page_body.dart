@@ -145,6 +145,14 @@ class SettleUpPageBody extends StatelessWidget {
   final Map<String, String> rawNames;
   final AsyncValue<List<Settlement>> settlementsAsync;
   final String? currentUid;
+
+  /// Group creator uid (actor policy). When non-null, the per-settlement
+  /// Correct affordance renders only for the creator or a party
+  /// (payer/recipient) of that settlement — mirroring the server gate in
+  /// correctSettlement/correctLogicalSettleUp so other members never tap into
+  /// a permission-denied. Null leaves the affordance ungated (server still
+  /// enforces).
+  final String? groupCreatorId;
   final Map<int, GlobalKey> tileKeys;
 
   /// Pre-selected member to highlight (deep-link).
@@ -230,6 +238,7 @@ class SettleUpPageBody extends StatelessWidget {
     required this.rawNames,
     required this.settlementsAsync,
     required this.currentUid,
+    this.groupCreatorId,
     required this.tileKeys,
     required this.onRecord,
     this.canRecord = true,
@@ -343,6 +352,8 @@ class SettleUpPageBody extends StatelessWidget {
               settlements: history,
               displayNames: displayNames,
               subjectName: subjectName,
+              currentUid: currentUid,
+              groupCreatorId: groupCreatorId,
               onCorrect: onCorrect,
               onCorrectLogical: onCorrectLogical,
             ),
@@ -687,6 +698,8 @@ class _PaymentHistorySection extends StatelessWidget {
     required this.settlements,
     required this.displayNames,
     required this.subjectName,
+    this.currentUid,
+    this.groupCreatorId,
     this.onCorrect,
     this.onCorrectLogical,
   });
@@ -697,12 +710,24 @@ class _PaymentHistorySection extends StatelessWidget {
   /// Group/event name folded into the shareable receipt (#359).
   final String subjectName;
 
+  /// Actor policy inputs — see [SettleUpPageBody.groupCreatorId].
+  final String? currentUid;
+  final String? groupCreatorId;
+
   /// #283: hands a recorded payment back for an offsetting correction.
   final void Function(Settlement settlement)? onCorrect;
 
   /// #753: hands a `groupSettleUpId` back for an atomic logical correction.
   /// Non-null ONLY on the group screen — it also switches on the regroup.
   final void Function(String groupSettleUpId)? onCorrectLogical;
+
+  bool _canCorrect(Settlement settlement) {
+    if (groupCreatorId == null) return true;
+    if (currentUid == null) return false;
+    return currentUid == groupCreatorId ||
+        settlement.payerParticipantId == currentUid ||
+        settlement.recipientParticipantId == currentUid;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -724,7 +749,7 @@ class _PaymentHistorySection extends StatelessWidget {
             displayNames: displayNames,
             subjectName: subjectName,
             index: i,
-            onCorrect: onCorrect,
+            onCorrect: _canCorrect(settlement) ? onCorrect : null,
             soloCorrectionHidden: isSoloCorrectionHidden(
               settlement,
               settlements,
@@ -744,7 +769,7 @@ class _PaymentHistorySection extends StatelessWidget {
                 displayNames: displayNames,
                 subjectName: subjectName,
                 index: i,
-                onCorrect: onCorrect,
+                onCorrect: _canCorrect(settlement) ? onCorrect : null,
                 soloCorrectionHidden: isSoloCorrectionHidden(
                   settlement,
                   settlements,
@@ -760,7 +785,12 @@ class _PaymentHistorySection extends StatelessWidget {
                 index: i,
                 overrideAmount: row.totalAmount,
                 isCorrectedLogical: row.isCorrected,
-                onCorrectLogical: row.affordanceCorrected
+                // Every leg of a decomposed settle-up shares one
+                // payer→recipient pair, so the representative stands in for
+                // the whole set; the server still checks EVERY original.
+                onCorrectLogical:
+                    (row.affordanceCorrected ||
+                        !_canCorrect(row.representative))
                     ? null
                     : () => onCorrectLogical!(row.groupSettleUpId),
               ),

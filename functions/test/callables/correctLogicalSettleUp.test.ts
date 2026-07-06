@@ -429,3 +429,67 @@ describe('correctLogicalSettleUp — happy paths + concurrency', () => {
     expect(revId).not.toContain('/');
   });
 });
+
+// Actor policy: only the group creator, or a caller who is a party (payer OR
+// recipient) on EVERY live tagged original, may reverse a logical settle-up.
+// Party-on-some-but-not-all is denied.
+describe('correctLogicalSettleUp — actor policy (creator-or-party-on-every-original)', () => {
+  const THIRD = 'third';
+
+  test('A1. DENY: member who is neither party nor creator → permission-denied, no writes', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1'); // MEMBER -> OWNER
+    await seedGroupSettlement('groups/g/settlements/gs1'); // MEMBER -> OWNER residual
+
+    await expect(
+      call({ groupId: 'g', groupSettleUpId: SU, correctionNote: CORRECTION_NOTE }, THIRD),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect(await collectionDocs('groups/g/events/e1/settlements')).toHaveLength(1);
+    expect(await collectionDocs('groups/g/settlements')).toHaveLength(1);
+  });
+
+  test('A2. DENY: party on some but not all originals → permission-denied', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEvent('g', 'e2', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1'); // MEMBER -> OWNER
+    await seedEventSettlement('groups/g/events/e2/settlements/s2', {
+      payerParticipantId: THIRD,
+      payerName: 'Third',
+    }); // THIRD -> OWNER
+
+    // MEMBER is payer on s1 but a stranger to s2 — the set is not theirs.
+    await expect(
+      call({ groupId: 'g', groupSettleUpId: SU, correctionNote: CORRECTION_NOTE }, MEMBER),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  test('A3. ALLOW: caller who is a party on EVERY original', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1'); // MEMBER -> OWNER
+    await seedGroupSettlement('groups/g/settlements/gs1'); // MEMBER -> OWNER residual
+
+    const res = await call({ groupId: 'g', groupSettleUpId: SU, correctionNote: CORRECTION_NOTE }, MEMBER);
+    expect(res).toMatchObject({ noop: false, eventScopeWrites: 1, groupScopeWrites: 1 });
+  });
+
+  test('A4. ALLOW: group creator who is a party on none', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: THIRD,
+      recipientName: 'Third',
+    });
+    await seedGroupSettlement('groups/g/settlements/gs1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: THIRD,
+      recipientName: 'Third',
+    });
+
+    const res = await call({ groupId: 'g', groupSettleUpId: SU, correctionNote: CORRECTION_NOTE }, OWNER);
+    expect(res).toMatchObject({ noop: false, eventScopeWrites: 1, groupScopeWrites: 1 });
+  });
+});
