@@ -136,9 +136,10 @@ class _LoadedCard extends StatelessWidget {
       children.add(const _IncompleteNotice());
     }
 
-    // #807: the card's tap only scrolls to the journeys strip (#284) — give
-    // it a visible cue so the tap target stops being invisible. Gated on
-    // onTap so a non-tappable card renders unchanged.
+    // #807: the tappable card carries a visible cue so the tap target stops
+    // being invisible; since PR-5 §3 (#916) the tap opens the per-group
+    // balance breakdown sheet. Gated on onTap so a non-tappable card renders
+    // unchanged.
     if (onTap != null) {
       children.add(const SizedBox(height: 12));
       children.add(
@@ -147,7 +148,7 @@ class _LoadedCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.max,
           children: [
             Icon(
-              Iconsax.arrow_down_1,
+              Iconsax.receipt_item,
               size: 14,
               color: colors.textSecondary,
             ),

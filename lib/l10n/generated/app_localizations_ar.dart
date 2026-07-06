@@ -1850,7 +1850,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeAcrossAllJourneys => 'عبر كل الرحلات';
 
   @override
-  String get homeBalanceHeroHint => 'عرض رحلاتك';
+  String get homeBalanceHeroHint => 'عرض الرصيد حسب المجموعة';
 
   @override
   String get heroBreakdownTitle => 'الرصيد حسب المجموعة';
@@ -2997,10 +2997,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupDeleteSheetTypeSuffix => ' للتأكيد';
-
-  @override
-  String get groupDeleteSheetRetention =>
-      'تُحفظ نسخة لمدة 30 يومًا في حال غيّرت رأيك.';
 
   @override
   String get groupDeleteSheetConfirm => 'حذف المجموعة';

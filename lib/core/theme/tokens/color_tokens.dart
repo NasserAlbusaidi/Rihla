@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 
-/// Typed color token set for the saffron travel-journal direction (v2.0).
+/// Typed color token set for the Falaj (Gulf Modern travel ledger) direction.
 ///
 /// All fields are final Color values. Gradient tokens are computed getters
 /// (LinearGradient is not const-constructable, so they cannot be fields).
 ///
 /// Use [AppColorTokens.light] for the default light palette instance.
 ///
-/// **Migration note:** field names are inherited from the prior earthy/teal
-/// iterations and remain stable to protect existing call sites. Values are
-/// remapped to the saffron palette; semantic groupings (success → sage,
-/// error → rust, primary → saffron, scaffoldBackground → paper, etc.) are
-/// documented per-field below.
+/// **Migration note:** field names — and many per-field descriptors below —
+/// are historical (inherited from earthy/teal/saffron iterations) and remain
+/// stable to protect existing call sites, so some still read in the older
+/// tonal vocabulary (saffron / sage / rust / paper). The *values* are the
+/// Falaj palette (Muscat plaster / night navigation). Trust the role and
+/// `docs/DESIGN.md` §2 (the SSOT), not the field name. Per-field hex citations
+/// were intentionally dropped — the value one line away is the truth.
 final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   const AppColorTokens({
     required this.brightness,
@@ -74,67 +76,67 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Which brightness variant this instance represents.
   final Brightness brightness;
 
-  /// Saffron — primary action color (buttons, FABs, focused inputs, links). `#D17B2C`
+  /// Saffron — primary action color (buttons, FABs, focused inputs, links).
   final Color primary;
 
-  /// Paper — scaffold/page background. `#F6F1E6`
+  /// Paper — scaffold/page background.
   final Color scaffoldBackground;
 
-  /// White — card surface. `#FFFFFF`
+  /// White — card surface.
   final Color cardSurface;
 
-  /// Card-soft warm white — input fill. `#FBF7EE`
+  /// Card-soft — input fill.
   final Color inputFill;
 
-  /// 8% ink hairline border. `rgba(27,26,23,0.08)` solid approximation.
+  /// 8% ink hairline border (solid approximation).
   final Color border;
 
-  /// Ink — primary body text. `#1B1A17`
+  /// Ink — primary body text.
   final Color textPrimary;
 
-  /// Ink-3 — secondary text. `#6B675D`
+  /// Ink-3 — secondary text.
   final Color textSecondary;
 
-  /// Ink-4 — decorative-only tertiary text. `#948F82`. Below AA contrast — never use for functional labels.
+  /// Ink-4 — decorative-only tertiary text. Below AA contrast — never use for functional labels.
   final Color textMuted;
 
-  /// White on saffron — primary button label. `#FFFFFF`
+  /// White on saffron — primary button label.
   final Color textOnPrimary;
 
-  /// Sage — semantic positive surface (badge fill, "owed to you" tone). `#5C7A57`
+  /// Sage — semantic positive surface (badge fill, "owed to you" tone).
   final Color success;
 
-  /// Sage-dark — WCAG-safe positive text. `#3F5A3B`
+  /// Sage-dark — WCAG-safe positive text.
   final Color successText;
 
-  /// Rust — semantic negative surface ("you owe" tone). `#A84B33`
+  /// Rust — semantic negative surface ("you owe" tone).
   final Color error;
 
-  /// Rust-dark — WCAG-safe negative text. `#7A2F1F`
+  /// Rust-dark — WCAG-safe negative text.
   final Color errorText;
 
-  /// Card-soft — disabled control background. `#FBF7EE`
+  /// Card-soft — disabled control background.
   final Color disabled;
 
-  /// Ink-4 — disabled text. `#948F82`
+  /// Ink-4 — disabled text.
   final Color disabledText;
 
-  /// Saffron focus ring — matches primary. `#D17B2C`
+  /// Saffron focus ring — matches primary.
   final Color focusRing;
 
-  /// Saffron-tint — selected chip/item background. `#FBEED5`
+  /// Saffron-tint — selected chip/item background.
   final Color selectionFill;
 
-  /// Ledger module accent — saffron (the only colored module per locked direction). `#D17B2C`
+  /// Ledger module accent — saffron (the only colored module per locked direction).
   final Color moduleLedger;
 
-  /// Ledger module light tint. `#FBEED5`
+  /// Ledger module light tint.
   final Color moduleLedgerLight;
 
-  /// Gear module accent — ink-3 (modules differentiate by icon, not color). `#6B675D`
+  /// Gear module accent — ink-3 (modules differentiate by icon, not color).
   final Color moduleGear;
 
-  /// Gear module light tint — card-soft. `#FBF7EE`
+  /// Gear module light tint — card-soft.
   final Color moduleGearLight;
 
   /// Logistics module accent — ink-3.
@@ -161,16 +163,16 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Memories module light tint — card-soft.
   final Color moduleMemoriesLight;
 
-  /// Ink — header gradient start. `#1B1A17`
+  /// Ink — header gradient start.
   final Color headerGradientStart;
 
-  /// Ink-2 — header gradient end. `#3D3A33`
+  /// Ink-2 — header gradient end.
   final Color headerGradientEnd;
 
-  /// Amber offline indicator (semantic, palette-independent). `#F59E0B`
+  /// Offline indicator — warning hue, re-hued off the old amber to clear brass.
   final Color offlineBannerBackground;
 
-  /// Paper — bottom nav surface. `#F6F1E6`
+  /// Paper — bottom nav surface.
   final Color bottomNavBackground;
 
   /// Saffron — active tab icon.
@@ -188,27 +190,27 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Border — warm enabled border alias.
   final Color borderWarm;
 
-  /// Amber warning — used for warning badges and alerts. `#F59E0B`
+  /// Warning — used for warning badges and alerts (re-hued off the old amber to clear brass).
   final Color warning;
 
-  /// Saffron-dark — paired with [primary] for CTA gradient. `#B5641A`
+  /// Saffron-dark — paired with [primary] for CTA gradient.
   final Color primaryDark;
 
   // ────────── saffron-direction additions ──────────
 
-  /// Paper-deep — secondary paper tone for layered surfaces. `#EFE8D7`
+  /// Paper-deep — secondary paper tone for layered surfaces.
   final Color paperDeep;
 
-  /// Card-soft — warm white between [cardSurface] and [scaffoldBackground]. `#FBF7EE`
+  /// Card-soft — between [cardSurface] and [scaffoldBackground].
   final Color cardSoft;
 
-  /// Ink-2 — between [textPrimary] (ink) and [textSecondary] (ink-3). `#3D3A33`
+  /// Ink-2 — between [textPrimary] (ink) and [textSecondary] (ink-3).
   final Color ink2;
 
-  /// Saffron-soft — `#F4DDB8`. Used for saffron chip backgrounds and journey-glyph fills.
+  /// Saffron-soft. Used for saffron chip backgrounds and journey-glyph fills.
   final Color saffronSoft;
 
-  /// Saffron-tint — `#FBEED5`. Lightest saffron, used for selected chip backgrounds.
+  /// Saffron-tint. Lightest saffron, used for selected chip backgrounds.
   final Color saffronTint;
 
   /// Rule — 8% ink hairline divider. Distinct from [border] which is more solid.
@@ -217,22 +219,22 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Rule-2 — 14% ink hairline, slightly stronger.
   final Color rule2;
 
-  /// Category palette — food. `#C2693B`
+  /// Category palette — food.
   final Color cat1;
 
-  /// Category palette — lodging. `#4F7B96`
+  /// Category palette — lodging.
   final Color cat2;
 
-  /// Category palette — transit. `#8C6A2F`
+  /// Category palette — transit.
   final Color cat3;
 
-  /// Category palette — groceries. `#6F7A3A`
+  /// Category palette — groceries.
   final Color cat4;
 
-  /// Category palette — activities. `#94517A`
+  /// Category palette — activities.
   final Color cat5;
 
-  /// Category palette — other. `#4D5A6A`
+  /// Category palette — other.
   final Color cat6;
 
   /// Computed dark header gradient (not const — LinearGradient is not const-constructable).
@@ -249,7 +251,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
         colors: [primary, primaryDark],
       );
 
-  /// Default saffron light palette instance.
+  /// Default Falaj light palette instance.
   static const AppColorTokens light = AppColorTokens(
     brightness: Brightness.light,
     primary: Color(0xFF8A5D0D), // Saffron
@@ -283,14 +285,14 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     moduleMemoriesLight: Color(0xFFF1F2ED),
     headerGradientStart: Color(0xFF1B1F1E), // Ink
     headerGradientEnd: Color(0xFF333A38), // Ink-2
-    offlineBannerBackground: Color(0xFFC2410C), // Amber (semantic, kept)
+    offlineBannerBackground: Color(0xFFC2410C), // Warning (re-hued off amber)
     bottomNavBackground: Color(0xFFF6F7F5), // Paper
     bottomNavActiveIcon: Color(0xFF8A5D0D), // Saffron
     bottomNavInactiveIcon: Color(0xFF8B918D), // Ink-4
     inputFillWarm: Color(0xFFF1F2ED), // Card-soft alias
     focusBorderWarm: Color(0xFF8A5D0D), // Saffron
     borderWarm: Color(0xFFE3E6E0), // 8% ink alias
-    warning: Color(0xFFC2410C), // Amber
+    warning: Color(0xFFC2410C), // Warning (re-hued off amber)
     primaryDark: Color(0xFF6F4A08), // Saffron-dark
     // Appended saffron tokens:
     paperDeep: Color(0xFFECEEE8),
@@ -308,7 +310,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     cat6: Color(0xFF4D5A6A), // other
   );
 
-  /// Dark palette instance — saffron direction, dark variant.
+  /// Dark palette instance — Falaj, dark variant.
   ///
   /// Tuned for production (#900 PR-4 — DESIGN.md §13 D5 resolved): card
   /// surface tint, the five previously-missing component themes, and input

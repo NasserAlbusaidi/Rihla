@@ -1802,7 +1802,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeAcrossAllJourneys => 'Across all journeys';
 
   @override
-  String get homeBalanceHeroHint => 'See your journeys';
+  String get homeBalanceHeroHint => 'See balance by group';
 
   @override
   String get heroBreakdownTitle => 'Balance by group';
@@ -2928,10 +2928,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupDeleteSheetTypeSuffix => ' TO CONFIRM';
-
-  @override
-  String get groupDeleteSheetRetention =>
-      'A copy is kept for 30 days in case you change your mind.';
 
   @override
   String get groupDeleteSheetConfirm => 'Delete group';
