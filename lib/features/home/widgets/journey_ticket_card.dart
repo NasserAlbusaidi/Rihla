@@ -79,6 +79,10 @@ class JourneyTicketCard extends StatelessWidget {
                               style: AppTypography.caption(
                                 context,
                                 fontSize: 9,
+                                // design-token-justified: white date label sits
+                                // over the event cover-art image (behind a
+                                // blurred ink scrim) — theme-invariant so it
+                                // reads on every cover in light and dark.
                                 color: Colors.white,
                                 letterSpacing: 1.5,
                               ),

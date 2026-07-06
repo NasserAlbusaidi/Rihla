@@ -1100,12 +1100,12 @@ class _ExpenseTopBar extends StatelessWidget {
                   ).copyWith(leadingDistribution: TextLeadingDistribution.even),
                 ),
                 child: isLoading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: context.colors.textOnPrimary,
                         ),
                       )
                     : Text(actionLabel),
@@ -1671,14 +1671,14 @@ class _CategoryChip extends StatelessWidget {
               height: 18,
               decoration: BoxDecoration(
                 color: selected
-                    ? Colors.white.withValues(alpha: 0.18)
+                    ? context.colors.scaffoldBackground.withValues(alpha: 0.18)
                     : context.colors.cardSoft,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 categoryIconForId(category.id),
                 size: 11,
-                color: selected ? Colors.white : color,
+                color: selected ? context.colors.scaffoldBackground : color,
               ),
             ),
             const SizedBox(width: 6),
@@ -1807,6 +1807,8 @@ class _DeleteCard extends StatelessWidget {
               label: Text(context.l10n.commonDelete),
               style: FilledButton.styleFrom(
                 backgroundColor: colors.error,
+                // design-token-justified: white foreground on the rust
+                // destructive delete CTA — no textOnError token exists.
                 foregroundColor: Colors.white,
                 minimumSize: const Size(0, 40),
                 padding: const EdgeInsetsDirectional.fromSTEB(14, 9, 14, 11),

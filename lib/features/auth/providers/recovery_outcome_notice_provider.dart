@@ -92,6 +92,10 @@ final recoveryOutcomeNoticeProvider = Provider<void>((ref) {
             ..showSnackBar(
               SnackBar(
                 content: Text(message),
+                // design-token-justified: context-less global-messenger error
+                // snack — the outgoing shell may be mid-teardown, so there is
+                // no reliable themed context.colors here; a fixed Material red
+                // keeps the error background theme-resolution-free.
                 backgroundColor: isError ? Colors.red.shade700 : null,
                 behavior: SnackBarBehavior.floating,
                 duration: duration,
