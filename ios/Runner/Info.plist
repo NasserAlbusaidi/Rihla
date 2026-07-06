@@ -32,6 +32,17 @@
 				<string>rihla</string>
 			</array>
 		</dict>
+		<!-- #945: Google Sign-In native redirect. Must equal REVERSED_CLIENT_ID
+		     in GoogleService-Info.plist (iOS OAuth client of rihla-safar);
+		     handled by the GoogleSignIn SDK via the plugin, NOT app_links. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>google-sign-in</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.231518921973-mjq8ahh1lah48nb6a5vnqp5j41uso9r1</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
