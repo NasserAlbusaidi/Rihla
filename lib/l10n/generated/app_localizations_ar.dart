@@ -335,6 +335,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileShareMessage => 'أقسم مصاريف الرحلات مع Rihla. جرّبها.';
 
   @override
+  String get profileShareA11yLabel => 'مشاركة Rihla';
+
+  @override
   String get profileSnackHandleCopied => 'تم نسخ المعرّف';
 
   @override

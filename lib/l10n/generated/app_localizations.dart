@@ -722,6 +722,12 @@ abstract class AppLocalizations {
   /// **'I\'m splitting trip expenses with Rihla. Give it a try.'**
   String get profileShareMessage;
 
+  /// Accessible name for the Profile top-bar share icon (#992). The 'Rihla' brand subject stays English per Q5.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Rihla'**
+  String get profileShareA11yLabel;
+
   /// SnackBar shown after the user copies their handle from the identity chip.
   ///
   /// In en, this message translates to:
