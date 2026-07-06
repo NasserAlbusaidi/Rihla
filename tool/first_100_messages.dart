@@ -133,7 +133,13 @@ Future<void> main(List<String> args) async {
 
   for (final arg in args) {
     if (arg.startsWith('--count=')) {
-      count = int.parse(arg.substring('--count='.length));
+      final raw = arg.substring('--count='.length);
+      try {
+        count = int.parse(raw);
+      } on FormatException {
+        stderr.writeln('Invalid --count value "$raw": expected an integer.');
+        exit(64);
+      }
     } else if (arg.startsWith('--language=')) {
       language = arg.substring('--language='.length);
     } else if (arg.startsWith('--play-opt-in-link=')) {

@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /join
 
 Sitemap: https://rihla-safar.web.app/sitemap.xml

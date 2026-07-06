@@ -225,5 +225,5 @@ List<List<String>> _parseCsv(String source) {
 
 bool _looksLikeEmail(String value) {
   final normalized = value.trim();
-  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(normalized);
+  return RegExp(r'^[^@\s,]+@[^@\s,]+\.[^@\s,]+$').hasMatch(normalized);
 }
