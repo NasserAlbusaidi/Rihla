@@ -4,6 +4,51 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] — 2026-07-06
+
+The Falaj release: the rebrand completed in-app last cycle now reaches the
+launcher icon, Play listing, and marketing site, joined by global search, a
+hardened claim flow for placeholder members, and a money-correctness pass on
+group settle-up. All backend changes in this range are deployed
+(`backend-deployed` → `1fa502b9`).
+
+### Added
+- **Global search (#900/#924).** `/search` spans groups and events from home.
+- **One-tap expense entry + IA pass (#917).** Persistent FAB fast path,
+  smart-forward rows, balance-hero breakdown sheet, and event-module route
+  consolidation.
+- **Readable crash reports (#933/#979).** Release builds upload Dart debug
+  symbols to Sentry (with a retained CI artifact), and a central scrubber
+  strips PII from every event before it leaves the device (#974).
+
+### Changed
+- **Falaj rebrand, outward-facing:** launcher + Play icons (#961), store
+  listing captions/frames/feature graphic with AR-native screenshots (#970),
+  marketing-site re-skin (#962), and an Android cold-launch splash that
+  follows the scaffold ground (#957).
+- **Claim decisions are the durable identity boundary (#963).** Adding people
+  by name stays lightweight; identity hardens at creator-approved claim time
+  (anonymous shadow sandbox, D6-R).
+- **Settlement corrections are recorder-or-party only (#972),** and the
+  Correct affordance is hidden for everyone else.
+- "View activity" is now "View history" everywhere (#966/#971); interactive
+  list rows gained merged semantics and button roles and the avatar stack is
+  RTL-safe (#967/#975); 115 dead translation keys pruned (#969/#976); the
+  expense editor split into focused leaf widgets (#965/#978).
+
+### Fixed
+- **Group settle-up writes all decomposed legs atomically (#929/#939)** — one
+  WriteBatch capped at 9 legs, so a rules rejection persists nothing.
+- **One malformed money doc can no longer blank the ledger, home, or feeds
+  (#928/#943)** — total-parse money factories fence bad docs while mirroring
+  the balance oracle.
+- Pre-settlement review skips already-settled currency buckets (#922);
+  mixed-currency explainer copy is currency-agnostic (#919); the delete-group
+  sheet drops the false 30-day retention promise (#927); settle-up headline
+  styling no longer synthesizes italics (#958); QR invite modules stay
+  scan-dark in both themes (#954); the EditName sheet clears the system nav
+  bar (#959).
+
 ## [1.7.4] — 2026-07-05
 
 Production promotion of the 1.7.x line. Production users are on 1.7.0, so this
