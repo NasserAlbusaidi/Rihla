@@ -26,6 +26,7 @@ import 'core/services/cache_isolation_controller.dart';
 import 'core/services/cold_start_coordinator.dart';
 import 'core/services/deep_link_service.dart';
 import 'core/services/install_referrer_service.dart';
+import 'core/utils/sentry_pii_scrubber.dart';
 import 'features/auth/providers/cache_isolation_controller_provider.dart';
 import 'features/auth/services/auth_email_link_recognizer.dart';
 import 'features/auth/services/legacy_auth_marker_cleanup.dart';
@@ -63,6 +64,10 @@ void main() async {
       options.tracesSampleRate = 0.2;
       // ignore: experimental_member_use
       options.profilesSampleRate = 0.1;
+      // PII protection (#968): never attach the SDK's default PII, and route
+      // every outgoing event through the central email scrubber.
+      options.sendDefaultPii = false;
+      options.beforeSend = (event, hint) => scrubSentryPii(event);
     },
     appRunner: () async {
       // Initialize Firebase (includes Firestore offline persistence settings)
