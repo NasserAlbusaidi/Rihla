@@ -108,6 +108,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  sentry_dart_plugin: ^3.4.0
 
 # Launcher icon config lives in flutter_launcher_icons.yaml at the project
 # root. Source PNGs are produced by
@@ -207,3 +208,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# sentry_dart_plugin config (#933) — uploads Dart debug symbols for obfuscated
+# release builds so prod crash frames are readable in Sentry. org/project/
+# auth_token are intentionally NOT set here: the plugin reads them from
+# SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN env vars, wired as GitHub
+# secrets in .github/workflows/release_android.yml — never hardcode them.
+sentry:
+  upload_debug_symbols: true
+  upload_sources: true

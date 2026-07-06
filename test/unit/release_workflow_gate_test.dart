@@ -43,6 +43,68 @@ void main() {
     );
   });
 
+  test(
+    'Android release workflow uploads Dart debug symbols to Sentry '
+    'and retains them as a CI artifact (#933)',
+    () {
+      final workflow = read('.github/workflows/release_android.yml');
+      final pubspec = read('pubspec.yaml');
+
+      final buildIndex = workflow.indexOf(
+        '--obfuscate --split-debug-info=./build/app/outputs/symbols',
+      );
+      final sentryUploadIndex = workflow.indexOf(
+        'dart run sentry_dart_plugin',
+      );
+      final artifactIndex = workflow.indexOf('actions/upload-artifact@v4');
+
+      // pubspec: sentry_dart_plugin wired as a dev dependency with an
+      // explicit sentry: config block (org/project/token stay in env, never
+      // hardcoded here).
+      expect(pubspec, contains('sentry_dart_plugin:'));
+      expect(pubspec, contains('upload_debug_symbols: true'));
+      expect(pubspec, contains('upload_sources: true'));
+      expect(pubspec, isNot(contains('auth_token:')));
+
+      // Workflow: the Sentry upload step runs after the obfuscated build and
+      // is gated on the SENTRY_AUTH_TOKEN secret being present, so a fork/PR
+      // run without the secret never hard-fails the release.
+      expect(buildIndex, greaterThan(-1));
+      expect(sentryUploadIndex, greaterThan(buildIndex));
+      expect(
+        workflow,
+        contains(r"if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}"),
+      );
+      expect(
+        workflow,
+        contains(r'SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}'),
+      );
+      expect(workflow, contains(r'SENTRY_ORG: ${{ secrets.SENTRY_ORG }}'));
+      expect(
+        workflow,
+        contains(r'SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}'),
+      );
+
+      // A companion step makes the gap loud instead of silent when the
+      // secret is absent (never a quiet no-op).
+      expect(
+        workflow,
+        contains(r"if: ${{ secrets.SENTRY_AUTH_TOKEN == '' }}"),
+      );
+      expect(workflow, contains('::warning::'));
+      expect(workflow, contains('SENTRY_AUTH_TOKEN'));
+      expect(
+        workflow,
+        contains('will be unsymbolicated'),
+      );
+
+      // Symbols dir is also retained as a plain CI artifact — belt-and-braces
+      // for manual `flutter symbolize` after the runner is gone.
+      expect(artifactIndex, greaterThan(buildIndex));
+      expect(workflow, contains('path: build/app/outputs/symbols'));
+    },
+  );
+
   test('real-device QA gate requires completed matrix evidence', () {
     final gate = read('tool/check_real_device_qa_gate.sh');
     final handoff = read('tool/print_android_qa_handoff.sh');
