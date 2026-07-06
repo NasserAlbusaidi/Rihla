@@ -43,7 +43,9 @@ emulator mode, seed the demo group, then screencap:
 ```bash
 firebase emulators:start --only auth,firestore --project rihla-safar
 flutter run --dart-define-from-file=config.qa.json -d <device>
-# grab the anon uid from http://127.0.0.1:9099/emulator/v1/projects/rihla-safar/accounts
+# grab the anon uid (the endpoint is POST-only; a GET 405s):
+# curl -s -X POST "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/rihla-safar/accounts:query" \
+#   -H 'Authorization: Bearer owner' -H 'Content-Type: application/json' -d '{}'
 cd functions && FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=rihla-safar \
   node ../tool/seed_demo.js <uid> en          # then `ar` for the Arabic pass
