@@ -4,7 +4,7 @@
 
 **Goal:** On iOS, replace the cache-isolation overlay's dead-end "Try again" (which re-invokes a MethodChannel that has no iOS handler and can never succeed) with designed, outcome-neutral manual-restart copy and no futile retry affordance — Android behavior unchanged.
 
-**Architecture:** Pure Dart/UI change. `_CacheIsolationApp` (lib/main.dart) platform-gates the failed-restart branch: on iOS it renders a new `SplashScreen` manual-restart mode (new l10n copy, no button); on Android it keeps the existing retry affordance. No native code is added (Decision D1 below). No money/rules/routing/schema surface is touched.
+**Architecture:** Pure Dart/UI change. `_CacheIsolationApp` (lib/main.dart) platform-gates the failed-restart branch: on iOS it renders a new `SplashScreen` manual-restart mode (new l10n copy, no button); on Android it keeps the existing retry affordance. The overlay's `MaterialApp` also gains `locale:` (Gate round-1 adversary [P2]: without it the new instruction copy renders in the SYSTEM locale, ignoring the in-app language choice). No native code is added (Decision D1 below). No money/rules/routing/schema surface is touched.
 
 **Tech Stack:** Flutter, Riverpod 2.x, gen-l10n (ARB en+ar), `debugDefaultTargetPlatformOverride` for platform-gated widget tests.
 
@@ -25,11 +25,24 @@
 
 ## Control-flow facts the implementation relies on (verified against code)
 
-1. `PlatformCacheIsolationController.restart()` catches ALL errors, logs, flips `cacheIsolationRestartFailedProvider = true`, and RESOLVES (never rethrows) — `cache_isolation_controller_provider.dart:50-67`. On iOS the `MissingPluginException` is immediate, so the flag flips within the same frame; the 6s `_restartWatchdog` (`main.dart:303`) is a second net, not the primary path.
+1. `PlatformCacheIsolationController.restart()` catches ALL errors, logs, flips `cacheIsolationRestartFailedProvider = true`, and RESOLVES (never rethrows) — `lib/features/auth/providers/cache_isolation_controller_provider.dart:50-67` (the state providers themselves live in `lib/core/services/cache_isolation_controller.dart:10,19`). On iOS the `MissingPluginException` is immediate, so the flag flips within the same frame; the 6s `_restartWatchdog` (`main.dart:303`) is a second net, not the primary path. (`ios/Runner/AppDelegate.swift` is a 17-line `FlutterImplicitEngineDelegate` variant — customized for plugin registration but with NO `MethodChannel` handler for `cache_isolation`, which is the load-bearing fact.)
 2. Because `restart()` resolves, on iOS the code AFTER each `finally` continues in-process (on Android the process is dead). All post-restart UI is covered: `cacheIsolationProvider` is already `true` (set by `engageIsolation()` before the swap), `SafarApp` short-circuits to `_CacheIsolationApp` before the router builds (`main.dart:256`), and `recovery_outcome_notice_provider.dart:71,87` early-returns while isolated.
 3. `SplashScreen` call sites (exhaustive, verified): `main.dart:174` (boot loading), `main.dart:190` (#838 boot error, `onRetry: _retry` non-null), `main.dart:332` (isolation overlay — the ONLY site this plan changes), `app_router.dart:184` (splash route, loading). The #838 boot-error path must render byte-identically after this change.
 4. The overlay renders pre-theme with `AppColorTokens.light` on purpose (`splash_screen.dart:10-11,30`); reuse `_ErrorBody`'s existing structure/tokens — no new colors (theme-purity CI).
 5. Platform gate: `defaultTargetPlatform == TargetPlatform.iOS` (from `package:flutter/foundation.dart`), overridable in tests via `debugDefaultTargetPlatformOverride`. Do NOT use `dart:io` `Platform.isIOS` — not overridable in widget tests and throws on web.
+6. **Locale (Gate round-1 [P2]):** the overlay `MaterialApp` (`main.dart:326-330`) sets delegates + supportedLocales but no `locale:`, while the main `MaterialApp.router` (`main.dart:272`) sets `locale: ref.watch(localeProvider)`. `localeProvider` (`lib/core/providers/settings_provider.dart:250`) derives from `settingsProvider.languageCode` → `sharedPreferencesProvider`, which THROWS unless overridden. Fix: `_CacheIsolationAppState.build` reads the locale fail-open —
+
+   ```dart
+   Locale? locale;
+   try {
+     locale = ref.watch(localeProvider);
+   } catch (_) {
+     // Prefs unavailable mid-swap (or un-overridden in a test) — fall back to
+     // system-locale resolution rather than stranding the overlay on a throw.
+   }
+   ```
+
+   and passes `locale: locale` to the overlay `MaterialApp`. Fail-open matches this file's established defensive posture (`FirebaseConfig.currentUser` catch pattern); in a real swap the app is fully booted so prefs are always present.
 
 ## Data contract (exact — principle 5)
 
@@ -77,7 +90,8 @@ final iosManualRestart =
 ```
 
 - `iosManualRestart` ⇒ `SplashScreen(key: Key('cache-isolation-manual-restart'), hasError: true, manualRestartRequired: true)` — no `onRetry`.
-- else `showManualRestart` ⇒ existing retry branch, unchanged (Android + any non-iOS platform keeps retry: a transient native throw there is recoverable).
+- else `showManualRestart` ⇒ existing retry branch, unchanged (Android + any non-iOS platform keeps retry: a transient native throw there is recoverable; on desktop/web the retry stays futile like today, accepted — shipping targets are exactly {Android, iOS}).
+- Both branches' `MaterialApp` gains `locale: locale` from the fail-open read (control-flow fact 6).
 
 ## Verification principles (run while writing this spec, reported per the Operating Contract)
 
@@ -103,7 +117,7 @@ final iosManualRestart =
 **Files:**
 - Modify: `test/features/auth/cache_isolation_overlay_test.dart`
 
-**Step 1: Write the failing tests** — extend the existing file (it already has `_RecordingController` and `drainWatchdog`):
+**Step 1: Write the failing tests** — extend the existing file (it already has `_RecordingController` and `drainWatchdog`). Keep the existing tests' `routerProvider.overrideWith((ref) => throw StateError(...))` guard in the new tests too (short-circuit regression net), and override `sharedPreferencesProvider` per the repo's app-booting-test rule (needed once the overlay watches `localeProvider`); a third test pins the locale plumbing by overriding `localeProvider` with `const Locale('ar')` and asserting the AR manual-restart title renders:
 
 ```dart
 testWidgets(
@@ -192,12 +206,12 @@ Expected: iOS test FAILS — `cache-isolation-manual-restart` key not found (cur
 **Files:**
 - Modify: `lib/main.dart` (`_CacheIsolationAppState.build`, ~:322-344)
 
-**Step 1:** Apply the exact change from the Data contract section (import `package:flutter/foundation.dart` for `defaultTargetPlatform` if `material.dart`'s re-export isn't already in scope — `material.dart` re-exports foundation, so no new import is expected).
+**Step 1:** Apply the exact change from the Data contract section — the platform gate AND the fail-open `locale:` read (control-flow fact 6) — (`material.dart` re-exports foundation, so no new import is expected for `defaultTargetPlatform`).
 **Step 2:** Run: `flutter test test/features/auth/cache_isolation_overlay_test.dart` — all tests GREEN, including the two pre-existing ones (they run under the test-default platform, Android, and must be untouched).
 
 ### Task 5: Full verification + commit
 
 **Step 1:** `flutter analyze` — clean.
-**Step 2:** `flutter test` — full suite green (l10n surface tests must see the new keys as live: they're referenced from `splash_screen.dart`).
+**Step 2:** `flutter test` — full suite green. (Note: `generated_l10n_surface_test.dart` enumerates hardcoded sample lists, so it neither requires nor fails on the new keys; the keys are non-dead because `splash_screen.dart` references them.)
 **Step 3:** `bash tool/check_theme_purity.sh` — no new violations (no new hex colors; tokens only).
 **Step 4:** Commit: `feat(auth): iOS manual-restart fallback for the cache-isolation overlay (#946)` — body carries `Closes #946` (full delivery of the (a) decision; RD-QA device pass is #951's box, named in the PR as remainder).
