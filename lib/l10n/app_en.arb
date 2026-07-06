@@ -1276,9 +1276,22 @@
       }
     }
   },
+  "homeGroupSubtitlePending": "{memberCount, plural, =1{1 member} other{{memberCount} members}}",
+  "@homeGroupSubtitlePending": {
+    "description": "#997: `_GroupRow` subtitle while the group's balance is still loading or errored — omits the event count rather than claiming '0 events'.",
+    "placeholders": {
+      "memberCount": {
+        "type": "int"
+      }
+    }
+  },
   "homeTheyOweYou": "they owe you",
   "homeYouOwe": "you owe",
   "homeSettled": "settled",
+  "homeGroupBalanceIncomplete": "Incomplete",
+  "@homeGroupBalanceIncomplete": {
+    "description": "#997: compact incomplete-data affordance for `_GroupRow`'s trailing column (a per-event read failed for this group) — the row is too narrow for the full homeBalanceIncompleteNotice sentence."
+  },
   "homeAcrossAllJourneys": "Across all journeys",
   "homeBalanceHeroHint": "See balance by group",
   "@homeBalanceHeroHint": {

@@ -2547,6 +2547,12 @@ abstract class AppLocalizations {
   /// **'{memberCount, plural, =1{1 member} other{{memberCount} members}} · {eventCount, plural, =1{1 event} other{{eventCount} events}}'**
   String homeGroupSubtitle(int memberCount, int eventCount);
 
+  /// #997: `_GroupRow` subtitle while the group's balance is still loading or errored — omits the event count rather than claiming '0 events'.
+  ///
+  /// In en, this message translates to:
+  /// **'{memberCount, plural, =1{1 member} other{{memberCount} members}}'**
+  String homeGroupSubtitlePending(int memberCount);
+
   /// No description provided for @homeTheyOweYou.
   ///
   /// In en, this message translates to:
@@ -2564,6 +2570,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'settled'**
   String get homeSettled;
+
+  /// #997: compact incomplete-data affordance for `_GroupRow`'s trailing column (a per-event read failed for this group) — the row is too narrow for the full homeBalanceIncompleteNotice sentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get homeGroupBalanceIncomplete;
 
   /// No description provided for @homeAcrossAllJourneys.
   ///
