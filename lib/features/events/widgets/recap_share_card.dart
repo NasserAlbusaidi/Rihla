@@ -200,11 +200,11 @@ class RecapShareCard extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text('+ ',
-                  style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                  style: AppTypography.sans(fontSize: 12, color: context.colors.textSecondary)),
               for (var i = 0; i < others.length; i++) ...[
                 if (i > 0)
                   Text(' · ',
-                      style: TextStyle(
+                      style: AppTypography.sans(
                           fontSize: 12, color: context.colors.textSecondary)),
                 RAmount(
                   value: recap.totalSpentByCurrency[others[i]]!,
@@ -327,7 +327,7 @@ class RecapShareCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: AppTypography.sans(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: c.textPrimary),
@@ -356,7 +356,7 @@ class RecapShareCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.end,
-                style: TextStyle(
+                style: AppTypography.sans(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: c.textPrimary)),
@@ -459,7 +459,7 @@ class RecapShareCard extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Text(seg.label,
-            style: TextStyle(fontSize: 10, color: context.colors.textSecondary)),
+            style: AppTypography.sans(fontSize: 10, color: context.colors.textSecondary)),
       ],
     );
   }
@@ -542,7 +542,7 @@ class RecapShareCard extends StatelessWidget {
             child: Text(label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: AppTypography.sans(
                     fontSize: 11, fontWeight: FontWeight.w600, color: accent)),
           ),
         ],

@@ -22,6 +22,7 @@ import '../models/event_model.dart';
 import '../models/spending_snapshot.dart';
 import '../providers/event_provider.dart';
 import '../providers/event_recap_provider.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Danger zone section for EventSettingsScreen.
 ///
@@ -95,7 +96,7 @@ class EventDangerSection extends ConsumerWidget {
         const SizedBox(width: 6),
         Text(
           context.l10n.eventDangerZone,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: context.colors.errorText,
@@ -119,7 +120,7 @@ class EventDangerSection extends ConsumerWidget {
           Expanded(
             child: Text(
               context.l10n.eventUnsettledWarning,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
                 color: context.colors.textSecondary,
@@ -172,7 +173,7 @@ class EventDangerSection extends ConsumerWidget {
             Expanded(
               child: Text(
                 closed ? context.l10n.eventReopen : context.l10n.eventClose,
-                style: TextStyle(
+                style: AppTypography.sans(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textPrimary,
@@ -223,7 +224,7 @@ class EventDangerSection extends ConsumerWidget {
             Expanded(
               child: Text(
                 context.l10n.eventDelete,
-                style: TextStyle(
+                style: AppTypography.sans(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: context.colors.errorText,
@@ -242,7 +243,7 @@ class EventDangerSection extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text(
           context.l10n.eventCloseQuestion,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: context.colors.textPrimary,
@@ -250,7 +251,7 @@ class EventDangerSection extends ConsumerWidget {
         ),
         content: Text(
           context.l10n.eventCloseBody,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: context.colors.textSecondary,
@@ -290,7 +291,7 @@ class EventDangerSection extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text(
           context.l10n.eventReopenQuestion,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: context.colors.textPrimary,
@@ -298,7 +299,7 @@ class EventDangerSection extends ConsumerWidget {
         ),
         content: Text(
           context.l10n.eventReopenBody,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: context.colors.textSecondary,
@@ -431,7 +432,7 @@ class EventDangerSection extends ConsumerWidget {
         key: EventKeys.deleteEventDialog,
         title: Text(
           context.l10n.eventDeleteQuestion,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: context.colors.textPrimary,
@@ -439,7 +440,7 @@ class EventDangerSection extends ConsumerWidget {
         ),
         content: Text(
           body,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: context.colors.textSecondary,
