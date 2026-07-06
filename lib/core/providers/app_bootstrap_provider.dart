@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/providers/device_name_self_heal_provider.dart';
 import '../../features/auth/providers/durable_account_marker_provider.dart';
 import '../../features/auth/providers/recovery_outcome_notice_provider.dart';
 import '../models/app_settings_model.dart';
@@ -73,6 +74,9 @@ final appBootstrapProvider = Provider<void>((ref) {
   ref.watch(authEmailLinkBootstrapProvider);
   // #439: surface the previous process's recovery outcome (one-shot marker).
   ref.watch(recoveryOutcomeNoticeProvider);
+  // #990: seed the local deviceName from the user's own member doc after a
+  // verified restore (breadcrumb-scoped; see device_name_self_heal_provider).
+  ref.watch(deviceNameSelfHealProvider);
   // #469: mark the device "durable account established" whenever a non-anon
   // session is observed, so an anon-shell delete can be gated against silently
   // leaving the durable account intact.
