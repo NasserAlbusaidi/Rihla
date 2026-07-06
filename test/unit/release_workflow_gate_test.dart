@@ -423,6 +423,22 @@ exit 64
     expect(governance, contains('readiness'));
   });
 
+  test(
+    'GitHub release governance gate also verifies the release PR flow is '
+    'possible (#985: direct main pushes are rejected by branch protection, '
+    'so the release commit merges via an auto-merged PR instead)',
+    () {
+      final governance = read('tool/check_github_release_governance.sh');
+
+      expect(governance, contains('#985'));
+      expect(governance, contains('check_auto_merge_configured'));
+      expect(governance, contains('allow_auto_merge'));
+      expect(governance, contains('allow_squash_merge'));
+      expect(governance, contains('gh pr merge --auto'));
+      expect(governance, contains('gh pr merge --squash'));
+    },
+  );
+
   test('Firebase emulator gates use the isolated runner', () {
     final readiness = read('tool/check_release_readiness.sh');
     final emulatorRunner = read('tool/run_firebase_emulator_tests.sh');
@@ -562,6 +578,68 @@ exit 64
     expect(tagIndex, greaterThan(readinessIndex));
     expect(pushIndex, greaterThan(tagIndex));
   });
+
+  test(
+    'release helper is PR-aware (#985): commit -> readiness -> release '
+    'branch push -> PR -> auto-merge -> poll -> tag the SQUASH commit -> '
+    'push tag, never a direct push to main',
+    () {
+      final release = read('tool/release.sh');
+
+      final commitIndex = release.indexOf(
+        r'git commit -m "chore(release): $NEW_TAG"',
+      );
+      final readinessIndex = release.indexOf(
+        'tool/check_release_readiness.sh',
+      );
+      final releaseBranchPushIndex = release.indexOf(
+        r'git push origin "$RELEASE_BRANCH"',
+      );
+      final prCreateIndex = release.indexOf('gh pr create');
+      final autoMergeIndex = release.indexOf(
+        r'gh pr merge "$PR_URL" --auto --squash',
+      );
+      final pollLoopIndex = release.indexOf(
+        r'while [ "$ELAPSED" -lt "$POLL_TIMEOUT" ]',
+      );
+      final squashCaptureIndex = release.indexOf(r'.mergeCommit.oid');
+      final ancestryCheckIndex = release.indexOf(
+        r'git merge-base --is-ancestor "$SQUASH_SHA" "origin/$MAIN_BRANCH"',
+      );
+      final governanceRecheckIndex = release.indexOf(
+        r'RIHLA_RELEASE_TARGET_SHA="$SQUASH_SHA" bash tool/check_github_release_governance.sh',
+      );
+      final squashTagIndex = release.indexOf(
+        r'git tag -a "$NEW_TAG" -m "Release $NEW_TAG" "$SQUASH_SHA"',
+      );
+      final tagPushIndex = release.indexOf(r'git push origin "$NEW_TAG"');
+
+      // The old direct-to-main push is gone entirely — every remaining
+      // literal "git push origin" targets the release branch or the tag.
+      expect(release, isNot(contains(r'git push origin "$MAIN_BRANCH"')));
+
+      expect(release, contains('#985'));
+      expect(release, contains(r'RELEASE_BRANCH="release/$NEW_TAG"'));
+      expect(release, contains('--auto --squash'));
+      expect(release, contains('was closed without merging'));
+      expect(release, contains('timed out after'));
+      expect(release, contains('is not an ancestor of'));
+      expect(release, contains('already exists locally'));
+      expect(release, contains('already exists on origin'));
+
+      expect(commitIndex, greaterThanOrEqualTo(0));
+      expect(readinessIndex, greaterThan(commitIndex));
+      expect(releaseBranchPushIndex, greaterThan(readinessIndex));
+      expect(prCreateIndex, greaterThan(releaseBranchPushIndex));
+      expect(autoMergeIndex, greaterThan(prCreateIndex));
+      expect(pollLoopIndex, greaterThan(autoMergeIndex));
+      expect(squashCaptureIndex, greaterThan(pollLoopIndex));
+      expect(ancestryCheckIndex, greaterThan(squashCaptureIndex));
+      expect(governanceRecheckIndex, greaterThan(ancestryCheckIndex));
+      expect(squashTagIndex, greaterThan(governanceRecheckIndex));
+      expect(tagPushIndex, greaterThan(squashTagIndex));
+    },
+  );
 
   test('Firebase deploy helper refuses dirty tracked worktrees', () {
     final deploy = read('tool/deploy_firebase_backend.sh');
