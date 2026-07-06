@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
+import '../../../core/utils/safe_deserialize.dart';
 import '../models/group_activity_log_model.dart';
 
 /// Firestore-backed service for group-level activity log operations.
@@ -45,13 +46,17 @@ class GroupActivityService extends FirestoreRepository {
         .limit(limit)
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map(
-                (doc) => GroupActivityLog.fromFirestore(
-                  {...doc.data(), 'id': doc.id},
-                ),
-              )
-              .toList(),
+          // #928: one malformed row must not blank the whole feed (this stream
+          // feeds home RECENTLY + the unread dot, which swallow errors as `[]`).
+          // Display-only rows have no oracle to stay in lockstep with, so
+          // skip-and-report is the correct semantic (the Trip Receipt precedent).
+          (snap) => decodeDocsSkippingMalformed(
+            snap.docs,
+            (d) => GroupActivityLog.fromFirestore(
+              {...d.data()! as Map<String, dynamic>, 'id': d.id},
+            ),
+            context: 'GroupActivityService.watchRecentActivity',
+          ),
         );
   }
 
@@ -73,12 +78,14 @@ class GroupActivityService extends FirestoreRepository {
       query = query.startAfterDocument(startAfter);
     }
     final snap = await query.limit(limit).get();
-    return snap.docs
-        .map(
-          (doc) =>
-              GroupActivityLog.fromFirestore({...doc.data(), 'id': doc.id}),
-        )
-        .toList();
+    // #928: skip a malformed feed row rather than failing the page.
+    return decodeDocsSkippingMalformed(
+      snap.docs,
+      (d) => GroupActivityLog.fromFirestore(
+        {...d.data()! as Map<String, dynamic>, 'id': d.id},
+      ),
+      context: 'GroupActivityService.fetchActivityPage',
+    );
   }
 
   /// Returns the raw [QuerySnapshot] for cursor-based pagination.

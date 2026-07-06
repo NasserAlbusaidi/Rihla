@@ -123,43 +123,67 @@ class Settlement {
   /// Field names are camelCase. [tripId] maps to `eventId` for backward
   /// compatibility. Money is stored as integer fils via [MoneySerializer].
   factory Settlement.fromFirestore(Map<String, dynamic> data) {
-    // Unknown/garbage currency (a forged/legacy doc the deployed rules now
-    // reject on write) must not throw in MoneySerializer and error the whole
-    // settle-up stream for every member. Fall back to OMR, mirroring the
-    // expense read fence (#47, expense_provider.dart). #193 client tail of #220.
-    final rawCurrency = data['currency'] as String? ?? 'OMR';
+    // TOTAL-PARSE money factory (#928): every present-but-wrong-type field is
+    // salvaged to the value the TS server oracle `recomputeNet`
+    // (functions/src/callables/groupNetBalance.ts) reads for the SAME doc —
+    // never thrown. One malformed settlement must not blank the settle-up stream
+    // or the home once-path. The layer-2 skip-fence has NO server counterpart
+    // for money docs (the oracle is total), so this factory's totality is the
+    // real invariant — `malformed_doc_fencing_test.dart` test 7 pins it.
+    //
+    // Currency: type-gate THEN isSupported, mirroring the oracle `currencyOf`
+    // (groupNetBalance.ts:52-54). (#47/#193/#220)
+    final rawCurrency =
+        data['currency'] is String ? data['currency'] as String : 'OMR';
     final currency = MoneySerializer.isSupported(rawCurrency)
         ? rawCurrency
         : 'OMR';
-    final amountFils = data['amountFils'] as int? ?? 0;
-    final scope = data['scope'] as String? ?? 'event';
-    final groupId = data['groupId'] as String?;
+    // amountFils: oracle `amountFilsOf` reads a non-number as 0.
+    final amountFils =
+        data['amountFils'] is int ? data['amountFils'] as int : 0;
+    final scope = data['scope'] is String ? data['scope'] as String : 'event';
+    final groupId = data['groupId'] is String ? data['groupId'] as String : null;
 
     // For group settlements, eventId may not be set — fall back to groupId as
     // sentinel (per RESEARCH.md Pitfall 3). Event settlements always have eventId.
-    final tripId = data['eventId'] as String? ??
-        groupId ??
-        '';
+    final tripId =
+        data['eventId'] is String ? data['eventId'] as String : (groupId ?? '');
 
     return Settlement(
-      id: data['id'] as String,
+      id: data['id'] is String ? data['id'] as String : '',
       tripId: tripId,
-      payerParticipantId: data['payerParticipantId'] as String?,
-      recipientParticipantId: data['recipientParticipantId'] as String?,
+      payerParticipantId: data['payerParticipantId'] is String
+          ? data['payerParticipantId'] as String
+          : null,
+      recipientParticipantId: data['recipientParticipantId'] is String
+          ? data['recipientParticipantId'] as String
+          : null,
       amount: MoneySerializer.fromSubunits(amountFils, currency),
-      note: data['note'] as String?,
-      settledAt: DateTime.parse(data['settledAt'] as String),
-      payerName: data['payerName'] as String?,
-      recipientName: data['recipientName'] as String?,
-      isDeleted: data['isDeleted'] as bool? ?? false,
-      deletedAt: data['deletedAt'] != null
-          ? DateTime.parse(data['deletedAt'] as String)
+      note: data['note'] is String ? data['note'] as String : null,
+      // The oracle never reads settledAt (the issue's named repro); a garbage
+      // value salvages to epoch UTC, never a throw. The doc's money keeps
+      // counting.
+      settledAt: (data['settledAt'] is String
+              ? DateTime.tryParse(data['settledAt'] as String)
+              : null) ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      payerName:
+          data['payerName'] is String ? data['payerName'] as String : null,
+      recipientName: data['recipientName'] is String
+          ? data['recipientName'] as String
+          : null,
+      isDeleted: data['isDeleted'] is bool ? data['isDeleted'] as bool : false,
+      deletedAt: data['deletedAt'] is String
+          ? DateTime.tryParse(data['deletedAt'] as String)
           : null,
       scope: scope,
       groupId: groupId,
-      createdBy: data['createdBy'] as String? ?? '',
+      createdBy:
+          data['createdBy'] is String ? data['createdBy'] as String : '',
       currency: currency,
-      groupSettleUpId: data['groupSettleUpId'] as String?,
+      groupSettleUpId: data['groupSettleUpId'] is String
+          ? data['groupSettleUpId'] as String
+          : null,
       // #889: read as a string when present; any other type (or absence)
       // reads as null/non-marked rather than throwing — the marker is
       // Admin-only, but a forged/legacy doc must never error the stream.

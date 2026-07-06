@@ -175,35 +175,53 @@ class Expense {
   /// with BalanceCalculator and UI code that passes `trip.id`.
   /// Money is stored as integer fils via [MoneySerializer].
   factory Expense.fromFirestore(Map<String, dynamic> data) {
-    // Unknown/garbage currency (a forged/legacy doc the deployed rules now
-    // reject on write) must not throw in MoneySerializer and error the whole
-    // ledger + home-balance stream for every member. Fall back to OMR,
-    // mirroring the settlement read fence (#193/#220) and BalanceCalculator
-    // (#47). The single fenced local feeds the amount, the retained currency,
-    // and the exact-split values, covering every MoneySerializer throw site.
-    final rawCurrency = data['currency'] as String? ?? 'OMR';
+    // TOTAL-PARSE money factory (#928): every present-but-wrong-type field is
+    // salvaged to the value the TS server oracle `recomputeNet`
+    // (functions/src/callables/groupNetBalance.ts) reads for the SAME doc —
+    // never thrown. One malformed doc must not blank the ledger, the home
+    // once-path, or the settle-up stream. The layer-2 skip-fence has NO server
+    // counterpart for money docs (the oracle is total and drops nothing), so
+    // this factory's totality is the real invariant — a new field added here
+    // WITHOUT a salvage fallback would convert its throw into a silent
+    // home-balance divergence. `malformed_doc_fencing_test.dart` test 7 pins it.
+    //
+    // Currency: type-gate THEN isSupported, mirroring the oracle `currencyOf`
+    // (groupNetBalance.ts:52-54) — a non-string/unsupported code decodes at OMR.
+    // The single fenced currency feeds the amount, the retained currency, and
+    // the exact-split values (every MoneySerializer throw site). (#47/#193/#515)
+    final rawCurrency =
+        data['currency'] is String ? data['currency'] as String : 'OMR';
     final currency =
         MoneySerializer.isSupported(rawCurrency) ? rawCurrency : 'OMR';
-    final amountFils = data['amountFils'] as int? ?? 0;
+    // amountFils: oracle `amountFilsOf` reads a non-number as 0
+    // (groupNetBalance.ts:293-295). A rules-valid create pins positiveInt, so
+    // only an Admin/legacy/forged doc reaches this 0 fallback.
+    final amountFils = data['amountFils'] is int ? data['amountFils'] as int : 0;
 
     List<String>? customSplit;
-    if (data['customSplitParticipants'] != null) {
-      final rawList = data['customSplitParticipants'];
-      if (rawList is List) {
-        customSplit = List<String>.from(rawList);
-      }
+    final rawList = data['customSplitParticipants'];
+    if (rawList is List) {
+      // Mirror the oracle `stringArray` filter (groupNetBalance.ts:329-331):
+      // drop non-string elements rather than throw on `List<String>.from`.
+      customSplit = rawList.whereType<String>().toList();
     }
     final splitMode = _splitModeFromPersisted(data['splitMode']);
 
     return Expense(
-      id: data['id'] as String,
-      tripId: data['eventId'] as String,
-      payerParticipantId: data['payerParticipantId'] as String,
+      id: data['id'] is String ? data['id'] as String : '',
+      tripId: data['eventId'] is String ? data['eventId'] as String : '',
+      payerParticipantId: data['payerParticipantId'] is String
+          ? data['payerParticipantId'] as String
+          : '',
       amount: MoneySerializer.fromSubunits(amountFils, currency),
       currency: currency,
-      description: data['description'] as String?,
-      scope: ExpenseScope.fromString(data['scope'] as String? ?? 'global'),
-      subGroupId: data['subGroupId'] as String?,
+      description:
+          data['description'] is String ? data['description'] as String : null,
+      scope: ExpenseScope.fromString(
+        data['scope'] is String ? data['scope'] as String : 'global',
+      ),
+      subGroupId:
+          data['subGroupId'] is String ? data['subGroupId'] as String : null,
       customSplitParticipants: customSplit,
       splitMode: splitMode,
       splitDistribution: _splitDistributionFromPersisted(
@@ -211,22 +229,43 @@ class Expense {
         splitMode,
         currency,
       ),
-      splitExplanation: data['splitExplanation'] != null
-          ? SplitExplanation.fromMap(
-              Map<String, dynamic>.from(data['splitExplanation'] as Map),
-            )
+      splitExplanation:
+          _splitExplanationFromPersisted(data['splitExplanation']),
+      receiptUrl:
+          data['receiptUrl'] is String ? data['receiptUrl'] as String : null,
+      // The oracle never reads createdAt; a garbage value salvages to the epoch
+      // UTC card at the list end (honest), never a throw. tryParse covers an
+      // un-parseable STRING too.
+      createdAt: (data['createdAt'] is String
+              ? DateTime.tryParse(data['createdAt'] as String)
+              : null) ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      categoryId:
+          data['categoryId'] is String ? data['categoryId'] as String : null,
+      note: data['note'] is String ? data['note'] as String : null,
+      isDeleted: data['isDeleted'] is bool ? data['isDeleted'] as bool : false,
+      deletedAt: data['deletedAt'] is String
+          ? DateTime.tryParse(data['deletedAt'] as String)
           : null,
-      receiptUrl: data['receiptUrl'] as String?,
-      createdAt: DateTime.parse(data['createdAt'] as String),
-      categoryId: data['categoryId'] as String?,
-      note: data['note'] as String?,
-      isDeleted: data['isDeleted'] as bool? ?? false,
-      deletedAt: data['deletedAt'] != null
-          ? DateTime.parse(data['deletedAt'] as String)
-          : null,
-      createdBy: data['createdBy'] as String? ?? '',
-      lastEditedBy: data['lastEditedBy'] as String? ?? '',
+      createdBy:
+          data['createdBy'] is String ? data['createdBy'] as String : '',
+      lastEditedBy: data['lastEditedBy'] is String
+          ? data['lastEditedBy'] as String
+          : '',
     );
+  }
+
+  /// Salvage the opaque itemized [SplitExplanation] map (#928). It is
+  /// display-only and NEVER read by any Function/oracle, so a non-map value — or
+  /// a map its own [SplitExplanation.fromMap] rejects — degrades to null rather
+  /// than throwing the whole ledger stream.
+  static SplitExplanation? _splitExplanationFromPersisted(Object? raw) {
+    if (raw is! Map) return null;
+    try {
+      return SplitExplanation.fromMap(Map<String, dynamic>.from(raw));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Serialize this [Expense] to a Firestore document map.
@@ -402,7 +441,9 @@ class Expense {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is Decimal) return value.toBigInt().toInt();
-    return Decimal.parse(value.toString()).toBigInt().toInt();
+    // #928: mirror the oracle `persistedInt` (groupNetBalance.ts:86-93) — a
+    // non-numeric string (or any other type) reads as 0, never throws.
+    return Decimal.tryParse(value.toString())?.toBigInt().toInt() ?? 0;
   }
 }
 
