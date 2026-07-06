@@ -1542,6 +1542,21 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String homeGroupSubtitlePending(int memberCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      memberCount,
+      locale: localeName,
+      other: '$memberCount عضو',
+      many: '$memberCount عضوًا',
+      few: '$memberCount أعضاء',
+      two: 'عضوان',
+      one: 'عضو واحد',
+      zero: 'لا أعضاء',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get homeTheyOweYou => 'هم مدينون لك';
 
   @override
@@ -1549,6 +1564,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeSettled => 'مُسوّى';
+
+  @override
+  String get homeGroupBalanceIncomplete => 'غير مكتمل';
 
   @override
   String get homeAcrossAllJourneys => 'عبر كل الرحلات';

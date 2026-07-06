@@ -1512,6 +1512,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String homeGroupSubtitlePending(int memberCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      memberCount,
+      locale: localeName,
+      other: '$memberCount members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get homeTheyOweYou => 'they owe you';
 
   @override
@@ -1519,6 +1530,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeSettled => 'settled';
+
+  @override
+  String get homeGroupBalanceIncomplete => 'Incomplete';
 
   @override
   String get homeAcrossAllJourneys => 'Across all journeys';

@@ -18,6 +18,7 @@ import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/wordmark_logo.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../activity/utils/activity_nav.dart';
@@ -858,16 +859,24 @@ class _GroupRow extends ConsumerWidget {
     // #366: source-agnostic facade — the server aggregate when online, the
     // #104 once-path otherwise. The facade slices by the current uid itself.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
-    final homeBalance = balanceAsync.valueOrNull;
+    final memberCount = group.memberIds.length;
+    // #997: a loading/errored facade has no reliable event count or money —
+    // rendering "0 events · settled" from the default would be a false
+    // negative. Only a resolved AsyncValue (data, even if partial) drives the
+    // subtitle event count and the trailing amount/caption below.
+    final isLoading = balanceAsync.isLoading && !balanceAsync.hasValue;
+    final isError = balanceAsync.hasError && !balanceAsync.hasValue;
+    final homeBalance = isLoading || isError ? null : balanceAsync.valueOrNull;
+    final subtitle = homeBalance == null
+        ? context.l10n.homeGroupSubtitlePending(memberCount)
+        : context.l10n.homeGroupSubtitle(memberCount, homeBalance.eventCount);
+
     // Every non-zero bucket renders as its own line, GCC-first, each labeled
     // with its own currency (honest — D11). Settled ⇔ every bucket zero or
     // the map is empty (D10).
     final lines = nonZeroNetsGccFirst(
       homeBalance?.userNet ?? const <String, Decimal>{},
     );
-    final eventCount = homeBalance?.eventCount ?? 0;
-    final memberCount = group.memberIds.length;
-    final subtitle = context.l10n.homeGroupSubtitle(memberCount, eventCount);
     final allPositive =
         lines.isNotEmpty && lines.every((l) => l.net > Decimal.zero);
     final allNegative =
@@ -881,6 +890,83 @@ class _GroupRow extends ConsumerWidget {
         : allNegative
         ? context.l10n.homeYouOwe
         : null;
+
+    final Widget trailing;
+    if (isLoading) {
+      trailing = KeyedSubtree(
+        key: HomeKeys.groupRowBalanceSkeleton,
+        child: SkeletonLoader.trailingBalance(),
+      );
+    } else if (isError) {
+      trailing = Row(
+        key: HomeKeys.groupRowBalanceError,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Iconsax.warning_2, size: 14, color: colors.warning),
+          SizedBox(width: context.spacing.space4),
+          Flexible(
+            child: Text(
+              context.l10n.homeBalanceUnavailable,
+              textAlign: TextAlign.end,
+              style: AppTypography.sans(fontSize: 11, color: colors.textSecondary),
+            ),
+          ),
+        ],
+      );
+    } else {
+      trailing = Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (lines.isEmpty)
+            RAmount(
+              value: Decimal.zero,
+              currency: group.currency,
+              size: 16,
+            )
+          else
+            for (var i = 0; i < lines.length; i++)
+              Padding(
+                padding: EdgeInsetsDirectional.only(top: i == 0 ? 0 : 2),
+                child: RAmount(
+                  value: lines[i].net,
+                  currency: lines[i].currency,
+                  size: lines.length == 1 ? 16 : 14,
+                  sign: true,
+                ),
+              ),
+          if (balanceCaption != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              balanceCaption,
+              style: AppTypography.sans(fontSize: 11, color: colors.textSecondary),
+            ),
+          ],
+          // #997/#244: the facade resolved but dropped some money (a
+          // per-event read failed) — the numbers above are a partial sum,
+          // not the full picture. Row is too narrow for the hero's full
+          // homeBalanceIncompleteNotice sentence, hence the short row key.
+          if (homeBalance?.partial ?? false) ...[
+            const SizedBox(height: 2),
+            Row(
+              key: HomeKeys.groupRowBalanceIncomplete,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Iconsax.warning_2, size: 11, color: colors.warning),
+                SizedBox(width: context.spacing.space4),
+                Text(
+                  context.l10n.homeGroupBalanceIncomplete,
+                  style: AppTypography.sans(
+                    fontSize: 10,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      );
+    }
 
     return InkWell(
       onTap: onTap,
@@ -925,41 +1011,7 @@ class _GroupRow extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (lines.isEmpty)
-                      RAmount(
-                        value: Decimal.zero,
-                        currency: group.currency,
-                        size: 16,
-                      )
-                    else
-                      for (var i = 0; i < lines.length; i++)
-                        Padding(
-                          padding: EdgeInsetsDirectional.only(
-                            top: i == 0 ? 0 : 2,
-                          ),
-                          child: RAmount(
-                            value: lines[i].net,
-                            currency: lines[i].currency,
-                            size: lines.length == 1 ? 16 : 14,
-                            sign: true,
-                          ),
-                        ),
-                    if (balanceCaption != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        balanceCaption,
-                        style: AppTypography.sans(
-                          fontSize: 11,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                trailing,
               ],
             ),
             if (!isLast) ...[

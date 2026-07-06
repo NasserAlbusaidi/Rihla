@@ -69,6 +69,12 @@ abstract final class HomeKeys {
 
   // PR-5 §3: per-group balance breakdown sheet opened from the hero tap.
   static const heroBreakdownSheet = Key('home_hero_breakdown_sheet');
+  // #997: footer notice appended to the breakdown list when one or more
+  // groups' balances are still loading/errored — see groupRowBalanceIncomplete
+  // for the corresponding per-row marker on the home groups list.
+  static const heroBreakdownIncompleteNotice = Key(
+    'home_hero_breakdown_incomplete_notice',
+  );
 
   // #900 friction #3 — PR-5b: top-bar global search entry point.
   static const searchButton = Key('home_search_button');
@@ -76,4 +82,13 @@ abstract final class HomeKeys {
   // (showBadge always false), but every _IconCircle instance needs its own
   // key now that a second one exists beside the bell.
   static const searchButtonBadge = Key('home_search_button_badge');
+
+  // #997 hardening: `_GroupRow`'s trailing balance/caption column renders one
+  // of these three in place of the amount+caption, keyed by the group's
+  // `homeGroupBalanceProvider` AsyncValue state — never a false zero/"settled".
+  static const groupRowBalanceSkeleton = Key('home_group_row_balance_skeleton');
+  static const groupRowBalanceError = Key('home_group_row_balance_error');
+  static const groupRowBalanceIncomplete = Key(
+    'home_group_row_balance_incomplete',
+  );
 }

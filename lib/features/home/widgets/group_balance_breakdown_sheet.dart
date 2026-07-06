@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
@@ -66,20 +67,32 @@ class GroupBalanceBreakdownSheet extends ConsumerWidget {
       // (`home_screen.dart` `_GroupRow`) and the journeys strip
       // (`active_journeys_provider.dart:313`) — no new provider.
       final entries = <_GroupBalanceEntry>[];
+      // #997: a loading/errored facade must not read as a settled (dropped)
+      // group — track it separately so the list can flag itself incomplete
+      // instead of silently omitting the group.
+      var unresolvedCount = 0;
       for (final group in groupsAsync.value!) {
+        final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
+        if ((balanceAsync.isLoading && !balanceAsync.hasValue) ||
+            (balanceAsync.hasError && !balanceAsync.hasValue)) {
+          unresolvedCount++;
+          continue;
+        }
         final userNet =
-            ref.watch(homeGroupBalanceProvider(group.id)).valueOrNull?.userNet ??
-            const <String, Decimal>{};
+            balanceAsync.valueOrNull?.userNet ?? const <String, Decimal>{};
         final lines = nonZeroNetsGccFirst(userNet);
         if (lines.isNotEmpty) {
           entries.add((group: group, lines: lines));
         }
       }
       body = entries.isEmpty
-          ? _EmptyBody(text: context.l10n.heroBreakdownEmpty)
+          ? (unresolvedCount > 0
+                ? const _Loading()
+                : _EmptyBody(text: context.l10n.heroBreakdownEmpty))
           : _RowsList(
               entries: entries,
               onTapGroup: (groupId) => _openSettleUp(context, groupId),
+              unresolvedCount: unresolvedCount,
             );
     }
 
@@ -115,19 +128,34 @@ class GroupBalanceBreakdownSheet extends ConsumerWidget {
 }
 
 class _RowsList extends StatelessWidget {
-  const _RowsList({required this.entries, required this.onTapGroup});
+  const _RowsList({
+    required this.entries,
+    required this.onTapGroup,
+    this.unresolvedCount = 0,
+  });
 
   final List<_GroupBalanceEntry> entries;
   final ValueChanged<String> onTapGroup;
 
+  /// #997: groups whose balance facade was loading/errored, dropped from
+  /// [entries] rather than presented as settled. > 0 appends a footer row
+  /// reusing the hero's `homeBalanceIncompleteNotice` wording.
+  final int unresolvedCount;
+
   @override
   Widget build(BuildContext context) {
+    final hasNotice = unresolvedCount > 0;
     return ListView.separated(
       shrinkWrap: true,
-      itemCount: entries.length,
+      itemCount: entries.length + (hasNotice ? 1 : 0),
       separatorBuilder: (_, _) =>
           Container(height: 0.5, color: context.colors.rule),
       itemBuilder: (context, index) {
+        if (hasNotice && index == entries.length) {
+          return const _IncompleteFooter(
+            key: HomeKeys.heroBreakdownIncompleteNotice,
+          );
+        }
         final entry = entries[index];
         return _GroupBalanceRow(
           group: entry.group,
@@ -135,6 +163,31 @@ class _RowsList extends StatelessWidget {
           onTap: () => onTapGroup(entry.group.id),
         );
       },
+    );
+  }
+}
+
+class _IncompleteFooter extends StatelessWidget {
+  const _IncompleteFooter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Iconsax.warning_2, size: 14, color: colors.warning),
+          SizedBox(width: context.spacing.space8),
+          Expanded(
+            child: Text(
+              context.l10n.homeBalanceIncompleteNotice,
+              style: AppTypography.sans(fontSize: 12, color: colors.textSecondary),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

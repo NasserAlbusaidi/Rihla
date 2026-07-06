@@ -311,6 +311,26 @@ class SkeletonLoader extends StatelessWidget {
     );
   }
 
+  /// Skeleton for one row's trailing balance/caption column while its own
+  /// balance facade is loading (#997) — an amount-sized bar over a
+  /// caption-sized bar, end-aligned to match the real column it replaces.
+  static Widget trailingBalance() {
+    return Builder(
+      builder: (context) => Skeletonizer(
+        effect: _effectFor(context),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SkeletonBar(width: 52, height: 16),
+            SizedBox(height: 4),
+            SkeletonBar(width: 40, height: 11),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------

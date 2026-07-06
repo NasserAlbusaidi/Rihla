@@ -231,6 +231,22 @@ void main() {
           _buildApp([
             ..._baseOverrides(prefs: prefs, groups: [group]),
             groupEventsProvider('g1').overrideWith((ref) => neverResolves.stream),
+            // #997: this test's concern is the smart-forward NAV guard (which
+            // reads `addExpenseTargetsProvider`, itself fed by the same
+            // never-resolving `groupEventsProvider`) — not balance display.
+            // Pin the row's own balance facade to a resolved value so
+            // `_GroupRow` renders normally instead of its (correctly, but
+            // irrelevantly here) endlessly-shimmering loading skeleton, which
+            // would make `pumpAndSettle` below hang forever.
+            homeGroupBalanceProvider('g1').overrideWith(
+              (ref) => const AsyncValue.data((
+                userNet: <String, Decimal>{},
+                userPerEventNet: <String, Map<String, Decimal>>{},
+                eventCount: 0,
+                partial: false,
+                fromAggregate: true,
+              )),
+            ),
           ]),
         );
         await tester.pumpAndSettle();

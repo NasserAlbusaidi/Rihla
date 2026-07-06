@@ -356,7 +356,14 @@ final activeJourneysProvider =
     // breakdown otherwise) — the strip holds no live per-event listeners
     // either way. The active-window filter above still watches the LIVE
     // groupEventsProvider, so event add/remove refreshes the strip.
+    //
+    // #997: a loading/errored facade has no reliable money — defaulting to
+    // `{}` rendered every ticket in this group as a false "settled" net.
+    // Skip the group's tickets entirely rather than guess (mirrors #570's
+    // "drop the unreadable" rule); they reappear once the facade resolves.
     final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
+    if (balanceAsync.isLoading && !balanceAsync.hasValue) continue;
+    if (balanceAsync.hasError && !balanceAsync.hasValue) continue;
     final userEventBalances = balanceAsync.valueOrNull?.userPerEventNet ??
         const <String, Map<String, Decimal>>{};
 
