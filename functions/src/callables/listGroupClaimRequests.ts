@@ -42,13 +42,9 @@ export const listGroupClaimRequests = onCall<
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
     }
-    if (request.auth.token?.firebase?.sign_in_provider === 'anonymous') {
-      throw new HttpsError(
-        'permission-denied',
-        'A linked (non-anonymous) account is required.',
-      );
-    }
-
+    // D6-R (2026-07-06): anonymous creators may LIST claim requests — the
+    // pending request is the link nudge. Read-only + creator-scoped below;
+    // the DECISION stays durable-gated in decideClaimRequest.
     const uid = request.auth.uid;
     const groupId = validId(request.data?.groupId, 'groupId');
     const db = getFirestore();
