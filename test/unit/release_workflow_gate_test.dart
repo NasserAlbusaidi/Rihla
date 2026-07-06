@@ -329,6 +329,10 @@ exit 64
         environment: {
           'PATH': '${tempDir.path}:${Platform.environment['PATH']}',
           'RIHLA_SKIP_IOS_QA': 'yes',
+          // Process.run merges the parent environment; a release audit runs
+          // this suite WITH the single-device override exported, which must
+          // not leak into the strict-mode pin.
+          'RIHLA_SINGLE_DEVICE_QA_OK': '',
         },
       );
 
