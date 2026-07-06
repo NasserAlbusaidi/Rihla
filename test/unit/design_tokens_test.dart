@@ -436,55 +436,59 @@ void main() {
     });
   });
 
-  group('WCAG AA contrast — saffron palette', () {
-    const paper = Color(0xFFF6F1E6);
+  group('WCAG AA contrast — brand palette, live tokens (#907)', () {
+    // #907: assert against the LIVE scaffold token, never a hardcoded hex —
+    // a retired background (saffron paper 0xFFF6F1E6) passed coincidentally
+    // and would have false-passed if the scaffold ever darkened. Theme-wide
+    // fg/bg pairs live in theme_contrast_test.dart; this group keeps only
+    // the on-primary check that suite doesn't cover.
+    final paper = AppColorTokens.light.scaffoldBackground;
     const white = Color(0xFFFFFFFF);
 
-    test('textPrimary (ink) on paper >= 4.5:1', () {
+    test('textPrimary on scaffoldBackground >= 4.5:1', () {
       final ratio = contrastRatio(AppColorTokens.light.textPrimary, paper);
       expect(
         ratio,
         greaterThanOrEqualTo(4.5),
-        reason: 'Ink on paper: ${ratio.toStringAsFixed(2)}:1',
+        reason: 'textPrimary on scaffold: ${ratio.toStringAsFixed(2)}:1',
       );
     });
 
-    test('textSecondary (ink-3) on paper >= 4.5:1', () {
+    test('textSecondary on scaffoldBackground >= 4.5:1', () {
       final ratio = contrastRatio(AppColorTokens.light.textSecondary, paper);
       expect(
         ratio,
         greaterThanOrEqualTo(4.5),
-        reason: 'Ink-3 on paper: ${ratio.toStringAsFixed(2)}:1',
+        reason: 'textSecondary on scaffold: ${ratio.toStringAsFixed(2)}:1',
       );
     });
 
-    test('successText (sage-dark) on white >= 4.5:1', () {
+    test('successText on white >= 4.5:1', () {
       final ratio = contrastRatio(AppColorTokens.light.successText, white);
       expect(
         ratio,
         greaterThanOrEqualTo(4.5),
-        reason: 'Sage-dark on white: ${ratio.toStringAsFixed(2)}:1',
+        reason: 'successText on white: ${ratio.toStringAsFixed(2)}:1',
       );
     });
 
-    test('errorText (rust-dark) on white >= 4.5:1', () {
+    test('errorText on white >= 4.5:1', () {
       final ratio = contrastRatio(AppColorTokens.light.errorText, white);
       expect(
         ratio,
         greaterThanOrEqualTo(4.5),
-        reason: 'Rust-dark on white: ${ratio.toStringAsFixed(2)}:1',
+        reason: 'errorText on white: ${ratio.toStringAsFixed(2)}:1',
       );
     });
 
-    test('white on saffron >= 3.0:1 (AA large/UI threshold)', () {
-      // Saffron on white is borderline (~3.4:1) — passes AA large but not AA
-      // normal text. This is acceptable for buttons/FAB labels which are
-      // typically larger. Functional text on saffron surfaces should use ink.
+    test('white on primary >= 3.0:1 (AA large/UI threshold)', () {
+      // Button/FAB labels on the brand primary. Floor stays at the AA
+      // large-text threshold so a future primary can't regress below it.
       final ratio = contrastRatio(white, AppColorTokens.light.primary);
       expect(
         ratio,
         greaterThanOrEqualTo(3.0),
-        reason: 'White on saffron: ${ratio.toStringAsFixed(2)}:1',
+        reason: 'White on primary: ${ratio.toStringAsFixed(2)}:1',
       );
     });
   });
