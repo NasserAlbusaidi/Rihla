@@ -9,6 +9,8 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/durable_credential_sheet.dart';
 import '../keys/group_keys.dart';
 import '../models/claim_models.dart';
 import '../providers/claim_provider.dart';
@@ -82,6 +84,17 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
       _busy = true;
       _approving = approve;
     });
+    // D6-R: an anonymous creator can SEE requests but the server rejects an
+    // anonymous decide — pre-empt with the link sheet. Placed after the busy
+    // guard (no double-sheet on double-tap) with an explicit reset on cancel
+    // (the finally below is unreachable from this early return).
+    if (!ref.read(isDurableUserProvider)) {
+      final linked = await showDurableCredentialSheet(context);
+      if (!linked || !mounted) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+    }
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
     final req = widget.request;

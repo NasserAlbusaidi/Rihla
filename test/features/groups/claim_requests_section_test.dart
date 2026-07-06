@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/features/auth/providers/auth_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/models/claim_models.dart';
 import 'package:safar/features/groups/widgets/claim_requests_section.dart';
@@ -36,9 +37,14 @@ void main() {
         .thenAnswer((_) async => pending);
   });
 
-  Widget harness({required bool isCreator}) {
+  Widget harness({required bool isCreator, bool durable = true}) {
     return ProviderScope(
-      overrides: [firebaseFunctionsServiceProvider.overrideWithValue(fns)],
+      overrides: [
+        firebaseFunctionsServiceProvider.overrideWithValue(fns),
+        // D6-R: the decide pre-gate reads durability; default the harness to
+        // durable so C4-C6 keep exercising the direct decide path.
+        isDurableUserProvider.overrideWithValue(durable),
+      ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -174,4 +180,48 @@ void main() {
     expect(find.textContaining('Try again'), findsOneWidget);
     expect(find.textContaining('now holds'), findsNothing);
   });
+
+  testWidgets(
+    'C7 (D6-R): anonymous creator tapping Approve opens the link sheet, '
+    'never calls decide, and the row recovers on cancel',
+    (tester) async {
+      await tester.pumpWidget(harness(isCreator: true, durable: false));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.claimApprove('rid')));
+      // Bounded pumps: the sheet hosts a non-settling animation, so
+      // pumpAndSettle would time out.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byKey(const Key('durableGate.continue')), findsOneWidget);
+      verifyNever(
+        () => fns.decideClaimRequest(
+          groupId: any(named: 'groupId'),
+          requestId: any(named: 'requestId'),
+          approve: any(named: 'approve'),
+        ),
+      );
+
+      // Barrier-dismiss = "Not now" (sheet resolves false). The row's busy
+      // state must clear so the creator can retry after linking — a stuck
+      // spinner here was the Gate R1 adversary's P2.
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(const Key('durableGate.continue')), findsNothing);
+
+      await tester.tap(find.byKey(GroupKeys.claimApprove('rid')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(const Key('durableGate.continue')), findsOneWidget);
+      verifyNever(
+        () => fns.decideClaimRequest(
+          groupId: any(named: 'groupId'),
+          requestId: any(named: 'requestId'),
+          approve: any(named: 'approve'),
+        ),
+      );
+    },
+  );
 }
