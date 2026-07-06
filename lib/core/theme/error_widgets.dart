@@ -120,7 +120,7 @@ class NetworkErrorWidget extends StatelessWidget {
                 label: Text(context.l10n.commonRetry),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.colors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: context.colors.textOnPrimary,
                   padding: EdgeInsets.symmetric(
                     horizontal: context.spacing.space24,
                     vertical: context.spacing.space12,

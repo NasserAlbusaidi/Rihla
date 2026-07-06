@@ -84,9 +84,11 @@ void main() {
                 routes: [
                   GoRoute(
                     path: 'activity',
-                    builder: (c, s) => ActivityFeedScreen(
-                      groupId: s.pathParameters['gid']!,
-                      eventId: s.pathParameters['eid']!,
+                    builder: (c, s) => Scaffold(
+                      body: ActivityFeedScreen(
+                        groupId: s.pathParameters['gid']!,
+                        eventId: s.pathParameters['eid']!,
+                      ),
                     ),
                   ),
                 ],
@@ -168,9 +170,11 @@ void main() {
                 routes: [
                   GoRoute(
                     path: 'ledger',
-                    builder: (context, state) => LedgerScreen(
-                      groupId: state.pathParameters['gid']!,
-                      eventId: state.pathParameters['eid']!,
+                    builder: (context, state) => Scaffold(
+                      body: LedgerScreen(
+                        groupId: state.pathParameters['gid']!,
+                        eventId: state.pathParameters['eid']!,
+                      ),
                     ),
                   ),
                 ],

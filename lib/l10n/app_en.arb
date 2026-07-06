@@ -557,9 +557,7 @@
   "categoryFees": "Fees",
   "categoryOther": "Other",
 
-  "ledgerBackTooltip": "Back",
   "ledgerSearchExpensesTooltip": "Search expenses",
-  "ledgerActivityTooltip": "Activity log",
   "ledgerEventSettingsTooltip": "Event settings",
   "ledgerPeopleCount": "{count, plural, =1{1 PERSON} other{{count} PEOPLE}}",
   "@ledgerPeopleCount": {
@@ -610,28 +608,6 @@
   "ledgerConnectionRetryMessage": "Check your connection and try again.",
   "ledgerEventNotFoundMessage": "It may have been deleted, or the link is incorrect.",
   "ledgerReload": "Reload",
-  "ledgerHeroPositivePrefix": "You're up",
-  "ledgerHeroPositiveTail": "across {count, plural, =1{1 person} other{{count} people}}.",
-  "@ledgerHeroPositiveTail": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "ledgerHeroNegativePrefix": "You owe",
-  "ledgerHeroNegativeTail": "to {count, plural, =1{1 person} other{{count} people}}.",
-  "@ledgerHeroNegativeTail": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "ledgerHeroEmptyPrefix": "Nothing logged yet",
-  "ledgerHeroEmptyTail": "add the first expense and we'll start the math.",
-  "ledgerAllSquare": "All square.",
-  "ledgerSettledBadge": "SETTLED",
   "ledgerTripTotal": "TRIP TOTAL",
   "ledgerExpenseCount": "{count, plural, =1{1 expense} other{{count} expenses}}",
   "@ledgerExpenseCount": {
@@ -716,7 +692,6 @@
   },
   "ledgerGroup": "group",
   "ledgerAddExpense": "Add expense",
-  "ledgerSettleUp": "Settle up",
 
   "editorTitleAddExpense": "Add expense",
   "editorTitleEditExpense": "Edit expense",
@@ -2094,7 +2069,6 @@
   "groupDeleteSheetUndo": "This can't be undone.",
   "groupDeleteSheetTypePrefix": "TYPE ",
   "groupDeleteSheetTypeSuffix": " TO CONFIRM",
-  "groupDeleteSheetRetention": "A copy is kept for 30 days in case you change your mind.",
   "groupDeleteSheetConfirm": "Delete group",
   "groupScanToJoin": "Scan to join",
   "groupInviteQrCode": "Invite QR code",

@@ -91,9 +91,11 @@ void main() {
       routes: [
         GoRoute(
           path: '/group/:gid/event/:eid/ledger',
-          builder: (context, state) => LedgerScreen(
-            groupId: state.pathParameters['gid']!,
-            eventId: state.pathParameters['eid']!,
+          builder: (context, state) => Scaffold(
+            body: LedgerScreen(
+              groupId: state.pathParameters['gid']!,
+              eventId: state.pathParameters['eid']!,
+            ),
           ),
         ),
       ],

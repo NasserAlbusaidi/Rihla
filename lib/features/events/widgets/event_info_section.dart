@@ -132,7 +132,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
               queued
                   ? context.l10n.eventUpdatedWillSync
                   : context.l10n.eventUpdated,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: context.colors.scaffoldBackground),
             ),
             backgroundColor: context.colors.textPrimary,
             behavior: SnackBarBehavior.floating,
@@ -336,7 +336,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
               },
         style: ElevatedButton.styleFrom(
           backgroundColor: context.colors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: context.colors.textOnPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -346,9 +346,11 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
             ? SizedBox(
                 width: context.spacing.space20,
                 height: context.spacing.space20,
-                child: const CircularProgressIndicator(
+                child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    context.colors.textOnPrimary,
+                  ),
                 ),
               )
             : Text(

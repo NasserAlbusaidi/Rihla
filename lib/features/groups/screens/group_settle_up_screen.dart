@@ -35,6 +35,7 @@ import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_presettle_review_provider.dart';
 import '../providers/group_provider.dart';
+import '../services/group_settlement_service.dart';
 import '../widgets/record_payment_sheet.dart';
 import '../widgets/settle_notify_sheet.dart';
 import '../widgets/settle_up_page_body.dart';
@@ -717,24 +718,28 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   /// [eventOrder]). Returns the aggregate [_StepOutcome] so the stepped walk can
   /// decide whether to continue.
   ///
-  /// Falls back to a single [GroupSettlementService.addGroupSettlement] (today's
-  /// atomic path) when the transfer can't be safely decomposed:
+  /// Falls back to a single [GroupSettlementService.addGroupSettlement] (the
+  /// atomic single-doc path) when the transfer can't be safely decomposed:
   ///  - either party is NOT a live group member (`group.memberIds`): the
   ///    residual group write requires both parties in `memberIds`, but event
   ///    writes only require event participation, so a departed party (#249)
-  ///    would partial-persist event docs then hit permission-denied on the
-  ///    residual. The single group write fails atomically instead (today's
-  ///    behavior — you already cannot settle a departed member at the group
-  ///    level). Read from `group.memberIds` — the EXACT set the residual rule
-  ///    checks — not a member-subcollection stream that can diverge.
+  ///    could pass the event legs then hit permission-denied on the residual.
+  ///    The single group write fails atomically instead (you already cannot
+  ///    settle a departed member at the group level). Read from
+  ///    `group.memberIds` — the EXACT set the residual rule checks — not a
+  ///    member-subcollection stream that can diverge.
   ///  - no per-event attribution at all (pure cross-event / no shared event):
   ///    identical to today's single group settlement.
+  ///  - more than [kMaxDecomposeLegsAtomic] event legs: a larger batch exceeds
+  ///    the shared 20-access-call rules budget and would reject in toto (#929
+  ///    §ceiling). The single group settlement is aggregate-correct.
   ///
-  /// Once-semantics: the N event writes + residual run as RAW writes; the
-  /// activity log and success/queued snackbar fire EXACTLY ONCE after the walk
-  /// (amount = A), and `ledgerRevisionProvider` is bumped per successful event
-  /// write (the home one-shot reads event settlements; bumping per-write keeps
-  /// home fresh even on a partial-failure walk).
+  /// Once-semantics (#929): the N event settlements + residual stage into ONE
+  /// atomic [GroupSettlementService.stageDecomposedSettleUp] WriteBatch — all
+  /// commit or none do. The activity log and success/queued snackbar fire
+  /// EXACTLY ONCE (amount = A), and `ledgerRevisionProvider` is bumped ONCE
+  /// after the ack resolves (the home one-shot reads event settlements; any
+  /// single bump invalidates it — there is no partial walk to keep fresh).
   Future<_StepOutcome> _recordDecomposedSettlement(
     BuildContext context, {
     required Group group,
@@ -764,8 +769,16 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final bothLiveMembers =
         group.memberIds.contains(fromUserId) &&
         group.memberIds.contains(toUserId);
-    // Fall back to today's atomic single group write (no decompose).
-    if (!bothLiveMembers || decomposition.perEvent.isEmpty) {
+    // Fall back to today's atomic single group write (no decompose) when a
+    // party has departed, there's no per-event attribution, OR the leg count
+    // would blow the shared 20-access-call batch budget (#929 §ceiling: a
+    // decompose costs 2·N+1 access calls, so N > kMaxDecomposeLegsAtomic records
+    // one atomic group settlement instead — aggregate-correct, though the
+    // per-event ledgers keep showing the debt: a bounded carve-out to the #752
+    // decompose contract, chosen over chunking, which reopens partial-persist).
+    if (!bothLiveMembers ||
+        decomposition.perEvent.isEmpty ||
+        decomposition.perEvent.length > kMaxDecomposeLegsAtomic) {
       return _recordSettlement(
         context,
         group: group,
@@ -809,61 +822,49 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         );
       }
 
-      final eventService = ref.read(settlementServiceProvider);
       final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
-      var anyQueued = false;
 
-      // Events first, residual last — every intermediate state stays consistent
-      // (event ledgers + aggregate move together). A failed write throws → the
-      // catch stops the walk; recorded rows persist (append-only); re-entry
-      // recomputes the remainder from the live streams.
+      // Build the event legs from the SAME eventOrder the displayed breakdown
+      // used (skip null slices) — the WYSIWYG invariant. perEvent holds only
+      // positive slices for eventOrder ids, so eventLegs.length equals the
+      // pre-gate count and can never exceed kMaxDecomposeLegsAtomic here.
+      final eventLegs = <({String eventId, Decimal amount})>[];
       for (final eventId in eventOrder) {
         final slice = decomposition.perEvent[eventId];
-        if (slice == null) continue;
-        final ack = await awaitServerAck(
-          eventService.addSettlement(
+        if (slice != null) eventLegs.add((eventId: eventId, amount: slice));
+      }
+
+      // ONE atomic WriteBatch: the N event settlements + residual commit or
+      // none do. A rules rejection of any leg (membership/participation changed
+      // while queued) persists NOTHING — no path (any N ≤ cap, online or
+      // offline) can leave a partial logical settle-up (#929, retiring #752's
+      // partial-persist PR2 deferral). The caller races the single commit ack.
+      final result = ref
+          .read(groupSettlementServiceProvider)
+          .stageDecomposedSettleUp(
             groupId: widget.groupId,
-            eventId: eventId,
+            eventLegs: eventLegs,
+            residual: decomposition.residual,
             payerParticipantId: fromUserId,
             recipientParticipantId: toUserId,
-            amount: slice,
             currency: currency,
             createdBy: currentUid,
+            groupSettleUpId: groupSettleUpId,
             payerName: fromName,
             recipientName: toName,
             note: note,
-            groupSettleUpId: groupSettleUpId,
-          ),
-          skipWait: skipWait,
-        );
-        if (ack == WriteAck.queued) anyQueued = true;
-        // #752/#104: the home one-shot reads EVENT settlements — bump per
-        // successful event write so home stays fresh even on a partial walk.
-        ledgerRevision.state++;
-      }
+          );
+      final ack = await awaitServerAck(result.ack, skipWait: skipWait);
+      final anyQueued = ack == WriteAck.queued;
 
-      if (decomposition.residual > Decimal.zero) {
-        final ack = await awaitServerAck(
-          ref
-              .read(groupSettlementServiceProvider)
-              .addGroupSettlement(
-                groupId: widget.groupId,
-                payerParticipantId: fromUserId,
-                recipientParticipantId: toUserId,
-                amount: decomposition.residual,
-                currency: currency,
-                note: note,
-                payerName: fromName,
-                recipientName: toName,
-                createdBy: currentUid,
-                groupSettleUpId: groupSettleUpId,
-              ),
-          skipWait: skipWait,
-        );
-        if (ack == WriteAck.queued) anyQueued = true;
-      }
+      // ONE bump after the ack resolves — any single bump invalidates the home
+      // once-provider (the old walk's N bumps were N redundant refetches). Only
+      // when there are event legs: a pure-residual decompose (unreachable — the
+      // pre-gate falls back on an empty perEvent) is a group-only write that
+      // needs no bump (CLAUDE.md #366).
+      if (eventLegs.isNotEmpty) ledgerRevision.state++;
 
-      // Connectivity note ONCE after the walk (#357/#412).
+      // Connectivity note ONCE after the write (#357/#412).
       if (anyQueued) {
         connectivityNotifier.noteQueuedWrite(groupId: widget.groupId);
       } else {

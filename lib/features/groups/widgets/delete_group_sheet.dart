@@ -262,26 +262,6 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                           ),
                         ),
                       ),
-                      SizedBox(height: context.spacing.space8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 12,
-                            color: colors.textSecondary,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              context.l10n.groupDeleteSheetRetention,
-                              style: AppTypography.sans(
-                                fontSize: 11,
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -336,6 +316,9 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                               style: AppTypography.sans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
+                                // design-token-justified: white label on the
+                                // rust destructive-delete CTA — intended white
+                                // in both themes (there is no textOnError token).
                                 color: Colors.white,
                               ),
                             ),
@@ -343,6 +326,8 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                               backgroundColor: _matches
                                   ? colors.error
                                   : colors.error.withValues(alpha: 0.4),
+                              // design-token-justified: white foreground on the
+                              // rust destructive CTA (see the label note above).
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -351,6 +336,8 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                               disabledBackgroundColor: colors.error.withValues(
                                 alpha: 0.35,
                               ),
+                              // design-token-justified: dimmed white disabled
+                              // label on the rust destructive CTA (see above).
                               disabledForegroundColor: Colors.white.withValues(
                                 alpha: 0.7,
                               ),

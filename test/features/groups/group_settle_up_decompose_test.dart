@@ -101,99 +101,36 @@ GroupBalances _balancesSingleEvent({String debtorId = 'uid-bob'}) => (
       memberRawNames: <String, String>{'uid-alice': 'Alice', debtorId: 'Bob'},
     );
 
-class _RecordingEventSettlementService extends SettlementService {
-  _RecordingEventSettlementService() : super.withFirestore(FakeFirebaseFirestore());
-
-  final addCalls = <({
-    String groupId,
-    String eventId,
-    String payerParticipantId,
-    String recipientParticipantId,
-    Decimal amount,
-    String currency,
-    String? note,
-    String? groupSettleUpId,
-  })>[];
-
-  @override
-  Future<Settlement> addSettlement({
-    required String groupId,
-    required String eventId,
-    required String payerParticipantId,
-    required String recipientParticipantId,
-    required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
-    String? payerName,
-    String? recipientName,
-    String? note,
-    String? groupSettleUpId,
-  }) async {
-    addCalls.add((
-      groupId: groupId,
-      eventId: eventId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      currency: currency,
-      note: note,
-      groupSettleUpId: groupSettleUpId,
-    ));
-    return Settlement(
-      id: 'evt-set-${addCalls.length}',
-      tripId: eventId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      currency: currency,
-      createdBy: createdBy,
-      settledAt: DateTime(2026, 4, 1),
-      groupSettleUpId: groupSettleUpId,
-    );
-  }
+// #929: the decompose write is now ONE atomic WriteBatch staged by
+// GroupSettlementService (event legs routed through ITS db), so the old
+// per-service recording wrappers can't observe the event legs anymore. The
+// happy-path tests use REAL services on ONE shared FakeFirebaseFirestore and
+// read the persisted docs back through that fake.
+Future<List<Settlement>> _eventSettlements(
+  FakeFirebaseFirestore fake,
+  String eventId,
+) async {
+  final snap = await fake
+      .collection('groups')
+      .doc(_groupId)
+      .collection('events')
+      .doc(eventId)
+      .collection('settlements')
+      .get();
+  return snap.docs
+      .map((d) => Settlement.fromFirestore({...d.data(), 'id': d.id}))
+      .toList();
 }
 
-class _RecordingGroupSettlementService extends GroupSettlementService {
-  _RecordingGroupSettlementService() : super.withFirestore(FakeFirebaseFirestore());
-
-  final addCalls = <({
-    Decimal amount,
-    String currency,
-    String? groupSettleUpId,
-  })>[];
-
-  @override
-  Future<Settlement> addGroupSettlement({
-    required String groupId,
-    required String payerParticipantId,
-    required String recipientParticipantId,
-    required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
-    String? note,
-    String? payerName,
-    String? recipientName,
-    String? groupSettleUpId,
-  }) async {
-    addCalls.add((
-      amount: amount,
-      currency: currency,
-      groupSettleUpId: groupSettleUpId,
-    ));
-    return Settlement(
-      id: 'grp-set-${addCalls.length}',
-      tripId: groupId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      currency: currency,
-      createdBy: createdBy,
-      settledAt: DateTime(2026, 4, 1),
-      scope: 'group',
-      groupId: groupId,
-      groupSettleUpId: groupSettleUpId,
-    );
-  }
+Future<List<Settlement>> _groupSettlements(FakeFirebaseFirestore fake) async {
+  final snap = await fake
+      .collection('groups')
+      .doc(_groupId)
+      .collection('settlements')
+      .get();
+  return snap.docs
+      .map((d) => Settlement.fromFirestore({...d.data(), 'id': d.id}))
+      .toList();
 }
 
 class _RecordingGroupActivityService extends GroupActivityService {
@@ -257,8 +194,12 @@ void main() {
       'a single-event group settle-up writes an EVENT settlement (reducing the '
       'event ledger), no residual group doc, and bumps ledgerRevision',
       (tester) async {
-        final eventService = _RecordingEventSettlementService();
-        final groupService = _RecordingGroupSettlementService();
+        // ONE shared fake injected into BOTH services: the batch routes ALL
+        // legs through GroupSettlementService.db, so a two-fake harness would
+        // read the wrong db (#929 R1 rubric P2).
+        final fake = FakeFirebaseFirestore();
+        final eventService = SettlementService.withFirestore(fake);
+        final groupService = GroupSettlementService.withFirestore(fake);
         final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(_wrap(
@@ -281,9 +222,10 @@ void main() {
 
         // The money truth landed in the EVENT subcollection — this is the bug
         // fix: a group settle-up now reduces the per-event ledger.
-        expect(eventService.addCalls, hasLength(1));
-        final call = eventService.addCalls.single;
-        expect(call.eventId, 'event-1');
+        final eventDocs = await _eventSettlements(fake, 'event-1');
+        expect(eventDocs, hasLength(1));
+        final call = eventDocs.single;
+        expect(call.tripId, 'event-1');
         expect(call.payerParticipantId, 'uid-bob');
         expect(call.recipientParticipantId, 'uid-alice');
         expect(call.amount, Decimal.parse('7.750'));
@@ -291,7 +233,7 @@ void main() {
         expect(call.groupSettleUpId, isNotNull);
 
         // residual == 0 → NO group settlement doc.
-        expect(groupService.addCalls, isEmpty);
+        expect(await _groupSettlements(fake), isEmpty);
 
         // Activity logged ONCE for the whole logical settle-up, amount = A.
         // #831: the decomposed event-settlement SLICES must emit no
@@ -368,8 +310,9 @@ void main() {
           },
         );
 
-        final eventService = _RecordingEventSettlementService();
-        final groupService = _RecordingGroupSettlementService();
+        final fake = FakeFirebaseFirestore();
+        final eventService = SettlementService.withFirestore(fake);
+        final groupService = GroupSettlementService.withFirestore(fake);
         final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(_wrap(
@@ -388,10 +331,11 @@ void main() {
         await _recordFullAmount(tester);
 
         // No event writes (would orphan if the residual were denied).
-        expect(eventService.addCalls, isEmpty);
+        expect(await _eventSettlements(fake, 'event-1'), isEmpty);
         // Fell back to today's single atomic group settlement.
-        expect(groupService.addCalls, hasLength(1));
-        expect(groupService.addCalls.single.amount, Decimal.parse('7.750'));
+        final groupDocs = await _groupSettlements(fake);
+        expect(groupDocs, hasLength(1));
+        expect(groupDocs.single.amount, Decimal.parse('7.750'));
       },
     );
   });

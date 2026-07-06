@@ -113,6 +113,10 @@ class ModuleHeader extends StatelessWidget {
             color: context.colors.headerGradientStart.withValues(alpha: 0.8),
             border: Border(
               bottom: BorderSide(
+                // design-token-justified: ModuleHeader(useDarkTheme: true)
+                // paints a fixed dark ink slab in BOTH app themes, so its
+                // foreground is theme-invariant white — context.colors would
+                // flip to ink and vanish against the dark slab in light mode.
                 color: Colors.white.withValues(alpha: 0.08),
                 width: 0.5,
               ),
@@ -152,6 +156,8 @@ class ModuleHeader extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
+                        // design-token-justified: fixed dark-slab header
+                        // subtitle — theme-invariant white (see _buildDark).
                         color: Colors.white.withValues(alpha: 0.5),
                         letterSpacing: 0.5,
                       ),
@@ -163,6 +169,8 @@ class ModuleHeader extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
+                      // design-token-justified: fixed dark-slab header title —
+                      // theme-invariant white (see _buildDark).
                       color: Colors.white,
                       letterSpacing: -0.5,
                     ),
@@ -224,12 +232,17 @@ class _DarkBackButton extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
+            // design-token-justified: _DarkBackButton belongs to the fixed
+            // dark-slab header — theme-invariant white fill/border/icon in both
+            // app themes (see _buildDark).
             color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8 + 2),
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: const DirectionalIcon(
             Iconsax.arrow_left,
+            // design-token-justified: fixed dark-slab back icon — theme-
+            // invariant white (see _buildDark).
             color: Colors.white,
             size: 20,
           ),

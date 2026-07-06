@@ -219,6 +219,10 @@ class _SettleNotifySheet extends StatelessWidget {
                             style: AppTypography.sans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
+                              // design-token-justified: white label on the
+                              // WhatsApp brand-green CTA (the brand-green
+                              // backgroundColor is justified below) — a
+                              // theme-invariant third-party brand pairing.
                               color: Colors.white,
                             ),
                           ),

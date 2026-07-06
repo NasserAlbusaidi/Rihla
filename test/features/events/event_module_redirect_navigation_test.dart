@@ -10,8 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/router/app_router.dart';
 import 'package:safar/core/theme/app_theme.dart';
-import 'package:safar/features/activity/keys/activity_keys.dart';
-import 'package:safar/features/activity/screens/activity_feed_screen.dart';
 import 'package:safar/features/activity/services/activity_service.dart';
 import 'package:safar/features/activity/utils/activity_nav.dart';
 import 'package:safar/features/events/keys/event_keys.dart';
@@ -32,7 +30,6 @@ import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/add_expense_screen.dart';
 import 'package:safar/features/ledger/screens/edit_expense_screen.dart';
-import 'package:safar/features/ledger/screens/ledger_screen.dart';
 import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -176,12 +173,11 @@ void main() {
               routes: [
                 GoRoute(
                   path: 'ledger',
+                  // #915: redirect-only, like production — a builderless
+                  // ancestor contributes no page, so Back from a cold-linked
+                  // child lands on the hub.
                   redirect: (context, state) =>
                       eventLedgerModuleRedirect(state),
-                  builder: (_, state) => LedgerScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
                   routes: [
                     GoRoute(
                       path: 'add',
@@ -211,12 +207,9 @@ void main() {
                 ),
                 GoRoute(
                   path: 'activity',
+                  // #915: redirect-only, like production.
                   redirect: (context, state) =>
                       eventActivityModuleRedirect(state),
-                  builder: (_, state) => ActivityFeedScreen(
-                    groupId: state.pathParameters['gid']!,
-                    eventId: state.pathParameters['eid']!,
-                  ),
                 ),
                 GoRoute(
                   path: 'recap',
@@ -280,8 +273,6 @@ void main() {
 
         expect(find.byType(EventCommandCenter), findsOneWidget);
         expect(find.byKey(EventKeys.tabBar), findsOneWidget);
-        // Not the dead full-chrome ledger route — its Scaffold key is absent.
-        expect(find.byKey(LedgerKeys.screen), findsNothing);
         expect(find.text('Dinner'), findsOneWidget);
 
         await tester.tap(find.byIcon(Iconsax.arrow_left).first);
@@ -302,8 +293,6 @@ void main() {
 
       expect(find.byType(EventCommandCenter), findsOneWidget);
       expect(find.byKey(EventKeys.tabBar), findsOneWidget);
-      // Not the dead full-chrome activity route.
-      expect(find.byKey(ActivityKeys.screen), findsNothing);
 
       final l10n = AppLocalizations.of(
         tester.element(find.byKey(EventKeys.tabBar)),
@@ -335,6 +324,26 @@ void main() {
 
         expect(find.byKey(LedgerKeys.editExpenseSheet), findsOneWidget);
         expect(find.byKey(EventKeys.tabBar), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '#915: Back from a cold-linked editor lands on the hub — the '
+      'builderless ledger ancestor contributes no page',
+      (tester) async {
+        final router = await pump(
+          tester,
+          initialLocation: '/group/$groupId/event/$eventId/ledger/edit/exp-1',
+        );
+
+        expect(find.byKey(LedgerKeys.editExpenseSheet), findsOneWidget);
+
+        router.pop();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(EventCommandCenter), findsOneWidget);
+        expect(find.byKey(EventKeys.tabBar), findsOneWidget);
+        expect(find.byKey(LedgerKeys.editExpenseSheet), findsNothing);
       },
     );
   });
