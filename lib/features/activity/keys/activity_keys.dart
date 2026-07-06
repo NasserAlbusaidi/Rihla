@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
 abstract final class ActivityKeys {
-  // Screen key
-  static const screen = Key('activity_feed_screen');
-
   /// The paginated activity ListView (distinguishes it from the shimmer's ListView in tests).
   static const feedList = Key('activity_feed_list');
 

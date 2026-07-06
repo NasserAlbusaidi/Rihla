@@ -485,13 +485,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get categoryOther => 'أخرى';
 
   @override
-  String get ledgerBackTooltip => 'رجوع';
-
-  @override
   String get ledgerSearchExpensesTooltip => 'البحث في المصاريف';
-
-  @override
-  String get ledgerActivityTooltip => 'سجل النشاط';
 
   @override
   String get ledgerEventSettingsTooltip => 'إعدادات الفعالية';
@@ -574,54 +568,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get ledgerReload => 'إعادة التحميل';
-
-  @override
-  String get ledgerHeroPositivePrefix => 'أنت متقدم';
-
-  @override
-  String ledgerHeroPositiveTail(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصين',
-      one: 'شخص واحد',
-      zero: 'لا أحد',
-    );
-    return 'على $_temp0.';
-  }
-
-  @override
-  String get ledgerHeroNegativePrefix => 'أنت مدين';
-
-  @override
-  String ledgerHeroNegativeTail(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count شخص',
-      many: '$count شخصًا',
-      few: '$count أشخاص',
-      two: 'شخصين',
-      one: 'شخص واحد',
-      zero: 'لا أحد',
-    );
-    return 'إلى $_temp0.';
-  }
-
-  @override
-  String get ledgerHeroEmptyPrefix => 'لا توجد مصاريف بعد';
-
-  @override
-  String get ledgerHeroEmptyTail => 'أضف أول مصروف وسنبدأ الحساب.';
-
-  @override
-  String get ledgerAllSquare => 'كل شيء متوازن.';
-
-  @override
-  String get ledgerSettledBadge => 'مُسوّى';
 
   @override
   String get ledgerTripTotal => 'إجمالي الرحلة';
@@ -780,9 +726,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get ledgerAddExpense => 'إضافة مصروف';
-
-  @override
-  String get ledgerSettleUp => 'تسوية';
 
   @override
   String get editorTitleAddExpense => 'إضافة مصروف';
@@ -3054,10 +2997,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupDeleteSheetTypeSuffix => ' للتأكيد';
-
-  @override
-  String get groupDeleteSheetRetention =>
-      'تُحفظ نسخة لمدة 30 يومًا في حال غيّرت رأيك.';
 
   @override
   String get groupDeleteSheetConfirm => 'حذف المجموعة';

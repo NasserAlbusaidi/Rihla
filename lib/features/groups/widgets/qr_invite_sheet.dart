@@ -212,6 +212,9 @@ class _QrCard extends StatelessWidget {
       key: GroupKeys.inviteQrCard,
       padding: EdgeInsets.all(context.spacing.space16),
       decoration: BoxDecoration(
+        // design-token-justified: a QR code needs a light quiet-zone behind
+        // dark modules to stay scannable — the card and QR background are fixed
+        // white in both themes by scan-contrast necessity, not palette choice.
         color: Colors.white,
         borderRadius: BorderRadius.circular(context.spacing.radiusCard),
         boxShadow: context.shadows.raised,
@@ -220,6 +223,8 @@ class _QrCard extends StatelessWidget {
         data: uri.toString(),
         version: QrVersions.auto,
         size: 220,
+        // design-token-justified: QR quiet-zone — fixed white background so
+        // scanners read the dark modules (see the card note above).
         backgroundColor: Colors.white,
         eyeStyle: QrEyeStyle(
           eyeShape: QrEyeShape.square,

@@ -127,7 +127,7 @@ class ExpenseSuccessDialog extends StatelessWidget {
                   onPressed: onDone,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: context.colors.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: context.colors.textOnPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

@@ -47,6 +47,9 @@ void _showSnack(
   messenger.showSnackBar(
     SnackBar(
       content: Text(message),
+      // design-token-justified: context-less global-messenger error snack —
+      // fired from a global key with no reliable themed context.colors; a
+      // fixed Material red keeps the error background theme-resolution-free.
       backgroundColor: isError ? Colors.red.shade700 : null,
       behavior: SnackBarBehavior.floating,
       duration: duration,
