@@ -523,64 +523,71 @@ class _TopBar extends ConsumerWidget {
       bottom: false,
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(20, 6, 16, 0),
-        child: Row(
+        // Stack so the wordmark sits on the bar's true geometric centre,
+        // independent of the asymmetric clusters (avatar left vs search+bell
+        // right). Row-with-Spacers centred it in the *leftover* space, so the
+        // wider right cluster drifted it ~20px toward the avatar side — left
+        // in LTR and mirrored to the right in RTL. Stack centring is
+        // direction-agnostic and fixes both.
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            GestureDetector(
-              key: HomeKeys.profileAvatar,
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                HapticService.lightClick();
-                context.push('/profile');
-              },
-              child: RAvatar(name: deviceName, size: 36),
-            ),
-            if (showSetNameChip) ...[
-              SizedBox(width: context.spacing.space8),
-              // Flexible (shares flex with the two Spacers below) so a
-              // narrow viewport shrinks the chip — and its label ellipsizes
-              // — rather than overflowing the Row. The avatar/wordmark/bell
-              // stay fixed-size and unaffected either way.
-              Flexible(
-                child: _SetNameChip(
-                  onTap: () => _openEditNameSheet(context, ref),
+            Row(
+              children: [
+                GestureDetector(
+                  key: HomeKeys.profileAvatar,
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticService.lightClick();
+                    context.push('/profile');
+                  },
+                  child: RAvatar(name: deviceName, size: 36),
                 ),
-              ),
-            ],
-            const Spacer(),
+                if (showSetNameChip) ...[
+                  SizedBox(width: context.spacing.space8),
+                  // Flexible so a narrow viewport shrinks the chip — and its
+                  // label ellipsizes — rather than overflowing the Row.
+                  Flexible(
+                    child: _SetNameChip(
+                      onTap: () => _openEditNameSheet(context, ref),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                // #900 friction #3 — PR-5b: global search entry point, left
+                // of the bell in the right cluster.
+                _IconCircle(
+                  key: HomeKeys.searchButton,
+                  badgeKey: HomeKeys.searchButtonBadge,
+                  icon: Iconsax.search_normal,
+                  semanticLabel: context.l10n.searchTitle,
+                  onTap: () {
+                    HapticService.lightClick();
+                    context.push('/search');
+                  },
+                ),
+                SizedBox(width: context.spacing.space4),
+                _IconCircle(
+                  key: HomeKeys.activityBell,
+                  badgeKey: HomeKeys.bellUnreadBadge,
+                  icon: Iconsax.activity,
+                  showBadge: ref.watch(activityUnreadProvider),
+                  semanticLabel: context.l10n.homeBottomNavActivity,
+                  onTap: () {
+                    HapticService.lightClick();
+                    // #818 Wave 5.2: select the History tab in place rather
+                    // than pushing /activity — the route stays for deep links.
+                    final scope = BottomNavTabScope.maybeOf(context);
+                    if (scope != null) {
+                      scope.selectTab(1);
+                    } else {
+                      context.push('/activity');
+                    }
+                  },
+                ),
+              ],
+            ),
             const WordmarkLogo(size: 22),
-            const Spacer(),
-            // #900 friction #3 — PR-5b: global search entry point. Sits left
-            // of the bell in the right cluster; accepted composition shift
-            // (avatar left vs bell+search right) per the Gate-cleared spec.
-            _IconCircle(
-              key: HomeKeys.searchButton,
-              badgeKey: HomeKeys.searchButtonBadge,
-              icon: Iconsax.search_normal,
-              semanticLabel: context.l10n.searchTitle,
-              onTap: () {
-                HapticService.lightClick();
-                context.push('/search');
-              },
-            ),
-            SizedBox(width: context.spacing.space4),
-            _IconCircle(
-              key: HomeKeys.activityBell,
-              badgeKey: HomeKeys.bellUnreadBadge,
-              icon: Iconsax.activity,
-              showBadge: ref.watch(activityUnreadProvider),
-              semanticLabel: context.l10n.homeBottomNavActivity,
-              onTap: () {
-                HapticService.lightClick();
-                // #818 Wave 5.2: select the History tab in place rather than
-                // pushing /activity — the route stays for deep links.
-                final scope = BottomNavTabScope.maybeOf(context);
-                if (scope != null) {
-                  scope.selectTab(1);
-                } else {
-                  context.push('/activity');
-                }
-              },
-            ),
           ],
         ),
       ),
