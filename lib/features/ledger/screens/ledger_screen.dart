@@ -5,15 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/services/haptic_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
-import '../../../shared/widgets/offline_banner.dart';
-import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/embedded_panel_metrics.dart';
 import '../../events/models/event_model.dart';
@@ -21,7 +17,6 @@ import '../../events/providers/event_provider.dart';
 import '../../events/utils/event_type_copy.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
-import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../../../core/constants/supported_currencies.dart';
@@ -34,39 +29,30 @@ import '../widgets/ledger_category_strip.dart';
 import '../widgets/ledger_day_card.dart';
 import '../widgets/ledger_hero_block.dart';
 import '../widgets/ledger_roster_strip.dart';
-import '../widgets/ledger_search_sheet.dart';
-import '../widgets/ledger_sticky_cta.dart';
 
-/// V5R ledger — saffron travel-journal direction.
+/// V5R ledger timeline — the Expenses panel of the tabbed event view (#758,
+/// panel-only since #915: the full-chrome route died with PR-5 §4).
 ///
 /// Layout top to bottom:
-///   1. 120px CoverArt cover header with floating paper buttons (back ·
-///      search · settings) and bottom-aligned mono meta + italic title.
-///   2. Italic statement hero ("You're up [+OMR 12.450] across 3 people.").
-///   3. Mono trip-total caption ("TRIP TOTAL · OMR 142.350 · 6 expenses · 2 settled").
-///   4. Horizontal roster strip — You anchor + per-person signed chips.
-///   5. Category chip filter (cat-color dots, "All · N" first).
-///   6. Day-grouped white cards with two-row italic day stamps. Distinct
+///   1. Mono trip-total caption ("TRIP TOTAL · OMR 142.350 · 6 expenses · 2 settled").
+///   2. Horizontal roster strip — You anchor + per-person signed chips
+///      (tap → settle-up preselect).
+///   3. Category chip filter (cat-color dots, "All · N" first).
+///   4. Day-grouped white cards with two-row italic day stamps. Distinct
 ///      settlement rows (dashed sage inset with sage-text overline).
-///   7. Footer: mono "· END OF LEDGER ·".
-///   8. Sticky bottom CTA bar — ink "Add expense" + ghost "Settle up"
-///      (dimmed when settled).
+///   5. Footer: mono "· END OF LEDGER ·".
+///
+/// The tabbed shell (`EventCommandCenter`) owns balance display, chrome,
+/// offline banner, and the add/settle affordances.
 class LedgerScreen extends ConsumerStatefulWidget {
   const LedgerScreen({
     super.key,
     required this.groupId,
     required this.eventId,
-    this.embedded = false,
   });
 
   final String groupId;
   final String eventId;
-
-  /// #758: content-only mode for the tabbed event view — renders the timeline
-  /// (trip caption, category chips, day cards) without the cover header, hero
-  /// statement, roster strip, offline banner, or sticky CTA. The tabbed shell
-  /// owns balance display, chrome, and the add/settle affordances.
-  final bool embedded;
 
   @override
   ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
@@ -87,7 +73,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     // add_expense_screen / settle_up_screen.
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
-    final body = eventAsync.when(
+    return eventAsync.when(
       loading: () => const _LoadingState(),
       error: (_, _) => _ErrorState(
         onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
@@ -120,15 +106,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           currentUserId: currentUserId,
           categoryFilter: _categoryFilter,
           onCategoryFilter: (cat) => setState(() => _categoryFilter = cat),
-          embedded: widget.embedded,
         );
       },
-    );
-    if (widget.embedded) return body;
-    return Scaffold(
-      key: LedgerKeys.screen,
-      backgroundColor: context.colors.scaffoldBackground,
-      body: body,
     );
   }
 }
@@ -144,7 +123,6 @@ class _Body extends ConsumerWidget {
     required this.currentUserId,
     required this.categoryFilter,
     required this.onCategoryFilter,
-    required this.embedded,
   });
 
   final String groupId;
@@ -156,7 +134,6 @@ class _Body extends ConsumerWidget {
   final String? currentUserId;
   final int? categoryFilter;
   final ValueChanged<int?> onCategoryFilter;
-  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -215,26 +192,8 @@ class _Body extends ConsumerWidget {
     // From the current user's perspective:
     //   negative net for someone else → they owe you (positive chip)
     //   positive net for someone else → you owe them (negative chip)
-    // Hero derivations are O(1)/O(lines) off the memoized perspective.
     final hasExpenses = expenses.isNotEmpty;
     final isSettled = hasExpenses && myLines.isEmpty;
-    final singleLine = myLines.length == 1 ? myLines.first : null;
-    final heroKind = !hasExpenses
-        ? LedgerHeroKind.empty
-        : isSettled
-        ? LedgerHeroKind.settled
-        : (singleLine == null || singleLine.net > Decimal.zero)
-        ? LedgerHeroKind.positive
-        : LedgerHeroKind.negative;
-    final heroLines = <LedgerHeroLine>[
-      if (hasExpenses)
-        for (final line in myLines)
-          (
-            currency: line.currency,
-            net: line.net,
-            peopleCount: perspective.peopleCountByCurrency[line.currency] ?? 0,
-          ),
-    ];
     final rosterState = !hasExpenses
         ? LedgerRosterState.empty
         : isSettled
@@ -261,50 +220,15 @@ class _Body extends ConsumerWidget {
       l10n: context.l10n,
     );
 
-    final scroll = CustomScrollView(
+    return CustomScrollView(
       restorationId: 'ledger_scroll',
       slivers: [
-        // #758 embedded: the tabbed shell owns the header, balance display,
-        // and offline banner — only the timeline (caption, chips, day cards)
+        // #758: the tabbed shell owns the header, balance display, and
+        // offline banner — only the timeline (caption, chips, day cards)
         // renders as the Expenses panel. PR-5 §4: the roster strip's
-        // per-person settle-up preselect tap stays in BOTH modes (below) — the
-        // embedded Settle tab panel takes no preselect, so this is the only
-        // in-app producer for `…/ledger/settle-up?memberId=`.
-        if (!embedded) ...[
-          SliverToBoxAdapter(
-            child: _CoverHeader(
-              event: event,
-              participantCount: participants.length,
-              onSettings: () => GoRouter.of(
-                context,
-              ).push('/group/$groupId/event/$eventId/settings'),
-              onActivity: () => GoRouter.of(
-                context,
-              ).push('/group/$groupId/event/$eventId/activity'),
-              onSearch: () => showLedgerSearchSheet(
-                context,
-                expenses: expenses,
-                settlements: settlements,
-                expensePayerDisplayNames: expensePayerDisplayNames,
-                settlementDisplayNames: settlementDisplayNames,
-                groupId: groupId,
-                eventId: eventId,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: OfflineBanner()),
-          SliverToBoxAdapter(
-            child: LedgerHeroStatement(
-              kind: heroKind,
-              amount: singleLine?.net ?? Decimal.zero,
-              currency: singleLine?.currency ?? currency,
-              peopleCount: heroLines.length == 1
-                  ? heroLines.first.peopleCount
-                  : 0,
-              lines: heroLines,
-            ),
-          ),
-        ],
+        // per-person settle-up preselect tap (below) is the only in-app
+        // producer for `…/ledger/settle-up?memberId=` — the embedded Settle
+        // tab panel takes no preselect.
         if (hasExpenses)
           SliverToBoxAdapter(
             child: LedgerTripCaption(
@@ -406,15 +330,13 @@ class _Body extends ConsumerWidget {
           ),
         SliverToBoxAdapter(
           child: Padding(
-            // #789: in the embedded panel, extend the trailing gutter so the
-            // last content clears the workspace's floating FAB.
+            // #789: extend the trailing gutter so the last content clears the
+            // workspace's floating FAB.
             padding: EdgeInsets.fromLTRB(
               0,
               context.spacing.space24,
               0,
-              embedded
-                  ? kEmbeddedEventPanelFabClearance
-                  : context.spacing.space24,
+              kEmbeddedEventPanelFabClearance,
             ),
             child: Center(
               child: Text(
@@ -433,168 +355,6 @@ class _Body extends ConsumerWidget {
           ),
         ),
       ],
-    );
-    if (embedded) return scroll;
-    return Column(
-      children: [
-        Expanded(child: scroll),
-        LedgerStickyCta(
-          settleEnabled: !isSettled && hasExpenses,
-          // #723: closed event freezes spending; settle stays live.
-          addEnabled: !event.isClosed,
-          onAddExpense: () => GoRouter.of(
-            context,
-          ).push('/group/$groupId/event/$eventId/ledger/add'),
-          onSettleUp: () => GoRouter.of(
-            context,
-          ).push('/group/$groupId/event/$eventId/ledger/settle-up'),
-        ),
-      ],
-    );
-  }
-}
-
-// ──────────────────────────── Cover header
-
-class _CoverHeader extends StatelessWidget {
-  const _CoverHeader({
-    required this.event,
-    required this.participantCount,
-    required this.onSettings,
-    required this.onSearch,
-    required this.onActivity,
-  });
-
-  final Event event;
-  final int participantCount;
-  final VoidCallback onSettings;
-  final VoidCallback onSearch;
-  final VoidCallback onActivity;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final statusBar = MediaQuery.of(context).padding.top;
-    final dateRange = formatEventDateRange(
-      event.startDate,
-      event.endDate,
-      l10n: context.l10n,
-    );
-    final captionParts = <String>[
-      ?dateRange,
-      context.l10n.ledgerPeopleCount(participantCount),
-    ];
-
-    return SizedBox(
-      height: 120 + statusBar,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // #626: cache the procedural cover raster — this header lives in a
-          // SliverToBoxAdapter (no automatic per-child RepaintBoundary).
-          RepaintBoundary(child: CoverArt.forEventType(event.type)),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  colors.textPrimary.withValues(alpha: 0.55),
-                ],
-                stops: const [0.3, 1.0],
-              ),
-            ),
-          ),
-          Positioned(
-            top: statusBar + 8,
-            left: 12,
-            right: 12,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                RIconButton(
-                  icon: Directionality.of(context) == TextDirection.rtl
-                      ? Iconsax.arrow_right
-                      : Iconsax.arrow_left,
-                  tooltip: context.l10n.ledgerBackTooltip,
-                  onTap: () {
-                    HapticService.lightClick();
-                    if (GoRouter.of(context).canPop()) {
-                      GoRouter.of(context).pop();
-                    }
-                  },
-                ),
-                Row(
-                  children: [
-                    RIconButton(
-                      icon: Iconsax.search_normal,
-                      tooltip: context.l10n.ledgerSearchExpensesTooltip,
-                      onTap: () {
-                        HapticService.lightClick();
-                        onSearch();
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                    RIconButton(
-                      key: LedgerKeys.activityButton,
-                      icon: Iconsax.activity,
-                      tooltip: context.l10n.ledgerActivityTooltip,
-                      onTap: () {
-                        HapticService.lightClick();
-                        onActivity();
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                    RIconButton(
-                      icon: Iconsax.setting_2,
-                      tooltip: context.l10n.ledgerEventSettingsTooltip,
-                      onTap: () {
-                        HapticService.lightClick();
-                        onSettings();
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: 14,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  captionParts.join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption(
-                    context,
-                    fontSize: 9,
-                    color: Colors.white.withValues(alpha: 0.85),
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  event.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.displayOf(
-                    context,
-                    fontSize: 26,
-                    color: Colors.white,
-                    height: 1.1,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -486,13 +486,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categoryOther => 'Other';
 
   @override
-  String get ledgerBackTooltip => 'Back';
-
-  @override
   String get ledgerSearchExpensesTooltip => 'Search expenses';
-
-  @override
-  String get ledgerActivityTooltip => 'Activity log';
 
   @override
   String get ledgerEventSettingsTooltip => 'Event settings';
@@ -573,47 +567,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerReload => 'Reload';
-
-  @override
-  String get ledgerHeroPositivePrefix => 'You\'re up';
-
-  @override
-  String ledgerHeroPositiveTail(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count people',
-      one: '1 person',
-    );
-    return 'across $_temp0.';
-  }
-
-  @override
-  String get ledgerHeroNegativePrefix => 'You owe';
-
-  @override
-  String ledgerHeroNegativeTail(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count people',
-      one: '1 person',
-    );
-    return 'to $_temp0.';
-  }
-
-  @override
-  String get ledgerHeroEmptyPrefix => 'Nothing logged yet';
-
-  @override
-  String get ledgerHeroEmptyTail =>
-      'add the first expense and we\'ll start the math.';
-
-  @override
-  String get ledgerAllSquare => 'All square.';
-
-  @override
-  String get ledgerSettledBadge => 'SETTLED';
 
   @override
   String get ledgerTripTotal => 'TRIP TOTAL';
@@ -757,9 +710,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerAddExpense => 'Add expense';
-
-  @override
-  String get ledgerSettleUp => 'Settle up';
 
   @override
   String get editorTitleAddExpense => 'Add expense';

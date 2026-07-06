@@ -120,9 +120,11 @@ void main() {
               routes: [
                 GoRoute(
                   path: 'activity',
-                  builder: (c, s) => ActivityFeedScreen(
-                    groupId: s.pathParameters['gid']!,
-                    eventId: s.pathParameters['eid']!,
+                  builder: (c, s) => Scaffold(
+                    body: ActivityFeedScreen(
+                      groupId: s.pathParameters['gid']!,
+                      eventId: s.pathParameters['eid']!,
+                    ),
                   ),
                 ),
               ],
@@ -157,21 +159,6 @@ void main() {
       )
       .evaluate()
       .length;
-
-  testWidgets('direct route back button returns to event hub', (tester) async {
-    final db = FakeFirebaseFirestore(); // empty -> no footer spinner
-    await tester.pumpWidget(
-      buildRoute([
-        activityServiceProvider.overrideWithValue(
-          ActivityService.withFirestore(db),
-        ),
-      ]),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Iconsax.arrow_left));
-    await tester.pumpAndSettle();
-    expect(find.text('EventHub:$eventId'), findsOneWidget);
-  });
 
   testWidgets('loads only the first page; later rows are not pre-fetched', (
     tester,
@@ -625,7 +612,6 @@ void main() {
             body: ActivityFeedScreen(
               groupId: groupId,
               eventId: eventId,
-              embedded: true,
             ),
           ),
         ),
@@ -697,16 +683,6 @@ void main() {
   // ── #490 D-c: V2 grain+wash backdrop rollout (PR 5) ───────────────────────
 
   testWidgets(
-    'non-embedded feed wraps its body content in the shared PaperBackdrop',
-    (tester) async {
-      final db = FakeFirebaseFirestore();
-      await seed(db, 2);
-      await pumpFeed(tester, db);
-      expect(find.byType(PaperBackdrop), findsOneWidget);
-    },
-  );
-
-  testWidgets(
     '#758 embedded mode carries NO PaperBackdrop — the tabbed shell owns '
     'chrome there',
     (tester) async {
@@ -730,7 +706,6 @@ void main() {
               body: ActivityFeedScreen(
                 groupId: groupId,
                 eventId: eventId,
-                embedded: true,
               ),
             ),
           ),

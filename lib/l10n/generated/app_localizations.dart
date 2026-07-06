@@ -1016,23 +1016,11 @@ abstract class AppLocalizations {
   /// **'Other'**
   String get categoryOther;
 
-  /// No description provided for @ledgerBackTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Back'**
-  String get ledgerBackTooltip;
-
   /// No description provided for @ledgerSearchExpensesTooltip.
   ///
   /// In en, this message translates to:
   /// **'Search expenses'**
   String get ledgerSearchExpensesTooltip;
-
-  /// No description provided for @ledgerActivityTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity log'**
-  String get ledgerActivityTooltip;
 
   /// No description provided for @ledgerEventSettingsTooltip.
   ///
@@ -1153,54 +1141,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reload'**
   String get ledgerReload;
-
-  /// No description provided for @ledgerHeroPositivePrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'You\'re up'**
-  String get ledgerHeroPositivePrefix;
-
-  /// No description provided for @ledgerHeroPositiveTail.
-  ///
-  /// In en, this message translates to:
-  /// **'across {count, plural, =1{1 person} other{{count} people}}.'**
-  String ledgerHeroPositiveTail(int count);
-
-  /// No description provided for @ledgerHeroNegativePrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'You owe'**
-  String get ledgerHeroNegativePrefix;
-
-  /// No description provided for @ledgerHeroNegativeTail.
-  ///
-  /// In en, this message translates to:
-  /// **'to {count, plural, =1{1 person} other{{count} people}}.'**
-  String ledgerHeroNegativeTail(int count);
-
-  /// No description provided for @ledgerHeroEmptyPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'Nothing logged yet'**
-  String get ledgerHeroEmptyPrefix;
-
-  /// No description provided for @ledgerHeroEmptyTail.
-  ///
-  /// In en, this message translates to:
-  /// **'add the first expense and we\'ll start the math.'**
-  String get ledgerHeroEmptyTail;
-
-  /// No description provided for @ledgerAllSquare.
-  ///
-  /// In en, this message translates to:
-  /// **'All square.'**
-  String get ledgerAllSquare;
-
-  /// No description provided for @ledgerSettledBadge.
-  ///
-  /// In en, this message translates to:
-  /// **'SETTLED'**
-  String get ledgerSettledBadge;
 
   /// No description provided for @ledgerTripTotal.
   ///
@@ -1405,12 +1345,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add expense'**
   String get ledgerAddExpense;
-
-  /// No description provided for @ledgerSettleUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Settle up'**
-  String get ledgerSettleUp;
 
   /// No description provided for @editorTitleAddExpense.
   ///
