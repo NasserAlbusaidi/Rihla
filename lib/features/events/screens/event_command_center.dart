@@ -278,7 +278,6 @@ class _ContentState extends ConsumerState<_Content> {
                       LedgerScreen(
                         groupId: widget.groupId,
                         eventId: widget.eventId,
-                        embedded: true,
                       ),
                       SettleUpScreen(
                         groupId: widget.groupId,
@@ -288,7 +287,6 @@ class _ContentState extends ConsumerState<_Content> {
                       ActivityFeedScreen(
                         groupId: widget.groupId,
                         eventId: widget.eventId,
-                        embedded: true,
                       ),
                       if (showRecap)
                         EventRecapScreen(

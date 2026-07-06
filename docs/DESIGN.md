@@ -277,7 +277,7 @@ speeds are **unchanged by Falaj**; two named devices were added.
 | `motion.quick` | 120ms | `motion.curveStandard` (`easeInOut`) | Tap feedback (`TapBounce` → scale 0.97). |
 | `motion.standard` | 200ms | `motion.curveStandard` (`easeInOut`) | Most state transitions, toggles. |
 | `motion.emphasis` | 300ms | `motion.curveEmphasis` (`easeOutCubic`) | Banners (`OfflineBanner`), sheets, entrances. |
-| `motion.stamp` (`StampMotion`) | 300ms | `easeOutBack` | **Seal-settle**: scale 1.08→1.0, unrotate −3°→0°, one-frame ink bloom (consumer effect). Wired via `StampEntrance` to the ledger "All square" settled badge. Reduced motion → opacity-only fade, no scale/rotation. |
+| `motion.stamp` (`StampMotion`) | 300ms | `easeOutBack` | **Seal-settle**: scale 1.08→1.0, unrotate −3°→0°, one-frame ink bloom (consumer effect). Reduced motion → opacity-only fade, no scale/rotation. **Token-only since #915** — the `StampEntrance` wrapper and its ledger "All square" badge died with the full-chrome ledger; re-add a wrapper when a settled-seal surface returns. |
 | `motion.flow` (`FlowMotion`) | 1100ms period | `Curves.linear` (always) | **Continuous channel-fill motion means "syncing" and nothing else, app-wide** — never use for loading/entrance/decorative motion. **Token-only today: no live consumer yet** — the sync indicator is a later wire-up. |
 
 The base three tokens exist; **adoption is the open work** — durations are
@@ -356,7 +356,6 @@ hand-rolling. The brand-defining ones:
 | `CoverArt` | Procedural ticket-card scenery (no photo assets) — 5 `EventType`-mapped palettes, re-dressed for Falaj. |
 | `SectionHeader` | Per-script caption label + leading brass **share-notch tick** (the fork's only *ambient*, unlimited-use form) + optional "See all". |
 | `StarGridPainter` | Faint deterministic dot-grid on **dark hero surfaces only** (`kStarGridOpacity` = 0.03), clipped to the card radius. Replaces the retired `GrainOverlay` — light theme has **no** grain/texture anymore. |
-| `StampEntrance` | Seal-settle entrance wrapper (`context.motion.stamp`) — scale + unrotate on mount, opacity-only under reduced motion. Wraps the ledger "All square" badge. |
 | `ModuleHeader` | Dark-gradient module header (back, title, subtitle, actions). |
 | `EmptyStateView` | Icon + title + message + optional CTA for empty/error. |
 | `LoadingButton` | 52dp pill button with spinner state. |
@@ -512,8 +511,10 @@ three prior KEEPs were explicitly broken by the rebrand, the rest hold.
   mirrors under RTL (§13 D8).
 - **KEEP-4 — RTL build:** logo lockup, mirroring, localized strings (§7).
 - **KEEP-5 — Copy voice:** "everyone's even" / "الجميع متوازن"
-  (`settleUpEveryoneEvenHeadline`; the ledger surface says "All square." /
-  "كل شيء متوازن" — don't splice the pairs) (§11).
+  (`settleUpEveryoneEvenHeadline`; the ledger's "All square." / "كل شيء
+  متوازن" pair was retired with the full-chrome hero in #915 — the event's
+  settled voice now lives in the hub's balance block. Don't splice surviving
+  pairs) (§11).
 - **KEEP-6 — Ticket / boarding-pass trip cards:** perforated tear-line, side
   notches, per-trip `CoverArt`. Re-dressed in plaster/shale/brass materials,
   structure unchanged — protect and extend.
