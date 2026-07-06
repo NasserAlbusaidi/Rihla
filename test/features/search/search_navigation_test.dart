@@ -354,6 +354,40 @@ void main() {
         expect(find.textContaining('EventHub:'), findsNothing);
       },
     );
+
+    testWidgets(
+      '(e) sole-open-event forward → one Back lands the group overview, a '
+      'second Back returns to the results with the query intact (#996)',
+      (tester) async {
+        final group = _makeGroup('g1', 'Desert Crew');
+        final router = await _pumpSearch(
+          tester,
+          _baseOverrides(
+            groups: [group],
+            eventsByGroup: {
+              'g1': [_makeEvent(id: 'e1', groupId: 'g1', name: 'Trip')],
+            },
+          ),
+          initialLocation: '/search?q=Desert',
+        );
+
+        await tester.tap(find.text('Desert Crew'));
+        await tester.pumpAndSettle();
+        expect(find.text('EventHub:g1/e1'), findsOneWidget);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('GroupOverview:g1'), findsOneWidget);
+        expect(find.textContaining('EventHub:'), findsNothing);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.byKey(SearchKeys.screen), findsOneWidget);
+        // The q=Desert results survived beneath the pushed pair — the
+        // go-alternative would have destroyed the search screen (spec D1).
+        expect(find.text('Desert Crew'), findsOneWidget);
+      },
+    );
   });
 
   group('event tap lands a working hub (closed → Recap tab available)', () {

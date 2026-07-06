@@ -218,8 +218,11 @@ class _ContentState extends ConsumerState<_Content> {
                 lines: myLines,
                 onBack: () {
                   HapticService.lightClick();
-                  // Nested route (#243): ancestors are materialized on any
-                  // nav, so a bare pop always reaches the group.
+                  // Nested route (#243/#996): a bare pop reaches the group
+                  // because every entry either navigates from it, `go`es the
+                  // full location (materializing the ancestor), or — for the
+                  // §2 smart-forward — imperatively pushes /group/:gid first.
+                  // Imperative push alone does NOT materialize ancestors.
                   if (GoRouter.of(context).canPop()) {
                     GoRouter.of(context).pop();
                   }
