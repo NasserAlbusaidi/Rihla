@@ -207,7 +207,6 @@ class _QrCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return Container(
       key: GroupKeys.inviteQrCard,
       padding: EdgeInsets.all(context.spacing.space16),
@@ -226,13 +225,18 @@ class _QrCard extends StatelessWidget {
         // design-token-justified: QR quiet-zone — fixed white background so
         // scanners read the dark modules (see the card note above).
         backgroundColor: Colors.white,
-        eyeStyle: QrEyeStyle(
+        eyeStyle: const QrEyeStyle(
           eyeShape: QrEyeShape.square,
-          color: colors.textPrimary,
+          // design-token-justified: QR modules are machine-read — pinned to
+          // the light ink value in both themes (#938); a theme-derived
+          // textPrimary goes near-white in dark mode → unscannable on white.
+          color: Color(0xFF1B1F1E),
         ),
-        dataModuleStyle: QrDataModuleStyle(
+        dataModuleStyle: const QrDataModuleStyle(
           dataModuleShape: QrDataModuleShape.square,
-          color: colors.textPrimary,
+          // design-token-justified: same scan-contrast pin as the eye
+          // modules above (#938).
+          color: Color(0xFF1B1F1E),
         ),
         semanticsLabel: semanticLabel,
       ),

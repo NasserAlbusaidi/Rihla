@@ -34,11 +34,12 @@ void main() {
   Future<void> openSheet(
     WidgetTester tester, {
     Locale locale = const Locale('en'),
+    ThemeData? theme,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: locale,
-        theme: AppTheme.lightTheme,
+        theme: theme ?? AppTheme.lightTheme,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
@@ -180,6 +181,33 @@ void main() {
         await openSheet(tester, locale: locale);
 
         expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final entry
+      in {'light': AppTheme.lightTheme, 'dark': AppTheme.darkTheme}.entries) {
+    testWidgets(
+      'QR eye/data modules stay scan-dark on the fixed white card '
+      '(${entry.key}) (#938)',
+      (tester) async {
+        await openSheet(tester, theme: entry.value);
+
+        final qr = tester.widget<QrImageView>(find.byType(QrImageView));
+        expect(qr.backgroundColor, Colors.white);
+        // A QR is a machine-read surface: both ends of its contrast pair must
+        // be theme-invariant. A theme-derived module color goes near-white in
+        // dark mode → near-white on white → unscannable.
+        expect(
+          qr.eyeStyle.color!.computeLuminance(),
+          lessThan(0.2),
+          reason: 'eye modules must stay dark on the white quiet-zone',
+        );
+        expect(
+          qr.dataModuleStyle.color!.computeLuminance(),
+          lessThan(0.2),
+          reason: 'data modules must stay dark on the white quiet-zone',
+        );
       },
     );
   }
