@@ -56,9 +56,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  ElevatedButton saveButton(WidgetTester tester) => tester.widget<ElevatedButton>(
-    find.byKey(ProfileKeys.saveNameButton),
-  );
+  ElevatedButton saveButton(WidgetTester tester) =>
+      tester.widget<ElevatedButton>(find.byKey(ProfileKeys.saveNameButton));
 
   testWidgets('empty / whitespace-only name keeps Save disabled', (
     tester,
@@ -80,7 +79,11 @@ void main() {
     tester,
   ) async {
     var saves = 0;
-    await openEditName(tester, currentName: 'Alice', onSave: (_) async => saves++);
+    await openEditName(
+      tester,
+      currentName: 'Alice',
+      onSave: (_) async => saves++,
+    );
 
     // U+0007 (BEL) is a C0 control char, rejected by both the client validator
     // and the firestore.rules charset. (Not a newline, so a single-line field
@@ -177,6 +180,31 @@ void main() {
     },
   );
 
+  testWidgets(
+    'action row clears the bottom system inset while the keyboard is closed',
+    (tester) async {
+      // Simulate an Android 3-button nav bar: 48 logical px bottom inset.
+      // Without a SafeArea the sheet extends under it and the Cancel/Save
+      // row is obscured until the keyboard's viewInsets lift the content.
+      final inset = 48 * tester.view.devicePixelRatio;
+      tester.view.padding = FakeViewPadding(bottom: inset);
+      tester.view.viewPadding = FakeViewPadding(bottom: inset);
+      addTearDown(tester.view.reset);
+
+      await openEditName(tester, currentName: 'Alice', onSave: (_) async {});
+
+      final screenHeight = tester.getSize(find.byType(MaterialApp)).height;
+      final saveBottom = tester
+          .getRect(find.byKey(ProfileKeys.saveNameButton))
+          .bottom;
+      expect(
+        saveBottom,
+        lessThanOrEqualTo(screenHeight - 48),
+        reason: 'Save button must render fully above the system nav bar',
+      );
+    },
+  );
+
   // #818 Wave 4 PR B — the fake tappable "initials style" selector
   // (_selectedInitialsStyle, never read by _handleSave) is replaced by a
   // single honest static preview rendering the real RAvatar derivation.
@@ -220,16 +248,9 @@ void main() {
     );
 
     testWidgets('preview live-updates as the user types', (tester) async {
-      await openEditName(
-        tester,
-        currentName: '',
-        onSave: (_) async {},
-      );
+      await openEditName(tester, currentName: '', onSave: (_) async {});
 
-      await tester.enterText(
-        find.byKey(ProfileKeys.nameTextField),
-        'John Doe',
-      );
+      await tester.enterText(find.byKey(ProfileKeys.nameTextField), 'John Doe');
       await tester.pump();
 
       final avatarFinder = find.descendant(
