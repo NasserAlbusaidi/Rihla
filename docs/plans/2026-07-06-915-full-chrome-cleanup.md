@@ -44,11 +44,26 @@ Everything deleted is INBOUND (display-only chrome). The one OUTBOUND producer i
 
 Editors and settle-up stay nested; on any declarative nav their `canPop()` is still true (GroupDetail + Hub pages beneath). No `PopScope` added or removed anywhere. The deleted screens' own back affordances die with them.
 
-## Test migration (appendix filled from the fresh inventory pass)
+## Test migration (from the fresh-context inventory sweep, spot-verified)
 
-To be spliced from the `915-test-inventory` sweep: per-file MIGRATE / SPLIT / DELETE verdicts for the ~14 affected files, including `event_module_redirect_navigation_test.dart:284,306` (the `LedgerKeys.screen` / `ActivityKeys.screen` `findsNothing` lines — the keys die; the "exact `…/ledger` lands on hub" semantic stays pinned by the existing hub assertions) and the hero/sticky-CTA widget tests (surface deleted → tests retire with it).
+**MIGRATE — mechanical, no assertion dies (5):** `ledger_filter_recompute_test.dart`, `ledger_clear_filters_test.dart`, `ledger_screen_same_name_test.dart`, `ledger_category_filter_settlements_note_test.dart`, `list_scroll_restoration_test.dart`. All assert only surviving panel surfaces (day cards, category strip, roster, empty/clear-filters, #807 note, #106/#629 recompute counters, scroll restoration). Construction just drops `embedded:` (param gone). `list_scroll_restoration_test.dart` keeps `MaterialApp.router(restorationScopeId:)` so both `restorationId`s stay under a restoration scope.
 
-New pin: one test asserting a **cold `…/ledger/edit/:expId` → Back lands on the hub** (the §Verified-facts-3 behavior change, so the builderless-ancestor mechanism can't silently regress).
+**SPLIT (3):**
+- `ledger_screen_test.dart` — embedded group (:147–248) survives untouched. DROP the full-chrome asserts: :272–284 hero "All square"/"You owe"/−USD + 'Settle up' tap→route, :340–345 per-currency hero, :371–377 CoverArt RepaintBoundary. Re-point the roster-chip asserts (:367–368) at the panel construction. The hero behaviors (settled-gate-spans-all-buckets, per-currency lines) are ALREADY pinned at their new home — `event_command_center_test.dart` covers `_BalanceBlock` settled/owed/owing/USD (:50–:150) — no relocation test needed.
+- `ledger_screen_overflow_test.dart` — DROP the chrome asserts (:148 header buttons, :157 cover back, :169 search-btn→sheet, :180 settings, :192/:204 sticky CTAs, :259 search-result→edit, hero asserts in :288). The 2 surviving asserts (row-tap→`edit/:expId` :233, day-card subtitle :327) FOLD into `ledger_screen_test.dart`'s embedded group; delete the file (its RenderFlex-overflow purpose was the chrome).
+- `activity_feed_screen_test.dart` — DROP :161–174 (CaptionTitleBar back tap) and :699–707 (PaperBackdrop findsOneWidget). All ~26 feed-body tests survive; the two embedded-mode tests (:625, :730) become the primary spec (their nested-Scaffold/PaperBackdrop ABSENT asserts stay valid — now unconditionally true).
+
+**DELETE (2 + 3):** `ledger_activity_entry_test.dart` (pins the cover-header activity button; hub Activity tab covered by redirect test (b)); `ledger_back_arrow_rtl_test.dart` (pins the deleted cover-header arrow — see replacement below). Plus the 3 orphaned hero-widget tests, deleted WITH the widget: `ledger_hero_block_rtl_test.dart`, `ledger_hero_settled_stamp_test.dart`, `ledger_currency_display_test.dart` — **except** `ledger_currency_display_test.dart` also constructs `LedgerTripCaption` (:24, :39), which survives → keep that file, drop only its `LedgerHeroStatement` cases. `LedgerStickyCta` has no direct test (dies silently).
+
+**KEEP with 2 compile-fixes:** `event_module_redirect_navigation_test.dart` — :284 / :306 reference `LedgerKeys.screen` / `ActivityKeys.screen`, which die; drop those two `findsNothing` lines (the "exact `…/ledger` lands on hub, one instance" semantic stays pinned by the file's hub assertions), and its :181–184 / :216–219 constructions drop `embedded:` if present.
+
+**Unaffected (verified):** `test/unit/app_router_test.dart` (pure `findMatch`), `notification_service_test.dart` (nav strings via stub), `test/helpers/test_router.dart` (stub Text builders), goldens (GoldenHarness). No test helper constructs these screens.
+
+**NEW pins (2):**
+1. Cold `go('…/ledger/edit/:expId')` → Back lands on the **hub** (pins §Verified-facts-3: builderless ancestor contributes no page). Lives in `event_module_redirect_navigation_test.dart`.
+2. Hub back-arrow RTL mirror: the deleted `ledger_back_arrow_rtl_test.dart` was the only event-chrome RTL pin, and `test/features/events/` has ZERO RTL tests today; the hub has its own directional arrow (`event_command_center.dart:424-425`). Add an RTL case (pump hub in `TextDirection.rtl`, assert `Iconsax.arrow_right`) so the #126 invariant keeps a home.
+
+**Inventory correction (refuted during verification):** the sweep claimed `showLedgerSearchSheet` loses its only in-app caller. WRONG — the hub owns a live search button (`EventKeys.searchButton`, `event_command_center.dart:467` → `_openSearch:326` → `showLedgerSearchSheet:344`). Search survives; `ledger_search_sheet.dart` is untouched; no product decision needed.
 
 ## Non-goals
 
