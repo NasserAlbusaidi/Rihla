@@ -31,6 +31,8 @@ Widget _host(Widget body) {
 SettleUpPageBody _bodyWithHistory({
   void Function(Settlement settlement)? onCorrect,
   List<Settlement>? settlements,
+  String currentUid = 'uid-ahmed',
+  String? groupCreatorId,
 }) {
   return SettleUpPageBody(
     scope: SettleScope.group,
@@ -73,7 +75,8 @@ SettleUpPageBody _bodyWithHistory({
             ),
           ],
     ),
-    currentUid: 'uid-ahmed',
+    currentUid: currentUid,
+    groupCreatorId: groupCreatorId,
     tileKeys: const {},
     onRecord:
         ({
@@ -248,6 +251,90 @@ void main() {
         find.textContaining('Ahmed', findRichText: true),
         findsWidgets,
       );
+    },
+  );
+
+  // Actor policy: when the body knows the group creator, the affordance is
+  // per-settlement — visible only to a party of THAT settlement or the
+  // creator. groupCreatorId omitted (the six direct-constructing test files)
+  // stays ungated.
+  testWidgets(
+    'actor policy: hidden for a viewer who is neither party nor creator',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          _bodyWithHistory(
+            onCorrect: (_) {},
+            currentUid: 'uid-omar',
+            groupCreatorId: 'uid-zahra',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'actor policy: visible for the group creator who is not a party',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          _bodyWithHistory(
+            onCorrect: (_) {},
+            currentUid: 'uid-zahra',
+            groupCreatorId: 'uid-zahra',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'actor policy: per-settlement — a party sees Correct only on their own '
+    'row',
+    (tester) async {
+      final own = Settlement(
+        id: 's1',
+        tripId: 'event-1',
+        payerParticipantId: 'uid-ahmed',
+        recipientParticipantId: 'uid-sara',
+        amount: Decimal.parse('5.000'),
+        settledAt: DateTime(2026, 6, 7),
+        payerName: 'Ahmed',
+        recipientName: 'Sara',
+      );
+      final foreign = Settlement(
+        id: 's2',
+        tripId: 'event-1',
+        payerParticipantId: 'uid-omar',
+        recipientParticipantId: 'uid-zahra',
+        amount: Decimal.parse('3.000'),
+        settledAt: DateTime(2026, 6, 6),
+        payerName: 'Omar',
+        recipientName: 'Zahra',
+      );
+
+      await tester.pumpWidget(
+        _host(
+          _bodyWithHistory(
+            onCorrect: (_) {},
+            settlements: [own, foreign],
+            currentUid: 'uid-sara',
+            groupCreatorId: 'uid-nobody',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Exactly one Correct label: Sara's own row (the newest tile, which is
+      // the one carrying the stable key) — not the omar→zahra row.
+      expect(find.text('Correct'), findsOneWidget);
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
     },
   );
 }

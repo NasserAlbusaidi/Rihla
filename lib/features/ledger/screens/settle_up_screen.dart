@@ -349,6 +349,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             rawNames: userRawNames,
             settlementsAsync: settlementsAsync,
             currentUid: currentUid,
+            // Actor policy: Correct renders per-settlement for the group
+            // creator or a party only (mirrors the correctSettlement gate).
+            groupCreatorId: group.createdBy,
             tileKeys: _tileKeys,
             canRecord: canRecord,
             preSelectedMemberId: widget.preSelectedMemberId,

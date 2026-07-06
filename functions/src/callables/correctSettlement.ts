@@ -1,6 +1,7 @@
 import { CollectionReference, DocumentData, getFirestore } from 'firebase-admin/firestore';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
+import { assertCorrectionActor } from './shared/correctionActor';
 import { validId } from './shared/ids';
 import {
   buildEventReverseData,
@@ -155,6 +156,10 @@ export const correctSettlement = onCall<
           'Settlement parties are not current group members.',
         );
       }
+
+      // Actor policy: membership alone is not enough — only the group creator
+      // or a party to this settlement may reverse it.
+      assertCorrectionActor(uid, groupData.createdBy, [originalData]);
 
       if (isMarkedCorrection(originalData)) {
         throw new HttpsError('failed-precondition', 'Settlement is already a correction.');
