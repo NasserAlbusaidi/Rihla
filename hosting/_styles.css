@@ -1,32 +1,41 @@
 /* ============================================================================
    Rihla — web marketing design system.
-   Mirrors the app's tokens (lib/core/theme/tokens/ → AppColorTokens.light) and
-   the "Rihla Design System" Claude Design project (_ds_bundle.css).
-   Saffron + paper, Geist / Instrument Serif / Geist Mono, Reem Kufi for Arabic.
+   Mirrors the app's Falaj tokens (lib/core/theme/tokens/ → AppColorTokens)
+   and docs/DESIGN.md (Falaj — Gulf Modern travel ledger).
+   Plaster + brass, Bricolage Grotesque / Zain / Spline Sans Mono. All type
+   stays upright — Falaj brand law. The in-page phone mockup renders the
+   app's DARK (night navigation) look via the --d-* tokens.
    Compose the classes below; never hardcode hex outside :root.
    ============================================================================ */
 
 :root{
   /* Brand & action */
-  --primary:#D17B2C; --primary-dark:#B5641A;
-  --saffron-soft:#F4DDB8; --saffron-tint:#FBEED5;
+  --primary:#8A5D0D; --primary-dark:#6F4A08;
+  --saffron-soft:#E3E4C9; --saffron-tint:#F1F2DF;
 
   /* Surfaces */
-  --paper:#F6F1E6; --paper-deep:#EFE8D7; --card:#FFFFFF; --card-soft:#FBF7EE;
+  --paper:#F6F7F5; --paper-deep:#ECEEE8; --card:#FFFFFF; --card-soft:#F1F2ED;
 
   /* Ink */
-  --ink:#1B1A17; --ink-2:#3D3A33; --ink-3:#6B675D; --ink-4:#948F82;
+  --ink:#1B1F1E; --ink-2:#333A38; --ink-3:#5C6462; --ink-4:#8B918D;
   --on-primary:#FFFFFF;
 
   /* Lines */
-  --border:#EAE5D9; --rule:#EAE5D9; --rule-2:#D9D3C5;
+  --border:#E3E6E0; --rule:#E3E6E0; --rule-2:#CDD2CA;
 
   /* Money & status */
-  --sage:#5C7A57; --sage-text:#3F5A3B; --rust:#A84B33; --rust-text:#7A2F1F;
-  --amber:#F59E0B;
+  --sage:#1F7A5C; --sage-text:#175A44; --rust:#B03A48; --rust-text:#8A2430;
+  --amber:#C2410C;
 
-  /* Avatar palette */
-  --av1:#C2693B; --av2:#4F7B96; --av3:#8C6A2F; --av4:#6F7A3A; --av5:#94517A; --av6:#4D5A6A;
+  /* Avatar palette — Falaj category tokens */
+  --av1:#9C4F2E; --av2:#41708F; --av3:#575E93; --av4:#6C7A33; --av5:#984B7C; --av6:#4D5A6A;
+
+  /* Dark (night navigation) — phone mockup + dark surfaces */
+  --d-paper:#111514; --d-paper-deep:#0C0F0E; --d-card:#1E2422; --d-card-soft:#242B28;
+  --d-border:#2A322F; --d-rule-2:#3A433F;
+  --d-ink:#ECEFEA; --d-ink-3:#9AA39E; --d-ink-4:#6E7773;
+  --d-brass:#D9A845; --d-brass-dark:#B8862B; --d-on-brass:#1B1F1E;
+  --d-sage:#4FBE8F; --d-sage-text:#7FD6AE;
 
   /* Spacing */
   --s4:4px; --s8:8px; --s12:12px; --s16:16px; --s20:20px; --s24:24px; --s32:32px;
@@ -38,11 +47,12 @@
   --shadow-raised:0 4px 10px rgba(17,17,17,.04), 0 2px 4px rgba(17,17,17,.02);
   --shadow-floating:0 8px 24px rgba(17,17,17,.07), 0 4px 10px rgba(17,17,17,.03);
 
-  /* Fonts */
-  --font-sans:'Geist', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  --font-mono:'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-serif:'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --font-arabic:'Reem Kufi', system-ui, sans-serif;
+  /* Fonts — Zain bundles 400/700/800 (no 500/600 cuts; the browser resolves
+     600→700, 500→400), Spline Sans Mono has real 400/500/700. */
+  --font-display:'Bricolage Grotesque', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-sans:'Zain', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-mono:'Spline Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-arabic:'Zain', 'Reem Kufi', system-ui, sans-serif;
 
   /* Layout */
   --maxw:1200px;
@@ -55,14 +65,15 @@ body{
   font-family:var(--font-sans);
   color:var(--ink);
   background-color:var(--paper);
-  background-image:radial-gradient(rgba(27,26,23,.05) 1px, transparent 1.4px);
+  background-image:radial-gradient(rgba(27,31,30,.05) 1px, transparent 1.4px);
   background-size:22px 22px;
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
 }
-h1,h2,h3{font-family:var(--font-serif);font-weight:400;line-height:1.06;letter-spacing:0;margin:0;}
+h1,h2,h3{font-family:var(--font-display);font-weight:800;line-height:1.06;letter-spacing:-.5px;margin:0;}
 p{margin:0;}
+em{font-style:normal;}
 a{color:inherit;text-decoration:none;}
 img{max-width:100%;display:block;}
 :focus-visible{outline:2.5px solid var(--primary);outline-offset:3px;border-radius:6px;}
@@ -84,7 +95,7 @@ img{max-width:100%;display:block;}
 /* ---------- buttons ---------- */
 .btn{
   display:inline-flex;align-items:center;gap:10px;justify-content:center;
-  font-family:var(--font-sans);font-weight:600;font-size:15px;
+  font-family:var(--font-sans);font-weight:700;font-size:15px;
   padding:14px 24px;border-radius:var(--r-pill);border:1px solid transparent;
   text-decoration:none;cursor:pointer;
   transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
@@ -104,9 +115,12 @@ img{max-width:100%;display:block;}
 .pill:hover{border-color:var(--primary);color:var(--ink);}
 
 /* ---------- brand wordmark ---------- */
-.wordmark{font-family:var(--font-serif);font-style:italic;font-size:26px;color:var(--ink);
+/* Upright Bricolage 800 with the falaj fork as the underscore — a single
+   channel branching into 3 rivulets (mirrors FalajForkPainter geometry:
+   node at 2.5u of 4u, spread ±0.46h, round caps). Mirrors under RTL. */
+.wordmark{font-family:var(--font-display);font-weight:800;letter-spacing:-.5px;font-size:26px;color:var(--ink);
   display:inline-flex;flex-direction:column;line-height:1;}
-.wordmark .flourish{height:3px;width:60%;background:var(--primary);border-radius:var(--r-pill);margin-top:3px;}
+.wordmark .fork{width:2.3em;height:.31em;margin-top:.14em;display:block;color:var(--primary);overflow:visible;}
 .wordmark.sm{font-size:20px;} .wordmark.lg{font-size:38px;}
 .brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);}
 .brand .wordmark{font-size:24px;}
@@ -120,8 +134,8 @@ header.site-head{position:sticky;top:0;z-index:50;
 
 /* ---------- hero ---------- */
 section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;padding-block:72px 88px;}
-.hero h1{font-size:clamp(42px,5.6vw,68px);}
-.hero h1 .it{font-style:italic;color:var(--primary);}
+.hero h1{font-size:clamp(42px,5.6vw,68px);letter-spacing:-1px;}
+.hero h1 .it{color:var(--primary);}
 .hl{position:relative;white-space:nowrap;}
 .hl::after{content:"";position:absolute;left:-2px;right:-2px;bottom:.08em;height:.32em;background:var(--saffron-soft);z-index:-1;border-radius:3px;}
 .hero .sub{font-size:18px;color:var(--ink-3);margin-top:24px;max-width:34em;}
@@ -130,15 +144,15 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 /* invite card */
 .invite{margin-top:28px;background:var(--card);border:1px solid var(--border);
   border-radius:var(--r-card);padding:20px;box-shadow:var(--shadow-raised);max-width:440px;}
-.invite-label{font-size:13px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.invite-label{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;}
 .invite-row{display:flex;gap:10px;margin-top:12px;align-items:stretch;}
-.invite input{flex:1;min-width:0;font-family:var(--font-mono);font-weight:600;font-size:16px;letter-spacing:.22em;
+.invite input{flex:1;min-width:0;font-family:var(--font-mono);font-weight:500;font-size:16px;letter-spacing:.22em;
   text-transform:uppercase;padding:12px 16px;border-radius:var(--r-pill);
   border:1px solid var(--rule-2);background:var(--card-soft);color:var(--ink);text-align:start;}
 .invite input::placeholder{letter-spacing:.22em;color:var(--ink-4);}
 .invite input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px var(--saffron-soft);}
 .invite .btn{padding-inline:20px;white-space:nowrap;}
-.invite-error{margin:11px 2px 0;font-size:13px;color:var(--rust-text);font-weight:600;min-height:1.1em;display:none;}
+.invite-error{margin:11px 2px 0;font-size:13px;color:var(--rust-text);font-weight:700;min-height:1.1em;display:none;}
 .invite-error.show{display:block;}
 
 .proof{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:26px;list-style:none;padding:0;}
@@ -150,55 +164,59 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .route-deco{position:absolute;inset:0;z-index:0;pointer-events:none;width:100%;height:100%;}
 .phone-tilt{position:relative;z-index:1;transform:rotate(3deg) scale(.84);transform-origin:center;margin-block:-44px;}
 
-/* ---------- phone frame + screen (mirrors _ds_bundle.css) ---------- */
+/* ---------- phone frame + screen — the app's DARK (night navigation) look.
+   These classes exist only inside the .rihla mockup; they use --d-* tokens
+   because the marketing shots show the dark app UI. ---------- */
 .rihla, .rihla *{box-sizing:border-box;}
-.rihla{font-family:var(--font-sans);color:var(--ink);line-height:1.45;}
-.phone{width:360px;height:680px;background:var(--paper);border-radius:38px;
-  border:9px solid #15140f;box-shadow:var(--shadow-floating);
+.rihla{font-family:var(--font-sans);color:var(--d-ink);line-height:1.45;}
+.phone{width:360px;height:680px;background:var(--d-paper);border-radius:38px;
+  border:9px solid var(--d-paper-deep);box-shadow:var(--shadow-floating);
   overflow:hidden;position:relative;display:flex;flex-direction:column;}
-.phone-screen{flex:1;overflow:hidden;background:var(--paper);display:flex;flex-direction:column;}
+.phone-screen{flex:1;overflow:hidden;background:var(--d-paper);display:flex;flex-direction:column;}
 .status-bar{height:38px;flex:none;display:flex;align-items:center;justify-content:space-between;
-  padding:0 var(--s20);font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--ink);}
+  padding:0 var(--s20);font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--d-ink);}
 .status-bar .dots{letter-spacing:1px;}
 .app-bar{height:52px;flex:none;display:flex;align-items:center;padding:0 var(--s12);gap:var(--s8);}
 .app-bar .icon-btn{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;}
 .app-bar .title{flex:1;display:flex;justify-content:center;}
+.rihla .wordmark{color:var(--d-ink);}
+.rihla .wordmark .fork{color:var(--d-brass);}
 .content{padding:var(--s16) var(--s16) var(--s32);display:flex;flex-direction:column;gap:var(--s16);}
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:var(--s16);}
-.card.raised{border-color:transparent;box-shadow:var(--shadow-raised);}
-.uppercase-label{font-family:var(--font-mono);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);font-weight:600;}
+.card{background:var(--d-card);border:1px solid var(--d-border);border-radius:var(--r-card);padding:var(--s16);}
+.card.raised{border-color:transparent;}
+.uppercase-label{font-family:var(--font-mono);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--d-ink-3);font-weight:500;}
 .section-header{display:flex;align-items:center;justify-content:space-between;margin:var(--s8) 0 0;}
-.section-header .label{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);}
-.section-header .see-all{font-size:12px;color:var(--primary);font-weight:600;}
-.muted{color:var(--ink-3);} .tiny{font-size:12px;}
+.section-header .label{font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;color:var(--d-ink-3);}
+.section-header .see-all{font-size:12px;color:var(--d-brass);font-weight:700;}
+.muted{color:var(--d-ink-3);} .tiny{font-size:12px;}
 .between{display:flex;align-items:center;justify-content:space-between;}
-.serif{font-family:var(--font-serif);font-style:italic;}
+.display{font-family:var(--font-display);font-weight:700;letter-spacing:-.2px;}
 
 /* money */
-.r-amount{font-family:var(--font-mono);font-feature-settings:'tnum' 1;white-space:nowrap;color:var(--ink);font-weight:600;}
-.r-amount .ccy{font-size:.62em;color:var(--ink-3);margin-right:.35em;font-weight:500;}
+.r-amount{font-family:var(--font-mono);font-feature-settings:'tnum' 1;white-space:nowrap;color:var(--d-ink);font-weight:500;}
+.r-amount .ccy{font-size:.62em;color:var(--d-ink-3);margin-right:.35em;font-weight:400;}
 .r-amount .dec{opacity:.72;}
-.r-amount.pos{color:var(--sage-text);} .r-amount.neu{color:var(--ink);}
-.r-amount.hero{font-size:38px;font-weight:600;} .r-amount.lg{font-size:22px;}
+.r-amount.pos{color:var(--d-sage-text);} .r-amount.neu{color:var(--d-ink);}
+.r-amount.hero{font-size:38px;font-weight:700;} .r-amount.lg{font-size:22px;}
 
 /* avatars */
 .avatar{width:40px;height:40px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;
-  font-family:var(--font-sans);font-weight:600;font-size:14px;color:#fff;}
+  font-family:var(--font-sans);font-weight:700;font-size:14px;color:#fff;}
 .avatar.sm{width:30px;height:30px;font-size:12px;}
 .av-1{background:var(--av1);} .av-2{background:var(--av2);} .av-3{background:var(--av3);}
 .av-4{background:var(--av4);} .av-5{background:var(--av5);} .av-6{background:var(--av6);}
 .avatar-stack{display:inline-flex;}
-.avatar-stack .avatar{margin-left:-10px;border:2px solid var(--paper);}
+.avatar-stack .avatar{margin-left:-10px;border:2px solid var(--d-card);}
 .avatar-stack .avatar:first-child{margin-left:0;}
 [dir="rtl"] .avatar-stack .avatar{margin-left:0;margin-right:-10px;}
 [dir="rtl"] .avatar-stack .avatar:first-child{margin-right:0;}
 
 /* perforated journey ticket */
-.ticket{background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow-raised);overflow:hidden;position:relative;}
-.ticket .cover{height:74px;background:linear-gradient(120deg,#e8b878,#d17b2c 60%,#b5641a);position:relative;}
+.ticket{background:var(--d-card);border-radius:var(--r-card);overflow:hidden;position:relative;}
+.ticket .cover{height:74px;background:linear-gradient(120deg,var(--d-brass),var(--d-brass-dark));position:relative;}
 .ticket .ticket-body{padding:var(--s16);}
-.ticket .perf{border-top:2px dashed var(--rule-2);position:relative;height:0;margin:0 var(--s16);}
-.ticket .perf::before,.ticket .perf::after{content:'';position:absolute;top:-9px;width:18px;height:18px;border-radius:var(--r-pill);background:var(--paper);}
+.ticket .perf{border-top:2px dashed var(--d-rule-2);position:relative;height:0;margin:0 var(--s16);}
+.ticket .perf::before,.ticket .perf::after{content:'';position:absolute;top:-9px;width:18px;height:18px;border-radius:var(--r-pill);background:var(--d-paper);}
 .ticket .perf::before{left:-25px;} .ticket .perf::after{right:-25px;}
 
 /* ---------- use-cases ---------- */
@@ -211,9 +229,9 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
   min-height:230px;transition:transform .18s ease, box-shadow .18s ease;}
 .ucard:hover{transform:translateY(-3px);box-shadow:var(--shadow-floating);}
 .ucard .ic{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:var(--saffron-tint);color:var(--primary-dark);}
-.ucard h3{font-size:23px;font-style:italic;}
+.ucard h3{font-size:23px;}
 .ucard p{color:var(--ink-3);font-size:15px;flex:1;}
-.ucard .lnk{font-weight:600;font-size:14px;color:var(--primary-dark);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+.ucard .lnk{font-weight:700;font-size:14px;color:var(--primary-dark);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
 .ucard .lnk:hover{gap:9px;}
 .ucard .lnk svg{width:16px;height:16px;}
 
@@ -221,60 +239,62 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .why{display:grid;grid-template-columns:1.15fr .85fr;gap:60px;align-items:start;}
 .narr{margin-top:42px;border-top:1px solid var(--rule-2);}
 .nrow{display:grid;grid-template-columns:auto 1fr;gap:22px;padding:24px 4px;border-bottom:1px solid var(--rule-2);align-items:baseline;}
-.nrow .num{font-family:var(--font-serif);font-style:italic;font-size:24px;color:var(--primary);min-width:2.4ch;}
-.nrow h3{font-size:21px;font-style:italic;}
+.nrow .num{font-family:var(--font-mono);font-weight:500;font-size:20px;color:var(--primary);min-width:2.4ch;}
+.nrow h3{font-size:21px;font-weight:700;}
 .nrow p{color:var(--ink-3);font-size:15px;margin-top:5px;}
 
-.quote{background:linear-gradient(155deg, var(--ink), var(--ink-2));color:var(--paper);
+/* dark pull-quote — night navigation surface, lantern-brass accents */
+.quote{background:linear-gradient(155deg, var(--ink), var(--ink-2));color:var(--d-ink);
   border-radius:var(--r-card);padding:38px 34px;position:relative;overflow:hidden;
   box-shadow:var(--shadow-floating);position:sticky;top:96px;}
-.quote::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(246,241,230,.06) 1px, transparent 1.4px);background-size:22px 22px;}
-.quote .qmark{font-family:var(--font-serif);font-style:italic;font-size:64px;line-height:.6;color:var(--primary);}
-.quote blockquote{font-family:var(--font-serif);font-size:27px;line-height:1.3;margin:14px 0 0;position:relative;}
-.quote blockquote em{font-style:italic;color:var(--saffron-soft);}
+.quote::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(236,239,234,.06) 1px, transparent 1.4px);background-size:22px 22px;}
+.quote .qmark{font-family:var(--font-display);font-weight:800;font-size:64px;line-height:.6;color:var(--d-brass);}
+.quote blockquote{font-family:var(--font-display);font-weight:700;letter-spacing:-.3px;font-size:27px;line-height:1.3;margin:14px 0 0;position:relative;}
+.quote blockquote em{color:var(--d-brass);}
 .qchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;position:relative;}
-.qchip{font-family:var(--font-mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;padding:7px 13px;border-radius:var(--r-pill);border:1px solid rgba(246,241,230,.22);color:var(--paper);}
-.qchip.lead{background:var(--primary);border-color:var(--primary);color:var(--on-primary);}
+.qchip{font-family:var(--font-mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;padding:7px 13px;border-radius:var(--r-pill);border:1px solid rgba(236,239,234,.22);color:var(--d-ink);}
+.qchip.lead{background:var(--d-brass);border-color:var(--d-brass);color:var(--d-on-brass);}
 
 /* ---------- final cta ---------- */
 .cta{background:var(--primary);color:var(--on-primary);text-align:center;position:relative;overflow:hidden;}
 .cta::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.1) 1.4px, transparent 1.6px);background-size:22px 22px;}
 .cta .wrap{position:relative;}
 .cta h2{font-size:clamp(34px,4.6vw,54px);max-width:18ch;margin-inline:auto;}
-.cta h2 em{font-style:italic;}
+.cta h2 em{color:var(--saffron-tint);}
 .cta p{margin-top:16px;color:color-mix(in srgb, var(--on-primary) 82%, transparent);font-size:17px;}
 .cta .btn{margin-top:30px;}
 
-/* ---------- footer ---------- */
+/* ---------- footer (dark surface — lantern brass for accents) ---------- */
 footer.site-foot{background:var(--ink);color:var(--paper);}
 footer.site-foot .wrap{padding-block:56px;}
 .foot-top{display:flex;justify-content:space-between;align-items:flex-start;gap:40px;flex-wrap:wrap;}
 .foot-brand{max-width:300px;}
 .foot-brand .wordmark{color:var(--paper);}
+.site-foot .wordmark .fork{color:var(--d-brass);}
 .foot-brand p{margin-top:14px;color:color-mix(in srgb, var(--paper) 60%, transparent);font-size:14px;}
 .foot-links{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;list-style:none;padding:0;margin:0;}
 .foot-links a{color:color-mix(in srgb, var(--paper) 78%, transparent);text-decoration:none;font-size:14px;font-weight:500;}
-.foot-links a:hover{color:var(--primary);}
+.foot-links a:hover{color:var(--d-brass);}
 .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:40px;padding-top:22px;border-top:1px solid color-mix(in srgb, var(--paper) 16%, transparent);color:color-mix(in srgb, var(--paper) 55%, transparent);font-size:13px;}
 
 /* ---------- document template (legal, help, join) ---------- */
 .doc{max-width:760px;margin-inline:auto;padding-block:clamp(40px,6vw,64px) 96px;}
 .doc-head{display:flex;align-items:center;gap:12px;margin-bottom:30px;padding-bottom:22px;border-bottom:1px solid var(--rule-2);}
-.doc h1{font-size:clamp(34px,5vw,52px);margin-bottom:8px;line-height:1.05;}
+.doc h1{font-size:clamp(34px,5vw,52px);margin-bottom:8px;line-height:1.05;letter-spacing:-1px;}
 .doc-sub{color:var(--ink-3);font-size:15px;margin:0 0 6px;}
-.doc h2{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:28px;margin-top:42px;margin-bottom:10px;}
+.doc h2{font-family:var(--font-display);font-weight:700;font-size:28px;margin-top:42px;margin-bottom:10px;}
 .doc p,.doc li{color:var(--ink-2);font-size:16px;line-height:1.7;}
 .doc p{margin:14px 0;}
 .doc ul{padding-inline-start:22px;margin:14px 0;}
 .doc li{margin:8px 0;}
-.doc a{color:var(--primary-dark);font-weight:600;}
+.doc a{color:var(--primary-dark);font-weight:700;}
 .doc a:hover{color:var(--primary);}
 .doc code{background:var(--card-soft);border:1px solid var(--border);border-radius:6px;padding:1px 7px;font-family:var(--font-mono);font-size:.92em;}
 .callout{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:16px 20px;margin:20px 0;box-shadow:var(--shadow-raised);}
-.callout.warn{border-color:var(--amber);background:#fdf4e3;}
+.callout.warn{border-color:var(--amber);background:color-mix(in srgb, var(--amber) 7%, var(--card));}
 .install{color:var(--ink-3);font-size:15px;margin:22px 0 10px;}
 .btn-store{display:inline-flex;align-items:center;justify-content:center;gap:10px;
-  background:var(--primary);color:var(--on-primary);font-weight:600;font-size:15px;
+  background:var(--primary);color:var(--on-primary);font-weight:700;font-size:15px;
   padding:14px 24px;border-radius:var(--r-pill);box-shadow:var(--shadow-raised);}
 .btn-store:hover{background:var(--primary-dark);color:var(--on-primary);}
 .btn-store svg{width:18px;height:20px;}
@@ -282,16 +302,20 @@ footer.site-foot .wrap{padding-block:56px;}
 /* ---------- RTL / Arabic ---------- */
 [dir="rtl"]{direction:rtl;}
 [dir="rtl"] body{font-family:var(--font-arabic);}
-[dir="rtl"] h1,[dir="rtl"] h2,[dir="rtl"] h3,[dir="rtl"] .serif,
-[dir="rtl"] .ucard h3,[dir="rtl"] .nrow h3,[dir="rtl"] .doc h2{font-family:var(--font-arabic);font-style:normal;}
-/* Arabic must not fall back to the Latin serif/mono faces — pull the eyebrows,
-   labels, pull-quote and narrative numerals onto Reem Kufi and drop Latin tracking.
+/* Bricolage Grotesque carries zero Arabic glyphs — reroute display type to
+   Zain upright w700 and drop Latin tracking (joined script rejects
+   letter-spacing). Mirrors the app's displayOf() Arabic branch.
    (.qchip / .r-amount / .status-bar stay mono — they are genuinely Latin.) */
+[dir="rtl"] h1,[dir="rtl"] h2,[dir="rtl"] h3,[dir="rtl"] .display,
+[dir="rtl"] .ucard h3,[dir="rtl"] .nrow h3,[dir="rtl"] .doc h2,
+[dir="rtl"] .quote blockquote{font-family:var(--font-arabic);font-weight:700;letter-spacing:normal;}
+[dir="rtl"] .hero h1{letter-spacing:normal;}
 [dir="rtl"] .eyebrow,[dir="rtl"] .uppercase-label,[dir="rtl"] .section-header .label,
-[dir="rtl"] .quote blockquote,[dir="rtl"] .quote blockquote em,
-[dir="rtl"] .nrow .num{font-family:var(--font-arabic);font-style:normal;letter-spacing:normal;}
-[dir="rtl"] .hl::after,[dir="rtl"] .hero h1 .it{font-style:normal;}
+[dir="rtl"] .quote blockquote em,
+[dir="rtl"] .nrow .num{font-family:var(--font-arabic);letter-spacing:normal;}
 [dir="rtl"] .eyebrow::before{margin-left:0;}
+/* The falaj fork enters from the reading-direction start — mirror it. */
+[dir="rtl"] .wordmark .fork{transform:scaleX(-1);}
 
 /* ---------- responsive ---------- */
 @media (max-width:900px){
