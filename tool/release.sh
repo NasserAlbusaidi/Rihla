@@ -124,7 +124,7 @@ NEW_TAG="v$NEW_VERSION"
 if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
   die "tag $NEW_TAG already exists locally"
 fi
-if git ls-remote --tags origin "$NEW_TAG" | grep -q "$NEW_TAG"; then
+if git ls-remote --tags origin "refs/tags/$NEW_TAG" | grep -q "refs/tags/$NEW_TAG$"; then
   die "tag $NEW_TAG already exists on origin"
 fi
 
@@ -266,18 +266,37 @@ echo
 echo "Waiting for $PR_URL to merge (readiness CI takes a few minutes; polling every ${POLL_INTERVAL}s, timeout ${POLL_TIMEOUT}s)..."
 
 while [ "$ELAPSED" -lt "$POLL_TIMEOUT" ]; do
-  PR_JSON="$(gh pr view "$PR_URL" --json state,mergeCommit,mergeStateStatus)"
+  PR_JSON="$(gh pr view "$PR_URL" --json state,mergeCommit,mergeStateStatus || true)"
+  if [ -z "$PR_JSON" ]; then
+    echo "  ... warn: poll fetch failed (transient gh/API error), retrying in ${POLL_INTERVAL}s"
+    sleep "$POLL_INTERVAL"
+    ELAPSED=$((ELAPSED + POLL_INTERVAL))
+    continue
+  fi
   PR_STATE="$(echo "$PR_JSON" | jq -r '.state')"
 
   if [ "$PR_STATE" = "MERGED" ]; then
     SQUASH_SHA="$(echo "$PR_JSON" | jq -r '.mergeCommit.oid')"
+    if [ "$SQUASH_SHA" = "null" ] || [ -z "$SQUASH_SHA" ]; then
+      echo "  ... merged but mergeCommit oid not yet populated, retrying in ${POLL_INTERVAL}s"
+      SQUASH_SHA=""
+      sleep "$POLL_INTERVAL"
+      ELAPSED=$((ELAPSED + POLL_INTERVAL))
+      continue
+    fi
     break
   fi
   if [ "$PR_STATE" = "CLOSED" ]; then
     die "$PR_URL was closed without merging — resolve whatever blocked it, then either reopen and re-enable auto-merge (gh pr reopen $PR_URL && gh pr merge $PR_URL --auto --squash) or merge manually and tag the squash commit yourself: git tag -a $NEW_TAG -m \"Release $NEW_TAG\" <squash-sha> && git push origin $NEW_TAG"
   fi
 
-  echo "  ... still $PR_STATE (mergeStateStatus=$(echo "$PR_JSON" | jq -r '.mergeStateStatus')), elapsed ${ELAPSED}s/${POLL_TIMEOUT}s"
+  MERGE_STATE_STATUS="$(echo "$PR_JSON" | jq -r '.mergeStateStatus')"
+  if [ "$MERGE_STATE_STATUS" = "BEHIND" ]; then
+    echo "  ... $PR_URL is BEHIND $MAIN_BRANCH (auto-merge never self-updates a behind branch) — nudging with gh pr update-branch"
+    gh pr update-branch "$PR_URL" || true
+  fi
+
+  echo "  ... still $PR_STATE (mergeStateStatus=$MERGE_STATE_STATUS), elapsed ${ELAPSED}s/${POLL_TIMEOUT}s"
   sleep "$POLL_INTERVAL"
   ELAPSED=$((ELAPSED + POLL_INTERVAL))
 done
@@ -299,7 +318,7 @@ git reset --hard "origin/$MAIN_BRANCH"
 if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
   die "tag $NEW_TAG already exists locally — did another release run concurrently? Investigate before retrying."
 fi
-if git ls-remote --tags origin "$NEW_TAG" | grep -q "$NEW_TAG"; then
+if git ls-remote --tags origin "refs/tags/$NEW_TAG" | grep -q "refs/tags/$NEW_TAG$"; then
   die "tag $NEW_TAG already exists on origin — did another release run concurrently? Investigate before retrying."
 fi
 
