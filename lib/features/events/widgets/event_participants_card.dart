@@ -74,7 +74,7 @@ class EventParticipantsCard extends StatelessWidget {
                 key: EventKeys.selectAllButton,
                 value:
                     members.isNotEmpty && selectedIds.length == members.length,
-                checkColor: Colors.white,
+                checkColor: context.colors.textOnPrimary,
                 fillColor: WidgetStateProperty.resolveWith(
                   (states) => states.contains(WidgetState.selected)
                       ? context.colors.primary
@@ -175,7 +175,7 @@ class _ParticipantRow extends StatelessWidget {
               ),
               Checkbox(
                 value: isSelected,
-                checkColor: Colors.white,
+                checkColor: context.colors.textOnPrimary,
                 fillColor: WidgetStateProperty.resolveWith(
                   (states) => states.contains(WidgetState.selected)
                       ? context.colors.primary

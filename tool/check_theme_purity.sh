@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # tool/check_theme_purity.sh — Phase 37 Wave 5 CI enforcement.
 #
-# Exits 1 on any violation with file:line output. Three checks:
+# Exits 1 on any violation with file:line output. Five checks:
 #   1. Direct AppColorTokens.light.* reads outside lib/core/theme/tokens/
 #      (widgets must read via context.colors instead).
 #   2. Hardcoded Color(0xFF...) literals outside lib/core/theme/tokens/ without
@@ -9,6 +9,12 @@
 #   3. `.textMuted` reads outside lib/core/theme/tokens/ without a preceding
 #      `// textMuted-decorative-justified:` comment on the line immediately
 #      above.
+#   4. Direct AppShadowTokens.standard.* reads outside lib/core/theme/tokens/
+#      (widgets must read via context.shadows instead).
+#   5. Material `Colors.<name>` constants outside lib/core/theme/tokens/ without
+#      a preceding `// design-token-justified:` comment within 5 lines above.
+#      `Colors.transparent` is allowlisted (it's palette-independent). Use
+#      context.colors tokens so light/dark track Theme.of(context).brightness.
 #
 # Exemption list:
 #   lib/core/theme/tokens/*            (source of truth — token files)
@@ -111,6 +117,37 @@ if [ -n "$V4" ]; then
   echo "$V4"
   EXIT_CODE=1
 fi
+
+# ---------------------------------------------------------------------------
+# Check 5: Material Colors.<name> constants without justification
+# ---------------------------------------------------------------------------
+# Material's `Colors.*` palette is theme-blind — a `Colors.white` label stays
+# white in dark mode where a token would flip. Flag every `Colors.<name>`
+# outside tokens/ that lacks a `// design-token-justified:` comment within 5
+# lines above (same window/escape-hatch as Check 2). `Colors.transparent` is
+# palette-independent and always allowed.
+echo "Check 5: Material Colors.<name> constants (use context.colors tokens instead)"
+while IFS=: read -r file line _rest; do
+  [ -z "$file" ] && continue
+  start_line=$((line - 5))
+  [ "$start_line" -lt 1 ] && start_line=1
+  end_line=$((line - 1))
+  if [ "$end_line" -lt 1 ]; then
+    echo "$file:$line: Colors.<name> at top of file — missing justification"
+    EXIT_CODE=1
+    continue
+  fi
+  window=$(sed -n "${start_line},${end_line}p" "$file")
+  if ! echo "$window" | grep -q '// design-token-justified:'; then
+    echo "$file:$line: Material Colors.<name> without // design-token-justified: comment within 5 preceding lines"
+    EXIT_CODE=1
+  fi
+done < <(grep -rn '\bColors\.[a-zA-Z]' lib/ \
+           --include='*.dart' \
+           | grep -v '\bColors\.transparent\b' \
+           | grep -v '^lib/core/theme/tokens/' \
+           | grep -v '^lib/core/theme/app_theme.dart:' \
+           | grep -v '^lib/main.dart:')
 
 if [ "$EXIT_CODE" -ne 0 ]; then
   echo "Theme purity check FAILED"

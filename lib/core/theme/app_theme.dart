@@ -154,7 +154,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColorTokens.light.textPrimary,
         contentTextStyle: AppTypography.sans(
-          color: Colors.white,
+          color: AppColorTokens.light.textOnPrimary,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),

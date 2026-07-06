@@ -56,6 +56,9 @@ class EmptyStateView extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 48,
+                // design-token-justified: on the accent-gradient badge the icon
+                // is white over a saturated gradient in both themes; the
+                // non-gradient branch already uses the themed token color.
                 color: accentGradient != null ? Colors.white : color,
               ),
             ),
