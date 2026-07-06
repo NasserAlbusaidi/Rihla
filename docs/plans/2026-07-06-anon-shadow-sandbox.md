@@ -24,7 +24,9 @@ Supersedes D6 (`docs/plans/2026-06-17-278-claim-merge.md`) **in part**:
 
 **Why:** the durable gate on add-by-name blocked the exact user shadows were designed for (`addShadowMember.ts` header: *"a brand-new group is usable on the first session — split against it immediately, cash-settle it"*). A solo anon sandbox harms nobody if its creator evaporates — no other real identity is entangled. Entanglement happens when a real second account **joins** (already durable-gated) or a shadow is **claimed** (both sides already durable-gated). Linking keeps the UID, so a sandbox survives the upgrade with zero migration.
 
-**Accepted residual:** an anon creator who gets real (durable) joiners and then evaporates leaves unclaimed shadows unclaimable (approval needs the creator). Worst case: the placeholder stays a placeholder; balances stay consistent; settle-on-behalf still works (`isGroupMember` settlement create, #752). Today that state is impossible only because the sandbox itself was impossible. The claim-request row doubles as the link nudge at exactly the moment it matters.
+**Accepted residuals (2, both safe):**
+1. An anon creator who gets real (durable) joiners and then evaporates leaves unclaimed shadows unclaimable (approval needs the creator). Worst case: the placeholder stays a placeholder; balances stay consistent; settle-on-behalf still works (`isGroupMember` settlement create, #752). Today that state is impossible only because the sandbox itself was impossible. The claim-request row doubles as the link nudge at exactly the moment it matters.
+2. (Gate R1 adversary) An anon creator whose Google account is ALREADY bound to a different Firebase user hits `GoogleLinkConflictException` in the link sheet, and the "switch" offer is correctly blocked by `outgoingShellProvablyEmpty` (their group makes the shell non-empty, `durable_credential_sheet.dart:127-155,163-169`) — so THAT shell can never approve claims. Safe dead-end (no data loss, no swap); resolution is linking a different Google account. Known limitation — do not refile as a bug.
 
 **Abuse posture unchanged:** `enforceAppCheck: true`, creator-only check (`addShadowMember.ts:86`), `MAX_GROUP_MEMBERS = 50` cap, `normalizeRequiredDisplayName` validation, event fan-in cap. No per-IP throttle (#197 stands). Anon group creation is already allowed (#818) — this extends the same posture one step, not a new class of actor.
 
@@ -68,7 +70,7 @@ test('2. anonymous CREATOR succeeds — shadow minted, memberIds appended (D6-R)
 test('2b. anonymous NON-creator → permission-denied (creator check, not provider)', async () => {
   await expect(run(addShadowMember, {
     data: { groupId: GROUP, displayName: 'Alice' },
-    auth: { uid: JOINER, token: { firebase: { sign_in_provider: 'anonymous' } } },
+    auth: { uid: OUTSIDER, token: { firebase: { sign_in_provider: 'anonymous' } } }, // Gate R1: file defines OWNER/OUTSIDER, no JOINER
   })).rejects.toMatchObject({ code: 'permission-denied' });
   // memberIds unchanged
 });
@@ -108,10 +110,10 @@ git commit -m "feat(groups): addShadowMember accepts anonymous creators (D6-R)"
 
 **Files:**
 - Modify: `functions/src/callables/listGroupClaimRequests.ts:45-49` (delete anon-reject)
-- Test: `functions/test/callables/listGroupClaimRequests.test.ts` (flip the anon leg; keep creator-only leg)
+- Test: `functions/test/callables/claimRequest.test.ts` (Gate R1: there is NO `listGroupClaimRequests.test.ts` — the list callable's tests live here, import at `:20`, list block near `:735`. The `:45` anon-reject is currently UNCOVERED, so removing it breaks no existing test — the anon-creator test must be **ADDED**, not flipped, or D6-R ships untested.)
 
 **Steps (same RED→GREEN shape as Task 1):**
-1. Flip the anon test: anon CREATOR lists pending requests successfully; add/keep anon NON-creator → `permission-denied` (creator check at `:61`).
+1. ADD two tests to `claimRequest.test.ts`'s list block: anon CREATOR lists pending requests successfully (RED against current code — expects success, gets `permission-denied`); anon NON-creator → `permission-denied` (creator check at `:61`).
 2. RED run → 3. delete the reject block with a one-line D6-R comment ("read-only, creator-scoped; the DECISION stays durable-gated in decideClaimRequest") → 4. GREEN run.
 5. Commit: `feat(groups): anon creator can list claim requests (D6-R)`
 
@@ -131,6 +133,7 @@ git commit -m "feat(groups): addShadowMember accepts anonymous creators (D6-R)"
 - `ShadowMemberChipsField.enabled`: `ref.watch(connectivityProvider) == ConnectivityStatus.online` only (drop `&& ref.watch(isDurableUserProvider)`).
 - `disabledHint`: `null` (connectivity messaging is handled inside the field — see `shadow_member_chips_field.dart:35-47` doc).
 - Delete the `if (!ref.watch(isDurableUserProvider))` link-account `TextButton` block (#840) entirely.
+- Gate R1: also retire the now-dead `GroupKeys.createLinkAccountCta` constant (`group_keys.dart:49`) + any test references (analyze won't catch a dead const).
 
 **Step 4:** re-run file → PASS. **Step 5:** commit `feat(groups): create-screen add-by-name available to anonymous creators (D6-R)`.
 
@@ -148,7 +151,7 @@ git commit -m "feat(groups): addShadowMember accepts anonymous creators (D6-R)"
 - Modify: `lib/features/groups/screens/group_detail_screen.dart:159,258-277`
 - Test: grep `groupDetailAddPersonAction` under `test/` — flip any anon-gated assertion; if none exists, add one leg to the existing group-detail widget test: anon creator sees the action.
 
-**Steps:** RED→GREEN: delete `isDurableUser` from both ternaries (`:265,:272`) and the now-unused local at `:159`. Run the group-detail test file(s) → PASS. Commit `feat(groups): group-detail add-person ungated for anon creators (D6-R)`.
+**Steps:** RED→GREEN: flip the existing `group_detail_screen_test.dart` ~`:1315` leg ("#818: anonymous creator gets no People add-person action") to assert the action IS present; delete `isDurableUser` from both ternaries (`:265,:272`) and the now-unused local at `:159`; rewrite the stale `#818` rationale comment at `:253-258` (Gate R1 — it would contradict the new behavior). Run the group-detail test file(s) → PASS. Commit `feat(groups): group-detail add-person ungated for anon creators (D6-R)`.
 
 ### Task 6: Client — claim decisions pre-gated by the durable sheet
 
@@ -160,16 +163,19 @@ git commit -m "feat(groups): addShadowMember accepts anonymous creators (D6-R)"
 
 **Step 2:** run → FAIL (service called, no sheet).
 
-**Step 3 (GREEN):** at the top of `_decide`:
+**Step 3 (GREEN):** in `_decide` — placement pinned by Gate R1 (adversary): AFTER the `if (_busy) return;` guard and the `setState(_busy = true)` (so a double-tap can't open two sheets), with an explicit `_busy` reset on the cancel path (so "Not now" doesn't leave the button spinning forever — the `finally` that normally resets `_busy` lives inside the later try block and is skipped by an early return):
 
 ```dart
 if (!ref.read(isDurableUserProvider)) {
   final linked = await showDurableCredentialSheet(context);
-  if (!linked || !mounted) return;
+  if (!linked || !mounted) {
+    if (mounted) setState(() => _busy = false);
+    return;
+  }
 }
 ```
 
-(`showDurableCredentialSheet` refreshes the ID token on success, so the follow-through callable sees the non-anon provider.)
+(`showDurableCredentialSheet` returns `Future<bool>` and force-refreshes the ID token on success — `durable_credential_sheet.dart:30,69` — so the follow-through callable sees the non-anon provider. In the widget test, assert the sheet via `Key('durableGate.continue')` / the `durableGateTitle` string — the sheet's widget type is private. New imports: `auth_provider.dart`, `durable_credential_sheet.dart`.)
 
 **Step 4:** run file → PASS. **Step 5:** commit `feat(groups): claim decisions prompt account link for anon creators (D6-R)`.
 
