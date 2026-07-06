@@ -14,12 +14,13 @@ import '../../groups/services/member_name_resolver.dart';
 ///   empty   — dimmed avatars with dashed em-dash chips
 enum LedgerRosterState { live, settled, empty }
 
-/// One person's roster row data — from the *current user's* perspective.
+/// One person's roster row data — their OWN standing vs the event (#998).
 ///
-/// `signedAmount`:
-///   positive → "they owe you OMR X.XXX" (sage)
-///   negative → "you owe them OMR X.XXX" (rust)
-///   zero     → settled with them
+/// `signedAmount` is the member's event net, same convention as the hero's
+/// "You" line — NOT a pairwise you↔them amount:
+///   positive → the group owes them OMR X.XXX (sage)
+///   negative → they owe the group OMR X.XXX (rust)
+///   zero     → they're settled
 class LedgerRosterPerson {
   const LedgerRosterPerson({
     required this.participantId,
