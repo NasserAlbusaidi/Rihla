@@ -860,7 +860,6 @@
   "groupDeleteSheetUndo": "لا يمكن التراجع عن هذا.",
   "groupDeleteSheetTypePrefix": "اكتب ",
   "groupDeleteSheetTypeSuffix": " للتأكيد",
-  "groupDeleteSheetRetention": "تُحفظ نسخة لمدة 30 يومًا في حال غيّرت رأيك.",
   "groupDeleteSheetConfirm": "حذف المجموعة",
   "groupScanToJoin": "امسح للانضمام",
   "groupInviteQrCode": "رمز QR للدعوة",

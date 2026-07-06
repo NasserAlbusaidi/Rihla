@@ -262,26 +262,6 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                           ),
                         ),
                       ),
-                      SizedBox(height: context.spacing.space8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 12,
-                            color: colors.textSecondary,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              context.l10n.groupDeleteSheetRetention,
-                              style: AppTypography.sans(
-                                fontSize: 11,
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
