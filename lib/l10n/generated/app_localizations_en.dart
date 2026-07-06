@@ -336,6 +336,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'I\'m splitting trip expenses with Rihla. Give it a try.';
 
   @override
+  String get profileShareA11yLabel => 'Share Rihla';
+
+  @override
   String get profileSnackHandleCopied => 'Handle copied';
 
   @override

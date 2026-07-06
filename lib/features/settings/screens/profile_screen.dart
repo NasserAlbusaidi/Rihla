@@ -211,6 +211,7 @@ class _TopBar extends StatelessWidget {
                 child: _GhostIcon(
                   icon: Iconsax.arrow_left,
                   matchTextDirection: true,
+                  semanticLabel: context.l10n.commonBack,
                   onTap: () {
                     HapticService.lightClick();
                     _back(context);
@@ -229,6 +230,7 @@ class _TopBar extends StatelessWidget {
               alignment: AlignmentDirectional.centerEnd,
               child: _GhostIcon(
                 icon: Iconsax.export_1,
+                semanticLabel: context.l10n.profileShareA11yLabel,
                 onTap: () {
                   HapticService.lightClick();
                   _shareApp(context);
@@ -247,15 +249,17 @@ class _GhostIcon extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.matchTextDirection = false,
+    this.semanticLabel,
   });
   final IconData icon;
   final VoidCallback onTap;
   final bool matchTextDirection;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkResponse(
+    Widget result = InkResponse(
       onTap: onTap,
       radius: 24,
       child: SizedBox(
@@ -266,6 +270,10 @@ class _GhostIcon extends StatelessWidget {
             : Icon(icon, size: 20, color: colors.textPrimary),
       ),
     );
+    if (semanticLabel != null) {
+      result = Semantics(button: true, label: semanticLabel, child: result);
+    }
+    return result;
   }
 }
 
@@ -1456,58 +1464,63 @@ class _NotificationPrefRow extends StatelessWidget {
       subtitle = context.l10n.profileNotificationsSubtitle;
       onTap = () => onChanged(!value);
     }
-    return InkWell(
-      key: ProfileKeys.notificationToggleTile,
-      onTap: onTap,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(
-              children: [
-                leading,
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        context.l10n.profilePreferencesNotifications,
-                        style: AppTypography.sans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textPrimary,
-                        ),
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          key: ProfileKeys.notificationToggleTile,
+          onTap: onTap,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Row(
+                  children: [
+                    leading,
+                    SizedBox(width: context.spacing.space12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            context.l10n.profilePreferencesNotifications,
+                            style: AppTypography.sans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: AppTypography.sans(
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Switch.adaptive(
+                      key: ProfileKeys.notificationSwitch,
+                      value: value,
+                      onChanged: permissionDenied
+                          ? (_) => onOpenSettings()
+                          : errored
+                          ? (_) => onRetry()
+                          : onChanged,
+                      activeThumbColor: colors.primary,
+                      activeTrackColor: colors.primary,
+                      inactiveTrackColor: colors.cardSoft,
+                    ),
+                  ],
                 ),
-                Switch.adaptive(
-                  key: ProfileKeys.notificationSwitch,
-                  value: value,
-                  onChanged: permissionDenied
-                      ? (_) => onOpenSettings()
-                      : errored
-                      ? (_) => onRetry()
-                      : onChanged,
-                  activeThumbColor: colors.primary,
-                  activeTrackColor: colors.primary,
-                  inactiveTrackColor: colors.cardSoft,
-                ),
-              ],
-            ),
+              ),
+              Container(height: 0.5, color: colors.rule),
+            ],
           ),
-          Container(height: 0.5, color: colors.rule),
-        ],
+        ),
       ),
     );
   }

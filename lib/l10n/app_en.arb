@@ -424,6 +424,11 @@
     "description": "Body of the Share.share() invocation when the user shares the app. The 'Rihla' brand subject stays English per Q5."
   },
 
+  "profileShareA11yLabel": "Share Rihla",
+  "@profileShareA11yLabel": {
+    "description": "Accessible name for the Profile top-bar share icon (#992). The 'Rihla' brand subject stays English per Q5."
+  },
+
   "profileSnackHandleCopied": "Handle copied",
   "@profileSnackHandleCopied": {
     "description": "SnackBar shown after the user copies their handle from the identity chip."

@@ -125,6 +125,8 @@
 
   "profileShareMessage": "أقسم مصاريف الرحلات مع Rihla. جرّبها.",
 
+  "profileShareA11yLabel": "مشاركة Rihla",
+
   "profileSnackHandleCopied": "تم نسخ المعرّف",
   "profileSnackSignedOut": "تم تسجيل الخروج",
   "profileSnackSignOutFailed": "تعذّر تسجيل الخروج. أعد المحاولة.",
