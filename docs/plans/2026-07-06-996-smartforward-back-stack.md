@@ -72,6 +72,15 @@ Full gates: `flutter analyze` clean; `flutter test test/features/home/ test/feat
 
 ---
 
+## Gate round 1 — PASS (rubric 0 P1/0 P2/3 P3; adversary 0 P1/1 P2/2 P3) — union folded in
+
+- **[P2·adversary] Nested-harness variant:** the flat `_buildApp` harness can't prove the double push composes to exactly 3 pages under the production NESTED tree. Add one nested-router back-chain test (marker builders, `/group/:gid` with child `event/:eid`, HomeScreen at `/home`): tap → hub, pop → overview marker, pop → home. Defense-in-depth against a go_router patch-version change in ancestor semantics — the exact blind-spot class that produced #996.
+- **[P3·rubric] Label fix:** existing home cases are (a)–(d) + a separately-titled cold-deep-link test (no "(e)"); new cases are labelled (e), (f), (g-nested) accordingly.
+- **[P3·rubric] Stale comment:** `event_command_center.dart:221-222` claims "ancestors are materialized on any nav" — the exact false premise behind #996. Task 3 corrects it (back reaches the overview because the ancestor is imperatively pushed, not materialized).
+- **[P3·rubric] Line drift:** journeys-ticket push is `home_screen.dart:797-799` (not :805).
+- **[P3·adversary] Intentional single-push comments:** annotate the journeys-ticket (`home_screen.dart:797-799`) and event-search-result (`search_results.dart:173`) pushes as DELIBERATELY single-push (event-intent taps; back returns to origin) so a later reader doesn't "fix" them into double-push.
+- **[P3·adversary] Why case (a) still passes:** post-fix the overview page sits offstage beneath the opaque hub; `find.text` skips offstage by default, so `findsNothing` still holds. Stated here so an implementer doesn't "repair" a correct test.
+
 ## Task 1: RED tests — home row back-chain
 
 **Files:** Modify `test/features/home/home_group_row_navigation_test.dart`
