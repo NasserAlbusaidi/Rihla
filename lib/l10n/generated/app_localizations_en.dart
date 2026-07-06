@@ -2980,10 +2980,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupDeleteSheetTypeSuffix => ' TO CONFIRM';
 
   @override
-  String get groupDeleteSheetRetention =>
-      'A copy is kept for 30 days in case you change your mind.';
-
-  @override
   String get groupDeleteSheetConfirm => 'Delete group';
 
   @override

@@ -5019,12 +5019,6 @@ abstract class AppLocalizations {
   /// **' TO CONFIRM'**
   String get groupDeleteSheetTypeSuffix;
 
-  /// No description provided for @groupDeleteSheetRetention.
-  ///
-  /// In en, this message translates to:
-  /// **'A copy is kept for 30 days in case you change your mind.'**
-  String get groupDeleteSheetRetention;
-
   /// No description provided for @groupDeleteSheetConfirm.
   ///
   /// In en, this message translates to:
