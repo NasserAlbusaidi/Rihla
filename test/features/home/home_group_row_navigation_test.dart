@@ -80,8 +80,8 @@ List<Override> _baseOverrides({
   ),
 ];
 
-Widget _buildApp(List<Override> overrides) {
-  final router = GoRouter(
+GoRouter _flatRouter() {
+  return GoRouter(
     initialLocation: '/home',
     routes: [
       GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
@@ -117,11 +117,14 @@ Widget _buildApp(List<Override> overrides) {
     ],
   );
 
+}
+
+Widget _buildApp(List<Override> overrides, {GoRouter? router}) {
   return ProviderScope(
     overrides: overrides,
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
-      routerConfig: router,
+      routerConfig: router ?? _flatRouter(),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
     ),
@@ -236,6 +239,123 @@ void main() {
 
         expect(find.text('GroupOverview:g1'), findsOneWidget);
         expect(find.textContaining('EventHub:'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '(e) sole-open-event forward → one Back lands the group overview, '
+      'a second Back returns home (#996)',
+      (tester) async {
+        final group = _makeGroup('g1', 'Desert Crew');
+        final router = _flatRouter();
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          _buildApp([
+            ..._baseOverrides(prefs: prefs, groups: [group]),
+            groupEventsProvider('g1').overrideWith(
+              (ref) => Stream.value([_makeEvent(id: 'e1', groupId: 'g1')]),
+            ),
+          ], router: router),
+        );
+        await tester.pumpAndSettle();
+
+        await _tapGroupRow(tester, 'Desert Crew');
+        expect(find.text('EventHub:g1/e1'), findsOneWidget);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('GroupOverview:g1'), findsOneWidget);
+        expect(find.textContaining('EventHub:'), findsNothing);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('GroupOverview:g1'), findsNothing);
+        expect(find.byType(HomeScreen), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '(f) two-open-events tap stacks NOTHING beneath the overview — one '
+      'Back returns straight home (#996 else-branch guard)',
+      (tester) async {
+        final group = _makeGroup('g1', 'Desert Crew');
+        final router = _flatRouter();
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          _buildApp([
+            ..._baseOverrides(prefs: prefs, groups: [group]),
+            groupEventsProvider('g1').overrideWith(
+              (ref) => Stream.value([
+                _makeEvent(id: 'e1', groupId: 'g1'),
+                _makeEvent(id: 'e2', groupId: 'g1'),
+              ]),
+            ),
+          ], router: router),
+        );
+        await tester.pumpAndSettle();
+
+        await _tapGroupRow(tester, 'Desert Crew');
+        expect(find.text('GroupOverview:g1'), findsOneWidget);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('GroupOverview:g1'), findsNothing);
+        expect(find.byType(HomeScreen), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '(g) NESTED route tree — the forward composes to exactly '
+      '[home, overview, hub]; two Backs walk hub → overview → home (#996 '
+      'defense-in-depth: proves no duplicate ancestor materializes)',
+      (tester) async {
+        final group = _makeGroup('g1', 'Desert Crew');
+        final router = GoRouter(
+          initialLocation: '/home',
+          routes: [
+            GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+            GoRoute(
+              path: '/group/:gid',
+              builder: (_, state) => Scaffold(
+                body: Text('GroupOverview:${state.pathParameters['gid']}'),
+              ),
+              routes: [
+                GoRoute(
+                  path: 'event/:eid',
+                  builder: (_, state) => Scaffold(
+                    body: Text(
+                      'EventHub:${state.pathParameters['gid']}/'
+                      '${state.pathParameters['eid']}',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          _buildApp([
+            ..._baseOverrides(prefs: prefs, groups: [group]),
+            groupEventsProvider('g1').overrideWith(
+              (ref) => Stream.value([_makeEvent(id: 'e1', groupId: 'g1')]),
+            ),
+          ], router: router),
+        );
+        await tester.pumpAndSettle();
+
+        await _tapGroupRow(tester, 'Desert Crew');
+        expect(find.text('EventHub:g1/e1'), findsOneWidget);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('GroupOverview:g1'), findsOneWidget);
+        expect(find.textContaining('EventHub:'), findsNothing);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('GroupOverview:g1'), findsNothing);
+        expect(find.byType(HomeScreen), findsOneWidget);
       },
     );
   });

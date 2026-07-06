@@ -204,6 +204,12 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                             ? open.single
                             : null;
                         if (soleEvent != null) {
+                          // #996: push the /group/:gid ancestor FIRST —
+                          // go_router's imperative push does NOT materialize
+                          // ancestors, so without this Back from the hub
+                          // skipped the overview (the only home of + New
+                          // event / invite / settings) straight to home.
+                          context.push('/group/$gid');
                           context.push('/group/$gid/event/${soleEvent.eventId}');
                         } else {
                           context.push('/group/$gid');
@@ -794,6 +800,9 @@ class _JourneysStrip extends StatelessWidget {
                 RepaintBoundary(
                   child: JourneyTicketCard(
                     entry: entries[i],
+                    // Deliberately SINGLE push (#996): an event-intent tap —
+                    // Back returns here, not to the group overview. Don't
+                    // "fix" this into the group-row double-push.
                     onTap: () => context.push(
                       '/group/${entries[i].groupId}/event/${entries[i].eventId}',
                     ),
