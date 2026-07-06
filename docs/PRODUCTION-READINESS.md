@@ -158,12 +158,18 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-04, `c47bf943`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-06, `1fa502b9`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-04 deploy ceremony the `backend-deployed` tag is `c47bf943`; prod
+    2026-07-06 deploy ceremony the `backend-deployed` tag is `1fa502b9`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#892 (Closes #783)** — notification delivery markers now
+    Latest delta: **#972** — settlement-correction callables gate on a
+    creator-or-party actor via the shared `correctionActor.ts`; **#963** —
+    anon shadow sandbox (D6-R) moves the durable identity boundary from
+    add-by-name to the claim decision (`addShadowMember`,
+    `listGroupClaimRequests`); plus server-side test coverage for #943/#939
+    (runtime changes client-only). No rules/index changes.
+    Prior delta: **#892 (Closes #783)** — notification delivery markers now
     carry a 90-day `expiresAt` and `firestore.indexes.json` enables TTL for
     `notificationDeliveries.expiresAt`, so idempotency markers stop growing
     without bound while preserving same-key single-send behavior.
