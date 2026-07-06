@@ -122,7 +122,7 @@ steppedSettlePairs({
 /// Single-page body for the Settle-Up screens (group + event).
 ///
 /// Wireframe (Hi_GroupSettle, screens-group.jsx) renders one scrollable view:
-/// italic headline, two summary chips, optimized transfer cards, then
+/// display headline, two summary chips, optimized transfer cards, then
 /// "Each person's net" and a small recorded-payment history.
 ///
 /// Renders one section (summary card, transfer tiles, net rows) per currency
@@ -449,11 +449,10 @@ class _SettlementIntro extends StatelessWidget {
       children: [
         Text(
           headline,
-          style: TextStyle(
-            color: context.colors.textPrimary,
+          style: AppTypography.displayOf(
+            context,
             fontSize: 28,
-            fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.w400,
+            color: context.colors.textPrimary,
             height: 1.05,
           ),
         ),
