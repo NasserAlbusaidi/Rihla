@@ -230,7 +230,7 @@ TrackerSummary summarizeTracker(
     if (hasFeedback) {
       feedbackNotes += 1;
     }
-    if (hasRealAction) {
+    if (joinedCount > 0 && hasRealAction) {
       segment.rowsWithRealAction += 1;
     }
 
@@ -402,7 +402,15 @@ Future<void> main(List<String> args) async {
 
   for (final arg in args) {
     if (arg.startsWith('--today=')) {
-      today = DateTime.parse(arg.substring('--today='.length));
+      final raw = arg.substring('--today='.length);
+      try {
+        today = DateTime.parse(raw);
+      } on FormatException {
+        stderr.writeln(
+          'Invalid --today value "$raw": expected an ISO-8601 date (YYYY-MM-DD).',
+        );
+        exit(64);
+      }
     } else if (!arg.startsWith('--')) {
       trackerPath = arg;
     }

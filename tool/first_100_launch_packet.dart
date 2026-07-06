@@ -225,7 +225,13 @@ Future<void> main(List<String> args) async {
     } else if (arg.startsWith('--write-roster-template=')) {
       templateOutputPath = arg.substring('--write-roster-template='.length);
     } else if (arg.startsWith('--template-count=')) {
-      templateCount = int.parse(arg.substring('--template-count='.length));
+      final raw = arg.substring('--template-count='.length);
+      try {
+        templateCount = int.parse(raw);
+      } on FormatException {
+        stderr.writeln('Invalid --template-count value "$raw": expected an integer.');
+        exit(64);
+      }
     } else if (arg.startsWith('--play-opt-in-link=')) {
       playOptInLink = arg.substring('--play-opt-in-link='.length);
     } else if (!arg.startsWith('--')) {

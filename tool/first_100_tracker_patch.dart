@@ -130,7 +130,15 @@ Future<void> main(List<String> args) async {
     if (arg.startsWith('--output=')) {
       outputPath = arg.substring('--output='.length);
     } else if (arg.startsWith('--today=')) {
-      today = DateTime.parse(arg.substring('--today='.length));
+      final raw = arg.substring('--today='.length);
+      try {
+        today = DateTime.parse(raw);
+      } on FormatException {
+        stderr.writeln(
+          'Invalid --today value "$raw": expected an ISO-8601 date (YYYY-MM-DD).',
+        );
+        exit(64);
+      }
     } else if (arg == '--mark-tester-added') {
       markTesterAdded = true;
     } else if (arg == '--mark-contacted') {
