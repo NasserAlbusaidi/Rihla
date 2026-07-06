@@ -50,6 +50,20 @@ slot,champion,google_play_email,language,segment,use_case,contact_channel
     expect(rendered, isNot(contains('salim@example.com')));
   });
 
+  test(
+    'rejects a comma-bearing email the Play tester exporter would also '
+    'reject (#743)',
+    () {
+      final result = roster_check.checkLaunchRoster('''
+slot,champion,google_play_email,language,segment,use_case,contact_channel
+1,Aisha,"tester+one,two@example.com",en,Travel crews,Salalah trip,WhatsApp
+''');
+
+      expect(result.readyRows, 0);
+      expect(result.issueRows.single.issues, contains('invalid google_play_email'));
+    },
+  );
+
   test('throws when roster columns are missing', () {
     expect(
       () => roster_check.checkLaunchRoster('slot,champion\n1,Aisha\n'),

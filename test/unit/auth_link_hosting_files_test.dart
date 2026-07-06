@@ -184,6 +184,14 @@ void main() {
     expect(arabic, contains("window.location.assign('/join/' + code)"));
   });
 
+  test('/join is noindexed for crawlers — thin utility page (#743)', () {
+    final join = File('hosting/join.html').readAsStringSync();
+    final robots = File('hosting/robots.txt').readAsStringSync();
+
+    expect(join, contains('name="robots" content="noindex"'));
+    expect(robots, contains('Disallow: /join'));
+  });
+
   test('public site exposes sitemap and robots files for crawlers', () {
     final sitemap = File('hosting/sitemap.xml').readAsStringSync();
     final robots = File('hosting/robots.txt').readAsStringSync();

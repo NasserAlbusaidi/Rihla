@@ -63,6 +63,28 @@ $header
     },
   );
 
+  test(
+    'joined-to-expense funnel rate never exceeds 100% when real actions '
+    'predate any join (#743)',
+    () {
+      final rows = first100.parseTrackerCsv('''
+$header
+1,Aisha,Travel crews,Trip expenses,WhatsApp,yes,2026-06-20,2026-06-21,yes,yes,1,1,0,0,no,,,
+2,Khalid,Travel crews,Trip expenses,WhatsApp,yes,2026-06-20,2026-06-21,yes,yes,1,0,1,0,no,,,
+3,Maha,Travel crews,Trip expenses,WhatsApp,yes,2026-06-20,2026-06-21,yes,yes,1,0,0,1,no,,,
+''');
+
+      final summary = first100.summarizeTracker(rows);
+
+      // Slot 1 joined but has no real action yet; slots 2 and 3 logged a real
+      // action (expense/settlement) before their invitee ever joined. Only
+      // slot 1 contributes to the joined population, so the numerator must
+      // not count slots 2/3's pre-join activity.
+      expect(summary.joinedSlots, 1);
+      expect(summary.joinedToExpense, lessThanOrEqualTo(1.0));
+    },
+  );
+
   test('throws when required columns are missing', () {
     expect(
       () => first100.parseTrackerCsv('slot,champion\n1,Aisha\n'),
