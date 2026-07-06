@@ -133,7 +133,14 @@ class ActivityRow extends StatelessWidget {
       ),
     );
 
-    return onTap == null ? content : InkWell(onTap: onTap, child: content);
+    return onTap == null
+        ? content
+        : MergeSemantics(
+            child: Semantics(
+              button: true,
+              child: InkWell(onTap: onTap, child: content),
+            ),
+          );
   }
 }
 
