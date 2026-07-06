@@ -8,6 +8,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import 'theme_picker_sheet.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Display section widget for ProfileScreen (D-05 / Phase 37).
 ///
@@ -58,7 +59,7 @@ class ProfileDisplaySection extends ConsumerWidget {
         const SizedBox(width: 6),
         Text(
           context.l10n.profileSectionDisplay,
-          style: TextStyle(
+          style: AppTypography.sans(
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: context.colors.textSecondary,
@@ -99,7 +100,7 @@ class ProfileDisplaySection extends ConsumerWidget {
             Expanded(
               child: Text(
                 context.l10n.profileDisplayTheme,
-                style: TextStyle(
+                style: AppTypography.sans(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: context.colors.textPrimary,
@@ -108,7 +109,7 @@ class ProfileDisplaySection extends ConsumerWidget {
             ),
             Text(
               trailingLabel,
-              style: TextStyle(
+              style: AppTypography.sans(
                 fontSize: 14,
                 color: context.colors.textSecondary,
               ),
