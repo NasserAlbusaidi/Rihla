@@ -98,157 +98,161 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     final spacing = context.spacing;
     final l10n = context.l10n;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(height: spacing.space12),
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colors.rule2,
-                borderRadius: BorderRadius.circular(2),
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: spacing.space12),
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.rule2,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          SizedBox(height: spacing.space12),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.space24,
-            ).copyWith(bottom: spacing.space24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.editNameTitle,
-                  style: AppTypography.displayOf(
-                    context,
-                    fontSize: 26,
-                    color: colors.textPrimary,
-                    height: 1.15,
-                  ),
-                ),
-                SizedBox(height: context.spacing.space4),
-                Text(
-                  l10n.editNameHelper,
-                  style: AppTypography.sans(
-                    fontSize: 13,
-                    color: colors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-                SizedBox(height: spacing.space20),
-                TextField(
-                  key: ProfileKeys.nameTextField,
-                  controller: _controller,
-                  textCapitalization: TextCapitalization.words,
-                  onChanged: (_) => setState(() => _errorText = null),
-                  style: AppTypography.sans(
-                    fontSize: 15,
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: l10n.editNameFieldLabel,
-                    hintText: l10n.editNameFieldHint,
-                    errorText: _errorText,
-                    filled: true,
-                    fillColor: colors.inputFillWarm,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.borderWarm),
+            SizedBox(height: spacing.space12),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: spacing.space24,
+              ).copyWith(bottom: spacing.space24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.editNameTitle,
+                    style: AppTypography.displayOf(
+                      context,
+                      fontSize: 26,
+                      color: colors.textPrimary,
+                      height: 1.15,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: colors.focusBorderWarm,
-                        width: 2,
+                  ),
+                  SizedBox(height: context.spacing.space4),
+                  Text(
+                    l10n.editNameHelper,
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      color: colors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  SizedBox(height: spacing.space20),
+                  TextField(
+                    key: ProfileKeys.nameTextField,
+                    controller: _controller,
+                    textCapitalization: TextCapitalization.words,
+                    onChanged: (_) => setState(() => _errorText = null),
+                    style: AppTypography.sans(
+                      fontSize: 15,
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: l10n.editNameFieldLabel,
+                      hintText: l10n.editNameFieldHint,
+                      errorText: _errorText,
+                      filled: true,
+                      fillColor: colors.inputFillWarm,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: colors.borderWarm),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: colors.focusBorderWarm,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(height: spacing.space20),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colors.cardSoft,
-                    borderRadius: BorderRadius.circular(spacing.radiusInput),
-                    border: Border.all(color: colors.rule),
+                  SizedBox(height: spacing.space20),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.cardSoft,
+                      borderRadius: BorderRadius.circular(spacing.radiusInput),
+                      border: Border.all(color: colors.rule),
+                    ),
+                    child: Row(
+                      children: [
+                        RAvatar(name: trimmed, size: 44),
+                        SizedBox(width: spacing.space12),
+                        Expanded(
+                          child: Text(
+                            l10n.editNamePreviewCaption,
+                            style: AppTypography.sans(
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
+                  SizedBox(height: spacing.space24),
+                  Row(
                     children: [
-                      RAvatar(name: trimmed, size: 44),
-                      SizedBox(width: spacing.space12),
                       Expanded(
-                        child: Text(
-                          l10n.editNamePreviewCaption,
-                          style: AppTypography.sans(
-                            fontSize: 12,
-                            color: colors.textSecondary,
+                        child: SizedBox(
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: _isSaving || _showCheck
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: colors.rule2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              l10n.commonCancel,
+                              style: AppTypography.sans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SizedBox(
+                          height: 52,
+                          child: ElevatedButton(
+                            key: ProfileKeys.saveNameButton,
+                            onPressed: isButtonEnabled ? _handleSave : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isButtonEnabled
+                                  ? colors.primary
+                                  : colors.primary.withValues(alpha: 0.5),
+                              foregroundColor: colors.textOnPrimary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _buildButtonChild(context),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                SizedBox(height: spacing.space24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 52,
-                        child: OutlinedButton(
-                          onPressed: _isSaving || _showCheck
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: colors.rule2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            l10n.commonCancel,
-                            style: AppTypography.sans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: SizedBox(
-                        height: 52,
-                        child: ElevatedButton(
-                          key: ProfileKeys.saveNameButton,
-                          onPressed: isButtonEnabled ? _handleSave : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isButtonEnabled
-                                ? colors.primary
-                                : colors.primary.withValues(alpha: 0.5),
-                            foregroundColor: colors.textOnPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _buildButtonChild(context),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
