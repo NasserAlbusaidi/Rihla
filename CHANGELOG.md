@@ -4,6 +4,31 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] — 2026-07-07
+
+Hotfix release for the 1.8.0 line. It contains everything merged after
+`v1.8.0` through PR #999; later work belongs to the next release.
+
+### Added
+- **iOS release plumbing (#986/#987/#988/#989).** The app now carries the Rihla
+  display name, an app-level privacy manifest, refreshed CocoaPods lockfile,
+  native Google Sign-In URL scheme configuration, and a manual-restart fallback
+  for the iOS cache-isolation overlay.
+
+### Changed
+- **Restore identity self-heals the local profile name (#990/#995).** After a
+  verified restore, the device name is seeded from the signed-in member's own
+  group member document when needed.
+- **Home top bar keeps the wordmark visually centered (#994).** The title uses a
+  Stack overlay instead of inheriting leftover row spacing from the actions.
+
+### Fixed
+- **Ledger roster chips show each member's own standing (#998/#1000).** The
+  strip no longer negates a member's net and mislabels multi-person balances.
+- **Smart-forward navigation preserves the group Back path (#996/#999).** Event
+  and search jumps now push the `/group/:gid` ancestor before the destination so
+  Back returns to the group overview.
+
 ## [1.8.0] — 2026-07-06
 
 The Falaj release: the rebrand completed in-app last cycle now reaches the
