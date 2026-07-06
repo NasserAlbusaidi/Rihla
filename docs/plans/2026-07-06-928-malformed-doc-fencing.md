@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Status:** DRAFT — pre-Gate.
+**Status:** GATE CLEARED — R3 (rubric 0 P1 + adversary 0 P1, same round; 3 rounds, 6 reviewers). Approved for implementation.
 **Issue:** #928.
 **Gate class:** GATE (money read-paths: `expense_provider.dart` consumers, `**/models/**.dart` schema read-path).
 
@@ -81,7 +81,7 @@ The salvage table alone ships a money bug: `eventBalanceUniverse` (`expense_prov
 
 | Site | Today | Change |
 |---|---|---|
-| `expense_service.dart` `_reconcileExpenses` :68-83 | bare parse in docChanges loop (:76) + `??=` build loop (:81) | per-doc `try/catch` at BOTH parse points: on catch, `cache.remove(doc.id)` / skip from list + `Sentry.captureException` + debug print (inline — the helper's iterable shape doesn't fit the cache). A persistently-throwing doc re-reports per tick via the `??=` miss; accepted — the total factory makes this branch practically unreachable |
+| `expense_service.dart` `_reconcileExpenses` :68-83 | bare parse in docChanges loop (:76) + `??=` build loop (:81) | per-doc `try/catch` at BOTH parse points: on catch, `cache.remove(doc.id)` / skip from list + `Sentry.captureException` + debug print (inline — the helper's iterable shape doesn't fit the cache). Implementation note (R3 rubric P3): the build loop is a collection-`for` with `??=` — a try/catch cannot wrap it inline, so restructure to a manual `for` loop appending to a list. A persistently-throwing doc re-reports per tick via the cache miss; accepted — the total factory makes this branch practically unreachable |
 | `expense_service.dart` `getExpenses` :96-98 | bare `.map` | `decodeDocsSkippingMalformed(snap.docs, (d) => Expense.fromFirestore({...d.data()! as Map<String, dynamic>, 'id': d.id}), context: 'ExpenseService.getExpenses')` |
 | `settlement_service.dart` `watchSettlements` :38-45, `getSettlements` :57-59 | bare `.map` | helper, contexts `'SettlementService.watchSettlements'` / `.getSettlements` |
 | `lib/features/groups/services/group_settlement_service.dart` `watchGroupSettlements` :38-45 (NOT under `ledger/services/` like the other two) | bare `.map` — **not in the issue's list but the identical gap on the same money surface** (feeds `groupSettlementsProvider` → home once-path); same one-concern | helper |
@@ -98,7 +98,7 @@ NOT fenced (verified own-data, always well-formed): `expense_service.dart:258` (
 
 ## Callsite classification (principle 1)
 
-Every touched site is INBOUND (Firestore → model deserialization for display/compute). No OUTBOUND path changes: `toFirestore`, `stageExpense`, `addSettlement`, `addGroupSettlement`, `_encodeDistribution` are untouched. The salvaged values never feed a write (edit screens hydrate from the same model but rules re-validate every write; a salvaged `''` payer cannot produce a rules-valid write).
+Every touched site is INBOUND (Firestore → model deserialization for display/compute). No OUTBOUND path changes: `toFirestore`, `stageExpense`, `addSettlement`, `addGroupSettlement`, `_encodeDistribution` are untouched. The salvaged values never feed a MONEY-TRUTH write (edit screens hydrate from the same model but rules re-validate every write; a salvaged `''` payer cannot produce a rules-valid write). One derived-write named precisely (R3 adversary P2): the event-close `SpendingSnapshot.from(recap)` capture (`spending_snapshot.dart:88` via `event_recap_provider.dart:53-54`) persists display totals computed from the fenced expense list — it is oracle-invisible/display-only by documented contract (same class as `splitExplanation`), its `fromMap` is already total-parse, and post-fix the capture is strictly MORE correct (today a malformed doc errors the recap into an empty snapshot). Classified: OUTBOUND-to-a-display-cache, accepted.
 
 ## Read-path per write-path (principle 3)
 
@@ -107,7 +107,8 @@ No write path changes. Read-paths gaining robustness, each with a named consumer
 - `getExpenses`/`getSettlements` → `groupBalancesOnceProvider` → `homeGroupBalanceProvider` offline/fallback path → home `BalanceHeroCard`.
 - `watchSettlements` → `eventSettlementsProvider` → settle-up screen.
 - `watchGroupSettlements` → `groupSettlementsProvider` → group settle-up + home once-path fold.
-- activity sites → History feed, group activity screen, cross-group feed, home recent strip.
+- activity sites → History feed, group activity screen, cross-group feed, home recent strip. Named transitively-covered consumers (R3 adversary P3): the home RECENTLY strip (`dashboard_providers.dart:63`) and unread dot (`activity_unread_provider.dart:42`) read `groupActivityProvider` → `watchRecentActivity` — the fence at that service chokepoint is what stops a single malformed row silently dropping the whole group from home (`valueOrNull ?? []` swallows the error today).
+- Display-ordering note (R3 adversary P3): `pre_settlement_review.dart:141` sorts by parsed `createdAt` — review-list ordering is display-only; an epoch-salvaged expense sorts to the end and no money decision keys on the sort.
 
 ## Arithmetic decomposition (principle 6)
 
