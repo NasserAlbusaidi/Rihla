@@ -9,6 +9,12 @@
 #                          iOS cells must read "Deferred ..." or "Pass ...".
 #                          Unset (the default) re-enables the strict iOS+Android
 #                          gate for when iOS ships.
+#   RIHLA_SINGLE_DEVICE_QA_OK=yes
+#                          Explicit override: accept a SINGLE physical Android
+#                          device for the RD-04 two-device pass when that QA is
+#                          deliberately deferred to pre-promotion testing on the
+#                          Play "first" track. Unset (the default) keeps the
+#                          strict two-device gate.
 #   RIHLA_REAL_DEVICE_QA_DOC
 #                          Optional test-only override for the QA matrix file.
 set -euo pipefail
@@ -158,7 +164,11 @@ if flutter devices --machine >"$TMP_FILE"; then
     if [ "$android_device_count" -ge 2 ]; then
       pass "Physical Android devices detected for Android-only two-device QA: ${android_devices//$'\n'/, }"
     elif [ "$android_device_count" -eq 1 ]; then
-      fail "At least two physical Android devices required when RIHLA_SKIP_IOS_QA=yes for RD-04; detected: ${android_devices//$'\n'/, }"
+      if [ "${RIHLA_SINGLE_DEVICE_QA_OK:-}" = "yes" ]; then
+        pass "Single Android device accepted (RIHLA_SINGLE_DEVICE_QA_OK=yes): two-device RD-04 QA deferred to pre-promotion testing on the Play 'first' track; detected: ${android_devices//$'\n'/, }"
+      else
+        fail "At least two physical Android devices required when RIHLA_SKIP_IOS_QA=yes for RD-04; detected: ${android_devices//$'\n'/, }"
+      fi
     else
       fail "No physical Android device detected"
     fi

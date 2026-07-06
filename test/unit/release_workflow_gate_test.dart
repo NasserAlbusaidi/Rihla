@@ -340,6 +340,58 @@ exit 64
     },
   );
 
+  test(
+    'RIHLA_SINGLE_DEVICE_QA_OK=yes accepts one Android device for RD-04 '
+    '(explicit pre-promotion deferral)',
+    () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'rihla-flutter-stub-',
+      );
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+
+      final flutterStub = File('${tempDir.path}/flutter')
+        ..writeAsStringSync('''
+#!/usr/bin/env bash
+if [ "\$1" = "devices" ] && [ "\$2" = "--machine" ]; then
+  cat <<'JSON'
+[
+  {
+    "name": "Pixel QA",
+    "id": "pixel-qa",
+    "targetPlatform": "android-arm64",
+    "emulator": false
+  }
+]
+JSON
+  exit 0
+fi
+echo "unexpected flutter invocation: \$*" >&2
+exit 64
+''');
+      await Process.run('chmod', ['+x', flutterStub.path]);
+
+      final result = await Process.run(
+        'bash',
+        ['tool/check_real_device_qa_gate.sh'],
+        environment: {
+          'PATH': '${tempDir.path}:${Platform.environment['PATH']}',
+          'RIHLA_SKIP_IOS_QA': 'yes',
+          'RIHLA_SINGLE_DEVICE_QA_OK': 'yes',
+        },
+      );
+
+      final output = '${result.stdout}\n${result.stderr}';
+      expect(
+        output,
+        contains('Single Android device accepted (RIHLA_SINGLE_DEVICE_QA_OK=yes)'),
+      );
+      expect(
+        output,
+        isNot(contains('At least two physical Android devices required')),
+      );
+    },
+  );
+
   test('release readiness runs GitHub release governance gate', () {
     final readiness = read('tool/check_release_readiness.sh');
     final governance = read('tool/check_github_release_governance.sh');
