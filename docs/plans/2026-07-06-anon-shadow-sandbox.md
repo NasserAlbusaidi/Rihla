@@ -4,7 +4,7 @@
 
 **Goal:** Let an anonymous first-session user experience the full core loop — add people by name, split, see balances, cash-settle — by moving the durable-credential boundary from "name a placeholder" to "decide a shadow claim".
 
-**Architecture:** Remove the anon-reject from two creator-scoped callables (`addShadowMember` write, `listGroupClaimRequests` read); the durable boundary is already enforced end-to-end at the moments that matter and none of those change: `joinGroupByInviteCode` (anon joiners rejected — a real UID in others' money records has no re-key path), `requestClaimShadow` (anon claimers rejected), `decideClaimRequest` (anon approvers rejected — the load-bearing gate this plan promotes to the product boundary). Client drops the `isDurableUserProvider` condition from the three add-by-name affordances and adds one new pre-gate: tapping Approve/Decline on a claim request as an anon creator opens the durable-credential sheet instead of calling the server.
+**Architecture:** Remove the anon-reject from two creator-scoped callables (`addShadowMember` write, `listGroupClaimRequests` read); the durable boundary that matters — the CLAIM chain — is already enforced and does not change: `requestClaimShadow` (anon claimers rejected), `decideClaimRequest` (anon approvers rejected — the load-bearing gate this plan promotes to the product boundary). NOTE (merge-review correction): joining is anon-legal by design since #648 (`joinGroupByInviteCode.ts:184-187` — "NO anonymous-provider reject here… Do not re-add it"); the original draft wrongly named join as a durable gate. Client drops the `isDurableUserProvider` condition from the three add-by-name affordances and adds one new pre-gate: tapping Approve/Decline on a claim request as an anon creator opens the durable-credential sheet instead of calling the server.
 
 **Tech Stack:** Flutter/Riverpod client, Firebase Cloud Functions (TS, Node 22), Jest + emulator, flutter_test.
 
@@ -20,12 +20,12 @@ Supersedes D6 (`docs/plans/2026-06-17-278-claim-merge.md`) **in part**:
 | List claim requests (creator) | durable only | **any creator, incl. anonymous** |
 | Request a claim | durable only | durable only (unchanged) |
 | Decide a claim | durable only | durable only (unchanged — now THE boundary; client pre-empts with link sheet) |
-| Join by invite code | durable only | durable only (unchanged) |
+| Join by invite code | anon-legal (#648) | anon-legal (#648 — unchanged; the draft's "durable only" was wrong) |
 
-**Why:** the durable gate on add-by-name blocked the exact user shadows were designed for (`addShadowMember.ts` header: *"a brand-new group is usable on the first session — split against it immediately, cash-settle it"*). A solo anon sandbox harms nobody if its creator evaporates — no other real identity is entangled. Entanglement happens when a real second account **joins** (already durable-gated) or a shadow is **claimed** (both sides already durable-gated). Linking keeps the UID, so a sandbox survives the upgrade with zero migration.
+**Why:** the durable gate on add-by-name blocked the exact user shadows were designed for (`addShadowMember.ts` header: *"a brand-new group is usable on the first session — split against it immediately, cash-settle it"*). A solo anon sandbox harms nobody if its creator evaporates — no other real identity is entangled. The moment that needs a durable identity is the **claim** (both sides already durable-gated); joins are anon-legal by design (#648). Linking keeps the UID, so a sandbox survives the upgrade with zero migration.
 
 **Accepted residuals (2, both safe):**
-1. An anon creator who gets real (durable) joiners and then evaporates leaves unclaimed shadows unclaimable (approval needs the creator). Worst case: the placeholder stays a placeholder; balances stay consistent; settle-on-behalf still works (`isGroupMember` settlement create, #752). Today that state is impossible only because the sandbox itself was impossible. The claim-request row doubles as the link nudge at exactly the moment it matters.
+1. An anon creator who gets real joiners and then evaporates leaves unclaimed shadows unclaimable (approval needs the creator). Worst case: the placeholder stays a placeholder; balances stay consistent; settle-on-behalf still works (`isGroupMember` settlement create, #752). Today that state is impossible only because the sandbox itself was impossible. The claim-request row doubles as the link nudge at exactly the moment it matters.
 2. (Gate R1 adversary) An anon creator whose Google account is ALREADY bound to a different Firebase user hits `GoogleLinkConflictException` in the link sheet, and the "switch" offer is correctly blocked by `outgoingShellProvablyEmpty` (their group makes the shell non-empty, `durable_credential_sheet.dart:127-155,163-169`) — so THAT shell can never approve claims. Safe dead-end (no data loss, no swap); resolution is linking a different Google account. Known limitation — do not refile as a bug.
 
 **Abuse posture unchanged:** `enforceAppCheck: true`, creator-only check (`addShadowMember.ts:86`), `MAX_GROUP_MEMBERS = 50` cap, `normalizeRequiredDisplayName` validation, event fan-in cap. No per-IP throttle (#197 stands). Anon group creation is already allowed (#818) — this extends the same posture one step, not a new class of actor.
@@ -89,9 +89,9 @@ Delete `addShadowMember.ts` lines 51-63 (comment + `if (sign_in_provider === 'an
 
 ```ts
     // D6-R (2026-07-06): anonymous creators MAY add shadows — the sandbox is
-    // solo until a real account joins. The durable boundary lives where real
-    // identities entangle: joinGroupByInviteCode (anon joiners rejected),
-    // requestClaimShadow / decideClaimRequest (anon claim actors rejected).
+    // solo until a real account joins. Joining is itself anon-legal (#648 —
+    // see joinGroupByInviteCode), so the durable boundary is the CLAIM chain:
+    // requestClaimShadow / decideClaimRequest both reject anonymous actors.
     // Abuse posture: enforceAppCheck + creator-only check below + MAX_GROUP_MEMBERS.
 ```
 
@@ -190,7 +190,7 @@ if (!ref.read(isDurableUserProvider)) {
 ### Task 8: Docs + full verification
 
 **Files:**
-- Modify: `CLAUDE.md` (Key Invariants → "Name-based members" bullet: creator add-by-name no longer durable-gated; claim DECISIONS are the durable boundary; joins unchanged)
+- Modify: `CLAUDE.md` (Key Invariants → "Name-based members" bullet: creator add-by-name no longer durable-gated; claim DECISIONS are the durable boundary; joins anon-legal per #648, unchanged)
 - This plan doc: already the D6-R record.
 
 **Steps:**

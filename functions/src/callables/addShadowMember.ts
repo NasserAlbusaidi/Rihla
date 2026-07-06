@@ -49,9 +49,9 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
       throw new HttpsError('unauthenticated', 'Sign-in required.');
     }
     // D6-R (2026-07-06): anonymous creators MAY add shadows — the sandbox is
-    // solo until a real account joins. The durable boundary lives where real
-    // identities entangle: joinGroupByInviteCode (anon joiners rejected),
-    // requestClaimShadow / decideClaimRequest (anon claim actors rejected).
+    // solo until a real account joins. Joining is itself anon-legal (#648 —
+    // see joinGroupByInviteCode), so the durable boundary is the CLAIM chain:
+    // requestClaimShadow / decideClaimRequest both reject anonymous actors.
     // Abuse posture: enforceAppCheck + the creator-only check below + MAX_GROUP_MEMBERS.
     const uid = request.auth.uid;
     const groupId = normalizeGroupId(request.data?.groupId);
