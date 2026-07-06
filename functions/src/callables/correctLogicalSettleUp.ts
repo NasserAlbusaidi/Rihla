@@ -6,6 +6,7 @@ import {
 } from 'firebase-admin/firestore';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
+import { assertCorrectionActor } from './shared/correctionActor';
 import { validId } from './shared/ids';
 import {
   buildEventReverseData,
@@ -165,6 +166,12 @@ export const correctLogicalSettleUp = onCall<
           );
         }
       }
+
+      // Actor policy: membership alone is not enough — only the group creator,
+      // or a caller who is a party on EVERY live tagged original, may reverse
+      // the set (party-on-some-but-not-all is denied). Evaluated over the full
+      // tagged set, deny-biased.
+      assertCorrectionActor(uid, groupData.createdBy, taggedOriginals.map((orig) => orig.data));
 
       // Use only unmarked, non-legacy-correction source rows as originals.
       // The legacy-pairing pool is the tagged set itself (a legacy reverse of

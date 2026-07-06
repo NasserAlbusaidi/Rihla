@@ -547,3 +547,94 @@ describe('correctSettlement — scope: group', () => {
     ).rejects.toMatchObject({ code: 'already-exists' });
   });
 });
+
+// Actor policy: only the group creator or a party (payer/recipient) to the
+// settlement may correct it. A member who is neither is denied; shadow
+// participants (uuid ids, never auth uids) can never satisfy the party branch.
+describe('correctSettlement — actor policy (creator-or-party)', () => {
+  const THIRD = 'third';
+  const SHADOW = '7f3b2a10-9c4d-4e8f-b1a2-3d5c6e7f8a9b';
+
+  function callAs(uid: string, data: Record<string, unknown>) {
+    return wrapped({ data, auth: { uid } } as any);
+  }
+
+  test('A1. DENY: event scope — member who is neither party nor creator → permission-denied, no write', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1'); // MEMBER -> OWNER
+
+    await expect(
+      callAs(THIRD, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE }),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    const docs = await collectionDocs('groups/g/events/e1/settlements');
+    expect(docs).toHaveLength(1);
+  });
+
+  test('A2. ALLOW: payer corrects', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1'); // MEMBER -> OWNER
+
+    const res = await callAs(MEMBER, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE });
+    expect(res.noop).toBe(false);
+  });
+
+  test('A3. ALLOW: recipient corrects', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: THIRD,
+      recipientName: 'Third',
+    });
+
+    const res = await callAs(THIRD, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE });
+    expect(res.noop).toBe(false);
+  });
+
+  test('A4. ALLOW: group creator who is not a party corrects', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: MEMBER,
+      recipientParticipantId: THIRD,
+      recipientName: 'Third',
+    });
+
+    const res = await callAs(OWNER, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE });
+    expect(res.noop).toBe(false);
+  });
+
+  test('A5. group scope: DENY non-party member; ALLOW payer', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD] });
+    await seedGroupSettlement('groups/g/settlements/gs1'); // MEMBER -> OWNER
+
+    await expect(
+      callAs(THIRD, { groupId: 'g', scope: 'group', settlementId: 'gs1', correctionNote: CORRECTION_NOTE }),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+
+    const res = await callAs(MEMBER, { groupId: 'g', scope: 'group', settlementId: 'gs1', correctionNote: CORRECTION_NOTE });
+    expect(res.noop).toBe(false);
+  });
+
+  test('A6. shadow party never opens the door: non-party member denied, real counterparty allowed', async () => {
+    // The shadow uuid must sit in memberIds AND participantIds so the earlier
+    // party-validation loop passes and the ACTOR gate is the branch under test.
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, THIRD, SHADOW] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, THIRD, SHADOW]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: SHADOW,
+      recipientParticipantId: MEMBER,
+      payerName: 'Shadow',
+      recipientName: 'Member',
+    });
+
+    await expect(
+      callAs(THIRD, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE }),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+
+    const res = await callAs(MEMBER, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE });
+    expect(res.noop).toBe(false);
+  });
+});
