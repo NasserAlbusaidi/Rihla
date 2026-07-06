@@ -29,7 +29,6 @@ import 'core/services/install_referrer_service.dart';
 import 'core/utils/sentry_pii_scrubber.dart';
 import 'features/auth/providers/cache_isolation_controller_provider.dart';
 import 'features/auth/services/auth_email_link_recognizer.dart';
-import 'features/auth/services/legacy_auth_marker_cleanup.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
@@ -228,7 +227,6 @@ class _SafarAppState extends ConsumerState<SafarApp> {
           consumeInstallReferrer: ({required route}) => InstallReferrerService
               .instance
               .consumeDeferredInvite(router, prefs, route: route),
-          clearLegacyAuthMarkers: () => LegacyAuthMarkerCleanup.clear(prefs),
           activateAppBootstrap: () async {
             if (!mounted) return;
             ref.read(appBootstrapProvider);

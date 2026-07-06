@@ -14,7 +14,6 @@ import 'deep_link_service.dart';
 Future<void> runColdStartCoordinator({
   required Future<DeepLinkInitialDecision> Function() resolveDeepLinks,
   required Future<bool> Function({required bool route}) consumeInstallReferrer,
-  Future<void> Function()? clearLegacyAuthMarkers,
   required Future<void> Function() activateAppBootstrap,
   required Future<void> Function({required bool handleInitialMessage})
   runInitialNotificationSync,
@@ -45,9 +44,6 @@ Future<void> runColdStartCoordinator({
   final joinAlreadyRouted =
       deepLinkDecision.joinRouted || installReferrerRouted;
 
-  if (clearLegacyAuthMarkers != null) {
-    await guarded(clearLegacyAuthMarkers, null);
-  }
   await guarded(activateAppBootstrap, null);
   await guarded(
     () => runInitialNotificationSync(handleInitialMessage: !joinAlreadyRouted),
