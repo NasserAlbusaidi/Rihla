@@ -189,9 +189,9 @@ class _Body extends ConsumerWidget {
         ),
     ];
 
-    // From the current user's perspective:
-    //   negative net for someone else → they owe you (positive chip)
-    //   positive net for someone else → you owe them (negative chip)
+    // #998: each roster chip carries that member's OWN net (their standing
+    // vs the event), matching the hero's "You" convention — positive chip =
+    // the group owes them, negative chip = they owe the group.
     final hasExpenses = expenses.isNotEmpty;
     final isSettled = hasExpenses && myLines.isEmpty;
     final rosterState = !hasExpenses
