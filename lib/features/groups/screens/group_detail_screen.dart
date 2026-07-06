@@ -156,7 +156,6 @@ class _ContentState extends ConsumerState<_Content> {
     // its terminal error (else _MembersCard hangs on "Loading members…").
     final membersAsync = ref.watch(groupMembersProvider(group.id));
     final currentUid = ref.watch(currentUserIdProvider);
-    final isDurableUser = ref.watch(isDurableUserProvider);
     final balances = balancesAsync.valueOrNull;
     final balanceLines = nonZeroNetsGccFirst(
       myNetByCurrency(balances?.balances ?? const {}, currentUid),
@@ -252,24 +251,17 @@ class _ContentState extends ConsumerState<_Content> {
           SliverToBoxAdapter(
             // #807: creator-only shortcut to add-by-name — the same sheet the
             // settings screen offers, without the 4-tap settings detour. The
-            // gate mirrors GroupMembersSection's isCurrentUserCreator. #818:
-            // also requires a durable creator — addShadowMember hard-rejects
-            // anonymous callers server-side, so an anonymous creator sees no
-            // affordance (mirrors GroupMembersSection).
+            // gate mirrors GroupMembersSection's isCurrentUserCreator. D6-R:
+            // anonymous creators included — addShadowMember accepts them; the
+            // durable boundary is at join/claim.
             child: SectionHeader(
               key: GroupKeys.membersAndBalancesSection,
               title: context.l10n.groupPeople,
-              actionLabel:
-                  currentUid != null &&
-                      group.createdBy == currentUid &&
-                      isDurableUser
+              actionLabel: currentUid != null && group.createdBy == currentUid
                   ? context.l10n.groupAddMemberAction
                   : null,
               actionKey: GroupKeys.groupDetailAddPersonAction,
-              onActionTap:
-                  currentUid != null &&
-                      group.createdBy == currentUid &&
-                      isDurableUser
+              onActionTap: currentUid != null && group.createdBy == currentUid
                   ? () {
                       HapticService.selection();
                       AddShadowMemberSheet.show(context, groupId: group.id);
