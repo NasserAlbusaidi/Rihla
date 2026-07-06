@@ -2951,6 +2951,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'يحتاج Rihla إلى اتصال بالإنترنت عند تشغيله لأول مرة. اتصل بالإنترنت وحاول مرة أخرى.';
 
   @override
+  String get splashManualRestartTitle => 'خطوة أخيرة';
+
+  @override
+  String get splashManualRestartBody =>
+      'لإكمال تبديل الحساب، أغلق Rihla من مبدّل التطبيقات (اسحب للأعلى مع الاستمرار ثم اسحب التطبيق بعيدًا)، ثم افتحه من جديد.';
+
+  @override
   String get notificationRationaleTitle => 'ابقَ على اطّلاع';
 
   @override
