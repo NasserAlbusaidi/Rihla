@@ -14,14 +14,10 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/currency_display_name.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
-import '../../../core/utils/localized_name_validators.dart';
-import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../../shared/widgets/r_avatar.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -30,14 +26,21 @@ import '../../groups/widgets/currency_picker_sheet.dart';
 import '../../home/widgets/add_expense_target_sheet.dart';
 import '../../trip/providers/trip_provider.dart';
 import '../keys/ledger_keys.dart';
-import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../models/split_explanation.dart';
 import '../providers/category_provider.dart';
-import '../utils/expense_provenance.dart';
-import '../utils/ledger_categories.dart';
-import '../utils/localized_category_name.dart';
 import 'custom_split_sheet.dart';
+import 'expense_editor/amount_hero.dart';
+import 'expense_editor/category_strip.dart';
+import 'expense_editor/currency_mismatch_notice.dart';
+import 'expense_editor/currency_row.dart';
+import 'expense_editor/delete_card.dart';
+import 'expense_editor/description_field.dart';
+import 'expense_editor/editor_section.dart';
+import 'expense_editor/expense_provenance_byline.dart';
+import 'expense_editor/expense_top_bar.dart';
+import 'expense_editor/payer_picker_sheet.dart';
+import 'expense_editor/where_card.dart';
 import 'split_card.dart';
 
 enum ExpenseEditorMode { add, edit }
@@ -232,7 +235,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       (!_isEdit && _currencyManuallyPicked);
 
   /// #627 follow-up: the disambiguation name map is event-derived and shared by
-  /// every in-build consumer (`_PaidByCard`, `_ExpenseProvenanceByline`,
+  /// every in-build consumer (`_PaidByCard`, `ExpenseProvenanceByline`,
   /// `_SplitPreviewCard`). The parent `setState`s `_amount` on every keystroke,
   /// so `build` re-runs per digit; without this memo each consumer would re-run
   /// `disambiguateEventParticipants` on every keystroke. Cached here and
@@ -570,8 +573,8 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     }
   }
 
-  /// #900 (PR-5 §1): the trailing "change" tap on `_WhereCard`, add mode
-  /// only — wired at the [_WhereCard] callsite as `_isEdit ? null :
+  /// #900 (PR-5 §1): the trailing "change" tap on `WhereCard`, add mode
+  /// only — wired at the [WhereCard] callsite as `_isEdit ? null :
   /// _handleChangeDestination`, so the null-check there IS the mode gate. A
   /// dirty form runs the SAME add-discard confirm as X/back (same stakes:
   /// abandoning this event's draft); on confirm (or when pristine) opens the
@@ -671,7 +674,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) =>
-          _PayerPickerSheet(event: event, selectedPayerId: currentId),
+          PayerPickerSheet(event: event, selectedPayerId: currentId),
     );
     if (selected != null && selected != _selectedPayerId) {
       HapticService.selection();
@@ -857,7 +860,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
         body: SafeArea(
           child: Column(
             children: [
-              _ExpenseTopBar(
+              ExpenseTopBar(
                 title: _isEdit
                     ? context.l10n.editorTitleEditExpense
                     : context.l10n.editorTitleAddExpense,
@@ -875,7 +878,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _AmountHero(
+                      AmountHero(
                         controller: _amountController,
                         focusNode: _amountFocusNode,
                         amount: _amount,
@@ -888,7 +891,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       // Edit keeps the stored currency immutable (changing it would
                       // strand any settlement recorded against the old bucket).
                       if (!_isEdit)
-                        _CurrencyRow(
+                        CurrencyRow(
                           key: LedgerKeys.expenseCurrencyField,
                           currency: effectiveCurrency,
                           onTap: _openCurrencySheet,
@@ -900,23 +903,23 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                       if (!_isEdit &&
                           widget.dominantCurrency != null &&
                           effectiveCurrency != widget.dominantCurrency)
-                        _CurrencyMismatchNotice(
+                        CurrencyMismatchNotice(
                           key: LedgerKeys.expenseCurrencyWarning,
                           selected: effectiveCurrency,
                           dominant: widget.dominantCurrency!,
                         ),
-                      _DescriptionField(controller: _noteController),
+                      DescriptionField(controller: _noteController),
                       // #248 PR5: provenance byline — who ADDED / last EDITED this
                       // expense, distinct from who PAID (the "Paid by" card). Edit
                       // mode only, and only once the event has resolved (names
                       // come from its participantNames map).
                       if (_isEdit && event != null && widget.initial != null)
-                        _ExpenseProvenanceByline(
+                        ExpenseProvenanceByline(
                           displayNames: _disambiguatedNames(event),
                           event: event,
                           expense: widget.initial!,
                         ),
-                      _Section(
+                      EditorSection(
                         title: context.l10n.editorCategory,
                         // #807: category is mandatory at creation (#787) — mark
                         // it required up front instead of only on blocked submit.
@@ -939,7 +942,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                                   ),
                                 ),
                               ),
-                            _CategoryStrip(
+                            CategoryStrip(
                               categoriesAsync: categoriesAsync,
                               eventType: event?.type,
                               selectedCategoryId: _selectedCategoryId,
@@ -959,7 +962,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         // language scope, inline mode segment, real per-person
                         // figures (#242). Replaces the former Paid-by / Split-
                         // between / How sections and the duplicate payer picker.
-                        _Section(
+                        EditorSection(
                           title: context.l10n.editorSplit,
                           child: SplitCard(
                             event: event,
@@ -986,15 +989,16 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                                 _openSplitModeSheet(event, forceItemized: true),
                           ),
                         ),
-                        _Section(
+                        EditorSection(
                           title: context.l10n.editorWhere,
-                          child: _WhereCard(
+                          child: WhereCard(
                             event: event,
                             // Add mode only — the null-check on the other
                             // side IS the mode gate (#900). An existing
                             // expense is pinned to its event.
-                            onChangeDestination:
-                                _isEdit ? null : _handleChangeDestination,
+                            onChangeDestination: _isEdit
+                                ? null
+                                : _handleChangeDestination,
                           ),
                         ),
                       ] else
@@ -1007,7 +1011,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                           ),
                         ),
                       if (_isEdit && widget.onDelete != null)
-                        _DeleteCard(
+                        DeleteCard(
                           enabled: !_isSubmitting,
                           onDelete: _confirmDelete,
                         ),
@@ -1033,672 +1037,6 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   }
 }
 
-class _ExpenseTopBar extends StatelessWidget {
-  const _ExpenseTopBar({
-    required this.title,
-    required this.actionLabel,
-    required this.isLoading,
-    required this.onClose,
-    required this.onAction,
-  });
-
-  final String title;
-  final String actionLabel;
-  final bool isLoading;
-  final VoidCallback onClose;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
-      child: SizedBox(
-        height: 48,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: IconButton(
-                tooltip: context.l10n.commonClose,
-                icon: const Icon(Iconsax.close_circle, size: 20),
-                color: context.colors.textPrimary,
-                onPressed: onClose,
-              ),
-            ),
-            Text(
-              title,
-              style: AppTypography.sans(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: context.colors.textPrimary,
-              ),
-            ),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: FilledButton(
-                onPressed: isLoading ? null : onAction,
-                style: FilledButton.styleFrom(
-                  backgroundColor: context.colors.primary,
-                  foregroundColor: context.colors.textOnPrimary,
-                  minimumSize: const Size(64, 40),
-                  padding: EdgeInsetsDirectional.fromSTEB(
-                    context.spacing.space16,
-                    9,
-                    context.spacing.space16,
-                    11,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      context.spacing.radiusSmall,
-                    ),
-                  ),
-                  textStyle: AppTypography.sans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    height: 1.22,
-                  ).copyWith(leadingDistribution: TextLeadingDistribution.even),
-                ),
-                child: isLoading
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: context.colors.textOnPrimary,
-                        ),
-                      )
-                    : Text(actionLabel),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AmountHero extends StatelessWidget {
-  const _AmountHero({
-    required this.controller,
-    required this.focusNode,
-    required this.amount,
-    required this.currency,
-    required this.onChanged,
-    required this.onTap,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final String amount;
-  final String currency;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = amount.split('.');
-    final whole = parts.first.isEmpty ? '0' : parts.first;
-    final rawFraction = parts.length > 1 ? parts.last : '';
-    final decimals = AppFormatters.currencyConfig[currency]?.decimals ?? 3;
-    // Pad the DISPLAYED fraction to the currency's precision so the live field
-    // matches the 3dp shown in the saved expense and summaries (#156). This is
-    // display-only: the parsed/persisted Decimal comes from the (transparent)
-    // controller, never this string, so padding here cannot change the written
-    // value. The untouched default '0' stays a clean unpadded 'OMR 0'.
-    final fraction = (amount != '0' && decimals > 0)
-        ? '.${rawFraction.padRight(decimals, '0')}'
-        : (rawFraction.isEmpty ? '' : '.$rawFraction');
-    final colors = context.colors;
-
-    // The label color is deliberately darker than textSecondary — at fontSize
-    // 10 with extra letter spacing it can otherwise blend into the cream
-    // background on iOS.
-    final labelColor = colors.textPrimary.withValues(alpha: 0.55);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Forced LTR like the amount Row below — otherwise the composite
-              // 'المبلغ · OMR' inherits the ambient RTL and scrambles (#150).
-              // Excluded from semantics: the transparent TextField below
-              // carries this label as its accessible name (#871) — announcing
-              // the caption too would read the name twice.
-              ExcludeSemantics(
-                child: Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(
-                    context.l10n.editorAmountLabel(currency),
-                    style: AppTypography.caption(
-                      context,
-                      fontSize: 10,
-                      letterSpacing: 1.6,
-                      color: labelColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: context.spacing.space12),
-              Directionality(
-                textDirection: TextDirection.ltr,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(bottom: context.spacing.space12),
-                      child: Text(
-                        currency,
-                        style: AppTypography.mono(
-                          fontSize: 20,
-                          color: colors.textSecondary,
-                          letterSpacing: 0.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      whole,
-                      style: AppTypography.mono(
-                        fontSize: 64,
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                        height: 1.05,
-                      ),
-                    ),
-                    if (fraction.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(
-                          bottom: context.spacing.space8,
-                        ),
-                        child: Text(
-                          fraction,
-                          style: AppTypography.mono(
-                            fontSize: 28,
-                            color: colors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                width: 120,
-                height: 2,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ],
-          ),
-          Positioned.fill(
-            // MergeSemantics folds the label onto the TextField's own
-            // semantics node, so TalkBack/VoiceOver announce the name ON the
-            // edit box (WCAG 4.1.2, #871) — a plain Semantics wrapper would
-            // leave the input itself unnamed. The visible caption above is
-            // ExcludeSemantics'd to avoid a double announcement.
-            child: MergeSemantics(
-              child: Semantics(
-                label: context.l10n.editorAmountLabel(currency),
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  onTap: onTap,
-                  onChanged: onChanged,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  // The transparent overlay field only types digits; disabling
-                  // interactive selection stops iOS selection handles from sticking
-                  // over the amount label (#150). Programmatic select-default-zero
-                  // still works (it sets controller.selection directly).
-                  enableInteractiveSelection: false,
-                  textDirection: TextDirection.ltr,
-                  inputFormatters: [
-                    LocalizedDecimalTextInputFormatter(
-                      decimalDigits:
-                          AppFormatters.currencyConfig[currency]?.decimals ?? 3,
-                    ),
-                  ],
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.transparent),
-                  cursorColor: Colors.transparent,
-                  decoration: const InputDecoration(
-                    filled: false,
-                    fillColor: Colors.transparent,
-                    isCollapsed: true,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DescriptionField extends StatefulWidget {
-  const _DescriptionField({required this.controller});
-
-  final TextEditingController controller;
-
-  @override
-  State<_DescriptionField> createState() => _DescriptionFieldState();
-}
-
-class _DescriptionFieldState extends State<_DescriptionField> {
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onChanged);
-    super.dispose();
-  }
-
-  // Recompute the inline error as the user types so an over-length / control-
-  // char note shows a message instead of an opaque permission-denied (#220).
-  void _onChanged() => setState(() {});
-
-  @override
-  Widget build(BuildContext context) {
-    final errorText = validateFreeTextLocalized(
-      context,
-      widget.controller.text,
-    );
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-      child: TextField(
-        controller: widget.controller,
-        textInputAction: TextInputAction.done,
-        decoration: InputDecoration(
-          labelText: context.l10n.editorDescriptionLabel,
-          hintText: context.l10n.editorDescriptionHint,
-          errorText: errorText,
-          filled: true,
-          fillColor: context.colors.scaffoldBackground,
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: context.colors.rule2),
-          ),
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: context.colors.primary, width: 1.5),
-          ),
-          errorBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: context.colors.error),
-          ),
-          focusedErrorBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: context.colors.error, width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// #382 PR-6: tappable row showing the picked currency (code + display name)
-/// with a trailing chevron. Opens [CurrencyPickerSheet]. Add mode only.
-class _CurrencyRow extends StatelessWidget {
-  const _CurrencyRow({super.key, required this.currency, required this.onTap});
-
-  final String currency;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(
-        context.spacing.space24,
-        context.spacing.space8,
-        context.spacing.space24,
-        0,
-      ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: _CardShell(
-          child: _InfoRow(
-            leading: Container(
-              width: 32,
-              height: 32,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.selectionFill,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Iconsax.dollar_circle,
-                size: 18,
-                color: colors.primary,
-              ),
-            ),
-            title: currencyDisplayName(currency, context.l10n),
-            subtitle: currency,
-            trailing: DirectionalIcon(
-              Iconsax.arrow_right_3,
-              size: 18,
-              color: colors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// #382 PR-6: inline, non-blocking soft warning shown in the add-expense form
-/// when the picked currency diverges from the event's dominant (most-frequent)
-/// one — a fat-finger guard. Amber soft-notice idiom (tint + icon + text); it
-/// never blocks submit and vanishes reactively when the dominant is picked.
-class _CurrencyMismatchNotice extends StatelessWidget {
-  const _CurrencyMismatchNotice({
-    super.key,
-    required this.selected,
-    required this.dominant,
-  });
-
-  final String selected;
-  final String dominant;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(
-        context.spacing.space24,
-        context.spacing.space8,
-        context.spacing.space24,
-        0,
-      ),
-      child: Container(
-        padding: EdgeInsets.all(context.spacing.space12),
-        decoration: BoxDecoration(
-          color: colors.warning.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.warning.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          children: [
-            Icon(Iconsax.warning_2, size: 18, color: colors.warning),
-            SizedBox(width: context.spacing.space8),
-            Expanded(
-              child: Text(
-                context.l10n.editorCurrencyMismatch(selected, dominant),
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// #248 PR5: compact "Added by … · edited by …" byline under the description.
-/// Reads the expense's createdBy / lastEditedBy uids and resolves them through
-/// the same disambiguated participantNames chain the payer uses, so creator and
-/// payer are surfaced side by side without conflating them. Renders nothing for
-/// legacy expenses with no creator.
-class _ExpenseProvenanceByline extends StatelessWidget {
-  const _ExpenseProvenanceByline({
-    required this.displayNames,
-    required this.event,
-    required this.expense,
-  });
-
-  /// #289 disambiguation map, shared from the parent (#627 follow-up).
-  final Map<String, String> displayNames;
-  final Event event;
-  final Expense expense;
-
-  @override
-  Widget build(BuildContext context) {
-    String resolve(String uid) =>
-        displayNames[uid] ??
-        event.participantNames[uid] ??
-        context.l10n.activitySomeone;
-
-    final provenance = resolveExpenseProvenance(
-      createdBy: expense.createdBy,
-      lastEditedBy: expense.lastEditedBy,
-      resolveName: resolve,
-    );
-    if (provenance == null) return const SizedBox.shrink();
-
-    final text = provenance.editorName == null
-        ? context.l10n.editorProvenanceAdded(provenance.creatorName)
-        : context.l10n.editorProvenanceAddedEdited(
-            provenance.creatorName,
-            provenance.editorName!,
-          );
-
-    return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(
-        context.spacing.space24,
-        context.spacing.space8,
-        context.spacing.space24,
-        0,
-      ),
-      child: Text(
-        text,
-        style: AppTypography.sans(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: context.colors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.child,
-    this.showRequiredMarker = false,
-  });
-
-  final String title;
-  final Widget child;
-
-  /// #807: renders a trailing asterisk so a mandatory field announces itself
-  /// before a blocked submit does. Opt-in — only the add-mode Category
-  /// section passes true (mirrors the `!_isEdit` validation gate).
-  final bool showRequiredMarker;
-
-  @override
-  Widget build(BuildContext context) {
-    final titleStyle = AppTypography.sans(
-      fontSize: 15,
-      fontWeight: FontWeight.w800,
-      color: context.colors.textPrimary,
-    );
-    return Padding(
-      padding: EdgeInsets.only(top: context.spacing.space24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-            child: showRequiredMarker
-                ? Text.rich(
-                    TextSpan(
-                      text: title,
-                      style: titleStyle,
-                      children: [
-                        TextSpan(
-                          text: ' *',
-                          style: AppTypography.sans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: context.colors.error,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Text(title, style: titleStyle),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryStrip extends StatelessWidget {
-  const _CategoryStrip({
-    required this.categoriesAsync,
-    required this.selectedCategoryId,
-    required this.onCategorySelected,
-    this.eventType,
-  });
-
-  final AsyncValue<List<ExpenseCategory>> categoriesAsync;
-  final String? selectedCategoryId;
-  final ValueChanged<String> onCategorySelected;
-
-  /// #689: when set, reorders the picker so the event type's likely categories
-  /// lead (camping → groceries/fuel first). Null (event still loading) → the
-  /// neutral catalog order.
-  final EventType? eventType;
-
-  @override
-  Widget build(BuildContext context) {
-    return categoriesAsync.when(
-      loading: () => Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacing.space24,
-          vertical: context.spacing.space12,
-        ),
-        child: const LinearProgressIndicator(),
-      ),
-      error: (_, _) => Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-        child: Text(
-          context.l10n.editorCouldNotLoadCategories,
-          style: TextStyle(color: context.colors.errorText),
-        ),
-      ),
-      data: (categories) {
-        final order = categoryOrderForType(eventType ?? EventType.custom);
-        final sorted = [...categories]
-          ..sort((a, b) => order.indexOf(a.id).compareTo(order.indexOf(b.id)));
-        return SizedBox(
-          height: 42,
-          child: ListView.separated(
-            padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-            scrollDirection: Axis.horizontal,
-            itemCount: sorted.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final category = sorted[index];
-              return _CategoryChip(
-                category: category,
-                selected: selectedCategoryId == category.id,
-                onTap: () => onCategorySelected(category.id),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({
-    required this.category,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ExpenseCategory category;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = categoryColorForId(context.colors, category.id);
-    final displayName = localizedCategoryName(
-      id: category.id,
-      fallbackName: category.name,
-      l10n: context.l10n,
-    );
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? context.colors.textPrimary
-              : context.colors.cardSurface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? context.colors.textPrimary : context.colors.rule2,
-          ),
-          boxShadow: selected ? context.shadows.flat : context.shadows.raised,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: selected
-                    ? context.colors.scaffoldBackground.withValues(alpha: 0.18)
-                    : context.colors.cardSoft,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                categoryIconForId(category.id),
-                size: 11,
-                color: selected ? context.colors.scaffoldBackground : color,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              displayName,
-              style: AppTypography.sans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: selected
-                    ? context.colors.scaffoldBackground
-                    : context.colors.ink2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// #627 perf seam: counts how often the editor recomputes the SHARED
 /// disambiguation name map (`_disambiguatedNames`), shared with the paid-by
 /// and split consumers. Tests assert a pure amount keystroke does NOT recompute
@@ -1706,333 +1044,3 @@ class _CategoryChip extends StatelessWidget {
 /// counter moved to `split_card.dart` with the per-person figures.)
 @visibleForTesting
 int debugEditorNameMapComputes = 0;
-
-class _WhereCard extends StatelessWidget {
-  const _WhereCard({required this.event, this.onChangeDestination});
-
-  final Event event;
-
-  /// Add-mode-only "change destination" tap target (#900 / PR-5 §1). `null`
-  /// hides the affordance — this is the mode gate; edit mode never wires it
-  /// since an existing expense is pinned to its event.
-  final VoidCallback? onChangeDestination;
-
-  @override
-  Widget build(BuildContext context) {
-    final date = event.startDate ?? event.createdAt;
-    final onChangeDestination = this.onChangeDestination;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
-      child: _CardShell(
-        child: Column(
-          children: [
-            if (onChangeDestination != null)
-              _InfoRow(
-                title: context.l10n.editorAddingToEvent(event.name),
-                dense: true,
-                trailing: TextButton(
-                  key: LedgerKeys.editorChangeDestinationButton,
-                  onPressed: onChangeDestination,
-                  child: Text(context.l10n.editorChangeDestination),
-                ),
-              )
-            else
-              _InfoRow(
-                title: context.l10n.editorEvent,
-                trailingText: event.name,
-                dense: true,
-              ),
-            _InfoRow(
-              title: context.l10n.editorDate,
-              trailingText: AppFormatters.formatShortMonthDay(
-                date,
-                Localizations.localeOf(context).toLanguageTag(),
-              ),
-              dense: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DeleteCard extends StatelessWidget {
-  const _DeleteCard({required this.enabled, required this.onDelete});
-
-  final bool enabled;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-      child: Container(
-        padding: EdgeInsets.all(context.spacing.space16),
-        decoration: BoxDecoration(
-          color: colors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-          border: Border.all(color: colors.error.withValues(alpha: 0.16)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.editorDeleteThisExpense,
-                    style: AppTypography.sans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    context.l10n.editorDeleteThisExpenseBody,
-                    style: AppTypography.sans(
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: context.spacing.space12),
-            FilledButton.icon(
-              onPressed: enabled ? onDelete : null,
-              icon: const Icon(Iconsax.trash, size: 14),
-              label: Text(context.l10n.commonDelete),
-              style: FilledButton.styleFrom(
-                backgroundColor: colors.error,
-                // design-token-justified: white foreground on the rust
-                // destructive delete CTA — no textOnError token exists.
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 40),
-                padding: const EdgeInsetsDirectional.fromSTEB(14, 9, 14, 11),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    context.spacing.radiusSmall,
-                  ),
-                ),
-                textStyle: AppTypography.sans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  height: 1.22,
-                ).copyWith(leadingDistribution: TextLeadingDistribution.even),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CardShell extends StatelessWidget {
-  const _CardShell({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-        boxShadow: context.shadows.raised,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: child,
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.title,
-    this.subtitle,
-    this.leading,
-    this.trailing,
-    this.trailingText,
-    this.dense = false,
-  });
-
-  final String title;
-  final String? subtitle;
-  final Widget? leading;
-  final Widget? trailing;
-  final String? trailingText;
-  final bool dense;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: dense ? 12 : 14),
-      child: Row(
-        children: [
-          if (leading != null) ...[
-            leading!,
-            SizedBox(width: context.spacing.space12),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.sans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: context.colors.textPrimary,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: AppTypography.sans(
-                      fontSize: 12,
-                      color: context.colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (trailing != null)
-            trailing!
-          else if (trailingText != null)
-            Flexible(
-              child: Text(
-                trailingText!,
-                textAlign: TextAlign.end,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  color: context.colors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// #280: single-choice "who paid" picker. Tap a participant to select and
-/// close, returning the chosen id via [Navigator.pop]. Render-only names
-/// (disambiguated, #289); the caller writes the id.
-class _PayerPickerSheet extends StatelessWidget {
-  const _PayerPickerSheet({required this.event, required this.selectedPayerId});
-
-  final Event event;
-  final String? selectedPayerId;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final displayNames = MemberNameResolver.disambiguateEventParticipants(
-      event,
-    );
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          color: colors.scaffoldBackground,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.rule,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(
-                context.spacing.space20,
-                context.spacing.space4,
-                context.spacing.space20,
-                context.spacing.space12,
-              ),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  context.l10n.editorPaidBy,
-                  style: AppTypography.sans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  for (final id in event.participantIds)
-                    _PayerOption(
-                      name:
-                          displayNames[id] ??
-                          event.participantNames[id] ??
-                          context.l10n.editorUnknownParticipant,
-                      selected: id == selectedPayerId,
-                      onTap: () => Navigator.of(context).pop(id),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PayerOption extends StatelessWidget {
-  const _PayerOption({
-    required this.name,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String name;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return ListTile(
-      onTap: onTap,
-      contentPadding: EdgeInsetsDirectional.symmetric(
-        horizontal: context.spacing.space12,
-      ),
-      leading: RAvatar(name: name, size: 36),
-      title: Text(
-        name,
-        style: AppTypography.sans(
-          fontSize: 15,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          color: colors.textPrimary,
-        ),
-      ),
-      trailing: selected
-          ? Icon(Iconsax.tick_circle, color: colors.primary, size: 20)
-          : null,
-    );
-  }
-}
