@@ -59,6 +59,51 @@ class SettlementService extends FirestoreRepository {
         .toList();
   }
 
+  /// Builds the Firestore document map for an event settlement — the SINGLE
+  /// source of the event-settlement write shape (#929).
+  ///
+  /// [addSettlement] delegates here for a directly-recorded settlement;
+  /// [GroupSettlementService.stageDecomposedSettleUp] calls it for each
+  /// per-event leg of a decomposed group settle-up, so both paths write a
+  /// byte-identical doc. [amount] is quantized to integer fils via
+  /// [MoneySerializer.toSubunits]; [settledAtUtc] is stamped by the caller so a
+  /// batch can share ONE timestamp across all its legs.
+  static Map<String, dynamic> buildSettlementDoc({
+    required String id,
+    required String eventId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required Decimal amount,
+    required String createdBy,
+    required String currency,
+    required DateTime settledAtUtc,
+    String? payerName,
+    String? recipientName,
+    String? note,
+    String? groupSettleUpId,
+  }) {
+    final data = <String, dynamic>{
+      'id': id,
+      'eventId': eventId,
+      'payerParticipantId': payerParticipantId,
+      'recipientParticipantId': recipientParticipantId,
+      // Fields absent on pre-2026-05-16 docs render as 'Someone' via the model fallback.
+      'payerName': payerName,
+      'recipientName': recipientName,
+      'amountFils': MoneySerializer.toSubunits(amount, currency),
+      'currency': currency,
+      'note': note,
+      'isDeleted': false,
+      'deletedAt': null,
+      'settledAt': settledAtUtc.toIso8601String(),
+      'createdBy': createdBy,
+    };
+    // Omit the key when null so directly-recorded settlements keep the existing
+    // shape and legacy docs stay valid (#752; rules guard `!('x' in data) ||`).
+    if (groupSettleUpId != null) data['groupSettleUpId'] = groupSettleUpId;
+    return data;
+  }
+
   /// Creates a new settlement document in Firestore and returns the resulting
   /// [Settlement] object.
   ///
@@ -87,26 +132,20 @@ class SettlementService extends FirestoreRepository {
       );
     }
     final id = const Uuid().v4();
-    final now = DateTime.now().toUtc();
-    final data = <String, dynamic>{
-      'id': id,
-      'eventId': eventId,
-      'payerParticipantId': payerParticipantId,
-      'recipientParticipantId': recipientParticipantId,
-      // Fields absent on pre-2026-05-16 docs render as 'Someone' via the model fallback.
-      'payerName': payerName,
-      'recipientName': recipientName,
-      'amountFils': MoneySerializer.toSubunits(amount, currency),
-      'currency': currency,
-      'note': note,
-      'isDeleted': false,
-      'deletedAt': null,
-      'settledAt': now.toIso8601String(),
-      'createdBy': createdBy,
-    };
-    // Omit the key when null so directly-recorded settlements keep the existing
-    // shape and legacy docs stay valid (#752; rules guard `!('x' in data) ||`).
-    if (groupSettleUpId != null) data['groupSettleUpId'] = groupSettleUpId;
+    final data = buildSettlementDoc(
+      id: id,
+      eventId: eventId,
+      payerParticipantId: payerParticipantId,
+      recipientParticipantId: recipientParticipantId,
+      amount: amount,
+      createdBy: createdBy,
+      currency: currency,
+      settledAtUtc: DateTime.now().toUtc(),
+      payerName: payerName,
+      recipientName: recipientName,
+      note: note,
+      groupSettleUpId: groupSettleUpId,
+    );
     try {
       await eventSubcollection(
         groupId,

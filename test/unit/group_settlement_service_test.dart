@@ -182,6 +182,106 @@ void main() {
     );
   });
 
+  // #929: buildGroupSettlementDoc is the SINGLE source of the group-settlement
+  // write shape (addGroupSettlement AND the atomic decompose residual both call
+  // it). These pin the exact 16-key map (with the eventId:groupId sentinel +
+  // scope:'group') and that addGroupSettlement stays byte-identical to it.
+  group('buildGroupSettlementDoc single-source shape (#929)', () {
+    test('produces the exact 16-key group-settlement doc', () {
+      final settledAt = DateTime.utc(2026, 4, 2, 8, 15);
+      final doc = GroupSettlementService.buildGroupSettlementDoc(
+        id: 'gset-1',
+        groupId: 'g1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amount: Decimal.parse('10.500'),
+        createdBy: 'uid',
+        currency: 'OMR',
+        settledAtUtc: settledAt,
+        payerName: 'Ali',
+        recipientName: 'Sara',
+        note: 'residual',
+        groupSettleUpId: 'su-1',
+      );
+
+      expect(doc, {
+        'id': 'gset-1',
+        'groupId': 'g1',
+        'eventId': 'g1', // sentinel — group settlements have no eventId
+        'scope': 'group',
+        'payerParticipantId': 'p1',
+        'recipientParticipantId': 'p2',
+        'amountFils': 10500,
+        'currency': 'OMR',
+        'note': 'residual',
+        'payerName': 'Ali',
+        'recipientName': 'Sara',
+        'isDeleted': false,
+        'deletedAt': null,
+        'settledAt': settledAt.toIso8601String(),
+        'createdBy': 'uid',
+        'groupSettleUpId': 'su-1',
+      });
+    });
+
+    test('omits groupSettleUpId when null', () {
+      final doc = GroupSettlementService.buildGroupSettlementDoc(
+        id: 'gset-1',
+        groupId: 'g1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amount: Decimal.parse('1.000'),
+        createdBy: 'uid',
+        currency: 'OMR',
+        settledAtUtc: DateTime.utc(2026),
+      );
+      expect(doc.containsKey('groupSettleUpId'), isFalse);
+    });
+
+    test(
+      'addGroupSettlement persists exactly buildGroupSettlementDoc output '
+      '(byte parity)',
+      () async {
+        final fakeDb = FakeFirebaseFirestore();
+        final service = GroupSettlementService.withFirestore(fakeDb);
+        final s = await service.addGroupSettlement(
+          createdBy: 'uid',
+          groupId: 'g1',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('7.250'),
+          currency: 'OMR',
+          payerName: 'Ali',
+          recipientName: 'Sara',
+          note: 'n',
+          groupSettleUpId: 'su-9',
+        );
+        final snap = await fakeDb
+            .collection('groups')
+            .doc('g1')
+            .collection('settlements')
+            .doc(s.id)
+            .get();
+        final persisted = snap.data()!;
+        final expected = GroupSettlementService.buildGroupSettlementDoc(
+          id: persisted['id'] as String,
+          groupId: 'g1',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amount: Decimal.parse('7.250'),
+          createdBy: 'uid',
+          currency: 'OMR',
+          settledAtUtc: DateTime.parse(persisted['settledAt'] as String),
+          payerName: 'Ali',
+          recipientName: 'Sara',
+          note: 'n',
+          groupSettleUpId: 'su-9',
+        );
+        expect(persisted, equals(expected));
+      },
+    );
+  });
+
   group('groupSettleUpId field (#752)', () {
     test('fromFirestore reads groupSettleUpId when present', () {
       final s = Settlement.fromFirestore({

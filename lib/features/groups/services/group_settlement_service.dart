@@ -45,6 +45,52 @@ class GroupSettlementService extends FirestoreRepository {
         );
   }
 
+  /// Builds the Firestore document map for a group-level settlement — the
+  /// SINGLE source of the group-settlement write shape (#929).
+  ///
+  /// [addGroupSettlement] delegates here for a directly-recorded group
+  /// settlement; [stageDecomposedSettleUp] calls it for the residual leg of a
+  /// decomposed settle-up, so both paths write a byte-identical doc. The doc
+  /// carries the `eventId: groupId` sentinel + `scope: 'group'` (D-10).
+  /// [settledAtUtc] is stamped by the caller so a batch can share ONE timestamp
+  /// across all its legs.
+  static Map<String, dynamic> buildGroupSettlementDoc({
+    required String id,
+    required String groupId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required Decimal amount,
+    required String createdBy,
+    required String currency,
+    required DateTime settledAtUtc,
+    String? payerName,
+    String? recipientName,
+    String? note,
+    String? groupSettleUpId,
+  }) {
+    final data = <String, dynamic>{
+      'id': id,
+      'groupId': groupId,
+      'eventId': groupId, // sentinel per RESEARCH Pitfall 3 — group settlements have no eventId
+      'scope': 'group',
+      'payerParticipantId': payerParticipantId,
+      'recipientParticipantId': recipientParticipantId,
+      'amountFils': MoneySerializer.toSubunits(amount, currency),
+      'currency': currency,
+      'note': note,
+      'payerName': payerName,
+      'recipientName': recipientName,
+      'isDeleted': false,
+      'deletedAt': null,
+      'settledAt': settledAtUtc.toIso8601String(),
+      'createdBy': createdBy,
+    };
+    // Omit the key when null so legacy/standalone group settlements keep the
+    // existing shape (#752; rules guard `!('x' in data) ||`).
+    if (groupSettleUpId != null) data['groupSettleUpId'] = groupSettleUpId;
+    return data;
+  }
+
   /// Creates a new group-level settlement and returns the resulting [Settlement].
   ///
   /// The [amount] is converted to integer fils via [MoneySerializer.toSubunits]
@@ -73,27 +119,20 @@ class GroupSettlementService extends FirestoreRepository {
       );
     }
     final id = const Uuid().v4();
-    final now = DateTime.now().toUtc();
-    final data = <String, dynamic>{
-      'id': id,
-      'groupId': groupId,
-      'eventId': groupId, // sentinel per RESEARCH Pitfall 3 — group settlements have no eventId
-      'scope': 'group',
-      'payerParticipantId': payerParticipantId,
-      'recipientParticipantId': recipientParticipantId,
-      'amountFils': MoneySerializer.toSubunits(amount, currency),
-      'currency': currency,
-      'note': note,
-      'payerName': payerName,
-      'recipientName': recipientName,
-      'isDeleted': false,
-      'deletedAt': null,
-      'settledAt': now.toIso8601String(),
-      'createdBy': createdBy,
-    };
-    // Omit the key when null so legacy/standalone group settlements keep the
-    // existing shape (#752; rules guard `!('x' in data) ||`).
-    if (groupSettleUpId != null) data['groupSettleUpId'] = groupSettleUpId;
+    final data = buildGroupSettlementDoc(
+      id: id,
+      groupId: groupId,
+      payerParticipantId: payerParticipantId,
+      recipientParticipantId: recipientParticipantId,
+      amount: amount,
+      createdBy: createdBy,
+      currency: currency,
+      settledAtUtc: DateTime.now().toUtc(),
+      payerName: payerName,
+      recipientName: recipientName,
+      note: note,
+      groupSettleUpId: groupSettleUpId,
+    );
     try {
       await _settlementsRef(groupId).doc(id).set(data);
     } on FirebaseException catch (e) {
