@@ -2971,10 +2971,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createGroupShadowOfflineHint => 'Connect to add names';
 
   @override
-  String get shadowAddRequiresLink =>
-      'Link your account to add people by name — anyone can still join with the invite code.';
-
-  @override
   String createGroupShadowNameTaken(Object name) {
     return '\"$name\" is already used in this group.';
   }

@@ -871,7 +871,6 @@
   "createGroupWhoElse": "من سيشارك؟",
   "createGroupAddNameHint": "اكتب اسمًا…",
   "createGroupShadowOfflineHint": "اتصل بالإنترنت لإضافة الأسماء",
-  "shadowAddRequiresLink": "اربط حسابك لإضافة أشخاص بالاسم — يمكن لأي شخص الانضمام برمز الدعوة.",
   "createGroupShadowNameTaken": "‏\"{name}\" مستخدم بالفعل في هذه المجموعة.",
   "createGroupShadowAddFailed": "تعذّرت إضافة بعض الأسماء. يمكنك إضافتها من المجموعة لاحقًا.",
   "groupClaimPickerTitle": "هل أنت أحد هؤلاء؟",

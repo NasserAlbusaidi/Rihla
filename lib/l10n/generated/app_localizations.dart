@@ -5085,12 +5085,6 @@ abstract class AppLocalizations {
   /// **'Connect to add names'**
   String get createGroupShadowOfflineHint;
 
-  /// #818: shown instead of the offline hint / creator explanation when the current (anonymous) creator has no durable credential — addShadowMember hard-rejects anonymous callers server-side. Reused on the create-screen chips field and the group-settings members section footer.
-  ///
-  /// In en, this message translates to:
-  /// **'Link your account to add people by name — anyone can still join with the invite code.'**
-  String get shadowAddRequiresLink;
-
   /// Snackbar when a seeded placeholder name (#278) collides with an existing member; the group is already created and the other names still proceed.
   ///
   /// In en, this message translates to:

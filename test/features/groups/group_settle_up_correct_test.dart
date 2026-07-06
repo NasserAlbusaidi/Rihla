@@ -419,4 +419,46 @@ void main() {
       expect(container.read(ledgerRevisionProvider), 0);
     },
   );
+
+  // Actor policy: the logical correct affordance is party-or-creator only
+  // (correctLogicalSettleUp enforces the same server-side, on EVERY tagged
+  // original; every leg of a decomposed settle-up shares one payer→recipient
+  // pair, so the representative-based client check matches).
+  testWidgets(
+    'actor policy: a member who is neither party nor creator sees NO logical '
+    'correct button',
+    (tester) async {
+      final functionsService = _MockFunctionsService();
+      // Carol: not the creator (alice), not a party to bob→alice.
+      await tester.pumpWidget(
+        _wrap(
+          tagged: [_taggedOriginal()],
+          functionsService: functionsService,
+          currentUid: 'uid-carol',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'actor policy: a party who is NOT the creator still sees the logical '
+    'correct button',
+    (tester) async {
+      final functionsService = _MockFunctionsService();
+      // Bob is the payer on the tagged original; the creator is alice.
+      await tester.pumpWidget(
+        _wrap(
+          tagged: [_taggedOriginal()],
+          functionsService: functionsService,
+          currentUid: 'uid-bob',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(GroupKeys.settleUpCorrectButton), findsOneWidget);
+    },
+  );
 }

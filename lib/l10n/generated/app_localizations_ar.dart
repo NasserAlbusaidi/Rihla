@@ -3007,10 +3007,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createGroupShadowOfflineHint => 'اتصل بالإنترنت لإضافة الأسماء';
 
   @override
-  String get shadowAddRequiresLink =>
-      'اربط حسابك لإضافة أشخاص بالاسم — يمكن لأي شخص الانضمام برمز الدعوة.';
-
-  @override
   String createGroupShadowNameTaken(Object name) {
     return '‏\"$name\" مستخدم بالفعل في هذه المجموعة.';
   }
