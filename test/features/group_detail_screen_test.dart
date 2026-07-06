@@ -1313,14 +1313,14 @@ void main() {
     });
 
     testWidgets(
-      '#818: anonymous creator gets no People add-person action',
+      'D6-R: anonymous creator sees the People add-person action',
       (tester) async {
         await tester.pumpWidget(wrapWithRoutes(durable: false));
         await tester.pumpAndSettle();
 
         // Same creator uid as the durable-creator test, but anonymous — the
-        // affordance must be hidden (addShadowMember hard-rejects anon
-        // callers server-side).
+        // affordance now shows (addShadowMember accepts anon creators; the
+        // durable boundary moved to join/claim).
         await tester.scrollUntilVisible(
           find.byKey(GroupKeys.membersAndBalancesSection),
           150,
@@ -1330,7 +1330,7 @@ void main() {
 
         expect(
           find.byKey(GroupKeys.groupDetailAddPersonAction),
-          findsNothing,
+          findsOneWidget,
         );
       },
     );
