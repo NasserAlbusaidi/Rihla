@@ -12,8 +12,8 @@ import 'package:safar/features/home/widgets/balance_hero_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// #284 — the balance hero must NOT be a dead end. When given an [onTap] it
-/// becomes interactive (the home screen wires this to scroll to the journeys
-/// list, the path to per-group settle-up).
+/// becomes interactive (the home screen wires this to the per-group balance
+/// breakdown sheet, the path to per-group settle-up).
 void main() {
   testWidgets('loaded hero card invokes onTap when tapped', (tester) async {
     var taps = 0;
@@ -55,8 +55,9 @@ void main() {
     );
     await tester.pump();
 
-    // #807: a tappable hero carries a visible cue for what tapping does.
-    expect(find.text('See your journeys'), findsOneWidget);
+    // #807/#916: a tappable hero carries a visible cue for what tapping does
+    // — since PR-5 §3 that is the balance-by-group breakdown sheet.
+    expect(find.text('See balance by group'), findsOneWidget);
 
     await tester.tap(find.byKey(HomeKeys.balanceHeroCard));
     await tester.pump();

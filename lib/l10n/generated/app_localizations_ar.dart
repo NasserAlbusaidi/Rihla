@@ -1907,7 +1907,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeAcrossAllJourneys => 'عبر كل الرحلات';
 
   @override
-  String get homeBalanceHeroHint => 'عرض رحلاتك';
+  String get homeBalanceHeroHint => 'عرض الرصيد حسب المجموعة';
 
   @override
   String get heroBreakdownTitle => 'الرصيد حسب المجموعة';

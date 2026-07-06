@@ -1852,7 +1852,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeAcrossAllJourneys => 'Across all journeys';
 
   @override
-  String get homeBalanceHeroHint => 'See your journeys';
+  String get homeBalanceHeroHint => 'See balance by group';
 
   @override
   String get heroBreakdownTitle => 'Balance by group';
