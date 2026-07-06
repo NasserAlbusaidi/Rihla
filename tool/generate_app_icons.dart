@@ -21,11 +21,13 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/theme/tokens/color_tokens.dart';
 
-// Tokens — must match lib/core/theme/tokens/color_tokens.dart.
-const _paper = Color(0xFFF6F1E6);
-const _ink = Color(0xFF1B1A17);
-const _saffron = Color(0xFFD17B2C);
+// Read the live tokens instead of mirroring them — the hardcoded copies
+// drifted when Falaj remapped the palette (#935).
+final _paper = AppColorTokens.light.scaffoldBackground;
+final _ink = AppColorTokens.light.textPrimary;
+final _pin = AppColorTokens.light.primary;
 
 // Coordinates mirror lib/shared/widgets/route_mark.dart (200×200 viewBox).
 const _canvasPx = 1024;
@@ -103,7 +105,7 @@ void main() {
     await _writeIcon(
       'assets/app_icon.png',
       foreground: _ink,
-      pin: _saffron,
+      pin: _pin,
       backgroundFill: _paper,
       scale: fullBleedScale,
     );
@@ -114,7 +116,7 @@ void main() {
     await _writeIcon(
       'assets/app_icon_foreground.png',
       foreground: _ink,
-      pin: _saffron,
+      pin: _pin,
       scale: fullBleedScale,
     );
 
