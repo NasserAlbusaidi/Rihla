@@ -35,8 +35,11 @@ typedef LedgerPerspective = ({
 
   /// One entry per (other person, non-zero bucket); a settled-everywhere person
   /// keeps a single `Decimal.zero` entry so their EVEN chip stays on the strip.
-  /// Sorted by `|signedAmount|` descending. `signedAmount = -theirNet` (their
-  /// debt to you → positive chip; your debt to them → negative chip).
+  /// Sorted by `|signedAmount|` descending. `signedAmount = theirNet` — the
+  /// member's OWN standing vs the event (owed by the group → positive/sage;
+  /// owes the group → negative/rust), same convention as [myLines]. NOT a
+  /// pairwise you↔them amount (#998 — the old `-theirNet` claimed one and
+  /// misled for 3+ members).
   List<LedgerRosterEntry> roster,
 
   /// `currency → count of OTHER participants whose net in that bucket is non-zero`
@@ -131,7 +134,7 @@ final ledgerPerspectiveProvider =
           roster.add((
             participantId: other.participantId,
             displayName: displayName,
-            signedAmount: -line.net,
+            signedAmount: line.net,
             currency: line.currency,
           ));
         }
