@@ -2,6 +2,8 @@
 // STATS-03. Tests are written first (RED) before implementing the widgets.
 // Phase 26 tests cover NOTIF-01, NOTIF-02, INFO-01, INFO-02, INFO-03.
 
+import 'dart:ui' show Tristate;
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1141,6 +1143,66 @@ void main() {
       // before the multi-currency follow-up solves currency-blind aggregation.
       expect(find.text('Language'), findsOneWidget);
       expect(find.text('Currency'), findsNothing);
+    });
+  });
+
+  group('ProfileScreen — a11y labels (#992)', () {
+    testWidgets('share icon exposes a non-empty semantic label', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      final node = tester.getSemantics(find.byIcon(Iconsax.export_1));
+      final data = node.getSemanticsData();
+      expect(data.label, isNotEmpty);
+      expect(data.flagsCollection.isButton, isTrue);
+      handle.dispose();
+    });
+
+    testWidgets('notification switch merges into one named toggled node', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      SharedPreferences.setMockInitialValues({
+        'settings_device_name': 'TestUser',
+        'settings_push_notifications': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(
+            prefs: prefs,
+            pushEnabled: true,
+            notifStatus: NotificationStatus.enabled,
+          ),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(ProfileKeys.notificationSwitch));
+      await tester.pump();
+
+      final node = tester.getSemantics(
+        find.byKey(ProfileKeys.notificationSwitch),
+      );
+      final data = node.getSemanticsData();
+      expect(data.label, contains('Notifications'));
+      expect(data.flagsCollection.isToggled, Tristate.isTrue);
+      handle.dispose();
     });
   });
 }
