@@ -10,6 +10,7 @@ import '../../../core/services/app_messenger.dart';
 import '../../../core/services/cache_isolation_controller.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../services/recovery_outcome_notice.dart';
+import 'device_name_self_heal_provider.dart';
 
 /// Real (throws-guarded) `currentUid` thunk — overridden in tests so the
 /// #839 probe path is reachable without a live Firebase app. Throws
@@ -105,7 +106,17 @@ final recoveryOutcomeNoticeProvider = Provider<void>((ref) {
         capture: (message) => unawaited(
           Sentry.captureMessage(message, level: SentryLevel.error),
         ),
-      ),
+      ).whenComplete(() {
+        // #990: the verified-success arm may have written the name-seed
+        // breadcrumb — bump the revision so the self-heal re-evaluates
+        // explicitly instead of relying on a groups emission happening to
+        // arrive after this async completion.
+        try {
+          ref.read(deviceNameSeedRevisionProvider.notifier).state++;
+        } catch (_) {
+          // Disposed mid-swap — the fresh boot re-evaluates on its own.
+        }
+      }),
     );
   });
 });

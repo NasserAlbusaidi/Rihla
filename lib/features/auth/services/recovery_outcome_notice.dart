@@ -115,6 +115,17 @@ Future<void> surfaceRecoveryOutcome({
     return;
   }
 
+  // #990: the swap is VERIFIED durable — expectedUid was recorded and the
+  // live uid matches it (`uid!` is safe: the unreadable-auth and mismatch
+  // arms have both already returned). ONLY this arm may write the deviceName
+  // self-heal breadcrumb; the guard is an explicit positive `expected != null`
+  // because the legacy/unverifiable `expected == null` case falls through
+  // here too and must NOT be stamped. Written before the async #839 probe —
+  // the probe only picks snack copy and must not gate the heal.
+  if (expected != null) {
+    await writePendingNameSeed(prefs, uid!);
+  }
+
   // Swap is durable (or expectedUid was never recorded — legacy v1 marker,
   // or a signature that skips the match check). Gate r1: probe against
   // whoever is actually signed in right now.
