@@ -65,6 +65,13 @@ marker — `shared/settlementCorrection.ts`) are correct and are NOT touched.
    by `canRecord` (participant-only), so a creator who isn't an event participant sees no
    Correct there even though the server would allow. UI stricter than server = fine; not
    widened in this PR.
+5. **Recorder is NOT an authorized actor (acknowledged exclusion, Gate R1 adversary
+   P2):** a member who recorded a settle-on-behalf settlement between two OTHER parties
+   (`settlement.createdBy`) loses self-correct under this policy; and since a creator can
+   leave via `leaveGroup` without `createdBy` reassignment, a settlement whose parties
+   are both non-invokable (shadows/departed) becomes UI-uncorrectable once the creator
+   departs. Deliberate — the ordered policy is exact (creator-or-party). Candidate
+   follow-up if product wants it: add `settlement.createdBy` as a third actor branch.
 
 ## Changes
 
@@ -129,9 +136,21 @@ Flutter widget tests (mirror `settle_up_screen_test.dart:1010-1096` participant 
 `group_settle_up_correct_test.dart` `_wrap(currentUid: …)`):
 
 - Event screen: participant-but-not-party/creator → `settleUpCorrectButton` findsNothing
-  (RED); party → findsOneWidget; creator → findsOneWidget.
+  (RED); party → findsOneWidget; creator → findsOneWidget (creator MUST be seeded as an
+  event participant — the kept `canRecord` gate hides the button for non-participant
+  creators; Gate R1 P3).
 - Group screen: third member (`uid-carol` added to fixtures) → no solo Correct, no
   logical Correct (RED); party and creator → visible.
+- Shadow emulator test: the shadow uuid must be seeded into `memberIds` AND the event's
+  `participantIds`, else the pre-existing participant-validation loop throws
+  `failed-precondition` before the actor gate is exercised (Gate R1 P3).
+
+## Gate log
+
+- Round 1 (2026-07-06): rubric reviewer 0 P1 / 0 P2 / 3 P3; orthogonal adversary
+  0 P1 / 1 P2 / 1 P3 — **P1-clean in the same round, Gate passed.** P2 (recorder
+  exclusion / departed-creator dead-end) recorded as Policy decision #5; P3s folded into
+  the test notes above.
 
 ## Fence
 
