@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/keys/shared_keys.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
 import 'directional_icon.dart';
+import '../../core/theme/tokens/typography_tokens.dart';
 
 class ModuleHeader extends StatelessWidget {
   final String title;
@@ -73,7 +74,7 @@ class ModuleHeader extends StatelessWidget {
                   if (subtitle != null) ...[
                     Text(
                       subtitle!,
-                      style: TextStyle(
+                      style: AppTypography.sans(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: context.colors.textSecondary,
@@ -84,7 +85,7 @@ class ModuleHeader extends StatelessWidget {
                   ],
                   Text(
                     title,
-                    style: TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
                       color: context.colors.textPrimary,
@@ -153,7 +154,7 @@ class ModuleHeader extends StatelessWidget {
                   if (subtitle != null) ...[
                     Text(
                       subtitle!,
-                      style: TextStyle(
+                      style: AppTypography.sans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         // design-token-justified: fixed dark-slab header
@@ -166,7 +167,7 @@ class ModuleHeader extends StatelessWidget {
                   ],
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
                       // design-token-justified: fixed dark-slab header title —

@@ -5,6 +5,7 @@ import '../../core/extensions/build_context_l10n.dart';
 import '../../core/keys/shared_keys.dart';
 import '../../core/providers/connectivity_provider.dart';
 import '../../core/theme/tokens/domain_aliases.dart';
+import '../../core/theme/tokens/typography_tokens.dart';
 
 class OfflineBanner extends ConsumerWidget {
   const OfflineBanner({super.key});
@@ -50,7 +51,7 @@ class OfflineBanner extends ConsumerWidget {
                   SizedBox(width: context.spacing.space8),
                   Text(
                     banner.message,
-                    style: TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: banner.color,
