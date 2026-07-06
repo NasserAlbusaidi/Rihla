@@ -1,6 +1,6 @@
-# PR-5c (Option C / #923) — Full **Expense** Search via Server-Maintained Token Index — DRAFT SPEC
+# PR-5c (#923) — Full **Expense** Search via Server-Maintained Token Index — DESIGN LOCKED, DEFERRED
 
-**STATUS: DRAFT — PRE-GATE.** Not yet run through `/run-the-gate`. This spec touches a new Cloud Functions trigger, `security/firestore.rules`, a new schema (`searchIndex` docs with a read-path and a write-path), and routing-adjacent client surface — **all four Gate categories**. No code before a clean fresh-context round (rubric + orthogonal adversary, both P1-clean same round). Refs #923, #900. Follows the house style of `docs/plans/2026-07-05-falaj-pr5b-search-spec.md`.
+**STATUS: DESIGN LOCKED (2026-07-06) — IMPLEMENTATION DEFERRED POST-LAUNCH.** Owner decision on the design round: Option A is the design; the Option-C client stopgap is REJECTED outright (a recency-bounded search returns confident empty results for exactly the old-expense case #923 exists for — the #244 trust-damage class — and would be ripped out when A lands); implementation waits until after 1.0 ships (#40 QA matrix is the open release blocker) and real usage motivates it. This spec is the shelf-ready artifact. It touches a new Cloud Functions trigger, `security/firestore.rules`, a new schema (`searchIndex` docs with a read-path and a write-path), and routing-adjacent client surface — **all four Gate categories**, so at implementation time it is still PRE-GATE: no code before a clean fresh-context `/run-the-gate` round (rubric + orthogonal adversary, both P1-clean same round). Refs #923, #900. Follows the house style of `docs/plans/2026-07-05-falaj-pr5b-search-spec.md`.
 
 ---
 
@@ -236,14 +236,16 @@ Each PR independently green and revertable ("one PR does one thing"). Deploy seq
 
 ---
 
-## Open questions (human decides)
+## Open questions
 
-1. **THE scope decision — A now, or C-first-then-A?** Two judges preferred the cheap client-bounded Option C on cost/ops/integrity-simplicity, but C **structurally cannot find the old/forgotten expense that is the #923 job** (its own §7.3; the requirement-aligned user-value judge ranked it *last*). The graft consensus was *"ship C's zero-infra client layer now as a stopgap, defer the server index."* **Decide:** (a) build A per this spec (solves the stated job, $0, ~4 PRs); or (b) ship C first (1 PR, "recent expense fast") and re-scope #923's "old expense" claim to a later A. Do not let convergence toward "smaller is safer" quietly redefine what #923 asked for.
+1. **THE scope decision — RESOLVED 2026-07-06 (owner):** Option A is the design; **no C stopgap, ever** (structurally can't find old expenses — its own dossier §7.3 — and a confident-empty search result in a money app is trust damage, not a feature); **implementation deferred post-launch**. Neither convergence direction won: not "build the index now" (no users yet to want it; permanent tokenizer-parity/backfill/reconciler maintenance unjustified pre-launch), not "smaller is safer" (C redefines what #923 asked for). Revisit after 1.0 + real usage.
 2. **Carry a display amount in the index doc?** Text-only is integrity-safest (the money-integrity judge's preference — no money copy off the expense doc at all); a display-only `amountMinor`+`currency` (re-rendered via `RAmount`, never math) makes search rows far more disambiguable. Default in this spec: **flagged optional, leaning text-only for v1**.
 3. **Taa-marbuta handling** (dual-token vs hard-fold) and **prefix-token generation** (whether to emit prefixes at all vs whole-word-only) — precision vs index-size/token-count. Needs a call with the Arabic normalization pipeline.
 4. **Category-name TS mirror:** hand-maintained static map (+ drift-guard test) vs codegen from the ARB files. Static map is simpler now; codegen removes the drift class entirely.
 5. **Reconciler policy:** sampling rate, drift threshold, and alert channel for a solo dev (reuse `balanceReconciler` cadence?).
 6. **Offline fork (Dossier A §6):** accept one-shot `.get()` + incomplete badge (thin cache, this spec's default), or open a *bounded* per-group live listener to warm the offline cache — the latter is net-new O(G) listeners (Judge 3's correction to A's "same as events" claim), not free. Default: **one-shot + honest badge.**
+
+**Recommended defaults for OQ2–OQ6, recorded 2026-07-06 (confirm at implementation time, don't re-litigate from scratch):** OQ2 text-only index doc (no display amount); OQ3 taa-marbuta dual-token + bounded prefixes; OQ4 hand-maintained TS category map + the CI drift-guard test; OQ5 reuse the `balanceReconciler` cadence; OQ6 one-shot + honest offline badge.
 
 ---
 
