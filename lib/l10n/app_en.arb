@@ -2191,6 +2191,14 @@
   "@splashOfflineBody": {
     "description": "Body copy on the splash error state shown when the first-ever boot auth call fails because the device has no network connection (#838)."
   },
+  "splashManualRestartTitle": "One last step",
+  "@splashManualRestartTitle": {
+    "description": "Cache-isolation overlay title on iOS after an account swap; the app cannot restart itself, so the user must relaunch manually (#946)."
+  },
+  "splashManualRestartBody": "To finish switching accounts, close Rihla from the App Switcher (swipe up and hold, then swipe Rihla away), then open it again.",
+  "@splashManualRestartBody": {
+    "description": "Instructs the user to force-quit and relaunch on iOS; outcome-neutral because the overlay covers success and failure of all four account-swap flows (#946)."
+  },
   "notificationRationaleTitle": "Stay in the loop",
   "@notificationRationaleTitle": {
     "description": "Title of the soft in-app rationale sheet shown before the OS push-permission dialog (#352), at the first natural moment (a successful group join or create)."

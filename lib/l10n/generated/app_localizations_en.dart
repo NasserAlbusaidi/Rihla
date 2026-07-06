@@ -2916,6 +2916,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Rihla needs an internet connection the first time it starts. Connect and try again.';
 
   @override
+  String get splashManualRestartTitle => 'One last step';
+
+  @override
+  String get splashManualRestartBody =>
+      'To finish switching accounts, close Rihla from the App Switcher (swipe up and hold, then swipe Rihla away), then open it again.';
+
+  @override
   String get notificationRationaleTitle => 'Stay in the loop';
 
   @override

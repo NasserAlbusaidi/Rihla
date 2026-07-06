@@ -854,6 +854,8 @@
   "splashRetry": "حاول مرة أخرى",
   "splashOfflineTitle": "لا يوجد اتصال",
   "splashOfflineBody": "يحتاج Rihla إلى اتصال بالإنترنت عند تشغيله لأول مرة. اتصل بالإنترنت وحاول مرة أخرى.",
+  "splashManualRestartTitle": "خطوة أخيرة",
+  "splashManualRestartBody": "لإكمال تبديل الحساب، أغلق Rihla من مبدّل التطبيقات (اسحب للأعلى مع الاستمرار ثم اسحب التطبيق بعيدًا)، ثم افتحه من جديد.",
   "notificationRationaleTitle": "ابقَ على اطّلاع",
   "notificationRationaleBody": "نُنبّهك عندما يضيف أحدهم مصروفًا أو يسوّي حسابًا.",
   "notificationRationaleNotNow": "ليس الآن",

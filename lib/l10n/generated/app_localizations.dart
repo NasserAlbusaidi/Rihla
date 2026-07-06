@@ -4983,6 +4983,18 @@ abstract class AppLocalizations {
   /// **'Rihla needs an internet connection the first time it starts. Connect and try again.'**
   String get splashOfflineBody;
 
+  /// Cache-isolation overlay title on iOS after an account swap; the app cannot restart itself, so the user must relaunch manually (#946).
+  ///
+  /// In en, this message translates to:
+  /// **'One last step'**
+  String get splashManualRestartTitle;
+
+  /// Instructs the user to force-quit and relaunch on iOS; outcome-neutral because the overlay covers success and failure of all four account-swap flows (#946).
+  ///
+  /// In en, this message translates to:
+  /// **'To finish switching accounts, close Rihla from the App Switcher (swipe up and hold, then swipe Rihla away), then open it again.'**
+  String get splashManualRestartBody;
+
   /// Title of the soft in-app rationale sheet shown before the OS push-permission dialog (#352), at the first natural moment (a successful group join or create).
   ///
   /// In en, this message translates to:

@@ -18,11 +18,18 @@ class SplashScreen extends StatelessWidget {
   final Object? error;
   final VoidCallback? onRetry;
 
+  /// When true (and [hasError] is true), renders the manual-restart copy
+  /// (splashManualRestartTitle/Body) and hides the retry button entirely.
+  /// Used by the iOS cache-isolation overlay, where a native restart is
+  /// impossible (#946).
+  final bool manualRestartRequired;
+
   const SplashScreen({
     super.key,
     this.hasError = false,
     this.error,
     this.onRetry,
+    this.manualRestartRequired = false,
   });
 
   @override
@@ -33,7 +40,12 @@ class SplashScreen extends StatelessWidget {
       backgroundColor: colors.scaffoldBackground,
       body: SafeArea(
         child: hasError
-            ? _ErrorBody(colors: colors, offline: offline, onRetry: onRetry)
+            ? _ErrorBody(
+                colors: colors,
+                offline: offline,
+                onRetry: onRetry,
+                manualRestart: manualRestartRequired,
+              )
             : const _LoadingBody(colors: AppColorTokens.light),
       ),
     );
@@ -112,7 +124,18 @@ class _ErrorBody extends StatelessWidget {
   final AppColorTokens colors;
   final bool offline;
   final VoidCallback? onRetry;
-  const _ErrorBody({required this.colors, this.offline = false, this.onRetry});
+
+  /// Manual-restart instruction mode (#946): neutral refresh icon, manual
+  /// relaunch copy, and no retry button — a retry cannot succeed where the
+  /// native restart channel has no handler (iOS).
+  final bool manualRestart;
+
+  const _ErrorBody({
+    required this.colors,
+    this.offline = false,
+    this.onRetry,
+    this.manualRestart = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -120,8 +143,16 @@ class _ErrorBody extends StatelessWidget {
     const errorSoft = Color(0xFFF2D6CF);
 
     final l10n = context.l10n;
-    final title = offline ? l10n.splashOfflineTitle : l10n.splashErrorTitle;
-    final body = offline ? l10n.splashOfflineBody : l10n.splashErrorBody;
+    final title = manualRestart
+        ? l10n.splashManualRestartTitle
+        : offline
+            ? l10n.splashOfflineTitle
+            : l10n.splashErrorTitle;
+    final body = manualRestart
+        ? l10n.splashManualRestartBody
+        : offline
+            ? l10n.splashOfflineBody
+            : l10n.splashErrorBody;
 
     return Center(
       child: Padding(
@@ -129,11 +160,22 @@ class _ErrorBody extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _IconBox(
-              borderColor: colors.error,
-              backgroundColor: errorSoft,
-              child: Icon(Icons.close_rounded, size: 42, color: colors.error),
-            ),
+            if (manualRestart)
+              _IconBox(
+                borderColor: colors.primary,
+                backgroundColor: colors.saffronSoft,
+                child: Icon(
+                  Icons.refresh_rounded,
+                  size: 42,
+                  color: colors.primary,
+                ),
+              )
+            else
+              _IconBox(
+                borderColor: colors.error,
+                backgroundColor: errorSoft,
+                child: Icon(Icons.close_rounded, size: 42, color: colors.error),
+              ),
             const SizedBox(height: 14),
             Text(
               title,
@@ -153,30 +195,32 @@ class _ErrorBody extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 28),
-            ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primary,
-                foregroundColor: colors.textOnPrimary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 14,
+            if (!manualRestart) ...[
+              const SizedBox(height: 28),
+              ElevatedButton(
+                onPressed: onRetry,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: colors.textOnPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                child: Text(
+                  context.l10n.splashRetry,
+                  style: AppTypography.sans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textOnPrimary,
+                  ),
                 ),
-                elevation: 0,
               ),
-              child: Text(
-                context.l10n.splashRetry,
-                style: AppTypography.sans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textOnPrimary,
-                ),
-              ),
-            ),
+            ],
           ],
         ),
       ),

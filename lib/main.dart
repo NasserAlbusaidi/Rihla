@@ -323,24 +323,45 @@ class _CacheIsolationAppState extends ConsumerState<_CacheIsolationApp> {
   Widget build(BuildContext context) {
     final restartFailed = ref.watch(cacheIsolationRestartFailedProvider);
     final showManualRestart = restartFailed || _watchdogElapsed;
+    // iOS has no native handler on the restart channel, so a retry can never
+    // succeed there — show manual close-and-reopen instructions instead (#946).
+    final iosManualRestart =
+        showManualRestart && defaultTargetPlatform == TargetPlatform.iOS;
+    Locale? locale;
+    try {
+      locale = ref.watch(localeProvider);
+    } catch (_) {
+      // Prefs unavailable — fall back to system-locale resolution rather than
+      // stranding the overlay on a throw (#946 Gate P2).
+    }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: showManualRestart
-          ? SplashScreen(
-              key: const Key('cache-isolation-restart'),
+      home: iosManualRestart
+          ? const SplashScreen(
+              key: Key('cache-isolation-manual-restart'),
               hasError: true,
-              onRetry: () {
-                // Re-attempt the native restart. Clear the failed flag first so
-                // a fresh failure can re-trigger the affordance.
-                ref.read(cacheIsolationRestartFailedProvider.notifier).state =
-                    false;
-                unawaited(ref.read(cacheIsolationControllerProvider).restart());
-              },
+              manualRestartRequired: true,
             )
-          : const SplashScreen(key: Key('cache-isolation-overlay')),
+          : showManualRestart
+              ? SplashScreen(
+                  key: const Key('cache-isolation-restart'),
+                  hasError: true,
+                  onRetry: () {
+                    // Re-attempt the native restart. Clear the failed flag
+                    // first so a fresh failure can re-trigger the affordance.
+                    ref
+                        .read(cacheIsolationRestartFailedProvider.notifier)
+                        .state = false;
+                    unawaited(
+                      ref.read(cacheIsolationControllerProvider).restart(),
+                    );
+                  },
+                )
+              : const SplashScreen(key: Key('cache-isolation-overlay')),
     );
   }
 }

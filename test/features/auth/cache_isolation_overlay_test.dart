@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/router/app_router.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/features/auth/providers/cache_isolation_controller_provider.dart';
@@ -112,6 +114,105 @@ void main() {
       // Past the watchdog window: manual affordance appears.
       await tester.pump(const Duration(seconds: 8));
       expect(find.byKey(const Key('cache-isolation-restart')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'iOS: failed restart shows manual-restart copy with NO retry button — '
+    'the native channel has no iOS handler, so retry can never succeed (#946)',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final controller = _RecordingController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            cacheIsolationProvider.overrideWith((ref) => true),
+            cacheIsolationRestartFailedProvider.overrideWith((ref) => true),
+            cacheIsolationControllerProvider.overrideWithValue(controller),
+            routerProvider.overrideWith(
+              (ref) => throw StateError('router must not build while isolated'),
+            ),
+          ],
+          child: const SafarApp(),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('cache-isolation-manual-restart')),
+        findsOneWidget,
+      );
+      expect(find.byType(ElevatedButton), findsNothing);
+      // Outcome-neutral instruction copy, not the generic error copy.
+      expect(find.text('One last step'), findsOneWidget);
+      expect(find.text("Something's off"), findsNothing);
+
+      await drainWatchdog(tester);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets(
+    'Android: failed restart keeps the retry affordance (#946 regression pin)',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final controller = _RecordingController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            cacheIsolationProvider.overrideWith((ref) => true),
+            cacheIsolationRestartFailedProvider.overrideWith((ref) => true),
+            cacheIsolationControllerProvider.overrideWithValue(controller),
+            routerProvider.overrideWith(
+              (ref) => throw StateError('router must not build while isolated'),
+            ),
+          ],
+          child: const SafarApp(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const Key('cache-isolation-restart')), findsOneWidget);
+      expect(
+        find.byKey(const Key('cache-isolation-manual-restart')),
+        findsNothing,
+      );
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pump();
+      expect(controller.restarts, 1);
+
+      await drainWatchdog(tester);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets(
+    'the overlay follows the in-app locale, not the system locale — Arabic '
+    'manual-restart instructions render for an AR-preference user (#946 Gate P2)',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final controller = _RecordingController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            cacheIsolationProvider.overrideWith((ref) => true),
+            cacheIsolationRestartFailedProvider.overrideWith((ref) => true),
+            cacheIsolationControllerProvider.overrideWithValue(controller),
+            localeProvider.overrideWithValue(const Locale('ar')),
+            routerProvider.overrideWith(
+              (ref) => throw StateError('router must not build while isolated'),
+            ),
+          ],
+          child: const SafarApp(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('خطوة أخيرة'), findsOneWidget);
+      expect(find.text('One last step'), findsNothing);
+
+      await drainWatchdog(tester);
+      debugDefaultTargetPlatformOverride = null;
     },
   );
 }
