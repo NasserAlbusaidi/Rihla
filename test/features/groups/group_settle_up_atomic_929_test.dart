@@ -6,6 +6,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 
 import 'package:safar/features/events/models/event_model.dart';
@@ -20,7 +21,6 @@ import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
-import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 const _groupId = 'grp-1';
@@ -35,31 +35,21 @@ Group _group({List<String> memberIds = const ['uid-alice', 'uid-bob']}) => Group
       createdAt: DateTime(2026, 1, 1),
     );
 
-final _event1 = Event(
-  id: 'event-1',
-  name: 'Camping Weekend',
-  type: EventType.camping,
-  groupId: _groupId,
-  createdBy: 'uid-alice',
-  participantIds: const ['uid-alice', 'uid-bob'],
-  participantNames: const {'uid-alice': 'Alice', 'uid-bob': 'Bob'},
-  modules: const EventModules(),
-  startDate: DateTime(2026, 3, 15),
-  createdAt: DateTime(2026, 3, 10),
-);
+Event _event(String id, String name, EventType type) => Event(
+      id: id,
+      name: name,
+      type: type,
+      groupId: _groupId,
+      createdBy: 'uid-alice',
+      participantIds: const ['uid-alice', 'uid-bob'],
+      participantNames: const {'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+      modules: const EventModules(),
+      startDate: DateTime(2026, 3, 15),
+      createdAt: DateTime(2026, 3, 10),
+    );
 
-final _event2 = Event(
-  id: 'event-2',
-  name: 'Road Trip',
-  type: EventType.trip,
-  groupId: _groupId,
-  createdBy: 'uid-alice',
-  participantIds: const ['uid-alice', 'uid-bob'],
-  participantNames: const {'uid-alice': 'Alice', 'uid-bob': 'Bob'},
-  modules: const EventModules(),
-  startDate: DateTime(2026, 5, 2),
-  createdAt: DateTime(2026, 5, 1),
-);
+final _event1 = _event('event-1', 'Camping Weekend', EventType.camping);
+final _event2 = _event('event-2', 'Road Trip', EventType.trip);
 
 UserBalance _bal(String id, String name, String net) => UserBalance(
       participantId: id,
@@ -69,10 +59,8 @@ UserBalance _bal(String id, String name, String net) => UserBalance(
       netBalance: Decimal.parse(net),
     );
 
-/// Bob owes Alice 8.000 OMR, split 4.000 in event-1 + 4.000 in event-2 → a
-/// TWO-leg decompose, no residual (both events have a positive attributable
-/// slice). This is the smallest case that persists a partial settle-up when a
-/// later leg is rejected.
+/// Bob owes Alice 8.000 OMR split 4+4 across two events → a TWO-leg decompose,
+/// no residual.
 GroupBalances _balancesTwoEvents() => (
       balances: <String, List<UserBalance>>{
         'OMR': [
@@ -96,56 +84,92 @@ GroupBalances _balancesTwoEvents() => (
       memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
     );
 
-/// Event settlement service that writes the FIRST leg for real to the shared
-/// fake, then throws `permission-denied` on the SECOND — modelling a leg whose
-/// membership/participation changed so its rule evaluation fails while the
-/// earlier leg already committed. Exercises the CURRENT sequential walk.
-class _SecondLegRejectingEventService extends SettlementService {
-  _SecondLegRejectingEventService(FakeFirebaseFirestore fake)
-      : super.withFirestore(fake);
+/// Bob owes Alice 10.000: 3 attributable in each of two events + a 4.000
+/// cross-event residual → a THREE-doc batch (2 event legs + 1 residual).
+GroupBalances _balancesTwoEventsWithResidual() => (
+      balances: <String, List<UserBalance>>{
+        'OMR': [
+          _bal('uid-alice', 'Alice', '10.000'),
+          _bal('uid-bob', 'Bob', '-10.000'),
+        ],
+      },
+      totalSpent: <String, Decimal>{'OMR': Decimal.parse('20.000')},
+      eventCount: 2,
+      perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+        'uid-alice': {
+          'event-1': {'OMR': Decimal.parse('3.000')},
+          'event-2': {'OMR': Decimal.parse('3.000')},
+        },
+        'uid-bob': {
+          'event-1': {'OMR': Decimal.parse('-3.000')},
+          'event-2': {'OMR': Decimal.parse('-3.000')},
+        },
+      },
+      memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+      memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+    );
 
-  int _calls = 0;
+/// Bob owes Alice across TEN events (1.000 each) → 10 legs, one over the
+/// [kMaxDecomposeLegsAtomic] cap, so the screen routes to a single group write.
+GroupBalances _balancesTenEvents() {
+  final alice = <String, Map<String, Decimal>>{};
+  final bob = <String, Map<String, Decimal>>{};
+  for (var i = 1; i <= 10; i++) {
+    alice['event-$i'] = {'OMR': Decimal.parse('1.000')};
+    bob['event-$i'] = {'OMR': Decimal.parse('-1.000')};
+  }
+  return (
+    balances: <String, List<UserBalance>>{
+      'OMR': [
+        _bal('uid-alice', 'Alice', '10.000'),
+        _bal('uid-bob', 'Bob', '-10.000'),
+      ],
+    },
+    totalSpent: <String, Decimal>{'OMR': Decimal.parse('20.000')},
+    eventCount: 10,
+    perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+      'uid-alice': alice,
+      'uid-bob': bob,
+    },
+    memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+    memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  );
+}
+
+/// Hand-rolled spy WriteBatch injected via `batchFactoryOverride`: counts
+/// set()/commit() and returns a caller-supplied commit future so a test can
+/// model a rejected (Future.error) or never-acking (offline) commit. `set` is a
+/// no-op so nothing lands in the fake regardless of whether commit succeeds.
+class _StubWriteBatch implements WriteBatch {
+  // Build the commit future lazily so a rejected future isn't created (and
+  // flagged unhandled) until commit() is called and the screen synchronously
+  // attaches its handler via awaitServerAck.
+  _StubWriteBatch(this._commitFactory);
+  final Future<void> Function() _commitFactory;
+  int setCount = 0;
+  int commitCount = 0;
 
   @override
-  Future<Settlement> addSettlement({
-    required String groupId,
-    required String eventId,
-    required String payerParticipantId,
-    required String recipientParticipantId,
-    required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
-    String? payerName,
-    String? recipientName,
-    String? note,
-    String? groupSettleUpId,
-  }) async {
-    _calls++;
-    if (_calls >= 2) {
-      throw FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'permission-denied',
-        message: 'Simulated rules rejection on the second leg.',
-      );
-    }
-    return super.addSettlement(
-      groupId: groupId,
-      eventId: eventId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      createdBy: createdBy,
-      currency: currency,
-      payerName: payerName,
-      recipientName: recipientName,
-      note: note,
-      groupSettleUpId: groupSettleUpId,
-    );
+  void set<T>(DocumentReference<T> document, T data, [SetOptions? options]) {
+    setCount++;
   }
+
+  @override
+  Future<void> commit() {
+    commitCount++;
+    return _commitFactory();
+  }
+
+  @override
+  void delete(DocumentReference<Object?> document) {}
+
+  @override
+  void update(DocumentReference<Object?> document, Map<Object, Object?> data) {}
 }
 
 class _RecordingGroupActivityService extends GroupActivityService {
-  _RecordingGroupActivityService() : super.withFirestore(FakeFirebaseFirestore());
+  _RecordingGroupActivityService()
+      : super.withFirestore(FakeFirebaseFirestore());
 
   final logCalls = <({String type, Map<String, dynamic>? metadata})>[];
 
@@ -162,8 +186,8 @@ class _RecordingGroupActivityService extends GroupActivityService {
   }
 }
 
-/// Total settlement docs that landed anywhere for the group: both event
-/// subcollections + the group-level residual collection.
+/// Total settlement docs anywhere for the group: both event subcollections
+/// (used by the tests) + the group-level residual collection.
 Future<int> _settlementDocCount(FakeFirebaseFirestore fake) async {
   var count = 0;
   for (final eventId in const ['event-1', 'event-2']) {
@@ -190,6 +214,7 @@ Widget _wrap({
   required List<Event> events,
   required Group group,
   required List<Override> overrides,
+  ConnectivityNotifier? connectivity,
   String currentUid = 'uid-bob',
 }) {
   return ProviderScope(
@@ -201,6 +226,8 @@ Widget _wrap({
           .overrideWith((_) => Stream.value(const <Settlement>[])),
       groupEventsProvider(_groupId).overrideWith((_) => Stream.value(events)),
       currentUserIdProvider.overrideWithValue(currentUid),
+      if (connectivity != null)
+        connectivityProvider.overrideWith((_) => connectivity),
       ...overrides,
     ],
     child: MediaQuery(
@@ -226,17 +253,29 @@ void main() {
   testWidgets(
     'a rejected leg of a decomposed settle-up persists NOTHING (atomic)',
     (tester) async {
+      // Post-fix twin of the RED repro (RED-evidence-929.txt): the single
+      // WriteBatch commit is rejected, so the whole logical settle-up fails —
+      // no doc, no ledger bump, no activity log, a denied error snackbar.
       final fake = FakeFirebaseFirestore();
-      final eventService = _SecondLegRejectingEventService(fake);
-      final groupService = GroupSettlementService.withFirestore(fake);
+      final rejectingBatch = _StubWriteBatch(
+        () => Future<void>.error(
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
+            message: 'Simulated rules rejection of the batch commit.',
+          ),
+        ),
+      );
+      final groupService = GroupSettlementService.withFirestore(fake)
+        ..batchFactoryOverride = () => rejectingBatch;
       final activityService = _RecordingGroupActivityService();
 
       await tester.pumpWidget(_wrap(
         balances: _balancesTwoEvents(),
         events: [_event1, _event2],
         group: _group(),
+        connectivity: ConnectivityNotifier(startPeriodicChecks: false), // online
         overrides: [
-          settlementServiceProvider.overrideWithValue(eventService),
           groupSettlementServiceProvider.overrideWithValue(groupService),
           groupActivityServiceProvider.overrideWithValue(activityService),
         ],
@@ -249,19 +288,116 @@ void main() {
 
       await _recordFullAmount(tester);
 
-      // A single logical settle-up must be all-or-nothing: the second leg was
-      // rejected, so NO settlement doc may survive anywhere. Today's sequential
-      // walk leaves the first leg persisted → this is RED pre-fix.
+      // All-or-nothing: the batch was rejected → NOTHING persisted, no bump,
+      // no activity, and the denied error copy (not the success copy) shows.
       expect(await _settlementDocCount(fake), 0);
-
-      // A failed write must not bump the home one-shot or log the settle-up.
       expect(container.read(ledgerRevisionProvider), 0);
       expect(activityService.logCalls, isEmpty);
+      expect(
+        find.text(
+          "This settlement wasn't allowed. Please check the details and "
+          'try again.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Settlement recorded.'), findsNothing);
     },
-    // RED partial-persist repro (Refs #929). Captured pre-fix in
-    // RED-evidence-929.txt (leg-1 survives a leg-2 rejection). Unskipped and
-    // rebuilt onto the atomic WriteBatch injection point in Task 4 (the
-    // sequential walk it exercises no longer exists after the fix).
-    skip: true, // RED repro — GREEN after the #929 atomic fix (Task 4).
+  );
+
+  testWidgets(
+    'offline: the decomposed batch queues as ONE unit — 3 sets + 1 commit, '
+    'one ledger bump, syncing, queued snackbar, activity logged once',
+    (tester) async {
+      final fake = FakeFirebaseFirestore();
+      // Offline: the commit future never acks until reconnect (#412).
+      final queuedBatch = _StubWriteBatch(() => Completer<void>().future);
+      final groupService = GroupSettlementService.withFirestore(fake)
+        ..batchFactoryOverride = () => queuedBatch;
+      final activityService = _RecordingGroupActivityService();
+      final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
+        ..setOffline();
+
+      await tester.pumpWidget(_wrap(
+        balances: _balancesTwoEventsWithResidual(),
+        events: [_event1, _event2],
+        group: _group(),
+        connectivity: connectivity,
+        overrides: [
+          groupSettlementServiceProvider.overrideWithValue(groupService),
+          groupActivityServiceProvider.overrideWithValue(activityService),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(GroupSettleUpScreen)),
+      );
+
+      await _recordFullAmount(tester);
+
+      // 2 event legs + 1 residual staged into ONE batch, committed once.
+      expect(queuedBatch.setCount, 3);
+      expect(queuedBatch.commitCount, 1);
+      // Exactly ONE bump for the whole logical settle-up (not per leg).
+      expect(container.read(ledgerRevisionProvider), 1);
+      // Queued-offline: noteQueuedWrite moved connectivity to syncing.
+      expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
+      // Activity logged ONCE for the aggregate settle-up.
+      expect(activityService.logCalls, hasLength(1));
+      expect(activityService.logCalls.single.type, 'group_settlement');
+      expect(
+        find.text('Settlement recorded — will sync when online.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'a > kMaxDecomposeLegsAtomic decompose routes to the single group write '
+    '(no event docs, no ledger bump)',
+    (tester) async {
+      final fake = FakeFirebaseFirestore();
+      // Real batch factory (unused on the fallback path — the single group
+      // write goes through addGroupSettlement, not stageDecomposedSettleUp).
+      final groupService = GroupSettlementService.withFirestore(fake);
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(_wrap(
+        balances: _balancesTenEvents(),
+        events: [for (var i = 1; i <= 10; i++) _event('event-$i', 'E$i', EventType.trip)],
+        group: _group(),
+        connectivity: ConnectivityNotifier(startPeriodicChecks: false),
+        overrides: [
+          groupSettlementServiceProvider.overrideWithValue(groupService),
+          groupActivityServiceProvider.overrideWithValue(activityService),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(GroupSettleUpScreen)),
+      );
+
+      await _recordFullAmount(tester);
+
+      // Over the cap → ONE atomic group settlement, zero event docs.
+      final eventDocs = await fake
+          .collection('groups')
+          .doc(_groupId)
+          .collection('events')
+          .doc('event-1')
+          .collection('settlements')
+          .get();
+      expect(eventDocs.docs, isEmpty);
+      final groupDocs = await fake
+          .collection('groups')
+          .doc(_groupId)
+          .collection('settlements')
+          .get();
+      expect(groupDocs.docs, hasLength(1));
+      expect(groupDocs.docs.single.data()['amountFils'], 10000);
+      // A group-only write needs no home bump (group settlements are live-watched).
+      expect(container.read(ledgerRevisionProvider), 0);
+    },
   );
 }
