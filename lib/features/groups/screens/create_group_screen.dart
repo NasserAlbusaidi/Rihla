@@ -17,8 +17,6 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/r_icon_button.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../auth/widgets/durable_credential_sheet.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
@@ -361,38 +359,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                       const SizedBox(height: 18),
                       ShadowMemberChipsField(
                         names: _shadowNames,
+                        // D6-R: connectivity-only — addShadowMember accepts
+                        // anonymous creators; the durable boundary is at
+                        // join/claim, not add-by-name.
                         enabled:
                             ref.watch(connectivityProvider) ==
-                                ConnectivityStatus.online &&
-                            ref.watch(isDurableUserProvider),
+                            ConnectivityStatus.online,
                         onAdd: _addShadowName,
                         onRemove: _removeShadowName,
-                        disabledHint: ref.watch(isDurableUserProvider)
-                            ? null
-                            : context.l10n.shadowAddRequiresLink,
                       ),
-                      // #840: link-account CTA — same durability-only
-                      // condition as the field's own disabled hint above, so
-                      // the two stay in lockstep. Bare showDurableCredentialSheet
-                      // call, matching every other caller; on success
-                      // `isDurableUserProvider` flips live and this CTA self-hides.
-                      if (!ref.watch(isDurableUserProvider))
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: TextButton(
-                            key: GroupKeys.createLinkAccountCta,
-                            onPressed: () =>
-                                showDurableCredentialSheet(context),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              // 40dp floor: sub-40dp Material buttons clip
-                              // sans-face descenders (app_theme_button_test.dart).
-                              minimumSize: const Size(0, 40),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(context.l10n.profileAccountLinkGoogle),
-                          ),
-                        ),
                       const SizedBox(height: 18),
                       _CurrencyField(
                         value: _selectedCurrency,

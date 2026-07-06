@@ -754,6 +754,23 @@ describe('list claim requests (#278 PR8)', () => {
       status: 'pending',
     });
   });
+
+  test('L2b. listGroupClaimRequests: anonymous CREATOR sees pending requests (D6-R); anonymous non-creator still denied', async () => {
+    await seedGroup('g', [OWNER, SHADOW]);
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW);
+    await seedPendingRequest('g', CLAIMER, SHADOW, 'Ali');
+
+    const res = (await listGroup({ groupId: 'g' }, authOf(OWNER, 'anonymous'))) as {
+      requests: Array<{ requesterUid: string; status: string }>;
+    };
+    expect(res.requests).toHaveLength(1);
+    expect(res.requests[0]).toMatchObject({ requesterUid: CLAIMER, status: 'pending' });
+
+    await expect(
+      listGroup({ groupId: 'g' }, authOf(OUTSIDER, 'anonymous')),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+  });
 });
 
 describe('end-to-end claim (#278 PR8)', () => {

@@ -266,8 +266,8 @@ void main() {
   });
 
   testWidgets(
-    '#818: anonymous creator sees no Add-person affordance, and the '
-    'footer note is the link hint (not the non-creator explanation)',
+    'D6-R: anonymous creator sees the Add-person affordance and no footer '
+    'note (addShadowMember accepts anon creators)',
     (tester) async {
       final calls = _Calls();
       await tester.pumpWidget(
@@ -282,20 +282,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(GroupKeys.addPersonAction), findsNothing);
+      expect(find.byKey(GroupKeys.addPersonAction), findsOneWidget);
       expect(
         find.text(
           'Link your account to add people by name — anyone can still '
           'join with the invite code.',
         ),
-        findsOneWidget,
-      );
-      // NOT the non-creator explanation — this user IS the creator, just
-      // not durable.
-      expect(
-        find.text('Only the group creator can add or remove members.'),
         findsNothing,
       );
+      expect(find.byKey(GroupKeys.membersCreatorOnlyNote), findsNothing);
     },
   );
 
