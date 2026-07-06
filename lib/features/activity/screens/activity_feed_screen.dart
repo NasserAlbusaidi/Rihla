@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/day_grouping.dart';
+import '../../../core/utils/safe_deserialize.dart';
 import '../../../shared/widgets/activity_day_section.dart';
 import '../../../shared/widgets/activity_glyph.dart';
 import '../../../shared/widgets/activity_row.dart';
@@ -95,9 +96,16 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
             startAfter: _lastDocument,
             limit: _kPageSize,
           );
-      final newLogs = snap.docs
-          .map((doc) => ActivityLog.fromFirestore({...doc.data(), 'id': doc.id}))
-          .toList();
+      // #928: skip a malformed row instead of failing the whole page (the
+      // catch below would discard every fetched row AND advance the cursor,
+      // silently truncating the feed). Display-only rows: skip-and-report.
+      final newLogs = decodeDocsSkippingMalformed(
+        snap.docs,
+        (d) => ActivityLog.fromFirestore(
+          {...d.data()! as Map<String, dynamic>, 'id': d.id},
+        ),
+        context: 'ActivityFeed.page',
+      );
       if (!mounted) return;
       setState(() {
         _activities.addAll(newLogs);

@@ -1,10 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/events/models/event_model.dart';
+import 'package:safar/features/groups/models/group_model.dart';
+import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/groups/services/group_activity_service.dart';
+import 'package:safar/features/home/providers/cross_group_activity_pager.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
@@ -361,6 +367,168 @@ void main() {
       final last = emissions.last;
       expect(last.map((e) => e.id), containsAll(['good1', 'bad']));
       expect(last.singleWhere((e) => e.id == 'bad').payerParticipantId, '');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 5 — activity feeds skip a malformed row instead of failing the page.
+  // The display-only activity factories are UNTOUCHED (skip-and-report is
+  // correct — no oracle to stay in lockstep with); the fence lives at each list
+  // map. `description`/`logText` throw sites are NOT the `timestamp`/`createdAt`
+  // sort keys, so the FakeFirebaseFirestore comparator never trips pre-decode.
+  // ---------------------------------------------------------------------------
+  group('test 5 — group activity service skips a malformed row', () {
+    late FakeFirebaseFirestore db;
+    setUp(() => db = FakeFirebaseFirestore());
+
+    Future<void> seedActivity(String gid, List<Map<String, dynamic>> rows) async {
+      for (final r in rows) {
+        await db
+            .collection('groups')
+            .doc(gid)
+            .collection('activity')
+            .doc(r['id'] as String)
+            .set(r);
+      }
+    }
+
+    Map<String, dynamic> gLog(String id, {Object? description = 'ok', DateTime? at}) => {
+          'id': id,
+          'type': 'event_created',
+          'actorId': 'uid0',
+          'actorName': 'A',
+          'description': description, // NOT the sort key
+          'metadata': const <String, dynamic>{},
+          'timestamp': (at ?? DateTime.utc(2026, 3, 28)).toIso8601String(),
+        };
+
+    test('watchRecentActivity skips a description:null row, emits the good one',
+        () async {
+      await seedActivity('g', [
+        gLog('good', at: DateTime.utc(2026, 3, 28, 10)),
+        gLog('bad', description: null, at: DateTime.utc(2026, 3, 28, 9)),
+      ]);
+      final service = GroupActivityService.withFirestore(db);
+      final logs = await service.watchRecentActivity('g').first;
+      expect(logs.map((l) => l.id), ['good']);
+    });
+
+    test('fetchActivityPage skips a description:null row, keeps the good ones',
+        () async {
+      await seedActivity('g', [
+        gLog('good1', at: DateTime.utc(2026, 3, 28, 10)),
+        gLog('bad', description: null, at: DateTime.utc(2026, 3, 28, 9)),
+        gLog('good2', at: DateTime.utc(2026, 3, 28, 8)),
+      ]);
+      final service = GroupActivityService.withFirestore(db);
+      final page = await service.fetchActivityPage('g');
+      expect(page.map((l) => l.id), ['good1', 'good2']);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 5 (pager) + 5b (frontier). The cross-group pager must (a) keep a
+  // group's good rows when one of its rows is malformed (today the per-group
+  // catch drops the WHOLE group), and (b) NOT falsely exhaust a group when a
+  // FULL raw page decodes short because a row was skipped — the frontier fix
+  // derives `exhausted` from the RAW page count, not the deserialized count.
+  // ---------------------------------------------------------------------------
+  group('test 5/5b — cross-group activity pager fences + frontier', () {
+    Group grp(String id) => Group(
+          id: id,
+          name: id,
+          inviteCode: 'INV${id.toUpperCase()}',
+          createdBy: 'uid0',
+          memberIds: const ['uid0'],
+          currency: 'OMR',
+          createdAt: DateTime(2026, 1, 1),
+        );
+
+    Map<String, dynamic> gLog(String id, {Object? description = 'ok', required DateTime at}) => {
+          'id': id,
+          'type': 'event_created',
+          'actorId': 'uid0',
+          'actorName': 'A',
+          'description': description,
+          'metadata': const <String, dynamic>{},
+          'timestamp': at.toIso8601String(),
+        };
+
+    Future<CrossGroupActivityPagerState> settled(
+      ProviderContainer container,
+    ) async {
+      container.read(crossGroupActivityPagerProvider.notifier);
+      for (var i = 0; i < 400; i++) {
+        final s = container.read(crossGroupActivityPagerProvider);
+        if (s.initialised && !s.isLoadingMore) return s;
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      throw StateError('pager never settled');
+    }
+
+    test('a malformed row in group A does not drop group A from the feed',
+        () async {
+      final db = FakeFirebaseFirestore();
+      Future<void> put(String gid, Map<String, dynamic> r) => db
+          .collection('groups')
+          .doc(gid)
+          .collection('activity')
+          .doc(r['id'] as String)
+          .set(r);
+      await put('a', gLog('a-good', at: DateTime.utc(2026, 3, 28, 10)));
+      await put('a', gLog('a-bad', description: null, at: DateTime.utc(2026, 3, 28, 9)));
+      await put('b', gLog('b-good', at: DateTime.utc(2026, 3, 28, 8)));
+
+      final container = ProviderContainer(overrides: [
+        userGroupsProvider.overrideWith((ref) => Stream.value([grp('a'), grp('b')])),
+        groupActivityServiceProvider
+            .overrideWith((ref) => GroupActivityService.withFirestore(db)),
+      ]);
+      addTearDown(container.dispose);
+
+      final state = await settled(container);
+      final ids = state.entries.map((e) => e.log.id).toSet();
+      expect(ids, contains('a-good'),
+          reason: 'group A survives its own malformed row');
+      expect(ids, contains('b-good'));
+      expect(state.firstLoadFailed, isFalse);
+    });
+
+    test('test 5b — a full page with 1 skipped row does not falsely exhaust',
+        () async {
+      final db = FakeFirebaseFirestore();
+      // kCrossGroupActivityPageSize raw docs on page 1 (one mid-page malformed)
+      // + 5 more OLDER docs beyond the page. Newest-first by timestamp.
+      const total = kCrossGroupActivityPageSize + 5;
+      for (var i = 1; i <= total; i++) {
+        final id = 'd${i.toString().padLeft(2, '0')}';
+        await db.collection('groups').doc('g').collection('activity').doc(id).set(
+              gLog(
+                id,
+                description: i == 25 ? null : 'desc',
+                at: DateTime.utc(2026, 1, 1).subtract(Duration(minutes: i)),
+              ),
+            );
+      }
+
+      final container = ProviderContainer(overrides: [
+        userGroupsProvider.overrideWith((ref) => Stream.value([grp('g')])),
+        groupActivityServiceProvider
+            .overrideWith((ref) => GroupActivityService.withFirestore(db)),
+      ]);
+      addTearDown(container.dispose);
+
+      final afterFirst = await settled(container);
+      // A full raw page (50) decoded to 49 must NOT mark the group exhausted.
+      expect(afterFirst.hasMore, isTrue,
+          reason: 'raw page was full (50); the skipped row must not drain it');
+
+      await container.read(crossGroupActivityPagerProvider.notifier).loadMore();
+      final afterSecond = await settled(container);
+      final ids = afterSecond.entries.map((e) => e.log.id).toSet();
+      expect(ids, contains('d${total.toString().padLeft(2, '0')}'),
+          reason: 'the older page-2 docs surface; the group was not falsely '
+              'drained by the raw-vs-deserialized count mismatch');
     });
   });
 }

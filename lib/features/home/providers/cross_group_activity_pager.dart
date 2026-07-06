@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/safe_deserialize.dart';
 import '../../groups/models/group_activity_log_model.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -65,11 +66,19 @@ class _FetchOutcome {
   const _FetchOutcome({
     required this.groupId,
     required this.logs,
+    required this.rawCount,
     required this.cursor,
     required this.failed,
   });
   final String groupId;
   final List<GroupActivityLog>? logs;
+
+  /// #928: the RAW page size (`snap.docs.length`), BEFORE the malformed-row
+  /// fence drops any doc. Exhaustion must derive from this, not `logs.length`:
+  /// a full raw page (== page size) that decodes short because a row was skipped
+  /// is NOT the last page — deriving exhaustion from the deserialized count
+  /// would falsely drain the group and silently truncate its older activity.
+  final int rawCount;
   final DocumentSnapshot? cursor;
   final bool failed;
 }
@@ -116,22 +125,26 @@ class CrossGroupActivityPagerNotifier
         startAfter: _cursors[groupId],
         limit: kCrossGroupActivityPageSize,
       );
-      final logs =
-          snap.docs
-              .map(
-                (d) =>
-                    GroupActivityLog.fromFirestore({...d.data(), 'id': d.id}),
-              )
-              .toList()
-            // Deterministic within-group tiebreak (ts desc, then id asc) so the
-            // merge total order holds even for same-timestamp entries.
-            ..sort((a, b) {
-              final byTime = b.timestamp.compareTo(a.timestamp);
-              return byTime != 0 ? byTime : a.id.compareTo(b.id);
-            });
+      // #928: skip a malformed row instead of letting it throw into the
+      // per-group catch below, which would drop the WHOLE group from the merged
+      // feed. Display-only feed rows: skip-and-report is the correct semantic.
+      final logs = decodeDocsSkippingMalformed(
+        snap.docs,
+        (d) => GroupActivityLog.fromFirestore(
+          {...d.data()! as Map<String, dynamic>, 'id': d.id},
+        ),
+        context: 'CrossGroupActivity.fetch',
+      )
+        // Deterministic within-group tiebreak (ts desc, then id asc) so the
+        // merge total order holds even for same-timestamp entries.
+        ..sort((a, b) {
+          final byTime = b.timestamp.compareTo(a.timestamp);
+          return byTime != 0 ? byTime : a.id.compareTo(b.id);
+        });
       return _FetchOutcome(
         groupId: groupId,
         logs: logs,
+        rawCount: snap.docs.length,
         cursor: snap.docs.isNotEmpty ? snap.docs.last : _cursors[groupId],
         failed: false,
       );
@@ -139,6 +152,7 @@ class CrossGroupActivityPagerNotifier
       return _FetchOutcome(
         groupId: groupId,
         logs: null,
+        rawCount: 0, // unused on the failed path (exhausted is left untouched)
         cursor: _cursors[groupId],
         failed: true,
       );
@@ -160,7 +174,9 @@ class CrossGroupActivityPagerNotifier
       } else {
         next[o.groupId] = prev.copyWith(
           buffer: [...prev.buffer, ...o.logs!],
-          exhausted: o.logs!.length < kCrossGroupActivityPageSize,
+          // #928: exhaustion from the RAW page count, not the fenced/decoded
+          // count — a full raw page that lost a malformed row is NOT drained.
+          exhausted: o.rawCount < kCrossGroupActivityPageSize,
           failed: false,
         );
         _cursors[o.groupId] = o.cursor;
