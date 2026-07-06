@@ -23,6 +23,7 @@ import 'all_settled_state.dart';
 import 'currency_buckets_explainer.dart';
 import 'group_settlement_tile.dart';
 import 'settle_scope_note.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 // Re-exported so every SettleUpPageBody caller gets [SettleScope] (#717) without
 // a second import.
@@ -461,7 +462,7 @@ class _SettlementIntro extends StatelessWidget {
           transferCount == 0
               ? context.l10n.settleUpNoOptimizedPayments(subjectName)
               : context.l10n.settleUpOptimizedPayments(subjectName),
-          style: TextStyle(
+          style: AppTypography.sans(
             color: context.colors.textSecondary,
             fontSize: 13,
             height: 1.5,
@@ -525,7 +526,7 @@ class _SteppedSettleCard extends StatelessWidget {
                     children: [
                       Text(
                         context.l10n.settleUpSettleAllWith(otherName),
-                        style: TextStyle(
+                        style: AppTypography.sans(
                           color: context.colors.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -535,7 +536,7 @@ class _SteppedSettleCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         caption,
-                        style: TextStyle(
+                        style: AppTypography.sans(
                           color: context.colors.textSecondary,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -635,7 +636,7 @@ class _NetBalanceRow extends StatelessWidget {
           Expanded(
             child: Text(
               name,
-              style: TextStyle(
+              style: AppTypography.sans(
                 color: context.colors.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -645,7 +646,7 @@ class _NetBalanceRow extends StatelessWidget {
           ),
           Text(
             AppFormatters.formatCurrency(balance.netBalance, currency),
-            style: TextStyle(
+            style: AppTypography.sans(
               color: amountColor,
               fontSize: 14,
               fontWeight: FontWeight.w800,
@@ -668,7 +669,7 @@ class _SectionLabel extends StatelessWidget {
       padding: EdgeInsetsDirectional.only(start: context.spacing.space4),
       child: Text(
         label,
-        style: TextStyle(
+        style: AppTypography.sans(
           color: context.colors.textPrimary,
           fontSize: 15,
           fontWeight: FontWeight.w800,
@@ -1048,7 +1049,7 @@ class _HistoryTile extends StatelessWidget {
                     if (isCorrection) ...[
                       Text(
                         context.l10n.settleUpCorrectionTag,
-                        style: TextStyle(
+                        style: AppTypography.sans(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
@@ -1082,7 +1083,7 @@ class _HistoryTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       dateStr,
-                      style: TextStyle(
+                      style: AppTypography.sans(
                         fontSize: 11,
                         color: context.colors.textSecondary,
                         fontWeight: FontWeight.w500,
@@ -1096,7 +1097,7 @@ class _HistoryTile extends StatelessWidget {
                   overrideAmount ?? settlement.amount,
                   settlement.currency,
                 ),
-                style: TextStyle(
+                style: AppTypography.sans(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: context.colors.textPrimary,
@@ -1148,7 +1149,7 @@ class _HistoryTile extends StatelessWidget {
                   ),
                   label: Text(
                     context.l10n.settleUpCorrect,
-                    style: const TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       height: 1.22,
@@ -1179,7 +1180,7 @@ class _HistoryTile extends StatelessWidget {
                   ),
                   label: Text(
                     context.l10n.settleUpShareReceipt,
-                    style: const TextStyle(
+                    style: AppTypography.sans(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       height: 1.22,

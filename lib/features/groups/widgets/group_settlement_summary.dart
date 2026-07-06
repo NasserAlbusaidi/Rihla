@@ -6,6 +6,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
+import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Total-amount pill displayed below the headline on Group Settle-Up.
 ///
@@ -71,7 +72,7 @@ class _SettlementChip extends StatelessWidget {
           SizedBox(width: context.spacing.space8),
           Text(
             label,
-            style: TextStyle(
+            style: AppTypography.sans(
               color: context.colors.ink2,
               fontSize: 13,
               fontWeight: FontWeight.w700,
