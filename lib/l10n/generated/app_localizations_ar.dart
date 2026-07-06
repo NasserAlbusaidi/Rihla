@@ -3056,10 +3056,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupDeleteSheetTypeSuffix => ' للتأكيد';
 
   @override
-  String get groupDeleteSheetRetention =>
-      'تُحفظ نسخة لمدة 30 يومًا في حال غيّرت رأيك.';
-
-  @override
   String get groupDeleteSheetConfirm => 'حذف المجموعة';
 
   @override

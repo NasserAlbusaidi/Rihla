@@ -2094,7 +2094,6 @@
   "groupDeleteSheetUndo": "This can't be undone.",
   "groupDeleteSheetTypePrefix": "TYPE ",
   "groupDeleteSheetTypeSuffix": " TO CONFIRM",
-  "groupDeleteSheetRetention": "A copy is kept for 30 days in case you change your mind.",
   "groupDeleteSheetConfirm": "Delete group",
   "groupScanToJoin": "Scan to join",
   "groupInviteQrCode": "Invite QR code",
