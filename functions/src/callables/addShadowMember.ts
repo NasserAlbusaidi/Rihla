@@ -48,19 +48,11 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Sign-in required.');
     }
-    // A shadow is group-scoped placeholder data. #818 removed the durable-
-    // credential gate on group CREATION, so an anonymous user can now be the
-    // creator here — the CLIENT gates the add-by-name affordance on
-    // isDurableUserProvider (create-screen chips, group-detail #807 shortcut,
-    // group-settings members section). This reject is the server backstop for
-    // that carve-out, mirroring joinGroupByInviteCode:236.
-    if (request.auth.token?.firebase?.sign_in_provider === 'anonymous') {
-      throw new HttpsError(
-        'permission-denied',
-        'A linked (non-anonymous) account is required to add members.',
-      );
-    }
-
+    // D6-R (2026-07-06): anonymous creators MAY add shadows — the sandbox is
+    // solo until a real account joins. Joining is itself anon-legal (#648 —
+    // see joinGroupByInviteCode), so the durable boundary is the CLAIM chain:
+    // requestClaimShadow / decideClaimRequest both reject anonymous actors.
+    // Abuse posture: enforceAppCheck + the creator-only check below + MAX_GROUP_MEMBERS.
     const uid = request.auth.uid;
     const groupId = normalizeGroupId(request.data?.groupId);
     const displayName = normalizeRequiredDisplayName(request.data?.displayName);

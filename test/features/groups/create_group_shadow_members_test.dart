@@ -165,8 +165,8 @@ void main() {
   );
 
   testWidgets(
-    '#818: anonymous creator online — chips field disabled + '
-    'shadowAddRequiresLink hint, NOT the offline hint',
+    'D6-R: anonymous creator online — chips field ENABLED, no link hint, '
+    'no #840 CTA (addShadowMember accepts anon creators)',
     (tester) async {
       final sp = await SharedPreferences.getInstance();
       await tester.pumpWidget(
@@ -174,57 +174,24 @@ void main() {
       );
       await tester.pump();
 
-      // The anon hint wins over the offline hint even though connectivity
-      // is online — addShadowMember hard-rejects anonymous callers
-      // server-side, so the affordance is disabled regardless.
+      final field = tester.widget<TextField>(
+        find.byKey(GroupKeys.shadowMemberInput),
+      );
+      expect(field.enabled, isTrue);
       expect(
         find.text(
           'Link your account to add people by name — anyone can still '
           'join with the invite code.',
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.text('Connect to add names'), findsNothing);
-      final field = tester.widget<TextField>(
-        find.byKey(GroupKeys.shadowMemberInput),
+      // Raw key: the GroupKeys.createLinkAccountCta const was retired with
+      // the #840 CTA itself.
+      expect(
+        find.byKey(const Key('group_create_link_account_cta')),
+        findsNothing,
       );
-      expect(field.enabled, isFalse);
-    },
-  );
-
-  testWidgets(
-    '#840: durable creator (default harness) — no link-account CTA below '
-    'the field',
-    (tester) async {
-      final sp = await SharedPreferences.getInstance();
-      await tester.pumpWidget(wrap(sp, status: ConnectivityStatus.online));
-      await tester.pump();
-
-      expect(find.byKey(GroupKeys.createLinkAccountCta), findsNothing);
-    },
-  );
-
-  testWidgets(
-    '#840: anonymous creator — link-account CTA renders below the disabled '
-    'field; tap opens the durable-credential sheet',
-    (tester) async {
-      final sp = await SharedPreferences.getInstance();
-      await tester.pumpWidget(
-        wrap(sp, status: ConnectivityStatus.online, durable: false),
-      );
-      await tester.pump();
-
-      expect(find.byKey(GroupKeys.createLinkAccountCta), findsOneWidget);
-
-      await tester.ensureVisible(find.byKey(GroupKeys.createLinkAccountCta));
-      await tester.pump();
-      await tester.tap(find.byKey(GroupKeys.createLinkAccountCta));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // The existing durable-credential sheet opened (its own test suite
-      // covers the sheet's own behavior; this only proves the CTA wires to it).
-      expect(find.byKey(const Key('durableGate.continue')), findsOneWidget);
     },
   );
 
