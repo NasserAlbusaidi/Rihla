@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/utils/safe_deserialize.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/services/settlement_service.dart';
 
@@ -59,12 +60,17 @@ class GroupSettlementService extends FirestoreRepository {
         .orderBy('settledAt', descending: true)
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map(
-                (doc) =>
-                    Settlement.fromFirestore({...doc.data(), 'id': doc.id}),
-              )
-              .toList(),
+          // #928 money-fence backstop: this feeds the home once-path fold via
+          // `groupSettlementsProvider`. Skip a doc-level catastrophe rather than
+          // erroring the whole fold; no server-oracle counterpart (oracle is
+          // total) — the factory's totality (test 7) is the real invariant.
+          (snap) => decodeDocsSkippingMalformed(
+            snap.docs,
+            (d) => Settlement.fromFirestore(
+              {...d.data()! as Map<String, dynamic>, 'id': d.id},
+            ),
+            context: 'GroupSettlementService.watchGroupSettlements',
+          ),
         );
   }
 

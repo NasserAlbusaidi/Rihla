@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/models/split_mode.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/utils/safe_deserialize.dart';
 import '../models/expense_model.dart';
 import '../models/split_explanation.dart';
 
@@ -65,6 +69,12 @@ class ExpenseService extends FirestoreRepository {
     Map<String, Expense> cache,
     QuerySnapshot<Map<String, dynamic>> snap,
   ) {
+    // #928 money-fence backstop (BOTH parse points). The total-parse
+    // `Expense.fromFirestore` makes a throw practically unreachable, but a
+    // SKIPPED money doc has NO server-oracle counterpart (the oracle is total),
+    // so this catch is a doc-catastrophe last resort — NOT a safety net for a
+    // future non-total factory field. A persistently-throwing doc re-reports per
+    // tick via the cache miss below.
     for (final change in snap.docChanges) {
       final doc = change.doc;
       if (change.type == DocumentChangeType.removed) {
@@ -73,13 +83,41 @@ class ExpenseService extends FirestoreRepository {
       }
       final data = doc.data();
       if (data != null) {
-        cache[doc.id] = Expense.fromFirestore({...data, 'id': doc.id});
+        try {
+          cache[doc.id] = Expense.fromFirestore({...data, 'id': doc.id});
+        } catch (e, st) {
+          cache.remove(doc.id);
+          _reportSkippedExpense(doc.id, e, st);
+        }
       }
     }
-    return [
-      for (final doc in snap.docs)
-        cache[doc.id] ??= Expense.fromFirestore({...doc.data(), 'id': doc.id}),
-    ];
+    // Manual loop (not a collection-`for` with `??=`) so the per-doc try/catch
+    // can wrap the cache-miss parse: one malformed row is skipped, never blanks
+    // the whole list.
+    final out = <Expense>[];
+    for (final doc in snap.docs) {
+      var expense = cache[doc.id];
+      if (expense == null) {
+        try {
+          expense = Expense.fromFirestore({...doc.data(), 'id': doc.id});
+          cache[doc.id] = expense;
+        } catch (e, st) {
+          _reportSkippedExpense(doc.id, e, st);
+          continue;
+        }
+      }
+      out.add(expense);
+    }
+    return out;
+  }
+
+  static void _reportSkippedExpense(String docId, Object e, StackTrace st) {
+    assert(() {
+      debugPrint('[ExpenseService._reconcileExpenses] skipped malformed '
+          'doc $docId: $e');
+      return true;
+    }());
+    unawaited(Sentry.captureException(e, stackTrace: st));
   }
 
   /// One-shot read of non-deleted expenses for an event — the same query as
@@ -93,9 +131,17 @@ class ExpenseService extends FirestoreRepository {
         .where('isDeleted', isEqualTo: false)
         .orderBy('createdAt', descending: true)
         .get();
-    return snap.docs
-        .map((doc) => Expense.fromFirestore({...doc.data(), 'id': doc.id}))
-        .toList();
+    // #928 money-fence backstop: a doc-level catastrophe is skipped rather than
+    // erroring the home once-path. This has no server-oracle counterpart (the
+    // oracle is total) — it is NOT a safety net for a non-total factory field;
+    // the factory's totality (test 7) is what keeps client/server in lockstep.
+    return decodeDocsSkippingMalformed(
+      snap.docs,
+      (d) => Expense.fromFirestore(
+        {...d.data()! as Map<String, dynamic>, 'id': d.id},
+      ),
+      context: 'ExpenseService.getExpenses',
+    );
   }
 
   /// ARCH-03: Server-side Firestore range query on `createdAt` (ISO-8601 string).

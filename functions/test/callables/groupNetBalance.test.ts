@@ -313,3 +313,94 @@ describe('#872 weighted remainder vs 0-share key sorting last', () => {
     expect(omr.get(ZERO)!.toFixed(3)).toBe('0.000');
   });
 });
+
+// #928 — client↔oracle parity pin (mirrored fixture). The Dart side is
+// test/unit/malformed_doc_fencing_test.dart test 4: identical inputs, identical
+// hand-computed nets. A non-string expense payer is a total-parse-salvage case
+// on BOTH sides — the Dart factory salvages it to '' then guards it out of the
+// eventBalanceUniverse; the oracle already gates it with `typeof === 'string'`
+// before the paid credit AND the universe fold (groupNetBalance.ts:406/651). So
+// NEITHER counts the payer and NEITHER seeds a phantom row. No oracle change:
+// this fixture pins that the server stays put while the client is brought into
+// line — the shared contract (kind: functions-jest, Firestore emulator, Java 21;
+// run: `cd functions && npm run test:emulator -- callables/groupNetBalance.test.ts`).
+describe('recomputeNet — non-string payer parity (#928)', () => {
+  const GROUP928 = 'g-oracle-928';
+  const ALICE928 = 'alice';
+  const BOB928 = 'bob';
+
+  beforeEach(async () => {
+    await clearFirestore();
+    const db = getFirestore();
+    await db.doc(`groups/${GROUP928}`).set({
+      id: GROUP928,
+      name: GROUP928,
+      inviteCode: 'ABC928',
+      createdBy: ALICE928,
+      memberIds: [ALICE928, BOB928],
+      currency: 'OMR',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isDeleted: false,
+      deletedAt: null,
+    });
+    for (const uid of [ALICE928, BOB928]) {
+      await db.doc(`groups/${GROUP928}/members/${uid}`).set({
+        id: uid,
+        userId: uid,
+        displayName: uid,
+        role: uid === ALICE928 ? 'CREATOR' : 'MEMBER',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+        isShadow: false,
+        isTombstone: false,
+      });
+    }
+    await db.doc(`groups/${GROUP928}/events/e1`).set({
+      id: 'e1',
+      groupId: GROUP928,
+      name: 'e1',
+      type: 'trip',
+      createdBy: ALICE928,
+      participantIds: [ALICE928, BOB928],
+      participantNames: { [ALICE928]: 'Alice', [BOB928]: 'Bob' },
+      modules: { ledger: true },
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+    // One global OMR 10.000 expense whose payerParticipantId is the NUMBER 42
+    // (a forged/legacy doc). Equal-split → no splitMode/splitDistribution keys.
+    await db.doc(`groups/${GROUP928}/events/e1/expenses/x1`).set({
+      id: 'x1',
+      eventId: 'e1',
+      description: 'Dinner',
+      amountFils: 10000,
+      currency: 'OMR',
+      payerParticipantId: 42,
+      scope: 'global',
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-03T00:00:00.000Z',
+      createdBy: ALICE928,
+      lastEditedBy: ALICE928,
+    });
+  });
+
+  afterAll(async () => {
+    await clearFirestore();
+  });
+
+  it('non-string payer is not credited and seeds no phantom row: alice/bob -5.000 each', async () => {
+    const db = getFirestore();
+    const result = await recomputeNet(db, db.doc(`groups/${GROUP928}`));
+
+    const omr = result.net.get('OMR')!;
+    // Universe {alice, bob}: equal split 10.000 / 2 = 5.000 owed each. The
+    // non-string payer is dropped by `typeof payerId === 'string'` (paid credit
+    // + universe fold), so no phantom '' row and the divisor stays 2 — identical
+    // to the Dart client after salvage + guard.
+    expect([...omr.keys()].sort()).toEqual([ALICE928, BOB928]);
+    expect(omr.get(ALICE928)!.toFixed(3)).toBe('-5.000');
+    expect(omr.get(BOB928)!.toFixed(3)).toBe('-5.000');
+  });
+});
