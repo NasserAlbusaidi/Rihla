@@ -38,11 +38,11 @@ class LoadingButton extends StatelessWidget {
           ),
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
-                  color: Colors.white,
+                  color: context.colors.textOnPrimary,
                   strokeWidth: 2.5,
                 ),
               )

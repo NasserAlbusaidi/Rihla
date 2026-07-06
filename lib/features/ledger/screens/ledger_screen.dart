@@ -573,6 +573,10 @@ class _CoverHeader extends StatelessWidget {
                   style: AppTypography.caption(
                     context,
                     fontSize: 9,
+                    // design-token-justified: white caption over the event
+                    // cover-art image — theme-invariant so it reads on every
+                    // cover. NOTE: _CoverHeader is slated for deletion in #915
+                    // (concurrent session); justified in place, not refactored.
                     color: Colors.white.withValues(alpha: 0.85),
                     letterSpacing: 2,
                   ),
@@ -585,6 +589,8 @@ class _CoverHeader extends StatelessWidget {
                   style: AppTypography.displayOf(
                     context,
                     fontSize: 26,
+                    // design-token-justified: white event title over the cover-
+                    // art image — theme-invariant (see the #915 note above).
                     color: Colors.white,
                     height: 1.1,
                     letterSpacing: -0.4,
