@@ -459,7 +459,9 @@ class _TopBar extends StatelessWidget {
               onTap: () => _back(context),
             )
           else
-            const SizedBox(width: 40),
+            // #1041: matches the ghost RIconButton's 44dp hit width so the
+            // title column doesn't shift when showBack/showSearch toggle.
+            const SizedBox(width: 44),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -497,7 +499,9 @@ class _TopBar extends StatelessWidget {
               onTap: onToggleSearch,
             )
           else
-            const SizedBox(width: 40),
+            // #1041: matches the ghost RIconButton's 44dp hit width so the
+            // title column doesn't shift when showBack/showSearch toggle.
+            const SizedBox(width: 44),
         ],
       ),
     );

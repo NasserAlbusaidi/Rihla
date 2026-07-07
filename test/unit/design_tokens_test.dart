@@ -41,6 +41,7 @@ AppColorTokens _allBlack() {
     successText: c,
     error: c,
     errorText: c,
+    textOnError: c,
     disabled: c,
     disabledText: c,
     focusRing: c,
