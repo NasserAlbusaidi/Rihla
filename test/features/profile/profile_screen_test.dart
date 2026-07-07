@@ -26,6 +26,7 @@ import 'package:safar/features/settings/providers/profile_stats_provider.dart';
 import 'package:safar/features/settings/screens/profile_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
+import 'package:safar/shared/widgets/scroll_under_header.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
@@ -271,6 +272,23 @@ void main() {
 
     expect(find.text('Home'), findsOneWidget);
   });
+
+  testWidgets(
+    '#1011 wraps the fixed header + content in a ScrollUnderHeader (scroll-edge seam)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'settings_device_name': 'Alice'});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          overrides: _phase26Overrides(prefs: prefs),
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(find.byType(ScrollUnderHeader), findsOneWidget);
+    },
+  );
 
   group('ProfileScreen -- support surface (#897)', () {
     testWidgets('does not expose the unsupported PayPal coffee CTA', (

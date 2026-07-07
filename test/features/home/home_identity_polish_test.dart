@@ -160,6 +160,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(HomeKeys.setNameChip), findsOneWidget);
+      // #1010: the label is the shortened copy that fits left of the centred
+      // wordmark at 402pt without ellipsis.
+      expect(find.text('Set name'), findsOneWidget);
     });
 
     testWidgets('absent once a name is set', (tester) async {

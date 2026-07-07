@@ -1242,7 +1242,10 @@
   "homeRestoreWithGoogle": "Sign in with Google to restore",
   "homeRestoreWithEmail": "Restore with email instead",
   "homeRestoreSectionCaption": "Been here before?",
-  "homeSetNameChip": "Set your name",
+  "homeSetNameChip": "Set name",
+  "@homeSetNameChip": {
+    "description": "Home top-bar chip prompting the user to set a display name. Tight width budget (~75px @402pt): it sits left of the #994 centre-pinned wordmark and its Flexible caps at ~119px, so a longer string ellipsizes. Keep short (EN 'Set name')."
+  },
   "homeGuestCaption": "Guest account — lives on this phone until you back it up in Profile.",
   "restoreGoogleFailed": "Couldn't sign in with Google. Please try again.",
   "restoreBlockedHasData": "Restoring switches to your saved account and leaves this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first.",
@@ -2606,7 +2609,7 @@
   },
   "searchHint": "Search groups and events",
   "@searchHint": {
-    "description": "Placeholder text in the global search field. Cold /search (no query) shows this same hint — no separate empty-state panel (PR-5b)."
+    "description": "Placeholder text in the global search field. Cold /search (no query) shows this hint plus muted pre-query guidance (search glyph + the searchScopeLabel line) — #1012 reversed the PR-5b blank-panel pin. Still no zero-matches empty-state until the query is non-empty."
   },
   "searchEmpty": "No matches",
   "@searchEmpty": {

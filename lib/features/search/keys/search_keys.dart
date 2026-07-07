@@ -13,4 +13,8 @@ abstract final class SearchKeys {
 
   /// Zero-matches state for a non-empty query.
   static const emptyState = Key('search_empty_state');
+
+  /// Pre-query guidance (muted icon + scope line) shown before the first
+  /// keystroke (#1012, reverses the PR-5b empty-q blank-panel pin).
+  static const preQueryGuidance = Key('search_pre_query_guidance');
 }
