@@ -25,6 +25,7 @@ import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/home/widgets/balance_hero_card.dart';
 import 'package:safar/features/home/widgets/journey_ticket_card.dart';
 import 'package:safar/shared/widgets/activity_row.dart';
+import 'package:safar/shared/widgets/scroll_under_header.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
@@ -255,6 +256,22 @@ void main() {
 
       expect(find.byType(BalanceHeroCard), findsOneWidget);
     });
+
+    testWidgets(
+      '#1011 wraps the dashboard in a ScrollUnderHeader (scroll-edge seam)',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildTestApp(
+            const HomeScreen(),
+            overrides: _loadedOverrides(),
+            prefs: prefs,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ScrollUnderHeader), findsOneWidget);
+      },
+    );
 
     testWidgets('Test 2: renders active JourneyTicketCard widgets', (
       tester,

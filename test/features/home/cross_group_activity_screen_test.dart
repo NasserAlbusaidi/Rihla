@@ -23,6 +23,7 @@ import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/paper_backdrop.dart';
 import 'package:safar/shared/widgets/r_amount.dart';
+import 'package:safar/shared/widgets/scroll_under_header.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
@@ -267,6 +268,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('History'), findsOneWidget);
     });
+
+    testWidgets(
+      '#1011 wraps the fixed header + feed in a ScrollUnderHeader (scroll-edge seam)',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(ScrollUnderHeader), findsOneWidget);
+      },
+    );
 
     testWidgets('shows empty state when there is no activity', (tester) async {
       final db = FakeFirebaseFirestore();
