@@ -101,6 +101,65 @@ void main() {
     },
   );
 
+  testWidgets(
+    '#1030: members-only stream error → unavailable, wrong universe nets '
+    'suppressed',
+    (tester) async {
+      // ledgerViewProvider folds the errored MEMBERS stream to [] — the #249
+      // universe then drops departed recipients and the header would render
+      // wrong nets as clean. Money streams are healthy on purpose: only the
+      // members leg trips the gate.
+      final expense = _expense(
+        id: 'x1',
+        payer: 'uid-2',
+        amount: Decimal.parse('5.000'),
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          event: _event(),
+          expensesStream: Stream.value([expense]),
+          settlementsStream: Stream.value(const <Settlement>[]),
+          membersStream: Stream<List<GroupMember>>.error(denied()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(EventKeys.balanceHeaderUnavailable), findsOneWidget);
+      expect(find.text('YOU OWE'), findsNothing);
+      expect(find.text('YOU ARE OWED'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(EventKeys.balanceHeader),
+          matching: find.byType(RAmount),
+        ),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    '#1030: members stream never emits → pending, never a clean header',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          event: _event(),
+          expensesStream: Stream.value(const <Expense>[]),
+          settlementsStream: Stream.value(const <Settlement>[]),
+          membersStream: const Stream.empty(),
+        ),
+      );
+      // Skeletonizer never settles — bounded pumps, NOT pumpAndSettle.
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(find.byKey(EventKeys.balanceHeaderPending), findsOneWidget);
+      expect(find.text('Nothing to settle yet'), findsNothing);
+      expect(find.text('All settled'), findsNothing);
+    },
+  );
+
   testWidgets('healthy empty streams unchanged → Nothing to settle yet', (
     tester,
   ) async {
@@ -125,6 +184,7 @@ Widget _wrap({
   required Event event,
   required Stream<List<Expense>> expensesStream,
   required Stream<List<Settlement>> settlementsStream,
+  Stream<List<GroupMember>>? membersStream,
 }) {
   final eventRef = (groupId: event.groupId, eventId: event.id);
   return ProviderScope(
@@ -141,10 +201,12 @@ Widget _wrap({
         eventRef,
       ).overrideWith((_) => settlementsStream),
       groupMembersProvider(event.groupId).overrideWith(
-        (_) => Stream.value([
-          _realMember('uid-1', 'Mona'),
-          _realMember('uid-2', 'Nasser'),
-        ]),
+        (_) =>
+            membersStream ??
+            Stream.value([
+              _realMember('uid-1', 'Mona'),
+              _realMember('uid-2', 'Nasser'),
+            ]),
       ),
     ],
     child: MaterialApp(
