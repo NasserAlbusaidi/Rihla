@@ -47,6 +47,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ..addListener(_onQueryChanged);
   }
 
+  @override
+  void didUpdateWidget(covariant SearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A new `/search?q=…` deep link can land on the ALREADY-MOUNTED screen — its
+    // go_router pageKey is path-based (query-blind), so the page reconciles in
+    // place instead of remounting and `initState` never re-runs (#1027). Resync
+    // the field here, but ONLY when the ROUTE query itself changed: comparing
+    // against `oldWidget.query` (not the user-driven `_query`) stops a spurious
+    // parent rebuild from clobbering in-progress typing.
+    // NB: this warm-reseed path only fires because the deep link reaches
+    // go_router (native platform deep-linking; see #369 /
+    // ios_deep_linking_guard_test.dart) — the two are coupled.
+    final incoming = (widget.query ?? '').trim();
+    if (incoming == (oldWidget.query ?? '').trim()) return;
+    _query = incoming;
+    _controller.value = TextEditingValue(
+      text: incoming,
+      selection: TextSelection.collapsed(offset: incoming.length),
+    );
+  }
+
   void _onQueryChanged() {
     final next = _controller.text.trim();
     if (next != _query) setState(() => _query = next);
