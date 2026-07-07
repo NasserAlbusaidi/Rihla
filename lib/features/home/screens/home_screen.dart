@@ -17,6 +17,7 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../../shared/widgets/scroll_under_header.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/wordmark_logo.dart';
@@ -84,19 +85,17 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(userGroupsProvider);
-    return Column(
-      children: [
-        const _TopBar(),
-        Expanded(
-          child: groupsAsync.when(
-            data: (groups) => groups.isEmpty
-                ? _buildEmpty(context)
-                : _buildLoaded(context, groups),
-            loading: () => _buildSkeleton(context),
-            error: (_, _) => _buildError(context),
-          ),
-        ),
-      ],
+    // #1011: shared scroll-edge hairline — fades in under the fixed _TopBar once
+    // the dashboard scrolls beneath it (was a bare Column[_TopBar, Expanded]).
+    return ScrollUnderHeader(
+      header: const _TopBar(),
+      child: groupsAsync.when(
+        data: (groups) => groups.isEmpty
+            ? _buildEmpty(context)
+            : _buildLoaded(context, groups),
+        loading: () => _buildSkeleton(context),
+        error: (_, _) => _buildError(context),
+      ),
     );
   }
 
