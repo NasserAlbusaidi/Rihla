@@ -30,6 +30,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     required this.successText,
     required this.error,
     required this.errorText,
+    required this.textOnError,
     required this.disabled,
     required this.disabledText,
     required this.focusRing,
@@ -114,6 +115,9 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
 
   /// Rust-dark — WCAG-safe negative text.
   final Color errorText;
+
+  /// White on rust (light) / ink on rust-light (dark) — text/icon on an [error] surface.
+  final Color textOnError;
 
   /// Card-soft — disabled control background.
   final Color disabled;
@@ -267,6 +271,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     successText: Color(0xFF175A44), // Sage-dark
     error: Color(0xFFB03A48), // Rust
     errorText: Color(0xFF8A2430), // Rust-dark
+    textOnError: Color(0xFFFFFFFF),
     disabled: Color(0xFFF1F2ED), // Card-soft
     disabledText: Color(0xFF8B918D), // Ink-4
     focusRing: Color(0xFF8A5D0D), // Saffron
@@ -330,6 +335,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     successText: Color(0xFF7FD6AE),
     error: Color(0xFFE0707B), // Rust-light
     errorText: Color(0xFFF0A3AB),
+    textOnError: Color(0xFF1B1F1E),
     disabled: Color(0xFF242B28),
     disabledText: Color(0xFF6E7773),
     focusRing: Color(0xFFD9A845),
@@ -388,6 +394,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     Color? successText,
     Color? error,
     Color? errorText,
+    Color? textOnError,
     Color? disabled,
     Color? disabledText,
     Color? focusRing,
@@ -444,6 +451,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       successText: successText ?? this.successText,
       error: error ?? this.error,
       errorText: errorText ?? this.errorText,
+      textOnError: textOnError ?? this.textOnError,
       disabled: disabled ?? this.disabled,
       disabledText: disabledText ?? this.disabledText,
       focusRing: focusRing ?? this.focusRing,
@@ -506,6 +514,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
       successText: Color.lerp(successText, other.successText, t)!,
       error: Color.lerp(error, other.error, t)!,
       errorText: Color.lerp(errorText, other.errorText, t)!,
+      textOnError: Color.lerp(textOnError, other.textOnError, t)!,
       disabled: Color.lerp(disabled, other.disabled, t)!,
       disabledText: Color.lerp(disabledText, other.disabledText, t)!,
       focusRing: Color.lerp(focusRing, other.focusRing, t)!,
