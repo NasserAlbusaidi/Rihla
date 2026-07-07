@@ -8,6 +8,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_icon_button.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_balance_provider.dart';
@@ -16,7 +17,6 @@ import '../widgets/claim_requests_section.dart';
 import '../widgets/group_danger_section.dart';
 import '../widgets/group_info_section.dart';
 import '../widgets/group_members_section.dart';
-import '../widgets/settings_section_header.dart';
 
 /// Screen for managing group settings.
 ///
@@ -175,7 +175,10 @@ class _DefaultsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SettingsSectionHeader(title: context.l10n.groupDefaults),
+        SectionHeader(
+          title: context.l10n.groupDefaults,
+          padding: EdgeInsets.zero,
+        ),
         SizedBox(height: context.spacing.space8),
         Container(
           decoration: BoxDecoration(
