@@ -11,22 +11,39 @@ pre-query guidance showing.
 
 ## Root cause (verified against source, not memory)
 
-- Route: `app_router.dart:492-498` → `pageBuilder` builds
+**How `/search?q=…` reaches go_router (corrected — NOT `deep_link_service.dart`).**
+`DeepLinkService.openJoinLink` (`deep_link_service.dart`) routes **only JOIN links** — a
+`rihla:///search?q=…` URI fails `parseJoinLink` (host ≠ `join`) and is dropped, never routed. No
+`lib/` code produces a `/search?q=…` location either (the in-app search button does
+`context.push('/search')` — bare, no query — `home_screen.dart:580`). The URL reaches the router via
+the **platform native deep-link path**: go_router's default `routeInformationProvider` receives the
+OS-delivered `rihla:///search?q=…` and applies `/search?q=…` through `setNewRoutePath`. This is
+**empirically confirmed by the issue's own QA evidence** — the cold-open `search-query-one-cold.png`
+screenshot shows the field seeded with `one`, which no `lib/` path could produce.
+(Native deep-linking is on because Flutter ≥3.24 defaults it on: Android turns it off explicitly
+[`AndroidManifest.xml:20` `flutter_deeplinking_enabled=false`], iOS leaves `FlutterDeepLinkingEnabled`
+absent → enabled. This contradicts the "off by default" rationale in CLAUDE.md #369 /
+`ios_deep_linking_guard_test.dart` — flagged as a separate follow-up, out of scope for this fix.)
+
+**Why the mounted screen drops the new query.**
+- Route: `app_router.dart:493-499` → `pageBuilder` builds
   `CustomTransitionPage(key: state.pageKey, child: SearchScreen(query: state.uri.queryParameters['q']))`.
 - GoRouter **13.2.5** derives a `GoRoute`'s `pageKey` from the matched **path pattern**, not the
   query string: `match.dart:229` → `pageKey: ValueKey<String>(newMatchedPath)` where
   `newMatchedPath = concatenatePaths(matchedPath, route.path)` (= `/search`). Query params are
   absent from the key.
-- So `/search` and `/search?q=one` produce the **identical** `ValueKey('/search')`. When the
-  deep link routes via `router.go('/search?q=one')` (deep links replace, not push), the Navigator
-  **reuses the existing page slot** → Flutter reconciles `SearchScreen` in place → `didUpdateWidget`
-  fires with the new `widget.query`.
+- So `/search` and `/search?q=one` produce the **identical** `ValueKey('/search')`. When go_router
+  applies `/search?q=one` onto the mounted `/search` (`setNewRoutePath`, a replace — whether driven
+  by the platform's `routeInformationProvider` for a warm deep link, or an in-app `router.go`), the
+  Navigator **reuses the existing page slot** → Flutter reconciles `SearchScreen` in place →
+  `didUpdateWidget` fires with the new `widget.query`.
 - `_SearchScreenState` (`search_screen.dart:38-95`) has **no `didUpdateWidget`**. `initState`
   reads `widget.query` **once**; the new query is dropped. → the bug.
 
-(Cold entry works because a fresh `initState` reads the seeded query. A *pushed* `/search?q=…`
-also works — imperative pushes get a unique pageKey → fresh mount. Only the `go`/replace onto a
-mounted screen with the stable path-based pageKey loses the query.)
+(Cold entry works because a fresh `initState` reads the seeded query — this is what the QA screenshot
+shows. A *pushed* `/search?q=…` would also work — imperative pushes get a unique pageKey → fresh
+mount — but nothing pushes a query. Only the replace/reconcile onto a mounted screen with the stable
+path-based pageKey loses the query, which is exactly the warm external deep-link the issue reports.)
 
 ## Fix
 
@@ -41,11 +58,11 @@ screen with an unchanged query.
 void didUpdateWidget(covariant SearchScreen oldWidget) {
   super.didUpdateWidget(oldWidget);
   final incoming = (widget.query ?? '').trim();
-  // Resync only when the ROUTE's own query changed (a new /search?q=… landed on
-  // the mounted screen). A parent rebuild that re-supplies the same query must
-  // never overwrite what the user has since typed.
+  // Resync ONLY when the ROUTE's own query changed (a new /search?q=… landed on
+  // the mounted screen — go_router reconciles in place, pageKey is path-based).
+  // A parent rebuild that re-supplies the SAME query must never overwrite what
+  // the user has since typed, so the guard compares oldWidget.query, not _query.
   if (incoming == (oldWidget.query ?? '').trim()) return;
-  if (incoming == _query) return; // already showing it — don't disturb the cursor
   _query = incoming;
   _controller.value = TextEditingValue(
     text: incoming,
@@ -55,6 +72,10 @@ void didUpdateWidget(covariant SearchScreen oldWidget) {
 ```
 
 Notes:
+- The single `oldWidget.query != widget.query` guard is what prevents the typing-clobber: on a
+  spurious rebuild the route query is unchanged → early return → typed text survives. (An earlier
+  draft added a second `incoming == _query` short-circuit for cursor-nicety; dropped — it left a
+  cosmetic trailing-space edge and the one guard already fully covers the clobber case.)
 - `_query = incoming` **before** touching the controller, so the controller's `_onQueryChanged`
   listener sees `next == _query` and does not re-enter `setState` during `didUpdateWidget`.
 - No `setState` needed: `didUpdateWidget` is always followed by `build()`, which re-reads `_query`
@@ -77,8 +98,12 @@ implementing even though the diff is one lifecycle method.
    / a display `_query`); it is never persisted. The only writer of `?q=` is the URL, set by
    navigation. No OUTBOUND/write path.
 2. **Concrete claims vs code.** `pageKey` derivation read from `go_router-13.2.5/lib/src/match.dart:229`;
-   route wiring from `app_router.dart:492-498`; deep-link `router.go` from `deep_link_service.dart:134`;
-   `SearchScreen` lifecycle from `search_screen.dart:38-95`. All verified in-worktree.
+   route wiring from `app_router.dart:493-499`; `SearchScreen` lifecycle from `search_screen.dart:38-95`.
+   The routing of `/search?q=…` is the **native platform deep-link path** (go_router
+   `routeInformationProvider` → `setNewRoutePath`), **not** `deep_link_service.dart` (join-only —
+   verified: `openJoinLink`/`parseJoinLink` reject non-`join` hosts). Reachability of the whole
+   scenario is anchored on the issue's QA cold-open screenshot, not on a `lib/` citation. All
+   verified in-worktree.
 3. **One read-path per write-path.** The only reader of the resynced `_query` is
    `SearchResults(query: _query)` (`search_screen.dart:88`) and the controller-bound `TextField`
    (`search_screen.dart:145-147`). Both get the new value from the post-`didUpdateWidget` build.
@@ -96,9 +121,14 @@ implementing even though the diff is one lifecycle method.
 
 `test/features/search/search_query_resync_1027_test.dart`:
 
-1. **Primary regression (router path, faithful to prod).** Cold-open `/search` (blank field), then
-   `router.go('/search?q=Wadi')` on the mounted screen. Assert the field now shows `Wadi` and a
-   `Wadi Shab Trip` result renders. RED before the fix (field stays blank), GREEN after.
+1. **Primary regression (drives the exact prod reconcile).** Router built with the **prod page
+   shape** — `pageBuilder` → `CustomTransitionPage(key: state.pageKey, …)`, mirroring
+   `app_router.dart`. Cold-open `/search` (blank field), then apply `/search?q=Wadi` on the mounted
+   screen via `router.go`. `router.go` routes through the identical `setNewRoutePath` that the
+   platform `routeInformationProvider` uses for a warm deep link, so the in-place reconcile is the
+   same one prod hits — the platform trigger is not separately simulable in a widget test, but the
+   reconcile it causes is. Assert the field now shows `Wadi` and a `Wadi Shab Trip` result renders.
+   RED before the fix (field stays blank), GREEN after.
 2. **Guard — no clobber (deterministic widget harness).** Mount `SearchScreen(query: 'Desert')`
    inside a rebuildable harness; `enterText` to `'Desert Crew'`; force a parent rebuild with the
    **same** `'Desert'` query. Assert the field still shows `'Desert Crew'` (a naive check would

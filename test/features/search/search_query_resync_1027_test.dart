@@ -92,13 +92,19 @@ void main() {
     '#1027: a new /search?q= deep link on the MOUNTED screen reseeds field + results',
     (tester) async {
       final group = _makeGroup('g1', 'Desert Crew');
+      // Prod page shape (app_router.dart): pageBuilder + CustomTransitionPage
+      // keyed by the path-based state.pageKey — the reconcile-in-place mechanism
+      // under test.
       final router = GoRouter(
         initialLocation: '/search',
         routes: [
           GoRoute(
             path: '/search',
-            builder: (_, state) =>
-                SearchScreen(query: state.uri.queryParameters['q']),
+            pageBuilder: (_, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: SearchScreen(query: state.uri.queryParameters['q']),
+              transitionsBuilder: (_, _, _, child) => child,
+            ),
           ),
         ],
       );
