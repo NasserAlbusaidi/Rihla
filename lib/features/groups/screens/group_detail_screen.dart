@@ -211,6 +211,8 @@ class _ContentState extends ConsumerState<_Content> {
               child: _BalanceCard(
                 group: group,
                 lines: balanceLines,
+                balancesUnavailable:
+                    balancesAsync.hasError && !balancesAsync.hasValue,
                 memberNames:
                     balances?.memberNames.values.toList() ?? const <String>[],
                 onAddPrimary: () {
@@ -614,6 +616,7 @@ class _BalanceCard extends StatelessWidget {
     required this.memberNames,
     required this.onAddPrimary,
     required this.onSettleUp,
+    this.balancesUnavailable = false,
   });
 
   final Group group;
@@ -621,6 +624,12 @@ class _BalanceCard extends StatelessWidget {
   final List<String> memberNames;
   final VoidCallback onAddPrimary;
   final VoidCallback onSettleUp;
+
+  /// #1030: the balance basis hard-errored (`hasError && !hasValue`). An
+  /// empty [lines] then means "unknown", not "settled" — the caption must
+  /// say so instead of the affirmative false "all settled". Stale-valued
+  /// errors keep rendering their stale lines and never set this.
+  final bool balancesUnavailable;
 
   @override
   Widget build(BuildContext context) {
@@ -630,14 +639,20 @@ class _BalanceCard extends StatelessWidget {
         lines.isNotEmpty && lines.every((l) => l.net > Decimal.zero);
     final allNegative =
         lines.isNotEmpty && lines.every((l) => l.net < Decimal.zero);
-    final captionColor = allPositive
+    final captionColor = balancesUnavailable
+        ? colors.textSecondary
+        : allPositive
         ? colors.success
         : allNegative
         ? colors.error
         : colors.textSecondary;
     // L7: tri-state caption only when all non-zero lines share one sign;
     // mixed signs → omitted (signed, toned amounts self-explain).
-    final String? captionText = lines.isEmpty
+    // #1030: unavailable wins over everything — an errored basis must never
+    // read as the affirmative "all settled".
+    final String? captionText = balancesUnavailable
+        ? context.l10n.settleUpCouldNotLoadBalances
+        : lines.isEmpty
         ? context.l10n.groupAllSettled
         : allPositive
         ? context.l10n.groupTheyOweYou
