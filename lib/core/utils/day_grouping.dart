@@ -25,7 +25,8 @@ List<DayGroup<T>> groupByDay<T>(
   DateTime now,
   DateTime Function(T) timestampOf,
 ) {
-  final today = DateTime(now.year, now.month, now.day);
+  final localNow = now.toLocal();
+  final today = DateTime(localNow.year, localNow.month, localNow.day);
   // #634: hoist the constant l10n strings and the DateFormat out of the
   // per-item loop — constructing a DateFormat parses the ICU skeleton each
   // call, which over an unbounded list is re-paid per item on every build.
@@ -35,7 +36,7 @@ List<DayGroup<T>> groupByDay<T>(
   final buckets = <String, _DayBucket<T>>{};
   final order = <String>[];
   for (final item in items) {
-    final ts = timestampOf(item);
+    final ts = timestampOf(item).toLocal();
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
     final dateText = monthDayFmt.format(ts);
