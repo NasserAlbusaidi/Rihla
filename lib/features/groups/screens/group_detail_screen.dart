@@ -149,10 +149,10 @@ class _ContentState extends ConsumerState<_Content> {
     final group = widget.group;
     final eventsAsync = ref.watch(groupEventsProvider(group.id));
     final balancesAsync = ref.watch(groupBalancesProvider(group.id));
-    // Watch members directly: groupBalancesProvider SWALLOWS a members error into
-    // empty data (group_balance_provider.dart:136-140), so a members-only denial
-    // is invisible to balancesAsync — observe it here to retry it AND to surface
-    // its terminal error (else _MembersCard hangs on "Loading members…").
+    // Watch members directly: a members hard error is loud on balancesAsync
+    // since #1030, but the direct watch is still needed to retry the members
+    // listen itself AND to surface its terminal error on the members card
+    // (else _MembersCard hangs on "Loading members…").
     final membersAsync = ref.watch(groupMembersProvider(group.id));
     final currentUid = ref.watch(currentUserIdProvider);
     final balances = balancesAsync.valueOrNull;
