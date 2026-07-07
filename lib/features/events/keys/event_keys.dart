@@ -13,6 +13,13 @@ abstract final class EventKeys {
   static const tabRecap = Key('event_tab_recap');
   static const balanceHeader = Key('event_balance_header');
   static const headerCompactAmount = Key('event_header_compact_amount');
+  // #1028: hub balance header when a source stream is hard-errored / has no
+  // first value — never render "Nothing to settle yet"/"All settled" (or
+  // wrong ledgerView nets) in those windows.
+  static const balanceHeaderUnavailable = Key(
+    'event_balance_header_unavailable',
+  );
+  static const balanceHeaderPending = Key('event_balance_header_pending');
   static const addExpenseFab = Key('event_add_expense_fab');
   static const searchButton = Key('event_search_button');
 
