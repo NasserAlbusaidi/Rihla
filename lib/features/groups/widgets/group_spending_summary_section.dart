@@ -61,6 +61,7 @@ class GroupSpendingSummarySection extends ConsumerWidget {
                   summary: summary,
                   memberNames: memberNames,
                   eventNames: eventNames,
+                  balancesUnavailable: summary.balancesUnavailable,
                 ),
               ],
             ],
@@ -77,12 +78,14 @@ class _CurrencyInsightsCard extends StatelessWidget {
     required this.summary,
     required this.memberNames,
     required this.eventNames,
+    required this.balancesUnavailable,
   });
 
   final String currency;
   final GroupSpendingSummary summary;
   final Map<String, String> memberNames;
   final Map<String, String> eventNames;
+  final bool balancesUnavailable;
 
   @override
   Widget build(BuildContext context) {
@@ -158,6 +161,12 @@ class _CurrencyInsightsCard extends StatelessWidget {
               amount: topConsumer.amount,
               currency: currency,
             ),
+          // #1034: a hard-errored balance basis leaves top payer/consumer
+          // uncomputable — mark it rather than silently dropping the rows.
+          if (balancesUnavailable)
+            const _BalancesUnavailableNote(
+              key: GroupKeys.insightsBalancesUnavailable,
+            ),
           if (categories.isNotEmpty) ...[
             SizedBox(height: spacing.space12),
             Divider(height: 1, thickness: 1, color: colors.rule2),
@@ -186,6 +195,38 @@ class _IconStamp extends StatelessWidget {
         borderRadius: BorderRadius.circular(9),
       ),
       child: Icon(icon, size: 16, color: colors.primaryDark),
+    );
+  }
+}
+
+/// Loud marker (#1034) shown in place of the top payer/consumer rows when the
+/// balance basis was hard-errored — the spend totals above are still valid, so
+/// this degrades only the balance-derived part instead of hiding the card.
+class _BalancesUnavailableNote extends StatelessWidget {
+  const _BalancesUnavailableNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final spacing = context.spacing;
+
+    return Padding(
+      padding: EdgeInsetsDirectional.only(top: spacing.space12),
+      child: Row(
+        children: [
+          Icon(Iconsax.info_circle, size: 16, color: colors.textSecondary),
+          SizedBox(width: spacing.space8),
+          Expanded(
+            child: Text(
+              context.l10n.homeBalanceUnavailable,
+              style: AppTypography.sans(
+                fontSize: 13,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

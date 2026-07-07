@@ -20,6 +20,8 @@ abstract final class GroupKeys {
   static const inviteCodeSection = Key('group_invite_code_section');
   static const eventsSection = Key('group_events_section');
   static const insightsSection = Key('group_insights_section');
+  static const insightsBalancesUnavailable =
+      Key('group_insights_balances_unavailable');
 
   // Action keys
   static const createGroupButton = Key('group_create_button');

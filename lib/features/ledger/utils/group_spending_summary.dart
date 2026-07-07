@@ -49,6 +49,14 @@ class GroupSpendingSummary {
 
   final bool isEmpty;
 
+  /// True when the balance basis ([groupBalancesProvider]) was hard-errored
+  /// while this summary was built, so the balance-derived superlatives
+  /// ([topPayerByCurrency] / [topConsumerByCurrency]) are absent because they
+  /// COULD NOT be computed — not because there was no top payer (#1034). The
+  /// display must mark this rather than render the partial card as complete.
+  /// Loading (skeleton) is NOT an error and leaves this false.
+  final bool balancesUnavailable;
+
   const GroupSpendingSummary({
     required this.expenseCount,
     required this.totalSpentByCurrency,
@@ -57,6 +65,7 @@ class GroupSpendingSummary {
     required this.topPayerByCurrency,
     required this.topConsumerByCurrency,
     required this.isEmpty,
+    this.balancesUnavailable = false,
   });
 }
 
@@ -69,6 +78,7 @@ class GroupSpendingSummary {
 GroupSpendingSummary computeGroupSpendingSummary({
   required Map<String, List<Expense>> expensesByEvent,
   required Map<String, List<UserBalance>> balances,
+  bool balancesUnavailable = false,
 }) {
   final total = <String, Decimal>{};
   final eventRaw = <String, Map<String, Decimal>>{};
@@ -148,6 +158,7 @@ GroupSpendingSummary computeGroupSpendingSummary({
     topPayerByCurrency: Map.unmodifiable(topPayer),
     topConsumerByCurrency: Map.unmodifiable(topConsumer),
     isEmpty: expenseCount == 0,
+    balancesUnavailable: balancesUnavailable,
   );
 }
 

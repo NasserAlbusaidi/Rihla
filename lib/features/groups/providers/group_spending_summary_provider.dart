@@ -20,7 +20,14 @@ final groupSpendingSummaryProvider =
       final events =
           ref.watch(groupEventsProvider(groupId)).valueOrNull ??
           const <Event>[];
-      final balances = ref.watch(groupBalancesProvider(groupId)).valueOrNull;
+      final balancesAsync = ref.watch(groupBalancesProvider(groupId));
+      // A hard-errored balance basis (not merely loading) means the
+      // superlatives can't be computed — mark it loud so the card doesn't
+      // render a partial summary as complete (#1034). Loading keeps the
+      // blessed silent path (superlatives just absent).
+      final balancesUnavailable =
+          balancesAsync.hasError && !balancesAsync.hasValue;
+      final balances = balancesAsync.valueOrNull;
 
       final expensesByEvent = <String, List<Expense>>{};
       for (final event in events) {
@@ -45,5 +52,6 @@ final groupSpendingSummaryProvider =
       return computeGroupSpendingSummary(
         expensesByEvent: expensesByEvent,
         balances: balances?.balances ?? const <String, List<UserBalance>>{},
+        balancesUnavailable: balancesUnavailable,
       );
     });
