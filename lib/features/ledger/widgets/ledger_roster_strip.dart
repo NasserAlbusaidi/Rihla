@@ -296,6 +296,10 @@ class _Chip extends StatelessWidget {
           currency: person.currency ?? currency,
           size: 9.5,
           sign: true,
+          // Text-safe tones: at 9.5px over the tinted pill fill the surface
+          // sage/rust tones fall below AA contrast — successText/errorText
+          // keep the chip's pre-RAmount WCAG-safe colors.
+          tone: positive ? AmountTone.sageText : AmountTone.rustText,
           showCurrency: false,
           weight: FontWeight.w600,
         ),

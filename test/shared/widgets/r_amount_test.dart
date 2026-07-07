@@ -61,11 +61,13 @@ void main() {
 
     testWidgets('absolute value used regardless of sign mode', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('-42.500'),
-          currency: 'OMR',
-          sign: false,
-        )),
+        _wrap(
+          RAmount(
+            value: Decimal.parse('-42.500'),
+            currency: 'OMR',
+            sign: false,
+          ),
+        ),
       );
       // No prefix in non-sign mode; abs value rendered.
       expect(_renderedText(tester), 'OMR 42.500');
@@ -101,8 +103,9 @@ void main() {
       expect(_renderedText(tester), 'QAR 50.00');
     });
 
-    testWidgets('unknown currency falls back to 2 decimal places',
-        (tester) async {
+    testWidgets('unknown currency falls back to 2 decimal places', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(RAmount(value: Decimal.parse('50'), currency: 'XYZ')),
       );
@@ -113,37 +116,33 @@ void main() {
   group('RAmount — sign mode', () {
     testWidgets('positive shows + prefix', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('184.200'),
-          currency: 'OMR',
-          sign: true,
-        )),
+        _wrap(
+          RAmount(value: Decimal.parse('184.200'), currency: 'OMR', sign: true),
+        ),
       );
       expect(_renderedText(tester), '+OMR 184.200');
     });
 
-    testWidgets('negative shows typographic minus (U+2212), not hyphen',
-        (tester) async {
+    testWidgets('negative shows typographic minus (U+2212), not hyphen', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('-42.500'),
-          currency: 'OMR',
-          sign: true,
-        )),
+        _wrap(
+          RAmount(value: Decimal.parse('-42.500'), currency: 'OMR', sign: true),
+        ),
       );
       final rendered = _renderedText(tester);
       expect(rendered, '−OMR 42.500');
-      expect(rendered.contains('-'), isFalse,
-          reason: 'must use U+2212 minus, not hyphen-minus');
+      expect(
+        rendered.contains('-'),
+        isFalse,
+        reason: 'must use U+2212 minus, not hyphen-minus',
+      );
     });
 
     testWidgets('zero with sign mode shows no prefix', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.zero,
-          currency: 'OMR',
-          sign: true,
-        )),
+        _wrap(RAmount(value: Decimal.zero, currency: 'OMR', sign: true)),
       );
       expect(_renderedText(tester), 'OMR 0.000');
     });
@@ -173,19 +172,51 @@ void main() {
 
     testWidgets('explicit tone:rust overrides positive value', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('10'),
-          sign: true,
-          tone: AmountTone.rust,
-        )),
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.rust,
+          ),
+        ),
       );
       expect(wholeColor(tester), const Color(0xFFB03A48));
     });
 
-    testWidgets('zero in sign mode → ink/textPrimary tone', (tester) async {
+    testWidgets('tone:sageText → WCAG-safe successText, not surface sage', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(RAmount(value: Decimal.zero, sign: true)),
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.sageText,
+          ),
+        ),
       );
+      // Sage-dark = #175A44 (light theme successText)
+      expect(wholeColor(tester), const Color(0xFF175A44));
+    });
+
+    testWidgets('tone:rustText → WCAG-safe errorText, not surface rust', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('-10'),
+            sign: true,
+            tone: AmountTone.rustText,
+          ),
+        ),
+      );
+      // Rust-dark = #8A2430 (light theme errorText)
+      expect(wholeColor(tester), const Color(0xFF8A2430));
+    });
+
+    testWidgets('zero in sign mode → ink/textPrimary tone', (tester) async {
+      await tester.pumpWidget(_wrap(RAmount(value: Decimal.zero, sign: true)));
       expect(wholeColor(tester), const Color(0xFF1B1F1E));
     });
   });

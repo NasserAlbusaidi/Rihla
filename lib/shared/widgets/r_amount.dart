@@ -10,7 +10,12 @@ import '../../core/utils/formatters.dart';
 ///
 /// `auto` (default) defers to [RAmount.sign]: positive → sage, negative → rust,
 /// zero → ink. The explicit tones override regardless of value sign.
-enum AmountTone { auto, sage, rust, ink }
+///
+/// `sageText` / `rustText` are the WCAG-safe text siblings of `sage` / `rust`
+/// (`colors.successText` / `colors.errorText`) — reach for them when the
+/// amount renders as small text over a success/error-tinted fill, where the
+/// surface tones fall below AA contrast (e.g. the roster balance chip).
+enum AmountTone { auto, sage, rust, ink, sageText, rustText }
 
 /// Money amount rendered in Spline Sans Mono with the wireframe's tiered sizing.
 ///
@@ -151,18 +156,18 @@ class RAmount extends StatelessWidget {
     // Spoken label keeps the ASCII sign regardless of caret suppression above
     // — semanticsLabel replaces the visual text for screen readers, so the
     // caret glyph is never announced and the sign must still be spoken.
-    final asciiPrefix = sign ? (isPositive ? '+' : (isNegative ? '-' : '')) : '';
-    final spokenLabel = semanticsLabel ??
+    final asciiPrefix = sign
+        ? (isPositive ? '+' : (isNegative ? '-' : ''))
+        : '';
+    final spokenLabel =
+        semanticsLabel ??
         '$asciiPrefix${showCurrency ? '$currency ' : ''}$formatted';
 
     return Text.rich(
       TextSpan(
         children: [
           if (showCaret)
-            TextSpan(
-              text: '${isPositive ? '▲' : '▼'} ',
-              style: caretStyle,
-            ),
+            TextSpan(text: '${isPositive ? '▲' : '▼'} ', style: caretStyle),
           if (codeText.isNotEmpty) TextSpan(text: codeText, style: codeStyle),
           TextSpan(text: wholePart, style: wholeStyle),
           if (decimalPart.isNotEmpty)
@@ -182,6 +187,8 @@ class RAmount extends StatelessWidget {
       AmountTone.sage => colors.success,
       AmountTone.rust => colors.error,
       AmountTone.ink => colors.textPrimary,
+      AmountTone.sageText => colors.successText,
+      AmountTone.rustText => colors.errorText,
       AmountTone.auto when sign && isPositive => colors.success,
       AmountTone.auto when sign && isNegative => colors.error,
       AmountTone.auto => colors.textPrimary,
