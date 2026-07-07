@@ -73,10 +73,12 @@ class EventSettingsScreen extends ConsumerWidget {
                     SizedBox(height: context.spacing.space16),
                     Text(
                       context.l10n.eventSettingsTitle,
-                      style: AppTypography.sans(
+                      style: AppTypography.displayOf(
+                        context,
                         fontSize: 28,
-                        fontWeight: FontWeight.w700,
                         color: context.colors.textPrimary,
+                        letterSpacing: -0.5,
+                        height: 1.0,
                       ),
                     ),
                     SizedBox(height: context.spacing.space24),
