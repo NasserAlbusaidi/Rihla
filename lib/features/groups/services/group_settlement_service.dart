@@ -55,23 +55,25 @@ class GroupSettlementService extends FirestoreRepository {
   /// Returns a real-time stream of non-deleted group-level settlements,
   /// ordered newest first.
   Stream<List<Settlement>> watchGroupSettlements(String groupId) {
-    return _settlementsRef(groupId)
-        .where('isDeleted', isEqualTo: false)
-        .orderBy('settledAt', descending: true)
-        .snapshots()
-        .map(
-          // #928 money-fence backstop: this feeds the home once-path fold via
-          // `groupSettlementsProvider`. Skip a doc-level catastrophe rather than
-          // erroring the whole fold; no server-oracle counterpart (oracle is
-          // total) — the factory's totality (test 7) is the real invariant.
-          (snap) => decodeDocsSkippingMalformed(
-            snap.docs,
-            (d) => Settlement.fromFirestore(
-              {...d.data()! as Map<String, dynamic>, 'id': d.id},
+    return recoverListen(() {
+      return _settlementsRef(groupId)
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('settledAt', descending: true)
+          .snapshots()
+          .map(
+            // #928 money-fence backstop: this feeds the home once-path fold via
+            // `groupSettlementsProvider`. Skip a doc-level catastrophe rather
+            // than erroring the whole fold; no server-oracle counterpart (oracle
+            // is total) — the factory's totality (test 7) is the real invariant.
+            (snap) => decodeDocsSkippingMalformed(
+              snap.docs,
+              (d) => Settlement.fromFirestore(
+                {...d.data()! as Map<String, dynamic>, 'id': d.id},
+              ),
+              context: 'GroupSettlementService.watchGroupSettlements',
             ),
-            context: 'GroupSettlementService.watchGroupSettlements',
-          ),
-        );
+          );
+    });
   }
 
   /// Builds the Firestore document map for a group-level settlement — the

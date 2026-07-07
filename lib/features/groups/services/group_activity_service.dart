@@ -41,23 +41,26 @@ class GroupActivityService extends FirestoreRepository {
     String groupId, {
     int limit = 5,
   }) {
-    return _activityRef(groupId)
-        .orderBy('timestamp', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map(
-          // #928: one malformed row must not blank the whole feed (this stream
-          // feeds home RECENTLY + the unread dot, which swallow errors as `[]`).
-          // Display-only rows have no oracle to stay in lockstep with, so
-          // skip-and-report is the correct semantic (the Trip Receipt precedent).
-          (snap) => decodeDocsSkippingMalformed(
-            snap.docs,
-            (d) => GroupActivityLog.fromFirestore(
-              {...d.data()! as Map<String, dynamic>, 'id': d.id},
+    return recoverListen(() {
+      return _activityRef(groupId)
+          .orderBy('timestamp', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map(
+            // #928: one malformed row must not blank the whole feed (this
+            // stream feeds home RECENTLY + the unread dot, which swallow errors
+            // as `[]`). Display-only rows have no oracle to stay in lockstep
+            // with, so skip-and-report is the correct semantic (the Trip
+            // Receipt precedent).
+            (snap) => decodeDocsSkippingMalformed(
+              snap.docs,
+              (d) => GroupActivityLog.fromFirestore(
+                {...d.data()! as Map<String, dynamic>, 'id': d.id},
+              ),
+              context: 'GroupActivityService.watchRecentActivity',
             ),
-            context: 'GroupActivityService.watchRecentActivity',
-          ),
-        );
+          );
+    });
   }
 
   /// Cursor-paginated activity fetch for full activity log screen (D-34: 50/page).

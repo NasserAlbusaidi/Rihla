@@ -568,23 +568,25 @@ class GroupService extends FirestoreRepository {
 
   /// Reactive stream of all members in a specific group.
   Stream<List<GroupMember>> watchMembers(String groupId) {
-    return db
-        .collection('groups')
-        .doc(groupId)
-        .collection('members')
-        .orderBy('joinedAt')
-        .snapshots()
-        .map(
-          // #532: decode per-doc so one malformed member can't blank the
-          // roster. The factory is total-parse except `userId` (the oracle
-          // gate), so this only drops a no-userId member — which the server
-          // excludes too, keeping allMemberIds in lockstep.
-          (snapshot) => decodeDocsSkippingMalformed(
-            snapshot.docs,
-            (doc) => GroupMember.fromDoc(doc, groupId),
-            context: 'watchMembers',
-          ),
-        );
+    return recoverListen(() {
+      return db
+          .collection('groups')
+          .doc(groupId)
+          .collection('members')
+          .orderBy('joinedAt')
+          .snapshots()
+          .map(
+            // #532: decode per-doc so one malformed member can't blank the
+            // roster. The factory is total-parse except `userId` (the oracle
+            // gate), so this only drops a no-userId member — which the server
+            // excludes too, keeping allMemberIds in lockstep.
+            (snapshot) => decodeDocsSkippingMalformed(
+              snapshot.docs,
+              (doc) => GroupMember.fromDoc(doc, groupId),
+              context: 'watchMembers',
+            ),
+          );
+    });
   }
 
   /// Reactive stream of the server-maintained balance aggregate (#366).
@@ -594,24 +596,28 @@ class GroupService extends FirestoreRepository {
   /// first balanceReconciler backfill run), degraded, or malformed — the home
   /// facade falls back to the client once-path compute for those groups.
   Stream<GroupBalanceAggregate?> watchBalanceAggregate(String groupId) {
-    return db
-        .collection('groups')
-        .doc(groupId)
-        .collection('aggregates')
-        .doc('balance')
-        .snapshots()
-        .map((doc) => GroupBalanceAggregate.fromDoc(doc.data()));
+    return recoverListen(() {
+      return db
+          .collection('groups')
+          .doc(groupId)
+          .collection('aggregates')
+          .doc('balance')
+          .snapshots()
+          .map((doc) => GroupBalanceAggregate.fromDoc(doc.data()));
+    });
   }
 
   /// Reactive stream for one group document.
   Stream<Group?> watchGroup(String groupId) {
-    return db.collection('groups').doc(groupId).snapshots().map((doc) {
-      if (!doc.exists) return null;
-      final group = Group.fromDoc(doc);
-      // #518: fence out soft-deleted docs — a single-doc snapshot always
-      // EXISTS, so isDeleted must be checked in-memory (no server-side
-      // .where filter on a .doc().snapshots() stream).
-      return group.isDeleted ? null : group;
+    return recoverListen(() {
+      return db.collection('groups').doc(groupId).snapshots().map((doc) {
+        if (!doc.exists) return null;
+        final group = Group.fromDoc(doc);
+        // #518: fence out soft-deleted docs — a single-doc snapshot always
+        // EXISTS, so isDeleted must be checked in-memory (no server-side
+        // .where filter on a .doc().snapshots() stream).
+        return group.isDeleted ? null : group;
+      });
     });
   }
 }
