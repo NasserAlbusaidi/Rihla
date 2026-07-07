@@ -217,9 +217,7 @@ Future<bool?> showClaimConfirmSheet(
               key: GroupKeys.claimConfirmButton,
               style: FilledButton.styleFrom(
                 backgroundColor: colors.error,
-                // design-token-justified: white foreground on the rust
-                // destructive claim-confirm CTA — no textOnError token exists.
-                foregroundColor: Colors.white,
+                foregroundColor: colors.textOnError,
                 minimumSize: const Size.fromHeight(52),
               ),
               onPressed: () => Navigator.of(sheetContext).pop(true),

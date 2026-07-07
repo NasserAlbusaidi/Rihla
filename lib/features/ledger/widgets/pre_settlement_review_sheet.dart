@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/utils/formatters.dart';
 import '../models/expense_model.dart';
 import '../services/pre_settlement_review.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../shared/widgets/r_amount.dart';
 
 /// Test/automation hooks for the pre-settlement review sheet (#204).
 abstract final class PreSettleReviewKeys {
@@ -248,13 +248,11 @@ class _ReviewItem extends StatelessWidget {
               ),
             ),
             SizedBox(width: spacing.space8),
-            Text(
-              AppFormatters.formatCurrency(expense.amount, expense.currency),
-              style: AppTypography.sans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: context.colors.textPrimary,
-              ),
+            RAmount(
+              value: expense.amount,
+              currency: expense.currency,
+              size: 13,
+              weight: FontWeight.w700,
             ),
           ],
         ),

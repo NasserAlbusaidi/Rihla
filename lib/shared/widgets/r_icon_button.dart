@@ -70,10 +70,11 @@ class RIconButton extends StatelessWidget {
         : SizedBox(width: 40, height: 40, child: Center(child: glyph));
 
     // Hit target: 48dp over content (Material a11y minimum, pinned by
-    // group_detail_navigation_test), 40dp on plain headers where the bare
-    // glyph already fills the slot (and a 48dp box would overflow the 44dp
-    // settings/join top bars).
-    final double hitSize = isPaper ? 48 : 40;
+    // group_detail_navigation_test); 44dp on plain headers — the DESIGN.md
+    // §4 floor ("never ship a tap target under 44dp") — which fits exactly
+    // inside the 44dp settings/join top bars (a 48dp box would overflow
+    // them).
+    final double hitSize = isPaper ? 48 : 44;
     Widget result = SizedBox(
       width: hitSize,
       height: hitSize,
