@@ -102,7 +102,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
 
   // ──────────────── Loaded ────────────────
 
-  Widget _buildLoaded(BuildContext context, List<Group> groups) {
+  Widget _buildLoaded(
+    BuildContext context,
+    List<Group> groups, {
+    bool isPlaceholder = false,
+  }) {
     final activityAsync = ref.watch(crossGroupActivityProvider);
     final journeysAsync = ref.watch(activeJourneysProvider);
     final targetsAsync = ref.watch(addExpenseTargetsProvider);
@@ -188,6 +192,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 return _GroupRow(
                       group: groups[index],
                       isLast: isLast,
+                      isPlaceholder: isPlaceholder,
                       onTap: () {
                         HapticService.lightClick();
                         // #900 friction #2: smart-forward to the sole open
@@ -456,7 +461,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     return Skeletonizer(
       enabled: true,
       containersColor: context.colors.cardSoft,
-      child: IgnorePointer(child: _buildLoaded(context, stubGroups)),
+      child: IgnorePointer(
+        child: _buildLoaded(context, stubGroups, isPlaceholder: true),
+      ),
     );
   }
 
@@ -855,18 +862,28 @@ class _GroupRow extends ConsumerWidget {
     required this.group,
     required this.onTap,
     required this.isLast,
+    this.isPlaceholder = false,
   });
 
   final Group group;
   final VoidCallback onTap;
   final bool isLast;
 
+  /// A skeleton stub row (fake `sk1`/`sk2` gid). It must NOT watch the balance
+  /// facade — that family is keyed by gid, so watching it with a sentinel id
+  /// opens a real `groups/sk1/aggregates/balance` listen that fails
+  /// PERMISSION_DENIED and (non-autoDispose) leaks for the session (#1017).
+  final bool isPlaceholder;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     // #366: source-agnostic facade — the server aggregate when online, the
     // #104 once-path otherwise. The facade slices by the current uid itself.
-    final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
+    // #1017: placeholder rows render as loading without watching (see field).
+    final balanceAsync = isPlaceholder
+        ? const AsyncValue<HomeGroupBalance>.loading()
+        : ref.watch(homeGroupBalanceProvider(group.id));
     final memberCount = group.memberIds.length;
     // #997: a loading/errored facade has no reliable event count or money —
     // rendering "0 events · settled" from the default would be a false
