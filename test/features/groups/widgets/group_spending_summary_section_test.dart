@@ -70,6 +70,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required List<Event> events,
   required Map<String, List<Expense>> expensesByEvent,
+  bool groupSettlementsError = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -84,8 +85,11 @@ Future<void> _pump(
             _makeMember('uid-2', 'Nasser'),
           ]),
         ),
-        groupSettlementsProvider(_groupId)
-            .overrideWith((_) => Stream.value(const <Settlement>[])),
+        groupSettlementsProvider(_groupId).overrideWith(
+          (_) => groupSettlementsError
+              ? Stream<List<Settlement>>.error(Exception('denied'))
+              : Stream.value(const <Settlement>[]),
+        ),
         for (final event in events) ...[
           eventExpensesProvider((groupId: _groupId, eventId: event.id))
               .overrideWith(
@@ -194,5 +198,33 @@ void main() {
         .map((w) => w.value)
         .toList();
     expect(values, isNot(contains(Decimal.parse('17'))));
+  });
+
+  testWidgets(
+      'balances hard-errored -> spend still shown, top payer/consumer marked '
+      'unavailable (#1034)', (tester) async {
+    await _pump(
+      tester,
+      events: [_makeEvent('event-a', 'Wahiba Sands')],
+      expensesByEvent: {
+        'event-a': [
+          _makeExpense(
+            id: 'x1',
+            tripId: 'event-a',
+            amount: '60',
+            categoryId: 'fuel',
+          ),
+        ],
+      },
+      groupSettlementsError: true,
+    );
+
+    // Card still renders the valid expense-derived spend total.
+    expect(find.byKey(GroupKeys.insightsSection), findsOneWidget);
+    expect(find.byType(RAmount), findsWidgets);
+    // The balance-derived superlatives are absent, but their absence is now
+    // marked loud instead of silently dropped.
+    expect(find.byKey(GroupKeys.insightsBalancesUnavailable), findsWidgets);
+    expect(find.text('Balance unavailable'), findsWidgets);
   });
 }
