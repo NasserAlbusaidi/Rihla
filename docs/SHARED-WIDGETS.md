@@ -297,6 +297,7 @@ lib/shared/
     ├── offline_banner.dart            # OfflineBanner (ConsumerWidget)
     ├── r_amount.dart                  # RAmount
     ├── r_avatar.dart                  # RAvatar
+    ├── scroll_under_header.dart       # ScrollUnderHeader (fixed header + colors.rule hairline on scroll)
     ├── section_header.dart            # SectionHeader
     ├── skeleton_loader.dart           # SkeletonLoader
     ├── skeleton_primitives.dart       # SkeletonCircle / Bar / Block / Row / Card
