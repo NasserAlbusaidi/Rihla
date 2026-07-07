@@ -48,6 +48,7 @@ class RAmount extends StatelessWidget {
     this.polarityCaret = false,
     this.tone = AmountTone.auto,
     this.weight = FontWeight.w500,
+    this.dimDecimals = true,
     this.semanticsLabel,
   });
 
@@ -88,6 +89,14 @@ class RAmount extends StatelessWidget {
 
   /// Font weight applied to all glyphs. Default `w500` matches the wireframe.
   final FontWeight weight;
+
+  /// When true (default), the decimal fragment renders at 0.7 alpha — the
+  /// widget's dimmed-decimals signature. Pass false where the fraction is
+  /// FUNCTIONAL small text over a tinted fill and the fade would drop it
+  /// below the DESIGN.md §2 4.5:1 AA floor (e.g. the roster balance chip) —
+  /// the a11y floor governs over the aesthetic signature at those sizes.
+  /// Tiered sizing (whole 1.0× · decimals 0.55×) is unaffected.
+  final bool dimDecimals;
 
   /// Screen-reader override. When null, a default label is derived from the
   /// rendered value: unfragmented, ASCII `+`/`-` (the visual U+2212 minus is
@@ -139,7 +148,7 @@ class RAmount extends StatelessWidget {
     final decimalStyle = AppTypography.mono(
       fontSize: size * 0.55,
       fontWeight: weight,
-      color: color.withValues(alpha: 0.7),
+      color: dimDecimals ? color.withValues(alpha: 0.7) : color,
       height: 1.0,
     );
     final caretStyle = AppTypography.mono(

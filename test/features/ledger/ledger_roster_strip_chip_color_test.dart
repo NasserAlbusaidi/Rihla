@@ -34,9 +34,9 @@ void main() {
     );
   }
 
-  /// The full-size whole-part span color of the RAmount rendering [value] —
-  /// leaves are [sign prefix, whole, decimal], so the whole part is index 1.
-  Color wholeColorOf(WidgetTester tester, Decimal value) {
+  /// Leaf spans of the RAmount rendering [value], in render order:
+  /// [sign prefix, whole, decimal fragment].
+  List<TextSpan> leavesOf(WidgetTester tester, Decimal value) {
     final amountFinder = find.byWidgetPredicate(
       (w) => w is RAmount && w.value == value,
     );
@@ -49,7 +49,19 @@ void main() {
       if (node is TextSpan && node.text != null) leaves.add(node);
       return true;
     });
-    return leaves[1].style!.color!;
+    return leaves;
+  }
+
+  Color wholeColorOf(WidgetTester tester, Decimal value) =>
+      leavesOf(tester, value)[1].style!.color!;
+
+  /// The decimal-fragment span (".000") — round 2 of the codex review: the
+  /// whole part was fixed to successText/errorText but the fraction still
+  /// rendered at RAmount's 0.7-alpha fade, below AA on the tinted pill.
+  Color fractionColorOf(WidgetTester tester, Decimal value) {
+    final leaves = leavesOf(tester, value);
+    expect(leaves[2].text, startsWith('.'));
+    return leaves[2].style!.color!;
   }
 
   testWidgets(
@@ -89,6 +101,21 @@ void main() {
         reason:
             'negative chip must use the dark text-safe rust, '
             'not colors.error',
+      );
+
+      // Every digit is functional at this size — the decimal fragment must be
+      // full-strength too, never RAmount's default 0.7-alpha fade.
+      expect(
+        fractionColorOf(tester, positiveAmount),
+        AppColorTokens.light.successText,
+        reason:
+            'positive chip fraction must render at full-strength '
+            'successText — the 0.7-alpha fade is below AA on the pill',
+      );
+      expect(
+        fractionColorOf(tester, negativeAmount),
+        AppColorTokens.light.errorText,
+        reason: 'negative chip fraction must render at full-strength errorText',
       );
     },
   );

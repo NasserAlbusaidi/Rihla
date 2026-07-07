@@ -221,6 +221,49 @@ void main() {
     });
   });
 
+  group('RAmount — decimal dimming', () {
+    Color decimalColor(WidgetTester tester) {
+      // Leaves are: [currency code, whole, decimal]. Decimal is index 2.
+      final leaf = _leafSpans(tester)[2];
+      expect(leaf.text, startsWith('.'));
+      return leaf.style!.color!;
+    }
+
+    testWidgets('default dims the decimal fragment to 0.7 alpha', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.sageText,
+          ),
+        ),
+      );
+      expect(
+        decimalColor(tester),
+        const Color(0xFF175A44).withValues(alpha: 0.7),
+      );
+    });
+
+    testWidgets('dimDecimals:false renders the fragment at full strength', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.sageText,
+            dimDecimals: false,
+          ),
+        ),
+      );
+      expect(decimalColor(tester), const Color(0xFF175A44));
+    });
+  });
+
   group('RAmount — size scaling', () {
     testWidgets('decimal portion uses 0.55× whole size', (tester) async {
       await tester.pumpWidget(
