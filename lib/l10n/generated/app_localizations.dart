@@ -5313,6 +5313,12 @@ abstract class AppLocalizations {
   /// **'Add an expense to see this event\'s recap.'**
   String get recapEmptyMessage;
 
+  /// Error-state title when a recap source stream (expenses, settlements, or members) hard-errored — the recap must not render nets computed without it (#1030).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load recap data.'**
+  String get recapDataUnavailable;
+
   /// Highlight-card label for the person who fronted the most cash in the event recap (#721).
   ///
   /// In en, this message translates to:

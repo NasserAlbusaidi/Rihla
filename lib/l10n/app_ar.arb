@@ -910,6 +910,7 @@
   "recapNet": "الصافي",
   "recapEmptyTitle": "لا شيء لتلخيصه بعد",
   "recapEmptyMessage": "أضِف مصروفًا لرؤية ملخّص هذا الحدث.",
+  "recapDataUnavailable": "تعذّر تحميل بيانات الملخّص.",
   "recapTopPayer": "الأكثر دفعًا",
   "recapBiggestExpense": "أكبر مصروف",
   "recapByCategory": "حسب الفئة",

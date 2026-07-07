@@ -3132,6 +3132,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapEmptyMessage => 'Add an expense to see this event\'s recap.';
 
   @override
+  String get recapDataUnavailable => 'Couldn\'t load recap data.';
+
+  @override
   String get recapTopPayer => 'Top payer';
 
   @override
