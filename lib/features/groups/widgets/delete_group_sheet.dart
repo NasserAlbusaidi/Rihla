@@ -313,10 +313,13 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                             icon: const Icon(Iconsax.trash, size: 14),
                             label: Text(
                               context.l10n.groupDeleteSheetConfirm,
+                              // No explicit color — an explicit Text color
+                              // bypasses the button's per-state foreground
+                              // (disabled ink-on-washed-rust was unreadable
+                              // in dark); the button style below drives it.
                               style: AppTypography.sans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: colors.textOnError,
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
@@ -331,8 +334,12 @@ class _DeleteGroupSheetState extends State<_DeleteGroupSheet> {
                               disabledBackgroundColor: colors.error.withValues(
                                 alpha: 0.35,
                               ),
-                              disabledForegroundColor: colors.textOnError
-                                  .withValues(alpha: 0.7),
+                              // textOnError flips to ink in dark, which
+                              // vanishes on the washed 0.35-alpha rust;
+                              // textPrimary reads on that blend in BOTH
+                              // themes (pinned by delete_group_sheet_test).
+                              disabledForegroundColor: colors.textPrimary
+                                  .withValues(alpha: 0.8),
                             ),
                           ),
                         ),
