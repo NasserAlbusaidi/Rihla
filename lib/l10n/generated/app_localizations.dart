@@ -5523,7 +5523,7 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get searchTitle;
 
-  /// Placeholder text in the global search field. Cold /search (no query) shows this same hint — no separate empty-state panel (PR-5b).
+  /// Placeholder text in the global search field. Cold /search (no query) shows this hint plus muted pre-query guidance (search glyph + the searchScopeLabel line) — #1012 reversed the PR-5b blank-panel pin. Still no zero-matches empty-state until the query is non-empty.
   ///
   /// In en, this message translates to:
   /// **'Search groups and events'**
