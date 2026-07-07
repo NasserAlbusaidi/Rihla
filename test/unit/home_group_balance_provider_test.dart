@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:decimal/decimal.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -51,6 +53,17 @@ class _CountingSettlementService extends SettlementService {
     getCount++;
     return const <Settlement>[];
   }
+}
+
+/// #997 D2: models the field wedge — a per-event one-shot read whose future
+/// never resolves (gRPC channel wedge under DNS blackhole; the SDK never
+/// declares itself offline, so the SDK-side error path never fires).
+class _HangingExpenseService extends ExpenseService {
+  _HangingExpenseService() : super.withFirestore(FakeFirebaseFirestore());
+
+  @override
+  Future<List<Expense>> getExpenses(String groupId, String eventId) =>
+      Completer<List<Expense>>().future;
 }
 
 Group _makeGroup(String id, {String currency = 'OMR'}) => Group(
@@ -426,6 +439,169 @@ void main() {
       expect(result.isLoading, isTrue);
       expect(result.hasValue, isFalse);
       expect(expFake.getCount, 0);
+    });
+  });
+
+  group('once-path resilience (#997)', () {
+    FirebaseException denied() =>
+        FirebaseException(plugin: 'cloud_firestore', code: 'permission-denied');
+
+    test(
+      'D2: hung per-event read degrades to partial data, not eternal loading',
+      () {
+        fakeAsync((async) {
+          final container = ProviderContainer(
+            overrides: [
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(ref, fakeDb),
+              ),
+              connectivityProvider.overrideWith(
+                (ref) => _notifier(ConnectivityStatus.online),
+              ),
+              currentUserIdProvider.overrideWith((_) => 'uid-a'),
+              expenseServiceProvider.overrideWithValue(
+                _HangingExpenseService(),
+              ),
+              settlementServiceProvider.overrideWithValue(setFake),
+              // Aggregate resolves to null (doc missing) → once-path.
+              groupBalanceAggregateProvider(gid)
+                  .overrideWith((_) => Stream.value(null)),
+              groupEventsProvider(gid)
+                  .overrideWith((_) => Stream.value([_makeEvent('e1', gid)])),
+              groupMembersProvider(gid).overrideWith(
+                (_) => Stream.value([
+                  _makeMember('uid-a', gid),
+                  _makeMember('uid-b', gid),
+                ]),
+              ),
+              groupSettlementsProvider(gid)
+                  .overrideWith((_) => Stream.value([])),
+            ],
+          );
+          final sub = container.listen(
+            homeGroupBalanceProvider(gid),
+            (_, _) {},
+            fireImmediately: true,
+          );
+          async.flushMicrotasks();
+
+          expect(
+            container.read(homeGroupBalanceProvider(gid)).isLoading,
+            isTrue,
+            reason: 'inside the deadline the hung read is still loading',
+          );
+
+          async.elapse(const Duration(seconds: 30));
+          async.flushMicrotasks();
+
+          final state = container.read(homeGroupBalanceProvider(gid));
+          expect(
+            state.hasValue,
+            isTrue,
+            reason: 'a hung read must degrade to bounded partial data, '
+                'never hold home in a skeleton forever',
+          );
+          expect(state.requireValue.partial, isTrue);
+          expect(state.requireValue.eventCount, 1);
+          sub.close();
+          container.dispose();
+        });
+      },
+    );
+
+    ProviderContainer d3Container({
+      Stream<List<Event>>? events,
+      Stream<List<GroupMember>>? members,
+      Stream<List<Settlement>>? groupSettlements,
+    }) {
+      final container = ProviderContainer(
+        overrides: [
+          groupServiceProvider.overrideWith(
+            (ref) => GroupService.withFirestore(ref, fakeDb),
+          ),
+          connectivityProvider.overrideWith(
+            (ref) => _notifier(ConnectivityStatus.offline),
+          ),
+          currentUserIdProvider.overrideWith((_) => 'uid-a'),
+          expenseServiceProvider.overrideWithValue(expFake),
+          settlementServiceProvider.overrideWithValue(setFake),
+          groupEventsProvider(gid).overrideWith(
+            (_) => events ?? Stream.value([_makeEvent('e1', gid)]),
+          ),
+          groupMembersProvider(gid).overrideWith(
+            (_) =>
+                members ??
+                Stream.value([
+                  _makeMember('uid-a', gid),
+                  _makeMember('uid-b', gid),
+                ]),
+          ),
+          groupSettlementsProvider(gid).overrideWith(
+            (_) => groupSettlements ?? Stream.value([]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(
+        homeGroupBalanceProvider(gid),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      return container;
+    }
+
+    Future<AsyncValue<HomeGroupBalance>> pumpState(
+      ProviderContainer container,
+    ) async {
+      for (var i = 0; i < 12; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      return container.read(homeGroupBalanceProvider(gid));
+    }
+
+    test(
+      'D3: group-settlements failure degrades to partial; event nets survive',
+      () async {
+        final container = d3Container(
+          groupSettlements: Stream.error(denied()),
+        );
+        final state = await pumpState(container);
+
+        expect(
+          state.hasValue,
+          isTrue,
+          reason: 'a missing group-settlement fold is the #244 class — '
+              'an INCOMPLETE sum flagged partial, not a facade-wide error',
+        );
+        final value = state.requireValue;
+        expect(value.partial, isTrue);
+        expect(value.eventCount, 1);
+        // The seeded e1 expense (OMR 20 paid by uid-b, equal split) still
+        // computes: uid-a owes 10.
+        expect(value.userNet['OMR'], Decimal.parse('-10'));
+      },
+    );
+
+    test('D3: events failure stays LOUD (facade error, no fabricated zeros)',
+        () async {
+      // eventCount would fabricate the "0 events · settled" lie #997 exists
+      // to kill — the loud AsyncError renders as the honest "Balance
+      // unavailable" row + ticket dash (#1005).
+      final container = d3Container(events: Stream.error(denied()));
+      final state = await pumpState(container);
+      expect(state.hasError, isTrue);
+      expect(state.hasValue, isFalse);
+    });
+
+    test('D3: members failure stays LOUD (universe hazard, never computed)',
+        () async {
+      // members=[] would empty eventBalanceUniverse's allMemberIds gate and
+      // drop departed-member split recipients — WRONG money (#249), not
+      // incomplete money. Pinned loud on purpose.
+      final container = d3Container(members: Stream.error(denied()));
+      final state = await pumpState(container);
+      expect(state.hasError, isTrue);
+      expect(state.hasValue, isFalse);
     });
   });
 

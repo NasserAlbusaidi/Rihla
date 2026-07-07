@@ -699,6 +699,13 @@ typedef GroupBalancesOnce = ({
   Set<String> failedEventIds,
 });
 
+/// Upper bound on every await inside [groupBalancesOnceProvider] (#997 D2).
+/// A hung SDK read (gRPC wedge under DNS blackhole — the SDK never flips
+/// offline) must degrade to the honest #244 partial/error states, never hold
+/// home in a skeleton forever. Deliberately longer than `kWriteAckTimeout`:
+/// a slow-but-succeeding read beats a spurious partial.
+const kOnceReadDeadline = Duration(seconds: 8);
+
 /// One-shot variant of [groupBalancesProvider] for the always-mounted home
 /// dashboard (#104).
 ///
@@ -730,9 +737,14 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
       );
       ref.watch(ledgerRevisionProvider);
 
-      final events = await eventsFut;
-      final members = await membersFut;
-      final groupSettlements = await groupSettlementsFut;
+      // #997 D2: every await is deadline-bounded. Events/members timeouts
+      // REJECT (facade error — honest "Balance unavailable"); a per-event or
+      // group-settlements failure degrades to the #244 partial states below.
+      final events = await eventsFut.timeout(kOnceReadDeadline);
+      final members = await membersFut.timeout(kOnceReadDeadline);
+      final groupSettlements = await groupSettlementsFut.timeout(
+        kOnceReadDeadline,
+      );
 
       final expenseService = ref.read(expenseServiceProvider);
       final settlementService = ref.read(settlementServiceProvider);
@@ -744,14 +756,12 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
           // Read BOTH before mutating the accumulators — if either throws, neither
           // is added (the OR-drop semantics of the live `:153-156` skip: an event
           // with one failed money read contributes 0, never half-counted).
-          final eventExpenses = await expenseService.getExpenses(
-            groupId,
-            event.id,
-          );
-          final eventSettlements = await settlementService.getSettlements(
-            groupId,
-            event.id,
-          );
+          final eventExpenses = await expenseService
+              .getExpenses(groupId, event.id)
+              .timeout(kOnceReadDeadline);
+          final eventSettlements = await settlementService
+              .getSettlements(groupId, event.id)
+              .timeout(kOnceReadDeadline);
           allExpenses.addAll(eventExpenses);
           allEventSettlements.addAll(eventSettlements);
         } catch (_) {
