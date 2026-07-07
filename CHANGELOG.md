@@ -4,6 +4,38 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.2] — 2026-07-07
+
+Patch release for the 1.8 line. It collects the post-1.8.1 home, History,
+search, and group-balance honesty fixes that landed on `main`; production
+backend state is already aligned, so no backend deploy is bundled with this
+client release.
+
+### Added
+- **Scroll-under header treatment reaches Profile, Home, and History
+  (#1011/#1020/#1039).** Fixed headers now gain the shared scroll-edge hairline
+  instead of letting list rows visually bleed underneath.
+
+### Changed
+- **Search starts with useful scope guidance (#1023)** and updates the mounted
+  field when a new `q` deep link arrives (#1027/#1033).
+- **Release tooling now follows the protected-branch path (#985/#1002).** The
+  helper opens a release PR, waits for the squash merge, and tags the landed
+  `main` commit so Play upload validation sees the release on `origin/main`.
+
+### Fixed
+- **Home and group balance surfaces stay honest during partial/error states
+  (#997/#1005/#1017/#1028/#1031/#1034/#1037).** Loading placeholders no longer
+  show false settled text, stale group listeners are fenced, and spending/balance
+  summaries surface hard failures instead of quietly flattening them.
+- **Activity day buckets use the viewer's local calendar date (#1007/#1036).**
+  UTC Firestore timestamps created after local midnight now remain under
+  `TODAY` instead of slipping into `YESTERDAY`.
+- **Home polish fixes (#1014/#1019).** The unread-dot top-bar glyphs stay
+  centered, and the set-name chip copy fits the compact header.
+- **Join-group CTA stays above the keyboard (#1015).**
+- **Semantics and inactive controls read correctly (#1004/#1026/#1032).**
+
 ## [1.8.1] — 2026-07-07
 
 Hotfix release for the 1.8.0 line. It contains everything merged after
