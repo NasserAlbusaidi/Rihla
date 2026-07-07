@@ -129,7 +129,7 @@ Widget _buildTestApp({
       // #104/#466: home reads the once-balance variants directly.
       groupBalancesOnceProvider.overrideWith(
         (ref, gid) => ref.watch(groupBalancesProvider(gid)).maybeWhen(
-              data: (d) => (balances: d, failedEventIds: const <String>{}),
+              data: (d) => (balances: d, failedEventIds: const <String>{}, groupSettlementsFailed: false),
               orElse: () => Completer<GroupBalancesOnce>().future,
             ),
       ),

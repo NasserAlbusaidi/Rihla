@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -697,7 +699,15 @@ void _accumulateBucket(
 typedef GroupBalancesOnce = ({
   GroupBalances balances,
   Set<String> failedEventIds,
+  bool groupSettlementsFailed,
 });
+
+/// Upper bound on every await inside [groupBalancesOnceProvider] (#997 D2).
+/// A hung SDK read (gRPC wedge under DNS blackhole — the SDK never flips
+/// offline) must degrade to the honest #244 partial/error states, never hold
+/// home in a skeleton forever. Deliberately longer than `kWriteAckTimeout`:
+/// a slow-but-succeeding read beats a spurious partial.
+const kOnceReadDeadline = Duration(seconds: 8);
 
 /// One-shot variant of [groupBalancesProvider] for the always-mounted home
 /// dashboard (#104).
@@ -730,9 +740,24 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
       );
       ref.watch(ledgerRevisionProvider);
 
-      final events = await eventsFut;
-      final members = await membersFut;
-      final groupSettlements = await groupSettlementsFut;
+      // #997 D2: every await is deadline-bounded. Events/members timeouts
+      // REJECT (facade error — honest "Balance unavailable"); a per-event or
+      // group-settlements failure degrades to the #244 partial states below.
+      final events = await eventsFut.timeout(kOnceReadDeadline);
+      final members = await membersFut.timeout(kOnceReadDeadline);
+      List<Settlement> groupSettlements = const [];
+      var groupSettlementsFailed = false;
+      try {
+        groupSettlements = await groupSettlementsFut.timeout(kOnceReadDeadline);
+      } catch (_) {
+        // #997 D3 (narrow): a missing group-settlement fold is the same class
+        // as a dropped event (#244) — an INCOMPLETE sum, flagged partial.
+        // Events and members failures stay loud on purpose: members=[]
+        // re-opens the #249 universe gap (WRONG money, not incomplete money)
+        // and eventCount would fabricate the "0 events · settled" lie this
+        // issue exists to kill.
+        groupSettlementsFailed = true;
+      }
 
       final expenseService = ref.read(expenseServiceProvider);
       final settlementService = ref.read(settlementServiceProvider);
@@ -744,14 +769,12 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
           // Read BOTH before mutating the accumulators — if either throws, neither
           // is added (the OR-drop semantics of the live `:153-156` skip: an event
           // with one failed money read contributes 0, never half-counted).
-          final eventExpenses = await expenseService.getExpenses(
-            groupId,
-            event.id,
-          );
-          final eventSettlements = await settlementService.getSettlements(
-            groupId,
-            event.id,
-          );
+          final eventExpenses = await expenseService
+              .getExpenses(groupId, event.id)
+              .timeout(kOnceReadDeadline);
+          final eventSettlements = await settlementService
+              .getSettlements(groupId, event.id)
+              .timeout(kOnceReadDeadline);
           allExpenses.addAll(eventExpenses);
           allEventSettlements.addAll(eventSettlements);
         } catch (_) {
@@ -768,6 +791,7 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
           groupSettlements: groupSettlements,
         ),
         failedEventIds: failedEventIds,
+        groupSettlementsFailed: groupSettlementsFailed,
       );
     });
 
@@ -790,6 +814,28 @@ typedef CrossGroupBalanceOnce = ({CrossGroupBalance balance, bool partial});
 final groupBalanceAggregateProvider =
     StreamProvider.family<GroupBalanceAggregate?, String>((ref, groupId) {
       return ref.watch(groupServiceProvider).watchBalanceAggregate(groupId);
+    });
+
+/// #997 D1: how long the online facade waits for the aggregate stream's
+/// FIRST snapshot before consulting the once-path. Keeps the #366
+/// zero-per-event-read win on the normal path (the aggregate lands well
+/// inside the window) while bounding the wedge case (listener up, no
+/// snapshot, no error — the DNS-blackhole enabler) that previously held home
+/// on a bare skeleton indefinitely.
+const kAggregateFirstSnapshotGrace = Duration(seconds: 3);
+
+/// Completes [kAggregateFirstSnapshotGrace] after the facade first waits on
+/// [groupBalanceAggregateProvider]'s initial snapshot. autoDispose: once the
+/// aggregate emits (or the facade stops watching), the timer is CANCELLED and
+/// a later loading window starts a fresh grace. A cancellable [Timer], not
+/// `Future.delayed` — the delayed timer would outlive disposal and trip the
+/// widget-test "Timer is still pending" teardown check.
+final aggregateFirstSnapshotGraceProvider =
+    FutureProvider.autoDispose.family<void, String>((ref, groupId) {
+      final completer = Completer<void>();
+      final timer = Timer(kAggregateFirstSnapshotGrace, completer.complete);
+      ref.onDispose(timer.cancel);
+      return completer.future;
     });
 
 /// What the home surfaces need from one group's balances, source-agnostic.
@@ -842,7 +888,7 @@ HomeGroupBalance _homeBalanceFromOnce(GroupBalancesOnce once, String uid) {
         balances.perEventBreakdown[uid] ??
         const <String, Map<String, Decimal>>{},
     eventCount: balances.eventCount,
-    partial: once.failedEventIds.isNotEmpty,
+    partial: once.failedEventIds.isNotEmpty || once.groupSettlementsFailed,
     fromAggregate: false,
   );
 }
@@ -907,13 +953,10 @@ final homeGroupBalanceProvider =
     Provider.family<AsyncValue<HomeGroupBalance>, String>((ref, groupId) {
       final uid = ref.watch(currentUserIdProvider);
       if (uid == null) {
-        return const AsyncValue.data((
-          userNet: <String, Decimal>{},
-          userPerEventNet: <String, Map<String, Decimal>>{},
-          eventCount: 0,
-          partial: false,
-          fromAggregate: false,
-        ));
+        // #997 D5: uid null ⇒ the auth stream is still resolving (_AuthGate
+        // guarantees an anon session) — loading, never a fabricated zero that
+        // bypasses the #1005 display hardening.
+        return const AsyncValue.loading();
       }
 
       // #623: watch the derived bool, not the whole enum. The facade only branches
@@ -931,7 +974,17 @@ final homeGroupBalanceProvider =
       if (online) {
         final aggAsync = ref.watch(groupBalanceAggregateProvider(groupId));
         if (!aggregateMayBeStale && aggAsync.isLoading && !aggAsync.hasValue) {
-          return const AsyncValue.loading();
+          // #997 D1: hold the skeleton only for a bounded grace, then consult
+          // the once-path (SDK cache) — a wedged aggregate listen (no
+          // snapshot, no error) must not blank home indefinitely.
+          final grace = ref.watch(
+            aggregateFirstSnapshotGraceProvider(groupId),
+          );
+          if (grace.isLoading) {
+            return const AsyncValue.loading();
+          }
+          final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
+          return onceAsync.whenData((once) => _homeBalanceFromOnce(once, uid));
         }
         final aggregate = aggAsync.valueOrNull;
         if (aggregate != null) {
@@ -975,14 +1028,8 @@ final crossGroupHomeBalanceProvider = Provider<AsyncValue<CrossGroupBalanceOnce>
 ) {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) {
-    return const AsyncValue.data((
-      balance: (
-        byCurrency: <CurrencyBalance>[],
-        groupCount: 0,
-        isLoading: false,
-      ),
-      partial: false,
-    ));
+    // #997 D5 twin of the per-group facade: auth still resolving → loading.
+    return const AsyncValue.loading();
   }
 
   final groupsAsync = ref.watch(userGroupsProvider);

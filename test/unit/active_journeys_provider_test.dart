@@ -130,7 +130,7 @@ void main() {
           groupBalancesOnceProvider(
             groupId,
           ).overrideWith(
-            (_) => (balances: balances, failedEventIds: const <String>{}),
+            (_) => (balances: balances, failedEventIds: const <String>{}, groupSettlementsFailed: false),
           ),
         ],
       );
@@ -173,7 +173,7 @@ void main() {
             groupBalancesOnceProvider(
               groupId,
             ).overrideWith(
-              (_) => (balances: balances, failedEventIds: const <String>{}),
+              (_) => (balances: balances, failedEventIds: const <String>{}, groupSettlementsFailed: false),
             ),
           ],
         );
@@ -222,7 +222,7 @@ void main() {
             groupBalancesOnceProvider(
               groupId,
             ).overrideWith(
-              (_) => (balances: balances, failedEventIds: const <String>{}),
+              (_) => (balances: balances, failedEventIds: const <String>{}, groupSettlementsFailed: false),
             ),
           ],
         );
@@ -272,7 +272,7 @@ void main() {
             groupBalancesOnceProvider(
               groupId,
             ).overrideWith(
-              (_) => (balances: balances, failedEventIds: const <String>{}),
+              (_) => (balances: balances, failedEventIds: const <String>{}, groupSettlementsFailed: false),
             ),
           ],
         );
@@ -340,6 +340,7 @@ void main() {
                   memberRawNames: <String, String>{},
                 ),
                 failedEventIds: const <String>{},
+                groupSettlementsFailed: false,
               ),
             ),
           ],

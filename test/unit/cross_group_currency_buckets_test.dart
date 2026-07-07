@@ -50,6 +50,7 @@ void main() {
       memberRawNames: <String, String>{},
     ),
     failedEventIds: const <String>{},
+    groupSettlementsFailed: false,
   );
 
   /// groupId -> (currency, net). Builds the container + pumps crossGroupHomeBalanceProvider.
