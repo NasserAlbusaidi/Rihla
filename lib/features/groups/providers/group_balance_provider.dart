@@ -159,6 +159,18 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
 
   // Step 3: Watch group-level settlements (D-07)
   final groupSettlementsAsync = ref.watch(groupSettlementsProvider(groupId));
+  // #1028: this basis is OUTBOUND (group settle-up decompose). A hard-errored
+  // group-settlements stream must be LOUD — folding to [] resurrects cross-
+  // event settled debts, and groupFailedEventIdsProvider is per-event keyed
+  // so the #244 banner structurally cannot flag it. Stale-valued errors keep
+  // serving (per-event-guard vocabulary); loading keeps the documented
+  // proceed-on-partial behavior (deadlock note below).
+  if (groupSettlementsAsync.hasError && !groupSettlementsAsync.hasValue) {
+    return AsyncValue.error(
+      groupSettlementsAsync.error!,
+      groupSettlementsAsync.stackTrace!,
+    );
+  }
 
   // Step 4: For each event, watch expenses and settlements.
   // ref.watch inside a loop is valid in Provider.family bodies (RESEARCH Pitfall 2).

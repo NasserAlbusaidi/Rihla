@@ -69,11 +69,19 @@ abstract final class HomeKeys {
 
   // PR-5 §3: per-group balance breakdown sheet opened from the hero tap.
   static const heroBreakdownSheet = Key('home_hero_breakdown_sheet');
-  // #997: footer notice appended to the breakdown list when one or more
-  // groups' balances are still loading/errored — see groupRowBalanceIncomplete
-  // for the corresponding per-row marker on the home groups list.
+  // #997/#1028: footer notice appended to the breakdown list when one or more
+  // groups' balances are loading/errored OR resolved-but-partial — see
+  // groupRowBalanceIncomplete for the corresponding per-row marker on the
+  // home groups list.
   static const heroBreakdownIncompleteNotice = Key(
     'home_hero_breakdown_incomplete_notice',
+  );
+  // #1028: per-row Incomplete caption on a partial breakdown row. Distinct
+  // from groupRowBalanceIncomplete on purpose — the sheet overlays the home
+  // list, both live in the tree simultaneously, and a shared key breaks
+  // byKey reads (the two-unread-badges trap above).
+  static const heroBreakdownRowIncomplete = Key(
+    'home_hero_breakdown_row_incomplete',
   );
 
   // #900 friction #3 — PR-5b: top-bar global search entry point.

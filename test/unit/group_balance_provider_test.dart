@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:decimal/decimal.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -1228,6 +1229,81 @@ void main() {
       expect(data.balances, isEmpty);
       expect(data.totalSpent, isEmpty);
       expect(data.memberNames.keys.toSet(), {'uid-1', 'uid-2'});
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // #1028: group-settlements hard error must be LOUD, never a short basis
+  // ---------------------------------------------------------------------------
+
+  group('#1028 group-settlements stream hard error', () {
+    const groupId = 'group-1';
+    final event = _makeEvent(
+      id: 'event-a',
+      groupId: groupId,
+      participantIds: ['uid-1', 'uid-2'],
+    );
+    final members = [
+      _makeMember(userId: 'uid-1', groupId: groupId),
+      _makeMember(userId: 'uid-2', groupId: groupId),
+    ];
+    final expense = _makeExpense(
+      id: 'x1',
+      payerParticipantId: 'uid-1',
+      amount: Decimal.parse('10.000'),
+    );
+
+    ProviderContainer makeContainer(Stream<List<Settlement>> groupStream) {
+      return ProviderContainer(
+        overrides: [
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([event])),
+          groupMembersProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value(members)),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: event.id,
+          )).overrideWith((_) => Stream.value([expense])),
+          eventSettlementsProvider((
+            groupId: groupId,
+            eventId: event.id,
+          )).overrideWith((_) => Stream.value(const <Settlement>[])),
+          groupSettlementsProvider(groupId).overrideWith((_) => groupStream),
+        ],
+      );
+    }
+
+    test('errors the provider, never a silently-short basis', () async {
+      // The basis is OUTBOUND (group settle-up decompose) and
+      // groupFailedEventIdsProvider is per-event keyed — the #244 banner
+      // structurally cannot flag a group-level settlements failure, so the
+      // only honest state is a loud error.
+      final container = makeContainer(
+        Stream<List<Settlement>>.error(
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
+          ),
+        ),
+      );
+      addTearDown(container.dispose);
+      await _pumpUntilData(container, groupId);
+
+      final result = container.read(groupBalancesProvider(groupId));
+      expect(result.hasError, isTrue);
+      expect(result.hasValue, isFalse);
+    });
+
+    test('healthy group-settlements stream stays byte-identical', () async {
+      final container = makeContainer(Stream.value(const <Settlement>[]));
+      addTearDown(container.dispose);
+      await _pumpUntilData(container, groupId);
+
+      final result = container.read(groupBalancesProvider(groupId));
+      expect(result.hasValue, isTrue);
+      expect(_sumNet(result.requireValue), Decimal.zero);
     });
   });
 }
