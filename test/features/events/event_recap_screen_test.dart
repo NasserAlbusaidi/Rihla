@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -303,6 +305,56 @@ void main() {
       expect(find.text("Couldn't load recap data."), findsOneWidget);
       expect(find.text('Total spent'), findsNothing);
       expect(find.byKey(EventKeys.recapShareButton), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#1030: data-unavailable Retry re-subscribes all three streams and heals',
+    (tester) async {
+      final members = StreamController<List<GroupMember>>.broadcast();
+      addTearDown(members.close);
+      await pumpRihlaApp(
+        tester,
+        const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+        overrides: overridesFor(
+          outstandingRecap(),
+          membersStream: members.stream,
+        ),
+      );
+      await tester.pump();
+      members.addError(StateError('members failed'));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load recap data."), findsOneWidget);
+
+      // Broadcast controller accepts the re-subscription; the members leg
+      // heals and the gate lets the nets through.
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      members.add(const <GroupMember>[]);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load recap data."), findsNothing);
+      expect(find.text('Total spent'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#1030: data-unavailable renders the Arabic title under ar locale',
+    (tester) async {
+      await pumpRihlaApp(
+        tester,
+        const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+        locale: const Locale('ar'),
+        overrides: overridesFor(
+          outstandingRecap(),
+          membersStream:
+              Stream<List<GroupMember>>.error(StateError('members failed')),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('تعذّر تحميل بيانات الملخّص.'), findsOneWidget);
     },
   );
 

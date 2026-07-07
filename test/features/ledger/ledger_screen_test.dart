@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -315,6 +317,60 @@ void main() {
 
       expect(find.text("Couldn't load ledger"), findsOneWidget);
       expect(find.text('Item x1'), findsNothing);
+      // Drain plain (non-frame) timers pumpAndSettle can't advance.
+      await tester.pump(const Duration(seconds: 5));
+    },
+  );
+
+  // #1030: the data-error Retry must re-subscribe the MEMBERS stream too — a
+  // members-triggered error can't heal off an expenses/settlements-only
+  // invalidate (pins the groupMembersProvider invalidate in the retry callback).
+  testWidgets(
+    '#1030: ledger data-error Retry re-subscribes members and heals',
+    (tester) async {
+      final members = StreamController<List<GroupMember>>.broadcast();
+      addTearDown(members.close);
+      final healthyMembers = [
+        for (final uid in event.participantIds)
+          GroupMember(
+            id: uid,
+            groupId: groupId,
+            userId: uid,
+            displayName: event.participantNames[uid] ?? uid,
+            role: uid == event.createdBy ? 'CREATOR' : 'MEMBER',
+            joinedAt: event.createdAt,
+          ),
+      ];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: overridesFor(
+            effectiveEvent: event,
+            expenses: [expense(id: 'x1', payer: 'uid-a', amount: '10.000')],
+            membersStream: members.stream,
+          ),
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: LedgerScreen(groupId: groupId, eventId: eventId),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      members.addError(StateError('members failed'));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load ledger"), findsOneWidget);
+
+      // Broadcast controller accepts the re-subscription and serves data.
+      await tester.tap(find.text('Reload'));
+      await tester.pump();
+      members.add(healthyMembers);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load ledger"), findsNothing);
       // Drain plain (non-frame) timers pumpAndSettle can't advance.
       await tester.pump(const Duration(seconds: 5));
     },

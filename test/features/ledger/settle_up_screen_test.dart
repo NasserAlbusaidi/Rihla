@@ -669,6 +669,30 @@ void main() {
     },
   );
 
+  testWidgets(
+    '#1030: members loading with valued money streams → skeleton, not a '
+    'members-less #249 universe',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final members = StreamController<List<GroupMember>>();
+      addTearDown(members.close);
+
+      await tester.pumpWidget(
+        buildScreen(fakeDb, groupMembersStream: members.stream),
+      );
+      // Pump past event/group/expenses/settlements resolution — members stays
+      // pending, so the first-value window must be the skeleton, never a
+      // zero-folded #249 universe (WRONG money on this OUTBOUND basis).
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(find.byType(SkeletonLoader), findsOneWidget);
+      expect(find.byType(SettleUpPageBody), findsNothing);
+      expect(find.text("Couldn't load balances."), findsNothing);
+    },
+  );
+
   testWidgets('expense error state retry stays on error UI', (tester) async {
     final fakeDb = FakeFirebaseFirestore();
 
