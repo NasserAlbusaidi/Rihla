@@ -40,9 +40,11 @@ class SearchResults extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trimmed = query.trim();
-    // Empty/absent q (pinned): the field alone carries searchHint — no
-    // results section and no empty-state until q is non-empty.
-    if (trimmed.isEmpty) return const SizedBox.shrink();
+    // Empty/absent q (#1012, reversing the PR-5b blank-panel pin): show muted
+    // pre-query guidance — a search glyph + the scope line — so the v1 search
+    // scope (past events included) is honest before the first keystroke,
+    // instead of a blank panel. Still no results section / no empty-state.
+    if (trimmed.isEmpty) return const _PreQueryGuidance();
 
     final groups = ref.watch(userGroupsProvider).valueOrNull ?? const <Group>[];
     final matchedGroups = groups
@@ -304,6 +306,45 @@ class _ResultRow extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// #1012: pre-query guidance shown before the first keystroke. Mirrors the
+/// static [_NoMatches] structure (Center > Padding > Column, no animation /
+/// no ticker — do NOT reuse EmptyStateView, whose flutter_animate entrance
+/// breaks widget-test teardown). Reuses the existing `searchScopeLabel` string
+/// (already localized EN + AR) so the v1 scope is honest before any results.
+class _PreQueryGuidance extends StatelessWidget {
+  const _PreQueryGuidance();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      key: SearchKeys.preQueryGuidance,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space32,
+          vertical: context.spacing.space16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Iconsax.search_normal, size: 32, color: colors.textSecondary),
+            SizedBox(height: context.spacing.space12),
+            Text(
+              context.l10n.searchScopeLabel,
+              textAlign: TextAlign.center,
+              style: AppTypography.sans(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );
