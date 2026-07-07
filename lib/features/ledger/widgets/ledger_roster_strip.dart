@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../groups/services/member_name_resolver.dart';
 
@@ -232,7 +232,10 @@ class _Chip extends StatelessWidget {
     final colors = context.colors;
     if (isEmpty) {
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space8,
+          vertical: 2,
+        ),
         decoration: BoxDecoration(
           border: Border.all(color: colors.rule2, width: 1),
           borderRadius: BorderRadius.circular(context.spacing.radiusPill),
@@ -250,7 +253,10 @@ class _Chip extends StatelessWidget {
     }
     if (isSettled || person.signedAmount == Decimal.zero) {
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.space8,
+          vertical: 2,
+        ),
         decoration: BoxDecoration(
           color: colors.cardSoft,
           borderRadius: BorderRadius.circular(context.spacing.radiusPill),
@@ -271,13 +277,11 @@ class _Chip extends StatelessWidget {
     final bg = positive
         ? colors.success.withValues(alpha: 0.18)
         : colors.error.withValues(alpha: 0.16);
-    final fg = positive ? colors.successText : colors.errorText;
-    final prefix = positive ? '+' : '−';
-    final abs = person.signedAmount.abs().toStringAsFixed(
-      AppFormatters.currencyConfig[person.currency ?? currency]?.decimals ?? 3,
-    );
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space8, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.space8,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(context.spacing.radiusPill),
@@ -287,16 +291,13 @@ class _Chip extends StatelessWidget {
       // balances). Shrink-to-fit keeps every digit visible instead of clipping.
       child: FittedBox(
         fit: BoxFit.scaleDown,
-        child: Text(
-          '$prefix$abs',
-          maxLines: 1,
-          softWrap: false,
-          style: AppTypography.mono(
-            fontSize: 9.5,
-            color: fg,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
-          ),
+        child: RAmount(
+          value: person.signedAmount,
+          currency: person.currency ?? currency,
+          size: 9.5,
+          sign: true,
+          showCurrency: false,
+          weight: FontWeight.w600,
         ),
       ),
     );

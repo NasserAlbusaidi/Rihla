@@ -186,8 +186,11 @@ void main() {
 
       // #998: chips show Bob's OWN standing — the group owes him in both
       // buckets → two positive chips, each formatted at its bucket's precision.
-      expect(find.text('+5.000'), findsOneWidget);
-      expect(find.text('+15.00'), findsOneWidget);
+      // Rendered via RAmount as a Text.rich span tree (tiny "+ " sign prefix
+      // + full-size whole part + decimal fragment) — match the concatenated
+      // plain text, not a single flat Text.
+      expect(find.text('+ 5.000', findRichText: true), findsOneWidget);
+      expect(find.text('+ 15.00', findRichText: true), findsOneWidget);
     });
   });
 
@@ -300,8 +303,9 @@ void main() {
           overrides: overridesFor(
             effectiveEvent: event,
             expenses: [expense(id: 'x1', payer: 'uid-a', amount: '10.000')],
-            membersStream:
-                Stream<List<GroupMember>>.error(StateError('members failed')),
+            membersStream: Stream<List<GroupMember>>.error(
+              StateError('members failed'),
+            ),
           ),
           child: MaterialApp(
             theme: AppTheme.lightTheme,
