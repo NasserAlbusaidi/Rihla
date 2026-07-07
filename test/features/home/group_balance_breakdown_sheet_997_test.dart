@@ -205,4 +205,164 @@ void main() {
       );
     },
   );
+
+  // -------------------------------------------------------------------------
+  // #1028 — resolved-but-PARTIAL facades (post-#997 D3: group-settlements
+  // fold missing, or #244 failedEventIds). The hero already ORs partial into
+  // its notice; the sheet it opens must agree instead of rendering the rows
+  // unflagged (or, for a zero-net partial group, a false "all settled up").
+  // -------------------------------------------------------------------------
+
+  testWidgets(
+    '#1028: partial group with non-zero net → row + per-row Incomplete '
+    'caption + footer',
+    (tester) async {
+      final group = _makeGroup('g1', 'Desert Crew');
+      await tester.pumpWidget(
+        _buildTestApp(
+          prefs: prefs,
+          overrides: [
+            ..._baseOverrides([group]),
+            homeGroupBalanceProvider.overrideWith(
+              (ref, groupId) => AsyncValue.data((
+                userNet: {'OMR': Decimal.parse('5')},
+                userPerEventNet: const <String, Map<String, Decimal>>{},
+                eventCount: 1,
+                partial: true,
+                fromAggregate: false,
+              )),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(HomeKeys.balanceHeroCard));
+      await tester.pumpAndSettle();
+
+      final sheet = find.byType(GroupBalanceBreakdownSheet);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Desert Crew')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: sheet,
+          matching: find.byKey(HomeKeys.heroBreakdownRowIncomplete),
+        ),
+        findsOneWidget,
+        reason: 'a partial row must carry its own Incomplete caption',
+      );
+      expect(
+        find.descendant(
+          of: sheet,
+          matching: find.byKey(HomeKeys.heroBreakdownIncompleteNotice),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    '#1028: partial group with zero net → footer-only, never all-settled, '
+    'never a spinner',
+    (tester) async {
+      final group = _makeGroup('g1', 'Desert Crew');
+      await tester.pumpWidget(
+        _buildTestApp(
+          prefs: prefs,
+          overrides: [
+            ..._baseOverrides([group]),
+            homeGroupBalanceProvider.overrideWith(
+              (ref, groupId) => const AsyncValue.data((
+                userNet: <String, Decimal>{},
+                userPerEventNet: <String, Map<String, Decimal>>{},
+                eventCount: 1,
+                partial: true,
+                fromAggregate: false,
+              )),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(HomeKeys.balanceHeroCard));
+      await tester.pumpAndSettle();
+
+      final sheet = find.byType(GroupBalanceBreakdownSheet);
+      expect(
+        find.descendant(
+          of: sheet,
+          matching: find.text('You\'re all settled up'),
+        ),
+        findsNothing,
+        reason: 'a partial zero-net is unknown-incomplete, not settled',
+      );
+      expect(
+        find.descendant(
+          of: sheet,
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsNothing,
+        reason: 'the facade already resolved — a spinner would never end',
+      );
+      expect(
+        find.descendant(
+          of: sheet,
+          matching: find.byKey(HomeKeys.heroBreakdownIncompleteNotice),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    '#1028: partial:false group renders byte-identical — no caption, '
+    'no footer',
+    (tester) async {
+      final group = _makeGroup('g1', 'Desert Crew');
+      await tester.pumpWidget(
+        _buildTestApp(
+          prefs: prefs,
+          overrides: [
+            ..._baseOverrides([group]),
+            homeGroupBalanceProvider.overrideWith(
+              (ref, groupId) => AsyncValue.data((
+                userNet: {'OMR': Decimal.parse('5')},
+                userPerEventNet: const <String, Map<String, Decimal>>{},
+                eventCount: 1,
+                partial: false,
+                fromAggregate: true,
+              )),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(HomeKeys.balanceHeroCard));
+      await tester.pumpAndSettle();
+
+      final sheet = find.byType(GroupBalanceBreakdownSheet);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Desert Crew')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: sheet,
+          matching: find.byKey(HomeKeys.heroBreakdownRowIncomplete),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: sheet,
+          matching: find.byKey(HomeKeys.heroBreakdownIncompleteNotice),
+        ),
+        findsNothing,
+      );
+    },
+  );
 }

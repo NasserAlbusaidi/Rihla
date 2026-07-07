@@ -18,6 +18,7 @@ import '../keys/home_keys.dart';
 typedef _GroupBalanceEntry = ({
   Group group,
   List<({String currency, Decimal net})> lines,
+  bool partial,
 });
 
 /// Per-group balance breakdown opened from the balance hero's tap
@@ -70,7 +71,14 @@ class GroupBalanceBreakdownSheet extends ConsumerWidget {
       // #997: a loading/errored facade must not read as a settled (dropped)
       // group — track it separately so the list can flag itself incomplete
       // instead of silently omitting the group.
+      // #1028: a RESOLVED-but-partial facade (post-#997 D3: missing group-
+      // settlements fold, or #244 failedEventIds) is a third state — its
+      // rows render flagged, and a zero-net partial group must feed the
+      // footer instead of reading as settled. Kept distinct from
+      // unresolvedCount: only unresolved may show the spinner (a partial
+      // facade already resolved — its spinner would never end).
       var unresolvedCount = 0;
+      var partialCount = 0;
       for (final group in groupsAsync.value!) {
         final balanceAsync = ref.watch(homeGroupBalanceProvider(group.id));
         if ((balanceAsync.isLoading && !balanceAsync.hasValue) ||
@@ -78,21 +86,29 @@ class GroupBalanceBreakdownSheet extends ConsumerWidget {
           unresolvedCount++;
           continue;
         }
-        final userNet =
-            balanceAsync.valueOrNull?.userNet ?? const <String, Decimal>{};
+        final balance = balanceAsync.valueOrNull;
+        final partial = balance?.partial ?? false;
+        if (partial) partialCount++;
+        final userNet = balance?.userNet ?? const <String, Decimal>{};
         final lines = nonZeroNetsGccFirst(userNet);
         if (lines.isNotEmpty) {
-          entries.add((group: group, lines: lines));
+          entries.add((group: group, lines: lines, partial: partial));
         }
       }
       body = entries.isEmpty
           ? (unresolvedCount > 0
                 ? const _Loading()
+                : partialCount > 0
+                ? _RowsList(
+                    entries: const [],
+                    onTapGroup: (groupId) => _openSettleUp(context, groupId),
+                    incompleteCount: partialCount,
+                  )
                 : _EmptyBody(text: context.l10n.heroBreakdownEmpty))
           : _RowsList(
               entries: entries,
               onTapGroup: (groupId) => _openSettleUp(context, groupId),
-              unresolvedCount: unresolvedCount,
+              incompleteCount: unresolvedCount + partialCount,
             );
     }
 
@@ -131,20 +147,20 @@ class _RowsList extends StatelessWidget {
   const _RowsList({
     required this.entries,
     required this.onTapGroup,
-    this.unresolvedCount = 0,
+    this.incompleteCount = 0,
   });
 
   final List<_GroupBalanceEntry> entries;
   final ValueChanged<String> onTapGroup;
 
-  /// #997: groups whose balance facade was loading/errored, dropped from
-  /// [entries] rather than presented as settled. > 0 appends a footer row
-  /// reusing the hero's `homeBalanceIncompleteNotice` wording.
-  final int unresolvedCount;
+  /// #997/#1028: groups whose balance facade was loading/errored (dropped
+  /// from [entries]) plus resolved-but-partial ones. > 0 appends a footer
+  /// row reusing the hero's `homeBalanceIncompleteNotice` wording.
+  final int incompleteCount;
 
   @override
   Widget build(BuildContext context) {
-    final hasNotice = unresolvedCount > 0;
+    final hasNotice = incompleteCount > 0;
     return ListView.separated(
       shrinkWrap: true,
       itemCount: entries.length + (hasNotice ? 1 : 0),
@@ -160,6 +176,7 @@ class _RowsList extends StatelessWidget {
         return _GroupBalanceRow(
           group: entry.group,
           lines: entry.lines,
+          partial: entry.partial,
           onTap: () => onTapGroup(entry.group.id),
         );
       },
@@ -200,11 +217,16 @@ class _GroupBalanceRow extends StatelessWidget {
   const _GroupBalanceRow({
     required this.group,
     required this.lines,
+    required this.partial,
     required this.onTap,
   });
 
   final Group group;
   final List<({String currency, Decimal net})> lines;
+
+  /// #1028: the facade flagged this balance incomplete — mirror the home
+  /// row's compact caption (`home_screen.dart` `_GroupRow`, #244 wording).
+  final bool partial;
   final VoidCallback onTap;
 
   @override
@@ -264,6 +286,24 @@ class _GroupBalanceRow extends StatelessWidget {
                       fontSize: 11,
                       color: colors.textSecondary,
                     ),
+                  ),
+                ],
+                if (partial) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    key: HomeKeys.heroBreakdownRowIncomplete,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Iconsax.warning_2, size: 11, color: colors.warning),
+                      const SizedBox(width: 3),
+                      Text(
+                        context.l10n.homeGroupBalanceIncomplete,
+                        style: AppTypography.sans(
+                          fontSize: 10,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],

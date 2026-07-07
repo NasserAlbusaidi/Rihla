@@ -230,9 +230,18 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       banner: true,
       expensesAsync.when(
         data: (expenses) {
-          final settlements = settlementsAsync.hasError
-              ? const <Settlement>[]
-              : settlementsAsync.valueOrNull ?? const [];
+          // #1028: a hard-errored settlements stream must not fold to [] —
+          // the basis is OUTBOUND (feeds the settlement write) and empty
+          // folds resurrect settled debts as over-pay suggestions. Stale-
+          // valued errors keep rendering (#1005 hard-error pattern); the
+          // first-value window gets the same skeleton as expenses loading.
+          if (settlementsAsync.hasError && !settlementsAsync.hasValue) {
+            return _balancesErrorView(context, eventRef);
+          }
+          if (settlementsAsync.isLoading && !settlementsAsync.hasValue) {
+            return SkeletonLoader.groupList();
+          }
+          final settlements = settlementsAsync.valueOrNull ?? const [];
 
           // #249: fold departed-member split recipients into the
           // balance universe so settle-up suggestions conserve. The
@@ -290,9 +299,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           // one-shot does not latch before live members and money-flow basis are
           // authoritative. If members error, fall back to the old detector path
           // so exact/custom/personal/large warnings still show; only the
-          // payer-left reason is skipped. If settlements error, the balance
-          // basis above uses empty settlements and warnings fail open.
-          if (settlementsAsync.hasValue || settlementsAsync.hasError) {
+          // payer-left reason is skipped. A hard settlements error no longer
+          // reaches here (#1028 — the loud gate above returns first), so the
+          // fail-open contract survives only for the MEMBERS-error leg.
+          if (settlementsAsync.hasValue) {
             if (groupMembersAsync.hasValue) {
               final activeParticipantIds = event.participantIds
                   .toSet()
@@ -403,31 +413,41 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           );
         },
         loading: SkeletonLoader.groupList,
-        error: (e, _) => Center(
-          child: Padding(
-            padding: EdgeInsets.all(context.spacing.space24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Iconsax.warning_2, size: 40, color: context.colors.error),
-                SizedBox(height: context.spacing.space16),
-                Text(
-                  context.l10n.settleUpCouldNotLoadBalances,
-                  style: AppTypography.sans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: context.colors.textPrimary,
-                  ),
-                ),
-                SizedBox(height: context.spacing.space8),
-                TextButton(
-                  onPressed: () =>
-                      ref.invalidate(eventExpensesProvider(eventRef)),
-                  child: Text(context.l10n.commonRetry),
-                ),
-              ],
+        error: (e, _) => _balancesErrorView(context, eventRef),
+      ),
+    );
+  }
+
+  /// Loud couldn't-load view shared by the expenses error branch and the
+  /// #1028 settlements hard-error gate. Retry invalidates BOTH streams — a
+  /// settlements-triggered error could never heal off an expenses-only
+  /// invalidate.
+  Widget _balancesErrorView(BuildContext context, EventRef eventRef) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(context.spacing.space24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Iconsax.warning_2, size: 40, color: context.colors.error),
+            SizedBox(height: context.spacing.space16),
+            Text(
+              context.l10n.settleUpCouldNotLoadBalances,
+              style: AppTypography.sans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: context.colors.textPrimary,
+              ),
             ),
-          ),
+            SizedBox(height: context.spacing.space8),
+            TextButton(
+              onPressed: () {
+                ref.invalidate(eventExpensesProvider(eventRef));
+                ref.invalidate(eventSettlementsProvider(eventRef));
+              },
+              child: Text(context.l10n.commonRetry),
+            ),
+          ],
         ),
       ),
     );
@@ -527,9 +547,14 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final eventRef = (groupId: widget.groupId, eventId: widget.eventId);
     final event = ref.read(eventDetailProvider(eventRef)).valueOrNull;
     final expenses = ref.read(eventExpensesProvider(eventRef)).valueOrNull;
-    if (event == null || expenses == null) return null;
-    final settlements =
-        ref.read(eventSettlementsProvider(eventRef)).valueOrNull ?? const [];
+    // #1028: a valueless settlements read (loading or hard error) must SKIP
+    // revalidation like the expenses leg — folding it to [] recomputed the
+    // cap against a basis missing every settlement (#773 demands parity).
+    // A legitimately empty list is [], never null.
+    final settlements = ref
+        .read(eventSettlementsProvider(eventRef))
+        .valueOrNull;
+    if (event == null || expenses == null || settlements == null) return null;
     final groupMembers =
         ref.read(groupMembersProvider(widget.groupId)).valueOrNull ?? const [];
     final allMemberIds = groupMembers.map((m) => m.userId).toSet();

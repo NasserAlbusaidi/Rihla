@@ -574,6 +574,60 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
+  testWidgets(
+    'settlements hard error → loud error view; Retry heals once the stream '
+    'recovers (#1028)',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final settlements = StreamController<List<Settlement>>.broadcast();
+      addTearDown(settlements.close);
+
+      await tester.pumpWidget(
+        buildScreen(fakeDb, settlementsStream: settlements.stream),
+      );
+      await tester.pump();
+      settlements.addError(StateError('settlements failed'));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load balances."), findsOneWidget);
+
+      // Retry must invalidate the SETTLEMENTS stream too — the broadcast
+      // controller accepts the re-subscription and serves data this time.
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      settlements.add(const <Settlement>[]);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load balances."), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'settlements loading with valued expenses → skeleton, not a zero-fold '
+    'basis (#1028)',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final controller = StreamController<List<Settlement>>();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(
+        buildScreen(fakeDb, settlementsStream: controller.stream),
+      );
+      // Pump past event/group/expenses stream resolution (bounded — the
+      // settlements skeleton is a Skeletonizer and never settles).
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // The whole body must be the skeleton — a rendered SettleUpPageBody
+      // here means the basis was computed against a zero-folded settlements
+      // stream (the #1028 bug).
+      expect(find.byType(SkeletonLoader), findsOneWidget);
+      expect(find.byType(SettleUpPageBody), findsNothing);
+      expect(find.text("Couldn't load balances."), findsNothing);
+    },
+  );
+
   testWidgets('expense error state retry stays on error UI', (tester) async {
     final fakeDb = FakeFirebaseFirestore();
 
