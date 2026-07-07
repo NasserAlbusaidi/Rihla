@@ -109,6 +109,7 @@ void main() {
     List<Override> overrides({
       Stream<Event?>? eventStream,
       Stream<List<Expense>>? expensesStream,
+      Stream<List<GroupMember>>? membersStream,
     }) =>
         [
           eventDetailProvider.overrideWith(
@@ -118,7 +119,7 @@ void main() {
           eventSettlementsProvider.overrideWith(
               (r, a) => Stream.value(const <Settlement>[])),
           groupMembersProvider.overrideWith(
-              (r, a) => Stream.value(const <GroupMember>[])),
+              (r, a) => membersStream ?? Stream.value(const <GroupMember>[])),
           tripReceiptAuditProvider.overrideWith((r, a) async =>
               (corrections: const <ActivityLog>[], coverage: AuditCoverage.complete)),
         ];
@@ -183,6 +184,27 @@ void main() {
       // force the errored stream to surface (awaiting its future throws)
       try {
         await c.read(eventExpensesProvider(ref).future);
+      } catch (_) {}
+
+      expect(c.read(tripReceiptProvider(ref)), isA<AsyncError>());
+    });
+
+    test(
+        '#1030 pin: members hard error → AsyncError (no members-less export); '
+        'the gate predates #1030 — this pins it', () async {
+      final c = ProviderContainer(
+        overrides: overrides(
+          membersStream:
+              Stream<List<GroupMember>>.error(Exception('members failed')),
+        ),
+      );
+      addTearDown(c.dispose);
+      await c.read(eventSettlementsProvider(ref).future);
+      await c.read(tripReceiptAuditProvider(ref).future);
+      await c.read(eventDetailProvider(ref).future);
+      await c.read(eventExpensesProvider(ref).future);
+      try {
+        await c.read(groupMembersProvider('g1').future);
       } catch (_) {}
 
       expect(c.read(tripReceiptProvider(ref)), isA<AsyncError>());
