@@ -375,8 +375,12 @@ void main() {
   );
 
   testWidgets(
-    '#204: member-provider errors do not suppress existing review reasons',
+    '#1030: members HARD error → loud balances error view, no basis, no sheet',
     (tester) async {
+      // Re-scopes the old #204 fallback pin: with no members value the #249
+      // universe cannot be built — rendering suggestions would be WRONG money
+      // (departed recipients dropped), so the screen goes loud and no settle
+      // write is reachable at all, which dominates "warn but allow".
       final fakeDb = FakeFirebaseFirestore();
       await tester.pumpWidget(
         buildScreen(
@@ -399,8 +403,45 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.text("Couldn't load balances."), findsOneWidget);
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#1030 (#204/#898 preserved): members STALE-VALUED error → basis renders, '
+    'sheet still shows warnings',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final members = StreamController<List<GroupMember>>();
+      addTearDown(members.close);
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          expensesStream: Stream.value([
+            Expense(
+              id: 'e1',
+              tripId: eventId,
+              payerParticipantId: 'alice',
+              amount: Decimal.parse('20.000'),
+              description: 'Dinner',
+              scope: ExpenseScope.global,
+              splitMode: SplitMode.exact,
+              createdAt: DateTime(2026, 5, 16),
+              createdBy: 'alice',
+            ),
+          ]),
+          groupMembersStream: members.stream,
+        ),
+      );
+      members.add(const []); // value first…
+      await tester.pump();
+      members.addError(StateError('members failed')); // …then stale-valued
+      await tester.pumpAndSettle();
+
       expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
       expect(find.text('Exact split'), findsOneWidget);
+      expect(find.text("Couldn't load balances."), findsNothing);
     },
   );
 
@@ -622,6 +663,30 @@ void main() {
       // The whole body must be the skeleton — a rendered SettleUpPageBody
       // here means the basis was computed against a zero-folded settlements
       // stream (the #1028 bug).
+      expect(find.byType(SkeletonLoader), findsOneWidget);
+      expect(find.byType(SettleUpPageBody), findsNothing);
+      expect(find.text("Couldn't load balances."), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#1030: members loading with valued money streams → skeleton, not a '
+    'members-less #249 universe',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final members = StreamController<List<GroupMember>>();
+      addTearDown(members.close);
+
+      await tester.pumpWidget(
+        buildScreen(fakeDb, groupMembersStream: members.stream),
+      );
+      // Pump past event/group/expenses/settlements resolution — members stays
+      // pending, so the first-value window must be the skeleton, never a
+      // zero-folded #249 universe (WRONG money on this OUTBOUND basis).
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
       expect(find.byType(SkeletonLoader), findsOneWidget);
       expect(find.byType(SettleUpPageBody), findsNothing);
       expect(find.text("Couldn't load balances."), findsNothing);

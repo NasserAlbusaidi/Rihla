@@ -85,11 +85,20 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         }
         final group = groupAsync.valueOrNull;
         if (group == null) return const _NotFoundState();
-        if (expensesAsync.hasError || settlementsAsync.hasError) {
+        // #1030: members joins the gate — ledgerViewProvider folds it into
+        // the #249 universe, so a members error renders wrong per-member
+        // nets on the balances tab / roster strip. Bare hasError matches
+        // this screen's local convention (stricter than #1005; changing the
+        // money-stream legs is out of scope).
+        final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
+        if (expensesAsync.hasError ||
+            settlementsAsync.hasError ||
+            membersAsync.hasError) {
           return _DataErrorState(
             onRetry: () {
               ref.invalidate(eventExpensesProvider(eventRef));
               ref.invalidate(eventSettlementsProvider(eventRef));
+              ref.invalidate(groupMembersProvider(widget.groupId));
             },
           );
         }

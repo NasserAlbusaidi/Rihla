@@ -3178,6 +3178,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get recapEmptyMessage => 'أضِف مصروفًا لرؤية ملخّص هذا الحدث.';
 
   @override
+  String get recapDataUnavailable => 'تعذّر تحميل بيانات الملخّص.';
+
+  @override
   String get recapTopPayer => 'الأكثر دفعًا';
 
   @override

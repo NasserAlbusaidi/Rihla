@@ -14,6 +14,8 @@ import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
+import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/providers/ledger_view_provider.dart';
 import '../../ledger/utils/ledger_categories.dart';
 import '../keys/event_keys.dart';
@@ -63,6 +65,29 @@ class EventRecapScreen extends ConsumerWidget {
       error: (_, _) => _notFound(context),
       data: (event) {
         if (event == null) return _notFound(context);
+        // #1030: recap + its share/export CTAs render ledgerViewProvider
+        // folds — a hard-errored source stream means wrong nets (members: a
+        // wrong #249 universe), so gate all three BEFORE the recap fold (an
+        // errored expenses stream empties the recap, which would render the
+        // misleading _empty state instead). Stale values serve; the
+        // first-value window keeps the existing spinner.
+        final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+        final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
+        final membersAsync = ref.watch(groupMembersProvider(groupId));
+        final sources = [expensesAsync, settlementsAsync, membersAsync];
+        if (sources.any((s) => s.hasError && !s.hasValue)) {
+          return _dataUnavailable(context, ref, eventRef);
+        }
+        if (sources.any((s) => s.isLoading && !s.hasValue)) {
+          return _wrap(context, const [
+            Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 48),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ]);
+        }
         final recap = ref.watch(eventRecapProvider(eventRef));
         if (recap.isEmpty) return _empty(context);
         // Names resolved at the widget (the model carries only ids) via the
@@ -968,6 +993,27 @@ class EventRecapScreen extends ConsumerWidget {
         icon: Iconsax.warning_2,
         title: context.l10n.eventNotFound,
         message: context.l10n.recapEmptyMessage,
+      ),
+    ]);
+  }
+
+  /// #1030: a source stream hard-errored — the recap's nets would be computed
+  /// without its folds. Retry invalidates all three streams (a members- or
+  /// settlements-triggered error could never heal off an expenses-only
+  /// invalidate).
+  Widget _dataUnavailable(BuildContext context, WidgetRef ref, EventRef eventRef) {
+    return _wrap(context, [
+      const SizedBox(height: 24),
+      EmptyStateView(
+        icon: Iconsax.warning_2,
+        title: context.l10n.recapDataUnavailable,
+        message: context.l10n.recapEmptyMessage,
+        actionLabel: context.l10n.commonRetry,
+        onAction: () {
+          ref.invalidate(eventExpensesProvider(eventRef));
+          ref.invalidate(eventSettlementsProvider(eventRef));
+          ref.invalidate(groupMembersProvider(groupId));
+        },
       ),
     ]);
   }
