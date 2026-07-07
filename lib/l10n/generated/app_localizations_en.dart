@@ -1440,7 +1440,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeRestoreSectionCaption => 'Been here before?';
 
   @override
-  String get homeSetNameChip => 'Set your name';
+  String get homeSetNameChip => 'Set name';
 
   @override
   String get homeGuestCaption =>
