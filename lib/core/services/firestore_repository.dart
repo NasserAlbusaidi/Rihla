@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/firebase_config.dart';
+import '../utils/listen_recovery.dart';
 
 /// Abstract base class for all Firestore repository services.
 ///
@@ -26,6 +27,19 @@ abstract class FirestoreRepository {
 
   /// Access the underlying Firestore instance (db).
   FirebaseFirestore get db => _db;
+
+  /// Wraps a Firestore listen with the #997 bounded permission-denied
+  /// recovery (see [recoverDeniedListen]). Every group-scoped `watch*` in the
+  /// app goes through this; `watchUserGroups` deliberately does not (a
+  /// collection query returns an empty match set instead of a rule error, so
+  /// it self-heals on the next snapshot).
+  @protected
+  Stream<T> recoverListen<T>(Stream<T> Function() subscribe) {
+    return recoverDeniedListen(
+      subscribe,
+      pendingWritesBarrier: _db.waitForPendingWrites,
+    );
+  }
 
   /// Returns a typed reference to a module subcollection nested under an event.
   ///

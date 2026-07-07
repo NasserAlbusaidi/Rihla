@@ -33,31 +33,33 @@ class EventService extends FirestoreRepository {
   /// The Firestore query filters isDeleted=false and orders by createdAt DESC.
   /// Client-side sort overrides the order for null-date events (D-25).
   Stream<List<Event>> watchGroupEvents(String groupId) {
-    return db
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .where('isDeleted', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) {
-          // #532: decode per-doc so one malformed event can't error the whole
-          // stream — mirrors the Group/Member path in group_provider.dart.
-          final events = decodeDocsSkippingMalformed(
-            snap.docs,
-            Event.fromDoc,
-            context: 'watchGroupEvents',
-          );
-          events.sort((a, b) {
-            if (a.startDate == null && b.startDate == null) {
+    return recoverListen(() {
+      return db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snap) {
+            // #532: decode per-doc so one malformed event can't error the whole
+            // stream — mirrors the Group/Member path in group_provider.dart.
+            final events = decodeDocsSkippingMalformed(
+              snap.docs,
+              Event.fromDoc,
+              context: 'watchGroupEvents',
+            );
+            events.sort((a, b) {
+              if (a.startDate == null && b.startDate == null) {
+                return b.createdAt.compareTo(a.createdAt);
+              }
+              if (a.startDate == null) return -1;
+              if (b.startDate == null) return 1;
               return b.createdAt.compareTo(a.createdAt);
-            }
-            if (a.startDate == null) return -1;
-            if (b.startDate == null) return 1;
-            return b.createdAt.compareTo(a.createdAt);
+            });
+            return List.unmodifiable(events);
           });
-          return List.unmodifiable(events);
-        });
+    });
   }
 
   /// Reactive stream for a single event by compound key.
@@ -67,20 +69,22 @@ class EventService extends FirestoreRepository {
     required String groupId,
     required String eventId,
   }) {
-    return db
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .snapshots()
-        .map((doc) {
-          if (!doc.exists) return null;
-          final event = Event.fromDoc(doc);
-          // #518: fence out soft-deleted docs — a single-doc snapshot always
-          // EXISTS, so isDeleted must be checked in-memory (no server-side
-          // .where filter on a .doc().snapshots() stream).
-          return event.isDeleted ? null : event;
-        });
+    return recoverListen(() {
+      return db
+          .collection('groups')
+          .doc(groupId)
+          .collection('events')
+          .doc(eventId)
+          .snapshots()
+          .map((doc) {
+            if (!doc.exists) return null;
+            final event = Event.fromDoc(doc);
+            // #518: fence out soft-deleted docs — a single-doc snapshot always
+            // EXISTS, so isDeleted must be checked in-memory (no server-side
+            // .where filter on a .doc().snapshots() stream).
+            return event.isDeleted ? null : event;
+          });
+    });
   }
 
   /// Stages a new event: applies the write to the local Firestore cache and

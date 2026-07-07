@@ -32,23 +32,26 @@ class SettlementService extends FirestoreRepository {
   /// The query filters `isDeleted == false` so soft-deleted documents are
   /// excluded from the stream without a client-side filter.
   Stream<List<Settlement>> watchSettlements(String groupId, String eventId) {
-    return eventSubcollection(groupId, eventId, 'settlements')
-        .where('isDeleted', isEqualTo: false)
-        .orderBy('settledAt', descending: true)
-        .snapshots()
-        .map(
-          // #928 money-fence backstop: a doc-level catastrophe is skipped
-          // rather than erroring the settle-up stream. Skip has no server-oracle
-          // counterpart for a money doc (the oracle is total) — the factory's
-          // totality (test 7) is the real invariant, this is a last resort.
-          (snap) => decodeDocsSkippingMalformed(
-            snap.docs,
-            (d) => Settlement.fromFirestore(
-              {...d.data()! as Map<String, dynamic>, 'id': d.id},
+    return recoverListen(() {
+      return eventSubcollection(groupId, eventId, 'settlements')
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('settledAt', descending: true)
+          .snapshots()
+          .map(
+            // #928 money-fence backstop: a doc-level catastrophe is skipped
+            // rather than erroring the settle-up stream. Skip has no
+            // server-oracle counterpart for a money doc (the oracle is total) —
+            // the factory's totality (test 7) is the real invariant, this is a
+            // last resort.
+            (snap) => decodeDocsSkippingMalformed(
+              snap.docs,
+              (d) => Settlement.fromFirestore(
+                {...d.data()! as Map<String, dynamic>, 'id': d.id},
+              ),
+              context: 'SettlementService.watchSettlements',
             ),
-            context: 'SettlementService.watchSettlements',
-          ),
-        );
+          );
+    });
   }
 
   /// One-shot read of non-deleted settlements for an event — the same query as
