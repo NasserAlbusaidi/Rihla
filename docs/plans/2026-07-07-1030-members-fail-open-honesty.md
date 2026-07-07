@@ -253,9 +253,7 @@ testWidgets(
 - Modify: `lib/features/ledger/screens/settle_up_screen.dart:558-559`
 - Test: `test/features/ledger/settle_up_revalidation_test.dart`
 
-**Step 1: RED.** Mirror the file's existing #1028 settlements-skip test: members override that is valueless at revalidation time (e.g. `Stream<List<GroupMember>>.error(...)` swapped in before the record-sheet confirm, or a never-emitting stream via the harness's re-override pattern — reuse whatever mechanism the settlements-skip test uses) → the over-cap write is NOT blocked-by-wrong-cap / the revalidation is skipped exactly like the expenses/settlements legs. Name: `'#1030: valueless members read skips #773 revalidation like the money legs'`.
-
-**Step 2: Run it** — Expected: FAIL (today members folds to `[]` and revalidation recomputes against a wrong universe).
+**Step 1 (amended during implementation): no dedicated RED test — the state is structurally unreachable through the UI.** Verified in-session: (a) there is NO existing #1028 settlements-skip test either (that leg shipped as untested hardening); (b) after Task 3's gates, a tile/sheet only renders when members `hasValue`; (c) Riverpod 2 `invalidate`/rebuild retains the previous value (`copyWithPrevious`, `hasValue` stays true → the STALE value serves, which is the accepted #1005 leg, not the `[]` fold); a never-valued stream never renders a tile. So `!hasValue` at revalidation is defensive parity with the guard's existing `event == null`/`expenses == null`/`settlements == null` siblings (same unreachability profile). The reachable members-error class is pinned by Task 3's two tests. Documented here + in the PR body instead of a fake RED.
 
 **Step 3: Implementation.** Replace `:558-559`:
 

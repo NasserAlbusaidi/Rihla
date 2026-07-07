@@ -568,8 +568,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         .read(eventSettlementsProvider(eventRef))
         .valueOrNull;
     if (event == null || expenses == null || settlements == null) return null;
-    final groupMembers =
-        ref.read(groupMembersProvider(widget.groupId)).valueOrNull ?? const [];
+    // #1030: a valueless members read must SKIP revalidation like the legs
+    // above — folding it to [] recomputes the cap against the wrong #249
+    // universe. Stale values serve; post-#1030 render gates this is
+    // defensive parity, same profile as the event==null sibling.
+    final membersAsync = ref.read(groupMembersProvider(widget.groupId));
+    if (!membersAsync.hasValue) return null;
+    final groupMembers = membersAsync.requireValue;
     final allMemberIds = groupMembers.map((m) => m.userId).toSet();
     final liveMemberIds = groupMembers
         .where((m) => !m.isTombstone)
