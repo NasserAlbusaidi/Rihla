@@ -13,6 +13,8 @@ import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/r_icon_button.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
@@ -54,14 +56,7 @@ class EventRecapScreen extends ConsumerWidget {
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
 
     final body = eventAsync.when(
-      loading: () => _wrap(context, const [
-        Center(
-          child: Padding(
-            padding: EdgeInsets.only(top: 48),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      ]),
+      loading: () => _loadingSkeleton(context),
       error: (_, _) => _notFound(context),
       data: (event) {
         if (event == null) return _notFound(context);
@@ -79,14 +74,7 @@ class EventRecapScreen extends ConsumerWidget {
           return _dataUnavailable(context, ref, eventRef);
         }
         if (sources.any((s) => s.isLoading && !s.hasValue)) {
-          return _wrap(context, const [
-            Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: 48),
-                child: CircularProgressIndicator(),
-              ),
-            ),
-          ]);
+          return _loadingSkeleton(context);
         }
         final recap = ref.watch(eventRecapProvider(eventRef));
         if (recap.isEmpty) return _empty(context);
@@ -973,6 +961,34 @@ class EventRecapScreen extends ConsumerWidget {
         color: context.colors.textSecondary,
       ),
     );
+  }
+
+  /// Layout-matched loading placeholder (DESIGN.md §10) approximating the
+  /// loaded recap's shape: title + subtitle bars, the hero total card, then
+  /// stacked highlight/category/payer/status card blocks. Used for both the
+  /// event-detail load and the expenses/settlements/members gate above.
+  Widget _loadingSkeleton(BuildContext context) {
+    return _wrap(context, [
+      SkeletonLoader(
+        itemCount: 1,
+        itemBuilder: (context, index) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SkeletonBar(width: 160, height: 24),
+            SizedBox(height: context.spacing.space8),
+            const SkeletonBar(width: 120, height: 14),
+            SizedBox(height: context.spacing.space24),
+            const SkeletonCard(height: 140),
+            SizedBox(height: context.spacing.space24),
+            const SkeletonCard(height: 96),
+            SizedBox(height: context.spacing.space16),
+            const SkeletonCard(height: 120),
+            SizedBox(height: context.spacing.space16),
+            const SkeletonCard(height: 72),
+          ],
+        ),
+      ),
+    ]);
   }
 
   Widget _empty(BuildContext context) {

@@ -342,7 +342,7 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(EventKeys.settingsBackButton), findsOneWidget);
-      expect(find.text('Event Settings'), findsNothing);
+      expect(find.text('Event settings'), findsNothing);
     });
 
     testWidgets('shows retry state when event is missing', (tester) async {
@@ -379,12 +379,12 @@ void main() {
       expect(find.text('Could not load settings'), findsOneWidget);
     });
 
-    testWidgets('Save Changes button is present', (tester) async {
+    testWidgets('Save changes button is present', (tester) async {
       final event = _makeEvent();
       await tester.pumpWidget(_wrapSettings(event: event));
       await tester.pumpAndSettle();
 
-      expect(find.text('Save Changes'), findsOneWidget);
+      expect(find.text('Save changes'), findsOneWidget);
     });
 
     testWidgets('delete event tile is visible for creator', (tester) async {
@@ -795,7 +795,7 @@ void main() {
 
       // Change name
       await tester.enterText(find.byType(TextField).first, 'New Name');
-      await tester.tap(find.text('Save Changes'));
+      await tester.tap(find.text('Save changes'));
       await tester.pumpAndSettle();
 
       expect(find.text('Event updated'), findsOneWidget);

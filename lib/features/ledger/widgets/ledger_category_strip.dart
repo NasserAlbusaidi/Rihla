@@ -30,11 +30,19 @@ class LedgerCategoryStrip extends StatelessWidget {
     const order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     final available = order.where(present.contains).toList(growable: false);
 
+    // #1041 §4: a horizontal ListView tight-constrains every child's cross
+    // axis to (box height − vertical padding), so this box must itself be
+    // ≥44dp for a chip's opaque GestureDetector to reach the 44dp tap-target
+    // floor — the visual pill stays compact (see _AllChip/_CategoryChip's
+    // Center wrapper), only the invisible hit region grows. No bottom
+    // padding here so the full 44dp reaches the children; the resulting
+    // ~4dp of Center slack above/below the pill replaces the old fixed 4dp
+    // gap.
     return SizedBox(
-      height: 40,
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
         children: [
           _AllChip(
             count: totalCount,
@@ -75,42 +83,45 @@ class _AllChip extends StatelessWidget {
         onTap();
       },
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
-        decoration: BoxDecoration(
-          color: active ? colors.textPrimary : colors.cardSurface,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(
-            color: active ? colors.textPrimary : colors.rule2,
-            width: 1,
-          ),
-        ),
-        // Label and count are separate spans; the count is LTR-isolated so the
-        // old "label · N" string can't collapse into "All 20" in Arabic (#155).
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              context.l10n.ledgerAllFilter,
-              style: AppTypography.sans(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: active ? colors.scaffoldBackground : colors.ink2,
-              ),
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
+          decoration: BoxDecoration(
+            color: active ? colors.textPrimary : colors.cardSurface,
+            borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+            border: Border.all(
+              color: active ? colors.textPrimary : colors.rule2,
+              width: 1,
             ),
-            const SizedBox(width: 6),
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Text(
-                '($count)',
+          ),
+          // Label and count are separate spans; the count is LTR-isolated so
+          // the old "label · N" string can't collapse into "All 20" in
+          // Arabic (#155).
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.l10n.ledgerAllFilter,
                 style: AppTypography.sans(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w500,
                   color: active ? colors.scaffoldBackground : colors.ink2,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  '($count)',
+                  style: AppTypography.sans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: active ? colors.scaffoldBackground : colors.ink2,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -136,37 +147,39 @@ class _CategoryChip extends StatelessWidget {
         onTap();
       },
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
-        decoration: BoxDecoration(
-          color: active ? colors.textPrimary : colors.cardSurface,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(
-            color: active ? colors.textPrimary : colors.rule2,
-            width: 1,
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.space12, vertical: context.spacing.space8),
+          decoration: BoxDecoration(
+            color: active ? colors.textPrimary : colors.cardSurface,
+            borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+            border: Border.all(
+              color: active ? colors.textPrimary : colors.rule2,
+              width: 1,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: ledgerCategoryColor(colors, bucket),
-                shape: BoxShape.circle,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: ledgerCategoryColor(colors, bucket),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              ledgerCategoryName(bucket, context.l10n),
-              style: AppTypography.sans(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: active ? colors.scaffoldBackground : colors.ink2,
+              const SizedBox(width: 6),
+              Text(
+                ledgerCategoryName(bucket, context.l10n),
+                style: AppTypography.sans(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: active ? colors.scaffoldBackground : colors.ink2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

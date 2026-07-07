@@ -10,7 +10,12 @@ import '../../core/utils/formatters.dart';
 ///
 /// `auto` (default) defers to [RAmount.sign]: positive → sage, negative → rust,
 /// zero → ink. The explicit tones override regardless of value sign.
-enum AmountTone { auto, sage, rust, ink }
+///
+/// `sageText` / `rustText` are the WCAG-safe text siblings of `sage` / `rust`
+/// (`colors.successText` / `colors.errorText`) — reach for them when the
+/// amount renders as small text over a success/error-tinted fill, where the
+/// surface tones fall below AA contrast (e.g. the roster balance chip).
+enum AmountTone { auto, sage, rust, ink, sageText, rustText }
 
 /// Money amount rendered in Spline Sans Mono with the wireframe's tiered sizing.
 ///
@@ -43,6 +48,8 @@ class RAmount extends StatelessWidget {
     this.polarityCaret = false,
     this.tone = AmountTone.auto,
     this.weight = FontWeight.w500,
+    this.dimDecimals = true,
+    this.fullSizeSign = false,
     this.semanticsLabel,
   });
 
@@ -83,6 +90,24 @@ class RAmount extends StatelessWidget {
 
   /// Font weight applied to all glyphs. Default `w500` matches the wireframe.
   final FontWeight weight;
+
+  /// When true (default), the decimal fragment renders at 0.7 alpha — the
+  /// widget's dimmed-decimals signature. Pass false where the fraction is
+  /// FUNCTIONAL small text over a tinted fill and the fade would drop it
+  /// below the DESIGN.md §2 4.5:1 AA floor (e.g. the roster balance chip) —
+  /// the a11y floor governs over the aesthetic signature at those sizes.
+  /// Tiered sizing (whole 1.0× · decimals 0.55×) is unaffected.
+  final bool dimDecimals;
+
+  /// When true, the `+`/`−` from [sign] renders as its own span in the
+  /// whole-part style — full [size], full-strength color, hugging what
+  /// follows — instead of riding the 0.42×/0.78-alpha currency-code prefix.
+  /// The sign is the only NON-COLOR polarity cue (owe vs owed for colorblind
+  /// users), so on dense small-size chips the default prefix styling shrinks
+  /// it below legibility (e.g. ~4px on the 9.5px roster chip). No-op when
+  /// [sign] is false, the value is zero, or a [polarityCaret] renders
+  /// (the caret is then the sole polarity mark).
+  final bool fullSizeSign;
 
   /// Screen-reader override. When null, a default label is derived from the
   /// rendered value: unfragmented, ASCII `+`/`-` (the visual U+2212 minus is
@@ -134,7 +159,7 @@ class RAmount extends StatelessWidget {
     final decimalStyle = AppTypography.mono(
       fontSize: size * 0.55,
       fontWeight: weight,
-      color: color.withValues(alpha: 0.7),
+      color: dimDecimals ? color.withValues(alpha: 0.7) : color,
       height: 1.0,
     );
     final caretStyle = AppTypography.mono(
@@ -144,25 +169,30 @@ class RAmount extends StatelessWidget {
       height: 1.0,
     );
 
+    // A full-size sign leaves the code span and becomes its own whole-style
+    // span below; the code span then carries only the currency (if shown).
+    final signIsFullSize = fullSizeSign && prefix.isNotEmpty;
+    final codePrefix = signIsFullSize ? '' : prefix;
     final codeText = showCurrency
-        ? '$prefix$currency '
-        : (prefix.isEmpty ? '' : '$prefix ');
+        ? '$codePrefix$currency '
+        : (codePrefix.isEmpty ? '' : '$codePrefix ');
 
     // Spoken label keeps the ASCII sign regardless of caret suppression above
     // — semanticsLabel replaces the visual text for screen readers, so the
     // caret glyph is never announced and the sign must still be spoken.
-    final asciiPrefix = sign ? (isPositive ? '+' : (isNegative ? '-' : '')) : '';
-    final spokenLabel = semanticsLabel ??
+    final asciiPrefix = sign
+        ? (isPositive ? '+' : (isNegative ? '-' : ''))
+        : '';
+    final spokenLabel =
+        semanticsLabel ??
         '$asciiPrefix${showCurrency ? '$currency ' : ''}$formatted';
 
     return Text.rich(
       TextSpan(
         children: [
           if (showCaret)
-            TextSpan(
-              text: '${isPositive ? '▲' : '▼'} ',
-              style: caretStyle,
-            ),
+            TextSpan(text: '${isPositive ? '▲' : '▼'} ', style: caretStyle),
+          if (signIsFullSize) TextSpan(text: prefix, style: wholeStyle),
           if (codeText.isNotEmpty) TextSpan(text: codeText, style: codeStyle),
           TextSpan(text: wholePart, style: wholeStyle),
           if (decimalPart.isNotEmpty)
@@ -182,6 +212,8 @@ class RAmount extends StatelessWidget {
       AmountTone.sage => colors.success,
       AmountTone.rust => colors.error,
       AmountTone.ink => colors.textPrimary,
+      AmountTone.sageText => colors.successText,
+      AmountTone.rustText => colors.errorText,
       AmountTone.auto when sign && isPositive => colors.success,
       AmountTone.auto when sign && isNegative => colors.error,
       AmountTone.auto => colors.textPrimary,

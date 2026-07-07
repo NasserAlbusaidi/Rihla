@@ -7,6 +7,8 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/directional_icon.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/home_keys.dart';
@@ -321,14 +323,35 @@ class _AddExpenseTargetSheetState extends ConsumerState<AddExpenseTargetSheet> {
   }
 }
 
+/// Layout-matched placeholder (DESIGN.md §10) for the target list while
+/// [addExpenseTargetsProvider]/[userGroupsProvider] resolve — approximates
+/// [_targetTile]/[_groupTile]'s title + subtitle + trailing chevron row.
 class _Loading extends StatelessWidget {
   const _Loading();
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48),
-      child: Center(child: CircularProgressIndicator()),
+    return SkeletonLoader(
+      itemCount: 3,
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBar(width: 160, height: 14),
+                  SizedBox(height: 6),
+                  SkeletonBar(width: 100, height: 12),
+                ],
+              ),
+            ),
+            SizedBox(width: context.spacing.space8),
+            const SkeletonBlock(width: 16, height: 16, borderRadius: 4),
+          ],
+        ),
+      ),
     );
   }
 }

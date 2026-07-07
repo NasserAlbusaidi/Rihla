@@ -10,7 +10,7 @@ void main() {
         tester,
         baselineStem: 'goldens/group_settle_up',
         harness: const GoldenHarness(
-          title: 'Settle Up',
+          title: 'Settle up',
           subtitle: '3 suggested transfers',
           rows: [
             (label: 'Alice owes Bob', value: 'OMR 12.500'),

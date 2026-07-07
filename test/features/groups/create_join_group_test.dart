@@ -344,10 +344,10 @@ void main() {
       },
     );
 
-    testWidgets('renders Group Name label and hint', (tester) async {
+    testWidgets('renders Group name label and hint', (tester) async {
       await tester.pumpWidget(await buildCreateScreen());
       await tester.pump();
-      expect(find.text('Group Name'), findsOneWidget);
+      expect(find.text('Group name'), findsOneWidget);
       expect(find.text('e.g. Family trip'), findsOneWidget);
     });
 
@@ -598,10 +598,10 @@ void main() {
       );
     }
 
-    testWidgets('renders AppBar with Join a Group title', (tester) async {
+    testWidgets('renders AppBar with Join a group title', (tester) async {
       await tester.pumpWidget(await buildJoinScreen());
       await tester.pump();
-      expect(find.text('Join a Group'), findsOneWidget);
+      expect(find.text('Join a group'), findsOneWidget);
     });
 
     testWidgets(
@@ -679,13 +679,13 @@ void main() {
       );
     });
 
-    testWidgets('renders Join Group button', (tester) async {
+    testWidgets('renders Join group button', (tester) async {
       await tester.pumpWidget(await buildJoinScreen());
       await tester.pump();
-      expect(find.text('Join Group'), findsOneWidget);
+      expect(find.text('Join group'), findsOneWidget);
     });
 
-    testWidgets('Join Group button is disabled when code field is empty', (
+    testWidgets('Join group button is disabled when code field is empty', (
       tester,
     ) async {
       await tester.pumpWidget(await buildJoinScreen());
@@ -693,7 +693,7 @@ void main() {
 
       final button = tester.widget<ElevatedButton>(
         find.ancestor(
-          of: find.text('Join Group'),
+          of: find.text('Join group'),
           matching: find.byType(ElevatedButton),
         ),
       );
@@ -912,6 +912,9 @@ void main() {
 
         await tester.enterText(find.byType(TextFormField).first, 'Joiner');
         await tester.pump();
+        // #1041: the top bar grew to the 44dp §4 floor, nudging the button
+        // out of the default test viewport — ensureVisible before tapping.
+        await tester.ensureVisible(find.byKey(GroupKeys.joinGroupButton));
         await tester.tap(find.byKey(GroupKeys.joinGroupButton));
         await tester.pumpAndSettle();
 
