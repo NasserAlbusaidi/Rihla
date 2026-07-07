@@ -12,6 +12,16 @@ class _Entry {
   final DateTime timestamp;
 }
 
+final _utcAfterLocalMidnight = DateTime.utc(2026, 7, 7, 20, 30);
+final _canExerciseUtcLocalRollover = !_sameCalendarDate(
+  _utcAfterLocalMidnight,
+  _utcAfterLocalMidnight.toLocal(),
+);
+
+bool _sameCalendarDate(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
 /// Captures a [BuildContext] with localization delegates wired, so
 /// `groupByDay` (which reads `context.l10n` + the month/day formatter) has
 /// what it needs — no theme extensions required since it never touches
@@ -80,6 +90,30 @@ void main() {
       expect(groups[2].dateSuffix, yesterdayText);
       expect(groups[2].entries.map((e) => e.label), ['yesterday-late']);
     });
+
+    testWidgets(
+      'buckets UTC activity timestamps by local calendar date after midnight',
+      skip: !_canExerciseUtcLocalRollover,
+      (tester) async {
+        final context = await _pumpContext(tester);
+        final localNow = _utcAfterLocalMidnight.toLocal();
+
+        final groups = groupByDay<_Entry>(
+          context,
+          [_Entry('after-midnight', _utcAfterLocalMidnight)],
+          localNow,
+          (e) => e.timestamp,
+        );
+
+        expect(groups, hasLength(1));
+        expect(groups.single.label, context.l10n.timelineToday);
+        expect(
+          groups.single.dateSuffix,
+          formatShortMonthDay(context, localNow),
+        );
+        expect(groups.single.entries.single.label, 'after-midnight');
+      },
+    );
 
     testWidgets('returns an empty list for an empty input', (tester) async {
       final context = await _pumpContext(tester);
