@@ -37,12 +37,16 @@ class ExpenseService extends FirestoreRepository {
   /// The query filters `isDeleted == false` so soft-deleted documents are
   /// excluded from the stream without a client-side filter.
   Stream<List<Expense>> watchExpenses(String groupId, String eventId) {
-    final cache = <String, Expense>{};
-    return eventSubcollection(groupId, eventId, 'expenses')
-        .where('isDeleted', isEqualTo: false)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => _reconcileExpenses(cache, snap));
+    // The #632 diff cache lives INSIDE the subscribe closure so a #997
+    // re-listen starts clean against its fresh full snapshot.
+    return recoverListen(() {
+      final cache = <String, Expense>{};
+      return eventSubcollection(groupId, eventId, 'expenses')
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snap) => _reconcileExpenses(cache, snap));
+    });
   }
 
   /// Maps a fresh expense-query [snap] to `List<Expense>`, deserializing only

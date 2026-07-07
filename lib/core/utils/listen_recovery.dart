@@ -30,32 +30,69 @@ typedef ListenPendingWritesBarrier = Future<void> Function();
 /// revoked listen that emits cache data before each denial must not loop).
 ///
 /// Non-permission errors are never retried (the SDK handles transient
-/// unavailability itself). Barrier failures (timeout, unimplemented fake) are
-/// swallowed and the retry proceeds — precedent: the recovery flows'
-/// `waitForPendingWrites().timeout(...)` swallow-and-proceed.
+/// unavailability itself), and a surfaced error does NOT close the stream —
+/// exact pass-through of the raw `.snapshots()` semantics. Barrier failures
+/// (timeout, unimplemented fake) are swallowed and the retry proceeds —
+/// precedent: the recovery flows' `waitForPendingWrites().timeout(...)`
+/// swallow-and-proceed.
+///
+/// Implemented with a manual [StreamController], NOT `async*`: an async*
+/// generator parked inside `await for` (waiting for the next snapshot) only
+/// honors cancellation at its next `yield`, so `subscription.cancel()` never
+/// completes while the source is quiet — hanging test teardowns and leaking
+/// the inner Firestore listener past provider disposal.
 Stream<T> recoverDeniedListen<T>(
   Stream<T> Function() subscribe, {
   required ListenPendingWritesBarrier pendingWritesBarrier,
   int maxRetries = kListenRecoveryMaxRetries,
   Duration backoff = kListenRecoveryBackoff,
   Duration barrierTimeout = kListenRecoveryBarrierTimeout,
-}) async* {
+}) {
   var retries = 0;
-  while (true) {
+  var cancelled = false;
+  StreamSubscription<T>? sub;
+  late final StreamController<T> controller;
+  late final void Function() listen;
+
+  Future<void> recoverThenRelisten() async {
     try {
-      await for (final value in subscribe()) {
-        yield value;
-      }
-      return;
-    } on FirebaseException catch (e) {
-      if (e.code != 'permission-denied' || retries >= maxRetries) rethrow;
-      retries++;
-      try {
-        await pendingWritesBarrier().timeout(barrierTimeout);
-      } catch (_) {
-        // Barrier timeout / not supported — re-listen anyway; cache serves.
-      }
-      await Future<void>.delayed(backoff);
+      await pendingWritesBarrier().timeout(barrierTimeout);
+    } catch (_) {
+      // Barrier timeout / not supported — re-listen anyway; cache serves.
     }
+    await Future<void>.delayed(backoff);
+    if (!cancelled) listen();
   }
+
+  listen = () {
+    sub = subscribe().listen(
+      controller.add,
+      onError: (Object error, StackTrace stackTrace) {
+        final denied =
+            error is FirebaseException && error.code == 'permission-denied';
+        if (!denied || retries >= maxRetries) {
+          controller.addError(error, stackTrace);
+          return;
+        }
+        retries++;
+        unawaited(sub?.cancel());
+        sub = null;
+        unawaited(recoverThenRelisten());
+      },
+      onDone: controller.close,
+    );
+  };
+
+  controller = StreamController<T>(
+    onListen: listen,
+    onPause: () => sub?.pause(),
+    onResume: () => sub?.resume(),
+    onCancel: () {
+      cancelled = true;
+      final active = sub;
+      sub = null;
+      return active?.cancel();
+    },
+  );
+  return controller.stream;
 }
