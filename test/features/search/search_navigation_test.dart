@@ -488,20 +488,30 @@ void main() {
       expect(field.controller!.text, 'Alps');
     });
 
-    testWidgets('absent q → hint state, no empty-state, no scope label', (
-      tester,
-    ) async {
-      await _pumpSearch(
-        tester,
-        _baseOverrides(groups: const []),
-        initialLocation: '/search',
-      );
+    testWidgets(
+      'absent q → hint + pre-query guidance, no empty-state, no results scope label',
+      (tester) async {
+        await _pumpSearch(
+          tester,
+          _baseOverrides(groups: const []),
+          initialLocation: '/search',
+        );
 
-      final field = tester.widget<TextField>(find.byKey(SearchKeys.field));
-      expect(field.decoration!.hintText, 'Search groups and events');
-      expect(find.byKey(SearchKeys.emptyState), findsNothing);
-      expect(find.byKey(SearchKeys.scopeLabel), findsNothing);
-    });
+        final field = tester.widget<TextField>(find.byKey(SearchKeys.field));
+        expect(field.decoration!.hintText, 'Search groups and events');
+        // #1012: the blank panel is replaced by muted pre-query guidance
+        // (search glyph + the reused scope line).
+        expect(find.byKey(SearchKeys.preQueryGuidance), findsOneWidget);
+        expect(
+          find.text('Groups and events, including past events'),
+          findsOneWidget,
+        );
+        // Still no zero-matches empty-state and no RESULTS scope label
+        // (those remain non-empty-query only).
+        expect(find.byKey(SearchKeys.emptyState), findsNothing);
+        expect(find.byKey(SearchKeys.scopeLabel), findsNothing);
+      },
+    );
 
     testWidgets('non-empty q with zero matches → searchEmpty (static)', (
       tester,
