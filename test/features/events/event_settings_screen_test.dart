@@ -25,6 +25,7 @@ import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/screens/event_settings_screen.dart';
 import 'package:safar/features/events/services/event_service.dart';
 import 'package:safar/features/events/widgets/event_danger_section.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -270,6 +271,11 @@ Widget _wrapDangerSection({
       eventSettlementsProvider(
         eventRef,
       ).overrideWith((ref) => Stream.value(settlements)),
+      // #1030: _executeClose awaits the members stream (snapshot basis
+      // health); an unoverridden provider never emits and parks the close.
+      groupMembersProvider(
+        event.groupId,
+      ).overrideWith((ref) => Stream.value(const <GroupMember>[])),
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,

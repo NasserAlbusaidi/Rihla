@@ -15,6 +15,7 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/providers/ledger_view_provider.dart';
 import '../keys/event_keys.dart';
@@ -346,10 +347,25 @@ class EventDangerSection extends ConsumerWidget {
         await ref
             .read(eventExpensesProvider(eventRef).future)
             .timeout(const Duration(seconds: 5));
+        // #1030: members feeds the snapshot's #249 universe; await it the
+        // same bounded way so a healthy-but-lagging members stream doesn't
+        // skip the capture. Timeout/error falls through to basisHealthy.
+        await ref
+            .read(groupMembersProvider(groupId).future)
+            .timeout(const Duration(seconds: 5));
       } catch (_) {}
+      // #1030: the snapshot is an OUTBOUND write (frozen spending served by
+      // every future recap open). A valueless money/members stream means
+      // ledgerViewProvider computed from a wrong #249 universe — capture NO
+      // snapshot instead (recap stays live; recoverable by reopen+close,
+      // the same degrade as the timeout above). Stale values serve.
+      final basisHealthy =
+          ref.read(eventExpensesProvider(eventRef)).hasValue &&
+          ref.read(eventSettlementsProvider(eventRef)).hasValue &&
+          ref.read(groupMembersProvider(groupId)).hasValue;
       final recap = ref.read(eventRecapProvider(eventRef));
       final view = ref.read(ledgerViewProvider(eventRef));
-      final snapshot = recap.isEmpty
+      final snapshot = (!basisHealthy || recap.isEmpty)
           ? null
           : SpendingSnapshot.from(
               recap: recap,
