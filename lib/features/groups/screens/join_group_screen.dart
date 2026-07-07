@@ -530,6 +530,9 @@ class _UnderlinedTextField extends StatelessWidget {
         TextFormField(
           controller: controller,
           textCapitalization: textCapitalization,
+          // Reveal the invite-code field + hint card + Join CTA below when
+          // the keyboard opens on this field (see _InviteCodeField).
+          scrollPadding: const EdgeInsets.only(bottom: 470),
           cursorColor: colors.textPrimary,
           onChanged: onChanged,
           style: AppTypography.sans(
@@ -586,6 +589,10 @@ class _InviteCodeField extends StatelessWidget {
           controller: controller,
           textCapitalization: TextCapitalization.characters,
           textAlign: TextAlign.center,
+          // Focus auto-scroll must reveal the hint card + Join CTA below the
+          // field, not just the field itself — the default 20 left
+          // the CTA buried under the keyboard (2026-07-07 emulator audit).
+          scrollPadding: const EdgeInsets.only(bottom: 320),
           cursorColor: colors.textPrimary,
           style: AppTypography.mono(
             fontSize: 28,
