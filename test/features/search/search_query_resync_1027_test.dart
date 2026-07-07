@@ -183,4 +183,26 @@ void main() {
       expect(_fieldText(tester), 'Alps');
     },
   );
+
+  testWidgets(
+    '#1027 clear: a bare /search (empty q) landing on a populated screen clears '
+    'the field and reverts to pre-query guidance',
+    (tester) async {
+      final group = _makeGroup('g1', 'Desert Crew');
+      const harness = _Rebuilder(initialQuery: 'Desert');
+
+      await tester.pumpWidget(_app(harness, _baseOverrides(groups: [group])));
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester), 'Desert');
+      expect(find.byKey(SearchKeys.preQueryGuidance), findsNothing);
+
+      // A new bare /search deep link (no q) reconciles onto the populated screen.
+      final state = tester.state<_RebuilderState>(find.byType(_Rebuilder));
+      state.pushQuery(null);
+      await tester.pumpAndSettle();
+
+      expect(_fieldText(tester), isEmpty);
+      expect(find.byKey(SearchKeys.preQueryGuidance), findsOneWidget);
+    },
+  );
 }
