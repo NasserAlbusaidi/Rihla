@@ -37,14 +37,14 @@ class _SilentActivityService extends GroupActivityService {
   _SilentActivityService() : super.withFirestore(FakeFirebaseFirestore());
 
   @override
-  Future<void> logActivity({
+  void logGroupEvent({
     required String groupId,
     required String type,
     required String actorId,
     required String actorName,
     required String description,
     Map<String, dynamic>? metadata,
-  }) async {}
+  }) {}
 }
 
 final _event = Event(
