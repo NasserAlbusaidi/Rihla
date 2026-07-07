@@ -18,6 +18,7 @@ import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/home/widgets/group_balance_breakdown_sheet.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 // ---------------------------------------------------------------------------
 // #997 — the breakdown sheet used to filter on `.valueOrNull?.userNet ?? {}`,
@@ -147,7 +148,7 @@ void main() {
         reason: 'unresolved balance must not read as settled',
       );
       expect(
-        find.descendant(of: sheet, matching: find.byType(CircularProgressIndicator)),
+        find.descendant(of: sheet, matching: find.byType(SkeletonLoader)),
         findsOneWidget,
       );
     },
@@ -302,10 +303,10 @@ void main() {
       expect(
         find.descendant(
           of: sheet,
-          matching: find.byType(CircularProgressIndicator),
+          matching: find.byType(SkeletonLoader),
         ),
         findsNothing,
-        reason: 'the facade already resolved — a spinner would never end',
+        reason: 'the facade already resolved — a loading skeleton would never end',
       );
       expect(
         find.descendant(

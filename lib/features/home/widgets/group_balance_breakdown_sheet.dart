@@ -9,6 +9,8 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
+import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
@@ -315,14 +317,28 @@ class _GroupBalanceRow extends StatelessWidget {
   }
 }
 
+/// Layout-matched placeholder (DESIGN.md §10) for the group rows while any
+/// balance facade is unresolved — approximates [_GroupBalanceRow]'s group
+/// name + trailing amount/caption column, reusing the same
+/// [SkeletonLoader.trailingBalance] built for that exact column shape (#997).
 class _Loading extends StatelessWidget {
   const _Loading();
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48),
-      child: Center(child: CircularProgressIndicator()),
+    return SkeletonLoader(
+      itemCount: 3,
+      itemBuilder: (context, index) => Padding(
+        padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Expanded(child: SkeletonBar(width: 120, height: 15)),
+            SizedBox(width: context.spacing.space12),
+            SkeletonLoader.trailingBalance(),
+          ],
+        ),
+      ),
     );
   }
 }
