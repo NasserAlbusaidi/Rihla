@@ -665,8 +665,13 @@ void main() {
       },
     );
 
+    // #997 D1 pair: while the aggregate stream has no first snapshot the
+    // facade holds the skeleton for a bounded grace window (no false
+    // settled-zero flash), then consults the once-path so a wedged aggregate
+    // listen (snapshot withheld, no error) cannot blank home forever.
     test(
-      'stays loading until EVERY group resolves (no false settled-zero flash)',
+      'aggregate with no first snapshot: stays loading through the grace '
+      'window (no false settled-zero flash)',
       () async {
         await seedAggregate();
         final container = ProviderContainer(
@@ -685,6 +690,10 @@ void main() {
             groupBalanceAggregateProvider(
               'g2',
             ).overrideWith((_) => const Stream.empty()),
+            // Grace still pending → the loading pin holds.
+            aggregateFirstSnapshotGraceProvider(
+              'g2',
+            ).overrideWith((_) => Completer<void>().future),
           ],
         );
         addTearDown(container.dispose);
@@ -702,9 +711,76 @@ void main() {
           container.read(crossGroupHomeBalanceProvider).isLoading,
           isTrue,
           reason:
-              'one unresolved group must keep the hero on the skeleton, '
-              'never a false all-settled zero',
+              'inside the grace window an unresolved group must keep the '
+              'hero on the skeleton, never a false all-settled zero',
         );
+      },
+    );
+
+    test(
+      'aggregate with no first snapshot: falls through to the once-path '
+      'after the grace',
+      () async {
+        await seedAggregate();
+        final g2ExpFake = _CountingExpenseService({
+          'e2': [_makeExpense('x2', 'uid-b', Decimal.fromInt(20), 'e2')],
+        });
+        final container = ProviderContainer(
+          overrides: [
+            groupServiceProvider.overrideWith(
+              (ref) => GroupService.withFirestore(ref, fakeDb),
+            ),
+            connectivityProvider.overrideWith(
+              (ref) => _notifier(ConnectivityStatus.online),
+            ),
+            currentUserIdProvider.overrideWith((_) => 'uid-a'),
+            expenseServiceProvider.overrideWithValue(g2ExpFake),
+            settlementServiceProvider.overrideWithValue(setFake),
+            userGroupsProvider.overrideWith(
+              (_) => Stream.value([_makeGroup(gid), _makeGroup('g2')]),
+            ),
+            groupBalanceAggregateProvider(
+              'g2',
+            ).overrideWith((_) => const Stream.empty()),
+            // Grace already elapsed → the facade must consult the once-path.
+            aggregateFirstSnapshotGraceProvider(
+              'g2',
+            ).overrideWith((_) => Future.value()),
+            groupEventsProvider(
+              'g2',
+            ).overrideWith((_) => Stream.value([_makeEvent('e2', 'g2')])),
+            groupMembersProvider('g2').overrideWith(
+              (_) => Stream.value([
+                _makeMember('uid-a', 'g2'),
+                _makeMember('uid-b', 'g2'),
+              ]),
+            ),
+            groupSettlementsProvider('g2').overrideWith(
+              (_) => Stream.value([]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        container.listen(
+          crossGroupHomeBalanceProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
+
+        for (var i = 0; i < 12; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        final result = container
+            .read(crossGroupHomeBalanceProvider)
+            .requireValue;
+        expect(result.balance.groupCount, 2);
+        // g1 aggregate: uid-a −4 OMR; g2 once-path (e2 expense 20 by uid-b,
+        // equal split): uid-a −10 OMR → fold −14 OMR.
+        final omr = result.balance.byCurrency.singleWhere(
+          (b) => b.currency == 'OMR',
+        );
+        expect(omr.net, Decimal.parse('-14'));
       },
     );
   });

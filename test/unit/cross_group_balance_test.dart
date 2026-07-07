@@ -339,6 +339,13 @@ void main() {
       () async {
         // g1 +5, g2 -5 (net cancels to 0), g3 still loading (never-completing
         // future). The provider must stay LOADING when any group is unresolved.
+        //
+        // #997 re-frame: this pins the FOLD's semantics (loading barrier — a
+        // still-loading group must never render as a false all-settled zero),
+        // NOT unbounded loading as a feature. Production can no longer produce
+        // an unbounded once-path: every await inside groupBalancesOnceProvider
+        // is bounded by kOnceReadDeadline (D2); the hung future here models
+        // the within-deadline window.
         final groups = [
           _makeGroup(id: 'g1', name: 'Group 1'),
           _makeGroup(id: 'g2', name: 'Group 2'),

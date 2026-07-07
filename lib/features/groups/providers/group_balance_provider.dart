@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -814,6 +816,28 @@ final groupBalanceAggregateProvider =
       return ref.watch(groupServiceProvider).watchBalanceAggregate(groupId);
     });
 
+/// #997 D1: how long the online facade waits for the aggregate stream's
+/// FIRST snapshot before consulting the once-path. Keeps the #366
+/// zero-per-event-read win on the normal path (the aggregate lands well
+/// inside the window) while bounding the wedge case (listener up, no
+/// snapshot, no error — the DNS-blackhole enabler) that previously held home
+/// on a bare skeleton indefinitely.
+const kAggregateFirstSnapshotGrace = Duration(seconds: 3);
+
+/// Completes [kAggregateFirstSnapshotGrace] after the facade first waits on
+/// [groupBalanceAggregateProvider]'s initial snapshot. autoDispose: once the
+/// aggregate emits (or the facade stops watching), the timer is CANCELLED and
+/// a later loading window starts a fresh grace. A cancellable [Timer], not
+/// `Future.delayed` — the delayed timer would outlive disposal and trip the
+/// widget-test "Timer is still pending" teardown check.
+final aggregateFirstSnapshotGraceProvider =
+    FutureProvider.autoDispose.family<void, String>((ref, groupId) {
+      final completer = Completer<void>();
+      final timer = Timer(kAggregateFirstSnapshotGrace, completer.complete);
+      ref.onDispose(timer.cancel);
+      return completer.future;
+    });
+
 /// What the home surfaces need from one group's balances, source-agnostic.
 ///
 /// Per-currency end-to-end (#382 PR-3): [userNet] is currency → net,
@@ -950,7 +974,17 @@ final homeGroupBalanceProvider =
       if (online) {
         final aggAsync = ref.watch(groupBalanceAggregateProvider(groupId));
         if (!aggregateMayBeStale && aggAsync.isLoading && !aggAsync.hasValue) {
-          return const AsyncValue.loading();
+          // #997 D1: hold the skeleton only for a bounded grace, then consult
+          // the once-path (SDK cache) — a wedged aggregate listen (no
+          // snapshot, no error) must not blank home indefinitely.
+          final grace = ref.watch(
+            aggregateFirstSnapshotGraceProvider(groupId),
+          );
+          if (grace.isLoading) {
+            return const AsyncValue.loading();
+          }
+          final onceAsync = ref.watch(groupBalancesOnceProvider(groupId));
+          return onceAsync.whenData((once) => _homeBalanceFromOnce(once, uid));
         }
         final aggregate = aggAsync.valueOrNull;
         if (aggregate != null) {
