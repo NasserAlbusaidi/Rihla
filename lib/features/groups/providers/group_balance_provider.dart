@@ -697,6 +697,7 @@ void _accumulateBucket(
 typedef GroupBalancesOnce = ({
   GroupBalances balances,
   Set<String> failedEventIds,
+  bool groupSettlementsFailed,
 });
 
 /// Upper bound on every await inside [groupBalancesOnceProvider] (#997 D2).
@@ -742,9 +743,19 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
       // group-settlements failure degrades to the #244 partial states below.
       final events = await eventsFut.timeout(kOnceReadDeadline);
       final members = await membersFut.timeout(kOnceReadDeadline);
-      final groupSettlements = await groupSettlementsFut.timeout(
-        kOnceReadDeadline,
-      );
+      List<Settlement> groupSettlements = const [];
+      var groupSettlementsFailed = false;
+      try {
+        groupSettlements = await groupSettlementsFut.timeout(kOnceReadDeadline);
+      } catch (_) {
+        // #997 D3 (narrow): a missing group-settlement fold is the same class
+        // as a dropped event (#244) — an INCOMPLETE sum, flagged partial.
+        // Events and members failures stay loud on purpose: members=[]
+        // re-opens the #249 universe gap (WRONG money, not incomplete money)
+        // and eventCount would fabricate the "0 events · settled" lie this
+        // issue exists to kill.
+        groupSettlementsFailed = true;
+      }
 
       final expenseService = ref.read(expenseServiceProvider);
       final settlementService = ref.read(settlementServiceProvider);
@@ -778,6 +789,7 @@ final groupBalancesOnceProvider = FutureProvider.autoDispose
           groupSettlements: groupSettlements,
         ),
         failedEventIds: failedEventIds,
+        groupSettlementsFailed: groupSettlementsFailed,
       );
     });
 
@@ -852,7 +864,7 @@ HomeGroupBalance _homeBalanceFromOnce(GroupBalancesOnce once, String uid) {
         balances.perEventBreakdown[uid] ??
         const <String, Map<String, Decimal>>{},
     eventCount: balances.eventCount,
-    partial: once.failedEventIds.isNotEmpty,
+    partial: once.failedEventIds.isNotEmpty || once.groupSettlementsFailed,
     fromAggregate: false,
   );
 }

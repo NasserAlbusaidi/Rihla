@@ -52,6 +52,7 @@ GroupBalancesOnce _makeGroupBalancesOnce({required List<UserBalance> balances}) 
       memberRawNames: <String, String>{},
     ),
     failedEventIds: const <String>{},
+    groupSettlementsFailed: false,
   );
 }
 

@@ -153,7 +153,7 @@ Widget _buildTestApp(
       // A never-completing future preserves the loading-state assertions.
       groupBalancesOnceProvider.overrideWith(
         (ref, gid) => ref.watch(groupBalancesProvider(gid)).maybeWhen(
-              data: (d) => (balances: d, failedEventIds: const <String>{}),
+              data: (d) => (balances: d, failedEventIds: const <String>{}, groupSettlementsFailed: false),
               orElse: () => Completer<GroupBalancesOnce>().future,
             ),
       ),

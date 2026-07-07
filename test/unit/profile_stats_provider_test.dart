@@ -131,10 +131,10 @@ void main() {
               'g2',
             ).overrideWith((ref) => Stream.value(g2Events)),
             groupBalancesOnceProvider('g1').overrideWith(
-              (ref) async => (balances: g1Balances, failedEventIds: <String>{}),
+              (ref) async => (balances: g1Balances, failedEventIds: <String>{}, groupSettlementsFailed: false),
             ),
             groupBalancesOnceProvider('g2').overrideWith(
-              (ref) async => (balances: g2Balances, failedEventIds: <String>{}),
+              (ref) async => (balances: g2Balances, failedEventIds: <String>{}, groupSettlementsFailed: false),
             ),
           ],
         );
@@ -209,12 +209,14 @@ void main() {
               (ref) async => (
                 balances: balances(Decimal.parse('10.000'), 'OMR'),
                 failedEventIds: <String>{},
+                groupSettlementsFailed: false,
               ),
             ),
             groupBalancesOnceProvider('g2').overrideWith(
               (ref) async => (
                 balances: balances(Decimal.parse('10.00'), 'USD'),
                 failedEventIds: <String>{},
+                groupSettlementsFailed: false,
               ),
             ),
           ],
