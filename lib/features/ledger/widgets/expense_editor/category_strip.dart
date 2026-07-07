@@ -93,7 +93,7 @@ class _CategoryChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+        padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 12, 8),
         decoration: BoxDecoration(
           color: selected
               ? context.colors.textPrimary
