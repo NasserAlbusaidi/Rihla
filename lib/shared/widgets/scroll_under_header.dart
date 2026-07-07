@@ -83,8 +83,8 @@ class _ScrollUnderHeaderState extends State<ScrollUnderHeader> {
           child: AnimatedOpacity(
             key: widget.hairlineKey,
             opacity: _scrolled ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
+            duration: context.motion.standard,
+            curve: context.motion.curveStandard,
             child: ColoredBox(color: context.colors.rule),
           ),
         ),

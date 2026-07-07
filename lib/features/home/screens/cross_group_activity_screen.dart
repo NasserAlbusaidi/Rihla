@@ -17,6 +17,7 @@ import '../../../shared/widgets/activity_day_section.dart';
 import '../../../shared/widgets/activity_filter_strip.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/paper_backdrop.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
@@ -171,6 +172,7 @@ class _CrossGroupActivityScreenState
                   searching: _searching,
                   onToggleSearch: _toggleSearch,
                 ),
+                const OfflineBanner(),
                 const SizedBox(height: 6),
                 if (_searching) ...[
                   _SearchField(
