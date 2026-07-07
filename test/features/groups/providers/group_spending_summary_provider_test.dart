@@ -203,6 +203,54 @@ void main() {
       expect(summary.totalSpentByCurrency, {'OMR': Decimal.parse('10')});
       expect(summary.topPayerByCurrency, isEmpty);
       expect(summary.topConsumerByCurrency, isEmpty);
+      // Loading is NOT an error: the summary must not raise the loud marker
+      // (skeleton/blessed silent path), only a hard error does (#1034).
+      expect(summary.balancesUnavailable, isFalse);
+    });
+
+    test(
+        'balances hard-errored -> balancesUnavailable, spend slices kept, '
+        'superlatives empty', () async {
+      // A hard-errored group-settlements stream makes groupBalancesProvider
+      // emit AsyncError (group_balance_provider.dart #1028). Previously the
+      // summary folded .valueOrNull to null and rendered top-payer/consumer
+      // as merely ABSENT — an unmarked partial card (#1034).
+      final eventA = _makeEvent(id: 'event-a', groupId: groupId);
+      final container = ProviderContainer(
+        overrides: [
+          groupEventsProvider(groupId)
+              .overrideWith((_) => Stream.value([eventA])),
+          groupMembersProvider(groupId).overrideWith((_) => Stream.value([])),
+          // Group-level settlements hard-error -> groupBalancesProvider LOUD.
+          groupSettlementsProvider(groupId).overrideWith(
+            (_) => Stream<List<Settlement>>.error(Exception('denied')),
+          ),
+          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
+              .overrideWith(
+            (_) => Stream.value([
+              _makeExpense(id: 'x1', tripId: 'event-a', amount: '10'),
+            ]),
+          ),
+          eventSettlementsProvider((groupId: groupId, eventId: 'event-a'))
+              .overrideWith((_) => Stream.value(const <Settlement>[])),
+        ],
+      );
+      addTearDown(container.dispose);
+      await _pump(container, groupId);
+
+      // groupBalancesProvider is genuinely hard-errored in this window.
+      final balances = container.read(groupBalancesProvider(groupId));
+      expect(balances.hasError && !balances.hasValue, isTrue);
+
+      final summary = container.read(groupSpendingSummaryProvider(groupId));
+
+      // Spend slices (expense-derived) still render — they are valid.
+      expect(summary.totalSpentByCurrency, {'OMR': Decimal.parse('10')});
+      expect(summary.isEmpty, isFalse);
+      // Balance-derived superlatives are absent AND marked loud.
+      expect(summary.topPayerByCurrency, isEmpty);
+      expect(summary.topConsumerByCurrency, isEmpty);
+      expect(summary.balancesUnavailable, isTrue);
     });
   });
 }
