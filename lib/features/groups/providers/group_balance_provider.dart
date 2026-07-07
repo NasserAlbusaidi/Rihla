@@ -907,13 +907,10 @@ final homeGroupBalanceProvider =
     Provider.family<AsyncValue<HomeGroupBalance>, String>((ref, groupId) {
       final uid = ref.watch(currentUserIdProvider);
       if (uid == null) {
-        return const AsyncValue.data((
-          userNet: <String, Decimal>{},
-          userPerEventNet: <String, Map<String, Decimal>>{},
-          eventCount: 0,
-          partial: false,
-          fromAggregate: false,
-        ));
+        // #997 D5: uid null ⇒ the auth stream is still resolving (_AuthGate
+        // guarantees an anon session) — loading, never a fabricated zero that
+        // bypasses the #1005 display hardening.
+        return const AsyncValue.loading();
       }
 
       // #623: watch the derived bool, not the whole enum. The facade only branches
@@ -975,14 +972,8 @@ final crossGroupHomeBalanceProvider = Provider<AsyncValue<CrossGroupBalanceOnce>
 ) {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) {
-    return const AsyncValue.data((
-      balance: (
-        byCurrency: <CurrencyBalance>[],
-        groupCount: 0,
-        isLoading: false,
-      ),
-      partial: false,
-    ));
+    // #997 D5 twin of the per-group facade: auth still resolving → loading.
+    return const AsyncValue.loading();
   }
 
   final groupsAsync = ref.watch(userGroupsProvider);

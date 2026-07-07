@@ -372,7 +372,12 @@ void main() {
       );
     });
 
-    test('null uid → zeros without touching either source', () async {
+    test('null uid (auth resolving) → loading without touching either source',
+        () async {
+      // #997 D5: a null uid means the auth stream has not resolved yet
+      // (_AuthGate guarantees an anon session before SafarApp mounts) — the
+      // facade must emit loading, never a fabricated data(zeros) that
+      // bypasses the #1005 display hardening.
       await seedAggregate();
       final container = ProviderContainer(
         overrides: [
@@ -389,10 +394,37 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final result = container.read(homeGroupBalanceProvider(gid)).requireValue;
+      final result = container.read(homeGroupBalanceProvider(gid));
 
-      expect(result.userNet, isEmpty);
-      expect(result.eventCount, 0);
+      expect(result.isLoading, isTrue);
+      expect(result.hasValue, isFalse);
+      expect(expFake.getCount, 0);
+      expect(setFake.getCount, 0);
+    });
+
+    test('null uid (auth resolving) → cross-group fold is loading too',
+        () async {
+      // #997 D5 twin: crossGroupHomeBalanceProvider had the identical
+      // uid==null → data(zeros) shape.
+      final container = ProviderContainer(
+        overrides: [
+          groupServiceProvider.overrideWith(
+            (ref) => GroupService.withFirestore(ref, fakeDb),
+          ),
+          connectivityProvider.overrideWith(
+            (ref) => _notifier(ConnectivityStatus.online),
+          ),
+          currentUserIdProvider.overrideWith((_) => null),
+          expenseServiceProvider.overrideWithValue(expFake),
+          settlementServiceProvider.overrideWithValue(setFake),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final result = container.read(crossGroupHomeBalanceProvider);
+
+      expect(result.isLoading, isTrue);
+      expect(result.hasValue, isFalse);
       expect(expFake.getCount, 0);
     });
   });
