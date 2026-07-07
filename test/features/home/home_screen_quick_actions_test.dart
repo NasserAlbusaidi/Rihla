@@ -124,7 +124,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Create Group'));
+      await tester.tap(find.text('Create group'));
       await tester.pumpAndSettle();
 
       expect(find.text('CreateGroupScreen'), findsOneWidget);
@@ -138,7 +138,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Join Group'));
+      await tester.tap(find.text('Join group'));
       await tester.pumpAndSettle();
 
       expect(find.text('JoinGroupScreen'), findsOneWidget);

@@ -339,7 +339,7 @@ void main() {
 
     expect(find.text('This event no longer exists'), findsOneWidget);
 
-    await tester.tap(find.text('Go Home'));
+    await tester.tap(find.text('Go home'));
     await tester.pumpAndSettle();
 
     expect(find.text('Home'), findsOneWidget);

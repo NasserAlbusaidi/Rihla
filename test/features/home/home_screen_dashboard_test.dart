@@ -381,7 +381,7 @@ void main() {
     );
 
     testWidgets(
-      'Test 6: empty state EmptyStateView has CTA button "Create Group"',
+      'Test 6: empty state EmptyStateView has CTA button "Create group"',
       (tester) async {
         await tester.pumpWidget(
           _buildTestApp(
@@ -392,7 +392,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Create Group'), findsOneWidget);
+        expect(find.text('Create group'), findsOneWidget);
       },
     );
   });

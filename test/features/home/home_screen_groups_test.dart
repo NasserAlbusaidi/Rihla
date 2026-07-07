@@ -155,7 +155,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Start your first group'), findsOneWidget);
-      expect(find.text('Create Group'), findsOneWidget);
+      expect(find.text('Create group'), findsOneWidget);
     });
 
     testWidgets(

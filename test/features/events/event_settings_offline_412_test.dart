@@ -69,7 +69,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(find.text('Save Changes'), findsOneWidget);
+      expect(find.text('Save changes'), findsOneWidget);
       expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
       verify(
         () => service.updateEvent(
@@ -130,7 +130,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(find.text('Save Changes'), findsOneWidget);
+      expect(find.text('Save changes'), findsOneWidget);
       expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
     },
   );

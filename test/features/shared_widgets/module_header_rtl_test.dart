@@ -22,7 +22,7 @@ void main() {
         home: Directionality(
           textDirection: direction,
           child: Scaffold(
-            body: ModuleHeader(title: 'Settle Up', useDarkTheme: dark),
+            body: ModuleHeader(title: 'Settle up', useDarkTheme: dark),
           ),
         ),
       ),

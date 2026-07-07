@@ -129,7 +129,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // The queued success dialog appeared with the honest badge…
-      expect(find.text('Expense Saved'), findsOneWidget);
+      expect(find.text('Expense saved'), findsOneWidget);
       expect(find.text('SAVED — WILL SYNC'), findsOneWidget);
       // …the one-shot home balance was told to refresh (#104)…
       expect(container.read(ledgerRevisionProvider), 1);

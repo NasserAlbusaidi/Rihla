@@ -372,7 +372,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonClose => 'Close';
 
   @override
-  String get commonGoHome => 'Go Home';
+  String get commonGoHome => 'Go home';
 
   @override
   String get timelineToday => 'Today';
@@ -939,7 +939,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adjustmentDone => 'Done';
 
   @override
-  String get settleUpTitle => 'Settle Up';
+  String get settleUpTitle => 'Settle up';
 
   @override
   String get settleUpEventMissingTitle => 'This event no longer exists';
@@ -1425,10 +1425,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Plan trips, track expenses, and settle up with friends.';
 
   @override
-  String get homeCreateGroup => 'Create Group';
+  String get homeCreateGroup => 'Create group';
 
   @override
-  String get homeJoinGroup => 'Join Group';
+  String get homeJoinGroup => 'Join group';
 
   @override
   String get homeRestoreWithGoogle => 'Sign in with Google to restore';
@@ -1475,10 +1475,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check your connection and try again. Your groups are safely synced — we just need internet to fetch the latest.';
 
   @override
-  String get homeCreateAGroup => 'Create a Group';
+  String get homeCreateAGroup => 'Create a group';
 
   @override
-  String get homeJoinAGroup => 'Join a Group';
+  String get homeJoinAGroup => 'Join a group';
 
   @override
   String get homeGoodMorning => 'Good morning';
@@ -1587,7 +1587,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyTabTitle => 'History';
 
   @override
-  String get homeQuickAddExpense => 'Add Expense';
+  String get homeQuickAddExpense => 'Add expense';
 
   @override
   String get addExpenseSheetTitle => 'Add expense to…';
@@ -1913,7 +1913,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Events split one group\'s spending into separate trips or outings — most groups only need one.';
 
   @override
-  String get eventNameLabel => 'Event Name';
+  String get eventNameLabel => 'Event name';
 
   @override
   String get eventNameHint => 'e.g. Summer camping trip';
@@ -1931,7 +1931,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventEndDate => 'End date';
 
   @override
-  String get eventCreate => 'Create Event';
+  String get eventCreate => 'Create event';
 
   @override
   String get eventCreating => 'Creating…';
@@ -1951,10 +1951,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventParticipants => 'Participants';
 
   @override
-  String get eventSelectAll => 'Select All';
+  String get eventSelectAll => 'Select all';
 
   @override
-  String get eventSettingsTitle => 'Event Settings';
+  String get eventSettingsTitle => 'Event settings';
 
   @override
   String get eventSettingsLoadFailed => 'Could not load settings';
@@ -1984,7 +1984,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventDescriptionLabel => 'Description';
 
   @override
-  String get eventSaveChanges => 'Save Changes';
+  String get eventSaveChanges => 'Save changes';
 
   @override
   String get eventDangerZone => 'DANGER ZONE';
@@ -2122,7 +2122,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'It may have been deleted, or the link is incorrect.';
 
   @override
-  String get groupNameLabel => 'Group Name';
+  String get groupNameLabel => 'Group name';
 
   @override
   String get groupNameHint => 'e.g. Family trip';
@@ -2192,7 +2192,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupShareCodeWithGroup => 'Share this code with your group';
 
   @override
-  String get groupCopyCode => 'Copy Code';
+  String get groupCopyCode => 'Copy code';
 
   @override
   String get groupShare => 'Share';
@@ -2201,10 +2201,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupShareViaWhatsApp => 'WhatsApp';
 
   @override
-  String get groupJoinTitle => 'Join a Group';
+  String get groupJoinTitle => 'Join a group';
 
   @override
-  String get groupJoinCta => 'Join Group';
+  String get groupJoinCta => 'Join group';
 
   @override
   String get groupJoining => 'Joining…';
@@ -2298,7 +2298,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create your first event to start planning together.';
 
   @override
-  String get groupCreateEvent => 'Create Event';
+  String get groupCreateEvent => 'Create event';
 
   @override
   String get groupInvitePeople => 'Invite people';
@@ -2676,7 +2676,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get expenseSuccessTitle => 'Expense Saved';
+  String get expenseSuccessTitle => 'Expense saved';
 
   @override
   String get expenseSuccessSyncedToCloud => 'SYNCED TO CLOUD';
@@ -2688,7 +2688,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expenseSuccessDone => 'Done';
 
   @override
-  String get expenseSuccessAddAnother => 'Add Another';
+  String get expenseSuccessAddAnother => 'Add another';
 
   @override
   String get expenseSuccessTotalAmount => 'TOTAL AMOUNT';
@@ -2697,7 +2697,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expenseSuccessCategory => 'CATEGORY';
 
   @override
-  String get commonNotFound => 'Not Found';
+  String get commonNotFound => 'Not found';
 
   @override
   String get commonEmail => 'Email';
