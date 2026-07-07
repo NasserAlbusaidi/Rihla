@@ -2439,10 +2439,10 @@ abstract class AppLocalizations {
   /// **'Been here before?'**
   String get homeRestoreSectionCaption;
 
-  /// No description provided for @homeSetNameChip.
+  /// Home top-bar chip prompting the user to set a display name. Tight width budget (~75px @402pt): it sits left of the #994 centre-pinned wordmark and its Flexible caps at ~119px, so a longer string ellipsizes. Keep short (EN 'Set name').
   ///
   /// In en, this message translates to:
-  /// **'Set your name'**
+  /// **'Set name'**
   String get homeSetNameChip;
 
   /// No description provided for @homeGuestCaption.
