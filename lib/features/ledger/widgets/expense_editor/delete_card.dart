@@ -55,9 +55,7 @@ class DeleteCard extends StatelessWidget {
               label: Text(context.l10n.commonDelete),
               style: FilledButton.styleFrom(
                 backgroundColor: colors.error,
-                // design-token-justified: white foreground on the rust
-                // destructive delete CTA — no textOnError token exists.
-                foregroundColor: Colors.white,
+                foregroundColor: colors.textOnError,
                 minimumSize: const Size(0, 40),
                 padding: const EdgeInsetsDirectional.fromSTEB(14, 9, 14, 11),
                 shape: RoundedRectangleBorder(

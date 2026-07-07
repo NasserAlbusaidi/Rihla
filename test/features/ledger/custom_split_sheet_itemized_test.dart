@@ -495,5 +495,45 @@ void main() {
       expect(result.distribution!['a'], Decimal.parse('1.000'));
       expect(result.distribution!['b'], Decimal.parse('1.000'));
     });
+
+    testWidgets(
+      '#1041 §4: adjustment-type chip hit region is >=44dp tall',
+      (tester) async {
+        await _runSheet(
+          tester,
+          total: Decimal.parse('2.000'),
+          participants: two,
+          interactions: (t) async {
+            await t.tap(find.text('Itemized'));
+            await t.pumpAndSettle();
+            final add = find.byKey(const Key('itemized_add_adjustment'));
+            await t.ensureVisible(add);
+            await t.pumpAndSettle();
+            await t.tap(add);
+            await t.pumpAndSettle();
+
+            final size = t.getSize(
+              find.byKey(const Key('adjustment_type_service')),
+            );
+            expect(size.height, greaterThanOrEqualTo(44));
+
+            // Select a type + valid amount before closing (mirrors
+            // _addAdjustment) — closing with a blank amount disposes the
+            // controller mid-animation, a pre-existing app quirk unrelated
+            // to tap targets and out of scope here.
+            await t.tap(find.byKey(const Key('adjustment_type_service')));
+            await t.pumpAndSettle();
+            await t.enterText(
+              find.byKey(const Key('adjustment_amount')),
+              '1.000',
+            );
+            await t.pump();
+            await t.tap(find.byKey(const Key('adjustment_done')));
+            await t.pumpAndSettle();
+            await t.tap(find.text('Cancel'));
+          },
+        );
+      },
+    );
   });
 }

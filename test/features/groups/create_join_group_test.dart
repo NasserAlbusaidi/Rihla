@@ -912,6 +912,9 @@ void main() {
 
         await tester.enterText(find.byType(TextFormField).first, 'Joiner');
         await tester.pump();
+        // #1041: the top bar grew to the 44dp §4 floor, nudging the button
+        // out of the default test viewport — ensureVisible before tapping.
+        await tester.ensureVisible(find.byKey(GroupKeys.joinGroupButton));
         await tester.tap(find.byKey(GroupKeys.joinGroupButton));
         await tester.pumpAndSettle();
 

@@ -61,11 +61,13 @@ void main() {
 
     testWidgets('absolute value used regardless of sign mode', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('-42.500'),
-          currency: 'OMR',
-          sign: false,
-        )),
+        _wrap(
+          RAmount(
+            value: Decimal.parse('-42.500'),
+            currency: 'OMR',
+            sign: false,
+          ),
+        ),
       );
       // No prefix in non-sign mode; abs value rendered.
       expect(_renderedText(tester), 'OMR 42.500');
@@ -101,8 +103,9 @@ void main() {
       expect(_renderedText(tester), 'QAR 50.00');
     });
 
-    testWidgets('unknown currency falls back to 2 decimal places',
-        (tester) async {
+    testWidgets('unknown currency falls back to 2 decimal places', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(RAmount(value: Decimal.parse('50'), currency: 'XYZ')),
       );
@@ -113,37 +116,33 @@ void main() {
   group('RAmount — sign mode', () {
     testWidgets('positive shows + prefix', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('184.200'),
-          currency: 'OMR',
-          sign: true,
-        )),
+        _wrap(
+          RAmount(value: Decimal.parse('184.200'), currency: 'OMR', sign: true),
+        ),
       );
       expect(_renderedText(tester), '+OMR 184.200');
     });
 
-    testWidgets('negative shows typographic minus (U+2212), not hyphen',
-        (tester) async {
+    testWidgets('negative shows typographic minus (U+2212), not hyphen', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('-42.500'),
-          currency: 'OMR',
-          sign: true,
-        )),
+        _wrap(
+          RAmount(value: Decimal.parse('-42.500'), currency: 'OMR', sign: true),
+        ),
       );
       final rendered = _renderedText(tester);
       expect(rendered, '−OMR 42.500');
-      expect(rendered.contains('-'), isFalse,
-          reason: 'must use U+2212 minus, not hyphen-minus');
+      expect(
+        rendered.contains('-'),
+        isFalse,
+        reason: 'must use U+2212 minus, not hyphen-minus',
+      );
     });
 
     testWidgets('zero with sign mode shows no prefix', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.zero,
-          currency: 'OMR',
-          sign: true,
-        )),
+        _wrap(RAmount(value: Decimal.zero, currency: 'OMR', sign: true)),
       );
       expect(_renderedText(tester), 'OMR 0.000');
     });
@@ -173,21 +172,166 @@ void main() {
 
     testWidgets('explicit tone:rust overrides positive value', (tester) async {
       await tester.pumpWidget(
-        _wrap(RAmount(
-          value: Decimal.parse('10'),
-          sign: true,
-          tone: AmountTone.rust,
-        )),
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.rust,
+          ),
+        ),
       );
       expect(wholeColor(tester), const Color(0xFFB03A48));
     });
 
-    testWidgets('zero in sign mode → ink/textPrimary tone', (tester) async {
+    testWidgets('tone:sageText → WCAG-safe successText, not surface sage', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _wrap(RAmount(value: Decimal.zero, sign: true)),
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.sageText,
+          ),
+        ),
       );
+      // Sage-dark = #175A44 (light theme successText)
+      expect(wholeColor(tester), const Color(0xFF175A44));
+    });
+
+    testWidgets('tone:rustText → WCAG-safe errorText, not surface rust', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('-10'),
+            sign: true,
+            tone: AmountTone.rustText,
+          ),
+        ),
+      );
+      // Rust-dark = #8A2430 (light theme errorText)
+      expect(wholeColor(tester), const Color(0xFF8A2430));
+    });
+
+    testWidgets('zero in sign mode → ink/textPrimary tone', (tester) async {
+      await tester.pumpWidget(_wrap(RAmount(value: Decimal.zero, sign: true)));
       expect(wholeColor(tester), const Color(0xFF1B1F1E));
     });
+  });
+
+  group('RAmount — decimal dimming', () {
+    Color decimalColor(WidgetTester tester) {
+      // Leaves are: [currency code, whole, decimal]. Decimal is index 2.
+      final leaf = _leafSpans(tester)[2];
+      expect(leaf.text, startsWith('.'));
+      return leaf.style!.color!;
+    }
+
+    testWidgets('default dims the decimal fragment to 0.7 alpha', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.sageText,
+          ),
+        ),
+      );
+      expect(
+        decimalColor(tester),
+        const Color(0xFF175A44).withValues(alpha: 0.7),
+      );
+    });
+
+    testWidgets('dimDecimals:false renders the fragment at full strength', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('10'),
+            sign: true,
+            tone: AmountTone.sageText,
+            dimDecimals: false,
+          ),
+        ),
+      );
+      expect(decimalColor(tester), const Color(0xFF175A44));
+    });
+  });
+
+  group('RAmount — full-size sign', () {
+    testWidgets('default keeps the sign in the small dimmed code-prefix span', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('-42.5'),
+            currency: 'OMR',
+            size: 20,
+            sign: true,
+            showCurrency: false,
+          ),
+        ),
+      );
+      final leaves = _leafSpans(tester);
+      expect(leaves[0].text, '− ');
+      expect(leaves[0].style!.fontSize, closeTo(20 * 0.42, 0.01));
+    });
+
+    testWidgets(
+      'fullSizeSign renders the sign as a full-size, full-strength span '
+      'hugging the digits',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            RAmount(
+              value: Decimal.parse('-42.5'),
+              currency: 'OMR',
+              size: 20,
+              sign: true,
+              showCurrency: false,
+              tone: AmountTone.rustText,
+              fullSizeSign: true,
+            ),
+          ),
+        );
+        expect(_renderedText(tester), '−42.500');
+        final signSpan = _leafSpans(tester)[0];
+        expect(signSpan.text, '−');
+        expect(signSpan.style!.fontSize, 20.0);
+        // Rust-dark = #8A2430 at full strength (no 0.78 code-prefix alpha).
+        expect(signSpan.style!.color, const Color(0xFF8A2430));
+      },
+    );
+
+    testWidgets(
+      'fullSizeSign with showCurrency keeps the currency code small',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            RAmount(
+              value: Decimal.parse('184.2'),
+              currency: 'OMR',
+              size: 20,
+              sign: true,
+              fullSizeSign: true,
+            ),
+          ),
+        );
+        expect(_renderedText(tester), '+OMR 184.200');
+        final leaves = _leafSpans(tester);
+        expect(leaves[0].text, '+');
+        expect(leaves[0].style!.fontSize, 20.0);
+        expect(leaves[1].text, 'OMR ');
+        expect(leaves[1].style!.fontSize, closeTo(20 * 0.42, 0.01));
+      },
+    );
   });
 
   group('RAmount — size scaling', () {
