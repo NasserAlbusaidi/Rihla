@@ -1028,8 +1028,13 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
               ),
             ),
             SizedBox(height: spacing.space16),
+            // #1041 §4: a horizontal ListView tight-constrains every child's
+            // cross axis to this box's height, so it must be ≥44dp for a
+            // chip's opaque GestureDetector to reach the 44dp tap-target
+            // floor — the visual pill stays compact via the chip's own
+            // Center wrapper.
             SizedBox(
-              height: 40,
+              height: 44,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
@@ -1186,26 +1191,28 @@ class _AdjustmentTypeChip extends StatelessWidget {
       key: Key('adjustment_type_$type'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: spacing.space12,
-          vertical: spacing.space8,
-        ),
-        decoration: BoxDecoration(
-          color: selected
-              ? colors.primary.withValues(alpha: 0.12)
-              : colors.cardSurface,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: selected ? colors.primary : colors.rule2,
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.space12,
+            vertical: spacing.space8,
           ),
-        ),
-        child: Text(
-          _adjustmentTypeLabel(context, type),
-          style: AppTypography.sans(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected ? colors.primaryDark : colors.textSecondary,
+          decoration: BoxDecoration(
+            color: selected
+                ? colors.primary.withValues(alpha: 0.12)
+                : colors.cardSurface,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: selected ? colors.primary : colors.rule2,
+            ),
+          ),
+          child: Text(
+            _adjustmentTypeLabel(context, type),
+            style: AppTypography.sans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selected ? colors.primaryDark : colors.textSecondary,
+            ),
           ),
         ),
       ),
