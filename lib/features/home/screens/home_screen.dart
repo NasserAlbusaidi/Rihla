@@ -708,12 +708,20 @@ class _IconCircle extends StatelessWidget {
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Badge(
-            key: badgeKey,
-            isLabelVisible: showBadge,
-            smallSize: 8,
-            backgroundColor: colors.primary,
-            child: Icon(icon, size: 20, color: colors.textPrimary),
+          // Center, not a bare tight box: with the dot visible Badge wraps
+          // its child in a Stack whose default alignment is topStart, so
+          // under tight 40×40 constraints the glyph pinned to the top-start
+          // corner — 10px off the badge-less glyph's centre-line. Centering
+          // sizes the Badge to the glyph and hugs the dot to its corner,
+          // matching bottom_nav_shell's NavigationDestination look.
+          child: Center(
+            child: Badge(
+              key: badgeKey,
+              isLabelVisible: showBadge,
+              smallSize: 8,
+              backgroundColor: colors.primary,
+              child: Icon(icon, size: 20, color: colors.textPrimary),
+            ),
           ),
         ),
       ),
