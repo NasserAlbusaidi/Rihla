@@ -21,17 +21,27 @@ class LoadingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // #1026: a disabled button (not loading) must read as inactive. The outer
+    // container carries the fill (the inner ElevatedButton is transparent), so
+    // without this it kept the bright primary/gradient and the label fell back
+    // to Material's low-contrast default disabled foreground. Loading keeps the
+    // primary fill (the spinner sits on it) and is not treated as disabled.
+    final bool disabled = onPressed == null && !isLoading;
     return Container(
       height: context.spacing.buttonHeight,
       decoration: BoxDecoration(
-        gradient: gradient,
-        color: gradient == null ? context.colors.primary : null,
+        gradient: disabled ? null : gradient,
+        color: disabled
+            ? context.colors.disabled
+            : (gradient == null ? context.colors.primary : null),
         borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
       ),
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
+          foregroundColor: context.colors.textOnPrimary,
+          disabledForegroundColor: context.colors.disabledText,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(context.spacing.radiusMedium),
