@@ -13,8 +13,12 @@ import 'package:safar/features/events/models/event_recap.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/events/providers/event_recap_provider.dart';
 import 'package:safar/features/events/screens/event_recap_screen.dart';
+import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
+import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
+import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/providers/ledger_view_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
@@ -129,6 +133,14 @@ void main() {
           eventRecapProvider(eventRef).overrideWithValue(outstandingRecap()),
           ledgerViewProvider(eventRef).overrideWithValue(fakeLedgerView()),
           currentUserIdProvider.overrideWithValue('a'),
+          // #1030: the recap screen gates on the three source streams'
+          // health before rendering — healthy defaults pass the gate.
+          eventExpensesProvider(eventRef)
+              .overrideWith((_) => Stream.value(const <Expense>[])),
+          eventSettlementsProvider(eventRef)
+              .overrideWith((_) => Stream.value(const <Settlement>[])),
+          groupMembersProvider(eventRef.groupId)
+              .overrideWith((_) => Stream.value(const <GroupMember>[])),
         ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,

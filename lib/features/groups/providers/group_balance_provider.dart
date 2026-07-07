@@ -155,6 +155,15 @@ final groupBalancesProvider = Provider.family<AsyncValue<GroupBalances>, String>
   if (membersAsync.isLoading && !membersAsync.hasValue) {
     return const AsyncValue.loading();
   }
+  // #1030: a hard-errored members stream must be LOUD — members=[] re-shapes
+  // the #249 universe (departed split recipients dropped) into WRONG money on
+  // the OUTBOUND group settle-up basis, and memberRawNames feeds the
+  // settlement write. Mirrors the once-provider's members-loud semantics
+  // (#997 D3) and the group-settlements gate below. Stale-valued errors keep
+  // serving (per-event-guard vocabulary).
+  if (membersAsync.hasError && !membersAsync.hasValue) {
+    return AsyncValue.error(membersAsync.error!, membersAsync.stackTrace!);
+  }
   final members = membersAsync.valueOrNull ?? [];
 
   // Step 3: Watch group-level settlements (D-07)

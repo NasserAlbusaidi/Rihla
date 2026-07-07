@@ -17,6 +17,7 @@ import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../activity/screens/activity_feed_screen.dart';
 import '../../groups/providers/group_balance_provider.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
@@ -196,18 +197,23 @@ class _ContentState extends ConsumerState<_Content> {
     );
     // #1028: a hard-errored source stream means view.balances was computed
     // WITHOUT that stream's folds — wrong nets, not just false-settled. Gate
-    // BOTH streams with the #1005 hard-error pattern (hasError && !hasValue:
+    // the streams with the #1005 hard-error pattern (hasError && !hasValue:
     // a stale-but-valid value keeps rendering; the ledger panel below owns
     // the loud Reload affordance). Same !hasValue vocabulary for the
     // first-value window, which otherwise renders a false "Nothing to
-    // settle yet".
+    // settle yet". #1030: members joins both gates — ledgerViewProvider
+    // folds it too, and a members-less #249 universe is WRONG nets, not
+    // fewer nets.
+    final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
     final balanceUnavailable =
         (expensesAsync.hasError && !expensesAsync.hasValue) ||
-        (settlementsAsync.hasError && !settlementsAsync.hasValue);
+        (settlementsAsync.hasError && !settlementsAsync.hasValue) ||
+        (membersAsync.hasError && !membersAsync.hasValue);
     final balancePending =
         !balanceUnavailable &&
         ((expensesAsync.isLoading && !expensesAsync.hasValue) ||
-            (settlementsAsync.isLoading && !settlementsAsync.hasValue));
+            (settlementsAsync.isLoading && !settlementsAsync.hasValue) ||
+            (membersAsync.isLoading && !membersAsync.hasValue));
     final state = balanceUnavailable
         ? _HubState.unavailable
         : balancePending

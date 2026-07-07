@@ -1306,4 +1306,79 @@ void main() {
       expect(_sumNet(result.requireValue), Decimal.zero);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // #1030: members hard error must be LOUD, never an empty-members wrong basis
+  // ---------------------------------------------------------------------------
+
+  group('#1030 members stream hard error', () {
+    const groupId = 'group-1';
+    final event = _makeEvent(
+      id: 'event-a',
+      groupId: groupId,
+      participantIds: ['uid-1', 'uid-2'],
+    );
+    final expense = _makeExpense(
+      id: 'x1',
+      payerParticipantId: 'uid-1',
+      amount: Decimal.parse('10.000'),
+    );
+
+    ProviderContainer makeContainer(Stream<List<GroupMember>> membersStream) {
+      return ProviderContainer(
+        overrides: [
+          groupEventsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value([event])),
+          groupMembersProvider(groupId).overrideWith((_) => membersStream),
+          eventExpensesProvider((
+            groupId: groupId,
+            eventId: event.id,
+          )).overrideWith((_) => Stream.value([expense])),
+          eventSettlementsProvider((
+            groupId: groupId,
+            eventId: event.id,
+          )).overrideWith((_) => Stream.value(const <Settlement>[])),
+          groupSettlementsProvider(
+            groupId,
+          ).overrideWith((_) => Stream.value(const <Settlement>[])),
+        ],
+      );
+    }
+
+    test('errors the provider, never an empty-members wrong basis', () async {
+      // members=[] re-shapes the #249 universe (departed split recipients
+      // dropped) into WRONG money — not incomplete money — on the OUTBOUND
+      // group settle-up basis, and memberRawNames feeds the settlement write.
+      final container = makeContainer(
+        Stream<List<GroupMember>>.error(
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
+          ),
+        ),
+      );
+      addTearDown(container.dispose);
+      await _pumpUntilData(container, groupId);
+
+      final result = container.read(groupBalancesProvider(groupId));
+      expect(result.hasError, isTrue);
+      expect(result.hasValue, isFalse);
+    });
+
+    test('healthy members stream stays byte-identical', () async {
+      final container = makeContainer(
+        Stream.value([
+          _makeMember(userId: 'uid-1', groupId: groupId),
+          _makeMember(userId: 'uid-2', groupId: groupId),
+        ]),
+      );
+      addTearDown(container.dispose);
+      await _pumpUntilData(container, groupId);
+
+      final result = container.read(groupBalancesProvider(groupId));
+      expect(result.hasValue, isTrue);
+      expect(_sumNet(result.requireValue), Decimal.zero);
+    });
+  });
 }

@@ -2454,6 +2454,10 @@
   "@recapEmptyMessage": {
     "description": "Empty-state body when an event has no expenses to recap (#202)."
   },
+  "recapDataUnavailable": "Couldn't load recap data.",
+  "@recapDataUnavailable": {
+    "description": "Error-state title when a recap source stream (expenses, settlements, or members) hard-errored — the recap must not render nets computed without it (#1030)."
+  },
   "recapTopPayer": "Top payer",
   "@recapTopPayer": {
     "description": "Highlight-card label for the person who fronted the most cash in the event recap (#721)."

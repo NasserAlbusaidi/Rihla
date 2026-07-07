@@ -243,6 +243,21 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           }
           final settlements = settlementsAsync.valueOrNull ?? const [];
 
+          // #1030: a hard-errored members stream must not fold to [] — the
+          // #249 universe intersects split recipients with allMemberIds, so
+          // empty members computes WRONG money on this OUTBOUND basis (and
+          // userRawNames feeds the settlement write). Stale-valued errors
+          // keep serving; the first-value window gets the same skeleton as
+          // the settlements leg. The #204/#898 review-sheet fallback is
+          // re-scoped to the stale-valued leg — under a hard error no settle
+          // write is reachable at all, which dominates "warn but allow".
+          if (groupMembersAsync.hasError && !groupMembersAsync.hasValue) {
+            return _balancesErrorView(context, eventRef);
+          }
+          if (groupMembersAsync.isLoading && !groupMembersAsync.hasValue) {
+            return SkeletonLoader.groupList();
+          }
+
           // #249: fold departed-member split recipients into the
           // balance universe so settle-up suggestions conserve. The
           // name maps MUST span the universe — OUTBOUND: userRawNames
@@ -296,26 +311,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
 
           // #204/#898: gate membership-sensitive detection on resolved members
           // and settled-bucket suppression on resolved settlements so the
-          // one-shot does not latch before live members and money-flow basis are
-          // authoritative. If members error, fall back to the old detector path
-          // so exact/custom/personal/large warnings still show; only the
-          // payer-left reason is skipped. A hard settlements error no longer
-          // reaches here (#1028 — the loud gate above returns first), so the
-          // fail-open contract survives only for the MEMBERS-error leg.
-          if (settlementsAsync.hasValue) {
-            if (groupMembersAsync.hasValue) {
-              final activeParticipantIds = event.participantIds
-                  .toSet()
-                  .intersection(liveMemberIds);
-              _maybeShowReviewSheet(
-                context,
-                expenses,
-                outstandingCurrencies,
-                activeParticipantIds,
-              );
-            } else if (groupMembersAsync.hasError) {
-              _maybeShowReviewSheet(context, expenses, outstandingCurrencies);
-            }
+          // one-shot does not latch before live members and money-flow basis
+          // are authoritative. Past the #1028/#1030 loud gates above, both
+          // streams are guaranteed to carry a value here (possibly stale under
+          // an error — the accepted #1005 leg), so the full detector always
+          // runs; the old reduced members-error fallback became unreachable
+          // and was removed (#1030 — a valueless members stream never reaches
+          // this point anymore).
+          if (settlementsAsync.hasValue && groupMembersAsync.hasValue) {
+            final activeParticipantIds = event.participantIds
+                .toSet()
+                .intersection(liveMemberIds);
+            _maybeShowReviewSheet(
+              context,
+              expenses,
+              outstandingCurrencies,
+              activeParticipantIds,
+            );
           }
 
           // #382 PR-1: one section per currency bucket, the optimizer
@@ -419,9 +431,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   }
 
   /// Loud couldn't-load view shared by the expenses error branch and the
-  /// #1028 settlements hard-error gate. Retry invalidates BOTH streams — a
-  /// settlements-triggered error could never heal off an expenses-only
-  /// invalidate.
+  /// #1028 settlements / #1030 members hard-error gates. Retry invalidates
+  /// all THREE streams — a settlements- or members-triggered error could
+  /// never heal off an expenses-only invalidate.
   Widget _balancesErrorView(BuildContext context, EventRef eventRef) {
     return Center(
       child: Padding(
@@ -444,6 +456,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               onPressed: () {
                 ref.invalidate(eventExpensesProvider(eventRef));
                 ref.invalidate(eventSettlementsProvider(eventRef));
+                ref.invalidate(groupMembersProvider(widget.groupId));
               },
               child: Text(context.l10n.commonRetry),
             ),
@@ -555,8 +568,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         .read(eventSettlementsProvider(eventRef))
         .valueOrNull;
     if (event == null || expenses == null || settlements == null) return null;
-    final groupMembers =
-        ref.read(groupMembersProvider(widget.groupId)).valueOrNull ?? const [];
+    // #1030: a valueless members read must SKIP revalidation like the legs
+    // above — folding it to [] recomputes the cap against the wrong #249
+    // universe. Stale values serve; post-#1030 render gates this is
+    // defensive parity, same profile as the event==null sibling.
+    final membersAsync = ref.read(groupMembersProvider(widget.groupId));
+    if (!membersAsync.hasValue) return null;
+    final groupMembers = membersAsync.requireValue;
     final allMemberIds = groupMembers.map((m) => m.userId).toSet();
     final liveMemberIds = groupMembers
         .where((m) => !m.isTombstone)
