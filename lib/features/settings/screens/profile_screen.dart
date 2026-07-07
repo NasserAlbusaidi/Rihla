@@ -24,6 +24,7 @@ import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../../shared/widgets/scroll_under_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
@@ -76,78 +77,74 @@ class ProfileScreen extends ConsumerWidget {
       key: ProfileKeys.screen,
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
-        child: Column(
-          children: [
-            _TopBar(canPop: showBack),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: context.spacing.space32),
-                child: Column(
-                  children: [
-                    const _PendingRecoveryBanner(),
-                    SizedBox(height: context.spacing.space4),
-                    _IdentityCard(
-                          name: settings.deviceName,
-                          onEditName: () =>
-                              _openEditSheet(context, ref, settings.deviceName),
-                        )
-                        .animate()
-                        .fadeIn(delay: 80.ms, duration: 400.ms)
-                        .slideY(begin: 0.08),
-                    // #487: anonymous users get a prominent prompt naming the
-                    // stakes; durable users never see it.
-                    if (!isDurable) ...[
-                      const SizedBox(height: 14),
-                      const _BackupAccountCard(),
-                    ],
-                    const SizedBox(height: 14),
-                    const _StatsGrid()
-                        .animate()
-                        .fadeIn(delay: 160.ms, duration: 400.ms)
-                        .slideY(begin: 0.08),
-                    const SizedBox(height: 18),
-                    _SectionLabel(label: l10n.profileSectionPreferences),
-                    SizedBox(height: context.spacing.space8),
-                    const _PreferencesCard().animate().fadeIn(
-                      delay: 260.ms,
-                      duration: 400.ms,
-                    ),
-                    const SizedBox(height: 18),
-                    Padding(
-                      key: ProfileKeys.displaySection,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.spacing.space20,
-                      ),
-                      child: const ProfileDisplaySection(),
-                    ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
-                    const SizedBox(height: 18),
-                    _SectionLabel(label: l10n.profileSectionAccount),
-                    SizedBox(height: context.spacing.space8),
-                    const _AccountCard().animate().fadeIn(
-                      delay: 320.ms,
-                      duration: 400.ms,
-                    ),
-                    const SizedBox(height: 18),
-                    _SectionLabel(label: l10n.profileSectionDanger),
-                    SizedBox(height: context.spacing.space8),
-                    const _DangerZoneCard().animate().fadeIn(
-                      delay: 340.ms,
-                      duration: 400.ms,
-                    ),
-                    const SizedBox(height: 18),
-                    _SectionLabel(label: l10n.profileSectionAbout),
-                    SizedBox(height: context.spacing.space8),
-                    const _AboutCard().animate().fadeIn(
-                      delay: 380.ms,
-                      duration: 400.ms,
-                    ),
-                    const SizedBox(height: 18),
-                    const _VersionStamp(),
-                  ],
+        child: ScrollUnderHeader(
+          header: _TopBar(canPop: showBack),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(bottom: context.spacing.space32),
+            child: Column(
+              children: [
+                const _PendingRecoveryBanner(),
+                SizedBox(height: context.spacing.space4),
+                _IdentityCard(
+                      name: settings.deviceName,
+                      onEditName: () =>
+                          _openEditSheet(context, ref, settings.deviceName),
+                    )
+                    .animate()
+                    .fadeIn(delay: 80.ms, duration: 400.ms)
+                    .slideY(begin: 0.08),
+                // #487: anonymous users get a prominent prompt naming the
+                // stakes; durable users never see it.
+                if (!isDurable) ...[
+                  const SizedBox(height: 14),
+                  const _BackupAccountCard(),
+                ],
+                const SizedBox(height: 14),
+                const _StatsGrid()
+                    .animate()
+                    .fadeIn(delay: 160.ms, duration: 400.ms)
+                    .slideY(begin: 0.08),
+                const SizedBox(height: 18),
+                _SectionLabel(label: l10n.profileSectionPreferences),
+                SizedBox(height: context.spacing.space8),
+                const _PreferencesCard().animate().fadeIn(
+                  delay: 260.ms,
+                  duration: 400.ms,
                 ),
-              ),
+                const SizedBox(height: 18),
+                Padding(
+                  key: ProfileKeys.displaySection,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.space20,
+                  ),
+                  child: const ProfileDisplaySection(),
+                ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
+                const SizedBox(height: 18),
+                _SectionLabel(label: l10n.profileSectionAccount),
+                SizedBox(height: context.spacing.space8),
+                const _AccountCard().animate().fadeIn(
+                  delay: 320.ms,
+                  duration: 400.ms,
+                ),
+                const SizedBox(height: 18),
+                _SectionLabel(label: l10n.profileSectionDanger),
+                SizedBox(height: context.spacing.space8),
+                const _DangerZoneCard().animate().fadeIn(
+                  delay: 340.ms,
+                  duration: 400.ms,
+                ),
+                const SizedBox(height: 18),
+                _SectionLabel(label: l10n.profileSectionAbout),
+                SizedBox(height: context.spacing.space8),
+                const _AboutCard().animate().fadeIn(
+                  delay: 380.ms,
+                  duration: 400.ms,
+                ),
+                const SizedBox(height: 18),
+                const _VersionStamp(),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
