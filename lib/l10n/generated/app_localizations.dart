@@ -797,7 +797,7 @@ abstract class AppLocalizations {
   /// No description provided for @commonGoHome.
   ///
   /// In en, this message translates to:
-  /// **'Go Home'**
+  /// **'Go home'**
   String get commonGoHome;
 
   /// No description provided for @timelineToday.
@@ -1745,7 +1745,7 @@ abstract class AppLocalizations {
   /// No description provided for @settleUpTitle.
   ///
   /// In en, this message translates to:
-  /// **'Settle Up'**
+  /// **'Settle up'**
   String get settleUpTitle;
 
   /// No description provided for @settleUpEventMissingTitle.
@@ -2412,13 +2412,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeCreateGroup.
   ///
   /// In en, this message translates to:
-  /// **'Create Group'**
+  /// **'Create group'**
   String get homeCreateGroup;
 
   /// No description provided for @homeJoinGroup.
   ///
   /// In en, this message translates to:
-  /// **'Join Group'**
+  /// **'Join group'**
   String get homeJoinGroup;
 
   /// No description provided for @homeRestoreWithGoogle.
@@ -2502,13 +2502,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeCreateAGroup.
   ///
   /// In en, this message translates to:
-  /// **'Create a Group'**
+  /// **'Create a group'**
   String get homeCreateAGroup;
 
   /// No description provided for @homeJoinAGroup.
   ///
   /// In en, this message translates to:
-  /// **'Join a Group'**
+  /// **'Join a group'**
   String get homeJoinAGroup;
 
   /// No description provided for @homeGoodMorning.
@@ -2676,7 +2676,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeQuickAddExpense.
   ///
   /// In en, this message translates to:
-  /// **'Add Expense'**
+  /// **'Add expense'**
   String get homeQuickAddExpense;
 
   /// No description provided for @addExpenseSheetTitle.
@@ -3216,7 +3216,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventNameLabel.
   ///
   /// In en, this message translates to:
-  /// **'Event Name'**
+  /// **'Event name'**
   String get eventNameLabel;
 
   /// No description provided for @eventNameHint.
@@ -3252,7 +3252,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventCreate.
   ///
   /// In en, this message translates to:
-  /// **'Create Event'**
+  /// **'Create event'**
   String get eventCreate;
 
   /// No description provided for @eventCreating.
@@ -3288,13 +3288,13 @@ abstract class AppLocalizations {
   /// No description provided for @eventSelectAll.
   ///
   /// In en, this message translates to:
-  /// **'Select All'**
+  /// **'Select all'**
   String get eventSelectAll;
 
   /// No description provided for @eventSettingsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Event Settings'**
+  /// **'Event settings'**
   String get eventSettingsTitle;
 
   /// No description provided for @eventSettingsLoadFailed.
@@ -3354,7 +3354,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventSaveChanges.
   ///
   /// In en, this message translates to:
-  /// **'Save Changes'**
+  /// **'Save changes'**
   String get eventSaveChanges;
 
   /// No description provided for @eventDangerZone.
@@ -3600,7 +3600,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupNameLabel.
   ///
   /// In en, this message translates to:
-  /// **'Group Name'**
+  /// **'Group name'**
   String get groupNameLabel;
 
   /// No description provided for @groupNameHint.
@@ -3726,7 +3726,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupCopyCode.
   ///
   /// In en, this message translates to:
-  /// **'Copy Code'**
+  /// **'Copy code'**
   String get groupCopyCode;
 
   /// No description provided for @groupShare.
@@ -3744,13 +3744,13 @@ abstract class AppLocalizations {
   /// No description provided for @groupJoinTitle.
   ///
   /// In en, this message translates to:
-  /// **'Join a Group'**
+  /// **'Join a group'**
   String get groupJoinTitle;
 
   /// No description provided for @groupJoinCta.
   ///
   /// In en, this message translates to:
-  /// **'Join Group'**
+  /// **'Join group'**
   String get groupJoinCta;
 
   /// No description provided for @groupJoining.
@@ -3918,7 +3918,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupCreateEvent.
   ///
   /// In en, this message translates to:
-  /// **'Create Event'**
+  /// **'Create event'**
   String get groupCreateEvent;
 
   /// No description provided for @groupInvitePeople.
@@ -4578,7 +4578,7 @@ abstract class AppLocalizations {
   /// No description provided for @expenseSuccessTitle.
   ///
   /// In en, this message translates to:
-  /// **'Expense Saved'**
+  /// **'Expense saved'**
   String get expenseSuccessTitle;
 
   /// No description provided for @expenseSuccessSyncedToCloud.
@@ -4602,7 +4602,7 @@ abstract class AppLocalizations {
   /// No description provided for @expenseSuccessAddAnother.
   ///
   /// In en, this message translates to:
-  /// **'Add Another'**
+  /// **'Add another'**
   String get expenseSuccessAddAnother;
 
   /// No description provided for @expenseSuccessTotalAmount.
@@ -4617,10 +4617,10 @@ abstract class AppLocalizations {
   /// **'CATEGORY'**
   String get expenseSuccessCategory;
 
-  /// Generic 'Not Found' label used in module headers and error states; pre-added for cross-feature reuse.
+  /// Generic 'Not found' label used in module headers and error states; pre-added for cross-feature reuse.
   ///
   /// In en, this message translates to:
-  /// **'Not Found'**
+  /// **'Not found'**
   String get commonNotFound;
 
   /// Email field label reused across the auth recover/link flows.

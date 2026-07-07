@@ -10,12 +10,12 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../keys/group_keys.dart';
 import '../models/group_member_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 import 'add_shadow_member_sheet.dart';
-import 'settings_section_header.dart';
 
 /// Members section widget for GroupSettingsScreen.
 ///
@@ -46,7 +46,7 @@ class GroupMembersSection extends ConsumerWidget {
       key: GroupKeys.membersSection,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SettingsSectionHeader(
+        SectionHeader(
           title: context.l10n.groupMembers,
           // #278 PR3: only the creator can add placeholder members by name.
           actionLabel: canAddByName ? context.l10n.groupAddMemberAction : null,
@@ -54,6 +54,7 @@ class GroupMembersSection extends ConsumerWidget {
           onActionTap: canAddByName
               ? () => AddShadowMemberSheet.show(context, groupId: groupId)
               : null,
+          padding: EdgeInsets.zero,
         ),
         const SizedBox(height: 6),
         Container(

@@ -79,6 +79,8 @@ void main() {
     _Pair('error', 'light', 'errorText on card', l.errorText, l.cardSurface, 4.5),
     _Pair('error', 'dark', 'errorText on scaffold', d.errorText, d.scaffoldBackground, 4.5),
     _Pair('error', 'dark', 'errorText on card', d.errorText, d.cardSurface, 4.5),
+    _Pair('error', 'light', 'textOnError on error', l.textOnError, l.error, 4.5),
+    _Pair('error', 'dark', 'textOnError on error', d.textOnError, d.error, 4.5),
   ];
 
   group('WCAG contrast — Falaj palette', () {

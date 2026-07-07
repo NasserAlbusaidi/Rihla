@@ -9,12 +9,12 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/widgets/durable_credential_sheet.dart';
 import '../keys/group_keys.dart';
 import '../models/claim_models.dart';
 import '../providers/claim_provider.dart';
-import 'settings_section_header.dart';
 
 /// #278 PR9 — the creator's approve/decline surface for pending placeholder
 /// ("shadow") claim requests. Creator-only: a non-creator never even queries
@@ -46,7 +46,10 @@ class ClaimRequestsSection extends ConsumerWidget {
             key: GroupKeys.claimRequestsSection,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SettingsSectionHeader(title: context.l10n.groupClaimRequestsTitle),
+              SectionHeader(
+                title: context.l10n.groupClaimRequestsTitle,
+                padding: EdgeInsets.zero,
+              ),
               const SizedBox(height: 6),
               for (var i = 0; i < pending.length; i++) ...[
                 if (i > 0) SizedBox(height: context.spacing.space8),

@@ -37,7 +37,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Event Name'), findsOneWidget);
+      expect(find.text('Event name'), findsOneWidget);
       expect(find.text('Dates'), findsOneWidget);
       expect(find.text('Start date'), findsOneWidget);
       expect(find.text('End date'), findsOneWidget);

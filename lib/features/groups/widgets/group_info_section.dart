@@ -10,12 +10,12 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../core/utils/share_helper.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../home/widgets/group_glyph.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import 'group_edit_sheet.dart';
 import 'qr_invite_sheet.dart';
-import 'settings_section_header.dart';
 
 /// Wireframe identity and invite cards for GroupSettingsScreen.
 ///
@@ -40,7 +40,10 @@ class GroupInfoSection extends ConsumerWidget {
       children: [
         _buildIdentityCard(context),
         const SizedBox(height: 10),
-        SettingsSectionHeader(title: context.l10n.groupInvite),
+        SectionHeader(
+          title: context.l10n.groupInvite,
+          padding: EdgeInsets.zero,
+        ),
         SizedBox(height: context.spacing.space8),
         _buildInviteCodeCard(context),
       ],

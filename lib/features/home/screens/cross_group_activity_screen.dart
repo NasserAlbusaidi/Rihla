@@ -17,6 +17,7 @@ import '../../../shared/widgets/activity_day_section.dart';
 import '../../../shared/widgets/activity_filter_strip.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/paper_backdrop.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
@@ -171,6 +172,7 @@ class _CrossGroupActivityScreenState
                   searching: _searching,
                   onToggleSearch: _toggleSearch,
                 ),
+                const OfflineBanner(),
                 const SizedBox(height: 6),
                 if (_searching) ...[
                   _SearchField(
@@ -459,7 +461,9 @@ class _TopBar extends StatelessWidget {
               onTap: () => _back(context),
             )
           else
-            const SizedBox(width: 40),
+            // #1041: matches the ghost RIconButton's 44dp hit width so the
+            // title column doesn't shift when showBack/showSearch toggle.
+            const SizedBox(width: 44),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -497,7 +501,9 @@ class _TopBar extends StatelessWidget {
               onTap: onToggleSearch,
             )
           else
-            const SizedBox(width: 40),
+            // #1041: matches the ghost RIconButton's 44dp hit width so the
+            // title column doesn't shift when showBack/showSearch toggle.
+            const SizedBox(width: 44),
         ],
       ),
     );

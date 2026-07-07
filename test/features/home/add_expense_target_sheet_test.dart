@@ -19,6 +19,7 @@ import 'package:safar/features/home/widgets/add_expense_target_sheet.dart';
 import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/skeleton_loader.dart';
 
 const _uid = 'uid-user';
 
@@ -321,6 +322,91 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Add:g1/a'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'loading state renders layout-matched skeleton rows, replaced by real '
+      'rows once data resolves (#1041 B6)',
+      (tester) async {
+        // Never-emitting-until-told groups stream holds BOTH userGroupsProvider
+        // and the derived addExpenseTargetsProvider in loading → the sheet's
+        // _Loading skeleton. SkeletonLoader's shimmer repeats forever, so this
+        // test uses bounded pumps, never pumpAndSettle (same pattern as
+        // group_balance_breakdown_sheet_997_test.dart).
+        final groupsController = StreamController<List<Group>>();
+        addTearDown(groupsController.close);
+        final group = makeGroup(id: 'g1');
+
+        Future<void> pumpFrames({int times = 24}) async {
+          for (var i = 0; i < times; i++) {
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+        }
+
+        await tester.pumpWidget(
+          buildApp([
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            currentUserIdProvider.overrideWithValue(_uid),
+            userGroupsProvider.overrideWith((ref) => groupsController.stream),
+            crossGroupActivityProvider.overrideWith(
+              (ref) => const AsyncValue.data([]),
+            ),
+            groupEventsProvider.overrideWith(
+              (ref, groupId) => Stream.value([
+                makeEvent(id: 'e1', groupId: 'g1', name: 'Open Event'),
+              ]),
+            ),
+            groupBalancesProvider.overrideWith(
+              (ref, groupId) => const AsyncValue.data((
+                balances: <String, List<UserBalance>>{},
+                totalSpent: <String, Decimal>{},
+                eventCount: 0,
+                perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
+                memberNames: <String, String>{},
+                memberRawNames: <String, String>{},
+              )),
+            ),
+          ]),
+        );
+        await pumpFrames();
+
+        unawaited(
+          AddExpenseTargetSheet.show(tester.element(find.text('Dashboard'))),
+        );
+        await pumpFrames();
+
+        final sheet = find.byType(AddExpenseTargetSheet);
+        expect(
+          find.descendant(of: sheet, matching: find.byType(SkeletonLoader)),
+          findsOneWidget,
+          reason: 'unresolved targets must render the layout-matched skeleton',
+        );
+        expect(
+          find.descendant(
+            of: sheet,
+            matching: find.byType(CircularProgressIndicator),
+          ),
+          findsNothing,
+          reason: 'spinner-only loading was replaced by the skeleton (§10)',
+        );
+
+        groupsController.add([group]);
+        await pumpFrames();
+
+        expect(
+          find.descendant(of: sheet, matching: find.byType(SkeletonLoader)),
+          findsNothing,
+          reason: 'resolved data must replace the skeleton with real rows',
+        );
+        // The sticky `_view ??=` resolves on the FIRST data frame — before the
+        // events stream emits, `targets.active` is still empty, so the sheet
+        // lands on the browse-all groups view. Assert its group row (real
+        // content), not the flattened event row.
+        expect(
+          find.descendant(of: sheet, matching: find.text('Group g1')),
+          findsOneWidget,
+        );
       },
     );
 

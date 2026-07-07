@@ -728,7 +728,7 @@ void main() {
 
       expect(find.byType(FloatingActionButton), findsNothing);
       expect(find.text('New event'), findsOneWidget);
-      expect(find.text('Create Event'), findsOneWidget);
+      expect(find.text('Create event'), findsOneWidget);
     });
 
     testWidgets('member can create events through the same group actions', (
@@ -746,7 +746,7 @@ void main() {
 
       expect(find.byType(FloatingActionButton), findsNothing);
       expect(find.text('New event'), findsOneWidget);
-      expect(find.text('Create Event'), findsOneWidget);
+      expect(find.text('Create event'), findsOneWidget);
     });
 
     testWidgets('creator sees empty events create action', (tester) async {
@@ -761,7 +761,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
-      expect(find.text('Create Event'), findsOneWidget);
+      expect(find.text('Create event'), findsOneWidget);
     });
 
     testWidgets('member sees empty events create action', (tester) async {
@@ -776,7 +776,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(GroupKeys.noEventsEmpty), findsOneWidget);
-      expect(find.text('Create Event'), findsOneWidget);
+      expect(find.text('Create event'), findsOneWidget);
       expect(
         find.text('Create your first event to start planning together.'),
         findsOneWidget,

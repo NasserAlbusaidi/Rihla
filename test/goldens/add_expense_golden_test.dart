@@ -10,7 +10,7 @@ void main() {
         tester,
         baselineStem: 'goldens/add_expense',
         harness: const GoldenHarness(
-          title: 'Add Expense',
+          title: 'Add expense',
           subtitle: 'Split evenly among members',
           rows: [
             (label: 'Amount', value: 'OMR 0.000'),

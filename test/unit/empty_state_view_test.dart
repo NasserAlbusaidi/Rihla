@@ -42,7 +42,7 @@ void main() {
                 icon: Iconsax.add_circle,
                 title: 'Nothing Here',
                 message: 'Tap below to get started',
-                actionLabel: 'Create Event',
+                actionLabel: 'Create event',
                 onAction: () {},
               ),
             ),
@@ -50,7 +50,7 @@ void main() {
         );
         await tester.pump(const Duration(milliseconds: 500));
 
-        expect(find.text('Create Event'), findsOneWidget);
+        expect(find.text('Create event'), findsOneWidget);
         expect(find.byKey(SharedKeys.emptyStateCtaButton), findsOneWidget);
       },
     );
@@ -67,7 +67,7 @@ void main() {
               icon: Iconsax.add_circle,
               title: 'Nothing Here',
               message: 'Tap below to get started',
-              actionLabel: 'Create Event',
+              actionLabel: 'Create event',
               onAction: () => tapped = true,
             ),
           ),

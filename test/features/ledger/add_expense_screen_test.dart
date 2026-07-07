@@ -204,7 +204,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Expense Saved'), findsOneWidget);
+    expect(find.text('Expense saved'), findsOneWidget);
     // The server acked within the race window → the badge claims cloud sync.
     expect(find.text('SAVED — WILL SYNC'), findsNothing);
     verify(
@@ -260,7 +260,7 @@ void main() {
     // Category is mandatory at creation — the save is blocked with a
     // validation message and nothing is staged until the user picks one.
     expect(find.text('Choose a category'), findsWidgets);
-    expect(find.text('Expense Saved'), findsNothing);
+    expect(find.text('Expense saved'), findsNothing);
 
     // Once a category is chosen the validation clears and the save proceeds.
     await tester.tap(find.text('Food'));
@@ -269,7 +269,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Expense Saved'), findsOneWidget);
+    expect(find.text('Expense saved'), findsOneWidget);
     verify(
       () => service.stageExpense(
         groupId: 'group-1',
