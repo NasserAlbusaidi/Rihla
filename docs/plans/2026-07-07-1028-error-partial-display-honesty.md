@@ -10,6 +10,8 @@
 
 **Issue:** #1028 (`Closes #1028`). Gate category: touches `lib/features/groups/providers/group_balance_provider.dart` (money) — fresh-context Gate review required before implementation.
 
+**Gate outcome (round 1, 2026-07-07):** rubric reviewer 0 P1 / 1 P2 / 3 P3; orthogonal adversary 0 P1 / 0 P2 / 2 P3 — both P1-clean in the same round → PASS. The P2 + actionable P3s are folded into this revision: the hub's transitive members fold via `ledgerViewProvider` added to the members-fail-open follow-up list; the `ledgerViewProvider` out-of-scope justification corrected (recap/trip-receipt/danger-section consumers do NOT error-handle — named in the follow-up); `SkeletonLoader.groupList()` invocation parens in return position; typedef field type `Group` (not `SafarGroup`); pending-skeleton header-scale fit confirmed as a real builder decision, not a copy-paste.
+
 ---
 
 ## Root cause (one paragraph)
@@ -43,8 +45,8 @@ Rejected: (a) surfacing through the #244 warning-banner channel — `groupFailed
 **C9 — sheet rows get the per-row caption, and a NEW key.** Footer-only would flag the sheet globally without saying which row is incomplete; the home-row reference (`home_screen.dart:957-974`) is per-row. New `HomeKeys.heroBreakdownRowIncomplete` — NEVER reuse `groupRowBalanceIncomplete`: the sheet overlays the home list, both live in the tree simultaneously, and a shared key breaks `byKey` reads (the documented two-unread-badges trap, `home_keys.dart:54-57`). Strings reuse `homeGroupBalanceIncomplete` ("Incomplete") and `homeBalanceIncompleteNotice` — zero ARB changes across the whole PR.
 
 **Out of scope (follow-ups, do not bundle):**
-- Members fail-open on the settle-up bases (`settle_up_screen.dart:213-214`, `group_balance_provider.dart:154-158`, `_freshOutstandingForPair:533-534`) — same shape, but drags the #249 universe semantics and the pinned members-error review-sheet fallback. File as a follow-up issue at close-out.
-- `ledgerViewProvider`'s internal folds — its display consumers (panels) already error-handle, and the hub gate (C1) stops the header from rendering its wrong nets. Changing the provider's shape touches every ledger consumer for no additional honesty.
+- Members fail-open on the settle-up bases (`settle_up_screen.dart:213-214`, `group_balance_provider.dart:154-158`, `_freshOutstandingForPair:533-534`) — same shape, but drags the #249 universe semantics and the pinned members-error review-sheet fallback. **Gate R1 rubric [P2]: the hub has the same exposure TRANSITIVELY — `ledgerViewProvider` also folds `groupMembersProvider` (`ledger_view_provider.dart:69-71`), so a members-only hard error still yields wrong hub nets that C1 (expenses+settlements gate) renders as clean. Deferred with the rest of the members class — but the hub is NOT fully honest until the members follow-up lands.** File as a follow-up issue at close-out, listing all four sites.
+- `ledgerViewProvider`'s internal folds — the hub gate (C1) stops the header from rendering its wrong nets, and changing the provider's shape touches every ledger consumer. **Gate R1 adversary [P3] correction: its OTHER consumers (`event_recap_provider.dart:19`, `trip_receipt_provider.dart:83`, `event_recap_screen.dart:70`, `event_danger_section.dart:351`) do NOT error-handle the expense/settlement streams — during a stream-error window the recap/receipt surfaces render the same folded wrong nets. Pre-existing, untouched by this PR; named in the follow-up issue so it isn't lost.**
 - The hub search sheet fed empty settlements during an error window (`event_command_center.dart:230-235`) — search over empty data yields no results (fail-safe absence, not a money lie).
 - The sheet's pre-existing conflation of errored (never-resolving) groups with loading ones in the `_Loading` branch — #997 behavior, pinned, not this PR.
 
@@ -184,7 +186,7 @@ Compact-amounts gate (`:462`):
             return _balancesErrorView(context);
           }
           if (settlementsAsync.isLoading && !settlementsAsync.hasValue) {
-            return SkeletonLoader.groupList;
+            return SkeletonLoader.groupList();
           }
           final settlements = settlementsAsync.valueOrNull ?? const [];
 ```
@@ -250,7 +252,7 @@ No other line changes (`:197`'s `valueOrNull ?? const []` is now reachable only 
 
 **Step 3: Implement.**
 - `home_keys.dart`: `static const heroBreakdownRowIncomplete = Key('home_hero_breakdown_row_incomplete');` — comment why it is distinct from `groupRowBalanceIncomplete` (sheet overlays the home list; shared keys break `byKey`). Widen the `heroBreakdownIncompleteNotice` comment from "loading/errored" to "loading/errored/partial".
-- Typedef: `typedef _GroupBalanceEntry = ({SafarGroup group, List<...> lines, bool partial});` (match the existing field types at `:18-21` exactly).
+- Typedef: `typedef _GroupBalanceEntry = ({Group group, List<...> lines, bool partial});` (match the existing field types at `:18-21` exactly — the model class is `Group`, `group_model.dart:11`).
 - Loop: track `var partialCount = 0;` after the unresolved `continue`:
 ```dart
         final balance = balanceAsync.valueOrNull;
