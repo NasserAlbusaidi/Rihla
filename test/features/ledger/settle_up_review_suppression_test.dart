@@ -264,27 +264,33 @@ void main() {
     expect(find.text('Eventually settled OMR dinner'), findsNothing);
   });
 
-  testWidgets('settlement stream errors fail open against empty settlements', (
-    tester,
-  ) async {
-    final prefs = await _prefs();
+  testWidgets(
+    'settlement stream hard error → loud error view, basis never computed '
+    '(#1028)',
+    (tester) async {
+      final prefs = await _prefs();
 
-    await tester.pumpWidget(
-      _wrap(
-        prefs: prefs,
-        expenses: Stream.value([
-          _expense(
-            id: 'omr-exact',
-            description: 'Error-path OMR dinner',
-            splitMode: SplitMode.exact,
-          ),
-        ]),
-        settlements: Stream.error(StateError('settlements failed')),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          expenses: Stream.value([
+            _expense(
+              id: 'omr-exact',
+              description: 'Error-path OMR dinner',
+              splitMode: SplitMode.exact,
+            ),
+          ]),
+          settlements: Stream.error(StateError('settlements failed')),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
-    expect(find.text('Error-path OMR dinner'), findsOneWidget);
-  });
+      // #1028: the basis is OUTBOUND — folding an errored settlements stream
+      // to [] resurrected settled debts as over-pay suggestions. The fail-open
+      // contract survives only for the MEMBERS-error leg.
+      expect(find.text("Couldn't load balances."), findsOneWidget);
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
+      expect(find.text('Error-path OMR dinner'), findsNothing);
+    },
+  );
 }

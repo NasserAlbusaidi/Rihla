@@ -194,10 +194,25 @@ class _ContentState extends ConsumerState<_Content> {
     final myLines = nonZeroNetsGccFirst(
       myNetByCurrency(view.balances, currentUid),
     );
-    final state = _resolveState(
-      hasExpenses: expenses.isNotEmpty,
-      lines: myLines,
-    );
+    // #1028: a hard-errored source stream means view.balances was computed
+    // WITHOUT that stream's folds — wrong nets, not just false-settled. Gate
+    // BOTH streams with the #1005 hard-error pattern (hasError && !hasValue:
+    // a stale-but-valid value keeps rendering; the ledger panel below owns
+    // the loud Reload affordance). Same !hasValue vocabulary for the
+    // first-value window, which otherwise renders a false "Nothing to
+    // settle yet".
+    final balanceUnavailable =
+        (expensesAsync.hasError && !expensesAsync.hasValue) ||
+        (settlementsAsync.hasError && !settlementsAsync.hasValue);
+    final balancePending =
+        !balanceUnavailable &&
+        ((expensesAsync.isLoading && !expensesAsync.hasValue) ||
+            (settlementsAsync.isLoading && !settlementsAsync.hasValue));
+    final state = balanceUnavailable
+        ? _HubState.unavailable
+        : balancePending
+        ? _HubState.pending
+        : _resolveState(hasExpenses: expenses.isNotEmpty, lines: myLines);
 
     final showRecap = event.isClosed;
     // The Recap tab exists only while closed; if the event reopens under a
@@ -356,7 +371,7 @@ class _ContentState extends ConsumerState<_Content> {
 
 // ──────────────────────────── State machine
 
-enum _HubState { empty, settled, youOwed, youOwe, mixed }
+enum _HubState { empty, settled, youOwed, youOwe, mixed, pending, unavailable }
 
 /// Settled ⇔ EVERY currency bucket nets exactly zero. Deliberate threshold
 /// change (#382 PR-5, L13): this replaces `UserBalance.isSettled`'s 0.001
@@ -459,7 +474,13 @@ class _EventHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              if (collapsed && lines.isNotEmpty)
+              // #1028: under unavailable/pending the lines may be non-empty
+              // WRONG nets (ledgerViewProvider folds an errored stream to
+              // []) — never render them compactly either.
+              if (collapsed &&
+                  lines.isNotEmpty &&
+                  state != _HubState.unavailable &&
+                  state != _HubState.pending)
                 Padding(
                   padding: const EdgeInsetsDirectional.only(start: 6, end: 2),
                   child: _CompactAmounts(lines: lines),
@@ -574,7 +595,36 @@ class _BalanceBlock extends StatelessWidget {
           ],
         ),
         SizedBox(height: context.spacing.space4),
-        if (state == _HubState.empty || state == _HubState.settled)
+        // #1028: unavailable/pending render FIRST — with empty lines they
+        // would otherwise fall through to the lines else-branch (empty
+        // column), and with wrong non-empty lines they must never render.
+        if (state == _HubState.unavailable)
+          Row(
+            key: EventKeys.balanceHeaderUnavailable,
+            children: [
+              Icon(Iconsax.warning_2, size: 16, color: colors.warning),
+              SizedBox(width: context.spacing.space8),
+              Text(
+                context.l10n.homeBalanceUnavailable,
+                style: AppTypography.displayOf(
+                  context,
+                  fontSize: 20,
+                  color: colors.textSecondary,
+                  height: 1.05,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          )
+        else if (state == _HubState.pending)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: KeyedSubtree(
+              key: EventKeys.balanceHeaderPending,
+              child: SkeletonLoader.trailingBalance(),
+            ),
+          )
+        else if (state == _HubState.empty || state == _HubState.settled)
           Text(
             state == _HubState.settled
                 ? context.l10n.eventAllSettled
