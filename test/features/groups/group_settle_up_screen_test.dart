@@ -449,7 +449,7 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.text('Go Home'));
+      await tester.tap(find.text('Go home'));
       await tester.pumpAndSettle();
 
       expect(find.text('Home'), findsOneWidget);
@@ -467,7 +467,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Settle Up'), findsOneWidget);
+        expect(find.text('Settle up'), findsOneWidget);
         // The count lives in the italic headline ("One transfer\nuntil …") …
         expect(find.textContaining('One transfer'), findsOneWidget);
         // … and no longer in a separate summary pill (#158).
@@ -1312,7 +1312,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.text('Settle up'), findsOneWidget);
     });
 
     testWidgets('renders per-event breakdown context', (tester) async {
@@ -1327,7 +1327,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(GroupSettlementTile), findsOneWidget);
-      expect(find.text('Settle Up'), findsOneWidget);
+      expect(find.text('Settle up'), findsOneWidget);
 
       await tester.tap(find.byType(GroupSettlementTile));
       await tester.pumpAndSettle();

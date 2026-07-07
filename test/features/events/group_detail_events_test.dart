@@ -330,7 +330,7 @@ void main() {
 
       expect(find.byType(FloatingActionButton), findsNothing);
       expect(find.text('New event'), findsOneWidget);
-      expect(find.text('Create Event'), findsOneWidget);
+      expect(find.text('Create event'), findsOneWidget);
     });
 
     testWidgets('tapping event card navigates to EventHub route', (
