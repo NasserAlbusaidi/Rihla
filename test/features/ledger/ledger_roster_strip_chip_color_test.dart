@@ -64,6 +64,12 @@ void main() {
     return leaves[2].style!.color!;
   }
 
+  /// The sign span — round 3 of the codex review: the `+`/`−` rode RAmount's
+  /// currency-code prefix style (0.42× size, 0.78 alpha), shrinking the only
+  /// NON-COLOR polarity cue (owe vs owed, colorblind-safe) to ~4px dimmed.
+  TextSpan signSpanOf(WidgetTester tester, Decimal value) =>
+      leavesOf(tester, value)[0];
+
   testWidgets(
     'live chip amounts use the WCAG-safe successText/errorText tokens, '
     'not the surface success/error tones',
@@ -117,6 +123,31 @@ void main() {
         AppColorTokens.light.errorText,
         reason: 'negative chip fraction must render at full-strength errorText',
       );
+
+      // The sign is the only non-color polarity cue — it must render at the
+      // full 9.5px chip size and full-strength color, never the 0.42×/0.78-
+      // alpha currency-code prefix style, with the correct glyph per polarity.
+      final positiveSign = signSpanOf(tester, positiveAmount);
+      expect(positiveSign.text, '+');
+      expect(
+        positiveSign.style!.fontSize,
+        9.5,
+        reason: 'sign must render full-size, not the 0.42× code-prefix size',
+      );
+      expect(
+        positiveSign.style!.color,
+        AppColorTokens.light.successText,
+        reason: 'sign must render full-strength, not 0.78 alpha',
+      );
+
+      final negativeSign = signSpanOf(tester, negativeAmount);
+      expect(
+        negativeSign.text,
+        '−',
+        reason: 'negative sign is the typographic minus U+2212, not hyphen',
+      );
+      expect(negativeSign.style!.fontSize, 9.5);
+      expect(negativeSign.style!.color, AppColorTokens.light.errorText);
     },
   );
 }

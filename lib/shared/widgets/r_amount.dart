@@ -49,6 +49,7 @@ class RAmount extends StatelessWidget {
     this.tone = AmountTone.auto,
     this.weight = FontWeight.w500,
     this.dimDecimals = true,
+    this.fullSizeSign = false,
     this.semanticsLabel,
   });
 
@@ -97,6 +98,16 @@ class RAmount extends StatelessWidget {
   /// the a11y floor governs over the aesthetic signature at those sizes.
   /// Tiered sizing (whole 1.0× · decimals 0.55×) is unaffected.
   final bool dimDecimals;
+
+  /// When true, the `+`/`−` from [sign] renders as its own span in the
+  /// whole-part style — full [size], full-strength color, hugging what
+  /// follows — instead of riding the 0.42×/0.78-alpha currency-code prefix.
+  /// The sign is the only NON-COLOR polarity cue (owe vs owed for colorblind
+  /// users), so on dense small-size chips the default prefix styling shrinks
+  /// it below legibility (e.g. ~4px on the 9.5px roster chip). No-op when
+  /// [sign] is false, the value is zero, or a [polarityCaret] renders
+  /// (the caret is then the sole polarity mark).
+  final bool fullSizeSign;
 
   /// Screen-reader override. When null, a default label is derived from the
   /// rendered value: unfragmented, ASCII `+`/`-` (the visual U+2212 minus is
@@ -158,9 +169,13 @@ class RAmount extends StatelessWidget {
       height: 1.0,
     );
 
+    // A full-size sign leaves the code span and becomes its own whole-style
+    // span below; the code span then carries only the currency (if shown).
+    final signIsFullSize = fullSizeSign && prefix.isNotEmpty;
+    final codePrefix = signIsFullSize ? '' : prefix;
     final codeText = showCurrency
-        ? '$prefix$currency '
-        : (prefix.isEmpty ? '' : '$prefix ');
+        ? '$codePrefix$currency '
+        : (codePrefix.isEmpty ? '' : '$codePrefix ');
 
     // Spoken label keeps the ASCII sign regardless of caret suppression above
     // — semanticsLabel replaces the visual text for screen readers, so the
@@ -177,6 +192,7 @@ class RAmount extends StatelessWidget {
         children: [
           if (showCaret)
             TextSpan(text: '${isPositive ? '▲' : '▼'} ', style: caretStyle),
+          if (signIsFullSize) TextSpan(text: prefix, style: wholeStyle),
           if (codeText.isNotEmpty) TextSpan(text: codeText, style: codeStyle),
           TextSpan(text: wholePart, style: wholeStyle),
           if (decimalPart.isNotEmpty)

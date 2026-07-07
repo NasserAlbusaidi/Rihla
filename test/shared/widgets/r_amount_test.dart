@@ -264,6 +264,76 @@ void main() {
     });
   });
 
+  group('RAmount — full-size sign', () {
+    testWidgets('default keeps the sign in the small dimmed code-prefix span', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          RAmount(
+            value: Decimal.parse('-42.5'),
+            currency: 'OMR',
+            size: 20,
+            sign: true,
+            showCurrency: false,
+          ),
+        ),
+      );
+      final leaves = _leafSpans(tester);
+      expect(leaves[0].text, '− ');
+      expect(leaves[0].style!.fontSize, closeTo(20 * 0.42, 0.01));
+    });
+
+    testWidgets(
+      'fullSizeSign renders the sign as a full-size, full-strength span '
+      'hugging the digits',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            RAmount(
+              value: Decimal.parse('-42.5'),
+              currency: 'OMR',
+              size: 20,
+              sign: true,
+              showCurrency: false,
+              tone: AmountTone.rustText,
+              fullSizeSign: true,
+            ),
+          ),
+        );
+        expect(_renderedText(tester), '−42.500');
+        final signSpan = _leafSpans(tester)[0];
+        expect(signSpan.text, '−');
+        expect(signSpan.style!.fontSize, 20.0);
+        // Rust-dark = #8A2430 at full strength (no 0.78 code-prefix alpha).
+        expect(signSpan.style!.color, const Color(0xFF8A2430));
+      },
+    );
+
+    testWidgets(
+      'fullSizeSign with showCurrency keeps the currency code small',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            RAmount(
+              value: Decimal.parse('184.2'),
+              currency: 'OMR',
+              size: 20,
+              sign: true,
+              fullSizeSign: true,
+            ),
+          ),
+        );
+        expect(_renderedText(tester), '+OMR 184.200');
+        final leaves = _leafSpans(tester);
+        expect(leaves[0].text, '+');
+        expect(leaves[0].style!.fontSize, 20.0);
+        expect(leaves[1].text, 'OMR ');
+        expect(leaves[1].style!.fontSize, closeTo(20 * 0.42, 0.01));
+      },
+    );
+  });
+
   group('RAmount — size scaling', () {
     testWidgets('decimal portion uses 0.55× whole size', (tester) async {
       await tester.pumpWidget(

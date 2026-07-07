@@ -186,11 +186,11 @@ void main() {
 
       // #998: chips show Bob's OWN standing — the group owes him in both
       // buckets → two positive chips, each formatted at its bucket's precision.
-      // Rendered via RAmount as a Text.rich span tree (tiny "+ " sign prefix
-      // + full-size whole part + decimal fragment) — match the concatenated
-      // plain text, not a single flat Text.
-      expect(find.text('+ 5.000', findRichText: true), findsOneWidget);
-      expect(find.text('+ 15.00', findRichText: true), findsOneWidget);
+      // Rendered via RAmount (fullSizeSign) as a Text.rich span tree — the
+      // concatenated plain text matches the pre-RAmount flat string, but a
+      // flat find.text without findRichText would miss it.
+      expect(find.text('+5.000', findRichText: true), findsOneWidget);
+      expect(find.text('+15.00', findRichText: true), findsOneWidget);
     });
   });
 
