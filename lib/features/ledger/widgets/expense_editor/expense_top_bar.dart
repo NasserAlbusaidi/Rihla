@@ -24,7 +24,7 @@ class ExpenseTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 20, 8),
       child: SizedBox(
         height: 48,
         child: Stack(
