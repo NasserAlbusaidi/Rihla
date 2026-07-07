@@ -4,10 +4,10 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/utils/formatters.dart';
 import '../utils/localized_category_name.dart';
 import '../models/expense_model.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../shared/widgets/r_amount.dart';
 
 /// Success dialog shown after saving an expense.
 class ExpenseSuccessDialog extends StatelessWidget {
@@ -191,9 +191,11 @@ class _ExpenseSummaryCard extends StatelessWidget {
             style: Theme.of(context).textTheme.labelSmall,
           ),
           SizedBox(height: context.spacing.space4),
-          Text(
-            AppFormatters.formatCurrency(expense.amount, currency),
-            style: AppTypography.sans(fontSize: 32, fontWeight: FontWeight.bold),
+          RAmount(
+            value: expense.amount,
+            currency: currency,
+            size: 32,
+            weight: FontWeight.bold,
           ),
           SizedBox(height: context.spacing.space16),
 
