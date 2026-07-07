@@ -443,7 +443,11 @@ class _JoinGroupTopBar extends StatelessWidget {
         vertical: 10,
       ),
       child: SizedBox(
-        height: 36,
+        // #1041 §4: matches _SettingsTopBar/_CreateGroupTopBar — 36dp was
+        // clamping the ghost RIconButton's hit area down from its intended
+        // size (Align gives a loose max, so a SizedBox child bigger than the
+        // parent just gets shrunk to fit) instead of the 44dp §4 floor.
+        height: 44,
         child: Stack(
           alignment: Alignment.center,
           children: [
