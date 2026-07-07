@@ -10,6 +10,8 @@
 
 **Spec:** this document. **Issue:** #1030. **Gate:** mandatory (money surface).
 
+**Gate outcome (round 1, 2026-07-07):** rubric reviewer 0 P1 / 0 P2 / 3 P3; orthogonal adversary 0 P1 / 1 P2 / 2 P3 — both P1-clean in the same round → PASS. Applied findings: the adversary's [P2] (Task 2 flips group-detail `_BalanceCard` from wrong-nets to a NEW affirmative false "All settled" on members hard error) is folded in as **Task 2b** — since this change causes the flip, the one-line honesty gate ships here and the follow-up issue narrows to the spending-summary chips; rubric [P3]s folded into Task 6 (bounded members await beside the expenses await) and Task 7 (gate placed BEFORE the `recap.isEmpty` branch). Adversary confirmed `ledger_perspective_provider:69` is transitively covered by Task 8's gate, expense-editor/split-selector folds are cosmetic-only (shadow badges — written `splitDistribution` byte-identical under a members error), and offline is regression-free (cached members ⇒ `hasValue` ⇒ no gate fires).
+
 ---
 
 ## Why members is the worst fail-open class
@@ -43,8 +45,7 @@ The pinned contract (`settle_up_screen_test.dart:377-405` — "member-provider e
 
 ## Out of scope (do not bundle)
 
-- **Group detail `_BalanceCard` false-settled on an errored provider** (`group_detail_screen.dart:640-641`: `lines.isEmpty → groupAllSettled`, fed by `balancesAsync.valueOrNull` at `:181`): pre-existing for events/settlements hard errors since #1028 made the provider loud; members joins the SAME channel, no new class. File as a follow-up issue at close-out (same false-clean family as #1017/#1028; display-only, its settle CTA leads to the gated group settle-up screen).
-- `groupSpendingSummaryProvider` (`group_spending_summary_provider.dart:23` folds `balances` null-safe) — display-only top-payer/top-consumer chips; a members error now yields a null balances fold (summary renders from expenses only). Same follow-up issue.
+- `groupSpendingSummaryProvider` (`group_spending_summary_provider.dart:23` folds `balances` null-safe) — display-only top-payer/top-consumer chips; a members error now yields a null balances fold (summary renders from expenses only). File as a follow-up issue at close-out. (The group-detail `_BalanceCard` leg of this family moved IN scope as Task 2b after the Gate adversary's [P2]: Task 2 would otherwise flip that card from wrong-nets to an affirmative false "All settled".)
 - Any `ledgerViewProvider` internal error-awareness refactor (returning `AsyncValue<LedgerView>`) — bigger surface, all 6 consumers churn; the per-screen gates here are the #1028-consistent shape.
 
 ---
@@ -124,6 +125,45 @@ Run: `flutter test test/unit/group_balance_provider_test.dart test/features/grou
 Expected: PASS. Consumers verified in-session: `group_settle_up_screen.dart:186` `.when` error branch; `:627` revalidation `.valueOrNull` → null → documented captured-snapshot fallback; `group_presettle_review_provider.dart:87-89` `hasError` branch; `group_detail_screen.dart:171-173` `deniedBalances` staging; `group_danger_section.dart:186/:213/:295` + `group_members_section.dart:202` null-safe `.valueOrNull` server-authority fall-throughs (#1028-audited). **Stale comment fix (same commit):** `group_detail_screen.dart:152-155` says the provider "SWALLOWS a members error into empty data" — update the comment (direct members watch is still needed there for retry + the members-card terminal error).
 
 **Step 4: Commit** — `fix(groups): #1030 members hard error makes groupBalancesProvider loud`
+
+### Task 2b (Gate R1 adversary [P2]): group-detail `_BalanceCard` — unavailable, never false-settled
+
+**Files:**
+- Modify: `lib/features/groups/screens/group_detail_screen.dart` (`:181` balances fold, `_BalanceCard` caption `:620-646`)
+- Test: the group detail screen test file (locate via `grep -rl _BalanceCard test/features/groups/`)
+
+**Why:** after Task 2, a members hard error makes `balancesAsync` an `AsyncError` → `balancesAsync.valueOrNull` at `:181` is null → `balanceLines` empty → the card caption renders `groupAllSettled` — an affirmative false "all settled" (worse than the pre-fix wrong nets; a user who believes they're settled won't open settle-up). The same caption lie already fires today for events/settlements hard errors (the provider has been loud on those since #1028) — the fix is the same single branch regardless of trigger, so this closes that pre-existing leg too.
+
+**Step 1: RED.** `'#1030: balances hard error → group detail card shows unavailable, never "All settled"'` — group detail harness with members `Stream.error` (post-Task-2 this errors the provider) → expect `settleUpCouldNotLoadBalances` text ("Couldn't load balances.") in the card, `groupAllSettled` absent. Note: pick a NON-permission error (`StateError`) so the #574 staging retry (`_isPermissionDenied`) never enters the frame.
+
+**Step 2: Run** — Expected: FAIL (card shows "All settled").
+
+**Step 3: Implementation.** Pass the hard-error flag into the card:
+
+```dart
+              child: _BalanceCard(
+                group: group,
+                lines: balanceLines,
+                balancesUnavailable:
+                    balancesAsync.hasError && !balancesAsync.hasValue,
+                ...
+```
+
+In `_BalanceCard`, add `final bool balancesUnavailable;` (default `false`) and make the caption honest — unavailable wins over the settled caption:
+
+```dart
+    final String? captionText = balancesUnavailable
+        ? context.l10n.settleUpCouldNotLoadBalances
+        : lines.isEmpty
+        ? context.l10n.groupAllSettled
+        : ...
+```
+
+with `captionColor` → `colors.textSecondary` on the unavailable branch (neutral, not success-green). Stale-valued errors keep rendering stale lines (`valueOrNull` serves them — #1005). Loading-no-value stays as-is (pre-existing, cache-fast, out of scope).
+
+**Step 4: Run** the group detail tests — PASS; fixture-fix any test relying on the false-settled caption.
+
+**Step 5: Commit** — `fix(groups): #1030 group detail balance card says unavailable, never false-settled, on a hard-errored basis`
 
 ### Task 3: Event settle-up basis — loud members gate + #204 re-scope
 
@@ -273,7 +313,23 @@ Extend both gates (`:205-211`) — members added as a third leg to `balanceUnava
 
 **Step 2: Run** — Expected: FAIL (snapshot captured non-null under the members error).
 
-**Step 3: Implementation.** In `_executeClose`, after the existing bounded expenses await, before reading `recap`/`view`:
+**Step 3: Implementation.** In `_executeClose`, extend the existing bounded await to members (Gate R1 rubric [P3]: the danger section's build does NOT watch members — only ambient subscribers do — so on a healthy close where members lags, an un-awaited `hasValue` check would silently skip the snapshot on a non-error path):
+
+```dart
+      try {
+        await ref
+            .read(eventExpensesProvider(eventRef).future)
+            .timeout(const Duration(seconds: 5));
+        // #1030: members feeds the snapshot's #249 universe; await it the
+        // same bounded way so a healthy-but-lagging members stream doesn't
+        // skip the capture. Timeout/error falls through to basisHealthy.
+        await ref
+            .read(groupMembersProvider(groupId).future)
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {}
+```
+
+then, before reading `recap`/`view`:
 
 ```dart
       // #1030: the snapshot is an OUTBOUND write (frozen spending served by
@@ -309,7 +365,7 @@ Extend both gates (`:205-211`) — members added as a third leg to `balanceUnava
 
 **Step 2: Run** — Expected: FAIL.
 
-**Step 3: Implementation.** Inside the `data:` branch after the `event == null` check:
+**Step 3: Implementation.** Inside the `data:` branch after the `event == null` check — and **BEFORE the existing `recap.isEmpty → _empty` branch** (Gate R1 rubric [P3]: an errored expenses stream folds `eventRecapProvider` to empty, so a gate placed after it would render `_empty` instead of `_dataUnavailable`):
 
 ```dart
         // #1030: recap + its share/export CTAs render ledgerViewProvider
@@ -389,5 +445,5 @@ Extend both gates (`:205-211`) — members added as a third leg to `balanceUnava
 - `flutter analyze` — clean.
 - `flutter test` — full suite green.
 - `bash tool/check_theme_purity.sh` — new/changed widgets (recap `_dataUnavailable`) carry no violations.
-- PR body: `Closes #1030`, spec line `Spec: docs/plans/2026-07-07-1030-members-fail-open-honesty.md`, RED evidence pasted per task (failing-before-fix output), note the #204/#898 contract re-scope explicitly, note the receipt-claim correction, and the follow-up issue for the group-detail `_BalanceCard` / spending-summary false-settled sibling (file it, link it).
+- PR body: `Closes #1030`, spec line `Spec: docs/plans/2026-07-07-1030-members-fail-open-honesty.md`, RED evidence pasted per task (failing-before-fix output), note the #204/#898 contract re-scope explicitly, note the receipt-claim correction, and the follow-up issue for the `groupSpendingSummaryProvider` null-balances fold (file it, link it — the `_BalanceCard` leg moved in scope as Task 2b).
 - Submit via `/automerge` (Gate-category: money + `**/providers/**` balance surfaces).
