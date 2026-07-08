@@ -1,4 +1,5 @@
 require "shellwords"
+require "bundler"
 
 default_platform(:android)
 
@@ -124,10 +125,16 @@ platform :ios do
       in_house:     false,
     )
 
-    sh("cd #{root.shellescape} && flutter build ipa --release " \
-       "--obfuscate --split-debug-info=build/ios/symbols " \
-       "--dart-define-from-file=config.json " \
-       "--export-options-plist=ios/ExportOptions.plist")
+    # Run the Flutter build (and the `pod install` it triggers) OUTSIDE Bundler's
+    # environment. Under `bundle exec fastlane`, Bundler's GEM_HOME/RUBYOPT leak
+    # into the subprocess and Homebrew CocoaPods loads "broken" → pod install is
+    # skipped and the archive fails in seconds.
+    Bundler.with_unbundled_env do
+      sh("cd #{root.shellescape} && flutter build ipa --release " \
+         "--obfuscate --split-debug-info=build/ios/symbols " \
+         "--dart-define-from-file=config.json " \
+         "--export-options-plist=ios/ExportOptions.plist")
+    end
 
     ipa = Dir.glob(File.join(root, "build", "ios", "ipa", "*.ipa")).max_by { |f| File.mtime(f) }
     UI.user_error!("No IPA produced under build/ios/ipa/.") unless ipa
