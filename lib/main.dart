@@ -18,6 +18,7 @@ import 'core/router/app_router.dart';
 import 'core/screens/splash_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/font_bootstrap.dart';
+import 'core/theme/system_chrome_theme_sync.dart';
 import 'core/providers/app_bootstrap_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/theme/tokens/color_tokens.dart';
@@ -258,7 +259,7 @@ class _SafarAppState extends ConsumerState<SafarApp> {
     final router = ref.watch(routerProvider);
     final settings = ref.watch(settingsProvider);
 
-    return _SystemChromeThemeSync(
+    return SystemChromeThemeSync(
       child: MaterialApp.router(
         title: 'Rihla',
         debugShowCheckedModeBanner: false,
@@ -361,50 +362,5 @@ class _CacheIsolationAppState extends ConsumerState<_CacheIsolationApp> {
                 )
               : const SplashScreen(key: Key('cache-isolation-overlay')),
     );
-  }
-}
-
-/// Keeps the OS status-bar + navigation-bar overlay in sync with the active
-/// app theme (resolves `AppThemeMode.system` against the platform brightness).
-///
-/// Inserted inside [SafarApp.build] AFTER `settingsProvider` is read so a
-/// theme change triggers a rebuild that repaints the overlay. The initial
-/// `SystemChrome.setSystemUIOverlayStyle` call in `main()` remains a
-/// first-paint light default covering pre-hydration (auth/bootstrap).
-class _SystemChromeThemeSync extends ConsumerWidget {
-  const _SystemChromeThemeSync({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(settingsProvider.select((s) => s.themeMode));
-    final platform = MediaQuery.platformBrightnessOf(context);
-    final effective = switch (mode) {
-      AppThemeMode.light => Brightness.light,
-      AppThemeMode.dark => Brightness.dark,
-      AppThemeMode.system => platform,
-    };
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
-      final darkStyle = SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
-        systemNavigationBarColor: AppColorTokens.dark.scaffoldBackground,
-        systemNavigationBarIconBrightness: Brightness.light,
-      );
-      // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
-      final lightStyle = SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        // design-token-justified: SystemChrome overlay must resolve both brightness variants before widget tree builds
-        systemNavigationBarColor: AppColorTokens.light.scaffoldBackground,
-        systemNavigationBarIconBrightness: Brightness.dark,
-      );
-      SystemChrome.setSystemUIOverlayStyle(
-        effective == Brightness.dark ? darkStyle : lightStyle,
-      );
-    });
-    return child;
   }
 }
