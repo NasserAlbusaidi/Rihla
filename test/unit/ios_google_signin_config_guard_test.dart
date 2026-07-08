@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// release builds) and is skipped in CI.
 void main() {
   const reversedClientId =
-      'com.googleusercontent.apps.231518921973-mjq8ahh1lah48nb6a5vnqp5j41uso9r1';
+      'com.googleusercontent.apps.231518921973-husmvvkmm17gff534bo5r6j2ht9hat9m';
 
   test('Info.plist carries the Google Sign-In reversed-client-id scheme', () {
     final plist = File('ios/Runner/Info.plist');

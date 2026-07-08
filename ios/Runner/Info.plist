@@ -4,6 +4,11 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Rihla uses only standard/exempt encryption (HTTPS, platform crypto) —
+	     declare it so TestFlight/App Store builds skip the per-build "export
+	     compliance" prompt and never sit at "Missing Compliance". -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -26,7 +31,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.safar.safar</string>
+			<string>com.nalbusaidi.rihla</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>rihla</string>
@@ -40,7 +45,7 @@
 			<string>google-sign-in</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.231518921973-mjq8ahh1lah48nb6a5vnqp5j41uso9r1</string>
+				<string>com.googleusercontent.apps.231518921973-husmvvkmm17gff534bo5r6j2ht9hat9m</string>
 			</array>
 		</dict>
 	</array>

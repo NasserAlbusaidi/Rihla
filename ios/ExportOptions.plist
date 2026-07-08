@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Store / TestFlight export. Consumed by `flutter build ipa
+	     --export-options-plist=ios/ExportOptions.plist` (the `ios beta`
+	     fastlane lane). "app-store-connect" is the Xcode 16+ canonical name
+	     for the old "app-store" method. -->
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>T2U886CPS5</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>uploadBitcode</key>
+	<false/>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

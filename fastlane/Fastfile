@@ -1,3 +1,6 @@
+require "shellwords"
+require "bundler"
+
 default_platform(:android)
 
 PLAY_KEY = "secrets/play-key.json"
@@ -75,5 +78,72 @@ platform :android do
     params[:version_code] = options[:version_code].to_i if options[:version_code]
 
     supply(params)
+  end
+end
+
+# ── iOS / TestFlight ─────────────────────────────────────────────────────────
+# One-command TestFlight upload. Mirrors the Android release invocation
+# (obfuscated + dart-define-from-file=config.json) for build parity.
+#
+#   bundle exec fastlane ios beta
+#
+# Requires at the repo root (all gitignored):
+#   • config.json                — the same dart-defines the app runs with
+#   • secrets/AuthKey_<KeyID>.p8  — the ASC API key, kept under Apple's own name
+#                                   (the Key ID is read from the filename)
+#   • ASC Issuer ID (a UUID) via env ASC_ISSUER_ID OR secrets/asc_issuer_id.txt
+#     — from ASC → Users & Access → Integrations, top of the page
+#
+# One-time account-side prerequisites this lane does NOT do:
+#   1. Paid-program agreements signed & Active in App Store Connect.
+#   2. App record for com.nalbusaidi.rihla created in App Store Connect.
+#   3. Personal Apple ID (team T2U886CPS5) added to Xcode (automatic signing).
+#   4. APNs Auth Key uploaded to Firebase Console (turns on iOS FCM push).
+platform :ios do
+  desc "Build an obfuscated release IPA and upload it to TestFlight (ASC API-key auth)."
+  lane :beta do
+    root = File.expand_path("..", __dir__)
+
+    # ASC API key: Apple downloads it as AuthKey_<KeyID>.p8 — keep that name in
+    # secrets/ and the Key ID comes from the filename (no env var needed).
+    keys = Dir.glob(File.join(root, "secrets", "AuthKey_*.p8"))
+    UI.user_error!("Put the ASC API key (AuthKey_<KeyID>.p8) in secrets/.") if keys.empty?
+    UI.user_error!("Multiple AuthKey_*.p8 in secrets/ — keep only one.") if keys.length > 1
+    key_path = keys.first
+    key_id   = File.basename(key_path, ".p8").sub("AuthKey_", "")
+
+    # Issuer ID is a UUID (not in the key file). Env wins, else secrets/asc_issuer_id.txt.
+    issuer_file = File.join(root, "secrets", "asc_issuer_id.txt")
+    issuer_id = ENV["ASC_ISSUER_ID"]
+    issuer_id ||= File.read(issuer_file).strip if File.exist?(issuer_file)
+    UI.user_error!("Set ASC_ISSUER_ID or write it to secrets/asc_issuer_id.txt.") if issuer_id.to_s.empty?
+
+    api_key = app_store_connect_api_key(
+      key_id:       key_id,
+      issuer_id:    issuer_id,
+      key_filepath: key_path,
+      in_house:     false,
+    )
+
+    # Run the Flutter build (and the `pod install` it triggers) OUTSIDE Bundler's
+    # environment. Under `bundle exec fastlane`, Bundler's GEM_HOME/RUBYOPT leak
+    # into the subprocess and Homebrew CocoaPods loads "broken" → pod install is
+    # skipped and the archive fails in seconds.
+    Bundler.with_unbundled_env do
+      sh("cd #{root.shellescape} && flutter build ipa --release " \
+         "--obfuscate --split-debug-info=build/ios/symbols " \
+         "--dart-define-from-file=config.json " \
+         "--export-options-plist=ios/ExportOptions.plist")
+    end
+
+    ipa = Dir.glob(File.join(root, "build", "ios", "ipa", "*.ipa")).max_by { |f| File.mtime(f) }
+    UI.user_error!("No IPA produced under build/ios/ipa/.") unless ipa
+
+    upload_to_testflight(
+      api_key:                            api_key,
+      ipa:                                ipa,
+      skip_waiting_for_build_processing:  true,
+      skip_submission:                    true,
+    )
   end
 end
