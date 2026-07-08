@@ -535,5 +535,36 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      '#1049: closing the add-adjustment sheet with a blank amount does not '
+      'dispose the controller mid-animation',
+      (tester) async {
+        await _runSheet(
+          tester,
+          total: Decimal.parse('2.000'),
+          participants: two,
+          interactions: (t) async {
+            await t.tap(find.text('Itemized'));
+            await t.pumpAndSettle();
+            final add = find.byKey(const Key('itemized_add_adjustment'));
+            await t.ensureVisible(add);
+            await t.pumpAndSettle();
+            await t.tap(add);
+            await t.pumpAndSettle();
+            // Close the editor with a BLANK amount — the #1049 path. Pre-fix this
+            // threw "A TextEditingController was used after being disposed" as the
+            // sheet rebuilt during its exit transition.
+            await t.tap(find.byKey(const Key('adjustment_done')));
+            await t.pumpAndSettle();
+            expect(t.takeException(), isNull);
+            // The blank adjustment was pruned — no row left behind.
+            expect(find.byKey(const Key('itemized_adjustment_0')), findsNothing);
+            // Close the parent sheet so _runSheet completes.
+            await t.tap(find.text('Cancel'));
+          },
+        );
+      },
+    );
   });
 }
