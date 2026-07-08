@@ -179,6 +179,12 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
   /// Bill-level adjustment drafts (#605). Owned here; controllers disposed once.
   late List<_AdjustmentDraft> _adjDrafts;
 
+  // Drafts pruned while their editor sheet is still animating closed: the
+  // sheet's TextField rebuilds during the exit transition and re-subscribes
+  // to `amount`, so disposing now throws "used after being disposed" (#1049).
+  // Held here and disposed in dispose() when the whole sheet tears down.
+  final List<_AdjustmentDraft> _retiredAdjDrafts = [];
+
   @override
   void initState() {
     super.initState();
@@ -203,6 +209,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
       d.dispose();
     }
     for (final d in _adjDrafts) {
+      d.dispose();
+    }
+    for (final d in _retiredAdjDrafts) {
       d.dispose();
     }
     super.dispose();
@@ -259,13 +268,17 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
       // Blank/invalid on close ⇒ discard (also the "clear to delete" path on edit).
       if (!_adjValid(draft)) {
         _adjDrafts.remove(draft);
-        draft.dispose();
+        _retiredAdjDrafts.add(draft); // dispose deferred to dispose() — see field doc (#1049)
       }
     });
   }
 
   void _removeAdjustment(_AdjustmentDraft draft) {
     setState(() => _adjDrafts.remove(draft));
+    // Safe to dispose immediately (unlike the editor's prune path, #1049): the
+    // row is inline in this sheet, so it unmounts in the same synchronous
+    // rebuild — no lingering modal exit-transition frame re-touches `amount`.
+    // Keep this true if rows ever move into a Dismissible/AnimatedList.
     draft.dispose();
   }
 
