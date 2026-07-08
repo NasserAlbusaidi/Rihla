@@ -37,7 +37,12 @@ V1=$(grep -rn 'AppColorTokens\.light\.' lib/ \
     | grep -v '^lib/core/theme/tokens/' \
     | grep -v '^lib/core/theme/app_theme.dart:' \
     | grep -v '^lib/main.dart:' \
+    | grep -v '^lib/core/theme/system_ui_overlay_style.dart:' \
     || true)
+    # system_ui_overlay_style.dart is context-free theme infra (like app_theme
+    # /main above): it resolves the exact light/dark scaffold background for the
+    # SystemChrome overlay during a live appearance switch, where context.colors
+    # would return the stale variant. Direct token access is required, not a smell.
 if [ -n "$V1" ]; then
   echo "::error::Direct AppColorTokens.light.* reads found. Use context.colors instead."
   echo "$V1"
