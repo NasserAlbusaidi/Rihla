@@ -10,7 +10,7 @@ void main() {
       expect(settings.handleCodeInApp, isTrue);
       expect(settings.androidPackageName, 'com.safar.safar');
       expect(settings.androidInstallApp, isTrue);
-      expect(settings.iOSBundleId, 'com.safar.safar');
+      expect(settings.iOSBundleId, 'com.nalbusaidi.rihla');
     });
 
     test(

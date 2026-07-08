@@ -26,10 +26,14 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDbo2O9X7LasoP48a21u8NmuYurz0cUJz0',
-    appId: '1:231518921973:ios:3be8191ea5b7b01353d1bc',
+    appId: '1:231518921973:ios:c8bfaa64d0f3a74c53d1bc',
     messagingSenderId: '231518921973',
     projectId: 'rihla-safar',
     storageBucket: 'rihla-safar.firebasestorage.app',
-    iosBundleId: 'com.safar.safar',
+    androidClientId:
+        '231518921973-fa68dddic1u2bo4efgpscm5tpi6d62da.apps.googleusercontent.com',
+    iosClientId:
+        '231518921973-husmvvkmm17gff534bo5r6j2ht9hat9m.apps.googleusercontent.com',
+    iosBundleId: 'com.nalbusaidi.rihla',
   );
 }

@@ -8,7 +8,7 @@ class AuthEmailLinkConfig {
   const AuthEmailLinkConfig._();
 
   static const androidPackageName = 'com.safar.safar';
-  static const iOSBundleId = 'com.safar.safar';
+  static const iOSBundleId = 'com.nalbusaidi.rihla';
   // Use the project's default Firebase Hosting `*.firebaseapp.com` alias —
   // NOT `*.web.app`. Both alias the same Hosting site, but post-Dynamic-Links
   // Firebase Auth auto-generates email-link continue URLs against

@@ -69,7 +69,7 @@ void main() {
     final details = applinks['details'] as List<Object?>;
     final firstApp = details.single as Map<String, Object?>;
 
-    expect(firstApp['appIDs'], contains('GC6NXQSRUU.com.safar.safar'));
+    expect(firstApp['appIDs'], contains('T2U886CPS5.com.nalbusaidi.rihla'));
     expect(firstApp['components'].toString(), contains('/__/auth/links/*'));
     expect(firstApp['components'].toString(), contains('/join/*'));
     expect(firstApp['components'].toString(), contains('/join'));
