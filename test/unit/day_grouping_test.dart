@@ -126,4 +126,33 @@ void main() {
       expect(groups, isEmpty);
     });
   });
+
+  group('formatRelativeShort', () {
+    testWidgets('uses lowercase English unit stamps', (tester) async {
+      final context = await _pumpContext(tester);
+      final now = DateTime.now();
+
+      expect(
+        formatRelativeShort(
+          context,
+          now.subtract(const Duration(minutes: 2, seconds: 5)),
+        ),
+        '2m',
+      );
+      expect(
+        formatRelativeShort(
+          context,
+          now.subtract(const Duration(hours: 3, minutes: 5)),
+        ),
+        '3h',
+      );
+      expect(
+        formatRelativeShort(
+          context,
+          now.subtract(const Duration(days: 4, hours: 1)),
+        ),
+        '4d',
+      );
+    });
+  });
 }

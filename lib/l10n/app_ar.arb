@@ -336,7 +336,6 @@
   "settleUpRecordFailed": "تعذّر تسجيل التسوية. تحقق من اتصالك وحاول مرة أخرى.",
   "settleUpRecordFailedDenied": "لم تُقبل هذه التسوية. يرجى مراجعة التفاصيل والمحاولة مرة أخرى.",
   "settleUpRecordFailedGeneric": "تعذّر تسجيل التسوية. يرجى المحاولة مرة أخرى.",
-  "settleUpEveryoneEvenHeadline": "الجميع متوازن.",
   "settleUpTransfersHeadline": "{count, plural, =0{لا تحويلات\nحتى يتوازن الجميع.} =1{تحويل واحد\nحتى يتوازن الجميع.} =2{تحويلان\nحتى يتوازن الجميع.} few{{count} تحويلات\nحتى يتوازن الجميع.} many{{count} تحويلًا\nحتى يتوازن الجميع.} other{{count} تحويل\nحتى يتوازن الجميع.}}",
   "settleUpNoOptimizedPayments": "لا توجد دفعات محسّنة مطلوبة ضمن {subjectName}.",
   "settleUpOptimizedPayments": "تم تقليل عدد الدفعات ضمن {subjectName}.",

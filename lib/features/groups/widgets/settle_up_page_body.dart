@@ -451,23 +451,21 @@ class _SettlementIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final headline = transferCount == 0
-        ? context.l10n.settleUpEveryoneEvenHeadline
-        : context.l10n.settleUpTransfersHeadline(transferCount);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          headline,
-          style: AppTypography.displayOf(
-            context,
-            fontSize: 28,
-            color: context.colors.textPrimary,
-            height: 1.05,
+        if (transferCount > 0) ...[
+          Text(
+            context.l10n.settleUpTransfersHeadline(transferCount),
+            style: AppTypography.displayOf(
+              context,
+              fontSize: 28,
+              color: context.colors.textPrimary,
+              height: 1.05,
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
+          const SizedBox(height: 10),
+        ],
         Text(
           transferCount == 0
               ? context.l10n.settleUpNoOptimizedPayments(subjectName)
