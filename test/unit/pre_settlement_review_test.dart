@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/services/pre_settlement_review.dart';
 
 /// #204 — pure detection of review-worthy expenses for the pre-settlement
@@ -48,6 +49,26 @@ List<ReviewFlag> _exactFlags(
       ReviewReason.exactSplit,
     ),
 ];
+
+Settlement _stl({
+  required String id,
+  String currency = 'OMR',
+  String? payer = 'uid-viewer',
+  String? recipient = 'uid-a',
+  DateTime? settledAt,
+  bool isDeleted = false,
+  String? correctionOfSettlementId,
+}) => Settlement(
+  id: id,
+  tripId: 'event-1',
+  payerParticipantId: payer,
+  recipientParticipantId: recipient,
+  amount: Decimal.parse('1.000'),
+  settledAt: settledAt ?? DateTime(2026, 6, 10),
+  isDeleted: isDeleted,
+  currency: currency,
+  correctionOfSettlementId: correctionOfSettlementId,
+);
 
 void main() {
   group('detectReviewWorthyExpenses', () {
@@ -419,5 +440,166 @@ void main() {
         expect(result.shown.map((e) => e.id), ['aaa', 'newer', 'older']);
       },
     );
+  });
+
+  group('suppressFlagsSettledPastByViewer (#1058 — viewer watermark)', () {
+    List<ReviewFlag> flagsFor(Expense e) => [
+      ReviewFlag(e, ReviewReason.exactSplit),
+    ];
+
+    test('viewer-party settlement newer than the expense suppresses', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 's1')],
+          viewerUid: 'uid-viewer',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('viewer as recipient also suppresses', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [
+            _stl(id: 's1', payer: 'uid-a', recipient: 'uid-viewer'),
+          ],
+          viewerUid: 'uid-viewer',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('an expense created after the last settlement is kept', () {
+      final flags = flagsFor(
+        _exp(
+          id: 'a',
+          splitMode: SplitMode.exact,
+          createdAt: DateTime(2026, 6, 15),
+        ),
+      );
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 's1')],
+          viewerUid: 'uid-viewer',
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('a tie (expense created exactly at the watermark) is kept', () {
+      final flags = flagsFor(
+        _exp(
+          id: 'a',
+          splitMode: SplitMode.exact,
+          createdAt: DateTime(2026, 6, 10),
+        ),
+      );
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 's1', settledAt: DateTime(2026, 6, 10))],
+          viewerUid: 'uid-viewer',
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('a settlement in another currency never suppresses', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 's1', currency: 'USD')],
+          viewerUid: 'uid-viewer',
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('a settlement between two other people never suppresses', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 's1', payer: 'uid-a', recipient: 'uid-b')],
+          viewerUid: 'uid-viewer',
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('a null viewer uid suppresses nothing', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 's1')],
+          viewerUid: null,
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('a soft-deleted settlement never advances the watermark', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 's1', isDeleted: true)],
+          viewerUid: 'uid-viewer',
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('a marked correction row never advances the watermark', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [_stl(id: 'corr', correctionOfSettlementId: 'orig')],
+          viewerUid: 'uid-viewer',
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('the ORIGINAL a correction reverses is excluded too', () {
+      final flags = flagsFor(_exp(id: 'a', splitMode: SplitMode.exact));
+      expect(
+        suppressFlagsSettledPastByViewer(
+          flags,
+          settlements: [
+            _stl(id: 'orig'),
+            _stl(
+              id: 'corr',
+              settledAt: DateTime(2026, 6, 11),
+              correctionOfSettlementId: 'orig',
+            ),
+          ],
+          viewerUid: 'uid-viewer',
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('suppression is per-currency: OMR settled past, USD flag stays', () {
+      final omr = _exp(id: 'omr', splitMode: SplitMode.exact);
+      final usd = _exp(id: 'usd', splitMode: SplitMode.exact, currency: 'USD');
+      final kept = suppressFlagsSettledPastByViewer(
+        [
+          ReviewFlag(omr, ReviewReason.exactSplit),
+          ReviewFlag(usd, ReviewReason.exactSplit),
+        ],
+        settlements: [_stl(id: 's1')],
+        viewerUid: 'uid-viewer',
+      );
+      expect(kept.map((f) => f.expense.id), ['usd']);
+    });
   });
 }
