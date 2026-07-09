@@ -1946,12 +1946,6 @@ abstract class AppLocalizations {
   /// **'Continue to settle'**
   String get preSettleReviewContinue;
 
-  /// No description provided for @settleUpEveryoneEvenHeadline.
-  ///
-  /// In en, this message translates to:
-  /// **'Everyone\'s even.'**
-  String get settleUpEveryoneEvenHeadline;
-
   /// Forward-looking headline shown while transfers are still outstanding (not yet settled) — must not read as already-settled.
   ///
   /// In en, this message translates to:
@@ -2928,19 +2922,19 @@ abstract class AppLocalizations {
   /// No description provided for @activityRelativeMinutes.
   ///
   /// In en, this message translates to:
-  /// **'{count}M'**
+  /// **'{count}m'**
   String activityRelativeMinutes(int count);
 
   /// No description provided for @activityRelativeHours.
   ///
   /// In en, this message translates to:
-  /// **'{count}H'**
+  /// **'{count}h'**
   String activityRelativeHours(int count);
 
   /// No description provided for @activityRelativeDays.
   ///
   /// In en, this message translates to:
-  /// **'{count}D'**
+  /// **'{count}d'**
   String activityRelativeDays(int count);
 
   /// No description provided for @activitySomeone.
