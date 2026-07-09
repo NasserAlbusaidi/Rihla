@@ -444,6 +444,7 @@ class _CoverHeader extends StatelessWidget {
                   icon: Directionality.of(context) == TextDirection.rtl
                       ? Iconsax.arrow_right
                       : Iconsax.arrow_left,
+                  semanticLabel: context.l10n.commonBack,
                   onTap: () {
                     HapticService.lightClick();
                     final router = GoRouter.of(context);

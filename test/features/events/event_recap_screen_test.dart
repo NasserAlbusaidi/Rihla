@@ -22,6 +22,7 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/providers/ledger_view_provider.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 import '../../helpers/pump_rihla_app.dart';
 
@@ -177,6 +178,23 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets('#1067 standalone back button exposes localized semantic label', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    addTearDown(handle.dispose);
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(settledRecap()),
+    );
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byKey(EventKeys.recapScreen)),
+    );
+    expect(find.bySemanticsLabel(l10n.commonBack), findsOneWidget);
   });
 
   testWidgets('renders the recap screen with money rows (EN)', (tester) async {

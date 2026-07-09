@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -118,6 +120,44 @@ void main() {
     expect(find.text('Equal'), findsOneWidget);
     expect(find.text('Shares'), findsOneWidget);
     expect(find.text('Exact'), findsOneWidget);
+  });
+
+  testWidgets('#1067 mode chips expose button role and selected state', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    addTearDown(handle.dispose);
+    await pumpCard(tester);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(SplitCard)));
+    final equally = tester.getSemantics(
+      find.bySemanticsLabel(l10n.splitModeEqually),
+    );
+    final shares = tester.getSemantics(
+      find.bySemanticsLabel(l10n.splitModeShares),
+    );
+    expect(equally.flagsCollection.isButton, isTrue);
+    expect(equally.flagsCollection.isSelected, Tristate.isTrue);
+    expect(shares.flagsCollection.isButton, isTrue);
+    expect(shares.flagsCollection.isSelected, Tristate.isFalse);
+  });
+
+  testWidgets('#1067 mode chip hit region is >=44dp around a compact pill', (
+    tester,
+  ) async {
+    await pumpCard(tester);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(SplitCard)));
+    final label = find.text(l10n.splitModeEqually);
+    final hitRegion = find
+        .ancestor(of: label, matching: find.byType(GestureDetector))
+        .first;
+    final paintedPill = find
+        .ancestor(of: label, matching: find.byType(AnimatedContainer))
+        .first;
+
+    expect(tester.getSize(hitRegion).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(paintedPill).height, lessThan(44));
   });
 
   testWidgets('Itemized is a first-class option on the card (split-clarity)',

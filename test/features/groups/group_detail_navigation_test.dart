@@ -261,6 +261,19 @@ void main() {
       expect(find.byKey(GroupKeys.detailScreen), findsNothing);
     });
 
+    testWidgets('#1067 cover back button exposes localized semantic label', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      addTearDown(handle.dispose);
+      await pumpGroupDetail(tester);
+
+      final l10n = AppLocalizations.of(
+        tester.element(find.byKey(GroupKeys.detailScreen)),
+      );
+      expect(find.bySemanticsLabel(l10n.commonBack), findsOneWidget);
+    });
+
     testWidgets('cover header controls expose 48dp hit targets', (
       tester,
     ) async {

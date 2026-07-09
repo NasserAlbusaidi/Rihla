@@ -33,8 +33,11 @@ class ActivityFilterStrip<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // #1067 §4: a horizontal ListView tight-constrains each chip to this
+    // cross-axis height. TapBounce stays opaque across the full 44dp while its
+    // Center keeps the painted pill at the original compact height.
     return SizedBox(
-      height: context.spacing.space32,
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
@@ -74,25 +77,37 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return TapBounce(
-      key: chipKey,
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? colors.textPrimary : colors.cardSoft,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(
-            color: active ? colors.textPrimary : colors.rule,
-            width: 0.5,
-          ),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.sans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: active ? colors.scaffoldBackground : colors.textPrimary,
+      excludeSemantics: true,
+      child: TapBounce(
+        key: chipKey,
+        onTap: onTap,
+        child: Center(
+          widthFactor: 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: active ? colors.textPrimary : colors.cardSoft,
+              borderRadius: BorderRadius.circular(context.spacing.radiusPill),
+              border: Border.all(
+                color: active ? colors.textPrimary : colors.rule,
+                width: 0.5,
+              ),
+            ),
+            child: Text(
+              label,
+              style: AppTypography.sans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: active
+                    ? colors.scaffoldBackground
+                    : colors.textPrimary,
+              ),
+            ),
           ),
         ),
       ),
