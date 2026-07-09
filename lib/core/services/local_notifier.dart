@@ -89,6 +89,16 @@ class FlutterLocalNotifier implements LocalNotifier {
           priority: Priority.high,
           icon: _smallIcon,
         ),
+        // #941: foreground FCM messages are rendered by us, not the OS (iOS
+        // suppresses banners while foregrounded). Without explicit Darwin
+        // details the plugin would fall back to implicit defaults; spell out
+        // the presentation so a foreground push shows a banner + plays a sound.
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBanner: true,
+          presentSound: true,
+          presentBadge: true,
+        ),
       ),
       payload: payload,
     );
