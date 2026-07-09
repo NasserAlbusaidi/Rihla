@@ -86,6 +86,7 @@ end
 # (obfuscated + dart-define-from-file=config.json) for build parity.
 #
 #   bundle exec fastlane ios beta
+#   bundle exec fastlane ios beta build_number:36  # override CFBundleVersion for an iOS-only rebuild
 #
 # Requires at the repo root (all gitignored):
 #   • config.json                — the same dart-defines the app runs with
@@ -125,8 +126,13 @@ end
 
 platform :ios do
   desc "Build an obfuscated release IPA and upload it to TestFlight (ASC API-key auth)."
-  lane :beta do
+  lane :beta do |options|
     root = File.expand_path("..", __dir__)
+    build_number = options[:build_number]
+    unless build_number.nil?
+      UI.user_error!("build_number must be a positive integer.") unless build_number.to_s.match?(/\A[1-9]\d*\z/)
+    end
+    build_number_arg = build_number.nil? ? "" : " --build-number=#{build_number}"
     api_key = asc_api_key(root)
 
     # Run the Flutter build (and the `pod install` it triggers) OUTSIDE Bundler's
@@ -137,7 +143,7 @@ platform :ios do
       sh("cd #{root.shellescape} && flutter build ipa --release " \
          "--obfuscate --split-debug-info=build/ios/symbols " \
          "--dart-define-from-file=config.json " \
-         "--export-options-plist=ios/ExportOptions.plist")
+         "--export-options-plist=ios/ExportOptions.plist#{build_number_arg}")
     end
 
     ipa = Dir.glob(File.join(root, "build", "ios", "ipa", "*.ipa")).max_by { |f| File.mtime(f) }
