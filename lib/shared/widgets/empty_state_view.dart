@@ -15,6 +15,7 @@ class EmptyStateView extends StatelessWidget {
   final IconData? secondaryActionIcon;
   final Color? iconColor;
   final LinearGradient? accentGradient;
+  final ScrollPhysics? physics;
 
   const EmptyStateView({
     super.key,
@@ -28,6 +29,7 @@ class EmptyStateView extends StatelessWidget {
     this.secondaryActionIcon,
     this.iconColor,
     this.accentGradient,
+    this.physics,
   });
 
   @override
@@ -38,6 +40,7 @@ class EmptyStateView extends StatelessWidget {
     Widget result = Center(
       key: SharedKeys.emptyStateView,
       child: SingleChildScrollView(
+        physics: physics,
         padding: EdgeInsets.all(context.spacing.space32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

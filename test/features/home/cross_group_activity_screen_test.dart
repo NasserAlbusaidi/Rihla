@@ -19,6 +19,7 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/home/providers/cross_group_activity_pager.dart';
+import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/cross_group_activity_screen.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/paper_backdrop.dart';
@@ -154,12 +155,34 @@ class _PendingAfterFirstService extends GroupActivityService {
   }
 }
 
+class _CountingService extends GroupActivityService {
+  _CountingService(super.db) : super.withFirestore();
+
+  int fetchCalls = 0;
+
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchActivityPageRaw(
+    String groupId, {
+    DocumentSnapshot? startAfter,
+    int limit = 50,
+  }) {
+    fetchCalls++;
+    return super.fetchActivityPageRaw(
+      groupId,
+      startAfter: startAfter,
+      limit: limit,
+    );
+  }
+}
+
 Widget _app({
   required List<Group> groups,
   required GroupActivityService service,
   required SharedPreferences prefs,
   bool showBack = false,
   String initialLocation = '/activity',
+  Stream<List<Group>>? groupsStream,
+  bool freezeLiveActivityEmpty = false,
 }) {
   final router = GoRouter(
     initialLocation: initialLocation,
@@ -230,9 +253,15 @@ Widget _app({
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      userGroupsProvider.overrideWith((ref) => Stream.value(groups)),
+      userGroupsProvider.overrideWith(
+        (ref) => groupsStream ?? Stream.value(groups),
+      ),
       groupActivityServiceProvider.overrideWith((ref) => service),
       currentUserIdProvider.overrideWithValue('uid0'),
+      if (freezeLiveActivityEmpty)
+        crossGroupActivityProvider.overrideWith(
+          (ref) => const AsyncValue.data([]),
+        ),
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
@@ -585,6 +614,115 @@ void main() {
 
       expect(_richContaining('created an event'), findsOneWidget);
     });
+
+    testWidgets(
+      'pull-to-refresh from true-empty reloads newly available activity '
+      '(#1063)',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        final service = _CountingService(db);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: service,
+            prefs: await prefs(),
+            freezeLiveActivityEmpty: true,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('No activity yet'), findsOneWidget);
+        expect(_richContaining('created an event'), findsNothing);
+        expect(service.fetchCalls, 1);
+
+        await _seed(db, 'g1', [
+          _activity('a-new', 'Alice', 'created an event'),
+        ]);
+
+        final emptyScrollable = find.descendant(
+          of: find.byKey(SharedKeys.emptyStateView),
+          matching: find.byType(Scrollable),
+        );
+        expect(emptyScrollable, findsOneWidget);
+
+        await tester.fling(emptyScrollable, const Offset(0, 400), 1000);
+        await tester.pumpAndSettle();
+
+        expect(service.fetchCalls, 2);
+        expect(_richContaining('created an event'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'refresh picks up a group created after the pager initialises empty '
+      '(#1063)',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        final groupsController = StreamController<List<Group>>();
+        addTearDown(groupsController.close);
+
+        await tester.pumpWidget(
+          _app(
+            groups: const [],
+            groupsStream: groupsController.stream,
+            service: GroupActivityService.withFirestore(db),
+            prefs: await prefs(),
+            freezeLiveActivityEmpty: true,
+          ),
+        );
+        await tester.pump();
+        groupsController.add(const []);
+        await tester.pumpAndSettle();
+
+        expect(find.text('No activity yet'), findsOneWidget);
+
+        final newGroup = _group('g-new', 'New Trip');
+        await _seed(db, newGroup.id, [
+          _activity('a-new-group', 'Alice', 'created an event'),
+        ]);
+        groupsController.add([newGroup]);
+        await tester.pumpAndSettle();
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(CrossGroupActivityScreen)),
+        );
+        await container
+            .read(crossGroupActivityPagerProvider.notifier)
+            .refresh();
+        await tester.pumpAndSettle();
+
+        expect(find.text('New Trip'), findsOneWidget);
+        expect(_richContaining('created an event'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'initialised true-empty pager reconciles when live activity appears '
+      '(#1063)',
+      (tester) async {
+        final db = FakeFirebaseFirestore();
+        final service = _CountingService(db);
+        await tester.pumpWidget(
+          _app(
+            groups: [_group('g1', 'Trip A')],
+            service: service,
+            prefs: await prefs(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('No activity yet'), findsOneWidget);
+        expect(service.fetchCalls, 1);
+
+        await _seed(db, 'g1', [
+          _activity('a-live', 'Alice', 'created an event'),
+        ]);
+        await tester.pumpAndSettle();
+
+        expect(service.fetchCalls, 2);
+        expect(_richContaining('created an event'), findsOneWidget);
+      },
+    );
 
     testWidgets('total load failure shows the #488 error view with retry', (
       tester,
