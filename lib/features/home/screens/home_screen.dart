@@ -546,14 +546,20 @@ class _TopBar extends ConsumerWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Keep the optional chip inside the leading side's half of the
-            // bar, after the avatar, gap, and centered-wordmark guard. Its
-            // existing ellipsis then yields before it can paint over the mark.
+            // bar: after the avatar + gaps, budget against the centered
+            // wordmark's MEASURED half-width (a constant guard is wrong under
+            // test fonts, whose glyphs render far wider than production —
+            // #1064). Its existing ellipsis then yields before it can paint
+            // over the mark.
+            final wordmarkHalfWidth =
+                WordmarkLogo.measuredTextWidth(context) / 2;
             final setNameChipMaxWidth =
-                constraints.maxWidth / 2 -
-                context.spacing.space32 -
-                context.spacing.space8 -
-                avatarSize -
-                context.spacing.space8;
+                (constraints.maxWidth / 2 -
+                        wordmarkHalfWidth -
+                        context.spacing.space8 -
+                        avatarSize -
+                        context.spacing.space8)
+                    .clamp(0.0, double.infinity);
             return Stack(
               alignment: Alignment.center,
               children: [

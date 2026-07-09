@@ -81,5 +81,9 @@ void main() {
     final probeContext = tester.element(find.byKey(probeKey));
     final effectiveScaler = MediaQuery.textScalerOf(probeContext);
     expect(effectiveScaler.scale(100), 150.0);
+
+    // The binding asserts all foundation debug variables are reset BEFORE
+    // tearDown callbacks run, so the platform override must clear in-body.
+    debugDefaultTargetPlatformOverride = null;
   });
 }
