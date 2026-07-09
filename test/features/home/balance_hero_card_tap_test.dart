@@ -57,7 +57,15 @@ void main() {
 
     // #807/#916: a tappable hero carries a visible cue for what tapping does
     // — since PR-5 §3 that is the balance-by-group breakdown sheet.
-    expect(find.text('See balance by group'), findsOneWidget);
+    final hintFinder = find.text('See balance by group');
+    expect(hintFinder, findsOneWidget);
+    final hint = tester.widget<Text>(hintFinder);
+    expect(hint.maxLines, 1);
+    expect(hint.overflow, TextOverflow.ellipsis);
+    expect(
+      find.ancestor(of: hintFinder, matching: find.byType(Flexible)),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(HomeKeys.balanceHeroCard));
     await tester.pump();

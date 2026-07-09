@@ -101,6 +101,8 @@ Widget _buildTestApp(
   Widget widget, {
   List<Override> overrides = const [],
   required SharedPreferences prefs,
+  Locale? locale,
+  TextScaler? textScaler,
 }) {
   final router = GoRouter(
     initialLocation: '/home',
@@ -161,6 +163,16 @@ Widget _buildTestApp(
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
+      locale: locale,
+      builder: textScaler == null
+          ? null
+          : (context, child) {
+              final mediaQuery = MediaQuery.of(context);
+              return MediaQuery(
+                data: mediaQuery.copyWith(textScaler: textScaler),
+                child: child!,
+              );
+            },
       routerConfig: router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -241,6 +253,43 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+  });
+
+  group('HomeScreen supported text scale (#1064)', () {
+    Future<void> expectOverflowFree(
+      WidgetTester tester, {
+      required Locale locale,
+    }) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const HomeScreen(),
+          overrides: _loadedOverrides(),
+          prefs: prefs,
+          locale: locale,
+          textScaler: const TextScaler.linear(1.5),
+        ),
+      );
+      // Bounded pumps only: ConnectivityNotifier owns a periodic timer.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Home must be overflow-free at 1.5x in $locale',
+      );
+    }
+
+    testWidgets('EN loaded Home is overflow-free at 1.5x', (tester) async {
+      await expectOverflowFree(tester, locale: const Locale('en'));
+    });
+
+    testWidgets('AR loaded Home is overflow-free at 1.5x', (tester) async {
+      await expectOverflowFree(tester, locale: const Locale('ar'));
+    });
   });
 
   group('HomeScreen dashboard - loaded state', () {

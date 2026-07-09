@@ -62,16 +62,40 @@ void main() {
     final tickFinder = find.byKey(const Key('section_header_tick'));
     expect(tickFinder, findsOneWidget);
 
-    final row = tester.widget<Row>(find.byType(Row));
-    final tickIndex = row.children.indexWhere(
-      (w) => w.key == const Key('section_header_tick'),
-    );
-    final titleIndex = row.children.indexWhere(
-      (w) => w is Text && w.data == 'ACTIVE JOURNEYS',
-    );
-    expect(tickIndex, greaterThanOrEqualTo(0));
-    expect(titleIndex, greaterThan(tickIndex));
+    final tickRect = tester.getRect(tickFinder);
+    final titleRect = tester.getRect(find.text('ACTIVE JOURNEYS'));
+    expect(tickRect.right, lessThanOrEqualTo(titleRect.left));
   });
+
+  testWidgets(
+    'title yields with one-line ellipsis while action stays one line (#1064)',
+    (tester) async {
+      await pumpRihlaApp(
+        tester,
+        const Scaffold(
+          body: SectionHeader(
+            title: 'Active journeys',
+            actionLabel: 'View history',
+          ),
+        ),
+      );
+
+      final titleFinder = find.text('ACTIVE JOURNEYS');
+      final title = tester.widget<Text>(titleFinder);
+      expect(title.maxLines, 1);
+      expect(title.overflow, TextOverflow.ellipsis);
+
+      final titleFlex = find.ancestor(
+        of: titleFinder,
+        matching: find.byType(Flexible),
+      );
+      expect(titleFlex, findsOneWidget);
+      expect(tester.widget<Flexible>(titleFlex).fit, FlexFit.tight);
+
+      final action = tester.widget<Text>(find.text('View history'));
+      expect(action.maxLines, 1);
+    },
+  );
 
   testWidgets('Falaj PR-3: RTL keeps the tick on the leading (right) edge', (
     tester,
