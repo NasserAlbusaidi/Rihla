@@ -80,6 +80,9 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
   @override
   Widget build(BuildContext context) {
     const spacing = AppSpacingTokens.standard;
+    final captionTextDirection = Directionality.of(context);
+    final compactFromName = _compactName(widget.fromName);
+    final compactToName = _compactName(widget.toName);
 
     return Container(
       key: widget.tileKey,
@@ -184,7 +187,11 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                           ),
                           children: [
                             TextSpan(
-                              text: _compactName(widget.fromName),
+                              text: _captionName(
+                                compactFromName,
+                                captionTextDirection,
+                              ),
+                              semanticsLabel: compactFromName,
                               style: TextStyle(
                                 color: context.colors.ink2,
                                 fontWeight: FontWeight.w700,
@@ -204,7 +211,11 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                               ),
                             ),
                             TextSpan(
-                              text: _compactName(widget.toName),
+                              text: _captionName(
+                                compactToName,
+                                captionTextDirection,
+                              ),
+                              semanticsLabel: compactToName,
                               style: TextStyle(
                                 color: context.colors.ink2,
                                 fontWeight: FontWeight.w700,
@@ -320,6 +331,14 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
     );
   }
 
+  /// Under RTL, FSI/PDI keeps each name in its own bidi run so the paragraph
+  /// orders payer and payee by UI direction instead of the names' script.
+  /// LTR text stays byte-for-byte unchanged.
+  String _captionName(String name, TextDirection textDirection) {
+    if (textDirection == TextDirection.ltr) return name;
+    return '\u2068$name\u2069';
+  }
+
   /// Compact label for the direction line: the first token of the base name,
   /// with the same-name disambiguation discriminator (` (#last4)`, #196)
   /// re-appended when the resolver added one. A plain first-name split dropped
@@ -334,4 +353,3 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
     return '$first$discriminator';
   }
 }
-
