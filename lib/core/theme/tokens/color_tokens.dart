@@ -182,7 +182,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// Saffron — active tab icon.
   final Color bottomNavActiveIcon;
 
-  /// Ink-4 — inactive tab icon.
+  /// Ink-3 — inactive bottom-navigation icon and functional label.
   final Color bottomNavInactiveIcon;
 
   /// Card-soft — warm form field fill alias of [inputFill].
@@ -293,7 +293,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     offlineBannerBackground: Color(0xFFC2410C), // Warning (re-hued off amber)
     bottomNavBackground: Color(0xFFF6F7F5), // Paper
     bottomNavActiveIcon: Color(0xFF8A5D0D), // Saffron
-    bottomNavInactiveIcon: Color(0xFF8B918D), // Ink-4
+    bottomNavInactiveIcon: Color(0xFF5C6462), // Ink-3
     inputFillWarm: Color(0xFFF1F2ED), // Card-soft alias
     focusBorderWarm: Color(0xFF8A5D0D), // Saffron
     borderWarm: Color(0xFFE3E6E0), // 8% ink alias
@@ -357,7 +357,7 @@ final class AppColorTokens extends ThemeExtension<AppColorTokens> {
     offlineBannerBackground: Color(0xFFE8703A),
     bottomNavBackground: Color(0xFF111514),
     bottomNavActiveIcon: Color(0xFFD9A845),
-    bottomNavInactiveIcon: Color(0xFF6E7773),
+    bottomNavInactiveIcon: Color(0xFF9AA39E), // Ink-3-light
     inputFillWarm: Color(0xFF242B28),
     focusBorderWarm: Color(0xFFD9A845),
     borderWarm: Color(0xFF2A322F),

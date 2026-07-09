@@ -22,6 +22,7 @@ import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/providers/ledger_view_provider.dart';
+import 'package:safar/l10n/generated/app_localizations.dart';
 
 import '../../helpers/pump_rihla_app.dart';
 
@@ -49,31 +50,30 @@ void main() {
     String currency = 'OMR',
     String? categoryId,
     String? description,
-  }) =>
-      Expense(
-        id: id,
-        tripId: 'e1',
-        payerParticipantId: payer,
-        amount: d(amount),
-        scope: ExpenseScope.global,
-        createdAt: DateTime(2026, 1, 1),
-        currency: currency,
-        categoryId: categoryId,
-        description: description,
-      );
+  }) => Expense(
+    id: id,
+    tripId: 'e1',
+    payerParticipantId: payer,
+    amount: d(amount),
+    scope: ExpenseScope.global,
+    createdAt: DateTime(2026, 1, 1),
+    currency: currency,
+    categoryId: categoryId,
+    description: description,
+  );
 
   // The screen resolves display names from ledgerViewProvider; in tests its real
   // Firebase-backed body must be overridden (Gate P2). Only rosterDisplayNames
   // is read by the recap screen.
   LedgerView fakeLedgerView(Map<String, String> roster) => (
-        participants: const [],
-        balances: const {},
-        eventTotal: const {},
-        rosterDisplayNames: roster,
-        expensePayerDisplayNames: const {},
-        settlementDisplayNames: const {},
-        owedByExpenseId: const {},
-      );
+    participants: const [],
+    balances: const {},
+    eventTotal: const {},
+    rosterDisplayNames: roster,
+    expensePayerDisplayNames: const {},
+    settlementDisplayNames: const {},
+    owedByExpenseId: const {},
+  );
 
   Event event() => Event(
     id: 'e1',
@@ -126,30 +126,30 @@ void main() {
     Stream<List<Expense>>? expensesStream,
     Stream<List<Settlement>>? settlementsStream,
     Stream<List<GroupMember>>? membersStream,
-  }) =>
-      [
-        eventDetailProvider(eventRef)
-            .overrideWith((ref) => Stream.value(event())),
-        eventRecapProvider(eventRef).overrideWithValue(recap),
-        ledgerViewProvider(eventRef).overrideWithValue(fakeLedgerView(roster)),
-        currentUserIdProvider.overrideWithValue(uid),
-        eventExpensesProvider(eventRef).overrideWith(
-          (ref) => expensesStream ?? Stream.value(const <Expense>[]),
-        ),
-        eventSettlementsProvider(eventRef).overrideWith(
-          (ref) => settlementsStream ?? Stream.value(const <Settlement>[]),
-        ),
-        groupMembersProvider('g1').overrideWith(
-          (ref) => membersStream ?? Stream.value(const <GroupMember>[]),
-        ),
-        // With the source streams valued, tripReceiptProvider (share sheet)
-        // passes its loading gate and reads the audit — whose real service
-        // touches Firestore. Degrade it like its own catch does.
-        tripReceiptAuditProvider(eventRef).overrideWith(
-          (ref) async =>
-              (corrections: const <ActivityLog>[], coverage: AuditCoverage.unavailable),
-        ),
-      ];
+  }) => [
+    eventDetailProvider(eventRef).overrideWith((ref) => Stream.value(event())),
+    eventRecapProvider(eventRef).overrideWithValue(recap),
+    ledgerViewProvider(eventRef).overrideWithValue(fakeLedgerView(roster)),
+    currentUserIdProvider.overrideWithValue(uid),
+    eventExpensesProvider(
+      eventRef,
+    ).overrideWith((ref) => expensesStream ?? Stream.value(const <Expense>[])),
+    eventSettlementsProvider(eventRef).overrideWith(
+      (ref) => settlementsStream ?? Stream.value(const <Settlement>[]),
+    ),
+    groupMembersProvider('g1').overrideWith(
+      (ref) => membersStream ?? Stream.value(const <GroupMember>[]),
+    ),
+    // With the source streams valued, tripReceiptProvider (share sheet)
+    // passes its loading gate and reads the audit — whose real service
+    // touches Firestore. Degrade it like its own catch does.
+    tripReceiptAuditProvider(eventRef).overrideWith(
+      (ref) async => (
+        corrections: const <ActivityLog>[],
+        coverage: AuditCoverage.unavailable,
+      ),
+    ),
+  ];
 
   // ── #758: embedded mode (tab panel inside the tabbed event view) ─────────
 
@@ -177,6 +177,23 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets('#1067 standalone back button exposes localized semantic label', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pumpRihlaApp(
+      tester,
+      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+      overrides: overridesFor(settledRecap()),
+    );
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byKey(EventKeys.recapScreen)),
+    );
+    expect(find.bySemanticsLabel(l10n.commonBack), findsOneWidget);
+    handle.dispose();
   });
 
   testWidgets('renders the recap screen with money rows (EN)', (tester) async {
@@ -276,8 +293,9 @@ void main() {
         const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
         overrides: overridesFor(
           outstandingRecap(),
-          membersStream:
-              Stream<List<GroupMember>>.error(StateError('members failed')),
+          membersStream: Stream<List<GroupMember>>.error(
+            StateError('members failed'),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -296,8 +314,9 @@ void main() {
         const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
         overrides: overridesFor(
           outstandingRecap(),
-          expensesStream:
-              Stream<List<Expense>>.error(StateError('expenses failed')),
+          expensesStream: Stream<List<Expense>>.error(
+            StateError('expenses failed'),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -348,8 +367,9 @@ void main() {
         locale: const Locale('ar'),
         overrides: overridesFor(
           outstandingRecap(),
-          membersStream:
-              Stream<List<GroupMember>>.error(StateError('members failed')),
+          membersStream: Stream<List<GroupMember>>.error(
+            StateError('members failed'),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -404,11 +424,13 @@ void main() {
         ],
       },
       expenses: [
-        expense('e1',
-            payer: 'a',
-            amount: '180',
-            categoryId: 'accommodation',
-            description: 'Beach villa'),
+        expense(
+          'e1',
+          payer: 'a',
+          amount: '180',
+          categoryId: 'accommodation',
+          description: 'Beach villa',
+        ),
         expense('e2', payer: 'a', amount: '120.5', categoryId: 'food'),
         expense('e3', payer: 'b', amount: '80', categoryId: 'transport'),
       ],
@@ -417,13 +439,18 @@ void main() {
     await pumpRihlaApp(
       tester,
       const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
-      overrides: overridesFor(recap,
-          roster: const {'a': 'Alice', 'b': 'Bob', 'c': 'Carol', 'dd': 'Dana'}),
+      overrides: overridesFor(
+        recap,
+        roster: const {'a': 'Alice', 'b': 'Bob', 'c': 'Carol', 'dd': 'Dana'},
+      ),
     );
 
     expect(find.text('Top payer'), findsOneWidget);
     expect(find.text('Biggest expense'), findsOneWidget);
-    expect(find.text('Beach villa'), findsOneWidget); // biggest uses description
+    expect(
+      find.text('Beach villa'),
+      findsOneWidget,
+    ); // biggest uses description
     expect(find.text('By category'), findsOneWidget);
     expect(find.text('Who paid'), findsOneWidget);
     expect(find.text("Who's up / down"), findsOneWidget);
@@ -480,8 +507,20 @@ void main() {
         'OMR': [ub('a', '30', '30', '0')],
       },
       expenses: [
-        expense('e1', payer: 'a', amount: '100', currency: 'USD', categoryId: 'food'),
-        expense('e2', payer: 'a', amount: '30', currency: 'OMR', categoryId: 'transport'),
+        expense(
+          'e1',
+          payer: 'a',
+          amount: '100',
+          currency: 'USD',
+          categoryId: 'food',
+        ),
+        expense(
+          'e2',
+          payer: 'a',
+          amount: '30',
+          currency: 'OMR',
+          categoryId: 'transport',
+        ),
       ],
       uid: 'a',
     );
@@ -492,49 +531,54 @@ void main() {
     );
 
     expect(
-      find.text("Balances are kept per currency — they're never added together."),
+      find.text(
+        "Balances are kept per currency — they're never added together.",
+      ),
       findsOneWidget,
     );
     // Each currency block has its own "By category".
     expect(find.text('By category'), findsNWidgets(2));
   });
 
-  testWidgets('settlement-only currency renders without crashing (#721 Gate P1)',
-      (tester) async {
-    // EUR is a balance currency with NO expense — its block has no highlights /
-    // category / who-paid, only nets + status. Must not throw on .first.
-    final recap = EventRecap.from(
-      eventId: 'e1',
-      eventName: 'Mixed Trip',
-      startDate: null,
-      endDate: null,
-      participantIds: const ['a', 'b'],
-      expenseCount: 1,
-      totalSpentByCurrency: {'OMR': d('10')},
-      balances: {
-        'OMR': [ub('a', '10', '10', '0')],
-        'EUR': [ub('a', '0', '0', '-50'), ub('b', '0', '0', '50')],
-      },
-      expenses: [expense('e1', payer: 'a', amount: '10', currency: 'OMR')],
-      uid: 'a',
-    );
-    await pumpRihlaApp(
-      tester,
-      const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
-      overrides: overridesFor(recap),
-    );
+  testWidgets(
+    'settlement-only currency renders without crashing (#721 Gate P1)',
+    (tester) async {
+      // EUR is a balance currency with NO expense — its block has no highlights /
+      // category / who-paid, only nets + status. Must not throw on .first.
+      final recap = EventRecap.from(
+        eventId: 'e1',
+        eventName: 'Mixed Trip',
+        startDate: null,
+        endDate: null,
+        participantIds: const ['a', 'b'],
+        expenseCount: 1,
+        totalSpentByCurrency: {'OMR': d('10')},
+        balances: {
+          'OMR': [ub('a', '10', '10', '0')],
+          'EUR': [ub('a', '0', '0', '-50'), ub('b', '0', '0', '50')],
+        },
+        expenses: [expense('e1', payer: 'a', amount: '10', currency: 'OMR')],
+        uid: 'a',
+      );
+      await pumpRihlaApp(
+        tester,
+        const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
+        overrides: overridesFor(recap),
+      );
 
-    expect(find.byKey(EventKeys.recapScreen), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    // OMR settled (a net 0), EUR outstanding (a owes 50 → 1 debtor).
-    expect(find.text("Everyone's settled up"), findsOneWidget);
-    expect(find.textContaining('1 person still owes'), findsOneWidget);
-  });
+      expect(find.byKey(EventKeys.recapScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      // OMR settled (a net 0), EUR outstanding (a owes 50 → 1 debtor).
+      expect(find.text("Everyone's settled up"), findsOneWidget);
+      expect(find.textContaining('1 person still owes'), findsOneWidget);
+    },
+  );
 
   // ── #721 deferred item: event-vs-group settle CTA ────────────────────────
 
-  testWidgets('outstanding event shows the settle CTA with both paths (#721)',
-      (tester) async {
+  testWidgets('outstanding event shows the settle CTA with both paths (#721)', (
+    tester,
+  ) async {
     await pumpRihlaApp(
       tester,
       const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
@@ -570,8 +614,9 @@ void main() {
 
   // ── #722 Slice 4: shareable recap card entry point ───────────────────────
 
-  testWidgets('share action is present on the non-empty data path (#722)',
-      (tester) async {
+  testWidgets('share action is present on the non-empty data path (#722)', (
+    tester,
+  ) async {
     await pumpRihlaApp(
       tester,
       const EventRecapScreen(groupId: 'g1', eventId: 'e1'),
@@ -581,8 +626,9 @@ void main() {
     expect(find.byKey(EventKeys.recapShareButton), findsOneWidget);
   });
 
-  testWidgets('share action is hidden on the empty recap (#722)',
-      (tester) async {
+  testWidgets('share action is hidden on the empty recap (#722)', (
+    tester,
+  ) async {
     final empty = EventRecap.from(
       eventId: 'e1',
       eventName: 'Jabal Trip',
@@ -605,8 +651,9 @@ void main() {
     expect(find.byKey(EventKeys.recapShareButton), findsNothing);
   });
 
-  testWidgets('tapping share opens the recap share sheet (#722)',
-      (tester) async {
+  testWidgets('tapping share opens the recap share sheet (#722)', (
+    tester,
+  ) async {
     await pumpRihlaApp(
       tester,
       const EventRecapScreen(groupId: 'g1', eventId: 'e1'),

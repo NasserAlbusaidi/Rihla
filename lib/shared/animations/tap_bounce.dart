@@ -53,6 +53,7 @@ class _TapBounceState extends State<TapBounce>
       return widget.child;
     }
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) {
         _controller.reverse();
