@@ -170,8 +170,10 @@ void main() {
             eventRef,
           ).overrideWith((_) => Stream.value(const [])),
           groupMembersProvider(groupId).overrideWith(
-            (_) =>
-                Stream.value([member('uid-1', 'Mona'), member('uid-2', 'Nasser')]),
+            (_) => Stream.value([
+              member('uid-1', 'Mona'),
+              member('uid-2', 'Nasser'),
+            ]),
           ),
           activityServiceProvider.overrideWithValue(
             ActivityService.withFirestore(FakeFirebaseFirestore()),
@@ -204,7 +206,6 @@ void main() {
     tester,
   ) async {
     final handle = tester.ensureSemantics();
-    addTearDown(handle.dispose);
     await pumpTabbedEvent(tester, ev: event(), expenses: [expense()]);
 
     final l10n = AppLocalizations.of(
@@ -221,6 +222,7 @@ void main() {
     expect(expenses.flagsCollection.isSelected, Tristate.isTrue);
     expect(settleUp.flagsCollection.isButton, isTrue);
     expect(settleUp.flagsCollection.isSelected, Tristate.isFalse);
+    handle.dispose();
   });
 
   testWidgets('#1067 tab hit region is >=44dp without inflating its pill', (

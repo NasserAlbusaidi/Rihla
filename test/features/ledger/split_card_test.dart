@@ -98,8 +98,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('renders one payer control and no stock dropdown (#485)',
-      (tester) async {
+  testWidgets('renders one payer control and no stock dropdown (#485)', (
+    tester,
+  ) async {
     await pumpCard(tester);
 
     // The single payer control — one "Change" affordance, never a second picker.
@@ -108,8 +109,9 @@ void main() {
     expect(find.text('PAID BY'), findsNothing); // the retired dropdown's label
   });
 
-  testWidgets('renders the plain-language scope + mode segments (#485)',
-      (tester) async {
+  testWidgets('renders the plain-language scope + mode segments (#485)', (
+    tester,
+  ) async {
     await pumpCard(tester);
 
     // Scope segment — plain language.
@@ -126,7 +128,6 @@ void main() {
     tester,
   ) async {
     final handle = tester.ensureSemantics();
-    addTearDown(handle.dispose);
     await pumpCard(tester);
 
     final l10n = AppLocalizations.of(tester.element(find.byType(SplitCard)));
@@ -140,6 +141,7 @@ void main() {
     expect(equally.flagsCollection.isSelected, Tristate.isTrue);
     expect(shares.flagsCollection.isButton, isTrue);
     expect(shares.flagsCollection.isSelected, Tristate.isFalse);
+    handle.dispose();
   });
 
   testWidgets('#1067 mode chip hit region is >=44dp around a compact pill', (
@@ -160,8 +162,9 @@ void main() {
     expect(tester.getSize(paintedPill).height, lessThan(44));
   });
 
-  testWidgets('Itemized is a first-class option on the card (split-clarity)',
-      (tester) async {
+  testWidgets('Itemized is a first-class option on the card (split-clarity)', (
+    tester,
+  ) async {
     await pumpCard(tester);
 
     // The whole point: itemized is visible on the card at rest, alongside the
@@ -170,8 +173,9 @@ void main() {
     expect(find.text('Itemized'), findsOneWidget);
   });
 
-  testWidgets('tapping Itemized fires onPickItemized, not onPickMode',
-      (tester) async {
+  testWidgets('tapping Itemized fires onPickItemized, not onPickMode', (
+    tester,
+  ) async {
     var itemizedTaps = 0;
     final modes = <SplitMode>[];
     await pumpCard(
@@ -188,53 +192,59 @@ void main() {
     expect(modes, isEmpty);
   });
 
-  testWidgets('an itemized expense highlights Itemized, not Exact (helper shown)',
-      (tester) async {
-    await pumpCard(
-      tester,
-      // Itemized persists as SplitMode.exact + a splitExplanation (#203).
-      splitMode: SplitMode.exact,
-      splitDistribution: {
-        'uid-yasmin': Decimal.parse('24.000'),
-        'uid-layla': Decimal.parse('24.000'),
-      },
-      splitExplanation: const SplitExplanation(
-        items: [
-          SplitItem(
-            label: 'Dinner',
-            amountFils: 48000,
-            participantIds: ['uid-yasmin', 'uid-layla'],
-          ),
-        ],
-      ),
-    );
+  testWidgets(
+    'an itemized expense highlights Itemized, not Exact (helper shown)',
+    (tester) async {
+      await pumpCard(
+        tester,
+        // Itemized persists as SplitMode.exact + a splitExplanation (#203).
+        splitMode: SplitMode.exact,
+        splitDistribution: {
+          'uid-yasmin': Decimal.parse('24.000'),
+          'uid-layla': Decimal.parse('24.000'),
+        },
+        splitExplanation: const SplitExplanation(
+          items: [
+            SplitItem(
+              label: 'Dinner',
+              amountFils: 48000,
+              participantIds: ['uid-yasmin', 'uid-layla'],
+            ),
+          ],
+        ),
+      );
 
-    // The selected-mode helper reflects Itemized (proves it's the active
-    // selection, not Exact — the pre-fix bug showed "Exact" highlighted).
-    expect(
-      find.text('Add each receipt line and tick who ordered it.'),
-      findsOneWidget,
-    );
-  });
+      // The selected-mode helper reflects Itemized (proves it's the active
+      // selection, not Exact — the pre-fix bug showed "Exact" highlighted).
+      expect(
+        find.text('Add each receipt line and tick who ordered it.'),
+        findsOneWidget,
+      );
+    },
+  );
 
-  testWidgets('the selected-mode helper explains Equal by default',
-      (tester) async {
+  testWidgets('the selected-mode helper explains Equal by default', (
+    tester,
+  ) async {
     await pumpCard(tester);
     expect(find.text('Everyone pays the same.'), findsOneWidget);
   });
 
-  testWidgets('shows real per-person figures and an adds-up footer (#485/#242)',
-      (tester) async {
-    await pumpCard(tester);
+  testWidgets(
+    'shows real per-person figures and an adds-up footer (#485/#242)',
+    (tester) async {
+      await pumpCard(tester);
 
-    // 48 / 2 = 24.000 each, both rows render it.
-    expect(find.text('OMR 24.000'), findsWidgets);
-    // Reconciliation footer.
-    expect(find.textContaining('Adds up to'), findsOneWidget);
-  });
+      // 48 / 2 = 24.000 each, both rows render it.
+      expect(find.text('OMR 24.000'), findsWidgets);
+      // Reconciliation footer.
+      expect(find.textContaining('Adds up to'), findsOneWidget);
+    },
+  );
 
-  testWidgets('callbacks: payer, scope, and mode taps each fire once (#485)',
-      (tester) async {
+  testWidgets('callbacks: payer, scope, and mode taps each fire once (#485)', (
+    tester,
+  ) async {
     var payerTaps = 0;
     final scopes = <ExpenseScope>[];
     final modes = <SplitMode>[];

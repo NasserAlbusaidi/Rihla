@@ -105,9 +105,7 @@ void main() {
       expect(decoration.border, isNotNull);
     });
 
-    testWidgets('every glyph value maps to its expected icon', (
-      tester,
-    ) async {
+    testWidgets('every glyph value maps to its expected icon', (tester) async {
       const expected = {
         ActivityGlyph.expenseAdded: Iconsax.receipt_add,
         ActivityGlyph.expenseEdited: Iconsax.receipt_edit,
@@ -131,9 +129,7 @@ void main() {
   });
 
   group('ActivityRow', () {
-    testWidgets('renders actor and description as rich text', (
-      tester,
-    ) async {
+    testWidgets('renders actor and description as rich text', (tester) async {
       await _pump(
         tester,
         ActivityRow(
@@ -324,9 +320,7 @@ void main() {
   });
 
   group('ActivityDaySection', () {
-    testWidgets('raised=true renders shadow without a border', (
-      tester,
-    ) async {
+    testWidgets('raised=true renders shadow without a border', (tester) async {
       await _pump(
         tester,
         const ActivityDaySection(label: 'today', children: [SizedBox()]),
@@ -344,9 +338,7 @@ void main() {
       expect(decoration.border, isNull);
     });
 
-    testWidgets('raised=false renders a border without shadow', (
-      tester,
-    ) async {
+    testWidgets('raised=false renders a border without shadow', (tester) async {
       await _pump(
         tester,
         const ActivityDaySection(
@@ -416,7 +408,6 @@ void main() {
       tester,
     ) async {
       final handle = tester.ensureSemantics();
-      addTearDown(handle.dispose);
       await _pump(
         tester,
         ActivityFilterStrip<String>(
@@ -435,6 +426,7 @@ void main() {
       expect(all.flagsCollection.isSelected, Tristate.isTrue);
       expect(events.flagsCollection.isButton, isTrue);
       expect(events.flagsCollection.isSelected, Tristate.isFalse);
+      handle.dispose();
     });
 
     testWidgets(
@@ -521,8 +513,7 @@ void main() {
             )
             .first,
       );
-      final inactiveDecoration =
-          inactiveContainer.decoration! as BoxDecoration;
+      final inactiveDecoration = inactiveContainer.decoration! as BoxDecoration;
       expect(inactiveDecoration.color, colors.cardSoft);
     });
 

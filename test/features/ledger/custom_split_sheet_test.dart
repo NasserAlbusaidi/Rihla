@@ -136,7 +136,6 @@ void main() {
       tester,
     ) async {
       final handle = tester.ensureSemantics();
-      addTearDown(handle.dispose);
       await _openSheet(
         tester,
         total: Decimal.parse('30.000'),
@@ -156,6 +155,7 @@ void main() {
       expect(equally.flagsCollection.isSelected, Tristate.isTrue);
       expect(shares.flagsCollection.isButton, isTrue);
       expect(shares.flagsCollection.isSelected, Tristate.isFalse);
+      handle.dispose();
     });
 
     testWidgets('#1067 mode tab hit region is >=44dp around a compact pill', (
@@ -178,9 +178,7 @@ void main() {
           .ancestor(of: label, matching: find.byType(AnimatedContainer))
           .first;
       final compactStrip = find.byKey(const Key('split_mode_segment'));
-      final paintedTrack = find.byKey(
-        const Key('split_mode_segment_track'),
-      );
+      final paintedTrack = find.byKey(const Key('split_mode_segment_track'));
 
       expect(tester.getSize(hitRegion).height, greaterThanOrEqualTo(44));
       expect(tester.getSize(paintedPill).height, lessThan(44));
