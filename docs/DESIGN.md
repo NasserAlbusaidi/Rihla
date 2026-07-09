@@ -518,11 +518,12 @@ three prior KEEPs were explicitly broken by the rebrand, the rest hold.
   structural `rule2` falaj fork whose branch fan points into the payee and
   mirrors under RTL (§13 D8).
 - **KEEP-4 — RTL build:** logo lockup, mirroring, localized strings (§7).
-- **KEEP-5 — Copy voice:** "everyone's even" / "الجميع متوازن"
-  (`settleUpEveryoneEvenHeadline`; the ledger's "All square." / "كل شيء
-  متوازن" pair was retired with the full-chrome hero in #915 — the event's
-  settled voice now lives in the hub's balance block. Don't splice surviving
-  pairs) (§11).
+- **KEEP-5 — Copy voice:** "everyone's even" / "الجميع متوازن" survives in
+  the populated `settleUpTransfersHeadline`; the zero-balance view relies on
+  the hub's balance block and `AllSettledState` instead of repeating a third
+  settled headline. The ledger's "All square." / "كل شيء متوازن" pair was
+  retired with the full-chrome hero in #915. Don't splice surviving pairs
+  (§11).
 - **KEEP-6 — Ticket / boarding-pass trip cards:** perforated tear-line, side
   notches, per-trip `CoverArt`. Re-dressed in plaster/shale/brass materials,
   structure unchanged — protect and extend.
