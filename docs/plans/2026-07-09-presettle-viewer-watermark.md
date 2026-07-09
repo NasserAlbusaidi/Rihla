@@ -31,7 +31,7 @@ A flag is suppressed iff ALL of:
 
 - **Event screen:** that event's settlements (already includes #752 decomposed legs — they are event docs). Unchanged from rev 1.
 - **Group provider — two stages:**
-  - **Stage A (event-local):** inside the per-event loop, an event's flags are filtered against THAT event's settlements only — identical semantics to the event screen, so a flag suppressed on its own event settle-up is also suppressed at group scope and vice versa (no cross-surface inconsistency).
+  - **Stage A (event-local):** inside the per-event loop, an event's flags are filtered against THAT event's settlements only — identical semantics to the event screen, so a flag suppressed on its own event settle-up is also suppressed at group scope. (The converse is intentionally NOT guaranteed: Stage B can suppress at group scope a flag the event screen still shows — group settle-up reviewed it, that event's own basis didn't. Do not "fix" this asymmetry.) Note: the event screen applies detect → #922 → watermark while the group path applies detect → watermark (A) → #922 → watermark (B); all three are independent per-flag predicates, so ordering is commutative and the result sets agree — also not a bug to "fix".
   - **Stage B (group-engagement):** after the loop, the pooled flags are filtered against only the settlements that prove the viewer went through the GROUP review sheet — group-level docs (from `groupSettlementsProvider`) plus `groupSettleUpId`-tagged decomposed legs (#752). An UNTAGGED event settlement never suppresses another event's flags. Marked-correction rows are also pooled into the Stage B list so a correction whose target sits in a different collection still disarms it (the pure function excludes both).
 - A #244 OR-dropped event (hard-errored expense stream) contributes NO settlements to either stage — dropped from the flag basis ⇒ dropped from the watermark basis (fail toward warning).
 
@@ -41,6 +41,7 @@ A flag is suppressed iff ALL of:
 - `Expense` has `createdAt` only — no edit timestamp exists on the model (verified by enumeration). An expense edited after the viewer's last settlement stays suppressed. #799's `recentlyEdited` trigger is the future home.
 - `settledAt`/`createdAt` are client-stamped; cross-device clock skew can mis-order near the boundary. Acceptable for a display-only nudge.
 - Legacy note-based corrections (pre-#889, no marker) still count toward the watermark. Marker-based is the contract for new derived surfaces.
+- A malformed/legacy expense whose `createdAt` was salvaged to epoch-1970 by `Expense.fromFirestore` (`expense_model.dart:239-242`) sorts before any real watermark and gets suppressed — a fail-toward-hiding edge confined to Admin/forged/corrupt docs (Gate R2). The settlement direction is safe: a salvaged `settledAt` is epoch too and never advances a watermark.
 
 ## Verified facts the plan relies on (re-checked 2026-07-09 against `main` @ `82471a20`)
 
