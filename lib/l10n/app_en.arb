@@ -1403,7 +1403,7 @@
   "activityEventMissingTitle": "This event no longer exists",
   "activityEventMissingMessage": "It may have been deleted.",
   "activityRelativeJustNow": "JUST NOW",
-  "activityRelativeMinutes": "{count}M",
+  "activityRelativeMinutes": "{count}m",
   "@activityRelativeMinutes": {
     "placeholders": {
       "count": {
@@ -1411,7 +1411,7 @@
       }
     }
   },
-  "activityRelativeHours": "{count}H",
+  "activityRelativeHours": "{count}h",
   "@activityRelativeHours": {
     "placeholders": {
       "count": {
@@ -1419,7 +1419,7 @@
       }
     }
   },
-  "activityRelativeDays": "{count}D",
+  "activityRelativeDays": "{count}d",
   "@activityRelativeDays": {
     "placeholders": {
       "count": {
