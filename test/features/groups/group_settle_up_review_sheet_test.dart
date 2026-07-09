@@ -152,6 +152,7 @@ List<Override> _overrides({
   List<GroupMember>? members,
   AsyncValue<GroupBalances>? balances,
   Map<String, Stream<List<Settlement>>> settlementsByEvent = const {},
+  List<Settlement> groupSettlements = const [],
 }) {
   return [
     groupDetailProvider(_groupId).overrideWith((_) => Stream.value(_testGroup)),
@@ -160,7 +161,7 @@ List<Override> _overrides({
     ).overrideWith((_) => balances ?? AsyncValue.data(_outstandingBalances)),
     groupSettlementsProvider(
       _groupId,
-    ).overrideWith((_) => Stream.value(const <Settlement>[])),
+    ).overrideWith((_) => Stream.value(groupSettlements)),
     groupEventsProvider(_groupId).overrideWith((_) => Stream.value(events)),
     groupMembersProvider(_groupId).overrideWith(
       (_) => Stream.value(
@@ -316,6 +317,43 @@ void main() {
 
     expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
     expect(find.text('Settled OMR villa'), findsNothing);
+  });
+
+  testWidgets('viewer-party group settlement suppresses re-flagging (#1058)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        _overrides(
+          events: [_makeEvent(id: 'event-1')],
+          expensesByEvent: {
+            'event-1': Stream.value([
+              _makeExpense(
+                id: 'flagged',
+                tripId: 'event-1',
+                description: 'Old flagged dinner',
+                splitMode: SplitMode.exact,
+              ),
+            ]),
+          },
+          groupSettlements: [
+            Settlement(
+              id: 'g1',
+              tripId: _groupId,
+              payerParticipantId: 'uid-alice',
+              recipientParticipantId: 'uid-bob',
+              amount: Decimal.parse('1.000'),
+              settledAt: DateTime(2026, 3, 10),
+              scope: 'group',
+              groupId: _groupId,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
   });
 
   testWidgets('no sheet while balances are unresolved', (tester) async {

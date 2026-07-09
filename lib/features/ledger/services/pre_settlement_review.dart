@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 
 import '../../../core/models/split_mode.dart';
 import '../models/expense_model.dart';
+import '../models/settlement_model.dart';
 
 /// Why an expense surfaced in the pre-settlement review sheet (#204). These are
 /// display-only warnings — none of them change a balance.
@@ -100,6 +101,53 @@ List<ReviewFlag> filterFlagsToOutstandingCurrencies(
   return flags
       .where((f) => outstandingCurrencies.contains(f.expense.currency))
       .toList();
+}
+
+/// #1058: drop flags the viewer has already settled past. A flag survives
+/// unless the viewer was PARTY (payer or recipient — never mere creator) to a
+/// live settlement in the flag's currency recorded strictly after the expense
+/// was created. Live excludes soft-deleted rows, #889 server-marked correction
+/// rows, and the originals those corrections reverse — a corrected payment is
+/// not evidence the viewer reviewed the ledger. Null [viewerUid], a tie at the
+/// watermark, or a missing basis all fail toward warning (flag kept).
+///
+/// Timestamps are client-stamped ([Settlement.settledAt] vs
+/// [Expense.createdAt]); cross-device clock skew near the boundary is accepted
+/// for a display-only nudge. Expenses carry no edit timestamp, so an expense
+/// edited after the viewer's last settlement stays suppressed (#799's
+/// recentlyEdited trigger is the future home for re-arming). INBOUND-only,
+/// like the rest of this file: no money calculation, no I/O.
+List<ReviewFlag> suppressFlagsSettledPastByViewer(
+  List<ReviewFlag> flags, {
+  required List<Settlement> settlements,
+  required String? viewerUid,
+}) {
+  if (viewerUid == null || flags.isEmpty || settlements.isEmpty) return flags;
+
+  final correctedIds = <String>{
+    for (final s in settlements)
+      if (s.isMarkedCorrection) s.correctionOfSettlementId!,
+  };
+
+  final watermarkByCurrency = <String, DateTime>{};
+  for (final s in settlements) {
+    if (s.isDeleted || s.isMarkedCorrection) continue;
+    if (correctedIds.contains(s.id)) continue;
+    if (s.payerParticipantId != viewerUid &&
+        s.recipientParticipantId != viewerUid) {
+      continue;
+    }
+    final current = watermarkByCurrency[s.currency];
+    if (current == null || s.settledAt.isAfter(current)) {
+      watermarkByCurrency[s.currency] = s.settledAt;
+    }
+  }
+  if (watermarkByCurrency.isEmpty) return flags;
+
+  return flags.where((f) {
+    final watermark = watermarkByCurrency[f.expense.currency];
+    return watermark == null || !f.expense.createdAt.isBefore(watermark);
+  }).toList();
 }
 
 /// Max review rows shown PER currency (#521). A single-currency event still

@@ -85,19 +85,28 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   /// [activeParticipantIds] is the current event roster narrowed to live
   /// (`!isTombstone`) group members, so it sheds both event removals and members
   /// who left the group.
+  /// #1058: flags the viewer already settled past (viewer-party settlement in
+  /// the same currency, newer than the expense) are suppressed even while the
+  /// currency bucket stays outstanding — see suppressFlagsSettledPastByViewer.
   void _maybeShowReviewSheet(
     BuildContext context,
     List<Expense> expenses, [
     Set<String> outstandingCurrencies = const {},
     Set<String> activeParticipantIds = const {},
+    List<Settlement> settlements = const [],
+    String? viewerUid,
   ]) {
     if (_reviewSheetShown) return;
-    final flags = filterFlagsToOutstandingCurrencies(
-      detectReviewWorthyExpenses(
-        expenses,
-        activeParticipantIds: activeParticipantIds,
+    final flags = suppressFlagsSettledPastByViewer(
+      filterFlagsToOutstandingCurrencies(
+        detectReviewWorthyExpenses(
+          expenses,
+          activeParticipantIds: activeParticipantIds,
+        ),
+        outstandingCurrencies,
       ),
-      outstandingCurrencies,
+      settlements: settlements,
+      viewerUid: viewerUid,
     );
     if (flags.isEmpty) return;
     _reviewSheetShown = true;
@@ -327,6 +336,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               expenses,
               outstandingCurrencies,
               activeParticipantIds,
+              settlements,
+              currentUid,
             );
           }
 
