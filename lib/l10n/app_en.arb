@@ -894,7 +894,6 @@
   "@preSettleReviewReview": {"description": "Action that closes the sheet and opens the ledger to review expenses (#204)."},
   "preSettleReviewContinue": "Continue to settle",
   "@preSettleReviewContinue": {"description": "Action that dismisses the non-blocking pre-settlement review sheet and proceeds (#204)."},
-  "settleUpEveryoneEvenHeadline": "Everyone's even.",
   "settleUpTransfersHeadline": "{count, plural, =1{One transfer\nuntil everyone's even.} other{{count} transfers\nuntil everyone's even.}}",
   "@settleUpTransfersHeadline": {
     "description": "Forward-looking headline shown while transfers are still outstanding (not yet settled) — must not read as already-settled.",
@@ -1404,7 +1403,7 @@
   "activityEventMissingTitle": "This event no longer exists",
   "activityEventMissingMessage": "It may have been deleted.",
   "activityRelativeJustNow": "JUST NOW",
-  "activityRelativeMinutes": "{count}M",
+  "activityRelativeMinutes": "{count}m",
   "@activityRelativeMinutes": {
     "placeholders": {
       "count": {
@@ -1412,7 +1411,7 @@
       }
     }
   },
-  "activityRelativeHours": "{count}H",
+  "activityRelativeHours": "{count}h",
   "@activityRelativeHours": {
     "placeholders": {
       "count": {
@@ -1420,7 +1419,7 @@
       }
     }
   },
-  "activityRelativeDays": "{count}D",
+  "activityRelativeDays": "{count}d",
   "@activityRelativeDays": {
     "placeholders": {
       "count": {

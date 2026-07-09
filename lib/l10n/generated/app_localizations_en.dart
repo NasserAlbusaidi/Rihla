@@ -1096,9 +1096,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get preSettleReviewContinue => 'Continue to settle';
 
   @override
-  String get settleUpEveryoneEvenHeadline => 'Everyone\'s even.';
-
-  @override
   String settleUpTransfersHeadline(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1741,17 +1738,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String activityRelativeMinutes(int count) {
-    return '${count}M';
+    return '${count}m';
   }
 
   @override
   String activityRelativeHours(int count) {
-    return '${count}H';
+    return '${count}h';
   }
 
   @override
   String activityRelativeDays(int count) {
-    return '${count}D';
+    return '${count}d';
   }
 
   @override

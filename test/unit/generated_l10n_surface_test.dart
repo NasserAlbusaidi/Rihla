@@ -202,7 +202,6 @@ final _pr2bCalls = <_L10nString>[
   (l10n) => l10n.settleUpAmountExceedsOutstanding('1.000'),
   (l10n) => l10n.settleUpRecorded,
   (l10n) => l10n.settleUpRecordFailed,
-  (l10n) => l10n.settleUpEveryoneEvenHeadline,
   (l10n) => l10n.settleUpTransfersHeadline(0),
   (l10n) => l10n.settleUpTransfersHeadline(1),
   (l10n) => l10n.settleUpTransfersHeadline(2),
