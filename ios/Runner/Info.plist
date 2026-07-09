@@ -83,6 +83,13 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- #941: lets iOS wake the app for FCM/APNs remote notifications (background
+	     delivery + content-available data messages). Paired with the
+	     aps-environment entitlement in Runner.entitlements. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- Phase 38: permit localhost-only connections for Firebase emulator (debug builds).
