@@ -218,6 +218,14 @@ Display (Bricolage) slots use `textPrimary`; body slots default to
 `textSecondary`. All non-display slots carry tabular figures so inline
 numbers stay aligned.
 
+### Text scaling and accessibility
+
+Rihla honors the OS text scale up to **1.5×**. The normal
+`MaterialApp.router` `builder` clamps inherited scaling only above that cap,
+preserving the platform's scaling behavior below it. Screens must render
+overflow-free at 1.5× in both English and Arabic. Money values must never clip
+or truncate digits — scale them down to fit.
+
 ---
 
 ## 4. Spacing & radius
