@@ -1,21 +1,30 @@
 # Rihla
 
+[![Readiness Check](https://github.com/NasserAlbusaidi/Rihla/actions/workflows/readiness_check.yml/badge.svg)](https://github.com/NasserAlbusaidi/Rihla/actions/workflows/readiness_check.yml)
+
 **Rihla** ("Journey" in Arabic) is a Flutter mobile app for group coordination and event planning. Users create or join persistent groups — friend circles, travel crews — then spin up events inside those groups (trips, camping weekends, dinners, or custom types). The app tracks finances at both the group and event level, so friends can settle up across multiple outings rather than one at a time.
+
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_en-US.png" alt="Settle up in the fewest payments" width="19%" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_en-US.png" alt="Every expense and who owes who" width="19%" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_en-US.png" alt="Split evenly, by share, exact or percent" width="19%" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4_en-US.png" alt="Follow every payment as it happens" width="19%" />
+</p>
 
 Package: `safar` · Android ID: `com.safar.safar` · Version: see `pubspec.yaml`
 
-**[📋 Roadmap](./ROADMAP.md)** · **[🎯 GitHub Project](https://github.com/nasseralbusaidi/Rihla/projects/3)**
+**[📋 Roadmap](./ROADMAP.md)**
 
 ---
 
 ## Key Features
 
 - **Groups** — Create or join persistent groups with a 6-character invite code. Group financial history accumulates across every event in the group.
-- **Events** — Spin up typed events (trip, camping, travel, night/day out, custom) inside a group. After Phase 39, every event surfaces a single Ledger module; event taps land on the Ledger directly.
-- **Ledger** — Split expenses four ways (`global`, `personal`, `custom`, legacy `subGroup`) across four modes (`equally`, `shares`, `exact`, `percent`). All money math uses the `decimal` package — default OMR, 3 decimal places. OMR is the only currency actually written today (writes are pinned to `OMR` pending #61); a picker offers 6 codes (OMR/AED/SAR/USD/EUR/GBP) and the serializer's scale map covers 10, but neither reaches the write path yet. Settlement optimization uses a greedy heuristic (largest debtor ↔ largest creditor) to suggest few transactions — conservation-correct and near-optimal for typical 3–8 person groups, though not provably the minimum (true minimization is NP-hard).
+- **Events** — Spin up typed events (trip, camping, travel, night/day out, custom) inside a group. Every event surfaces a single Ledger; tapping an event lands on its Ledger directly.
+- **Ledger** — Split expenses four ways (`global`, `personal`, `custom`, legacy `subGroup`) across four modes (`equally`, `shares`, `exact`, `percent`). All money math uses the `decimal` package — OMR by default, 3 decimal places. OMR is the only currency written today; the serializer is multi-currency-aware (see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)) and broader currency support is planned. Settlement optimization uses a greedy heuristic (largest debtor ↔ largest creditor) to suggest few transactions — conservation-correct and near-optimal for typical 3–8 person groups, though not provably the minimum (true minimization is NP-hard).
 - **Activity feeds** — Cross-group, group-level, and event-level activity timelines.
-- **Offline-first** — the Firestore SDK's own offline persistence (unlimited cache) serves offline reads and replays queued writes. There is no hand-rolled local cache (the SQLite cache was removed in #50).
-- **Account recovery (v1.2)** — Optional email-link recovery. Link an email from Profile, restore on a new device with a one-tap magic link. Cross-UID isolation of the Firestore on-device cache (cold-start `CacheUidBarrier` + `FirestoreCacheGate` + restart-based `CacheIsolationController`, #68) prevents anonymous data leaking across sessions.
+- **Offline-first** — the Firestore SDK's own offline persistence (unlimited cache) serves offline reads and replays queued writes. There is no hand-rolled local cache.
+- **Account recovery** — Optional email-link recovery. Link an email from Profile, restore on a new device with a one-tap magic link. Cross-UID isolation of the on-device Firestore cache prevents anonymous data leaking across sessions (see [docs/ACCOUNT-RECOVERY.md](./docs/ACCOUNT-RECOVERY.md)).
 - **In-app account deletion** — Server-side cascade across Firebase Auth, Firestore, and FCM tokens.
 - **Push notifications** — Firebase Cloud Messaging (FCM), opt-in only.
 - **Frictionless auth** — Firebase anonymous sign-in on first launch; no login screen.
@@ -79,20 +88,20 @@ lib/
 │   ├── models/                   # Shared models (AppSettings, SplitMode)
 │   ├── providers/                # Cross-feature providers (connectivity, settings, bootstrap)
 │   ├── router/                   # GoRouter definition (app_router.dart)
-│   ├── services/                 # FirestoreRepository, FirestoreCacheGate/CacheUidBarrier
-│   │                             # (cross-UID isolation), money serializer, haptic,
-│   │                             # notification, deep-link handler
+│   ├── services/                 # FirestoreRepository, cross-UID cache isolation,
+│   │                             # money serializer, haptic, notification,
+│   │                             # deep-link handler
 │   ├── theme/                    # AppTheme + ThemeExtension tokens (color/spacing/shadow)
 │   ├── types/                    # EventRef typedef + shared enums
 │   └── utils/                    # Formatters, helpers
 ├── features/                     # Feature-first modules
 │   ├── activity/                 # Cross-group activity feed
 │   ├── auth/                     # Anonymous session, email-link recovery
-│   ├── events/                   # Event creation + (bypassed) EventCommandCenter
+│   ├── events/                   # Event creation + event hub
 │   ├── groups/                   # Persistent groups, invite flow, group settle-up
 │   ├── home/                     # Dashboard, BottomNavShell (3 tabs)
 │   ├── ledger/                   # Expense splitting + settlement (single visible event module)
-│   ├── onboarding/               # 3-page intro — archived/unreachable, not in router (#56)
+│   ├── onboarding/               # 3-page intro — archived, not currently routed
 │   ├── settings/                 # Profile, pickers (currency/language/split/theme), QR sheets
 │   └── trip/                     # Legacy compatibility models/providers
 └── shared/
@@ -136,7 +145,7 @@ flutter analyze
 | Unit | `test/unit/` | BalanceCalculator, formatters, services, providers, models, design tokens |
 | Widget/Feature | `test/features/` | Screen widgets — auth, events, groups, home, ledger, onboarding, profile, settings, shared widgets |
 | Integration | `test/integration/` | Happy path, offline scenario, Firebase auth, money round-trips |
-| Goldens | `test/goldens/` | Phase 37 dark theme baselines (macOS-generated; excluded from coverage) |
+| Goldens | `test/goldens/` | Dark theme baselines (macOS-generated; excluded from coverage) |
 
 Tests use `mocktail` for mocking and `fake_cloud_firestore` / `firebase_auth_mocks` to avoid real Firebase calls. Provider overrides swap `sharedPreferencesProvider` and other async deps in test scope.
 
