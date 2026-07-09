@@ -196,13 +196,26 @@ void main() {
         reason: 'Profile must be overflow-free at 1.5x in $locale',
       );
 
-      final name = tester.widget<Text>(
-        find.byKey(ProfileKeys.setNamePrompt),
+      final nameFinder = find.byKey(ProfileKeys.setNamePrompt);
+      final name = tester.widget<Text>(nameFinder);
+      expect(
+        find.ancestor(of: nameFinder, matching: find.byType(Flexible)),
+        findsOneWidget,
       );
       expect(name.maxLines, 1);
       expect(name.overflow, TextOverflow.ellipsis);
 
       final spentStat = find.byKey(ProfileKeys.statSpent);
+      final l10n = AppLocalizations.of(tester.element(spentStat));
+      final journeysLabel = tester.widget<Text>(
+        find.descendant(
+          of: find.byKey(ProfileKeys.statEvents),
+          matching: find.text(l10n.profileStatsJourneysLabel),
+        ),
+      );
+      expect(journeysLabel.maxLines, 2);
+      expect(journeysLabel.overflow, TextOverflow.ellipsis);
+
       final fittedValue = find.descendant(
         of: spentStat,
         matching: find.byType(FittedBox),
