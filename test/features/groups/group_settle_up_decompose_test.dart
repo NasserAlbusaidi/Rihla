@@ -469,7 +469,7 @@ void main() {
 
     testWidgets(
       'a single-event settle-up (0 group docs) still shows in group history via '
-      'its tagged event settlement, with the all-settled headline',
+      'its tagged event settlement',
       (tester) async {
         await tester.pumpWidget(_wrap(
           balances: settledBalances,
@@ -482,9 +482,7 @@ void main() {
         ));
         await tester.pumpAndSettle();
 
-        // Fully settled → "Everyone's even." headline (transferCount == 0)…
-        expect(find.textContaining("Everyone's even"), findsOneWidget);
-        // …and the payment did NOT vanish — it shows in history.
+        // The payment did NOT vanish — it shows in history.
         expect(find.textContaining('7.750'), findsWidgets);
       },
     );

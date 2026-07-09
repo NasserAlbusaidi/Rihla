@@ -1104,9 +1104,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get preSettleReviewContinue => 'متابعة التسوية';
 
   @override
-  String get settleUpEveryoneEvenHeadline => 'الجميع متوازن.';
-
-  @override
   String settleUpTransfersHeadline(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
