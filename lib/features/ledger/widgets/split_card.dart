@@ -528,35 +528,57 @@ class _ModeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 14, 8),
-        decoration: BoxDecoration(
-          color: selected ? colors.selectionFill : colors.inputFill,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? colors.primary : colors.rule),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: selected ? colors.primaryDark : colors.textSecondary,
-            ),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: AppTypography.sans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: selected ? colors.textPrimary : colors.textSecondary,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        // #1067 §4: the opaque wrapper supplies the 44dp hit floor; the
+        // widthFactor keeps this Wrap child intrinsic-width and its painted
+        // pill vertically compact.
+        child: SizedBox(
+          height: 44,
+          child: Center(
+            widthFactor: 1,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 14, 8),
+              decoration: BoxDecoration(
+                color: selected ? colors.selectionFill : colors.inputFill,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: selected ? colors.primary : colors.rule,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: selected
+                        ? colors.primaryDark
+                        : colors.textSecondary,
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    label,
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: selected
+                          ? colors.textPrimary
+                          : colors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

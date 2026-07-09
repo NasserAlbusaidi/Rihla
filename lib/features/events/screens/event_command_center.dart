@@ -778,24 +778,41 @@ class _EventTabBar extends StatelessWidget {
 
     return Container(
       key: EventKeys.tabBar,
+      height: 44,
       margin: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 10),
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: colors.cardSoft,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colors.border, width: 0.5),
-      ),
-      child: Row(
+      // #1067 §4: the Stack separates the 44dp hit layer from the compact
+      // painted track. The old 3dp inset remains visual, not a hit constraint.
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          for (final t in tabs)
-            Expanded(
-              child: _TabButton(
-                key: t.key,
-                label: t.label,
-                active: t.tab == active,
-                onTap: () => onSelect(t.tab),
+          Positioned.fill(
+            top: 3,
+            bottom: 3,
+            child: DecoratedBox(
+              key: const Key('event_tab_bar_track'),
+              decoration: BoxDecoration(
+                color: colors.cardSoft,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: colors.border, width: 0.5),
               ),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Row(
+              children: [
+                for (final t in tabs)
+                  Expanded(
+                    child: _TabButton(
+                      key: t.key,
+                      label: t.label,
+                      active: t.tab == active,
+                      onTap: () => onSelect(t.tab),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -817,27 +834,46 @@ class _TabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? colors.cardSurface : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: active ? context.shadows.raised : null,
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTypography.sans(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            color: active ? colors.textPrimary : colors.textSecondary,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        // #1067 §4: the opaque hit box reaches 44dp while the full-width
+        // painted pill stays at its deliberately compact intrinsic height.
+        child: SizedBox(
+          height: 44,
+          child: Center(
+            child: SizedBox(
+              width: double.infinity,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: active ? colors.cardSurface : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: active ? context.shadows.raised : null,
+                ),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.sans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: active
+                        ? colors.textPrimary
+                        : colors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

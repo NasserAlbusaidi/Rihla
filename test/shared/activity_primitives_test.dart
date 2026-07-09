@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
@@ -103,9 +105,7 @@ void main() {
       expect(decoration.border, isNotNull);
     });
 
-    testWidgets('every glyph value maps to its expected icon', (
-      tester,
-    ) async {
+    testWidgets('every glyph value maps to its expected icon', (tester) async {
       const expected = {
         ActivityGlyph.expenseAdded: Iconsax.receipt_add,
         ActivityGlyph.expenseEdited: Iconsax.receipt_edit,
@@ -129,9 +129,7 @@ void main() {
   });
 
   group('ActivityRow', () {
-    testWidgets('renders actor and description as rich text', (
-      tester,
-    ) async {
+    testWidgets('renders actor and description as rich text', (tester) async {
       await _pump(
         tester,
         ActivityRow(
@@ -322,9 +320,7 @@ void main() {
   });
 
   group('ActivityDaySection', () {
-    testWidgets('raised=true renders shadow without a border', (
-      tester,
-    ) async {
+    testWidgets('raised=true renders shadow without a border', (tester) async {
       await _pump(
         tester,
         const ActivityDaySection(label: 'today', children: [SizedBox()]),
@@ -342,9 +338,7 @@ void main() {
       expect(decoration.border, isNull);
     });
 
-    testWidgets('raised=false renders a border without shadow', (
-      tester,
-    ) async {
+    testWidgets('raised=false renders a border without shadow', (tester) async {
       await _pump(
         tester,
         const ActivityDaySection(
@@ -410,6 +404,72 @@ void main() {
   });
 
   group('ActivityFilterStrip', () {
+    testWidgets('#1067 chips expose button role and selected state', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        ActivityFilterStrip<String>(
+          options: const [
+            ActivityFilterOption(value: 'all', label: 'All'),
+            ActivityFilterOption(value: 'events', label: 'Events'),
+          ],
+          current: 'all',
+          onChange: (_) {},
+        ),
+      );
+
+      final all = tester.getSemantics(find.bySemanticsLabel('All'));
+      final events = tester.getSemantics(find.bySemanticsLabel('Events'));
+      expect(all.flagsCollection.isButton, isTrue);
+      expect(all.flagsCollection.isSelected, Tristate.isTrue);
+      expect(events.flagsCollection.isButton, isTrue);
+      expect(events.flagsCollection.isSelected, Tristate.isFalse);
+      handle.dispose();
+    });
+
+    testWidgets(
+      '#1067 chip has an opaque >=44dp hit region around its compact pill',
+      (tester) async {
+        String? changed;
+        await _pump(
+          tester,
+          ActivityFilterStrip<String>(
+            options: const [
+              ActivityFilterOption(
+                value: 'all',
+                label: 'All',
+                key: ValueKey('chip-all'),
+              ),
+            ],
+            current: 'events',
+            onChange: (value) => changed = value,
+          ),
+        );
+
+        final chip = find.byKey(const ValueKey('chip-all'));
+        final hitRegion = find.descendant(
+          of: chip,
+          matching: find.byType(GestureDetector),
+        );
+        final paintedPill = find.descendant(
+          of: chip,
+          matching: find.byType(Container),
+        );
+        final hitSize = tester.getSize(hitRegion);
+        expect(hitSize.height, greaterThanOrEqualTo(44));
+        expect(tester.getSize(paintedPill).height, lessThan(44));
+
+        // The top edge sits in the transparent Center slack, not the pill.
+        await tester.tapAt(
+          tester.getTopLeft(hitRegion) + Offset(hitSize.width / 2, 1),
+        );
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(changed, 'all');
+      },
+    );
+
     testWidgets('active chip uses the ink fill; inactive uses cardSoft', (
       tester,
     ) async {
@@ -453,8 +513,7 @@ void main() {
             )
             .first,
       );
-      final inactiveDecoration =
-          inactiveContainer.decoration! as BoxDecoration;
+      final inactiveDecoration = inactiveContainer.decoration! as BoxDecoration;
       expect(inactiveDecoration.color, colors.cardSoft);
     });
 

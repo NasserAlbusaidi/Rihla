@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -130,6 +132,60 @@ void main() {
   ];
 
   group('CustomSplitSheet — equally', () {
+    testWidgets('#1067 mode tabs expose button role and selected state', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await _openSheet(
+        tester,
+        total: Decimal.parse('30.000'),
+        participants: participants,
+      );
+
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(CustomSplitSheet)),
+      );
+      final equally = tester.getSemantics(
+        find.bySemanticsLabel(l10n.splitModeEqually),
+      );
+      final shares = tester.getSemantics(
+        find.bySemanticsLabel(l10n.splitModeShares),
+      );
+      expect(equally.flagsCollection.isButton, isTrue);
+      expect(equally.flagsCollection.isSelected, Tristate.isTrue);
+      expect(shares.flagsCollection.isButton, isTrue);
+      expect(shares.flagsCollection.isSelected, Tristate.isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('#1067 mode tab hit region is >=44dp around a compact pill', (
+      tester,
+    ) async {
+      await _openSheet(
+        tester,
+        total: Decimal.parse('30.000'),
+        participants: participants,
+      );
+
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(CustomSplitSheet)),
+      );
+      final label = find.text(l10n.splitModeEqually);
+      final hitRegion = find
+          .ancestor(of: label, matching: find.byType(GestureDetector))
+          .first;
+      final paintedPill = find
+          .ancestor(of: label, matching: find.byType(AnimatedContainer))
+          .first;
+      final compactStrip = find.byKey(const Key('split_mode_segment'));
+      final paintedTrack = find.byKey(const Key('split_mode_segment_track'));
+
+      expect(tester.getSize(hitRegion).height, greaterThanOrEqualTo(44));
+      expect(tester.getSize(paintedPill).height, lessThan(44));
+      expect(tester.getSize(compactStrip).height, 44);
+      expect(tester.getSize(paintedTrack).height, lessThan(44));
+    });
+
     testWidgets('Apply returns (equally, null) by default', (tester) async {
       final result = await _runSheet(
         tester,

@@ -26,29 +26,51 @@ class _ModeSegmented extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      padding: EdgeInsets.all(context.spacing.space4),
-      decoration: BoxDecoration(
-        color: colors.inputFill,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
+    final inset = context.spacing.space4;
+    // #1067 §4: keep the painted segmented track compact and center it
+    // behind a separate 44dp hit layer; the original 4dp horizontal inset
+    // remains visual spacing between the track edge and the five tabs.
+    return SizedBox(
+      key: const Key('split_mode_segment'),
+      height: 44,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          // The four real modes — selected only when not in itemized mode.
-          for (final m in SplitMode.values)
-            Expanded(
-              child: _SegChip(
-                label: splitModeDisplayName(m, context.l10n),
-                selected: !itemized && m == mode,
-                onTap: () => onMode(m),
+          Positioned.fill(
+            top: inset / 2,
+            bottom: inset / 2,
+            child: DecoratedBox(
+              key: const Key('split_mode_segment_track'),
+              decoration: BoxDecoration(
+                color: colors.inputFill,
+                borderRadius: BorderRadius.circular(999),
               ),
             ),
-          // Itemized is a 5th option that PRODUCES an exact split (#203 S2).
-          Expanded(
-            child: _SegChip(
-              label: context.l10n.editorSplitItemized,
-              selected: itemized,
-              onTap: onItemized,
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: inset),
+            child: Row(
+              children: [
+                // The four real modes — selected only when not in itemized
+                // mode.
+                for (final m in SplitMode.values)
+                  Expanded(
+                    child: _SegChip(
+                      label: splitModeDisplayName(m, context.l10n),
+                      selected: !itemized && m == mode,
+                      onTap: () => onMode(m),
+                    ),
+                  ),
+                // Itemized is a 5th option that PRODUCES an exact split
+                // (#203 S2).
+                Expanded(
+                  child: _SegChip(
+                    label: context.l10n.editorSplitItemized,
+                    selected: itemized,
+                    onTap: onItemized,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -71,27 +93,47 @@ class _SegChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? colors.cardSurface : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: selected ? context.shadows.raised : null,
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: AppTypography.sans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? colors.textPrimary : colors.textSecondary,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        // #1067 §4: keep the full-width segmented pill compact while its
+        // transparent, opaque-to-hit-testing wrapper reaches the 44dp floor.
+        child: SizedBox(
+          height: 44,
+          child: Center(
+            child: SizedBox(
+              width: double.infinity,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                padding: EdgeInsets.symmetric(
+                  vertical: context.spacing.space8,
+                ),
+                decoration: BoxDecoration(
+                  color: selected ? colors.cardSurface : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: selected ? context.shadows.raised : null,
+                ),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.sans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected
+                        ? colors.textPrimary
+                        : colors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

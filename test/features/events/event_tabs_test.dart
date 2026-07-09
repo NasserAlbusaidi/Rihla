@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -168,8 +170,10 @@ void main() {
             eventRef,
           ).overrideWith((_) => Stream.value(const [])),
           groupMembersProvider(groupId).overrideWith(
-            (_) =>
-                Stream.value([member('uid-1', 'Mona'), member('uid-2', 'Nasser')]),
+            (_) => Stream.value([
+              member('uid-1', 'Mona'),
+              member('uid-2', 'Nasser'),
+            ]),
           ),
           activityServiceProvider.overrideWithValue(
             ActivityService.withFirestore(FakeFirebaseFirestore()),
@@ -196,6 +200,50 @@ void main() {
     expect(find.byKey(EventKeys.tabBar), findsOneWidget);
     expect(find.text('Dinner'), findsOneWidget);
     expect(find.byType(SettleUpPageBody), findsNothing);
+  });
+
+  testWidgets('#1067 tabs expose button role and selected state', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pumpTabbedEvent(tester, ev: event(), expenses: [expense()]);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byKey(EventKeys.tabBar)),
+    );
+    final expenses = tester.getSemantics(
+      find.bySemanticsLabel(l10n.eventTabExpenses),
+    );
+    final settleUp = tester.getSemantics(
+      find.bySemanticsLabel(l10n.eventTabSettleUp),
+    );
+
+    expect(expenses.flagsCollection.isButton, isTrue);
+    expect(expenses.flagsCollection.isSelected, Tristate.isTrue);
+    expect(settleUp.flagsCollection.isButton, isTrue);
+    expect(settleUp.flagsCollection.isSelected, Tristate.isFalse);
+    handle.dispose();
+  });
+
+  testWidgets('#1067 tab hit region is >=44dp without inflating its pill', (
+    tester,
+  ) async {
+    await pumpTabbedEvent(tester, ev: event(), expenses: [expense()]);
+
+    final tab = find.byKey(EventKeys.tabExpenses);
+    final hitRegion = find.descendant(
+      of: tab,
+      matching: find.byType(GestureDetector),
+    );
+    final paintedPill = find.descendant(
+      of: tab,
+      matching: find.byType(AnimatedContainer),
+    );
+    final paintedTrack = find.byKey(const Key('event_tab_bar_track'));
+
+    expect(tester.getSize(hitRegion).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(paintedPill).height, lessThan(44));
+    expect(tester.getSize(paintedTrack).height, lessThan(44));
   });
 
   testWidgets('tapping Settle up shows the who-pays-whom plan', (tester) async {
