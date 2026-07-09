@@ -551,7 +551,7 @@ class _TopBar extends ConsumerWidget {
             final setNameChipMaxWidth =
                 constraints.maxWidth / 2 -
                 context.spacing.space32 -
-                context.spacing.space4 -
+                context.spacing.space8 -
                 avatarSize -
                 context.spacing.space8;
             return Stack(
