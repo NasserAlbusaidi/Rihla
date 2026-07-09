@@ -47,9 +47,11 @@ abstract final class EventKeys {
   static const closeEventConfirmButton = Key('event_close_confirm_button');
   static const closedBanner = Key('event_closed_banner');
   // #708 close-wiring: closed-event banner surfaces the Trip Receipt export.
-  static const closedBannerViewReceipt = Key('event_closed_banner_view_receipt');
-  // #811: open-event counterpart to the closed banner — a labelled recap entry
-  // (replaces the tooltip-only header cup).
+  static const closedBannerViewReceipt = Key(
+    'event_closed_banner_view_receipt',
+  );
+  // #811: open-event progress line — outer wrapper may be day-only; the
+  // view-recap key marks the labelled tappable recap target.
   static const openRecapBanner = Key('event_open_recap_banner');
   static const openRecapBannerViewRecap = Key('event_open_recap_view_recap');
 
@@ -61,7 +63,9 @@ abstract final class EventKeys {
   // Shareable recap card (#202 Slice 4 / #722)
   static const recapShareButton = Key('event_recap_share_button');
   static const recapShareSheet = Key('event_recap_share_sheet');
-  static const recapShareConfirmButton = Key('event_recap_share_confirm_button');
+  static const recapShareConfirmButton = Key(
+    'event_recap_share_confirm_button',
+  );
 
   // Trip Receipt CSV export (#704 Slice A / #708)
   static const recapExportCsvButton = Key('event_recap_export_csv_button');

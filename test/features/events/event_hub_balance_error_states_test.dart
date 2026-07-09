@@ -44,40 +44,37 @@ void main() {
     },
   );
 
-  testWidgets(
-    'settlements stream error with valued expenses → unavailable, '
-    'wrong nets suppressed',
-    (tester) async {
-      // ledgerViewProvider folds the errored settlements stream to [] and
-      // computes uid-1's net from the expense alone (-2.500) — a WRONG
-      // number the header must not render.
-      final expense = _expense(
-        id: 'x1',
-        payer: 'uid-2',
-        amount: Decimal.parse('5.000'),
-      );
+  testWidgets('settlements stream error with valued expenses → unavailable, '
+      'wrong nets suppressed', (tester) async {
+    // ledgerViewProvider folds the errored settlements stream to [] and
+    // computes uid-1's net from the expense alone (-2.500) — a WRONG
+    // number the header must not render.
+    final expense = _expense(
+      id: 'x1',
+      payer: 'uid-2',
+      amount: Decimal.parse('5.000'),
+    );
 
-      await tester.pumpWidget(
-        _wrap(
-          event: _event(),
-          expensesStream: Stream.value([expense]),
-          settlementsStream: Stream<List<Settlement>>.error(denied()),
-        ),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      _wrap(
+        event: _event(),
+        expensesStream: Stream.value([expense]),
+        settlementsStream: Stream<List<Settlement>>.error(denied()),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.byKey(EventKeys.balanceHeaderUnavailable), findsOneWidget);
-      expect(find.text('YOU OWE'), findsNothing);
-      expect(find.text('YOU ARE OWED'), findsNothing);
-      expect(
-        find.descendant(
-          of: find.byKey(EventKeys.balanceHeader),
-          matching: find.byType(RAmount),
-        ),
-        findsNothing,
-      );
-    },
-  );
+    expect(find.byKey(EventKeys.balanceHeaderUnavailable), findsOneWidget);
+    expect(find.text('You owe'), findsNothing);
+    expect(find.text('You are owed'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(EventKeys.balanceHeader),
+        matching: find.byType(RAmount),
+      ),
+      findsNothing,
+    );
+  });
 
   testWidgets(
     'streams never emit → pending skeleton, never Nothing to settle yet',
@@ -126,8 +123,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(EventKeys.balanceHeaderUnavailable), findsOneWidget);
-      expect(find.text('YOU OWE'), findsNothing);
-      expect(find.text('YOU ARE OWED'), findsNothing);
+      expect(find.text('You owe'), findsNothing);
+      expect(find.text('You are owed'), findsNothing);
       expect(
         find.descendant(
           of: find.byKey(EventKeys.balanceHeader),
@@ -197,9 +194,7 @@ Widget _wrap({
         event.groupId,
       ).overrideWith((_) => Stream<Group?>.value(_group)),
       eventExpensesProvider(eventRef).overrideWith((_) => expensesStream),
-      eventSettlementsProvider(
-        eventRef,
-      ).overrideWith((_) => settlementsStream),
+      eventSettlementsProvider(eventRef).overrideWith((_) => settlementsStream),
       groupMembersProvider(event.groupId).overrideWith(
         (_) =>
             membersStream ??
