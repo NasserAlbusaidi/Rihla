@@ -68,6 +68,11 @@ class _CrossGroupActivityScreenState
   late final FocusNode _searchFocus;
   String _query = '';
 
+  // #1063: the live unread feed may get ahead of the deliberately one-shot
+  // pager. Reconcile that disagreement at most once per mounted screen; manual
+  // pull-to-refresh remains the ongoing refresh mechanism (D-PR2-3).
+  bool _didAttemptLiveEmptyRefresh = false;
+
   @override
   void initState() {
     super.initState();
@@ -117,6 +122,42 @@ class _CrossGroupActivityScreenState
     }
   }
 
+  bool _isInitialisedTrueEmpty(CrossGroupActivityPagerState pager) =>
+      pager.initialised &&
+      !pager.isLoadingMore &&
+      pager.entries.isEmpty &&
+      !pager.firstLoadFailed &&
+      !pager.partialFailure;
+
+  void _maybeReconcileLiveActivity(CrossGroupActivityPagerState pager) {
+    if (_didAttemptLiveEmptyRefresh || !_isInitialisedTrueEmpty(pager)) {
+      return;
+    }
+
+    final liveEntries = ref.watch(crossGroupActivityProvider).valueOrNull;
+    if (liveEntries == null || liveEntries.isEmpty) return;
+
+    _didAttemptLiveEmptyRefresh = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final currentPager = ref.read(crossGroupActivityPagerProvider);
+      final currentLiveEntries = ref
+          .read(crossGroupActivityProvider)
+          .valueOrNull;
+      if (_isInitialisedTrueEmpty(currentPager) &&
+          currentLiveEntries != null &&
+          currentLiveEntries.isNotEmpty) {
+        ref.read(crossGroupActivityPagerProvider.notifier).refresh();
+      }
+    });
+  }
+
+  Widget _withRefresh(Widget child) => RefreshIndicator(
+    onRefresh: () =>
+        ref.read(crossGroupActivityPagerProvider.notifier).refresh(),
+    child: child,
+  );
+
   // #634: memoize the visible list. `entries` is append-only within a load, so
   // its length uniquely identifies its content; recompute only when the list
   // grows, the filter changes, the query changes, or the locale changes — not
@@ -156,6 +197,7 @@ class _CrossGroupActivityScreenState
   @override
   Widget build(BuildContext context) {
     final pager = ref.watch(crossGroupActivityPagerProvider);
+    _maybeReconcileLiveActivity(pager);
     return Scaffold(
       backgroundColor: context.colors.scaffoldBackground,
       body: SafeArea(
@@ -248,15 +290,19 @@ class _CrossGroupActivityScreenState
       // with the #807 add-expense CTA / plain filter copy.)
       if (querying && pager.entries.isNotEmpty) {
         final canLoadMore = pager.hasMore;
-        return EmptyStateView(
-          icon: Iconsax.search_normal,
-          title: context.l10n.activitySearchNoMatchesTitle,
-          message: context.l10n.activitySearchNoMatchesMessage(_query),
-          actionLabel: canLoadMore ? context.l10n.activitySearchOlder : null,
-          onAction: canLoadMore
-              ? () =>
-                    ref.read(crossGroupActivityPagerProvider.notifier).loadMore()
-              : null,
+        return _withRefresh(
+          EmptyStateView(
+            icon: Iconsax.search_normal,
+            title: context.l10n.activitySearchNoMatchesTitle,
+            message: context.l10n.activitySearchNoMatchesMessage(_query),
+            actionLabel: canLoadMore ? context.l10n.activitySearchOlder : null,
+            onAction: canLoadMore
+                ? () => ref
+                      .read(crossGroupActivityPagerProvider.notifier)
+                      .loadMore()
+                : null,
+            physics: const AlwaysScrollableScrollPhysics(),
+          ),
         );
       }
       final isTrueEmpty = pager.entries.isEmpty;
@@ -265,16 +311,19 @@ class _CrossGroupActivityScreenState
       // create-group affordance).
       final groups = ref.watch(userGroupsProvider).valueOrNull;
       final showCta = isTrueEmpty && groups != null && groups.isNotEmpty;
-      return EmptyStateView(
-        icon: Iconsax.activity,
-        title: isTrueEmpty
-            ? context.l10n.activityNoActivityTitle
-            : context.l10n.activityNoFilterTitle,
-        message: isTrueEmpty
-            ? context.l10n.activityCrossGroupEmptyMessage
-            : context.l10n.activityNoFilterMessage,
-        actionLabel: showCta ? context.l10n.ledgerAddExpense : null,
-        onAction: showCta ? () => AddExpenseTargetSheet.show(context) : null,
+      return _withRefresh(
+        EmptyStateView(
+          icon: Iconsax.activity,
+          title: isTrueEmpty
+              ? context.l10n.activityNoActivityTitle
+              : context.l10n.activityNoFilterTitle,
+          message: isTrueEmpty
+              ? context.l10n.activityCrossGroupEmptyMessage
+              : context.l10n.activityNoFilterMessage,
+          actionLabel: showCta ? context.l10n.ledgerAddExpense : null,
+          onAction: showCta ? () => AddExpenseTargetSheet.show(context) : null,
+          physics: const AlwaysScrollableScrollPhysics(),
+        ),
       );
     }
 
@@ -291,11 +340,10 @@ class _CrossGroupActivityScreenState
         querying && pager.hasMore && !pager.isLoadingMore && !pager.partialFailure;
     final showFooter =
         pager.isLoadingMore || pager.partialFailure || showSearchOlder;
-    return RefreshIndicator(
-      onRefresh: () =>
-          ref.read(crossGroupActivityPagerProvider.notifier).refresh(),
-      child: ListView.builder(
+    return _withRefresh(
+      ListView.builder(
         controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         // Bottom inset clears the tab-shell add-expense FAB (#364).
         padding: EdgeInsetsDirectional.fromSTEB(
           context.spacing.space20,
