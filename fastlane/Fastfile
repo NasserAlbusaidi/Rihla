@@ -99,31 +99,35 @@ end
 #   2. App record for com.nalbusaidi.rihla created in App Store Connect.
 #   3. Personal Apple ID (team T2U886CPS5) added to Xcode (automatic signing).
 #   4. APNs Auth Key uploaded to Firebase Console (turns on iOS FCM push).
+
+# ASC API key resolution shared by all iOS lanes. Apple downloads the key as
+# AuthKey_<KeyID>.p8 — keep that name in secrets/ and the Key ID comes from the
+# filename. Issuer ID (a UUID) via env ASC_ISSUER_ID or secrets/asc_issuer_id.txt.
+def asc_api_key(root)
+  keys = Dir.glob(File.join(root, "secrets", "AuthKey_*.p8"))
+  UI.user_error!("Put the ASC API key (AuthKey_<KeyID>.p8) in secrets/.") if keys.empty?
+  UI.user_error!("Multiple AuthKey_*.p8 in secrets/ — keep only one.") if keys.length > 1
+  key_path = keys.first
+  key_id   = File.basename(key_path, ".p8").sub("AuthKey_", "")
+
+  issuer_file = File.join(root, "secrets", "asc_issuer_id.txt")
+  issuer_id = ENV["ASC_ISSUER_ID"]
+  issuer_id ||= File.read(issuer_file).strip if File.exist?(issuer_file)
+  UI.user_error!("Set ASC_ISSUER_ID or write it to secrets/asc_issuer_id.txt.") if issuer_id.to_s.empty?
+
+  app_store_connect_api_key(
+    key_id:       key_id,
+    issuer_id:    issuer_id,
+    key_filepath: key_path,
+    in_house:     false,
+  )
+end
+
 platform :ios do
   desc "Build an obfuscated release IPA and upload it to TestFlight (ASC API-key auth)."
   lane :beta do
     root = File.expand_path("..", __dir__)
-
-    # ASC API key: Apple downloads it as AuthKey_<KeyID>.p8 — keep that name in
-    # secrets/ and the Key ID comes from the filename (no env var needed).
-    keys = Dir.glob(File.join(root, "secrets", "AuthKey_*.p8"))
-    UI.user_error!("Put the ASC API key (AuthKey_<KeyID>.p8) in secrets/.") if keys.empty?
-    UI.user_error!("Multiple AuthKey_*.p8 in secrets/ — keep only one.") if keys.length > 1
-    key_path = keys.first
-    key_id   = File.basename(key_path, ".p8").sub("AuthKey_", "")
-
-    # Issuer ID is a UUID (not in the key file). Env wins, else secrets/asc_issuer_id.txt.
-    issuer_file = File.join(root, "secrets", "asc_issuer_id.txt")
-    issuer_id = ENV["ASC_ISSUER_ID"]
-    issuer_id ||= File.read(issuer_file).strip if File.exist?(issuer_file)
-    UI.user_error!("Set ASC_ISSUER_ID or write it to secrets/asc_issuer_id.txt.") if issuer_id.to_s.empty?
-
-    api_key = app_store_connect_api_key(
-      key_id:       key_id,
-      issuer_id:    issuer_id,
-      key_filepath: key_path,
-      in_house:     false,
-    )
+    api_key = asc_api_key(root)
 
     # Run the Flutter build (and the `pod install` it triggers) OUTSIDE Bundler's
     # environment. Under `bundle exec fastlane`, Bundler's GEM_HOME/RUBYOPT leak
@@ -144,6 +148,55 @@ platform :ios do
       ipa:                                ipa,
       skip_waiting_for_build_processing:  true,
       skip_submission:                    true,
+    )
+  end
+
+  # Push the App Store listing text (name, subtitle, description, keywords,
+  # promo text, URLs, categories) to App Store Connect. Same ASC API key as
+  # `beta`. Never uploads a binary, never submits for review, never touches
+  # screenshots (iOS needs 6.7"/6.5" captures we don't generate here).
+  #
+  #   bundle exec fastlane ios metadata
+  #
+  # Text lives in fastlane/metadata/ios/ (deliver layout), kept separate from
+  # the Android supply tree at fastlane/metadata/android/.
+  desc "Push the App Store listing text to App Store Connect (no binary, no submit, no screenshots)."
+  lane :metadata do
+    root = File.expand_path("..", __dir__)
+    upload_to_app_store(
+      api_key:                 asc_api_key(root),
+      app_identifier:          "com.nalbusaidi.rihla",
+      metadata_path:           File.join(root, "fastlane", "metadata", "ios"),
+      skip_binary_upload:      true,
+      skip_screenshots:        true,
+      skip_metadata:           false,
+      submit_for_review:       false,
+      run_precheck_before_submit: false,
+      force:                   true,
+      precheck_include_in_app_purchases: false,
+    )
+  end
+
+  # Push App Store screenshots from fastlane/screenshots/<locale>/. deliver maps
+  # each PNG to a device by its pixel dimensions (1284x2778 → 6.5" iPhone,
+  # 2048x2732 → 13" iPad). No binary, no metadata, no submit.
+  #
+  #   bundle exec fastlane ios screenshots
+  desc "Push App Store screenshots to App Store Connect (no binary, no metadata, no submit)."
+  lane :screenshots do
+    root = File.expand_path("..", __dir__)
+    upload_to_app_store(
+      api_key:                 asc_api_key(root),
+      app_identifier:          "com.nalbusaidi.rihla",
+      screenshots_path:        File.join(root, "fastlane", "screenshots"),
+      metadata_path:           File.join(root, "fastlane", "metadata", "ios"),
+      skip_binary_upload:      true,
+      skip_metadata:           true,
+      skip_screenshots:        false,
+      overwrite_screenshots:   true,
+      submit_for_review:       false,
+      run_precheck_before_submit: false,
+      force:                   true,
     )
   end
 end

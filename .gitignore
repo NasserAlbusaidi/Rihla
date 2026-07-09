@@ -112,3 +112,6 @@ fastlane/Preview.html
 fastlane/screenshots
 .bundle/
 .context/
+
+# App Store review contact PII (not committed)
+fastlane/metadata/ios/review_information/

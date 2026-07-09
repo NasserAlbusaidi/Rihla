@@ -1,0 +1,1 @@
+split bill,expense,group,trip,settle up,roommate,shared,IOU,tab,dinner,travel,gulf,oman,majlis

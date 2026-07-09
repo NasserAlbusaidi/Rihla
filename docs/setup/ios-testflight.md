@@ -75,6 +75,9 @@ iOS-only TestFlight iterations, bumping just the `+N` build number is fine.
 
 ## No iOS CI yet
 
-This lane runs locally on macOS. Wiring it into GitHub Actions needs a macOS runner plus the API key
-`.p8`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `config.json` as encrypted secrets — deferred until the
-manual lane is proven green.
+This lane runs locally on macOS. The gitignored `ios/Runner/GoogleService-Info.plist` (the iOS Firebase
+config, project `rihla-safar`) must be present on the build machine for the archive — provide it locally
+the same way `google-services.json` is provided for Android. Wiring the lane into GitHub Actions needs a
+macOS runner plus that plist, the API key `.p8`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `config.json`
+injected as encrypted secrets (mirror the base64 `CONFIG_JSON` pattern in `release_android.yml`) —
+deferred until the manual lane is proven green.
