@@ -220,6 +220,11 @@ ConnectivityNotifier _offline() {
   return c;
 }
 
+String? _addPersonError(WidgetTester tester) => tester
+    .widget<TextField>(find.byKey(GroupKeys.addPersonInput))
+    .decoration
+    ?.errorText;
+
 void main() {
   late SharedPreferences prefs;
 
@@ -340,6 +345,62 @@ void main() {
       expect(calls.add, [
         (groupId: 'group-1', displayName: 'Khalid'),
       ]);
+    },
+  );
+
+  testWidgets('tap Add with an empty name shows inline validation feedback', (
+    tester,
+  ) async {
+    final calls = _Calls();
+    await tester.pumpWidget(
+      _wrap(
+        prefs: prefs,
+        serviceBuilder: (ref) => _MockGroupService(ref, calls: calls),
+        connectivity: _online(),
+        isCreator: true,
+        members: [_creator()],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(GroupKeys.addPersonAction));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GroupKeys.addPersonSubmit));
+    await tester.pumpAndSettle();
+
+    expect(_addPersonError(tester), "Name can't be empty.");
+    expect(find.text("Name can't be empty."), findsOneWidget);
+    expect(calls.add, isEmpty);
+  });
+
+  testWidgets(
+    'keyboard Done with an invalid name shows inline validation feedback',
+    (tester) async {
+      final calls = _Calls();
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          serviceBuilder: (ref) => _MockGroupService(ref, calls: calls),
+          connectivity: _online(),
+          isCreator: true,
+          members: [_creator()],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.addPersonAction));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(GroupKeys.addPersonInput),
+        'Bad${String.fromCharCode(7)}Name',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      const message = 'Remove line breaks or special characters.';
+      expect(_addPersonError(tester), message);
+      expect(find.text(message), findsOneWidget);
+      expect(calls.add, isEmpty);
     },
   );
 

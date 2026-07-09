@@ -5,6 +5,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../keys/group_keys.dart';
 import '../providers/group_provider.dart';
@@ -54,7 +55,11 @@ class _AddShadowMemberSheetState extends ConsumerState<AddShadowMemberSheet> {
 
   Future<void> _submit() async {
     final name = normalizeDisplayName(_controller.text);
-    if (name.isEmpty || displayNameValidationError(name) != null) return;
+    final validationError = validateDisplayNameLocalized(context, name);
+    if (validationError != null) {
+      setState(() => _error = validationError);
+      return;
+    }
 
     setState(() {
       _submitting = true;
