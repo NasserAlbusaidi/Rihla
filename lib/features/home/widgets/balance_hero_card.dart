@@ -153,11 +153,15 @@ class _LoadedCard extends StatelessWidget {
               color: colors.textSecondary,
             ),
             const SizedBox(width: 6),
-            Text(
-              context.l10n.homeBalanceHeroHint,
-              style: AppTypography.sans(
-                fontSize: 12,
-                color: colors.textSecondary,
+            Flexible(
+              child: Text(
+                context.l10n.homeBalanceHeroHint,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.sans(
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                ),
               ),
             ),
           ],
