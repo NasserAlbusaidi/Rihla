@@ -77,6 +77,7 @@ Expense _expense({
   String amount = '10.000',
   String currency = 'OMR',
   SplitMode? splitMode = SplitMode.equally,
+  DateTime? createdAt,
 }) {
   return Expense(
     id: id,
@@ -87,7 +88,7 @@ Expense _expense({
     scope: ExpenseScope.global,
     splitMode: splitMode,
     currency: currency,
-    createdAt: DateTime(2026, 5, 16),
+    createdAt: createdAt ?? DateTime(2026, 5, 16),
     createdBy: 'alice',
   );
 }
@@ -96,15 +97,18 @@ Settlement _settlement({
   required String id,
   required String amount,
   String currency = 'OMR',
+  String? payer = 'bob',
+  String? recipient = 'alice',
+  DateTime? settledAt,
 }) {
   return Settlement(
     id: id,
     tripId: _eventId,
-    payerParticipantId: 'bob',
-    recipientParticipantId: 'alice',
+    payerParticipantId: payer,
+    recipientParticipantId: recipient,
     amount: Decimal.parse(amount),
     currency: currency,
-    settledAt: DateTime(2026, 5, 17),
+    settledAt: settledAt ?? DateTime(2026, 5, 17),
     createdBy: 'bob',
   );
 }
@@ -291,6 +295,97 @@ void main() {
       expect(find.text("Couldn't load balances."), findsOneWidget);
       expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
       expect(find.text('Error-path OMR dinner'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'outstanding currency but viewer settled past the flagged expense → '
+    'no sheet (#1058)',
+    (tester) async {
+      final prefs = await _prefs();
+
+      // Partial payment: OMR stays outstanding (alice +3 / bob −3), but the
+      // viewer (bob) was party to a settlement NEWER than the flagged expense.
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          expenses: Stream.value([
+            _expense(
+              id: 'omr-exact',
+              description: 'Settled-past OMR dinner',
+              splitMode: SplitMode.exact,
+            ),
+          ]),
+          settlements: Stream.value([
+            _settlement(id: 'partial-omr', amount: '2.000'),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsNothing);
+      expect(find.text('Settled-past OMR dinner'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'an expense NEWER than the viewer\'s last settlement still fires (#1058)',
+    (tester) async {
+      final prefs = await _prefs();
+
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          expenses: Stream.value([
+            _expense(
+              id: 'omr-exact-new',
+              description: 'Newer OMR dinner',
+              splitMode: SplitMode.exact,
+              createdAt: DateTime(2026, 5, 18),
+            ),
+          ]),
+          settlements: Stream.value([
+            _settlement(id: 'partial-omr', amount: '2.000'),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
+      expect(find.text('Newer OMR dinner'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'a newer settlement between OTHER parties does not suppress for the '
+    'viewer (#1058)',
+    (tester) async {
+      final prefs = await _prefs();
+
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          expenses: Stream.value([
+            _expense(
+              id: 'omr-exact',
+              description: 'Third-party OMR dinner',
+              splitMode: SplitMode.exact,
+            ),
+          ]),
+          settlements: Stream.value([
+            _settlement(
+              id: 'other-parties',
+              amount: '2.000',
+              payer: 'alice',
+              recipient: 'carol',
+            ),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(PreSettleReviewKeys.sheet), findsOneWidget);
+      expect(find.text('Third-party OMR dinner'), findsOneWidget);
     },
   );
 }
