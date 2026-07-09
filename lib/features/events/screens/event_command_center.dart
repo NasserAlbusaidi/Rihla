@@ -8,7 +8,6 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
-import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -34,14 +33,12 @@ import 'event_recap_screen.dart';
 /// Tabbed event view (#758) — the event as one workspace.
 ///
 /// Layout, top to bottom:
-///   1. Compact paper header — back · eyebrow (type · dates) + title ·
-///      compact amount (only while collapsed) · search · settings.
-///   2. Balance block — the current user's per-currency net (reuses the hub
-///      state machine: empty / settled / youOwed / youOwe / mixed). Collapses
-///      on scroll into the title row.
+///   1. Compact paper header — back · title · compact amount (only while
+///      collapsed) · search · settings.
+///   2. Balance block + progress line — the current user's per-currency net
+///      and open-event recap entry. Collapses on scroll into the title row.
 ///   3. Recap banner — closed events show the Trip Receipt entry (#708, a
-///      Recap-tab switch); open events with expenses show a labelled recap
-///      entry (#811, replaced the tooltip-only header cup).
+///      Recap-tab switch).
 ///   4. Segmented tab bar: Expenses · Settle up · Activity (· Recap when the
 ///      event is closed, #202).
 ///   5. Tab panels — the standalone screens in `embedded` mode, hosted in a
@@ -237,6 +234,7 @@ class _ContentState extends ConsumerState<_Content> {
                 collapsed: _collapsed,
                 state: state,
                 lines: myLines,
+                hasExpenses: expenses.isNotEmpty,
                 onBack: () {
                   HapticService.lightClick();
                   // Nested route (#243/#996): a bare pop reaches the group
@@ -260,11 +258,15 @@ class _ContentState extends ConsumerState<_Content> {
                     '/group/${widget.groupId}/event/${widget.eventId}/settings',
                   );
                 },
+                onViewRecap: () {
+                  HapticService.lightClick();
+                  GoRouter.of(context).push(
+                    '/group/${widget.groupId}/event/${widget.eventId}/recap',
+                  );
+                },
               ),
-              // Recap entry (#723 / #708 / #811). Closed: read-only banner whose
-              // Trip Receipt entry switches to the Recap tab. Open + has
-              // expenses: a labelled recap entry that pushes the recap route
-              // (replaced the tooltip-only header cup — weak touch scent).
+              // Recap entry (#723 / #708). Closed: read-only banner whose
+              // Trip Receipt entry switches to the Recap tab.
               if (event.isClosed)
                 _ClosedBanner(
                   closedByName: event.closedBy == null
@@ -277,15 +279,6 @@ class _ContentState extends ConsumerState<_Content> {
                           HapticService.lightClick();
                           _selectTab(EventTab.recap);
                         },
-                )
-              else if (expenses.isNotEmpty)
-                _OpenRecapBanner(
-                  onViewRecap: () {
-                    HapticService.lightClick();
-                    GoRouter.of(context).push(
-                      '/group/${widget.groupId}/event/${widget.eventId}/recap',
-                    );
-                  },
                 ),
               const OfflineBanner(),
               _EventTabBar(
@@ -405,23 +398,26 @@ class _EventHeader extends StatelessWidget {
     required this.collapsed,
     required this.state,
     required this.lines,
+    required this.hasExpenses,
     required this.onBack,
     required this.onSearch,
     required this.onSettings,
+    required this.onViewRecap,
   });
 
   final Event event;
   final bool collapsed;
   final _HubState state;
   final List<({String currency, Decimal net})> lines;
+  final bool hasExpenses;
   final VoidCallback onBack;
   final VoidCallback onSearch;
   final VoidCallback onSettings;
+  final VoidCallback onViewRecap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final dateRange = _formatDateRange(context, event.startDate, event.endDate);
     // #789: "Day N of M" for a live, multi-day trip — suppressed once closed.
     final day = event.isClosed
         ? null
@@ -429,11 +425,7 @@ class _EventHeader extends StatelessWidget {
     final dayLabel = day == null
         ? null
         : context.l10n.eventDayOf(day.currentDay, day.totalDays);
-    final eyebrow = [
-      event.type.localizedShortLabel(context.l10n),
-      ?dateRange,
-      ?dayLabel,
-    ].join(' · ');
+    final showRecapLink = !event.isClosed && hasExpenses;
 
     return Column(
       children: [
@@ -454,24 +446,12 @@ class _EventHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      eyebrow.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.caption(
-                        context,
-                        fontSize: 9,
-                        color: colors.primaryDark,
-                        letterSpacing: 1.8,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
                       event.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.displayOf(
                         context,
-                        fontSize: 18,
+                        fontSize: 20,
                         color: colors.textPrimary,
                         height: 1.1,
                         letterSpacing: -0.2,
@@ -522,23 +502,23 @@ class _EventHeader extends StatelessWidget {
                       20,
                       4,
                     ),
-                    child: _BalanceBlock(state: state, lines: lines),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _BalanceBlock(state: state, lines: lines),
+                        const SizedBox(height: 6),
+                        _TripProgressLine(
+                          dayLabel: dayLabel,
+                          showRecap: showRecapLink,
+                          onViewRecap: onViewRecap,
+                        ),
+                      ],
+                    ),
                   ),
           ),
         ),
       ],
     );
-  }
-
-  static String? _formatDateRange(
-    BuildContext context,
-    DateTime? start,
-    DateTime? end,
-  ) {
-    if (start == null && end == null) return null;
-    if (start == null) return formatShortMonthDay(context, end!);
-    if (end == null) return formatShortMonthDay(context, start);
-    return formatDateRangeShort(context, start, end);
   }
 }
 
@@ -581,26 +561,28 @@ class _BalanceBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isOwed = state == _HubState.youOwed;
-    final isUniform = state == _HubState.youOwed || state == _HubState.youOwe;
+    final label = switch (state) {
+      _HubState.youOwed => context.l10n.eventYouAreOwed,
+      _HubState.youOwe => context.l10n.eventYouOwe,
+      _HubState.mixed => context.l10n.eventYourBalance,
+      _ => null,
+    };
 
     return Column(
       key: EventKeys.balanceHeader,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _Overline(label: context.l10n.eventYourBalance),
-            if (isUniform)
-              _Overline(
-                label: isOwed
-                    ? context.l10n.eventYouAreOwed
-                    : context.l10n.eventYouOwe,
-                color: isOwed ? colors.successText : colors.errorText,
-              ),
-          ],
-        ),
-        SizedBox(height: context.spacing.space4),
+        if (label != null) ...[
+          Text(
+            label,
+            style: AppTypography.sans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
+          ),
+          SizedBox(height: context.spacing.space4),
+        ],
         // #1028: unavailable/pending render FIRST — with empty lines they
         // would otherwise fall through to the lines else-branch (empty
         // column), and with wrong non-empty lines they must never render.
@@ -637,7 +619,7 @@ class _BalanceBlock extends StatelessWidget {
                 : context.l10n.eventNothingToSettleYet,
             style: AppTypography.displayOf(
               context,
-              fontSize: 24,
+              fontSize: 26,
               color: state == _HubState.settled
                   ? colors.successText
                   : colors.textSecondary,
@@ -651,7 +633,7 @@ class _BalanceBlock extends StatelessWidget {
             child: RAmount(
               value: lines.first.net.abs(),
               currency: lines.first.currency,
-              size: 30,
+              size: 34,
               weight: FontWeight.w800,
               sign: true,
               tone: isOwed ? AmountTone.sage : AmountTone.rust,
@@ -667,7 +649,7 @@ class _BalanceBlock extends StatelessWidget {
                   child: RAmount(
                     value: lines[i].net,
                     currency: lines[i].currency,
-                    size: 22,
+                    size: 26,
                     weight: FontWeight.w800,
                     sign: true,
                     tone: lines[i].net > Decimal.zero
@@ -678,6 +660,78 @@ class _BalanceBlock extends StatelessWidget {
             ],
           ),
       ],
+    );
+  }
+}
+
+/// #811: open-event progress line that keeps the recap labelled and tappable.
+/// The outer key can also mark a day-only line; the InkWell key is the recap
+/// affordance proof.
+class _TripProgressLine extends StatelessWidget {
+  const _TripProgressLine({
+    required this.dayLabel,
+    required this.showRecap,
+    required this.onViewRecap,
+  });
+
+  final String? dayLabel;
+  final bool showRecap;
+  final VoidCallback onViewRecap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (dayLabel == null && !showRecap) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    final text = [
+      ?dayLabel,
+      if (showRecap) context.l10n.eventViewReceipt,
+    ].join(' · ');
+    final row = Row(
+      children: [
+        if (showRecap) ...[
+          Icon(Iconsax.cup, size: 14, color: colors.textSecondary),
+          const SizedBox(width: 8),
+        ],
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.sans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+        if (showRecap) ...[
+          const SizedBox(width: 4),
+          DirectionalIcon(Iconsax.arrow_right, size: 14, color: colors.primary),
+        ],
+      ],
+    );
+
+    if (!showRecap) {
+      return Align(
+        key: EventKeys.openRecapBanner,
+        alignment: AlignmentDirectional.centerStart,
+        child: row,
+      );
+    }
+
+    return Align(
+      key: EventKeys.openRecapBanner,
+      alignment: AlignmentDirectional.centerStart,
+      child: InkWell(
+        key: EventKeys.openRecapBannerViewRecap,
+        onTap: onViewRecap,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Align(alignment: AlignmentDirectional.centerStart, child: row),
+        ),
+      ),
     );
   }
 }
@@ -943,93 +997,6 @@ class _ClosedBanner extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// #811: open-event counterpart to [_ClosedBanner]. A slim labelled recap
-/// entry that replaced the tooltip-only header cup (weak touch scent). Shown
-/// only for OPEN events that have expenses; pushes the full recap route.
-class _OpenRecapBanner extends StatelessWidget {
-  const _OpenRecapBanner({required this.onViewRecap});
-
-  final VoidCallback onViewRecap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      key: EventKeys.openRecapBanner,
-      width: double.infinity,
-      color: colors.textPrimary.withValues(alpha: 0.04),
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 10, 20, 10),
-      child: Row(
-        children: [
-          Icon(Iconsax.cup, size: 14, color: colors.textSecondary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              context.l10n.recapOpenBannerLead,
-              style: AppTypography.sans(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: colors.textSecondary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          InkWell(
-            key: EventKeys.openRecapBannerViewRecap,
-            onTap: onViewRecap,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(6, 4, 4, 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    context.l10n.eventViewReceipt,
-                    style: AppTypography.sans(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  DirectionalIcon(
-                    Iconsax.arrow_right,
-                    size: 13,
-                    color: colors.textPrimary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ──────────────────────────── Overline helper
-
-class _Overline extends StatelessWidget {
-  const _Overline({required this.label, this.color});
-
-  final String label;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Text(
-      label.toUpperCase(),
-      style: AppTypography.sans(
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.4,
-        color: color ?? colors.textSecondary,
       ),
     );
   }

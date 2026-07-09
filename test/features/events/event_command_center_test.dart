@@ -53,37 +53,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('All settled'), findsOneWidget);
+    expect(find.text('Your balance'), findsNothing);
+    expect(find.text('You are owed'), findsNothing);
+    expect(find.text('You owe'), findsNothing);
   });
 
-  testWidgets(
-    '#689: the Expenses tab trip caption speaks the event type '
-    '(camping → CAMPING TOTAL)',
-    (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-        type: EventType.camping,
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
+  testWidgets('#689: the Expenses tab trip caption speaks the event type '
+      '(camping → CAMPING TOTAL)', (tester) async {
+    final event = _event(
+      startDate: DateTime(2026, 1, 1),
+      endDate: DateTime(2026, 1, 3),
+      type: EventType.camping,
+    );
+    final expense = _expense(
+      id: 'x1',
+      eventId: event.id,
+      payer: 'uid-1',
+      amount: Decimal.parse('10.000'),
+    );
 
-      await tester.pumpWidget(
-        _wrap(event: event, expenses: [expense], balances: _settledBalances),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      _wrap(event: event, expenses: [expense], balances: _settledBalances),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.textContaining('CAMPING TOTAL'), findsOneWidget);
-      expect(find.textContaining('TRIP TOTAL'), findsNothing);
-    },
-  );
+    expect(find.textContaining('CAMPING TOTAL'), findsOneWidget);
+    expect(find.textContaining('TRIP TOTAL'), findsNothing);
+  });
 
-  testWidgets('you-are-owed state — sage overline in the header', (
-    tester,
-  ) async {
+  testWidgets('you-are-owed state — grey "You are owed" label', (tester) async {
     final event = _event(
       startDate: DateTime(2026, 1, 1),
       endDate: DateTime(2026, 1, 3),
@@ -100,10 +98,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('YOU ARE OWED'), findsOneWidget);
+    expect(find.text('You are owed'), findsOneWidget);
   });
 
-  testWidgets('you-owe state — rust overline in the header', (tester) async {
+  testWidgets('you-owe state — grey "You owe" label', (tester) async {
     final event = _event(
       startDate: DateTime(2026, 1, 1),
       endDate: DateTime(2026, 1, 3),
@@ -120,7 +118,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('YOU OWE'), findsOneWidget);
+    expect(find.text('You owe'), findsOneWidget);
   });
 
   testWidgets('#261: non-OMR group renders its currency code, not OMR', (
@@ -204,7 +202,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('YOU OWE'), findsOneWidget);
+      expect(find.text('You owe'), findsOneWidget);
     },
   );
 
@@ -241,7 +239,7 @@ void main() {
     },
   );
 
-  group('#789 — live "Day N of M" eyebrow badge', () {
+  group('#789 — live day segment in the progress line', () {
     // Dates anchored at local noon ± whole days so the badge is deterministic
     // regardless of when the suite runs: start=today-2, end=today+4 → DAY 3/7.
     Event liveEvent({bool isClosed = false}) {
@@ -255,13 +253,14 @@ void main() {
       );
     }
 
-    testWidgets('live multi-day trip shows "DAY 3 OF 7" in the eyebrow', (
+    testWidgets('live multi-day trip shows "Day 3 of 7" in the progress line', (
       tester,
     ) async {
       await tester.pumpWidget(_wrap(event: liveEvent()));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('DAY 3 OF 7'), findsOneWidget);
+      expect(find.textContaining('DAY 3 OF 7'), findsNothing);
+      expect(find.textContaining('Day 3 of 7'), findsOneWidget);
     });
 
     testWidgets('a past trip shows no day badge', (tester) async {
@@ -275,7 +274,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('DAY '), findsNothing);
+      expect(find.textContaining('Day '), findsNothing);
     });
 
     testWidgets('a closed event shows no day badge even with live dates', (
@@ -284,14 +283,25 @@ void main() {
       await tester.pumpWidget(_wrap(event: liveEvent(isClosed: true)));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('DAY 3 OF 7'), findsNothing);
+      expect(find.textContaining('Day 3 of 7'), findsNothing);
+    });
+
+    testWidgets('live day-only progress line is not tappable', (tester) async {
+      await tester.pumpWidget(_wrap(event: liveEvent()));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Day 3 of 7'), findsOneWidget);
+      expect(find.byKey(EventKeys.openRecapBanner), findsOneWidget);
+      expect(find.byKey(EventKeys.openRecapBannerViewRecap), findsNothing);
     });
   });
 
-  group('#811 — open-event recap banner (labelled entry, replaces the cup)', () {
-    testWidgets(
-      'open event with expenses shows the labelled recap banner',
-      (tester) async {
+  group(
+    '#811 — open-event recap banner (labelled entry, replaces the cup)',
+    () {
+      testWidgets('open event with expenses shows the labelled recap banner', (
+        tester,
+      ) async {
         final event = _event(
           startDate: DateTime(2026, 1, 1),
           endDate: DateTime(2026, 1, 3),
@@ -307,43 +317,71 @@ void main() {
 
         expect(find.byKey(EventKeys.openRecapBanner), findsOneWidget);
         expect(find.byKey(EventKeys.closedBanner), findsNothing);
-      },
-    );
+      });
 
-    testWidgets('tapping the banner routes to the recap screen', (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
+      testWidgets('tapping the banner routes to the recap screen', (
+        tester,
+      ) async {
+        final event = _event(
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 1, 3),
+        );
+        final expense = _expense(
+          id: 'x1',
+          eventId: event.id,
+          payer: 'uid-1',
+          amount: Decimal.parse('10.000'),
+        );
+
+        await _pumpEventHubRouter(tester, event, expenses: [expense]);
+
+        await tester.tap(find.byKey(EventKeys.openRecapBannerViewRecap));
+        await tester.pumpAndSettle();
+
+        expect(find.text('RecapRoute:event-1'), findsOneWidget);
+      });
+
+      testWidgets(
+        'live progress line combines day and recap, then routes to recap',
+        (tester) async {
+          final event = _liveEvent();
+          final expense = _expense(
+            id: 'x1',
+            eventId: event.id,
+            payer: 'uid-1',
+            amount: Decimal.parse('10.000'),
+          );
+
+          await _pumpEventHubRouter(tester, event, expenses: [expense]);
+
+          expect(find.textContaining('DAY 3 OF 7'), findsNothing);
+          expect(find.textContaining('Day 3 of 7'), findsOneWidget);
+          expect(find.textContaining('View recap'), findsOneWidget);
+
+          await tester.tap(find.byKey(EventKeys.openRecapBannerViewRecap));
+          await tester.pumpAndSettle();
+
+          expect(find.text('RecapRoute:event-1'), findsOneWidget);
+        },
       );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
 
-      await _pumpEventHubRouter(tester, event, expenses: [expense]);
+      testWidgets('open event with NO expenses hides the banner', (
+        tester,
+      ) async {
+        final event = _event(
+          startDate: DateTime(2026, 1, 1),
+          endDate: DateTime(2026, 1, 3),
+        );
 
-      await tester.tap(find.byKey(EventKeys.openRecapBannerViewRecap));
-      await tester.pumpAndSettle();
+        await _pumpEventHubRouter(tester, event);
 
-      expect(find.text('RecapRoute:event-1'), findsOneWidget);
-    });
+        expect(find.byKey(EventKeys.openRecapBanner), findsNothing);
+        expect(find.byKey(EventKeys.openRecapBannerViewRecap), findsNothing);
+      });
 
-    testWidgets('open event with NO expenses hides the banner', (tester) async {
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-
-      await _pumpEventHubRouter(tester, event);
-
-      expect(find.byKey(EventKeys.openRecapBanner), findsNothing);
-    });
-
-    testWidgets(
-      'closed event uses the Recap tab, NOT the open banner',
-      (tester) async {
+      testWidgets('closed event uses the Recap tab, NOT the open banner', (
+        tester,
+      ) async {
         final event = _event(
           startDate: DateTime(2026, 1, 1),
           endDate: DateTime(2026, 1, 3),
@@ -362,83 +400,84 @@ void main() {
         expect(find.byKey(EventKeys.openRecapBanner), findsNothing);
         expect(find.byKey(EventKeys.closedBanner), findsOneWidget);
         expect(find.byKey(EventKeys.tabRecap), findsOneWidget);
-      },
-    );
+      });
 
-    testWidgets('renders without overflow in a narrow RTL layout', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(320, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
+      testWidgets('renders combined progress line without overflow in RTL', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
 
-      final event = _event(
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 1, 3),
-      );
-      final expense = _expense(
-        id: 'x1',
-        eventId: event.id,
-        payer: 'uid-1',
-        amount: Decimal.parse('10.000'),
-      );
-      final eventRef = (groupId: event.groupId, eventId: event.id);
+        final event = _liveEvent();
+        final expense = _expense(
+          id: 'x1',
+          eventId: event.id,
+          payer: 'uid-1',
+          amount: Decimal.parse('10.000'),
+        );
+        final eventRef = (groupId: event.groupId, eventId: event.id);
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            currentUserIdProvider.overrideWithValue('uid-1'),
-            eventDetailProvider(
-              eventRef,
-            ).overrideWith((_) => Stream<Event?>.value(event)),
-            groupDetailProvider(
-              event.groupId,
-            ).overrideWith((_) => Stream<Group?>.value(_group)),
-            eventExpensesProvider(
-              eventRef,
-            ).overrideWith((_) => Stream.value([expense])),
-            eventSettlementsProvider(
-              eventRef,
-            ).overrideWith((_) => Stream.value(const [])),
-            groupMembersProvider(event.groupId).overrideWith(
-              (_) => Stream.value([
-                _realMember('uid-1', 'Mona'),
-                _realMember('uid-2', 'Nasser'),
-              ]),
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              currentUserIdProvider.overrideWithValue('uid-1'),
+              eventDetailProvider(
+                eventRef,
+              ).overrideWith((_) => Stream<Event?>.value(event)),
+              groupDetailProvider(
+                event.groupId,
+              ).overrideWith((_) => Stream<Group?>.value(_group)),
+              eventExpensesProvider(
+                eventRef,
+              ).overrideWith((_) => Stream.value([expense])),
+              eventSettlementsProvider(
+                eventRef,
+              ).overrideWith((_) => Stream.value(const [])),
+              groupMembersProvider(event.groupId).overrideWith(
+                (_) => Stream.value([
+                  _realMember('uid-1', 'Mona'),
+                  _realMember('uid-2', 'Nasser'),
+                ]),
+              ),
+            ],
+            child: MaterialApp(
+              locale: const Locale('ar'),
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: EventCommandCenter(
+                groupId: event.groupId,
+                eventId: event.id,
+              ),
             ),
-          ],
-          child: MaterialApp(
-            locale: const Locale('ar'),
-            theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: EventCommandCenter(groupId: event.groupId, eventId: event.id),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.byKey(EventKeys.openRecapBanner), findsOneWidget);
-      expect(tester.takeException(), isNull);
+        expect(find.byKey(EventKeys.openRecapBanner), findsOneWidget);
+        expect(find.byKey(EventKeys.openRecapBannerViewRecap), findsOneWidget);
+        expect(tester.takeException(), isNull);
 
-      // #915 (relocated from the deleted ledger_back_arrow_rtl_test): the
-      // hub's back arrow mirrors under RTL (#126). The button has no Key and
-      // Iconsax.arrow_right also appears in forward chevrons, so scope the
-      // check via its commonBack semantics label.
-      final l10n = AppLocalizations.of(
-        tester.element(find.byType(EventCommandCenter)),
-      );
-      final backButton = find.bySemanticsLabel(l10n.commonBack);
-      expect(backButton, findsOneWidget);
-      expect(
-        find.descendant(
-          of: backButton,
-          matching: find.byIcon(Iconsax.arrow_right),
-        ),
-        findsOneWidget,
-      );
-    });
-  });
+        // #915 (relocated from the deleted ledger_back_arrow_rtl_test): the
+        // hub's back arrow mirrors under RTL (#126). The button has no Key and
+        // Iconsax.arrow_right also appears in forward chevrons, so scope the
+        // check via its commonBack semantics label.
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(EventCommandCenter)),
+        );
+        final backButton = find.bySemanticsLabel(l10n.commonBack);
+        expect(backButton, findsOneWidget);
+        expect(
+          find.descendant(
+            of: backButton,
+            matching: find.byIcon(Iconsax.arrow_right),
+          ),
+          findsOneWidget,
+        );
+      });
+    },
+  );
 
   group('#382 PR-5 — per-currency header', () {
     testWidgets('settled in OMR but owing in USD — header is NOT settled', (
@@ -480,7 +519,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('All settled'), findsNothing);
-      expect(find.text('YOU OWE'), findsOneWidget);
+      expect(find.text('You owe'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byKey(EventKeys.balanceHeader),
@@ -527,12 +566,17 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('YOU ARE OWED'), findsNothing);
-        expect(find.text('YOU OWE'), findsNothing);
+        expect(find.text('You are owed'), findsNothing);
+        expect(find.text('You owe'), findsNothing);
+        expect(find.text('Your balance'), findsOneWidget);
         expect(find.text('All settled'), findsNothing);
         final header = find.byKey(EventKeys.balanceHeader);
         expect(
           find.descendant(of: header, matching: find.textContaining('10.000')),
+          findsWidgets,
+        );
+        expect(
+          find.descendant(of: header, matching: find.textContaining('OMR')),
           findsWidgets,
         );
         expect(
@@ -579,9 +623,43 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('All settled'), findsNothing);
-        expect(find.text('YOU ARE OWED'), findsOneWidget);
+        expect(find.text('You are owed'), findsOneWidget);
       },
     );
+
+    testWidgets('balance and progress line share the collapse AnimatedSize', (
+      tester,
+    ) async {
+      final event = _event(
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 3),
+      );
+      final expense = _expense(
+        id: 'x1',
+        eventId: event.id,
+        payer: 'uid-1',
+        amount: Decimal.parse('10.000'),
+      );
+
+      await tester.pumpWidget(_wrap(event: event, expenses: [expense]));
+      await tester.pumpAndSettle();
+
+      final balanceAnimated = find.ancestor(
+        of: find.byKey(EventKeys.balanceHeader),
+        matching: find.byType(AnimatedSize),
+      );
+      final progressAnimated = find.ancestor(
+        of: find.byKey(EventKeys.openRecapBanner),
+        matching: find.byType(AnimatedSize),
+      );
+
+      expect(balanceAnimated, findsOneWidget);
+      expect(progressAnimated, findsOneWidget);
+      expect(
+        tester.element(balanceAnimated),
+        same(tester.element(progressAnimated)),
+      );
+    });
   });
 
   group('#871 — a11y labels on header icon buttons', () {
@@ -786,6 +864,17 @@ Event _event({
     isClosed: isClosed,
     closedAt: isClosed ? DateTime(2026, 5, 1) : null,
     closedBy: closedBy,
+  );
+}
+
+Event _liveEvent({bool isClosed = false}) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day, 12);
+  return _event(
+    startDate: today.subtract(const Duration(days: 2)),
+    endDate: today.add(const Duration(days: 4)),
+    isClosed: isClosed,
+    closedBy: isClosed ? 'uid-1' : null,
   );
 }
 
