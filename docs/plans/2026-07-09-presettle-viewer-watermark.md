@@ -27,7 +27,15 @@ A flag is suppressed iff ALL of:
 - `s` is live: `!s.isDeleted`, NOT `s.isMarkedCorrection` (#889 unforgeable server marker — the blessed signal for new derived surfaces), and NOT the target of any marked correction in the basis (a corrected payment is not review evidence), and
 - `s.settledAt` is strictly after `flag.expense.createdAt` (tie → keep the flag; fail toward warning).
 
-**Basis:** event screen = that event's settlements (already includes #752 decomposed legs — they are event docs). Group provider = all per-event settlements of non-dropped events + group-level settlements from `groupSettlementsProvider`. A #244 OR-dropped event (hard-errored expense stream) contributes NO settlements to the watermark — dropped from the flag basis ⇒ dropped from the watermark basis (fail toward warning).
+**Basis (Gate R1 revision):** a settlement suppresses only flags from the review basis it was recorded against — a viewer who settled Event A has NOT reviewed Event B's expenses.
+
+- **Event screen:** that event's settlements (already includes #752 decomposed legs — they are event docs). Unchanged from rev 1.
+- **Group provider — two stages:**
+  - **Stage A (event-local):** inside the per-event loop, an event's flags are filtered against THAT event's settlements only — identical semantics to the event screen, so a flag suppressed on its own event settle-up is also suppressed at group scope and vice versa (no cross-surface inconsistency).
+  - **Stage B (group-engagement):** after the loop, the pooled flags are filtered against only the settlements that prove the viewer went through the GROUP review sheet — group-level docs (from `groupSettlementsProvider`) plus `groupSettleUpId`-tagged decomposed legs (#752). An UNTAGGED event settlement never suppresses another event's flags. Marked-correction rows are also pooled into the Stage B list so a correction whose target sits in a different collection still disarms it (the pure function excludes both).
+- A #244 OR-dropped event (hard-errored expense stream) contributes NO settlements to either stage — dropped from the flag basis ⇒ dropped from the watermark basis (fail toward warning).
+
+**Why Stage B exists:** a group settle-up presents the group sheet, which covers every event's flags at that moment; group docs and tagged legs are the durable evidence of that. In the live repro, the viewer's Jul 2–4 OMR settlements are tagged decomposed legs → group-wide suppression applies, so the reported false-fire is fixed at both entry points.
 
 **Known accepted holes (document, don't fix here):**
 - `Expense` has `createdAt` only — no edit timestamp exists on the model (verified by enumeration). An expense edited after the viewer's last settlement stays suppressed. #799's `recentlyEdited` trigger is the future home.
@@ -45,6 +53,8 @@ A flag is suppressed iff ALL of:
 - Existing tests that pin current behavior (all verified to survive this change unmodified): `test/features/ledger/settle_up_review_suppression_test.dart` (5 tests — the "outstanding → fires" case uses EMPTY settlements, so the watermark is empty there), `test/features/groups/group_settle_up_review_sheet_test.dart` (viewer `uid-alice`, per-event settlements default empty, `groupSettlementsProvider` already overridden to `[]`), `test/features/groups/providers/group_presettle_review_provider_test.dart` (does not override `groupSettlementsProvider`/`currentUserIdProvider` — safe per the null/AsyncError behavior above; Task 3 adds explicit overrides anyway).
 - Event-test fixture defaults that make the arithmetic work: `_expense` amount `'10.000'`, payer `alice`, `createdAt DateTime(2026, 5, 16)`; `_settlement` bob→alice, `settledAt DateTime(2026, 5, 17)`; screen viewer is `bob`.
 - Provider-test helpers (`group_presettle_review_provider_test.dart`): `_makeEvent({required id, required groupId, participantIds = ['uid-alice','uid-bob']})`, `_makeExpense({required id, required tripId, required amount, payer = 'uid-alice', splitMode})` with `createdAt` hardcoded `DateTime(2026, 1, 1)` and default model currency (OMR); `eventA`/`eventB` are per-test locals, not globals. Widget-test helpers (`group_settle_up_review_sheet_test.dart`): `_makeEvent({required id, participantIds = [...]})` (no groupId param — `_groupId` is baked in), `_makeExpense(..., description = 'Expense', amount = '5.000', currency = 'OMR')` with `createdAt` hardcoded `DateTime(2026, 3, 5)`; both files already import `settlement_model.dart` and `group_balance_provider.dart`.
+- `test/features/events/event_tabs_test.dart` also drives the embedded event settle-up review path (asserts the sheet at L300/L305) — it survives unchanged because it overrides `eventSettlementsProvider` to an empty stream (empty watermark basis) with `currentUserIdProvider = 'uid-1'`. Verified L157/L167/L300/L305.
+- Six further `GroupSettleUpScreen`-mounting test files (`group_settle_up_{revalidation,correct,decompose,atomic_929,screen,screen_same_name}_test.dart`) all override `groupSettlementsProvider` with value-emitting streams and `currentUserIdProvider`, so the new resolved-gate cannot strand them; Task 4's full-suite run is the backstop.
 
 ## Verification-principles report (run while authoring)
 
@@ -63,6 +73,7 @@ A flag is suppressed iff ALL of:
 - **`createdBy` counting toward the watermark:** the treasurer who records everyone's payments would self-suppress all warnings.
 - **Adding `lastEditedAt` to the expense schema:** read+write schema change (rules, serializer, Gate category) bolted onto a display fix — violates one-PR-one-thing; belongs with #799 if ever.
 - **Changing the retroactive re-split semantics:** oracle-parity sacred ground and product-correct for shadow members → #1059 (decision, visibility only).
+- **Currency-global group watermark (rev 1, killed by Gate R1):** pooling ALL per-event settlements into one group-wide per-currency watermark lets a viewer's settlement in Event A silence an older, never-reviewed Event B expense — and creates event-vs-group surface inconsistency (the same flag fires on Event B's own settle-up). Replaced by the two-stage basis above.
 
 ---
 
@@ -506,7 +517,7 @@ Append inside `main()`:
 **Step 3: Run to verify the first new test fails**
 
 Run: `flutter test test/features/ledger/settle_up_review_suppression_test.dart`
-Expected: the `#1058` suppressed-case FAILS (sheet found); the two fires-cases and all 5 pre-existing tests PASS.
+Expected: RED — the `#1058` suppressed-case FAILS (sheet found). The two fires-cases are GUARD tests (green before AND after the wiring — boundary pins, not RED evidence); all 5 pre-existing tests PASS.
 
 **Step 4: Wire the screen**
 
@@ -617,6 +628,7 @@ Settlement _viewerSettlement({
   String currency = 'OMR',
   DateTime? settledAt,
   String scope = 'event',
+  String? groupSettleUpId,
 }) => Settlement(
   id: id,
   tripId: scope == 'group' ? 'group-1' : 'event-a',
@@ -626,6 +638,7 @@ Settlement _viewerSettlement({
   settledAt: settledAt ?? DateTime(2026, 6, 10),
   currency: currency,
   scope: scope,
+  groupSettleUpId: groupSettleUpId,
 );
 ```
 
@@ -651,8 +664,8 @@ Add new tests inside the existing `group('groupPreSettleReviewProvider')`. `even
 ```
 
 ```dart
-    test('viewer-party newer EVENT settlement suppresses that currency '
-        '(#1058)', () async {
+    test('stage A: viewer-party newer EVENT settlement suppresses THAT '
+        'event\'s flag (#1058)', () async {
       final eventA = _makeEvent(
         id: 'event-a',
         groupId: groupId,
@@ -692,8 +705,114 @@ Add new tests inside the existing `group('groupPreSettleReviewProvider')`. `even
       expect(review.flags, isEmpty);
     });
 
-    test('viewer-party newer GROUP settlement feeds the watermark (#1058)',
-        () async {
+    test('stage A is event-local: an UNTAGGED settlement in event-a never '
+        'suppresses event-b\'s flag (#1058 Gate R1)', () async {
+      final eventA = _makeEvent(
+        id: 'event-a',
+        groupId: groupId,
+        participantIds: const ['uid-alice', 'uid-viewer'],
+      );
+      final eventB = _makeEvent(
+        id: 'event-b',
+        groupId: groupId,
+        participantIds: const ['uid-alice', 'uid-viewer'],
+      );
+      final flaggedB = _makeExpense(
+        id: 'b-exact',
+        tripId: 'event-b',
+        amount: '5.000',
+        splitMode: SplitMode.exact,
+      );
+      final container = ProviderContainer(
+        overrides: [
+          groupEventsProvider(groupId)
+              .overrideWith((_) => Stream.value([eventA, eventB])),
+          groupMembersProvider(groupId).overrideWith(
+            (_) => Stream.value([
+              _makeMember(userId: 'uid-alice'),
+              _makeMember(userId: 'uid-viewer'),
+            ]),
+          ),
+          groupBalancesProvider(groupId)
+              .overrideWith((_) => AsyncValue.data(_outstandingBalances)),
+          groupSettlementsProvider(groupId)
+              .overrideWith((_) => Stream.value(const <Settlement>[])),
+          currentUserIdProvider.overrideWithValue('uid-viewer'),
+          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
+              .overrideWith((_) => Stream.value(const <Expense>[])),
+          eventSettlementsProvider((groupId: groupId, eventId: 'event-a'))
+              .overrideWith((_) => Stream.value([_viewerSettlement(id: 's1')])),
+          eventExpensesProvider((groupId: groupId, eventId: 'event-b'))
+              .overrideWith((_) => Stream.value([flaggedB])),
+          eventSettlementsProvider((groupId: groupId, eventId: 'event-b'))
+              .overrideWith((_) => Stream.value(const <Settlement>[])),
+        ],
+      );
+      addTearDown(container.dispose);
+      await _pump(container, groupId);
+
+      final review = container.read(groupPreSettleReviewProvider(groupId));
+      expect(review.resolved, isTrue);
+      expect(review.flags.map((f) => f.expense.id), ['b-exact']);
+    });
+
+    test('stage B: a groupSettleUpId-TAGGED leg in event-a suppresses '
+        'event-b\'s older flag group-wide (#1058)', () async {
+      final eventA = _makeEvent(
+        id: 'event-a',
+        groupId: groupId,
+        participantIds: const ['uid-alice', 'uid-viewer'],
+      );
+      final eventB = _makeEvent(
+        id: 'event-b',
+        groupId: groupId,
+        participantIds: const ['uid-alice', 'uid-viewer'],
+      );
+      final flaggedB = _makeExpense(
+        id: 'b-exact',
+        tripId: 'event-b',
+        amount: '5.000',
+        splitMode: SplitMode.exact,
+      );
+      final container = ProviderContainer(
+        overrides: [
+          groupEventsProvider(groupId)
+              .overrideWith((_) => Stream.value([eventA, eventB])),
+          groupMembersProvider(groupId).overrideWith(
+            (_) => Stream.value([
+              _makeMember(userId: 'uid-alice'),
+              _makeMember(userId: 'uid-viewer'),
+            ]),
+          ),
+          groupBalancesProvider(groupId)
+              .overrideWith((_) => AsyncValue.data(_outstandingBalances)),
+          groupSettlementsProvider(groupId)
+              .overrideWith((_) => Stream.value(const <Settlement>[])),
+          currentUserIdProvider.overrideWithValue('uid-viewer'),
+          eventExpensesProvider((groupId: groupId, eventId: 'event-a'))
+              .overrideWith((_) => Stream.value(const <Expense>[])),
+          eventSettlementsProvider((groupId: groupId, eventId: 'event-a'))
+              .overrideWith(
+            (_) => Stream.value([
+              _viewerSettlement(id: 'leg1', groupSettleUpId: 'gsu-1'),
+            ]),
+          ),
+          eventExpensesProvider((groupId: groupId, eventId: 'event-b'))
+              .overrideWith((_) => Stream.value([flaggedB])),
+          eventSettlementsProvider((groupId: groupId, eventId: 'event-b'))
+              .overrideWith((_) => Stream.value(const <Settlement>[])),
+        ],
+      );
+      addTearDown(container.dispose);
+      await _pump(container, groupId);
+
+      final review = container.read(groupPreSettleReviewProvider(groupId));
+      expect(review.resolved, isTrue);
+      expect(review.flags, isEmpty);
+    });
+
+    test('stage B: viewer-party newer GROUP-level settlement suppresses '
+        'group-wide (#1058)', () async {
       final eventA = _makeEvent(
         id: 'event-a',
         groupId: groupId,
@@ -885,7 +1004,7 @@ Add one end-to-end widget test (viewer is `uid-alice` per the file's overrides; 
 **Step 2: Run to verify the new tests fail**
 
 Run: `flutter test test/features/groups/providers/group_presettle_review_provider_test.dart test/features/groups/group_settle_up_review_sheet_test.dart`
-Expected: the four `#1058` provider cases and the widget case FAIL (flags present / sheet fires / resolved true where false expected); every pre-existing test PASSES.
+Expected: RED — the suppression cases (stage A single-event, stage B tagged-leg, stage B group-doc), the loading-gate case, and the widget case FAIL (flags present / sheet fires / resolved true where false expected). The `untagged-never-suppresses` and `fresh joiner` cases are GUARD tests — green before AND after the wiring; they pin the boundary, they are not RED evidence. Every pre-existing test PASSES.
 
 **Step 3: Wire the provider**
 
@@ -931,11 +1050,16 @@ final groupPreSettleReviewProvider =
       };
 
       final flags = <ReviewFlag>[];
-      // #1058: the watermark basis mirrors the flag basis — settlements of
-      // non-dropped events (incl. #752 decomposed legs) plus group-level
-      // rows. A #244 OR-dropped event contributes neither flags nor
-      // watermark (fail toward warning).
-      final basisSettlements = <Settlement>[
+      // #1058 stage B basis: ONLY settlements proving the viewer went through
+      // the GROUP review sheet — group-level docs plus #752
+      // groupSettleUpId-tagged decomposed legs. The group/event ASYMMETRY is
+      // intentional (Gate R1): an untagged settlement in Event A proves the
+      // viewer passed Event A's sheet, never Event B's — it suppresses only
+      // event-locally (stage A below), so a viewer who settled one event
+      // still sees another event's unreviewed flags. Marked corrections ride
+      // along so cross-collection targets stay disarmed. A #244 OR-dropped
+      // event contributes neither flags nor watermark (fail toward warning).
+      final groupWideSettlements = <Settlement>[
         ...?groupSettlementsAsync.valueOrNull,
       ];
       var resolved = true;
@@ -952,26 +1076,36 @@ final groupPreSettleReviewProvider =
           continue;
         }
         if (expensesAsync.hasError && !expensesAsync.hasValue) continue;
-        basisSettlements.addAll(
-          settlementsAsync.valueOrNull ?? const <Settlement>[],
+        final eventSettlements =
+            settlementsAsync.valueOrNull ?? const <Settlement>[];
+        groupWideSettlements.addAll(
+          eventSettlements.where(
+            (s) => s.groupSettleUpId != null || s.isMarkedCorrection,
+          ),
         );
+        // #1058 stage A: event-local suppression — same semantics as the
+        // event settle-up screen, so the two surfaces agree per flag.
         flags.addAll(
-          detectReviewWorthyExpenses(
-            expensesAsync.valueOrNull ?? const <Expense>[],
-            activeParticipantIds: event.participantIds.toSet().intersection(
-              liveMemberIds,
+          suppressFlagsSettledPastByViewer(
+            detectReviewWorthyExpenses(
+              expensesAsync.valueOrNull ?? const <Expense>[],
+              activeParticipantIds: event.participantIds.toSet().intersection(
+                liveMemberIds,
+              ),
             ),
+            settlements: eventSettlements,
+            viewerUid: viewerUid,
           ),
         );
       }
       if (!resolved) return (flags: const <ReviewFlag>[], resolved: false);
 
-      // #1058: viewer watermark applies on BOTH exits — settled-past flags
-      // stay suppressed even when balances errored and the #922 bucket
-      // filter cannot run.
+      // #1058 stage B: group-engagement suppression across all events.
+      // Applies on BOTH exits — settled-past flags stay suppressed even when
+      // balances errored and the #922 bucket filter cannot run.
       final visibleFlags = suppressFlagsSettledPastByViewer(
         flags,
-        settlements: basisSettlements,
+        settlements: groupWideSettlements,
         viewerUid: viewerUid,
       );
       if (balancesAsync.hasError) {
@@ -994,7 +1128,7 @@ final groupPreSettleReviewProvider =
     });
 ```
 
-Also update the provider's doc comment: add one line — `/// #1058: flags the viewer settled past (viewer-party settlement newer than the expense, same currency) are suppressed; basis = non-dropped events' settlements + group-level settlements.` and extend the `[resolved]` sentence to include the group-settlement stream.
+Also update the provider's doc comment: add — `/// #1058: flags the viewer settled past are suppressed in two stages: stage A event-local (that event's settlements — mirrors the event screen), stage B group-engagement (group-level docs + groupSettleUpId-tagged legs, applied group-wide). An untagged event settlement NEVER suppresses another event's flags — intentional asymmetry, Gate R1.` and extend the `[resolved]` sentence to include the group-settlement stream.
 
 **Step 4: Run tests to verify they pass**
 
@@ -1038,7 +1172,7 @@ Spec: docs/plans/2026-07-09-presettle-viewer-watermark.md (Gate-reviewed)
 
 ## Summary
 - New pure filter `suppressFlagsSettledPastByViewer` in `pre_settlement_review.dart`: drops a review flag when the viewer was party to a live settlement (excl. soft-deleted, #889 marked corrections, and their targets) in the flag's currency newer than the expense.
-- Applied as a third stage (detect → #922 bucket filter → viewer watermark) at both entry points; group provider now folds per-event + group-level settlements into the watermark basis and gates `resolved` on the group settlement stream.
+- Applied at both entry points (detect → #922 bucket filter → viewer watermark). Group scope is TWO-STAGE (Gate R1): stage A event-local (an event's flags vs that event's settlements — mirrors the event screen), stage B group-engagement (group-level docs + groupSettleUpId-tagged legs suppress group-wide). An untagged settlement in one event never silences another event's flags. `resolved` now also gates on the group settlement stream.
 - Display-only: no server/rules/oracle/schema change. Fresh joiners still see every warning.
 
 ## Test plan
