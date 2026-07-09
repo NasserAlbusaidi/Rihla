@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:safar/core/theme/app_theme.dart';
@@ -9,6 +10,71 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/directional_icon.dart';
 import 'package:safar/shared/widgets/falaj_fork.dart';
 import 'package:safar/shared/widgets/r_avatar.dart';
+
+Future<void> _pumpTile(
+  WidgetTester tester, {
+  required TextDirection textDirection,
+  required String fromName,
+  required String toName,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.lightTheme,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Directionality(
+        textDirection: textDirection,
+        child: Scaffold(
+          body: GroupSettlementTile(
+            fromName: fromName,
+            toName: toName,
+            amount: Decimal.parse('5.000'),
+            currency: 'OMR',
+            breakdown: const {},
+            isYourAction: true,
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+}
+
+Finder _captionFinder() => find.ancestor(
+  of: find.byType(DirectionalIcon),
+  matching: find.byType(RichText),
+);
+
+double _nameCenterX(
+  WidgetTester tester,
+  Finder captionFinder,
+  String name,
+) {
+  final paragraph = tester.renderObject<RenderParagraph>(captionFinder);
+  final renderedText = paragraph.text.toPlainText(
+    includeSemanticsLabels: false,
+  );
+  final start = renderedText.indexOf(name);
+  expect(start, greaterThanOrEqualTo(0));
+
+  final boxes = paragraph.getBoxesForSelection(
+    TextSelection(baseOffset: start, extentOffset: start + name.length),
+  );
+  expect(boxes, isNotEmpty);
+  final bounds = boxes
+      .map((box) => box.toRect())
+      .reduce((current, box) => current.expandToInclude(box));
+  return bounds.center.dx;
+}
+
+String _captionSemanticsText(WidgetTester tester, Finder captionFinder) {
+  final paragraph = tester.renderObject<RenderParagraph>(captionFinder);
+  return paragraph.text
+      .getSemanticsInformation()
+      .where((info) => !info.isPlaceholder)
+      .map((info) => info.semanticsLabel ?? info.text)
+      .join();
+}
 
 void main() {
   testWidgets(
@@ -225,4 +291,69 @@ void main() {
       expect(mirroredTransforms, isNotEmpty);
     },
   );
+
+  group('#1066 — direction caption visual order follows the UI direction', () {
+    testWidgets(
+      'RTL with Latin names renders payer right of payee',
+      (tester) async {
+        await _pumpTile(
+          tester,
+          textDirection: TextDirection.rtl,
+          fromName: 'Ahmed',
+          toName: 'QA Bot',
+        );
+
+        final captionFinder = _captionFinder();
+        expect(captionFinder, findsOneWidget);
+        expect(
+          _nameCenterX(tester, captionFinder, 'Ahmed'),
+          greaterThan(_nameCenterX(tester, captionFinder, 'QA')),
+        );
+
+        final semanticsText = _captionSemanticsText(tester, captionFinder);
+        expect(semanticsText, contains('Ahmed'));
+        expect(semanticsText, contains('QA'));
+        expect(semanticsText, isNot(contains('\u2068')));
+        expect(semanticsText, isNot(contains('\u2069')));
+      },
+    );
+
+    testWidgets(
+      'RTL with Arabic names keeps payer right of payee without double-flipping',
+      (tester) async {
+        await _pumpTile(
+          tester,
+          textDirection: TextDirection.rtl,
+          fromName: 'أحمد',
+          toName: 'ليلى',
+        );
+
+        final captionFinder = _captionFinder();
+        expect(captionFinder, findsOneWidget);
+        expect(
+          _nameCenterX(tester, captionFinder, 'أحمد'),
+          greaterThan(_nameCenterX(tester, captionFinder, 'ليلى')),
+        );
+      },
+    );
+
+    testWidgets(
+      'LTR with Latin names keeps payer left of payee',
+      (tester) async {
+        await _pumpTile(
+          tester,
+          textDirection: TextDirection.ltr,
+          fromName: 'Ahmed',
+          toName: 'QA Bot',
+        );
+
+        final captionFinder = _captionFinder();
+        expect(captionFinder, findsOneWidget);
+        expect(
+          _nameCenterX(tester, captionFinder, 'Ahmed'),
+          lessThan(_nameCenterX(tester, captionFinder, 'QA')),
+        );
+      },
+    );
+  });
 }
