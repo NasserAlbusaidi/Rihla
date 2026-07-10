@@ -10,15 +10,15 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 // #225 — direct contract coverage for RecordPaymentSheet.
 //
 // The settlement *write path* the issue describes (append-only row, correct
-// createdBy, zero/too-large blocked) lives in the SCREENS, not this sheet, and
+// createdBy, too-large blocked) lives in the SCREENS, not this sheet, and
 // is already covered transitively: group_settle_up_screen_test asserts
-// `addCalls.single.createdBy == 'uid-bob'` plus the zero / too-large snackbars,
-// and settle_up_screen_test mirrors it for the ledger screen. This sheet is a
-// pure input collector: it returns a RecordPaymentResult on confirm (or null on
-// dismiss) and performs no submit-BLOCKING validation. That contract — never
-// exercised in isolation — is what these tests pin. (#220 adds inline free-text
-// FEEDBACK on the note field — an errorText hint — but it still never blocks
-// confirm; the caller/server stay responsible for enforcement.)
+// `addCalls.single.createdBy == 'uid-bob'` plus the too-large snackbar,
+// and settle_up_screen_test mirrors it for the ledger screen. Since #1080 the
+// sheet DOES block an unparseable or non-positive amount before the pop (with a
+// persistent field-associated error + focus + announcement); over-pay and
+// staleness revalidation remain the callers' post-pop checks. (#220 adds inline
+// free-text FEEDBACK on the note field — an errorText hint — but that one still
+// never blocks confirm; the caller/server stay responsible for enforcement.)
 void main() {
   Future<RecordPaymentResult?> openAndReturn(
     WidgetTester tester, {
@@ -291,19 +291,51 @@ void main() {
     expect(result, isNotNull);
   });
 
-  testWidgets('performs no validation — returns a zero amount as typed '
-      '(the caller validates)', (tester) async {
-    final result = await openAndReturn(
-      tester,
-      currency: 'OMR',
-      suggestedAmount: Decimal.zero,
-      act: tapMarkPaid,
+  testWidgets('#1080: a zero amount blocks confirm with a persistent inline '
+      'error — the sheet stays open (over-pay/staleness stay with the caller)',
+      (tester) async {
+    var resolved = false;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: ElevatedButton(
+                  key: const Key('open'),
+                  onPressed: () async {
+                    await showRecordPaymentSheet(
+                      context,
+                      currency: 'OMR',
+                      fromName: 'Bob',
+                      toName: 'Alice',
+                      suggestedAmount: Decimal.zero,
+                    );
+                    resolved = true;
+                  },
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
+    await tester.tap(find.byKey(const Key('open')));
+    await tester.pumpAndSettle();
 
-    // The sheet does not block zero; settle_up_screen / group_settle_up_screen
-    // do. This pins the division of responsibility.
-    expect(result, isNotNull);
-    expect(result!.amount, '0.000');
+    await tapMarkPaid(tester);
+    await tester.pumpAndSettle();
+
+    expect(
+      resolved,
+      isFalse,
+      reason: 'a zero amount must not pop the sheet (#1080)',
+    );
+    expect(find.text('Amount must be greater than zero'), findsOneWidget);
   });
 
   testWidgets('#382 PR-5: stepLabel renders as an overline above the title', (
