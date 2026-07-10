@@ -2357,6 +2357,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get groupEventOwedToYou => 'owed to you';
+
+  @override
+  String get groupEventYouOwe => 'you owe';
+
+  @override
+  String get groupEventYourBalance => 'your balance';
+
+  @override
   String get groupYourShare => 'your share';
 
   @override

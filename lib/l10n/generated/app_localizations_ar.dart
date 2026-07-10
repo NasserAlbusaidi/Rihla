@@ -2399,6 +2399,15 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get groupEventOwedToYou => 'مستحق لك';
+
+  @override
+  String get groupEventYouOwe => 'عليك دفع';
+
+  @override
+  String get groupEventYourBalance => 'رصيدك';
+
+  @override
   String get groupYourShare => 'حصتك';
 
   @override

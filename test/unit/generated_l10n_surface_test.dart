@@ -67,6 +67,24 @@ void main() {
       );
     });
   });
+
+  group('#1107 group event net captions', () {
+    test('English captions are directional for each signed-net state', () {
+      final l10n = AppLocalizationsEn();
+
+      expect(l10n.groupEventOwedToYou, 'owed to you');
+      expect(l10n.groupEventYouOwe, 'you owe');
+      expect(l10n.groupEventYourBalance, 'your balance');
+    });
+
+    test('Arabic captions are translated for each signed-net state', () {
+      final l10n = AppLocalizationsAr();
+
+      expect(l10n.groupEventOwedToYou, 'مستحق لك');
+      expect(l10n.groupEventYouOwe, 'عليك دفع');
+      expect(l10n.groupEventYourBalance, 'رصيدك');
+    });
+  });
 }
 
 final _pr2bCalls = <_L10nString>[

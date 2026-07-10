@@ -1736,6 +1736,18 @@
       "date": {}
     }
   },
+  "groupEventOwedToYou": "owed to you",
+  "@groupEventOwedToYou": {
+    "description": "Caption under an event row when every displayed signed net is positive."
+  },
+  "groupEventYouOwe": "you owe",
+  "@groupEventYouOwe": {
+    "description": "Caption under an event row when every displayed signed net is negative."
+  },
+  "groupEventYourBalance": "your balance",
+  "@groupEventYourBalance": {
+    "description": "Caption under an event row when displayed currency nets have mixed signs."
+  },
   "groupYourShare": "your share",
   "groupNoShare": "no share",
   "groupMembersLoadFailed": "Couldn't load members",

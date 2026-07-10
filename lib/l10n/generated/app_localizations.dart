@@ -4011,6 +4011,24 @@ abstract class AppLocalizations {
   /// **'ends {date}'**
   String groupEventEnds(Object date);
 
+  /// Caption under an event row when every displayed signed net is positive.
+  ///
+  /// In en, this message translates to:
+  /// **'owed to you'**
+  String get groupEventOwedToYou;
+
+  /// Caption under an event row when every displayed signed net is negative.
+  ///
+  /// In en, this message translates to:
+  /// **'you owe'**
+  String get groupEventYouOwe;
+
+  /// Caption under an event row when displayed currency nets have mixed signs.
+  ///
+  /// In en, this message translates to:
+  /// **'your balance'**
+  String get groupEventYourBalance;
+
   /// No description provided for @groupYourShare.
   ///
   /// In en, this message translates to:
