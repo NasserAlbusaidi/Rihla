@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/auth/providers/shell_emptiness_gate.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -92,6 +93,10 @@ Widget _buildApp({
       firebaseUserProvider.overrideWith(
         (ref) => Stream.value(MockUser(isAnonymous: true, uid: 'u1')),
       ),
+      // #1091: the gate now server-probes on stream-empty. Seed a
+      // server-confirmed-empty probe so the empty+resolved anon shell proceeds
+      // exactly as before (the unbound default hits [core/no-app] → block).
+      shellEmptinessServerProbeProvider.overrideWithValue((_) async => false),
       ..._emptyOverrides(),
     ],
     child: MaterialApp.router(
