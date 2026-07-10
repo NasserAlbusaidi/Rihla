@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/models/app_settings_model.dart';
 import 'package:safar/core/providers/app_bootstrap_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_service.dart';
@@ -163,6 +164,25 @@ void main() {
 
         verifyNever(() => mockNotificationService.initialize());
         verifyNever(() => mockNotificationService.removeToken());
+      },
+    );
+
+    test(
+      'kickInitialNotificationSync reconciles an explicitly disabled user (#1096)',
+      () async {
+        runInitialNotificationSync(
+          const AppSettings(pushNotificationsEnabled: false),
+          () => mockNotificationService,
+          hasPersistedPushPreference: true,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockNotificationService.removeToken()).called(1);
+        verifyNever(
+          () => mockNotificationService.initialize(
+            handleInitialMessage: any(named: 'handleInitialMessage'),
+          ),
+        );
       },
     );
 

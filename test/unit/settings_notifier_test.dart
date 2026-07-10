@@ -30,6 +30,21 @@ class _PropagationSpySettingsNotifier extends SettingsNotifier {
 }
 
 void main() {
+  test(
+    'push preference distinguishes a fresh default from explicit opt-out',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final service = SettingsService(prefs);
+
+      expect(service.hasPushNotificationsPreference, isFalse);
+
+      await service.savePushNotificationsEnabled(false);
+
+      expect(service.hasPushNotificationsPreference, isTrue);
+    },
+  );
+
   group('SettingsNotifier', () {
     Future<ProviderContainer> makeContainer() async {
       SharedPreferences.setMockInitialValues({});

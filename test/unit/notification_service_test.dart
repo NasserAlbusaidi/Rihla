@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
@@ -10,6 +11,16 @@ import 'package:safar/core/services/local_notifier.dart';
 import 'package:safar/core/services/notification_service.dart';
 
 class _MockFirebaseMessaging extends Mock implements FirebaseMessaging {}
+
+class _MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
+
+// ignore: subtype_of_sealed_class
+class _MockTokenCollection extends Mock
+    implements CollectionReference<Map<String, dynamic>> {}
+
+// ignore: subtype_of_sealed_class
+class _MockTokenDocument extends Mock
+    implements DocumentReference<Map<String, dynamic>> {}
 
 /// Records shows and exposes the tap callback so tests can simulate a tap on a
 /// foreground-displayed local notification.
@@ -34,6 +45,11 @@ class _FakeLocalNotifier implements LocalNotifier {
 }
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(<String, dynamic>{});
+    registerFallbackValue(SetOptions(merge: true));
+  });
+
   test(
     'initialize stores the current token and marks notifications enabled',
     () async {
@@ -266,6 +282,117 @@ void main() {
   );
 
   test(
+    'removeToken invalidates initialize awaiting permission (#1096)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final foreground = StreamController<RemoteMessage>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final permissionStarted = Completer<void>();
+      final permissionResult = Completer<NotificationSettings>();
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        foregroundMessages: foreground.stream,
+        openedMessages: opened.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+      addTearDown(foreground.close);
+      addTearDown(opened.close);
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) {
+        permissionStarted.complete();
+        return permissionResult.future;
+      });
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+      final service = container.read(provider);
+      final initialization = service.initialize();
+      await permissionStarted.future;
+
+      await service.removeToken();
+      permissionResult.complete(_settings(AuthorizationStatus.authorized));
+      await initialization;
+
+      expect(
+        container.read(notificationStatusProvider),
+        NotificationStatus.off,
+        reason: 'opt-out must invalidate an in-flight permission request',
+      );
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).exists,
+        isFalse,
+      );
+      verifyNever(messaging.getToken);
+      expect(tokenRefresh.hasListener, isFalse);
+      expect(foreground.hasListener, isFalse);
+      expect(opened.hasListener, isFalse);
+    },
+  );
+
+  test(
+    'removeToken invalidates initialize awaiting getToken (#1096)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final foreground = StreamController<RemoteMessage>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final getTokenStarted = Completer<void>();
+      final tokenResult = Completer<String?>();
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        foregroundMessages: foreground.stream,
+        openedMessages: opened.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+      addTearDown(foreground.close);
+      addTearDown(opened.close);
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) {
+        getTokenStarted.complete();
+        return tokenResult.future;
+      });
+
+      final service = container.read(provider);
+      final initialization = service.initialize();
+      await getTokenStarted.future;
+
+      await service.removeToken();
+      tokenResult.complete('token-1');
+      await initialization;
+
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).exists,
+        isFalse,
+        reason: 'opt-out must invalidate an in-flight token save',
+      );
+      expect(
+        container.read(notificationStatusProvider),
+        NotificationStatus.off,
+      );
+      expect(tokenRefresh.hasListener, isFalse);
+      expect(foreground.hasListener, isFalse);
+      expect(opened.hasListener, isFalse);
+    },
+  );
+
+  test(
     'removeToken deletes the stored token, cancels listeners, and marks off',
     () async {
       final db = FakeFirebaseFirestore();
@@ -298,6 +425,65 @@ void main() {
         container.read(notificationStatusProvider),
         NotificationStatus.off,
       );
+    },
+  );
+
+  test(
+    'removeToken blocks token refresh before a pending delete acknowledges (#1096)',
+    () async {
+      final firestore = _MockFirebaseFirestore();
+      final collection = _MockTokenCollection();
+      final tokenDoc = _MockTokenDocument();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast(sync: true);
+      final deleteStarted = Completer<void>();
+      final deleteAck = Completer<void>();
+      final writes = <String>[];
+
+      when(() => firestore.collection('fcm_tokens')).thenReturn(collection);
+      when(() => collection.doc('uid-1')).thenReturn(tokenDoc);
+      when(() => tokenDoc.set(any(), any())).thenAnswer((invocation) async {
+        final data =
+            invocation.positionalArguments.first as Map<String, dynamic>;
+        writes.add(data['token']! as String);
+      });
+      when(tokenDoc.delete).thenAnswer((_) {
+        deleteStarted.complete();
+        return deleteAck.future;
+      });
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: firestore,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+      final service = container.read(provider);
+      await service.initialize();
+      writes.clear();
+
+      final removal = service.removeToken();
+      await deleteStarted.future;
+      try {
+        tokenRefresh.add('token-2');
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          writes,
+          isEmpty,
+          reason: 'an opt-out refresh must not recreate fcm_tokens/uid-1',
+        );
+      } finally {
+        deleteAck.complete();
+        await removal;
+      }
     },
   );
 
@@ -762,7 +948,7 @@ void main() {
 
 Provider<NotificationService> _serviceProvider({
   required FirebaseMessaging messaging,
-  required FakeFirebaseFirestore firestore,
+  required FirebaseFirestore firestore,
   required String? Function() currentUserId,
   required Stream<String> tokenRefresh,
   String Function()? localeResolver,
