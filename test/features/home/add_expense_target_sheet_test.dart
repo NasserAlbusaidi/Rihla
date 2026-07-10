@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/core/utils/calendar_date.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
@@ -407,6 +408,63 @@ void main() {
           find.descendant(of: sheet, matching: find.text('Group g1')),
           findsOneWidget,
         );
+      },
+    );
+
+    testWidgets(
+      '#1098: an event starting tomorrow reads "in 1d" (calendar day, not '
+      'the raw noon-anchored instant)',
+      (tester) async {
+        final now = DateTime.now();
+        final tomorrow =
+            DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+        final group = makeGroup(id: 'g1', name: 'Trip');
+        await tester.pumpWidget(
+          buildApp(
+            overridesFor({
+              group: [
+                makeEvent(
+                  id: 'e1',
+                  groupId: 'g1',
+                  name: 'Tomorrow',
+                  startDate: anchorCalendarDate(tomorrow),
+                  endDate: anchorCalendarDate(tomorrow),
+                ),
+              ],
+            }),
+          ),
+        );
+        await openSheet(tester);
+
+        expect(find.textContaining('in 1d'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '#1098: a single-day event today reads "ongoing" regardless of the '
+      'local hour (inclusive calendar-day window)',
+      (tester) async {
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final group = makeGroup(id: 'g1', name: 'Trip');
+        await tester.pumpWidget(
+          buildApp(
+            overridesFor({
+              group: [
+                makeEvent(
+                  id: 'e1',
+                  groupId: 'g1',
+                  name: 'Today',
+                  startDate: anchorCalendarDate(today),
+                  endDate: anchorCalendarDate(today),
+                ),
+              ],
+            }),
+          ),
+        );
+        await openSheet(tester);
+
+        expect(find.textContaining('ongoing'), findsOneWidget);
       },
     );
 

@@ -112,12 +112,39 @@ class EditExpenseScreen extends ConsumerWidget {
     Expense original,
     ExpenseEditorPayload payload,
   ) async {
-    final splitChanged =
-        payload.splitMode != (original.splitMode ?? SplitMode.equally) ||
-        !_distributionEquals(
-          payload.splitDistribution,
-          original.splitDistribution,
+    // #1092: if the user touched nothing in this editor session, pop without
+    // writing — a stale form must never clobber a concurrent participant's edit
+    // to an untouched field. No ledgerRevision bump: no write, nothing to
+    // refresh. The body's _submit never pops after onSubmit, so this must run
+    // the same mounted-guarded pop the success path below does.
+    final anyDirty =
+        payload.moneyDirty ||
+        payload.explanationDirty ||
+        payload.descriptionDirty ||
+        payload.categoryDirty ||
+        payload.payerDirty;
+    if (!anyDirty) {
+      final ctx = ref.context;
+      if (ctx.mounted) {
+        ref.invalidate(
+          eventExpensesProvider((groupId: groupId, eventId: eventId)),
         );
+        ctx.pop();
+      }
+      return;
+    }
+
+    // #1092: the arithmetic money cluster (amount/scope/customSplit/mode/
+    // distribution) is gated as ONE unit via moneyDirty — splitChanged is false
+    // unless moneyDirty, so splitMode/splitDistribution/clearSplit stay absent on
+    // a non-money edit and a concurrent editor's validated split survives.
+    final splitChanged =
+        payload.moneyDirty &&
+        (payload.splitMode != (original.splitMode ?? SplitMode.equally) ||
+            !_distributionEquals(
+              payload.splitDistribution,
+              original.splitDistribution,
+            ));
     final goingEqual = splitChanged && payload.splitMode == SplitMode.equally;
 
     // #203 S2: the itemized display metadata is written through its OWN param,
@@ -144,15 +171,25 @@ class EditExpenseScreen extends ConsumerWidget {
           groupId: groupId,
           eventId: eventId,
           expenseId: original.id,
-          amount: payload.amount != original.amount ? payload.amount : null,
+          // #1092: every field below is gated on its dirty flag so an untouched
+          // field is never re-written to the stale form value (reverting a
+          // concurrent edit). The inner `!= original` ternaries are unchanged.
+          amount: payload.moneyDirty && payload.amount != original.amount
+              ? payload.amount
+              : null,
           // #261: preserve the expense's own currency on every edit — never let
           // updateExpense default it to OMR (which would re-scale amountFils).
           currency: original.currency,
-          description: payload.description != original.description
+          description:
+              payload.descriptionDirty &&
+                  payload.description != original.description
               ? payload.description ?? ''
               : null,
-          scope: payload.scope != original.scope ? payload.scope : null,
-          customSplitParticipants: payload.scope == ExpenseScope.custom
+          scope: payload.moneyDirty && payload.scope != original.scope
+              ? payload.scope
+              : null,
+          customSplitParticipants:
+              payload.moneyDirty && payload.scope == ExpenseScope.custom
               ? payload.customSplitParticipants
               : null,
           splitMode: splitChanged && !goingEqual ? payload.splitMode : null,
@@ -160,20 +197,28 @@ class EditExpenseScreen extends ConsumerWidget {
               ? payload.splitDistribution
               : null,
           clearSplit: goingEqual,
-          // #203 S2: set the new metadata when it changed and is present;
-          // orphan-delete it when it changed to absent (no longer itemized).
-          // Untouched when unchanged, preserving the stored value.
+          // #203 S2 / #1092: gated on explanationDirty (its OWN flag, NOT
+          // moneyDirty — display-only, no arithmetic coupling). Set the new
+          // metadata when it changed and is present; orphan-delete it when it
+          // changed to absent (no longer itemized). Untouched otherwise.
           splitExplanation:
-              explanationChanged && payload.splitExplanation != null
+              payload.explanationDirty &&
+                  explanationChanged &&
+                  payload.splitExplanation != null
               ? payload.splitExplanation
               : null,
           clearExplanation:
-              explanationChanged && payload.splitExplanation == null,
-          categoryId: payload.categoryId != original.categoryId
+              payload.explanationDirty &&
+              explanationChanged &&
+              payload.splitExplanation == null,
+          categoryId:
+              payload.categoryDirty &&
+                  payload.categoryId != original.categoryId
               ? payload.categoryId
               : null,
           payerParticipantId:
-              payload.payerParticipantId != original.payerParticipantId
+              payload.payerDirty &&
+                  payload.payerParticipantId != original.payerParticipantId
               ? payload.payerParticipantId
               : null,
           lastEditedBy: ref.read(currentUserIdProvider), // #248

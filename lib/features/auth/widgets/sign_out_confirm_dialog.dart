@@ -28,7 +28,9 @@ class SignOutConfirmDialog extends StatelessWidget {
     final l10n = context.l10n;
     return AlertDialog(
       backgroundColor: colors.cardSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.spacing.radiusCard)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+      ),
       title: Text(
         l10n.signOutTitle,
         style: AppTypography.sans(
@@ -72,6 +74,58 @@ class SignOutConfirmDialog extends StatelessWidget {
           style: FilledButton.styleFrom(backgroundColor: colors.error),
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(l10n.signOutConfirm),
+        ),
+      ],
+    );
+  }
+}
+
+class SignOutPendingWritesDialog extends StatelessWidget {
+  const SignOutPendingWritesDialog({super.key});
+
+  static Future<bool?> show(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => const SignOutPendingWritesDialog(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    return AlertDialog(
+      backgroundColor: colors.cardSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
+      ),
+      title: Text(
+        l10n.signOutPendingWritesTitle,
+        style: AppTypography.sans(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: colors.textPrimary,
+        ),
+      ),
+      content: Text(
+        l10n.signOutPendingWritesBody,
+        style: AppTypography.sans(
+          fontSize: 14,
+          color: colors.textSecondary,
+          height: 1.4,
+        ),
+      ),
+      actions: [
+        TextButton(
+          key: const Key('signOutPendingWrites.cancel'),
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.signOutPendingWritesKeep),
+        ),
+        FilledButton(
+          key: const Key('signOutPendingWrites.discard'),
+          style: FilledButton.styleFrom(backgroundColor: colors.error),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(l10n.signOutPendingWritesDiscard),
         ),
       ],
     );

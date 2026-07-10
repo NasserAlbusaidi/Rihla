@@ -1,6 +1,6 @@
 import functionsTest from 'firebase-functions-test';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { createHash } from 'crypto';
 import { clearFirestore } from '../fixtures';
@@ -145,6 +145,59 @@ async function seedExpense(path: string): Promise<void> {
 
 const tombstoneIdFor = (uid: string): string =>
   `deleted-${createHash('sha1').update(uid).digest('hex').slice(0, 8)}`;
+
+// #1099: spy the three groups-collection reads inside runAccountDeletionCascade
+// (S0 at :804, the bounded re-query passes, and the final membership check) so a
+// concurrent membership write can be injected deterministically relative to them.
+// `hooks.before(n)` / `hooks.after(n)` run (awaited) immediately before / after the
+// n-th `groups` query's get() resolves — so a seed in after(1) is durable before any
+// re-query yet invisible to S0 (its snapshot is captured first), and a re-add in
+// before(n>=2) lands after the prior pass's scrub. Every other method (listDocuments,
+// used by clearFirestore, etc.) forwards untouched, so the spy is safe to leave
+// installed through afterAll. Seeds MUST use db.doc(...) paths — never
+// db.collection('groups') — so the seeding never re-enters this counter.
+function spyGroupsReads(
+  db: FirebaseFirestore.Firestore,
+  hooks: {
+    before?: (callNumber: number) => Promise<void>;
+    after?: (callNumber: number) => Promise<void>;
+  } = {},
+): { calls: () => number } {
+  const realCollection = db.collection.bind(db);
+  let calls = 0;
+  jest.spyOn(db, 'collection').mockImplementation(((path: string) => {
+    const real = realCollection(path);
+    if (path !== 'groups') return real;
+    calls += 1;
+    const n = calls;
+    return new Proxy(real, {
+      get(target, prop, receiver) {
+        if (prop !== 'where') {
+          const forwarded = Reflect.get(target, prop, receiver);
+          return typeof forwarded === 'function' ? forwarded.bind(target) : forwarded;
+        }
+        return (field: string, op: FirebaseFirestore.WhereFilterOp, value: unknown) => {
+          const query = target.where(field, op, value as never);
+          return new Proxy(query, {
+            get(qTarget, qProp, qReceiver) {
+              if (qProp !== 'get') {
+                const forwarded = Reflect.get(qTarget, qProp, qReceiver);
+                return typeof forwarded === 'function' ? forwarded.bind(qTarget) : forwarded;
+              }
+              return async () => {
+                if (hooks.before) await hooks.before(n);
+                const snap = await qTarget.get();
+                if (hooks.after) await hooks.after(n);
+                return snap;
+              };
+            },
+          });
+        };
+      },
+    });
+  }) as never);
+  return { calls: () => calls };
+}
 
 afterAll(async () => {
   await clearFirestore();
@@ -1051,5 +1104,178 @@ describe('deleteAccount', () => {
     expect(group.data()).toMatchObject({ createdBy: otherUid, isDeleted: false });
     expect(group.data()?.memberIds).toContain(otherUid);
     expect(group.data()?.memberIds).not.toContain(deletedUid);
+  });
+
+  // #1099: a membership created concurrently AFTER the S0 snapshot (a join or
+  // createGroup landing mid-cascade) must be scrubbed in the SAME run — not left a
+  // permanent ghost (a clean run writes no deletionAudit marker, so the reaper never
+  // revisits it). RED pre-fix: the late group keeps the uid AND the auth user is
+  // deleted.
+  test('#1099 a group joined between S0 and the re-query is scrubbed in the same run', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    // S0 universe: one co-membered group the cascade scrubs normally.
+    await seedGroup('gS0', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('gS0', deletedUid);
+    await seedMember('gS0', otherUid);
+
+    // A brand-new group commits AFTER S0's read resolves (invisible to S0's snapshot).
+    spyGroupsReads(db, {
+      after: async (n) => {
+        if (n !== 1) return;
+        await seedGroup('gLate', [deletedUid, otherUid], { createdBy: otherUid });
+        await seedMember('gLate', deletedUid);
+        await seedMember('gLate', otherUid);
+      },
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    const late = (await db.doc('groups/gLate').get()).data();
+    const lateMemberIds = late?.memberIds as string[];
+    expect(lateMemberIds).not.toContain(deletedUid);
+    expect(lateMemberIds.some((id) => id.startsWith('deleted-'))).toBe(true);
+    expect((await db.doc(`groups/gLate/members/${tombstoneIdFor(deletedUid)}`).get()).data())
+      .toMatchObject({ isTombstone: true });
+    // Clean run ⇒ auth user deleted, no marker.
+    expect(result.cascadeFailed).toEqual([]);
+    await expect(getAuth().getUser(deletedUid))
+      .rejects.toMatchObject({ code: 'auth/user-not-found' });
+    expect((await db.doc(`deletionAudit/${deletedUid}`).get()).exists).toBe(false);
+  });
+
+  // #1099 (Gate r1-P1 + r2-P1-c): a group scrubbed at S0 that the uid RE-JOINS
+  // (memberIds re-populated post-scrub) must be re-processed by the authoritative
+  // re-query — an exclude-set of already-seen groups would skip it. The re-scrub
+  // REUSES the single existing tombstone (never deleted-<hash>-2) and re-keys money
+  // maps by SUM (mergeUidMapKey), so an expense holding BOTH the prior tombstone and
+  // the re-joined uid conserves value. RED pre-fix: the re-joined group is a
+  // permanent ghost while the auth user is deleted.
+  test('#1099 a re-joined group is re-scrubbed with one tombstone and conserved money', async () => {
+    const db = getFirestore();
+    const T = tombstoneIdFor(deletedUid);
+    await seedAuthUser();
+
+    // The "already-scrubbed-then-re-joined" state, committed AFTER S0's read: a live
+    // tombstone T, the re-added uid back in memberIds + a fresh member doc, an event
+    // whose participantIds already carry T, an already-scrubbed expense (must stay
+    // untouched), and a NEW expense split between T and the re-joined uid.
+    spyGroupsReads(db, {
+      after: async (n) => {
+        if (n !== 1) return;
+        await seedGroup('gRejoin', [otherUid, T, deletedUid], { createdBy: otherUid });
+        await seedMember('gRejoin', otherUid);
+        await seedMember('gRejoin', deletedUid);
+        await db.doc(`groups/gRejoin/members/${T}`).set({
+          id: T, userId: T, displayName: 'Deleted member',
+          role: 'MEMBER', joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+          isShadow: false, isTombstone: true,
+        });
+        await seedEvent('gRejoin', 'ev', { participantIds: [T, otherUid, deletedUid] });
+        // Already scrubbed at the prior pass — must NOT be double-processed:
+        await db.doc('groups/gRejoin/events/ev/expenses/exp1').set({
+          id: 'exp1', eventId: 'ev', createdBy: 'deleted-user', payerParticipantId: T,
+          amountFils: 12000, currency: 'OMR', scope: 'custom', splitMode: 'exact',
+          customSplitParticipants: [T, otherUid],
+          splitDistribution: { [T]: 6000, [otherUid]: 6000 },
+          description: null, note: null, receiptUrl: null,
+          isDeleted: false, deletedAt: null, createdAt: '2026-01-06T00:00:00.000Z',
+        });
+        // NEW post-rejoin expense holding BOTH T and the re-joined uid:
+        await db.doc('groups/gRejoin/events/ev/expenses/exp2').set({
+          id: 'exp2', eventId: 'ev', createdBy: deletedUid, payerParticipantId: deletedUid,
+          amountFils: 500, currency: 'OMR', scope: 'custom', splitMode: 'exact',
+          customSplitParticipants: [T, deletedUid],
+          splitDistribution: { [T]: 300, [deletedUid]: 200 },
+          description: 'rejoin expense', note: 'n', receiptUrl: 'r.png',
+          isDeleted: false, deletedAt: null, createdAt: '2026-01-07T00:00:00.000Z',
+        });
+      },
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    // Exactly ONE tombstone doc (reuse, not -2).
+    const members = await db.collection('groups/gRejoin/members').get();
+    expect(members.docs.filter((d) => d.data().isTombstone === true)).toHaveLength(1);
+    expect((await db.doc(`groups/gRejoin/members/${T}-2`).get()).exists).toBe(false);
+    // uid gone from memberIds; re-joined member doc removed; tombstone retained.
+    const gr = (await db.doc('groups/gRejoin').get()).data();
+    expect(gr?.memberIds).not.toContain(deletedUid);
+    expect(gr?.memberIds).toContain(T);
+    expect((await db.doc(`groups/gRejoin/members/${deletedUid}`).get()).exists).toBe(false);
+
+    // Money conserved: exp2's uid slice MERGES into T (SUM), not overwrite → T = 300+200.
+    const exp2 = (await db.doc('groups/gRejoin/events/ev/expenses/exp2').get()).data();
+    expect(exp2?.splitDistribution).toEqual({ [T]: 500 });
+    const exp2Sum = Object.values(exp2?.splitDistribution as Record<string, number>)
+      .reduce((a, b) => a + b, 0);
+    expect(exp2Sum).toBe(500);
+    expect(exp2).toMatchObject({ payerParticipantId: T, createdBy: 'deleted-user' });
+    expectNoDeletedIdentity(exp2);
+
+    // Already-scrubbed exp1 untouched (no double count).
+    const exp1 = (await db.doc('groups/gRejoin/events/ev/expenses/exp1').get()).data();
+    expect(exp1?.splitDistribution).toEqual({ [T]: 6000, [otherUid]: 6000 });
+
+    // Clean re-scrub ⇒ auth deleted, no marker.
+    expect(result.cascadeFailed).toEqual([]);
+    await expect(getAuth().getUser(deletedUid))
+      .rejects.toMatchObject({ code: 'auth/user-not-found' });
+    expect((await db.doc(`deletionAudit/${deletedUid}`).get()).exists).toBe(false);
+  });
+
+  // #1099: sustained churn — a group whose uid is re-added on EVERY re-query pass —
+  // cannot be cleaned within the 3-pass bound, so the FINAL check lands it in
+  // cascadeFailed: the auth user is preserved, the deletionAudit marker is written,
+  // and the 24h deletionReaper re-runs to convergence. RED pre-fix: no re-query, so
+  // the group is scrubbed once and the auth user is deleted with no backstop marker.
+  test('#1099 unbounded churn lands the group in cascadeFailed and preserves the auth user', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('gChurn', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('gChurn', deletedUid);
+    await seedMember('gChurn', otherUid);
+
+    // Re-add the uid before every re-query pass AND the final check (calls #2..#5),
+    // faster than the bound can converge.
+    spyGroupsReads(db, {
+      before: async (n) => {
+        if (n < 2) return;
+        await db.doc('groups/gChurn').update({ memberIds: FieldValue.arrayUnion(deletedUid) });
+      },
+    });
+
+    await expect(wrapped({ data: {}, auth: { uid: deletedUid } } as any))
+      .rejects.toMatchObject({ code: 'internal' });
+
+    // Auth user preserved; marker written naming the churned group.
+    await expect(getAuth().getUser(deletedUid)).resolves.toMatchObject({ uid: deletedUid });
+    const marker = (await db.doc(`deletionAudit/${deletedUid}`).get()).data();
+    expect(marker).toMatchObject({ uid: deletedUid, status: 'failed' });
+    expect(marker?.cascadeFailed).toContain('gChurn');
+  });
+
+  // #1099: happy-path pin — with no concurrent write, the re-query passes return
+  // empty and terminate immediately; the auth user is deleted and NO marker is
+  // written. Guards against the loop spuriously failing a clean deletion.
+  test('#1099 no concurrent write: re-query terminates clean, auth deleted, no marker', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('gClean', [deletedUid, otherUid], { createdBy: otherUid });
+    await seedMember('gClean', deletedUid);
+    await seedMember('gClean', otherUid);
+
+    const spy = spyGroupsReads(db);
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    // S0 + one empty re-query pass + the final check = 3 groups-collection reads.
+    expect(spy.calls()).toBe(3);
+    expect(result.cascadeFailed).toEqual([]);
+    expect(result.authUserDeleted).toBe(true);
+    await expect(getAuth().getUser(deletedUid))
+      .rejects.toMatchObject({ code: 'auth/user-not-found' });
+    expect((await db.doc(`deletionAudit/${deletedUid}`).get()).exists).toBe(false);
   });
 });

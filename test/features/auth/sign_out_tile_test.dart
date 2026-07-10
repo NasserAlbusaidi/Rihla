@@ -33,9 +33,7 @@ Future<Widget> _wrap({
   required _MockRecoveryService service,
   required String? email,
 }) async {
-  SharedPreferences.setMockInitialValues({
-    'settings_device_name': 'Test User',
-  });
+  SharedPreferences.setMockInitialValues({'settings_device_name': 'Test User'});
   final prefs = await SharedPreferences.getInstance();
 
   final user = email == null ? null : _userWithEmail(email);
@@ -48,13 +46,11 @@ Future<Widget> _wrap({
         (ref) => Stream<firebase_auth.User?>.value(user),
       ),
       profile_stats.profileStatsProvider.overrideWith(
-        (ref) => const AsyncValue<profile_stats.ProfileStats>.data(
-          (
-            groupCount: 0,
-            eventCount: 0,
-            spentByCurrency: <profile_stats.CurrencySpend>[],
-          ),
-        ),
+        (ref) => const AsyncValue<profile_stats.ProfileStats>.data((
+          groupCount: 0,
+          eventCount: 0,
+          spentByCurrency: <profile_stats.CurrencySpend>[],
+        )),
       ),
     ],
     child: MaterialApp.router(
@@ -64,10 +60,7 @@ Future<Widget> _wrap({
       routerConfig: GoRouter(
         initialLocation: '/profile',
         routes: [
-          GoRoute(
-            path: '/profile',
-            builder: (_, _) => const ProfileScreen(),
-          ),
+          GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
         ],
       ),
     ),
@@ -99,8 +92,9 @@ void main() {
     expect(find.text('foo@example.com'), findsOneWidget);
   });
 
-  testWidgets('cancelling the dialog does not call signOutCurrentDevice',
-      (tester) async {
+  testWidgets('cancelling the dialog does not call signOutCurrentDevice', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       await _wrap(service: service, email: 'foo@example.com'),
     );
@@ -116,8 +110,9 @@ void main() {
     verifyNever(() => service.signOutCurrentDevice());
   });
 
-  testWidgets('confirming calls signOutCurrentDevice and surfaces a snack',
-      (tester) async {
+  testWidgets('confirming calls signOutCurrentDevice and surfaces a snack', (
+    tester,
+  ) async {
     when(() => service.signOutCurrentDevice()).thenAnswer((_) async {});
 
     await tester.pumpWidget(
@@ -153,4 +148,73 @@ void main() {
 
     expect(find.text("Couldn't sign out. Try again."), findsOneWidget);
   });
+
+  testWidgets(
+    'pending writes block sign-out and Keep changes preserves the session '
+    '(#1094)',
+    (tester) async {
+      when(
+        () => service.signOutCurrentDevice(),
+      ).thenThrow(PendingWritesNotFlushedException(const Duration(seconds: 5)));
+
+      await tester.pumpWidget(
+        await _wrap(service: service, email: 'foo@example.com'),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(ProfileKeys.signOutDeviceTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ProfileKeys.signOutDeviceTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('signOutConfirm.confirm')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unsynced changes'), findsOneWidget);
+      expect(find.text("Couldn't sign out. Try again."), findsNothing);
+
+      await tester.tap(find.byKey(const Key('signOutPendingWrites.cancel')));
+      await tester.pumpAndSettle();
+
+      verify(() => service.signOutCurrentDevice()).called(1);
+      verifyNever(
+        () => service.signOutCurrentDevice(discardPendingWrites: true),
+      );
+      expect(find.text('Signed out'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Discard changes explicitly retries sign-out with pending writes allowed '
+    '(#1094)',
+    (tester) async {
+      when(
+        () => service.signOutCurrentDevice(),
+      ).thenThrow(PendingWritesNotFlushedException(const Duration(seconds: 5)));
+      when(
+        () => service.signOutCurrentDevice(discardPendingWrites: true),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        await _wrap(service: service, email: 'foo@example.com'),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(ProfileKeys.signOutDeviceTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ProfileKeys.signOutDeviceTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('signOutConfirm.confirm')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unsynced changes'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('signOutPendingWrites.discard')));
+      await tester.pumpAndSettle();
+
+      verify(() => service.signOutCurrentDevice()).called(1);
+      verify(
+        () => service.signOutCurrentDevice(discardPendingWrites: true),
+      ).called(1);
+      expect(find.text('Signed out'), findsOneWidget);
+    },
+  );
 }

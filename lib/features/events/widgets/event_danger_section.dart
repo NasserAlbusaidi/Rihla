@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -53,11 +54,10 @@ class EventDangerSection extends ConsumerWidget {
     if (!isAdmin) return const SizedBox.shrink();
 
     final eventRef = (groupId: groupId, eventId: eventId);
-    final expenses =
-        ref.watch(eventExpensesProvider(eventRef)).valueOrNull ?? const [];
-    final settlements =
-        ref.watch(eventSettlementsProvider(eventRef)).valueOrNull ?? const [];
-    final hasUnsettled = expenses.isNotEmpty && settlements.isEmpty;
+    final balances = ref.watch(ledgerViewProvider(eventRef)).balances;
+    final hasUnsettled = balances.values.any(
+      (bucket) => bucket.any((balance) => balance.netBalance != Decimal.zero),
+    );
 
     return Column(
       key: EventKeys.dangerSection,
