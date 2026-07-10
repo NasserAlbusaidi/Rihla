@@ -419,9 +419,12 @@ Expense _itemizedExpense() {
     createdAt: DateTime(2026, 5, 30),
     createdBy: 'uid-yasmin',
     splitMode: SplitMode.exact,
+    // Must equal what the items reduce to, or re-reducing on relabel-apply
+    // would change the distribution and (correctly) trip moneyDirty: Tagine
+    // 8.500 → yasmin; Mint tea 4.000 split two ways → 2.000 each.
     splitDistribution: {
-      'uid-yasmin': Decimal.parse('8.500'),
-      'uid-layla': Decimal.parse('4.000'),
+      'uid-yasmin': Decimal.parse('10.500'),
+      'uid-layla': Decimal.parse('2.000'),
     },
     splitExplanation: const SplitExplanation(
       items: [
