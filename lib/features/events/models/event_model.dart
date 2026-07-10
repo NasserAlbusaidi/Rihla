@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/calendar_date.dart';
 import '../../../core/utils/firestore_parse.dart';
 import 'spending_snapshot.dart';
 
@@ -64,6 +65,19 @@ class EventModules {
   /// Creates a copy with updated fields.
   EventModules copyWith({bool? ledger}) =>
       EventModules(ledger: ledger ?? this.ledger);
+}
+
+/// Reads an event calendar date (#1098): the stored instant is re-anchored to
+/// UTC noon of its own UTC-component y/m/d, so the picked date renders the same
+/// on every device in every timezone. See the invariant in
+/// docs/plans/2026-07-10-1098-event-calendar-dates.md.
+DateTime? _calendarDateOrNull(Object? raw) {
+  final parsed = dateOrNull(raw);
+  if (parsed == null) return null; // #532 total-parse: malformed → null, never throw
+  // The read-side .toUtc() is LOAD-BEARING: it normalizes the stored instant
+  // to UTC components (correct for anchored docs, accepted-shift for legacy).
+  // It is NOT the forbidden capture-time conversion — do not "simplify" away.
+  return anchorCalendarDate(parsed.toUtc());
 }
 
 /// Immutable model representing an event inside a group.
@@ -163,8 +177,8 @@ class Event {
       modules: data['modules'] is Map<String, dynamic>
           ? EventModules.fromMap(data['modules'] as Map<String, dynamic>)
           : const EventModules(),
-      startDate: dateOrNull(data['startDate']),
-      endDate: dateOrNull(data['endDate']),
+      startDate: _calendarDateOrNull(data['startDate']),
+      endDate: _calendarDateOrNull(data['endDate']),
       isDeleted: data['isDeleted'] == true,
       deletedAt: dateOrNull(data['deletedAt']),
       createdAt: dateOrNow(data['createdAt']),
@@ -198,8 +212,10 @@ class Event {
       'participantIds': participantIds,
       'participantNames': participantNames,
       'modules': modules.toMap(),
-      'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
-      'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+      'startDate':
+          startDate != null ? Timestamp.fromDate(anchorCalendarDate(startDate!)) : null,
+      'endDate':
+          endDate != null ? Timestamp.fromDate(anchorCalendarDate(endDate!)) : null,
       'isDeleted': isDeleted,
       'deletedAt': deletedAt != null ? Timestamp.fromDate(deletedAt!) : null,
       'createdAt': createdAt.toIso8601String(),
