@@ -245,14 +245,14 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       ),
       builder: (sheetContext) => _SharePrompt(
         group: group,
-        onNavigate: () {
-          Navigator.pop(sheetContext);
-          if (mounted) {
-            context.pushReplacement('/group/${group.id}');
-          }
-        },
+        onNavigate: () => Navigator.pop(sheetContext),
       ),
     );
+    // #1087: the group already exists — every dismissal path (Done, drag,
+    // barrier tap, system back) must leave the creation form, or its
+    // re-enabled Create button mints a duplicate group.
+    if (!mounted || !context.mounted) return;
+    context.pushReplacement('/group/${group.id}');
   }
 
   void _close() {
