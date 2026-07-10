@@ -163,6 +163,7 @@ Widget _wrap({
   required List<GroupMember> members,
   GroupBalances? balances,
   bool durable = true,
+  Locale? locale,
 }) {
   final currentUserId = isCreator ? 'uid-creator' : 'shadow-sara';
   final router = GoRouter(
@@ -204,6 +205,7 @@ Widget _wrap({
     ],
     child: MaterialApp.router(
       theme: AppTheme.lightTheme,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
@@ -384,6 +386,39 @@ void main() {
         ),
       );
       expect(calls.add, isEmpty);
+    },
+  );
+
+  testWidgets(
+    '#1059 stage 1: the Arabic disclosure copy renders under the ar locale',
+    (tester) async {
+      final calls = _Calls();
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          serviceBuilder: (ref) => _MockGroupService(ref, calls: calls),
+          connectivity: _online(),
+          isCreator: true,
+          members: [_creator()],
+          locale: const Locale('ar'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.addPersonAction));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(GroupKeys.addPersonResplitDisclosure),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'سيُضاف هذا الشخص إلى فعاليات المجموعة الحالية — بما فيها '
+          'المُغلقة — وقد يتغيّر التقسيم بالتساوي.',
+        ),
+        findsOneWidget,
+      );
     },
   );
 
