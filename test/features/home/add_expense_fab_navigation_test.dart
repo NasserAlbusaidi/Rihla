@@ -22,6 +22,7 @@ import 'package:safar/features/ledger/models/expense_category_model.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/providers/category_provider.dart';
 import 'package:safar/features/ledger/screens/add_expense_screen.dart';
+import 'package:safar/features/ledger/widgets/expense_editor/where_card.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 const _uid = 'uid-user';
@@ -62,6 +63,11 @@ Event makeEvent({
   );
 }
 
+Finder _whereCardDestination(String eventName) => find.descendant(
+  of: find.byType(WhereCard),
+  matching: find.text('Adding to $eventName'),
+);
+
 void main() {
   late SharedPreferences prefs;
 
@@ -73,9 +79,7 @@ void main() {
   List<Override> overridesFor(Map<Group, List<Event>> data) => [
     sharedPreferencesProvider.overrideWithValue(prefs),
     currentUserIdProvider.overrideWithValue(_uid),
-    userGroupsProvider.overrideWith(
-      (ref) => Stream.value(data.keys.toList()),
-    ),
+    userGroupsProvider.overrideWith((ref) => Stream.value(data.keys.toList())),
     crossGroupActivityProvider.overrideWith((ref) => const AsyncValue.data([])),
     groupEventsProvider.overrideWith((ref, groupId) {
       final entry = data.entries.where((e) => e.key.id == groupId);
@@ -155,9 +159,7 @@ void main() {
       expect(find.byKey(HomeKeys.addExpenseFab), findsNothing);
     });
 
-    testWidgets('hidden on the zero-groups empty state (#807)', (
-      tester,
-    ) async {
+    testWidgets('hidden on the zero-groups empty state (#807)', (tester) async {
       // No groups: the empty state already carries its own "create group"
       // CTA — the FAB would be a redundant second entry point to the same
       // dead end (the target sheet's own empty body).
@@ -491,7 +493,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Add mode, pristine — the affordance names the current target.
-        expect(find.text('Adding to Trip One'), findsOneWidget);
+        expect(_whereCardDestination('Trip One'), findsOneWidget);
         final changeButton = find.byKey(
           LedgerKeys.editorChangeDestinationButton,
         );
@@ -507,7 +509,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Replaced, not stacked — the fresh editor names the new target.
-        expect(find.text('Adding to Trip Two'), findsOneWidget);
+        expect(_whereCardDestination('Trip Two'), findsOneWidget);
         expect(find.byKey(HomeKeys.addExpenseSheet), findsNothing);
         // The discriminator that actually proves `pushReplacement` (not a
         // plain `push`): with a replace, the stack holds exactly ONE add
@@ -515,7 +517,7 @@ void main() {
         // leave the abandoned "Trip One" draft one pop away (findsNothing on
         // its text is not a valid proxy: an offstage/obscured page under an
         // opaque route wouldn't render its text either way).
-        final editorContext = tester.element(find.text('Adding to Trip Two'));
+        final editorContext = tester.element(_whereCardDestination('Trip Two'));
         expect(Navigator.of(editorContext).canPop(), isFalse);
       },
     );
@@ -569,7 +571,7 @@ void main() {
         // Cancelled: dialog gone, sheet never opened, draft still there.
         expect(find.text('Discard this expense?'), findsNothing);
         expect(find.byKey(HomeKeys.addExpenseSheet), findsNothing);
-        expect(find.text('Adding to Trip One'), findsOneWidget);
+        expect(_whereCardDestination('Trip One'), findsOneWidget);
 
         await tester.tap(changeButton);
         await tester.pump();

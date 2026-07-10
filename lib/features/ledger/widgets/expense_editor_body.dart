@@ -37,6 +37,7 @@ import 'expense_editor/currency_mismatch_notice.dart';
 import 'expense_editor/currency_row.dart';
 import 'expense_editor/delete_card.dart';
 import 'expense_editor/description_field.dart';
+import 'expense_editor/destination_banner.dart';
 import 'expense_editor/editor_section.dart';
 import 'expense_editor/expense_provenance_byline.dart';
 import 'expense_editor/expense_top_bar.dart';
@@ -578,13 +579,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     }
   }
 
-  /// #900 (PR-5 §1): the trailing "change" tap on `WhereCard`, add mode
-  /// only — wired at the [WhereCard] callsite as `_isEdit ? null :
-  /// _handleChangeDestination`, so the null-check there IS the mode gate. A
-  /// dirty form runs the SAME add-discard confirm as X/back (same stakes:
-  /// abandoning this event's draft); on confirm (or when pristine) opens the
-  /// target picker with `replaceCurrent: true` so the abandoned add editor is
-  /// replaced, never stacked under Back.
+  /// #900 (PR-5 §1): the add-mode destination-change action shared by the
+  /// fixed [DestinationBanner] and the trailing [WhereCard] button. A dirty
+  /// form runs the SAME add-discard confirm as X/back (same stakes: abandoning
+  /// this event's draft); on confirm (or when pristine) opens the target picker
+  /// with `replaceCurrent: true` so the abandoned add editor is replaced,
+  /// never stacked under Back.
   Future<void> _handleChangeDestination() async {
     HapticService.lightClick();
     if (_isDirty) {
@@ -886,6 +886,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                 onClose: _handleClose,
                 onAction: _submit,
               ),
+              if (!_isEdit && event != null)
+                DestinationBanner(
+                  event: event,
+                  onChangeDestination: _handleChangeDestination,
+                ),
               const OfflineBanner(),
               Expanded(
                 child: SingleChildScrollView(
