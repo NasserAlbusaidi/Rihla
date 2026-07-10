@@ -46,15 +46,30 @@ class SearchResults extends ConsumerWidget {
     // instead of a blank panel. Still no results section / no empty-state.
     if (trimmed.isEmpty) return const _PreQueryGuidance();
 
-    final groups = ref.watch(userGroupsProvider).valueOrNull ?? const <Group>[];
+    final userAsync = ref.watch(firebaseUserProvider);
+    if (userAsync.isLoading && !userAsync.hasValue) {
+      return const _LoadingState();
+    }
+
+    final groupsAsync = ref.watch(userGroupsProvider);
+    if (groupsAsync.isLoading && !groupsAsync.hasValue) {
+      return const _LoadingState();
+    }
+
+    final groups = groupsAsync.valueOrNull ?? const <Group>[];
     final matchedGroups = groups
         .where((group) => matchesSearchQuery(group.name, trimmed))
         .toList();
 
     final eventHits = <({Event event, String groupName})>[];
+    var hasUnresolvedEvents = false;
     for (final group in groups) {
-      final events = ref.watch(groupEventsProvider(group.id)).valueOrNull;
-      if (events == null) continue;
+      final eventsAsync = ref.watch(groupEventsProvider(group.id));
+      if (eventsAsync.isLoading && !eventsAsync.hasValue) {
+        hasUnresolvedEvents = true;
+        continue;
+      }
+      final events = eventsAsync.valueOrNull ?? const <Event>[];
       for (final event in events) {
         if (event.isDeleted) continue;
         if (matchesSearchQuery(event.name, trimmed)) {
@@ -64,6 +79,7 @@ class SearchResults extends ConsumerWidget {
     }
 
     if (matchedGroups.isEmpty && eventHits.isEmpty) {
+      if (hasUnresolvedEvents) return const _LoadingState();
       return const _NoMatches();
     }
 
@@ -348,6 +364,15 @@ class _PreQueryGuidance extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: CircularProgressIndicator());
   }
 }
 
