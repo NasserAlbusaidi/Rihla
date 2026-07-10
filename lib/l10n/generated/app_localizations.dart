@@ -4377,6 +4377,12 @@ abstract class AppLocalizations {
   /// **'Add'**
   String get groupAddPersonAction;
 
+  /// #1059 stage 1: pre-submit disclosure above the add-a-person CTA — adding a member fans them into existing (even closed) events, so read-time equal splits shift and this states it before the action commits.
+  ///
+  /// In en, this message translates to:
+  /// **'They\'ll be added to this group\'s existing events — including closed ones — and equal splits may change.'**
+  String get groupAddPersonResplitDisclosure;
+
   /// No description provided for @groupRemoveMemberTooltip.
   ///
   /// In en, this message translates to:

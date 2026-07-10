@@ -742,6 +742,7 @@
   "groupAddPersonTitle": "إضافة شخص",
   "groupAddPersonSubtitle": "أضف شخصًا بالاسم الآن، ويمكنه الانضمام لاحقًا باستخدام رمز الدعوة.",
   "groupAddPersonAction": "إضافة",
+  "groupAddPersonResplitDisclosure": "سيُضاف هذا الشخص إلى فعاليات المجموعة الحالية — بما فيها المُغلقة — وقد يتغيّر التقسيم بالتساوي.",
   "groupRemoveMemberTooltip": "إزالة {name} من المجموعة",
   "groupRoleMember": "عضو",
   "groupSettleWithBeforeRemoving": "سوِّ الحساب مع {name} قبل إزالته.",
