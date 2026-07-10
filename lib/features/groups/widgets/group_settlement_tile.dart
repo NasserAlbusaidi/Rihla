@@ -331,11 +331,11 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
     );
   }
 
-  /// Under RTL, FSI/PDI keeps each name in its own bidi run so the paragraph
-  /// orders payer and payee by UI direction instead of the names' script.
-  /// LTR text stays byte-for-byte unchanged.
+  /// FSI/PDI keeps each name in its own bidi run so the paragraph orders
+  /// payer and payee by UI direction instead of the names' script.
+  /// LTR paragraphs order isolated runs left-to-right, keeping Latin text
+  /// byte-for-byte unchanged while pinning Arabic to logical order.
   String _captionName(String name, TextDirection textDirection) {
-    if (textDirection == TextDirection.ltr) return name;
     return '\u2068$name\u2069';
   }
 
