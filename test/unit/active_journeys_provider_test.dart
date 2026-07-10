@@ -26,7 +26,7 @@ Event _makeEvent({
   required String id,
   required String groupId,
   required DateTime startDate,
-  required DateTime endDate,
+  DateTime? endDate,
 }) {
   return Event(
     id: id,
@@ -422,6 +422,71 @@ void main() {
 
         final entries = container.read(activeJourneysProvider).valueOrNull!;
         expect(entries.map((e) => e.eventId).toList(), ['today', 'upcoming']);
+      },
+    );
+
+    test(
+      '#1098: start-only events window and rank by calendar day — upcoming '
+      'before already-started, outside-window excluded',
+      () async {
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        const groupId = 'start-only-group';
+        final group = _makeGroup(id: groupId);
+        final soon = _makeEvent(
+          id: 'soon',
+          groupId: groupId,
+          startDate: anchorCalendarDate(today.add(const Duration(days: 10))),
+        );
+        final started = _makeEvent(
+          id: 'started',
+          groupId: groupId,
+          startDate: anchorCalendarDate(today.subtract(const Duration(days: 5))),
+        );
+        // 90 calendar days out — beyond the 60-day upcoming window.
+        final farFuture = _makeEvent(
+          id: 'far-future',
+          groupId: groupId,
+          startDate: anchorCalendarDate(today.add(const Duration(days: 90))),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            currentUserIdProvider.overrideWith((_) => 'uid-user'),
+            userGroupsProvider.overrideWith((_) => Stream.value([group])),
+            groupEventsProvider(groupId).overrideWith(
+              (_) => Stream.value([farFuture, started, soon]),
+            ),
+            groupBalancesOnceProvider(groupId).overrideWith(
+              (_) => (
+                balances: (
+                  balances: <String, List<UserBalance>>{},
+                  totalSpent: <String, Decimal>{},
+                  eventCount: 3,
+                  perEventBreakdown:
+                      <String, Map<String, Map<String, Decimal>>>{},
+                  memberNames: <String, String>{},
+                  memberRawNames: <String, String>{},
+                ),
+                failedEventIds: const <String>{},
+                groupSettlementsFailed: false,
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.listen(
+          activeJourneysProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
+        await _pump(container);
+
+        final entries = container.read(activeJourneysProvider).valueOrNull!;
+        // soon: priority 11 (10 days out + 1); started: 500 + 5; far-future:
+        // outside the 60-day window entirely.
+        expect(entries.map((e) => e.eventId).toList(), ['soon', 'started']);
       },
     );
   });
