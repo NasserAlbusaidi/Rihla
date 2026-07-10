@@ -430,46 +430,54 @@ class _CreateGroupTopBar extends StatelessWidget {
             ),
             Align(
               alignment: AlignmentDirectional.centerEnd,
-              child: SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  key: GroupKeys.createGroupButton,
-                  onPressed: isLoading ? null : onCreate,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.textPrimary,
-                    foregroundColor: colors.scaffoldBackground,
-                    disabledBackgroundColor: colors.textPrimary.withValues(
-                      alpha: 0.72,
-                    ),
-                    disabledForegroundColor: colors.scaffoldBackground,
-                    minimumSize: const Size(0, 40),
-                    padding: const EdgeInsetsDirectional.fromSTEB(
-                      14,
-                      9,
-                      14,
-                      11,
-                    ),
-                    shape: const StadiumBorder(),
-                    textStyle:
-                        AppTypography.sans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.1,
-                          height: 1.22,
-                        ).copyWith(
-                          leadingDistribution: TextLeadingDistribution.even,
+              child: Semantics(
+                button: true,
+                label: context.l10n.groupCreate,
+                onTap: isLoading ? null : onCreate,
+                excludeSemantics: true,
+                child: SizedBox(
+                  height: 44,
+                  child: Center(
+                    child: ElevatedButton(
+                      key: GroupKeys.createGroupButton,
+                      onPressed: isLoading ? null : onCreate,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.textPrimary,
+                        foregroundColor: colors.scaffoldBackground,
+                        disabledBackgroundColor: colors.textPrimary.withValues(
+                          alpha: 0.72,
                         ),
+                        disabledForegroundColor: colors.scaffoldBackground,
+                        minimumSize: const Size(0, 40),
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          14,
+                          9,
+                          14,
+                          11,
+                        ),
+                        shape: const StadiumBorder(),
+                        textStyle:
+                            AppTypography.sans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.1,
+                              height: 1.22,
+                            ).copyWith(
+                              leadingDistribution: TextLeadingDistribution.even,
+                            ),
+                      ),
+                      child: isLoading
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                color: colors.scaffoldBackground,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(context.l10n.groupCreate),
+                    ),
                   ),
-                  child: isLoading
-                      ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            color: colors.scaffoldBackground,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(context.l10n.groupCreate),
                 ),
               ),
             ),

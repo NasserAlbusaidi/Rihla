@@ -529,6 +529,20 @@ void main() {
       await tester.enterText(nameFields.first, 'My Travel Group');
       expect(find.text('My Travel Group'), findsOneWidget);
     });
+
+    testWidgets('Create button tap target meets the 44dp floor (#1109)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(await buildCreateScreen());
+      await tester.pump();
+
+      final button = tester.getSize(find.byKey(GroupKeys.createGroupButton));
+      expect(
+        button.height,
+        greaterThanOrEqualTo(44),
+        reason: 'Create button hit target height ${button.height}dp',
+      );
+    });
   });
 
   // ---------------------------------------------------------------------------
