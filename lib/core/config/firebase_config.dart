@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../firebase_options.dart';
 import '../services/cache_uid_barrier.dart';
 import '../services/firestore_cache_gate.dart';
+import '../services/post_deletion_auth_barrier.dart';
 
 /// Firebase client configuration and initialization.
 ///
@@ -71,6 +72,9 @@ class FirebaseConfig {
   /// (#213): a transient error must not mint a fresh UID and orphan an anon
   /// user's data — see [recoverRestoredSessionIfNeeded].
   ///
+  /// The sole exception is a matching post-deletion UID marker (#1100), which
+  /// proves the server already deleted that account before the restart.
+  ///
   /// After the session settles, runs the cold-start cache barrier (#45): if the
   /// booted UID differs from the last-active UID, or an in-session swap left the
   /// dirty flag set, it clears the Firestore SDK on-device cache BEFORE the
@@ -85,14 +89,24 @@ class FirebaseConfig {
     Future<void> Function(User restoredUser)? verifyTokenOverride,
   }) async {
     final authInstance = authOverride ?? auth;
-    // Stays false: since #213 the restored-session verify is non-destructive
-    // and can no longer produce a swap (removing this plumbing is a #213
-    // follow-up). The no-session branch never swaps either.
-    const swapped = false;
+    var swapped = false;
+    SharedPreferences? resolvedPrefs;
 
     // Wait for auth state restoration from disk (fires once on startup).
     final restoredUser = await authInstance.authStateChanges().first;
-    if (restoredUser != null) {
+    if (runCacheBarrier) {
+      resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+      swapped = await reconcilePostDeletionAuthSession(
+        prefs: resolvedPrefs,
+        restoredUid: restoredUser?.uid,
+        signOut: authInstance.signOut,
+      );
+    }
+
+    if (swapped) {
+      log('Deleted Firebase session cleared — signing in anonymously');
+      await _signInAnonymously(authInstance);
+    } else if (restoredUser != null) {
       log('Firebase session restored (uid: ${restoredUser.uid})');
       // #105: do NOT await the token verify. `getIdToken()` performs a network
       // refresh (securetoken.googleapis.com) that would block the first frame
@@ -121,7 +135,7 @@ class FirebaseConfig {
       await _runCacheBarrier(
         authInstance: authInstance,
         swapped: swapped,
-        prefs: prefs,
+        prefs: resolvedPrefs ?? prefs,
         cacheGate: cacheGate,
       );
     }
