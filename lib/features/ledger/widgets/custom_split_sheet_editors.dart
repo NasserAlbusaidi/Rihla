@@ -135,41 +135,67 @@ class _SharesStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: colors.rule2),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return SizedBox(
+      height: 44,
+      child: Stack(
         children: [
-          _StepperButton(
-            icon: Icons.remove,
-            enabled: value > 0,
-            onTap: () {
-              HapticService.selection();
-              onChanged((value - 1).clamp(0, 99));
-            },
-          ),
-          SizedBox(
-            width: context.spacing.space32,
-            child: Text(
-              '$value',
-              textAlign: TextAlign.center,
-              style: AppTypography.mono(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
+          PositionedDirectional(
+            start: 0,
+            end: 0,
+            top: 4,
+            bottom: 4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: colors.rule2),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),
-          _StepperButton(
-            icon: Icons.add,
-            enabled: value < 99,
-            onTap: () {
-              HapticService.selection();
-              onChanged((value + 1).clamp(0, 99));
-            },
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            width: 44,
+            child: _StepperButton(
+              icon: Icons.remove,
+              enabled: value > 0,
+              visualAlignment: AlignmentDirectional.centerStart,
+              onTap: () {
+                HapticService.selection();
+                onChanged((value - 1).clamp(0, 99));
+              },
+            ),
+          ),
+          PositionedDirectional(
+            start: 36,
+            top: 0,
+            bottom: 0,
+            width: context.spacing.space32,
+            child: Center(
+              child: Text(
+                '$value',
+                textAlign: TextAlign.center,
+                style: AppTypography.mono(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+          PositionedDirectional(
+            start: 64,
+            top: 0,
+            bottom: 0,
+            width: 44,
+            child: _StepperButton(
+              icon: Icons.add,
+              enabled: value < 99,
+              onTap: () {
+                HapticService.selection();
+                onChanged((value + 1).clamp(0, 99));
+              },
+            ),
           ),
         ],
       ),
@@ -182,24 +208,29 @@ class _StepperButton extends StatelessWidget {
     required this.icon,
     required this.enabled,
     required this.onTap,
+    this.visualAlignment = Alignment.center,
   });
 
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;
+  final AlignmentGeometry visualAlignment;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return InkWell(
       onTap: enabled ? onTap : null,
-      child: SizedBox(
-        width: 36,
-        height: 36,
-        child: Icon(
-          icon,
-          size: 16,
-          color: enabled ? colors.textPrimary : colors.textSecondary,
+      child: Align(
+        alignment: visualAlignment,
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(
+            icon,
+            size: 16,
+            color: enabled ? colors.textPrimary : colors.textSecondary,
+          ),
         ),
       ),
     );

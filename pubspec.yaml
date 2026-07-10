@@ -94,6 +94,10 @@ dev_dependencies:
   fake_cloud_firestore: ^4.1.0+1
   firebase_auth_mocks: ^0.15.1
   firebase_core_platform_interface: ^6.0.3
+  # Register a fake FirebaseAuthPlatform in
+  # display_name_propagation_service_test.dart so FirebaseConfig.currentUser
+  # resolves to a real uid without a platform channel (#1102).
+  firebase_auth_platform_interface: ^8.1.8
   # Mock the url_launcher platform interface in tests (#354 WhatsApp invite).
   url_launcher_platform_interface: ^2.3.2
   plugin_platform_interface: ^2.1.8

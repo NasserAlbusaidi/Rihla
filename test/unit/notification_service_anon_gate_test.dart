@@ -12,6 +12,9 @@ class _MockFirebaseMessaging extends Mock implements FirebaseMessaging {}
 
 class _NoopLocalNotifier implements LocalNotifier {
   @override
+  Future<void> clearAll() async {}
+
+  @override
   Future<void> initialize(void Function(String? payload) onTap) async {}
 
   @override

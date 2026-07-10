@@ -367,7 +367,7 @@
   "@signOutTitle": {
     "description": "Title of the SignOutConfirmDialog confirming local sign-out."
   },
-  "signOutContentGoogle": "Your data stays in the cloud. To restore, sign back in with the same Google account.",
+  "signOutContentGoogle": "Your synced data stays in the cloud. To restore, sign back in with the same Google account.",
   "@signOutContentGoogle": {
     "description": "Sign-out dialog body for a Google-credentialed user with no linked email (#428): recovery is via Google sign-in, not an email link."
   },
@@ -383,7 +383,7 @@
   "@profileAccountLinkGoogle": {
     "description": "Account-card row for an anonymous user: opens the durable-credential sheet to link Google voluntarily (#428)."
   },
-  "signOutContentPrefix": "Your data stays in the cloud. To restore, enter ",
+  "signOutContentPrefix": "Your synced data stays in the cloud. To restore, enter ",
   "@signOutContentPrefix": {
     "description": "First text run of the SignOutConfirmDialog content, ending just before the bold email address."
   },
@@ -394,6 +394,22 @@
   "signOutConfirm": "Sign out",
   "@signOutConfirm": {
     "description": "Confirm button on the SignOutConfirmDialog."
+  },
+  "signOutPendingWritesTitle": "Unsynced changes",
+  "@signOutPendingWritesTitle": {
+    "description": "Title of the blocking dialog shown when sign-out cannot flush pending Firestore writes."
+  },
+  "signOutPendingWritesBody": "Some changes are still waiting to sync. Connect to the internet and try again, or discard those changes and sign out.",
+  "@signOutPendingWritesBody": {
+    "description": "Body of the blocking sign-out dialog explaining the safe retry and explicit discard choices."
+  },
+  "signOutPendingWritesKeep": "Keep changes",
+  "@signOutPendingWritesKeep": {
+    "description": "Safe action that cancels sign-out and preserves pending writes."
+  },
+  "signOutPendingWritesDiscard": "Discard changes & sign out",
+  "@signOutPendingWritesDiscard": {
+    "description": "Destructive action that explicitly allows sign-out to discard pending writes."
   },
 
   "profileStatsAllTime": "all-time",

@@ -31,6 +31,36 @@ class _CountingMockFirebaseAuth extends MockFirebaseAuth {
   }
 }
 
+class _PostDeletionMockFirebaseAuth extends MockFirebaseAuth {
+  _PostDeletionMockFirebaseAuth({this.failSignOut = false})
+    : super(
+        signedIn: true,
+        mockUser: MockUser(
+          uid: 'deleted-uid',
+          isAnonymous: false,
+          email: 'deleted@example.com',
+        ),
+      );
+
+  final bool failSignOut;
+  int signOuts = 0;
+  int anonSignIns = 0;
+
+  @override
+  Future<void> signOut() async {
+    signOuts++;
+    if (failSignOut) throw StateError('signOut failed');
+    await super.signOut();
+  }
+
+  @override
+  Future<UserCredential> signInAnonymously() {
+    anonSignIns++;
+    mockUser = MockUser(uid: 'fresh-uid', isAnonymous: true);
+    return super.signInAnonymously();
+  }
+}
+
 /// Behavioral tests for Firebase anonymous auth (DATA-05).
 ///
 /// Tests validate the anonymous auth contract that
@@ -271,6 +301,85 @@ void main() {
 
         // Let the dangling background verify resolve so no future is left pending.
         hungVerify.complete();
+      },
+    );
+
+    test(
+      'server-confirmed deletion marker clears a restored deleted uid (#1100)',
+      () async {
+        SharedPreferences.setMockInitialValues(const <String, Object>{
+          'auth.expectedDeletedUid': 'deleted-uid',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final gate = _RecordingCacheGate();
+        final auth = _PostDeletionMockFirebaseAuth();
+
+        await FirebaseConfig.ensureAnonymousSession(
+          authOverride: auth,
+          prefs: prefs,
+          cacheGate: gate,
+        );
+
+        expect(
+          auth.signOuts,
+          1,
+          reason: 'the deleted restored uid must be cleared before app mount',
+        );
+        expect(auth.anonSignIns, 1);
+        expect(auth.currentUser?.uid, 'fresh-uid');
+        expect(prefs.getString('auth.expectedDeletedUid'), isNull);
+        expect(gate.clearCount, 1);
+      },
+    );
+
+    test(
+      'post-deletion boot signOut failure keeps marker and fails closed (#1100)',
+      () async {
+        SharedPreferences.setMockInitialValues(const <String, Object>{
+          'auth.expectedDeletedUid': 'deleted-uid',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final gate = _RecordingCacheGate();
+        final auth = _PostDeletionMockFirebaseAuth(failSignOut: true);
+
+        await expectLater(
+          FirebaseConfig.ensureAnonymousSession(
+            authOverride: auth,
+            prefs: prefs,
+            cacheGate: gate,
+          ),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(auth.signOuts, 1);
+        expect(auth.anonSignIns, 0);
+        expect(auth.currentUser?.uid, 'deleted-uid');
+        expect(prefs.getString('auth.expectedDeletedUid'), 'deleted-uid');
+        expect(gate.clearCount, 0);
+      },
+    );
+
+    test(
+      'mismatched deletion marker keeps the restored session (#1100/#213)',
+      () async {
+        SharedPreferences.setMockInitialValues(const <String, Object>{
+          'auth.expectedDeletedUid': 'some-other-deleted-uid',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final gate = _RecordingCacheGate();
+        final auth = _PostDeletionMockFirebaseAuth();
+
+        await FirebaseConfig.ensureAnonymousSession(
+          authOverride: auth,
+          prefs: prefs,
+          cacheGate: gate,
+        );
+
+        expect(auth.signOuts, 0);
+        expect(auth.anonSignIns, 0);
+        expect(auth.currentUser?.uid, 'deleted-uid');
+        expect(prefs.getString('auth.expectedDeletedUid'), isNull);
+        expect(gate.clearCount, 0);
       },
     );
   });

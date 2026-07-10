@@ -293,7 +293,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signOutContentGoogle =>
-      'Your data stays in the cloud. To restore, sign back in with the same Google account.';
+      'Your synced data stays in the cloud. To restore, sign back in with the same Google account.';
 
   @override
   String get profileAccountGoogle => 'Google account';
@@ -306,13 +306,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signOutContentPrefix =>
-      'Your data stays in the cloud. To restore, enter ';
+      'Your synced data stays in the cloud. To restore, enter ';
 
   @override
   String get signOutContentSuffix => ' on any device.';
 
   @override
   String get signOutConfirm => 'Sign out';
+
+  @override
+  String get signOutPendingWritesTitle => 'Unsynced changes';
+
+  @override
+  String get signOutPendingWritesBody =>
+      'Some changes are still waiting to sync. Connect to the internet and try again, or discard those changes and sign out.';
+
+  @override
+  String get signOutPendingWritesKeep => 'Keep changes';
+
+  @override
+  String get signOutPendingWritesDiscard => 'Discard changes & sign out';
 
   @override
   String get profileStatsAllTime => 'all-time';

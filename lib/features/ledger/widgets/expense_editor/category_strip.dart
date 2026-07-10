@@ -49,7 +49,7 @@ class CategoryStrip extends StatelessWidget {
         final sorted = [...categories]
           ..sort((a, b) => order.indexOf(a.id).compareTo(order.indexOf(b.id)));
         return SizedBox(
-          height: 42,
+          height: 44,
           child: ListView.separated(
             padding: EdgeInsets.symmetric(horizontal: context.spacing.space24),
             scrollDirection: Axis.horizontal,
@@ -92,48 +92,53 @@ class _CategoryChip extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 12, 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? context.colors.textPrimary
-              : context.colors.cardSurface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? context.colors.textPrimary : context.colors.rule2,
+      child: Center(
+        child: Container(
+          height: 42,
+          padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 12, 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? context.colors.textPrimary
+                : context.colors.cardSurface,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? context.colors.textPrimary
+                  : context.colors.rule2,
+            ),
+            boxShadow: selected ? context.shadows.flat : context.shadows.raised,
           ),
-          boxShadow: selected ? context.shadows.flat : context.shadows.raised,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: selected
-                    ? context.colors.scaffoldBackground.withValues(alpha: 0.18)
-                    : context.colors.cardSoft,
-                shape: BoxShape.circle,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? context.colors.scaffoldBackground.withValues(alpha: 0.18)
+                      : context.colors.cardSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  categoryIconForId(category.id),
+                  size: 11,
+                  color: selected ? context.colors.scaffoldBackground : color,
+                ),
               ),
-              child: Icon(
-                categoryIconForId(category.id),
-                size: 11,
-                color: selected ? context.colors.scaffoldBackground : color,
+              const SizedBox(width: 6),
+              Text(
+                displayName,
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected
+                      ? context.colors.scaffoldBackground
+                      : context.colors.ink2,
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              displayName,
-              style: AppTypography.sans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: selected
-                    ? context.colors.scaffoldBackground
-                    : context.colors.ink2,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
