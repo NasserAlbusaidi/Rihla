@@ -174,7 +174,17 @@ class _AddShadowMemberSheetState extends ConsumerState<AddShadowMemberSheet> {
                 ),
               ),
             ],
-            SizedBox(height: context.spacing.space20),
+            SizedBox(height: context.spacing.space16),
+            Text(
+              key: GroupKeys.addPersonResplitDisclosure,
+              context.l10n.groupAddPersonResplitDisclosure,
+              style: AppTypography.sans(
+                fontSize: 12,
+                color: colors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+            SizedBox(height: context.spacing.space16),
             SizedBox(
               height: 52,
               child: ElevatedButton(

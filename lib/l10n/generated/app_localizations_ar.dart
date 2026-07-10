@@ -2602,6 +2602,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupAddPersonAction => 'إضافة';
 
   @override
+  String get groupAddPersonResplitDisclosure =>
+      'سيُضاف هذا الشخص إلى فعاليات المجموعة الحالية — بما فيها المُغلقة — وقد يتغيّر التقسيم بالتساوي.';
+
+  @override
   String groupRemoveMemberTooltip(Object name) {
     return 'إزالة $name من المجموعة';
   }
