@@ -355,5 +355,24 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'LTR with Arabic names keeps payer left of payee without reversal',
+      (tester) async {
+        await _pumpTile(
+          tester,
+          textDirection: TextDirection.ltr,
+          fromName: 'أحمد',
+          toName: 'ليلى',
+        );
+
+        final captionFinder = _captionFinder();
+        expect(captionFinder, findsOneWidget);
+        expect(
+          _nameCenterX(tester, captionFinder, 'أحمد'),
+          lessThan(_nameCenterX(tester, captionFinder, 'ليلى')),
+        );
+      },
+    );
   });
 }
