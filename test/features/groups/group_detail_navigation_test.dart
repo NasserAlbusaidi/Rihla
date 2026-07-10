@@ -158,6 +158,50 @@ void main() {
   }
 
   group('GroupDetailScreen navigation', () {
+    testWidgets('#1110 New event CTA meets the 44dp tap-target floor', (
+      tester,
+    ) async {
+      await pumpGroupDetail(tester);
+
+      final target = find
+          .ancestor(of: find.text('New event'), matching: find.byType(InkWell))
+          .first;
+      expect(
+        tester.getSize(
+          find.descendant(of: target, matching: find.byType(Ink)).first,
+        ).height,
+        42,
+      );
+      final size = tester.getSize(target);
+      expect(size.width, greaterThanOrEqualTo(44), reason: 'width ${size.width}');
+      expect(
+        size.height,
+        greaterThanOrEqualTo(44),
+        reason: 'New event effective hit target height ${size.height}dp',
+      );
+    });
+
+    testWidgets('#1110 Settle up CTA meets the 44dp tap-target floor', (
+      tester,
+    ) async {
+      await pumpGroupDetail(tester);
+
+      final target = find.byKey(GroupKeys.settleUpCta);
+      expect(
+        tester.getSize(
+          find.descendant(of: target, matching: find.byType(Ink)).first,
+        ).height,
+        42,
+      );
+      final size = tester.getSize(target);
+      expect(size.width, greaterThanOrEqualTo(44), reason: 'width ${size.width}');
+      expect(
+        size.height,
+        greaterThanOrEqualTo(44),
+        reason: 'Settle up effective hit target height ${size.height}dp',
+      );
+    });
+
     testWidgets('hero New event CTA routes to create-event (single entry)', (
       tester,
     ) async {

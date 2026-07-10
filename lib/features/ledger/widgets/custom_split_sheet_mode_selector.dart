@@ -236,7 +236,13 @@ class _ParticipantRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
+      // #1110: the shares editor gains 8dp of hit height, so trade the same
+      // amount from outer padding to preserve this row's painted coordinates.
+      padding: EdgeInsets.symmetric(
+        vertical: mode == SplitMode.shares
+            ? context.spacing.space8
+            : context.spacing.space12,
+      ),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
