@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/models/app_settings_model.dart';
 import 'package:safar/core/providers/app_bootstrap_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/notification_service.dart';
@@ -26,7 +27,11 @@ void main() {
         handleInitialMessage: any(named: 'handleInitialMessage'),
       ),
     ).thenAnswer((_) async => true);
-    when(() => mockNotificationService.removeToken()).thenAnswer((_) async {});
+    when(
+      () => mockNotificationService.removeToken(
+        handleInitialMessage: any(named: 'handleInitialMessage'),
+      ),
+    ).thenAnswer((_) async {});
     when(
       () => mockNotificationService.refreshTokenLocale(),
     ).thenAnswer((_) async {});
@@ -162,7 +167,55 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         verifyNever(() => mockNotificationService.initialize());
-        verifyNever(() => mockNotificationService.removeToken());
+        verifyNever(
+          () => mockNotificationService.removeToken(
+            handleInitialMessage: any(named: 'handleInitialMessage'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'kickInitialNotificationSync reconciles an explicitly disabled user (#1096)',
+      () async {
+        runInitialNotificationSync(
+          const AppSettings(pushNotificationsEnabled: false),
+          () => mockNotificationService,
+          hasPersistedPushPreference: true,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        verify(
+          () => mockNotificationService.removeToken(handleInitialMessage: true),
+        ).called(1);
+        verifyNever(
+          () => mockNotificationService.initialize(
+            handleInitialMessage: any(named: 'handleInitialMessage'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'disabled cold-start forwards invite arbitration to removeToken (#1104)',
+      () async {
+        runInitialNotificationSync(
+          const AppSettings(pushNotificationsEnabled: false),
+          () => mockNotificationService,
+          hasPersistedPushPreference: true,
+          handleInitialMessage: false,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        verify(
+          () =>
+              mockNotificationService.removeToken(handleInitialMessage: false),
+        ).called(1);
+        verifyNever(
+          () => mockNotificationService.initialize(
+            handleInitialMessage: any(named: 'handleInitialMessage'),
+          ),
+        );
       },
     );
 
@@ -193,7 +246,7 @@ void main() {
         // Reset call tracking
         reset(mockNotificationService);
         when(
-          () => mockNotificationService.removeToken(),
+          () => mockNotificationService.removeToken(handleInitialMessage: true),
         ).thenAnswer((_) async {});
 
         // Toggle off
@@ -202,7 +255,9 @@ void main() {
             .setPushNotificationsEnabled(false);
         await Future<void>.delayed(Duration.zero);
 
-        verify(() => mockNotificationService.removeToken()).called(1);
+        verify(
+          () => mockNotificationService.removeToken(handleInitialMessage: true),
+        ).called(1);
       },
     );
 
@@ -267,7 +322,11 @@ void main() {
         container.read(appBootstrapProvider);
         await Future<void>.delayed(Duration.zero);
 
-        verifyNever(() => mockNotificationService.removeToken());
+        verifyNever(
+          () => mockNotificationService.removeToken(
+            handleInitialMessage: any(named: 'handleInitialMessage'),
+          ),
+        );
       },
     );
 

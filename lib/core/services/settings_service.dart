@@ -16,12 +16,17 @@ class SettingsService {
       'settings_currency_explainer_seen';
   static const String _weeklyDigestKey = 'settings_weekly_digest';
   static const String _deviceNameKey = 'settings_device_name';
+  static const String _pendingDisplayNamePropagationKey =
+      'settings_pending_display_name_propagation';
   static const String _onboardingCompleteKey = 'settings_onboarding_complete';
   static const String _defaultSplitModeKey = 'settings_default_split_mode';
 
   final SharedPreferences _prefs;
 
   SettingsService(this._prefs);
+
+  bool get hasPushNotificationsPreference =>
+      _prefs.containsKey(_pushNotificationsKey);
 
   /// Load settings from SharedPreferences.
   ///
@@ -105,6 +110,24 @@ class SettingsService {
 
   Future<void> saveDeviceName(String name) async {
     await _prefs.setString(_deviceNameKey, name);
+  }
+
+  String? get pendingDisplayNamePropagation {
+    final value = _prefs.getString(_pendingDisplayNamePropagationKey);
+    if (value == null || displayNameValidationError(value) != null) return null;
+    return normalizeDisplayName(value);
+  }
+
+  Future<void> savePendingDisplayNamePropagation(String name) async {
+    await _prefs.setString(_pendingDisplayNamePropagationKey, name);
+  }
+
+  Future<void> clearPendingDisplayNamePropagation({String? ifMatches}) async {
+    if (ifMatches != null &&
+        _prefs.getString(_pendingDisplayNamePropagationKey) != ifMatches) {
+      return;
+    }
+    await _prefs.remove(_pendingDisplayNamePropagationKey);
   }
 
   Future<void> saveOnboardingComplete(bool complete) async {

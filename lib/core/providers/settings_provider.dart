@@ -9,6 +9,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../config/firebase_config.dart';
 import '../models/app_settings_model.dart';
 import '../models/split_mode.dart';
+import '../services/display_name_propagation_service.dart';
 import '../services/settings_service.dart';
 import '../utils/name_validators.dart';
 
@@ -26,9 +27,15 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
 /// Notifier to manage global application settings
 class SettingsNotifier extends StateNotifier<AppSettings> {
   final SettingsService _service;
+  final DisplayNamePropagationService Function() _propagationServiceFactory;
 
-  SettingsNotifier(this._service, {String? deviceLanguageCode})
-    : super(_service.loadSettings(deviceLanguageCode: deviceLanguageCode));
+  SettingsNotifier(
+    this._service, {
+    String? deviceLanguageCode,
+    DisplayNamePropagationService Function()? propagationServiceFactory,
+  }) : _propagationServiceFactory =
+           propagationServiceFactory ?? DisplayNamePropagationService.new,
+       super(_service.loadSettings(deviceLanguageCode: deviceLanguageCode));
 
   Future<void> setThemeMode(AppThemeMode mode) async {
     await _service.saveThemeMode(mode);
@@ -115,6 +122,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     }
 
     await _service.saveDeviceName(normalized); // SharedPreferences first (D-16)
+    if (normalized.isEmpty) {
+      await _service.clearPendingDisplayNamePropagation();
+    } else {
+      await _service.savePendingDisplayNamePropagation(normalized);
+    }
     state = state.copyWith(deviceName: normalized); // Update state immediately
     if (normalized.isNotEmpty) {
       // Fire-and-forget Firestore (D-15)
@@ -137,6 +149,12 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _service.saveDeviceName(normalized);
     state = state.copyWith(deviceName: normalized);
     return true;
+  }
+
+  Future<void> reconcilePendingDisplayName() async {
+    final pending = _service.pendingDisplayNamePropagation;
+    if (pending == null) return;
+    await propagateDisplayName(pending);
   }
 
   /// Throws [DisplayNameTakenException] if [normalized] collides with another
@@ -189,39 +207,23 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   /// Propagates the new display name to all group participant records in
   /// Firestore where the current user is a member.
   ///
-  /// Silently catches all errors — offline persistence handles retry.
+  /// Silently catches all errors. A pre-write read failure retains the durable
+  /// pending marker for [reconcilePendingDisplayName]; once the batch is staged,
+  /// Firestore's own offline persistence owns replay.
   /// This method is package-private for testability but should not be
   /// called directly; use [setDeviceName] instead.
   Future<void> propagateDisplayName(String displayName) async {
     try {
-      final uid = FirebaseConfig.currentUser?.uid;
-      if (uid == null) return;
+      final staged = await _propagationServiceFactory().stage(displayName);
+      if (staged == null) return;
 
-      final db = FirebaseConfig.firestore;
-
-      // Find all groups the current user belongs to
-      final groupsSnap = await db
-          .collection('groups')
-          .where('memberIds', arrayContains: uid)
-          .get();
-
-      final batch = db.batch();
-      for (final groupDoc in groupsSnap.docs) {
-        // Find the user's member document in this group
-        final membersSnap = await db
-            .collection('groups')
-            .doc(groupDoc.id)
-            .collection('members')
-            .where('userId', isEqualTo: uid)
-            .get();
-
-        for (final memberDoc in membersSnap.docs) {
-          batch.update(memberDoc.reference, {'displayName': displayName});
-        }
-      }
-      await batch.commit();
+      // #412: obtaining the ack means commit() already handed the mutation to
+      // Firestore's durable queue; do not wait for the server before clearing
+      // the pre-staging reconciliation marker.
+      unawaited(staged.ack.catchError((Object _) {}));
+      await _service.clearPendingDisplayNamePropagation(ifMatches: displayName);
     } catch (_) {
-      // Silently fail per D-15 — Firestore offline persistence handles retry
+      // D-15 fail-open: retain the pending marker for boot/reconnect retry.
     }
   }
 }
