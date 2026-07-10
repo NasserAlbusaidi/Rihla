@@ -23,6 +23,7 @@ void main() {
           const eventId = 'e1';
 
           final settlement = await service.addSettlement(
+            id: 'test-id-write-shape',
             createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
@@ -62,6 +63,7 @@ void main() {
           const eventId = 'e1';
 
           final settlement = await service.addSettlement(
+            id: 'test-id-correction-sentinel',
             createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
@@ -91,6 +93,7 @@ void main() {
 
         // OMR 10.500 = 10500 fils
         final settlement = await service.addSettlement(
+          id: 'test-id-money-serializer',
           createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
@@ -124,6 +127,7 @@ void main() {
           const eventId = 'e1';
 
           await service.addSettlement(
+            id: 'test-id-stream',
             createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
@@ -148,6 +152,7 @@ void main() {
         const eventId = 'e1';
 
         await service.addSettlement(
+          id: 'test-id-names-roundtrip',
           createdBy: 'test-uid',
           groupId: groupId,
           eventId: eventId,
@@ -179,6 +184,7 @@ void main() {
           const eventId = 'e1';
 
           final settlement = await service.addSettlement(
+            id: 'test-id-soft-deleted-filter',
             createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
@@ -216,6 +222,7 @@ void main() {
           const eventId = 'e1';
 
           final original = await service.addSettlement(
+            id: 'test-id-roundtrip',
             createdBy: 'test-uid',
             groupId: groupId,
             eventId: eventId,
@@ -305,6 +312,7 @@ void main() {
         'addSettlement persists exactly buildSettlementDoc output (byte parity)',
         () async {
           final s = await service.addSettlement(
+            id: 'test-id-byte-parity',
             createdBy: 'uid',
             groupId: 'g1',
             eventId: 'e1',
@@ -350,6 +358,7 @@ void main() {
     group('groupSettleUpId field (#752)', () {
       test('addSettlement writes groupSettleUpId when provided', () async {
         final s = await service.addSettlement(
+          id: 'test-id-gsu-provided',
           createdBy: 'uid',
           groupId: 'g1',
           eventId: 'e1',
@@ -372,6 +381,7 @@ void main() {
 
       test('addSettlement omits groupSettleUpId key when null', () async {
         final s = await service.addSettlement(
+          id: 'test-id-gsu-omitted',
           createdBy: 'uid',
           groupId: 'g1',
           eventId: 'e1',

@@ -100,6 +100,7 @@ void main() {
           reason: 'pre: Sara owes 5');
 
       await service.addGroupSettlement(
+        id: 'test-id-567-omr-original',
         groupId: gid,
         payerParticipantId: sara,
         recipientParticipantId: ahmed,
@@ -127,6 +128,7 @@ void main() {
 
       // The screen's exact onCorrect swap.
       await service.addGroupSettlement(
+        id: 'test-id-567-omr-correction',
         groupId: gid,
         payerParticipantId: original.recipientParticipantId!,
         recipientParticipantId: original.payerParticipantId!,
@@ -162,6 +164,7 @@ void main() {
       final expense = _expense(amount: Decimal.parse('10.00'), currency: 'USD');
 
       await service.addGroupSettlement(
+        id: 'test-id-567-usd-original',
         groupId: gid,
         payerParticipantId: sara,
         recipientParticipantId: ahmed,
@@ -187,6 +190,7 @@ void main() {
       expect(_net(settled, 'USD', sara), Decimal.zero);
 
       await service.addGroupSettlement(
+        id: 'test-id-567-usd-correction',
         groupId: gid,
         payerParticipantId: original.recipientParticipantId!,
         recipientParticipantId: original.payerParticipantId!,

@@ -36,6 +36,7 @@ import '../models/expense_model.dart';
 import '../models/settlement_model.dart';
 import '../providers/expense_provider.dart';
 import '../services/pre_settlement_review.dart';
+import '../services/settlement_service.dart';
 import '../widgets/pre_settlement_review_sheet.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
@@ -839,12 +840,44 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         connectivity ?? ref.read(connectivityProvider.notifier);
     final connectivityStatus = ref.read(connectivityProvider);
     try {
+      // #1093: derive a deterministic dedup id from the SAME revalidation
+      // snapshot used by the #773 outstanding-cap check — two writers
+      // observing the identical epoch produce the identical id, so a racing
+      // second write collides with the first and is denied by the already-
+      // live `allow update: if false` (client-side: fails closed on a
+      // valueless basis read, mirroring the #1028 skip semantics).
+      final settlements = ref
+          .read(
+            eventSettlementsProvider((
+              groupId: widget.groupId,
+              eventId: widget.eventId,
+            )),
+          )
+          .valueOrNull;
+      if (settlements == null) {
+        throw StateError(
+          'settlement basis unavailable — cannot derive dedup id',
+        );
+      }
+      final id = SettlementService.deterministicSettlementId(
+        scopeKey: 'event:${widget.groupId}:${widget.eventId}',
+        payerParticipantId: fromUserId,
+        recipientParticipantId: toUserId,
+        currency: currency,
+        amount: amount,
+        pairEpoch: SettlementService.directedPairEpoch(
+          settlements,
+          payerParticipantId: fromUserId,
+          recipientParticipantId: toUserId,
+        ),
+      );
       // #412: never gate the UI on the raw server-ack future — offline it
       // stays pending until reconnect. Race it; queued means the SDK replays.
       final outcome = await awaitServerAck(
         ref
             .read(settlementServiceProvider)
             .addSettlement(
+              id: id,
               groupId: widget.groupId,
               eventId: widget.eventId,
               payerParticipantId: fromUserId,

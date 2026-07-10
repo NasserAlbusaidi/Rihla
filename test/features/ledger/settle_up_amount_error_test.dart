@@ -93,6 +93,7 @@ class _RecordingEventSettlementService extends SettlementService {
 
   @override
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,

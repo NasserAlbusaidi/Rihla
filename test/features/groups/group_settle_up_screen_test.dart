@@ -300,6 +300,7 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
 
   @override
   Future<Settlement> addGroupSettlement({
+    required String id,
     required String groupId,
     required String payerParticipantId,
     required String recipientParticipantId,

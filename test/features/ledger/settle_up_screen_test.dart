@@ -1480,6 +1480,7 @@ void main() {
       final service = _MockSettlementService();
       when(
         () => service.addSettlement(
+          id: any(named: 'id'),
           groupId: any(named: 'groupId'),
           eventId: any(named: 'eventId'),
           payerParticipantId: any(named: 'payerParticipantId'),
@@ -2181,6 +2182,7 @@ class _RecordingSettlementService extends SettlementService {
 
   @override
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,
@@ -2220,6 +2222,7 @@ class _FailingSettlementService extends SettlementService {
 
   @override
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,
@@ -2241,6 +2244,7 @@ class _DeniedSettlementService extends SettlementService {
 
   @override
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,

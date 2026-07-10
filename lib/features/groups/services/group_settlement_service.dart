@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
@@ -129,7 +128,13 @@ class GroupSettlementService extends FirestoreRepository {
   /// data so amount round-trips through [MoneySerializer].
   ///
   /// The settlement is written with [scope] = 'group' per D-10.
+  ///
+  /// [id] is REQUIRED (not defaulted) so every call site is forced to decide
+  /// its id — an optional param would silently reopen #1093. Production
+  /// callers derive it via [SettlementService.deterministicSettlementId] from
+  /// the caller's revalidation snapshot; see `group_settle_up_screen.dart`.
   Future<Settlement> addGroupSettlement({
+    required String id,
     required String groupId,
     required String payerParticipantId,
     required String recipientParticipantId,
@@ -149,7 +154,6 @@ class GroupSettlementService extends FirestoreRepository {
             'rules reject group settlement writes without it.',
       );
     }
-    final id = const Uuid().v4();
     final data = buildGroupSettlementDoc(
       id: id,
       groupId: groupId,
@@ -226,6 +230,19 @@ class GroupSettlementService extends FirestoreRepository {
             'single atomic group settlement (the 20-access-call batch budget).',
       );
     }
+    // #1093: leg ids are derived from (groupSettleUpId, eventId) — a duplicate
+    // eventId would derive a duplicate leg id and batch.set last-wins would
+    // silently drop a leg. The true duplicate-immunity invariant lives at the
+    // live callsite: `group_settle_up_screen.dart` iterates `eventOrder`,
+    // which is duplicate-free because it is built from unique event doc ids
+    // (do NOT rewrite that loop to iterate `perEvent.keys` — `eventOrder`
+    // feeding both the display breakdown and the write IS the #752 WYSIWYG
+    // guarantee). This assert only pins the invariant at this layer.
+    assert(
+      eventLegs.map((l) => l.eventId).toSet().length == eventLegs.length,
+      'eventLegs must have distinct eventIds — duplicates derive duplicate '
+      'leg ids and silently collide in the batch',
+    );
 
     final batch = (batchFactoryOverride ?? db.batch)();
     // ONE timestamp across every leg — a stable settledAt for the logical
@@ -234,7 +251,10 @@ class GroupSettlementService extends FirestoreRepository {
     final staged = <Settlement>[];
 
     for (final leg in eventLegs) {
-      final id = const Uuid().v4();
+      final id = SettlementService.decomposeLegSettlementId(
+        groupSettleUpId,
+        leg.eventId,
+      );
       final data = SettlementService.buildSettlementDoc(
         id: id,
         eventId: leg.eventId,
@@ -257,7 +277,7 @@ class GroupSettlementService extends FirestoreRepository {
     }
 
     if (residual > Decimal.zero) {
-      final id = const Uuid().v4();
+      final id = SettlementService.decomposeResidualSettlementId(groupSettleUpId);
       final data = GroupSettlementService.buildGroupSettlementDoc(
         id: id,
         groupId: groupId,
