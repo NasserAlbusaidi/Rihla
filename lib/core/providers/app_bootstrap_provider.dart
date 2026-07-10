@@ -25,7 +25,9 @@ Future<void> _syncNotifications(
   bool handleInitialMessage,
 ) async {
   if (!settings.pushNotificationsEnabled) {
-    await notificationService.removeToken();
+    await notificationService.removeToken(
+      handleInitialMessage: handleInitialMessage,
+    );
     return;
   }
   await notificationService.initialize(

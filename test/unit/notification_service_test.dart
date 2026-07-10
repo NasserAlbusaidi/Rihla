@@ -27,6 +27,14 @@ class _MockTokenDocument extends Mock
 class _FakeLocalNotifier implements LocalNotifier {
   final List<Map<String, String>> shown = [];
   void Function(String? payload)? onTap;
+  int clearAllCalls = 0;
+  FutureOr<void> Function()? onClearAll;
+
+  @override
+  Future<void> clearAll() async {
+    clearAllCalls += 1;
+    await onClearAll?.call();
+  }
 
   @override
   Future<void> initialize(void Function(String? payload) onTap) async {
@@ -393,6 +401,99 @@ void main() {
   );
 
   test(
+    'active re-registration does not invalidate in-flight setup (#480)',
+    () async {
+      final firestore = _MockFirebaseFirestore();
+      final collection = _MockTokenCollection();
+      final tokenDoc = _MockTokenDocument();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final foreground = StreamController<RemoteMessage>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final notifier = _FakeLocalNotifier();
+      final firstSetStarted = Completer<void>();
+      final firstSetAck = Completer<void>();
+      final nav = <String>[];
+      var getTokenCalls = 0;
+      var setCalls = 0;
+      when(() => firestore.collection('fcm_tokens')).thenReturn(collection);
+      when(() => collection.doc('uid-1')).thenReturn(tokenDoc);
+      when(() => tokenDoc.set(any(), any())).thenAnswer((_) {
+        setCalls += 1;
+        if (setCalls == 1) {
+          firstSetStarted.complete();
+          return firstSetAck.future;
+        }
+        return Future<void>.value();
+      });
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async {
+        getTokenCalls += 1;
+        return getTokenCalls == 1 ? 'token-1' : 'token-2';
+      });
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: firestore,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        foregroundMessages: foreground.stream,
+        openedMessages: opened.stream,
+        localNotifier: notifier,
+        onNavigate: nav.add,
+        initialMessage: () async =>
+            const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g1'}),
+      );
+      final container = ProviderContainer();
+      addTearDown(() async {
+        container.dispose();
+        await tokenRefresh.close();
+        await foreground.close();
+        await opened.close();
+      });
+
+      final service = container.read(provider);
+      final firstInitialization = service.initialize();
+      await firstSetStarted.future;
+      final secondInitialization = service.initialize();
+
+      try {
+        final secondResult = await secondInitialization;
+        firstSetAck.complete();
+        final firstResult = await firstInitialization;
+
+        expect(
+          (
+            firstResult: firstResult,
+            secondResult: secondResult,
+            notifierInitialized: notifier.onTap != null,
+            tokenRefreshListening: tokenRefresh.hasListener,
+            foregroundListening: foreground.hasListener,
+            openedListening: opened.hasListener,
+            navigation: nav.join(','),
+          ),
+          (
+            firstResult: true,
+            secondResult: true,
+            notifierInitialized: true,
+            tokenRefreshListening: true,
+            foregroundListening: true,
+            openedListening: true,
+            navigation: '/group/g1',
+          ),
+          reason: 'active re-registration must share the in-flight setup owner',
+        );
+      } finally {
+        if (!firstSetAck.isCompleted) firstSetAck.complete();
+        await secondInitialization;
+        await firstInitialization;
+      }
+    },
+  );
+
+  test(
     'removeToken deletes the stored token, cancels listeners, and marks off',
     () async {
       final db = FakeFirebaseFirestore();
@@ -425,6 +526,460 @@ void main() {
         container.read(notificationStatusProvider),
         NotificationStatus.off,
       );
+    },
+  );
+
+  test(
+    'removeToken clears delivered notifications before cancelling tap routing (#1104)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final notifier = _FakeLocalNotifier();
+      bool? tapListenerAliveDuringClear;
+      notifier.onClearAll = () {
+        tapListenerAliveDuringClear = opened.hasListener;
+      };
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        openedMessages: opened.stream,
+        localNotifier: notifier,
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+      addTearDown(opened.close);
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+      final service = container.read(provider);
+      await service.initialize();
+      await service.removeToken();
+
+      expect(notifier.clearAllCalls, 1);
+      expect(tapListenerAliveDuringClear, isTrue);
+      expect(opened.hasListener, isFalse);
+    },
+  );
+
+  test(
+    'removeToken waits for delete acknowledgement before its final clear (#1104)',
+    () async {
+      final firestore = _MockFirebaseFirestore();
+      final collection = _MockTokenCollection();
+      final tokenDoc = _MockTokenDocument();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final notifier = _FakeLocalNotifier();
+      final deleteStarted = Completer<void>();
+      final deleteAck = Completer<void>();
+      var deleteAcknowledged = false;
+      bool? deleteAcknowledgedDuringClear;
+      bool? tapListenerAliveDuringClear;
+      notifier.onClearAll = () {
+        deleteAcknowledgedDuringClear = deleteAcknowledged;
+        tapListenerAliveDuringClear = opened.hasListener;
+      };
+      when(() => firestore.collection('fcm_tokens')).thenReturn(collection);
+      when(() => collection.doc('uid-1')).thenReturn(tokenDoc);
+      when(() => tokenDoc.set(any(), any())).thenAnswer((_) async {});
+      when(tokenDoc.delete).thenAnswer((_) {
+        deleteStarted.complete();
+        return deleteAck.future;
+      });
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: firestore,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        openedMessages: opened.stream,
+        localNotifier: notifier,
+      );
+      final container = ProviderContainer();
+      addTearDown(() async {
+        container.dispose();
+        await tokenRefresh.close();
+        await opened.close();
+      });
+
+      final service = container.read(provider);
+      await service.initialize();
+      final removal = service.removeToken();
+      await deleteStarted.future;
+
+      try {
+        expect(notifier.clearAllCalls, 0);
+        expect(opened.hasListener, isTrue);
+
+        deleteAcknowledged = true;
+        deleteAck.complete();
+        await removal;
+
+        expect(notifier.clearAllCalls, 1);
+        expect(deleteAcknowledgedDuringClear, isTrue);
+        expect(tapListenerAliveDuringClear, isTrue);
+        expect(opened.hasListener, isFalse);
+      } finally {
+        if (!deleteAck.isCompleted) {
+          deleteAcknowledged = true;
+          deleteAck.complete();
+        }
+        await removal;
+      }
+    },
+  );
+
+  test(
+    'new opt-in supersedes removeToken while delete is pending (#1096/#1104)',
+    () async {
+      final firestore = _MockFirebaseFirestore();
+      final collection = _MockTokenCollection();
+      final tokenDoc = _MockTokenDocument();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final foreground = StreamController<RemoteMessage>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final notifier = _FakeLocalNotifier();
+      final deleteStarted = Completer<void>();
+      final deleteAck = Completer<void>();
+      final writes = <({String token, bool afterDeleteStarted})>[];
+      var getTokenCalls = 0;
+      when(() => firestore.collection('fcm_tokens')).thenReturn(collection);
+      when(() => collection.doc('uid-1')).thenReturn(tokenDoc);
+      when(() => tokenDoc.set(any(), any())).thenAnswer((invocation) async {
+        final data =
+            invocation.positionalArguments.first as Map<String, dynamic>;
+        writes.add((
+          token: data['token']! as String,
+          afterDeleteStarted: deleteStarted.isCompleted,
+        ));
+      });
+      when(tokenDoc.delete).thenAnswer((_) {
+        deleteStarted.complete();
+        return deleteAck.future;
+      });
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async {
+        getTokenCalls += 1;
+        return getTokenCalls == 1 ? 'token-1' : 'token-2';
+      });
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: firestore,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        foregroundMessages: foreground.stream,
+        openedMessages: opened.stream,
+        localNotifier: notifier,
+      );
+      final container = ProviderContainer();
+      addTearDown(() async {
+        container.dispose();
+        await tokenRefresh.close();
+        await foreground.close();
+        await opened.close();
+      });
+
+      final service = container.read(provider);
+      expect(await service.initialize(), isTrue);
+      expect(tokenRefresh.hasListener, isTrue);
+      expect(foreground.hasListener, isTrue);
+      expect(opened.hasListener, isTrue);
+
+      final removal = service.removeToken();
+      await deleteStarted.future;
+      final reactivation = service.initialize();
+
+      try {
+        expect(await reactivation, isTrue);
+        expect(
+          writes.last,
+          (token: 'token-2', afterDeleteStarted: true),
+          reason: 'the newer token set must enqueue after the pending delete',
+        );
+
+        deleteAck.complete();
+        await removal;
+
+        expect(
+          (
+            status: container.read(notificationStatusProvider),
+            tokenRefreshListening: tokenRefresh.hasListener,
+            foregroundListening: foreground.hasListener,
+            openedListening: opened.hasListener,
+            clearAllCalls: notifier.clearAllCalls,
+          ),
+          (
+            status: NotificationStatus.enabled,
+            tokenRefreshListening: true,
+            foregroundListening: true,
+            openedListening: true,
+            clearAllCalls: 0,
+          ),
+          reason: 'stale opt-out cleanup must not override the newer opt-in',
+        );
+      } finally {
+        if (!deleteAck.isCompleted) deleteAck.complete();
+        await reactivation;
+        await removal;
+      }
+    },
+  );
+
+  test(
+    'removeToken keeps tap routing alive when notification clearing fails (#1104)',
+    () async {
+      final db = FakeFirebaseFirestore();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final notifier = _FakeLocalNotifier()
+        ..onClearAll = () => throw StateError('clear failed');
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: db,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        openedMessages: opened.stream,
+        localNotifier: notifier,
+      );
+      final container = ProviderContainer();
+      addTearDown(() async {
+        container.dispose();
+        await tokenRefresh.close();
+        await opened.close();
+      });
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+
+      final service = container.read(provider);
+      await service.initialize();
+      await service.removeToken();
+
+      expect(notifier.clearAllCalls, 1);
+      expect(
+        (await db.collection('fcm_tokens').doc('uid-1').get()).exists,
+        isFalse,
+      );
+      expect(
+        container.read(notificationStatusProvider),
+        NotificationStatus.off,
+      );
+      expect(opened.hasListener, isTrue);
+    },
+  );
+
+  test(
+    'removeToken keeps tap routing alive when token deletion fails (#1104)',
+    () async {
+      final firestore = _MockFirebaseFirestore();
+      final collection = _MockTokenCollection();
+      final tokenDoc = _MockTokenDocument();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final notifier = _FakeLocalNotifier();
+      when(() => firestore.collection('fcm_tokens')).thenReturn(collection);
+      when(() => collection.doc('uid-1')).thenReturn(tokenDoc);
+      when(() => tokenDoc.set(any(), any())).thenAnswer((_) async {});
+      when(tokenDoc.delete).thenThrow(StateError('delete failed'));
+      when(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: firestore,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        openedMessages: opened.stream,
+        localNotifier: notifier,
+      );
+      final container = ProviderContainer();
+      addTearDown(() async {
+        container.dispose();
+        await tokenRefresh.close();
+        await opened.close();
+      });
+
+      final service = container.read(provider);
+      await service.initialize();
+      await service.removeToken();
+
+      expect(notifier.clearAllCalls, 1);
+      verify(tokenDoc.delete).called(1);
+      expect(
+        container.read(notificationStatusProvider),
+        NotificationStatus.off,
+      );
+      expect(opened.hasListener, isTrue);
+    },
+  );
+
+  test(
+    'fresh explicit opt-out routes opened notifications while delete is pending (#1104)',
+    () async {
+      final firestore = _MockFirebaseFirestore();
+      final collection = _MockTokenCollection();
+      final tokenDoc = _MockTokenDocument();
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast(sync: true);
+      final deleteStarted = Completer<void>();
+      final deleteAck = Completer<void>();
+      final nav = <String>[];
+      var initialMessageCalls = 0;
+      when(() => firestore.collection('fcm_tokens')).thenReturn(collection);
+      when(() => collection.doc('uid-1')).thenReturn(tokenDoc);
+      when(tokenDoc.delete).thenAnswer((_) {
+        deleteStarted.complete();
+        return deleteAck.future;
+      });
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: firestore,
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        openedMessages: opened.stream,
+        onNavigate: nav.add,
+        initialMessage: () async {
+          initialMessageCalls += 1;
+          return const RemoteMessage(
+            data: {'type': 'member_join', 'groupId': 'initial'},
+          );
+        },
+      );
+      final container = ProviderContainer();
+      addTearDown(() async {
+        container.dispose();
+        await tokenRefresh.close();
+        await opened.close();
+      });
+
+      final service = container.read(provider);
+      final removal = service.removeToken(handleInitialMessage: false);
+      await deleteStarted.future;
+
+      try {
+        expect(initialMessageCalls, 0);
+        expect(
+          opened.hasListener,
+          isTrue,
+          reason:
+              'explicit OFF must route delivered notification taps while cleanup is pending',
+        );
+
+        opened.add(
+          const RemoteMessage(
+            data: {'type': 'expense', 'groupId': 'g1', 'eventId': 'e1'},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(nav, ['/group/g1/event/e1/ledger']);
+        verifyNever(
+          () => messaging.requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+          ),
+        );
+        verifyNever(messaging.getToken);
+      } finally {
+        deleteAck.complete();
+        await removal;
+      }
+    },
+  );
+
+  test(
+    'removeToken handles a disabled cold-start tap without opting in (#1104)',
+    () async {
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final opened = StreamController<RemoteMessage>.broadcast();
+      final nav = <String>[];
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: FakeFirebaseFirestore(),
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        openedMessages: opened.stream,
+        onNavigate: nav.add,
+        initialMessage: () async =>
+            const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g5'}),
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+      addTearDown(opened.close);
+
+      final service = container.read(provider);
+      await service.removeToken(handleInitialMessage: true);
+
+      expect(nav, ['/group/g5']);
+      verifyNever(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      );
+      verifyNever(messaging.getToken);
+    },
+  );
+
+  test(
+    'removeToken defaults to preserving a higher-priority cold-start route (#1104)',
+    () async {
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final nav = <String>[];
+      var initialMessageCalls = 0;
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: FakeFirebaseFirestore(),
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        onNavigate: nav.add,
+        initialMessage: () async {
+          initialMessageCalls += 1;
+          return const RemoteMessage(
+            data: {'type': 'member_join', 'groupId': 'g5'},
+          );
+        },
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+
+      final service = container.read(provider);
+      await service.removeToken();
+
+      expect(initialMessageCalls, 0);
+      expect(nav, isEmpty);
+      verifyNever(
+        () =>
+            messaging.requestPermission(alert: true, badge: true, sound: true),
+      );
+      verifyNever(messaging.getToken);
     },
   );
 

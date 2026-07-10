@@ -9,6 +9,8 @@ abstract interface class LocalNotifier {
   /// notification.
   Future<void> initialize(void Function(String? payload) onTap);
 
+  Future<void> clearAll();
+
   /// Displays a heads-up local notification carrying [payload] for tap routing.
   Future<void> show({
     required int id,
@@ -68,6 +70,9 @@ class FlutterLocalNotifier implements LocalNotifier {
         );
     _initialized = true;
   }
+
+  @override
+  Future<void> clearAll() => _plugin.cancelAll();
 
   @override
   Future<void> show({

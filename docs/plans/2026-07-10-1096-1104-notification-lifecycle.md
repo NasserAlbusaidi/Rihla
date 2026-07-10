@@ -4,7 +4,7 @@
 
 **Goal:** Make push opt-out race-safe, reconcile an explicitly disabled device on cold boot, and remove already-delivered notifications before tap routing is torn down.
 
-**Architecture:** `NotificationService.removeToken()` becomes an ordered shutdown: mark delivery inactive, cancel token-producing/foreground listeners, clear delivered notifications while tap routing is still available, delete the owner token document, then tear down tap routing when clearing succeeded. Cold boot keeps the #635 no-service fast path for a fresh default, but uses the existing SharedPreferences push-key presence to reconcile devices that previously expressed a push preference.
+**Architecture:** Inactive-to-ON activation and OFF operations advance a shared lifecycle generation so only the latest intent may write status, clear the tray, or tear down listeners; an already-active re-registration shares the current generation so in-flight setup keeps its owner. `NotificationService.removeToken()` becomes an ordered shutdown: mark delivery inactive, detach token-producing/foreground listeners, ensure tap routing is available, delete the owner token document, clear delivered notifications after deletion acknowledges, then tear down tap routing only when both cleanup steps succeed and the removal generation is still current. Cold boot keeps the #635 no-service fast path for a fresh default, but uses the existing SharedPreferences push-key presence to reconcile devices that previously expressed a push preference.
 
 **Tech Stack:** Flutter 3.41, Dart 3.11, Riverpod 2.x, Firebase Messaging/Firestore, SharedPreferences, flutter_local_notifications 18.0.1, flutter_test, mocktail.
 
@@ -18,7 +18,12 @@
 - Keep the #635 cold-boot no-op for a device with no persisted push preference.
 - Do not request notification permission, save a token, or set `NotificationStatus.enabled` while push intent is off.
 - `removeToken()` must set `_initialized = false` before its first `await` and cancel token refresh before awaiting Firestore deletion.
+- An `initialize()` that activates from inactive/OFF and every `removeToken()` advance the lifecycle generation; after every await, stale work returns without changing the newer intent's status, tray, token, or subscriptions.
+- An already-active `initialize()` re-registration shares the current generation, including while the original setup token write awaits server acknowledgement, so it cannot invalidate the setup owner before listeners and initial-message routing are wired.
+- Subscription references are detached before cancellation is awaited so a newer activation cannot reuse a subscription the older lifecycle operation is still cancelling.
 - Delivered-notification clearing must happen while FCM tap routing is still subscribed.
+- Token deletion must settle before the final delivered-notification clear so a push arriving during the delete round-trip is also removed.
+- If a newer ON starts after deletion is enqueued, its token set is enqueued later and wins; the stale removal performs no later clear, tap teardown, or OFF status write.
 - A tray-clear failure must not skip token deletion or `NotificationStatus.off`; tap routing stays alive when clearing fails so an uncleared notification remains routeable.
 - Do not weaken or delete existing tests.
 - Run full `flutter test` and `flutter analyze` after each issue. No widget file is in scope, so `tool/check_theme_purity.sh` is not required unless scope changes.
@@ -436,35 +441,49 @@ Add a no-op override to `_NoopLocalNotifier`. Then evolve `removeToken`:
 
 ```dart
 Future<void> removeToken({bool handleInitialMessage = false}) async {
+  final generation = ++_lifecycleGeneration;
   _initialized = false;
   await _cancelDeliverySubscriptions();
+  if (!_isCurrentGeneration(generation)) return;
+
   var notificationsCleared = false;
   var tokenRemoved = false;
   try {
+    _messageOpenedSubscription ??= _openedMessages.listen(_onMessageTap);
     if (handleInitialMessage) {
       _messaging ??= FirebaseMessaging.instance;
-      _messageOpenedSubscription ??= _openedMessages.listen(_onMessageTap);
-      await _handleInitialMessage();
+      await _handleInitialMessage(generation);
+      if (!_isCurrentGeneration(generation)) return;
     }
-    try {
-      await _localNotifier.clearAll();
-      notificationsCleared = true;
-    } catch (e) {
-      if (kDebugMode) debugPrint('FCM: Notification clear failed: $e');
-    }
-
     final userId = _currentUserId;
     if (userId != null) {
       await _firestore.collection('fcm_tokens').doc(userId).delete();
+      if (!_isCurrentGeneration(generation)) return;
       tokenRemoved = true;
     }
   } catch (e) {
+    if (!_isCurrentGeneration(generation)) return;
     if (kDebugMode) debugPrint('FCM: Token removal failed: $e');
-  } finally {
+  }
+  if (!_isCurrentGeneration(generation)) return;
+
+  try {
+    try {
+      await _localNotifier.clearAll();
+      if (!_isCurrentGeneration(generation)) return;
+      notificationsCleared = true;
+    } catch (e) {
+      if (!_isCurrentGeneration(generation)) return;
+      if (kDebugMode) debugPrint('FCM: Notification clear failed: $e');
+    }
     if (notificationsCleared && tokenRemoved) {
       await _cancelTapRoutingSubscription();
+      if (!_isCurrentGeneration(generation)) return;
     }
-    _setStatus(NotificationStatus.off);
+  } finally {
+    if (_isCurrentGeneration(generation)) {
+      _setStatus(NotificationStatus.off);
+    }
   }
 }
 ```
@@ -488,7 +507,7 @@ Configure `_FakeLocalNotifier.clearAll()` to throw and assert that `removeToken(
 
 - [ ] **Step 6: Add disabled cold-start tap coverage**
 
-Construct an uninitialized `NotificationService` with an `initialMessage` carrying a known route, call `removeToken(handleInitialMessage: true)`, and assert navigation happens once without `requestPermission()` or `getToken()`. Add a companion `handleInitialMessage: false` assertion so a higher-priority invite deep link remains authoritative.
+Construct an uninitialized `NotificationService` with an `initialMessage` carrying a known route, call `removeToken(handleInitialMessage: true)`, and assert navigation happens once without `requestPermission()` or `getToken()`. Add a companion pending-delete case with `handleInitialMessage: false`: initial-message lookup stays skipped so a higher-priority invite deep link remains authoritative, while `onMessageOpenedApp` is subscribed and routes an already-delivered notification until cleanup succeeds.
 
 - [ ] **Step 7: Verify Task 2**
 

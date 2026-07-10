@@ -119,7 +119,9 @@ class NotificationService with WidgetsBindingObserver {
 
   /// Initialize Firebase Messaging. Call only after the user has opted in.
   Future<bool> initialize({bool handleInitialMessage = true}) async {
-    final generation = _lifecycleGeneration;
+    final generation = _initialized
+        ? _lifecycleGeneration
+        : ++_lifecycleGeneration;
     if (_initialized) {
       await _saveToken(generation);
       if (!_isActiveGeneration(generation)) return false;
@@ -158,7 +160,7 @@ class NotificationService with WidgetsBindingObserver {
         // Cold-start tap: the app was launched FROM a notification while
         // terminated. Route once after listeners are wired.
         if (handleInitialMessage) {
-          await _handleInitialMessage();
+          await _handleInitialMessage(generation);
           if (!_isActiveGeneration(generation)) return false;
         }
         return true;
@@ -271,11 +273,13 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _handleInitialMessage() async {
+  Future<void> _handleInitialMessage(int generation) async {
     try {
       final message = await _getInitialMessage();
+      if (!_isCurrentGeneration(generation)) return;
       if (message != null) _routeFromData(message.data);
     } catch (e) {
+      if (!_isCurrentGeneration(generation)) return;
       if (kDebugMode) debugPrint('FCM: initial message handling failed: $e');
     }
   }
@@ -370,21 +374,50 @@ class NotificationService with WidgetsBindingObserver {
   }
 
   /// Remove token when notifications are disabled.
-  Future<void> removeToken() async {
-    _lifecycleGeneration += 1;
+  Future<void> removeToken({bool handleInitialMessage = false}) async {
+    final generation = ++_lifecycleGeneration;
     _initialized = false;
     await _cancelDeliverySubscriptions();
+    if (!_isCurrentGeneration(generation)) return;
+
+    var notificationsCleared = false;
+    var tokenRemoved = false;
     try {
-      _messaging ??= FirebaseMessaging.instance;
+      _messageOpenedSubscription ??= _openedMessages.listen(_onMessageTap);
+      if (handleInitialMessage) {
+        _messaging ??= FirebaseMessaging.instance;
+        await _handleInitialMessage(generation);
+        if (!_isCurrentGeneration(generation)) return;
+      }
       final userId = _currentUserId;
       if (userId != null) {
         await _firestore.collection('fcm_tokens').doc(userId).delete();
+        if (!_isCurrentGeneration(generation)) return;
+        tokenRemoved = true;
       }
     } catch (e) {
+      if (!_isCurrentGeneration(generation)) return;
       if (kDebugMode) debugPrint('FCM: Token removal failed: $e');
+    }
+    if (!_isCurrentGeneration(generation)) return;
+
+    try {
+      try {
+        await _localNotifier.clearAll();
+        if (!_isCurrentGeneration(generation)) return;
+        notificationsCleared = true;
+      } catch (e) {
+        if (!_isCurrentGeneration(generation)) return;
+        if (kDebugMode) debugPrint('FCM: Notification clear failed: $e');
+      }
+      if (notificationsCleared && tokenRemoved) {
+        await _cancelTapRoutingSubscription();
+        if (!_isCurrentGeneration(generation)) return;
+      }
     } finally {
-      await _cancelTapRoutingSubscription();
-      _setStatus(NotificationStatus.off);
+      if (_isCurrentGeneration(generation)) {
+        _setStatus(NotificationStatus.off);
+      }
     }
   }
 
@@ -468,16 +501,19 @@ class NotificationService with WidgetsBindingObserver {
       _initialized && _isCurrentGeneration(generation);
 
   Future<void> _cancelDeliverySubscriptions() async {
-    await _tokenRefreshSubscription?.cancel();
-    await _messageSubscription?.cancel();
+    final tokenRefreshCancellation = _tokenRefreshSubscription?.cancel();
+    final messageCancellation = _messageSubscription?.cancel();
     _tokenRefreshSubscription = null;
     _messageSubscription = null;
     _removeLifecycleObserver();
+    await tokenRefreshCancellation;
+    await messageCancellation;
   }
 
   Future<void> _cancelTapRoutingSubscription() async {
-    await _messageOpenedSubscription?.cancel();
+    final messageOpenedCancellation = _messageOpenedSubscription?.cancel();
     _messageOpenedSubscription = null;
+    await messageOpenedCancellation;
   }
 
   Future<void> _cancelSubscriptions() async {
