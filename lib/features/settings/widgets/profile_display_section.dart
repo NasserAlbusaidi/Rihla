@@ -100,6 +100,8 @@ class ProfileDisplaySection extends ConsumerWidget {
             Expanded(
               child: Text(
                 context.l10n.profileDisplayTheme,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTypography.sans(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -107,11 +109,15 @@ class ProfileDisplaySection extends ConsumerWidget {
                 ),
               ),
             ),
-            Text(
-              trailingLabel,
-              style: AppTypography.sans(
-                fontSize: 14,
-                color: context.colors.textSecondary,
+            Flexible(
+              child: Text(
+                trailingLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.sans(
+                  fontSize: 14,
+                  color: context.colors.textSecondary,
+                ),
               ),
             ),
             SizedBox(width: context.spacing.space8),
