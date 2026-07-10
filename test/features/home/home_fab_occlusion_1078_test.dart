@@ -24,6 +24,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// dashboard reserves a fixed action lane below its scroll viewport instead:
 /// the FAB floats entirely outside the list, and no row content can ever sit
 /// under it, at any scroll offset, scale, or text direction.
+///
+/// Accepted trade-off of the lane: at large text scales short content can
+/// rest below the fold (normal scrollable behavior, proven reachable below)
+/// instead of resting occluded under the FAB — the delivered invariant is
+/// "an interactive row can never REST under the FAB", not "every row is
+/// visible at rest".
 void main() {
   late SharedPreferences prefs;
 
@@ -149,7 +155,13 @@ void main() {
 
     // The issue's literal shape: at rest, the visible part of the last group
     // row's trailing balance/status must not intersect the FAB footprint.
-    final visibleTrailing = visiblePart(trailingRect(), viewportRect);
+    // No silent skip: when the trailing is NOT visible at rest, that is only
+    // legal because the lane clipped it below the viewport (the accepted
+    // trade-off: below-the-fold-and-scrollable beats a mis-tap trap) — any
+    // other reason for invisibility is a failure, so the 1.5x cases assert
+    // something real on both branches.
+    final restTrailing = trailingRect();
+    final visibleTrailing = visiblePart(restTrailing, viewportRect);
     if (visibleTrailing != null) {
       expect(
         visibleTrailing.overlaps(fabRect),
@@ -157,6 +169,16 @@ void main() {
         reason:
             'last group row trailing $visibleTrailing must not sit under the '
             'FAB $fabRect at rest (scale=$scale, locale=$locale)',
+      );
+    } else {
+      expect(
+        restTrailing.top >= viewportRect.bottom,
+        isTrue,
+        reason:
+            'last group row trailing $restTrailing is hidden at rest but not '
+            'clipped below the lane viewport $viewportRect — it must only '
+            'ever be hidden by the bottom clip (scale=$scale, '
+            'locale=$locale)',
       );
     }
 
