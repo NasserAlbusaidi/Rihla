@@ -1112,6 +1112,7 @@ class _AccountCard extends ConsumerWidget {
     final shellEmpty = await outgoingShellProvablyEmpty(
       readUser: () => ref.read(firebaseUserProvider.future),
       readGroups: () => ref.read(userGroupsProvider.future),
+      probeHasLiveData: ref.read(shellEmptinessServerProbeProvider),
       timeout: ref.read(shellEmptinessGateTimeoutProvider),
     );
     if (!context.mounted) return;
