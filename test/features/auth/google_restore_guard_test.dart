@@ -29,6 +29,11 @@ class _MockUserCredential extends Mock implements UserCredential {}
 
 const _kRestoreButton = Key('test.restore.button');
 
+/// Default gate probe: server-confirmed empty → the proceed path stays live
+/// (without an override the unbound default hits `[core/no-app]` → null →
+/// block, so every proceed test would silently become a block test).
+Future<bool?> _serverEmptyProbe(String uid) async => false;
+
 Group _group(String id) => Group(
   id: id,
   name: 'Trip',
@@ -53,6 +58,7 @@ void main() {
   Widget buildApp({
     required Stream<User?> userStream,
     Duration timeout = const Duration(seconds: 5),
+    Future<bool?> Function(String uid) probe = _serverEmptyProbe,
   }) {
     return ProviderScope(
       overrides: [
@@ -63,6 +69,7 @@ void main() {
         firebaseUserProvider.overrideWith((ref) => userStream),
         groupServiceProvider.overrideWithValue(groupService),
         shellEmptinessGateTimeoutProvider.overrideWithValue(timeout),
+        shellEmptinessServerProbeProvider.overrideWithValue(probe),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -145,6 +152,35 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(() => recovery.restoreWithGoogle()).called(1);
+    },
+  );
+
+  testWidgets(
+    'blocks restore when the stream is cache-empty but the server reports '
+    'live data (#1091)',
+    (tester) async {
+      // Cold/reinstall device: local cache serves an EMPTY first snapshot, but
+      // the server holds a live membership. Stream-empty is not account-empty —
+      // the server probe must veto the swap.
+      when(() => groupService.watchUserGroups(any()))
+          .thenAnswer((_) => Stream.value(const []));
+
+      await tester.pumpWidget(
+        buildApp(
+          userStream: Stream.value(MockUser(isAnonymous: true, uid: 'anon-1')),
+          probe: (_) async => true,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(_kRestoreButton));
+      await tester.pumpAndSettle();
+
+      verifyNever(() => recovery.restoreWithGoogle());
+      expect(
+        find.text(AppLocalizationsEn().restoreBlockedHasData),
+        findsOneWidget,
+      );
     },
   );
 }

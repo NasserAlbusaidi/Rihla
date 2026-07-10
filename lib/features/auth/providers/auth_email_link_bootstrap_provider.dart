@@ -162,6 +162,7 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         if (!await outgoingShellProvablyEmpty(
           readUser: () => ref.read(firebaseUserProvider.future),
           readGroups: () => ref.read(userGroupsProvider.future),
+          probeHasLiveData: ref.read(shellEmptinessServerProbeProvider),
           timeout: gateTimeout,
         )) {
           FirebaseConfig.log(

@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/calendar_date.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -83,16 +84,19 @@ bool _isActive(Event event, DateTime now) {
   final start = event.startDate;
   final end = event.endDate;
 
-  // Both dates known — classify against `now`.
+  // Both dates known — classify against `now` by CALENDAR day (#1098): event
+  // dates are UTC-noon-anchored carriers, so raw-instant windows drift by the
+  // reader's local hour. Window sizes stay in calendar days.
   if (start != null && end != null) {
-    if (now.isAfter(start.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(end.add(const Duration(days: 1)))) {
-      return true; // ongoing
+    final untilStart = calendarDayDiff(now, start);
+    final sinceEnd = calendarDayDiff(end, now);
+    if (untilStart <= 0 && sinceEnd <= 0) {
+      return true; // ongoing (inclusive of start and end day)
     }
-    if (start.isAfter(now) && start.difference(now) <= _upcomingWindow) {
+    if (untilStart >= 1 && untilStart <= _upcomingWindow.inDays) {
       return true; // upcoming
     }
-    if (end.isBefore(now) && now.difference(end) <= _recentEndedWindow) {
+    if (sinceEnd >= 1 && sinceEnd <= _recentEndedWindow.inDays) {
       return true; // recently ended
     }
     return false;
@@ -100,8 +104,7 @@ bool _isActive(Event event, DateTime now) {
 
   // Only a start date — upcoming or recently started.
   if (start != null) {
-    final delta = start.difference(now);
-    return delta.abs() <= _upcomingWindow;
+    return calendarDayDiff(now, start).abs() <= _upcomingWindow.inDays;
   }
 
   // No dates at all — surface so the user can act on it; recent events first.
@@ -122,14 +125,22 @@ int _priority({
   required DateTime now,
 }) {
   if (start != null && end != null) {
-    if (now.isAfter(start) && now.isBefore(end)) return 0;
-    if (start.isAfter(now)) return start.difference(now).inDays + 1;
-    if (end.isBefore(now)) return 1000 + now.difference(end).inDays;
+    final untilStart = calendarDayDiff(now, start);
+    final sinceEnd = calendarDayDiff(end, now);
+    // #1098: ongoing = today within [start.date, end.date] INCLUSIVE. The old
+    // exclusive instant check (`isAfter(start) && isBefore(end)`) ranked a
+    // single-day event 1000 (recently-ended); calendar-day comparison ranks it
+    // 0 — intended, and consistent with `_isActive`.
+    if (untilStart <= 0 && sinceEnd <= 0) return 0;
+    if (untilStart >= 1) return untilStart + 1;
+    if (sinceEnd >= 1) return 1000 + sinceEnd;
   }
   if (start != null) {
-    final days = start.difference(now).inDays.abs();
-    return start.isAfter(now) ? days + 1 : 500 + days;
+    final untilStart = calendarDayDiff(now, start);
+    return untilStart >= 1 ? untilStart + 1 : 500 + untilStart.abs();
   }
+  // Carve-out (#1098): the createdAt fallback is a TRUE instant, not a calendar
+  // carrier — keep raw-instant day arithmetic here.
   return 500 + now.difference(fallback).inDays;
 }
 

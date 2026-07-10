@@ -21,6 +21,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
+import 'package:safar/features/auth/providers/shell_emptiness_gate.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
@@ -105,6 +106,11 @@ Future<Widget> _wrap({
       firebaseUserProvider.overrideWith(
         (ref) => Stream<firebase_auth.User?>.value(user),
       ),
+      // #1091: the gate now server-probes on stream-empty. Seed a
+      // server-confirmed-empty probe so an anon+empty shell still reaches
+      // restoreWithGoogle / the recover push (populated-shell block tests
+      // short-circuit before the probe, so the seed is inert for them).
+      shellEmptinessServerProbeProvider.overrideWithValue((_) async => false),
       userGroupsProvider.overrideWith(
         (ref) => Stream.value(groups ?? const <Group>[]),
       ),

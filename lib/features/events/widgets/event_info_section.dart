@@ -6,6 +6,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/calendar_date.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../core/utils/write_ack.dart';
 import '../keys/event_keys.dart';
@@ -74,9 +75,9 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
       if (picked != null && mounted) {
         setState(() {
           if (isStart) {
-            _startDate = picked.toUtc();
+            _startDate = anchorCalendarDate(picked);
           } else {
-            _endDate = picked.toUtc();
+            _endDate = anchorCalendarDate(picked);
           }
         });
       }
@@ -102,6 +103,8 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
       final description = _descriptionController.text.trim();
       final connectivity = ref.read(connectivityProvider.notifier);
       final connectivityStatus = ref.read(connectivityProvider);
+      final clearDescription =
+          widget.event.description != null && description.isEmpty;
       final outcome = await awaitServerAck(
         ref
             .read(eventServiceProvider)
@@ -112,6 +115,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
               startDate: _startDate,
               endDate: _endDate,
               description: description.isNotEmpty ? description : null,
+              clearDescription: clearDescription,
             ),
         skipWait: connectivityStatus != ConnectivityStatus.online,
       );
