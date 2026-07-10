@@ -87,5 +87,24 @@ void main() {
       expect(gate.clearCount, 0);
       expect(prefs.getString(kLastActiveUidKey), isNotNull);
     });
+
+    // #1100: cold boot (main.dart) never injects `prefs` — the fallback to
+    // `SharedPreferences.getInstance()` is the only path production actually
+    // takes. Every other test in this file passes `prefs:` explicitly, which
+    // bypasses that fallback line entirely.
+    test('omitted prefs falls back to SharedPreferences.getInstance()', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final gate = _RecordingCacheGate();
+      final auth = MockFirebaseAuth(signedIn: false);
+
+      await FirebaseConfig.ensureAnonymousSession(
+        authOverride: auth,
+        cacheGate: gate,
+      );
+
+      expect(gate.clearCount, 0);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(kLastActiveUidKey), isNotNull);
+    });
   });
 }

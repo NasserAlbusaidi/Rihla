@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
+import 'package:safar/core/services/post_deletion_auth_barrier.dart';
 import 'package:safar/features/auth/services/data_deletion_service.dart';
 import 'package:safar/features/auth/services/durable_account_marker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,8 @@ const _expectedDeletedUidKey = 'auth.expectedDeletedUid';
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 class _MockUser extends Mock implements User {}
+
+class _MockPrefs extends Mock implements SharedPreferences {}
 
 /// The server throws this exact shape on a partial/convergent deletion. The
 /// real plugin constructor is @protected; a subclass may invoke it.
@@ -224,4 +227,22 @@ void main() {
 
     expect(await service.deleteAccount(), DeletionResult.error);
   });
+
+  // #1100: a failed on-device write of the post-deletion marker must fail
+  // loud rather than silently proceed — a lost marker would let a restored
+  // deleted session survive the cold-boot reconciliation check.
+  test(
+    'markExpectedDeletedUid throws when the marker write fails to persist',
+    () async {
+      final mockPrefs = _MockPrefs();
+      when(
+        () => mockPrefs.setString(kExpectedDeletedUidKey, 'uid-1'),
+      ).thenAnswer((_) async => false);
+
+      await expectLater(
+        markExpectedDeletedUid(mockPrefs, 'uid-1'),
+        throwsA(isA<StateError>()),
+      );
+    },
+  );
 }
