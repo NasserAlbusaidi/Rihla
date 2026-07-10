@@ -2,7 +2,6 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:go_router/go_router.dart';
 import '../../../core/config/firebase_config.dart';
@@ -29,6 +28,7 @@ import '../../events/providers/event_provider.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/providers/expense_provider.dart';
+import '../../ledger/services/settlement_service.dart';
 import '../../ledger/utils/settlement_correction_affordance.dart';
 import '../../ledger/widgets/pre_settlement_review_sheet.dart';
 import '../models/group_model.dart';
@@ -799,7 +799,6 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       );
     }
 
-    final groupSettleUpId = const Uuid().v4();
     final ConnectivityNotifier connectivityNotifier =
         connectivity ?? ref.read(connectivityProvider.notifier);
     final skipWait =
@@ -826,6 +825,37 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           'Cannot record group settlement without an authenticated user.',
         );
       }
+
+      // #1093: derive a deterministic dedup id for the whole logical
+      // decomposed settle-up from the SAME `gsu:` basis both providers this
+      // screen already watches (`:141,144`) — a racing second decompose of
+      // the identical pair/amount/epoch derives the SAME groupSettleUpId, so
+      // every leg + residual id it feeds (Task 2) collides too, and the
+      // loser's WHOLE batch is denied atomically (#929 all-or-nothing).
+      final groupDocs = ref
+          .read(groupSettlementsProvider(widget.groupId))
+          .valueOrNull;
+      if (groupDocs == null) {
+        throw StateError(
+          'group settlement basis unavailable — cannot derive dedup id',
+        );
+      }
+      final taggedLegs = ref.read(
+        groupTaggedEventSettlementsProvider(widget.groupId),
+      );
+      final pairSettlements = [...groupDocs, ...taggedLegs];
+      final groupSettleUpId = SettlementService.deterministicSettlementId(
+        scopeKey: 'gsu:${widget.groupId}',
+        payerParticipantId: fromUserId,
+        recipientParticipantId: toUserId,
+        currency: currency,
+        amount: amount, // the TOTAL being decomposed
+        pairEpoch: SettlementService.directedPairEpoch(
+          pairSettlements,
+          payerParticipantId: fromUserId,
+          recipientParticipantId: toUserId,
+        ),
+      );
 
       final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
 
@@ -987,12 +1017,38 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           connectivity ?? ref.read(connectivityProvider.notifier);
       final connectivityStatus = ref.read(connectivityProvider);
 
+      // #1093: same pattern as the decompose path, scoped to `group:` and
+      // epoch over groupSettlementsProvider docs only — this is the fallback
+      // single atomic group write (no per-event legs), so it has no tagged
+      // event-settlement basis to union in.
+      final groupDocs = ref
+          .read(groupSettlementsProvider(widget.groupId))
+          .valueOrNull;
+      if (groupDocs == null) {
+        throw StateError(
+          'group settlement basis unavailable — cannot derive dedup id',
+        );
+      }
+      final id = SettlementService.deterministicSettlementId(
+        scopeKey: 'group:${widget.groupId}',
+        payerParticipantId: fromUserId,
+        recipientParticipantId: toUserId,
+        currency: currency,
+        amount: amount,
+        pairEpoch: SettlementService.directedPairEpoch(
+          groupDocs,
+          payerParticipantId: fromUserId,
+          recipientParticipantId: toUserId,
+        ),
+      );
+
       // #412: never gate the UI on the raw server-ack future — offline it
       // stays pending until reconnect. Race it; queued means the SDK replays.
       final outcome = await awaitServerAck(
         ref
             .read(groupSettlementServiceProvider)
             .addGroupSettlement(
+              id: id,
               groupId: widget.groupId,
               payerParticipantId: fromUserId,
               recipientParticipantId: toUserId,
