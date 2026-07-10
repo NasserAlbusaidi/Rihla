@@ -142,9 +142,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #1078: the FAB action lane shortened the dashboard viewport — the
-      // group rows start below the fold on the test surface now.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      // #1077/#1078: the 44dp header action and the FAB action lane push the
+      // group rows below the fold — scroll them into existence first.
+      await tester.scrollUntilVisible(
+        find.text('Desert Crew'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       expect(find.text('Desert Crew'), findsOneWidget);
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
@@ -185,9 +189,13 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // #1078: the FAB action lane shortened the dashboard viewport —
-        // bring the row on screen first.
-        await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+        // #1077/#1078: the 44dp header action and the FAB action lane push
+        // the row below the fold — scroll it into existence first.
+        await tester.scrollUntilVisible(
+          find.text('Desert Crew'),
+          120,
+          scrollable: find.byType(Scrollable).first,
+        );
         await tester.pumpAndSettle();
 
         final row = find
@@ -342,8 +350,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807/#1078: the tap-cue line and the FAB action lane push the row
-      // below the fold — scroll it into existence, then fully on-screen.
+      // #807/#1077/#1078: the tap-cue line, 44dp header action, and FAB lane
+      // push the row below the fold — scroll it into existence first.
       await tester.scrollUntilVisible(
         find.text('Friends'),
         120,
@@ -367,9 +375,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #1078: the FAB action lane shortened the dashboard viewport — the
-      // groups header gap sits below the fold on the test surface now.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      // #1077/#1078: the 44dp header action and the FAB action lane push the
+      // groups header gap below the fold — scroll it into existence first.
+      await tester.scrollUntilVisible(
+        find.byKey(HomeKeys.groupsHeaderGap),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
 
       final gap = tester.widget<SizedBox>(

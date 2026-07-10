@@ -151,6 +151,14 @@ void main() {
           await tester.pump(const Duration(milliseconds: 16));
         }
 
+        // #1077: the GROUPS header action grew to the 44dp floor, nudging
+        // rows past the sliver build cull — bring them into view first
+        // (bounded pumps again: the shimmer never settles).
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
         expect(find.text('Desert Crew'), findsOneWidget);
         expect(
           find.byKey(HomeKeys.groupRowBalanceSkeleton),
@@ -177,6 +185,11 @@ void main() {
         await tester.pumpAndSettle();
         // #1078: FAB action lane — bring the group row on screen first.
         await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+        await tester.pumpAndSettle();
+
+        // #1077: the GROUPS header action grew to the 44dp floor, nudging
+        // rows past the sliver build cull — bring them into view first.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
         await tester.pumpAndSettle();
 
         final row = _rowFor('Desert Crew');
@@ -218,6 +231,11 @@ void main() {
         await tester.pumpAndSettle();
         // #1078: FAB action lane — bring the group row on screen first.
         await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+        await tester.pumpAndSettle();
+
+        // #1077: the GROUPS header action grew to the 44dp floor, nudging
+        // rows past the sliver build cull — bring them into view first.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
         await tester.pumpAndSettle();
 
         final row = _rowFor('Desert Crew');

@@ -223,8 +223,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807/#1078: the tap-cue line and the FAB action lane push the row
-      // below the fold — scroll it into existence, then fully on-screen.
+      // #807/#1077/#1078: the tap-cue line, 44dp header action, and FAB lane
+      // push the row below the fold — scroll it into existence first.
       await tester.scrollUntilVisible(
         find.text('Desert Crew'),
         120,
