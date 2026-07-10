@@ -90,7 +90,6 @@ class SectionHeader extends StatelessWidget {
               ),
             ),
           ),
-          const Spacer(),
           if (actionLabel != null)
             Semantics(
               button: true,
