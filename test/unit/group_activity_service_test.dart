@@ -295,7 +295,6 @@ void main() {
           equals('Alice created Weekend Trip'),
         );
       },
-      skip: true, // Phase 30: will pass after Plan 01 Task 2
     );
 
     test(
@@ -322,7 +321,6 @@ void main() {
         expect(snap.docs, isNotEmpty);
         expect(snap.docs.first.data()['actorName'], equals('Carol'));
       },
-      skip: true, // Phase 30: will pass after Plan 01 Task 2
     );
 
     test(
@@ -350,7 +348,6 @@ void main() {
         expect(snap.docs.first.data()['description'],
             equals('Dave left the group'));
       },
-      skip: true, // Phase 30: will pass after Plan 01 Task 2
     );
   });
 }
