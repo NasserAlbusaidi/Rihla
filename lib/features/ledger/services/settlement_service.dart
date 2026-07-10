@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -119,6 +122,71 @@ class SettlementService extends FirestoreRepository {
     if (groupSettleUpId != null) data['groupSettleUpId'] = groupSettleUpId;
     return data;
   }
+
+  /// Derives a deterministic settlement doc id (#1093) from the settle state
+  /// so two writers observing the same state produce the SAME id: the second
+  /// identical write collides with the first and is denied by the already-live
+  /// `allow update: if false` on both settlement blocks (no rules change).
+  ///
+  /// [amountFils] is derived here via [MoneySerializer.toSubunits] — the exact
+  /// conversion [buildSettlementDoc] performs — so id-amount and stored
+  /// `amountFils` cannot drift. [pairEpoch] must come from
+  /// [directedPairEpoch] over a provider-filtered (`isDeleted == false`) live
+  /// settlement list; this function itself does no filtering.
+  ///
+  /// Deliberately EXCLUDES `settledAt` (differs per device), names (mirrors
+  /// differ per device), `note` (a different note is still the same payment),
+  /// and `createdBy` (settling-on-behalf must collide with self-settling).
+  static String deterministicSettlementId({
+    required String scopeKey,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required String currency,
+    required Decimal amount,
+    required int pairEpoch,
+  }) {
+    final fils = MoneySerializer.toSubunits(amount, currency);
+    final canonical = [
+      'sd1',
+      scopeKey,
+      payerParticipantId,
+      recipientParticipantId,
+      currency,
+      '$fils',
+      '$pairEpoch',
+    ].join('\x1f');
+    return 'sd1${sha256.convert(utf8.encode(canonical)).toString().substring(0, 40)}';
+  }
+
+  /// Counts settlements for the DIRECTED pair (payer -> recipient) in
+  /// [settlements] — the epoch input to [deterministicSettlementId]. Pure: it
+  /// counts exactly the list it is given. Callers are responsible for feeding
+  /// provider-filtered `isDeleted == false` rows so both devices apply the
+  /// identical filter and determinism holds.
+  static int directedPairEpoch(
+    Iterable<Settlement> settlements, {
+    required String payerParticipantId,
+    required String recipientParticipantId,
+  }) =>
+      settlements
+          .where(
+            (s) =>
+                s.payerParticipantId == payerParticipantId &&
+                s.recipientParticipantId == recipientParticipantId,
+          )
+          .length;
+
+  /// Deterministic id for one per-event leg of a decomposed group settle-up
+  /// (#752/#1093), keyed by the shared `groupSettleUpId` + the leg's event id
+  /// — legs are per-event unique, so this cannot collide across legs of the
+  /// same decompose.
+  static String decomposeLegSettlementId(String groupSettleUpId, String eventId) =>
+      'sd1${sha256.convert(utf8.encode('sd1leg\x1f$groupSettleUpId\x1f$eventId')).toString().substring(0, 40)}';
+
+  /// Deterministic id for the residual group-scoped leg of a decomposed
+  /// group settle-up (#752/#1093), keyed by the shared `groupSettleUpId`.
+  static String decomposeResidualSettlementId(String groupSettleUpId) =>
+      'sd1${sha256.convert(utf8.encode('sd1res\x1f$groupSettleUpId')).toString().substring(0, 40)}';
 
   /// Creates a new settlement document in Firestore and returns the resulting
   /// [Settlement] object.
