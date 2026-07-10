@@ -293,6 +293,134 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'G: a scope change (global to personal) writes the scope (#1092)',
+    (tester) async {
+      final service = _RecordingExpenseService();
+      await _pumpConcurrentEditor(tester, service: service, v1: [
+        _expense(amount: '10.000', categoryId: 'food'),
+      ]);
+
+      await tester.ensureVisible(find.text('Just me'));
+      await tester.tap(find.text('Just me'));
+      await tester.pump();
+
+      await _tapSave(tester);
+
+      expect(
+        service.scopeArg,
+        ExpenseScope.personal,
+        reason: 'a genuine scope change opens the money gate and is written',
+      );
+    },
+  );
+
+  testWidgets('H: a payer change writes the new payer (#1092)', (tester) async {
+    final service = _RecordingExpenseService();
+    await _pumpConcurrentEditor(tester, service: service, v1: [
+      _expense(amount: '10.000', categoryId: 'food', payer: 'uid-yasmin'),
+    ]);
+
+    await tester.ensureVisible(find.text('Change'));
+    await tester.tap(find.text('Change'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Layla Hassan'));
+    await tester.pumpAndSettle();
+
+    await _tapSave(tester);
+
+    expect(
+      service.payerParticipantIdArg,
+      'uid-layla',
+      reason: 'the new payer IS written',
+    );
+    expect(
+      service.amountArg,
+      isNull,
+      reason: 'payer moves paidMap, not the money cluster — amount untouched',
+    );
+  });
+
+  testWidgets(
+    'I: changing the custom split set dirties money via the scope-masked '
+    'set compare (#1092)',
+    (tester) async {
+      final service = _RecordingExpenseService();
+      await _pumpConcurrentEditor(tester, service: service, v1: [
+        _customScopeExpense(),
+      ]);
+
+      // Untick Layla — scope stays custom, amount/mode/distribution untouched,
+      // so ONLY the !setEquals tail of the scope mask can fire moneyDirty.
+      await tester.ensureVisible(find.widgetWithText(ListTile, 'Layla Hassan'));
+      await tester.tap(find.widgetWithText(ListTile, 'Layla Hassan'));
+      await tester.pump();
+
+      await _tapSave(tester);
+
+      expect(
+        service.customSplitParticipantsArg,
+        ['uid-yasmin'],
+        reason: 'the shrunk custom set IS written',
+      );
+      expect(
+        service.amountArg,
+        isNull,
+        reason: 'amount equals the original — inner ternary still passes null',
+      );
+    },
+  );
+
+  testWidgets(
+    'J: an adjustment-only change (allocation flip) dirties the explanation, '
+    'not the money cluster (#1092)',
+    (tester) async {
+      final service = _RecordingExpenseService();
+      await _pumpConcurrentEditor(
+        tester,
+        service: service,
+        v1: [_itemizedExpenseWithAdjustment()],
+        physicalSize: const Size(1000, 2400),
+      );
+
+      // Flip the service adjustment equal→proportional. Both participants have
+      // identical item subtotals, so the folded distribution is UNCHANGED —
+      // items stay equal too, leaving the adjustments compare in
+      // _explanationValueEquals as the only term that can read dirty.
+      await tester.tap(find.text('Itemized').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('itemized_adjustment_0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('adjustment_alloc_proportional')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('adjustment_done')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('split_sheet_apply')));
+      await tester.pumpAndSettle();
+
+      await _tapSave(tester);
+
+      expect(service.amountArg, isNull, reason: 'money gate stays closed');
+      expect(service.splitModeArg, isNull, reason: 'splitMode not written');
+      expect(
+        service.splitDistributionArg,
+        isNull,
+        reason: 'distribution unchanged — not written',
+      );
+      expect(service.clearSplitArg, isFalse, reason: 'clearSplit stays false');
+      expect(
+        service.splitExplanationArg,
+        isNotNull,
+        reason: 'the adjustment change IS written via explanationDirty',
+      );
+      expect(
+        service.splitExplanationArg!.adjustments!.single.allocation,
+        'proportional',
+        reason: 'the flipped allocation persists',
+      );
+    },
+  );
 }
 
 Future<void> _tapSave(WidgetTester tester) async {
@@ -469,6 +597,61 @@ Expense _reItemizedExpense() {
           amountFils: 25000,
           participantIds: ['uid-yasmin', 'uid-layla'],
         ),
+      ],
+    ),
+  );
+}
+
+// A custom-scope equally-split expense — Test I's seed. Shrinking the set
+// leaves scope/amount/mode/distribution pristine, isolating the !setEquals
+// tail of the moneyDirty scope mask.
+Expense _customScopeExpense() {
+  return Expense(
+    id: 'expense-1',
+    tripId: 'event-1',
+    payerParticipantId: 'uid-yasmin',
+    amount: Decimal.parse('10.000'),
+    currency: 'OMR',
+    description: 'Dinner',
+    scope: ExpenseScope.custom,
+    customSplitParticipants: const ['uid-yasmin', 'uid-layla'],
+    categoryId: 'food',
+    createdAt: DateTime(2026, 5, 30),
+    createdBy: 'uid-yasmin',
+  );
+}
+
+// Itemized WITH a bill-level adjustment — Test J's seed. Pastries 5.100 split
+// both ways (2.550 each) + service 1.000 equal (0.500 each) = 3.050 each,
+// Σ = 6.100. Equal item subtotals mean an equal→proportional allocation flip
+// re-folds to the SAME distribution, so only the explanation reads dirty.
+Expense _itemizedExpenseWithAdjustment() {
+  return Expense(
+    id: 'expense-1',
+    tripId: 'event-1',
+    payerParticipantId: 'uid-yasmin',
+    amount: Decimal.parse('6.100'),
+    currency: 'OMR',
+    description: 'Dinner',
+    scope: ExpenseScope.global,
+    categoryId: 'food',
+    createdAt: DateTime(2026, 5, 30),
+    createdBy: 'uid-yasmin',
+    splitMode: SplitMode.exact,
+    splitDistribution: {
+      'uid-yasmin': Decimal.parse('3.050'),
+      'uid-layla': Decimal.parse('3.050'),
+    },
+    splitExplanation: const SplitExplanation(
+      items: [
+        SplitItem(
+          label: 'Pastries',
+          amountFils: 5100,
+          participantIds: ['uid-yasmin', 'uid-layla'],
+        ),
+      ],
+      adjustments: [
+        SplitAdjustment(type: 'service', amountFils: 1000, allocation: 'equal'),
       ],
     ),
   );
