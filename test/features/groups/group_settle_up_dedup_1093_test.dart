@@ -16,7 +16,6 @@ import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
-import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 // #1093: a group settle-up written twice from the SAME observed state (neither
