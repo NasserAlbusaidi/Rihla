@@ -62,14 +62,19 @@ class SectionHeader extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            title.toUpperCase(),
-            style: AppTypography.caption(
-              context,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: colors.textSecondary,
-              letterSpacing: 1.2,
+          Flexible(
+            fit: FlexFit.tight,
+            child: Text(
+              title.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.caption(
+                context,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+                letterSpacing: 1.2,
+              ),
             ),
           ),
           const Spacer(),
@@ -80,6 +85,7 @@ class SectionHeader extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Text(
                 actionLabel!,
+                maxLines: 1,
                 style: AppTypography.sans(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

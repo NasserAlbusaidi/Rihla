@@ -31,6 +31,44 @@ class WordmarkLogo extends StatelessWidget {
   /// Whether to render the underscore. Set false for inline usage.
   final bool flourish;
 
+  static String _textFor(bool isArabic) => isArabic ? 'رحلة' : 'Rihla';
+
+  static TextStyle _styleFor(bool isArabic, double size, Color ink) =>
+      isArabic
+      ? AppTypography.arabicDisplay(
+          fontSize: size,
+          color: ink,
+          letterSpacing: size > 60 ? -3 : -1.5,
+          height: 1.0,
+        )
+      : AppTypography.display(
+          fontSize: size,
+          color: ink,
+          letterSpacing: size > 60 ? -3 : -1.5,
+          height: 1.0,
+        );
+
+  /// Laid-out width of the mark's text for the current locale, so layouts
+  /// flanking a centered wordmark can budget against its REAL footprint
+  /// (test fonts render much wider than production glyphs — a constant
+  /// guard is wrong in one of the two worlds, #1064).
+  static double measuredTextWidth(BuildContext context, {double size = 22}) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final painter = TextPainter(
+      text: TextSpan(
+        text: _textFor(isArabic),
+        // design-token-justified: measurement-only style — the color never
+        // paints, it only satisfies the style constructor.
+        style: _styleFor(isArabic, size, const Color(0xFF000000)),
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: TextScaler.noScaling,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -38,21 +76,8 @@ class WordmarkLogo extends StatelessWidget {
     final saffron = accentColor ?? colors.primary;
 
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final wordmarkText = isArabic ? 'رحلة' : 'Rihla';
-
-    final wordmarkStyle = isArabic
-        ? AppTypography.arabicDisplay(
-            fontSize: size,
-            color: ink,
-            letterSpacing: size > 60 ? -3 : -1.5,
-            height: 1.0,
-          )
-        : AppTypography.display(
-            fontSize: size,
-            color: ink,
-            letterSpacing: size > 60 ? -3 : -1.5,
-            height: 1.0,
-          );
+    final wordmarkText = _textFor(isArabic);
+    final wordmarkStyle = _styleFor(isArabic, size, ink);
 
     return Semantics(
       label: 'Rihla',
@@ -60,7 +85,14 @@ class WordmarkLogo extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(wordmarkText, style: wordmarkStyle),
+          // Brand mark, not informational text: it keeps its designed size
+          // regardless of the OS text scale, so the #1064 header budgets
+          // (set-name chip vs centered wordmark) hold at the 1.5x policy max.
+          Text(
+            wordmarkText,
+            style: wordmarkStyle,
+            textScaler: TextScaler.noScaling,
+          ),
           if (flourish)
             Padding(
               padding: EdgeInsets.only(top: size * 0.08),

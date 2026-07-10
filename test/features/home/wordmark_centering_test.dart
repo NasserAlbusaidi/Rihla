@@ -12,6 +12,7 @@ import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
+import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -78,6 +79,7 @@ Future<void> _pumpHome(
   WidgetTester tester, {
   required String deviceName,
   required Locale locale,
+  TextScaler? textScaler,
 }) async {
   SharedPreferences.setMockInitialValues({
     if (deviceName.isNotEmpty) 'settings_device_name': deviceName,
@@ -102,6 +104,15 @@ Future<void> _pumpHome(
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
         locale: locale,
+        builder: textScaler == null
+            ? null
+            : (context, child) {
+                final mediaQuery = MediaQuery.of(context);
+                return MediaQuery(
+                  data: mediaQuery.copyWith(textScaler: textScaler),
+                  child: child!,
+                );
+              },
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
@@ -138,6 +149,31 @@ void main() {
     );
   }
 
+  Future<void> expectSetNameChipClearOfWordmark(
+    WidgetTester tester, {
+    required Locale locale,
+  }) async {
+    await tester.binding.setSurfaceSize(size);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpHome(
+      tester,
+      deviceName: '',
+      locale: locale,
+      textScaler: const TextScaler.linear(1.5),
+    );
+
+    final chip = find.byKey(HomeKeys.setNameChip);
+    final wordmark = find.byType(WordmarkLogo);
+    expect(chip, findsOneWidget);
+    expect(wordmark, findsOneWidget);
+    expect(
+      tester.getRect(chip).overlaps(tester.getRect(wordmark)),
+      isFalse,
+      reason:
+          'the set-name chip must stay in its side budget at 1.5x ($locale)',
+    );
+  }
+
   testWidgets('LTR, set-name chip visible (empty deviceName)', (tester) async {
     await expectCentered(tester, deviceName: '', locale: const Locale('en'));
   });
@@ -158,6 +194,24 @@ void main() {
     await expectCentered(
       tester,
       deviceName: 'ناصر',
+      locale: const Locale('ar'),
+    );
+  });
+
+  testWidgets('LTR set-name chip does not overlap wordmark at 1.5x', (
+    tester,
+  ) async {
+    await expectSetNameChipClearOfWordmark(
+      tester,
+      locale: const Locale('en'),
+    );
+  });
+
+  testWidgets('RTL set-name chip does not overlap wordmark at 1.5x', (
+    tester,
+  ) async {
+    await expectSetNameChipClearOfWordmark(
+      tester,
       locale: const Locale('ar'),
     );
   });

@@ -43,10 +43,23 @@ Widget _buildTestApp(
   Widget widget, {
   List<Override> overrides = const [],
   Locale? locale,
+  TextScaler? textScaler,
 }) {
   final router = GoRouter(
     initialLocation: '/profile',
-    routes: [GoRoute(path: '/profile', builder: (ctx, state) => widget)],
+    routes: [
+      GoRoute(
+        path: '/profile',
+        builder: (ctx, state) {
+          if (textScaler == null) return widget;
+          final mediaQuery = MediaQuery.of(ctx);
+          return MediaQuery(
+            data: mediaQuery.copyWith(textScaler: textScaler),
+            child: widget,
+          );
+        },
+      ),
+    ],
   );
 
   return ProviderScope(
@@ -139,6 +152,99 @@ List<Override> _phase26Overrides({
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  group('ProfileScreen supported text scale (#1064)', () {
+    Future<void> expectLargeTextLayout(
+      WidgetTester tester, {
+      required Locale locale,
+    }) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          const ProfileScreen(),
+          locale: locale,
+          textScaler: const TextScaler.linear(1.5),
+          overrides: [
+            ..._phase26Overrides(prefs: prefs),
+            profileStatsProvider.overrideWith(
+              (ref) => _statsData(
+                groupCount: 123,
+                eventCount: 456,
+                spentByCurrency: [
+                  (
+                    currency: 'OMR',
+                    amount: Decimal.parse('123456789.123'),
+                  ),
+                ],
+              ),
+            ),
+            isDurableUserProvider.overrideWithValue(true),
+            linkedEmailProvider.overrideWithValue('secured@example.com'),
+            googleAccountProvider.overrideWithValue(null),
+          ],
+        ),
+      );
+      await _pumpWithAnimations(tester);
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Profile must be overflow-free at 1.5x in $locale',
+      );
+
+      final nameFinder = find.byKey(ProfileKeys.setNamePrompt);
+      final name = tester.widget<Text>(nameFinder);
+      expect(
+        find.ancestor(of: nameFinder, matching: find.byType(Flexible)),
+        findsOneWidget,
+      );
+      expect(name.maxLines, 1);
+      expect(name.overflow, TextOverflow.ellipsis);
+
+      final spentStat = find.byKey(ProfileKeys.statSpent);
+      final l10n = AppLocalizations.of(tester.element(spentStat));
+      final journeysLabel = tester.widget<Text>(
+        find.descendant(
+          of: find.byKey(ProfileKeys.statEvents),
+          matching: find.text(l10n.profileStatsJourneysLabel),
+        ),
+      );
+      expect(journeysLabel.maxLines, 2);
+      expect(journeysLabel.overflow, TextOverflow.ellipsis);
+
+      final fittedValue = find.descendant(
+        of: spentStat,
+        matching: find.byType(FittedBox),
+      );
+      expect(fittedValue, findsOneWidget);
+      final fittedBox = tester.widget<FittedBox>(fittedValue);
+      expect(fittedBox.fit, BoxFit.scaleDown);
+      expect(fittedBox.alignment, AlignmentDirectional.centerStart);
+      expect(
+        find.descendant(
+          of: spentStat,
+          matching: _textContaining('123456789.123'),
+        ),
+        findsOneWidget,
+        reason: 'money digits must be scaled down, never truncated',
+      );
+    }
+
+    testWidgets('EN Profile is overflow-free with complete money at 1.5x', (
+      tester,
+    ) async {
+      await expectLargeTextLayout(tester, locale: const Locale('en'));
+    });
+
+    testWidgets('AR Profile is overflow-free with complete money at 1.5x', (
+      tester,
+    ) async {
+      await expectLargeTextLayout(tester, locale: const Locale('ar'));
+    });
   });
 
   group('profile stats async states (#488)', () {

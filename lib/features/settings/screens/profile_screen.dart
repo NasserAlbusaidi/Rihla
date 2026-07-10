@@ -413,19 +413,23 @@ class _IdentityCard extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          displayName,
-                          key: hasName
-                              ? ProfileKeys.displayName
-                              : ProfileKeys.setNamePrompt,
-                          style: AppTypography.displayOf(
-                            context,
-                            fontSize: 28,
-                            color: hasName
-                                ? colors.textPrimary
-                                : colors.primary,
-                            letterSpacing: -0.5,
-                            height: 1.1,
+                        Flexible(
+                          child: Text(
+                            displayName,
+                            key: hasName
+                                ? ProfileKeys.displayName
+                                : ProfileKeys.setNamePrompt,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.displayOf(
+                              context,
+                              fontSize: 28,
+                              color: hasName
+                                  ? colors.textPrimary
+                                  : colors.primary,
+                              letterSpacing: -0.5,
+                              height: 1.1,
+                            ),
                           ),
                         ),
                         SizedBox(width: context.spacing.space8),
@@ -881,6 +885,8 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             keyLabel,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.caption(
               context,
               fontSize: 9,
@@ -890,17 +896,22 @@ class _StatCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          if (valueWidget != null)
-            valueWidget!
-          else
-            Text(
-              value!,
-              style: AppTypography.display(
-                fontSize: 28,
-                color: colors.textPrimary,
-                height: 1.0,
-              ),
-            ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: valueWidget != null
+                ? valueWidget!
+                : Text(
+                    value!,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: AppTypography.display(
+                      fontSize: 28,
+                      color: colors.textPrimary,
+                      height: 1.0,
+                    ),
+                  ),
+          ),
           SizedBox(height: context.spacing.space4),
           Text(
             sub,
