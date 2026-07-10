@@ -71,7 +71,7 @@ class _MockTokenDocument extends Mock
 // In main(), before tests register typed mocktail fallback arguments.
 setUpAll(() {
   registerFallbackValue(<String, dynamic>{});
-  registerFallbackValue(SetOptions());
+  registerFallbackValue(SetOptions(merge: true));
 });
 
 test(
@@ -235,7 +235,7 @@ Re-run the Step 5 command. Expected: PASS.
 
 - [ ] **Step 7: Pin cold-boot reconciliation decisions**
 
-Keep the existing fresh-disabled test, then add to `app_bootstrap_wiring_test.dart`:
+Import `package:safar/core/models/app_settings_model.dart`, keep the existing fresh-disabled test, then add to `app_bootstrap_wiring_test.dart`:
 
 ```dart
 test(
