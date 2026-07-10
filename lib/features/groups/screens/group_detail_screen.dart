@@ -828,28 +828,36 @@ class _PrimaryCtaButton extends StatelessWidget {
     final colors = context.colors;
     final spacing = context.spacing;
     return Material(
-      color: colors.primary,
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(spacing.radiusMedium),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(spacing.radiusMedium),
-        child: Container(
-          height: 42,
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 14, color: colors.textOnPrimary),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textOnPrimary,
-                ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Center(
+            child: Ink(
+              height: 42,
+              decoration: BoxDecoration(
+                color: colors.primary,
+                borderRadius: BorderRadius.circular(spacing.radiusMedium),
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 14, color: colors.textOnPrimary),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textOnPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -872,25 +880,32 @@ class _SecondaryCtaButton extends StatelessWidget {
     final colors = context.colors;
     final spacing = context.spacing;
     return Material(
-      color: colors.cardSoft,
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(spacing.radiusMedium),
       child: InkWell(
         key: buttonKey,
         onTap: onTap,
         borderRadius: BorderRadius.circular(spacing.radiusMedium),
-        child: Container(
-          height: 42,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(spacing.radiusMedium),
-            border: Border.all(color: colors.rule, width: 0.5),
-          ),
-          child: Text(
-            label,
-            style: AppTypography.sans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: colors.textPrimary,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Center(
+            child: Ink(
+              height: 42,
+              decoration: BoxDecoration(
+                color: colors.cardSoft,
+                borderRadius: BorderRadius.circular(spacing.radiusMedium),
+                border: Border.all(color: colors.rule, width: 0.5),
+              ),
+              child: Center(
+                child: Text(
+                  label,
+                  style: AppTypography.sans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
             ),
           ),
         ),

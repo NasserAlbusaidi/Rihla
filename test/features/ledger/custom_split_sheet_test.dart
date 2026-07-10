@@ -214,6 +214,57 @@ void main() {
   });
 
   group('CustomSplitSheet — shares', () {
+    testWidgets('#1110 shares stepper buttons meet the 44dp tap-target floor', (
+      tester,
+    ) async {
+      await _openSheet(
+        tester,
+        total: Decimal.parse('30.000'),
+        participants: participants,
+        initialMode: SplitMode.shares,
+      );
+
+      final stepper = find
+          .ancestor(
+            of: find.byIcon(Icons.remove).first,
+            matching: find.byType(Stack),
+          )
+          .first;
+      final paintedTrack = find
+          .descendant(of: stepper, matching: find.byType(DecoratedBox))
+          .first;
+      expect(tester.getSize(paintedTrack).height, 36);
+
+      for (final glyph in [Icons.remove, Icons.add]) {
+        final icon = find.byIcon(glyph).first;
+        expect(tester.widget<Icon>(icon).size, 16);
+
+        final target = find
+            .ancestor(of: icon, matching: find.byType(InkWell))
+            .first;
+        expect(
+          tester.getSize(target),
+          const Size(44, 44),
+          reason: '$glyph effective hit target ${tester.getSize(target)}',
+        );
+      }
+
+      final minusTarget = find
+          .ancestor(
+            of: find.byIcon(Icons.remove).first,
+            matching: find.byType(InkWell),
+          )
+          .first;
+      final minusRect = tester.getRect(minusTarget);
+      await tester.tapAt(minusRect.centerRight - const Offset(1, 0));
+      await tester.pump();
+      expect(
+        find.descendant(of: stepper, matching: find.text('0')),
+        findsOneWidget,
+        reason: 'the expanded target must remain tappable beside the glyph',
+      );
+    });
+
     testWidgets('stepper edits return weighted distribution', (tester) async {
       final result = await _runSheet(
         tester,
