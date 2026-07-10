@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
+import '../../../core/utils/calendar_date.dart';
 import '../../../core/utils/safe_deserialize.dart';
 import '../models/event_model.dart';
 
@@ -294,10 +295,10 @@ class EventService extends FirestoreRepository {
       updateMap['name'] = name;
     }
     if (startDate != null) {
-      updateMap['startDate'] = Timestamp.fromDate(startDate);
+      updateMap['startDate'] = Timestamp.fromDate(anchorCalendarDate(startDate));
     }
     if (endDate != null) {
-      updateMap['endDate'] = Timestamp.fromDate(endDate);
+      updateMap['endDate'] = Timestamp.fromDate(anchorCalendarDate(endDate));
     }
     if (clearDescription) {
       updateMap['description'] = null;
