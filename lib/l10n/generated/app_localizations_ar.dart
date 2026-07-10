@@ -293,7 +293,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get signOutContentGoogle =>
-      'تبقى بياناتك في السحابة. للاستعادة، سجّل الدخول مجددًا بنفس حساب Google.';
+      'تبقى بياناتك المتزامنة في السحابة. للاستعادة، سجّل الدخول مجددًا بنفس حساب Google.';
 
   @override
   String get profileAccountGoogle => 'حساب Google';
@@ -306,13 +306,26 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get signOutContentPrefix =>
-      'بياناتك محفوظة في السحابة. للاستعادة، أدخل ';
+      'بياناتك المتزامنة محفوظة في السحابة. للاستعادة، أدخل ';
 
   @override
   String get signOutContentSuffix => ' على أي جهاز.';
 
   @override
   String get signOutConfirm => 'تسجيل الخروج';
+
+  @override
+  String get signOutPendingWritesTitle => 'تغييرات غير متزامنة';
+
+  @override
+  String get signOutPendingWritesBody =>
+      'لا تزال بعض التغييرات بانتظار المزامنة. اتصل بالإنترنت وأعد المحاولة، أو تجاهل هذه التغييرات وسجّل الخروج.';
+
+  @override
+  String get signOutPendingWritesKeep => 'الاحتفاظ بالتغييرات';
+
+  @override
+  String get signOutPendingWritesDiscard => 'تجاهل التغييرات وتسجيل الخروج';
 
   @override
   String get profileStatsAllTime => 'كل الوقت';
@@ -2384,6 +2397,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String groupEventEnds(Object date) {
     return 'ينتهي $date';
   }
+
+  @override
+  String get groupEventOwedToYou => 'مستحق لك';
+
+  @override
+  String get groupEventYouOwe => 'عليك دفع';
+
+  @override
+  String get groupEventYourBalance => 'رصيدك';
 
   @override
   String get groupYourShare => 'حصتك';

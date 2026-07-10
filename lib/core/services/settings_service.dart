@@ -25,6 +25,9 @@ class SettingsService {
 
   SettingsService(this._prefs);
 
+  bool get hasPushNotificationsPreference =>
+      _prefs.containsKey(_pushNotificationsKey);
+
   /// Load settings from SharedPreferences.
   ///
   /// [deviceLanguageCode] seeds the language on first run (when the user has

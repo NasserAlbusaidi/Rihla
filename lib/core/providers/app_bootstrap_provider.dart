@@ -26,7 +26,9 @@ Future<void> _syncNotifications(
   bool handleInitialMessage,
 ) async {
   if (!settings.pushNotificationsEnabled) {
-    await notificationService.removeToken();
+    await notificationService.removeToken(
+      handleInitialMessage: handleInitialMessage,
+    );
     return;
   }
   await notificationService.initialize(
@@ -42,10 +44,8 @@ Future<void> _syncNotifications(
 /// no longer contends for the platform channel / main isolate during the most
 /// contended cold-start window (router build + first home reads).
 ///
-/// Behaviour is identical to the old initial `fireImmediately` fire under its
-/// `if (previous == null && !next) return;` guard: an enabled user still gets
-/// `initialize()`; a disabled fresh user is a no-op (NO `removeToken()` on
-/// initial boot — that only fires on a later off-toggle via the listener).
+/// An enabled user still gets `initialize()`. A disabled fresh user remains a
+/// no-op, while a persisted explicit OFF reconciles the token deletion (#1096).
 void kickInitialNotificationSync(
   WidgetRef ref, {
   bool handleInitialMessage = true,
@@ -53,6 +53,9 @@ void kickInitialNotificationSync(
   runInitialNotificationSync(
     ref.read(settingsProvider),
     () => ref.read(notificationServiceProvider),
+    hasPersistedPushPreference: ref
+        .read(settingsServiceProvider)
+        .hasPushNotificationsPreference,
     handleInitialMessage: handleInitialMessage,
   );
 }
@@ -62,9 +65,12 @@ void kickInitialNotificationSync(
 void runInitialNotificationSync(
   AppSettings settings,
   NotificationService Function() serviceFactory, {
+  bool hasPersistedPushPreference = false,
   bool handleInitialMessage = true,
 }) {
-  if (!settings.pushNotificationsEnabled) return;
+  if (!settings.pushNotificationsEnabled && !hasPersistedPushPreference) {
+    return;
+  }
   unawaited(
     _syncNotifications(settings, serviceFactory(), handleInitialMessage),
   );

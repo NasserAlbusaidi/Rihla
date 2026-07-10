@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
@@ -979,6 +980,71 @@ void main() {
           metadata: any(named: 'metadata'),
         ),
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // #1098: date pickers capture the picked calendar date
+  // -------------------------------------------------------------------------
+
+  group('date pickers capture the picked calendar date (#1098)', () {
+    testWidgets('picking a start date renders that calendar date', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrapCreate(
+          const CreateEventScreen(
+            groupId: 'group-1',
+            initialEventType: EventType.trip,
+          ),
+          prefs,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Start date'));
+      await tester.tap(find.text('Start date'));
+      await tester.pumpAndSettle();
+
+      // Picker opens on the current month (initialDate: now) — pick the 15th.
+      await tester.tap(find.text('15'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      final now = DateTime.now();
+      final expected =
+          DateFormat.yMMMd('en').format(DateTime(now.year, now.month, 15));
+      expect(find.text(expected), findsOneWidget);
+      expect(find.text('Start date'), findsNothing);
+    });
+
+    testWidgets('picking an end date renders that calendar date', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrapCreate(
+          const CreateEventScreen(
+            groupId: 'group-1',
+            initialEventType: EventType.trip,
+          ),
+          prefs,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('End date'));
+      await tester.tap(find.text('End date'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('20'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      final now = DateTime.now();
+      final expected =
+          DateFormat.yMMMd('en').format(DateTime(now.year, now.month, 20));
+      expect(find.text(expected), findsOneWidget);
+      expect(find.text('End date'), findsNothing);
     });
   });
 }

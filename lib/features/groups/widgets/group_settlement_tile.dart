@@ -250,7 +250,7 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                             vertical: 10,
                           ),
                           minimumSize: const Size(0, 40),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          tapTargetSize: MaterialTapTargetSize.padded,
                           shape: const StadiumBorder(),
                         ),
                         child: Text(
