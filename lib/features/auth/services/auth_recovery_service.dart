@@ -481,6 +481,7 @@ class AuthRecoveryService {
         throw PendingWritesNotFlushedException(pendingWritesTimeout);
       }
     }
+    await _removeFcmTokenBestEffort(pendingWritesTimeout);
     _cacheIsolationController.engageIsolation();
     // finally guarantees the restart even if signOut throws, so the overlay
     // can never strand the user (divergence from plan §3.5; see plan doc).

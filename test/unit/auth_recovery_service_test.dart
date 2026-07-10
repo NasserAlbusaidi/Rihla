@@ -68,12 +68,14 @@ void main() {
   AuthRecoveryService buildService({
     FirebaseFirestore? firestore,
     CacheIsolationController? cacheIsolationController,
+    FcmTokenRemover? removeFcmToken,
   }) {
     return AuthRecoveryService(
       auth: auth,
       prefs: prefs,
       cacheIsolationController: cacheIsolationController ?? _NoopController(),
       firestore: firestore ?? defaultFirestore,
+      removeFcmToken: removeFcmToken,
     );
   }
 
@@ -371,6 +373,22 @@ void main() {
         expect(events, ['engage', 'signOut', 'restart']);
       },
     );
+
+    test('removes the FCM token before isolation and signOut while the old UID '
+        'is authorized (#1095)', () async {
+      when(() => anonUser.email).thenReturn('foo@example.com');
+      when(() => anonUser.isAnonymous).thenReturn(false);
+      final events = <String>[];
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = buildService(
+        cacheIsolationController: _RecordingController(events),
+        removeFcmToken: () async => events.add('removeToken'),
+      );
+
+      await service.signOutCurrentDevice();
+
+      expect(events, ['removeToken', 'engage', 'signOut', 'restart']);
+    });
 
     test('restarts even if signOut throws (overlay never strands)', () async {
       when(() => anonUser.email).thenReturn('foo@example.com');
