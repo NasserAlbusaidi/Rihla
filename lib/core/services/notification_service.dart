@@ -69,6 +69,7 @@ class NotificationService with WidgetsBindingObserver {
   final Future<NotificationSettings> Function()? _notificationSettingsOverride;
   LocalNotifier? _localNotifierOverride;
   bool _initialized = false;
+  int _lifecycleGeneration = 0;
   bool _lifecycleObserverAdded = false;
   int _notificationId = 0;
   StreamSubscription<String>? _tokenRefreshSubscription;
@@ -118,8 +119,12 @@ class NotificationService with WidgetsBindingObserver {
 
   /// Initialize Firebase Messaging. Call only after the user has opted in.
   Future<bool> initialize({bool handleInitialMessage = true}) async {
+    final generation = _initialized
+        ? _lifecycleGeneration
+        : ++_lifecycleGeneration;
     if (_initialized) {
-      await _saveToken();
+      await _saveToken(generation);
+      if (!_isActiveGeneration(generation)) return false;
       _setStatus(NotificationStatus.enabled);
       _addLifecycleObserver();
       return true;
@@ -133,14 +138,17 @@ class NotificationService with WidgetsBindingObserver {
         badge: true,
         sound: true,
       );
+      if (!_isCurrentGeneration(generation)) return false;
 
       if (permission.authorizationStatus == AuthorizationStatus.authorized ||
           permission.authorizationStatus == AuthorizationStatus.provisional) {
         _initialized = true;
         _setStatus(NotificationStatus.enabled);
-        await _saveToken();
+        await _saveToken(generation);
+        if (!_isActiveGeneration(generation)) return false;
 
         await _localNotifier.initialize(_onLocalNotificationTap);
+        if (!_isActiveGeneration(generation)) return false;
 
         _tokenRefreshSubscription ??= _tokenRefresh.listen(_onTokenRefresh);
         _messageSubscription ??= _foregroundMessages.listen(
@@ -152,7 +160,8 @@ class NotificationService with WidgetsBindingObserver {
         // Cold-start tap: the app was launched FROM a notification while
         // terminated. Route once after listeners are wired.
         if (handleInitialMessage) {
-          await _handleInitialMessage();
+          await _handleInitialMessage(generation);
+          if (!_isActiveGeneration(generation)) return false;
         }
         return true;
       }
@@ -161,6 +170,7 @@ class NotificationService with WidgetsBindingObserver {
       _setStatus(NotificationStatus.permissionDenied);
       return false;
     } catch (e) {
+      if (!_isCurrentGeneration(generation)) return false;
       _initialized = false;
       _setStatus(NotificationStatus.error);
       if (kDebugMode) debugPrint('FCM: Initialization failed: $e');
@@ -173,15 +183,18 @@ class NotificationService with WidgetsBindingObserver {
   /// (#53), which is otherwise frozen at first-write — a user who switches
   /// EN↔AR would keep receiving the old language until a random token rotation.
   /// Delegates to [_saveToken], so it no-ops while push is off/uninitialized.
-  Future<void> refreshTokenLocale() => _saveToken();
+  Future<void> refreshTokenLocale() {
+    final generation = _lifecycleGeneration;
+    return _saveToken(generation);
+  }
 
   /// Save FCM token to Firestore.
-  Future<void> _saveToken() async {
-    if (!_initialized) return;
+  Future<void> _saveToken(int generation) async {
+    if (!_isActiveGeneration(generation)) return;
 
     try {
       final token = await _messaging!.getToken();
-      if (token == null) return;
+      if (token == null || !_isActiveGeneration(generation)) return;
 
       final userId = _currentUserId;
       if (userId == null) return;
@@ -193,7 +206,9 @@ class NotificationService with WidgetsBindingObserver {
         'locale': _localeCode,
         'updated_at': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
+      if (!_isActiveGeneration(generation)) return;
     } catch (e) {
+      if (!_isActiveGeneration(generation)) return;
       if (kDebugMode) debugPrint('FCM: Failed to save token: $e');
       _setStatus(NotificationStatus.error);
     }
@@ -201,6 +216,8 @@ class NotificationService with WidgetsBindingObserver {
 
   /// Handle token refresh.
   Future<void> _onTokenRefresh(String token) async {
+    final generation = _lifecycleGeneration;
+    if (!_isActiveGeneration(generation)) return;
     final userId = _currentUserId;
     if (userId == null) return;
 
@@ -212,7 +229,9 @@ class NotificationService with WidgetsBindingObserver {
         'locale': _localeCode,
         'updated_at': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
+      if (!_isActiveGeneration(generation)) return;
     } catch (e) {
+      if (!_isActiveGeneration(generation)) return;
       if (kDebugMode) debugPrint('FCM: Token refresh save failed: $e');
       _setStatus(NotificationStatus.error);
     }
@@ -254,11 +273,13 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _handleInitialMessage() async {
+  Future<void> _handleInitialMessage(int generation) async {
     try {
       final message = await _getInitialMessage();
+      if (!_isCurrentGeneration(generation)) return;
       if (message != null) _routeFromData(message.data);
     } catch (e) {
+      if (!_isCurrentGeneration(generation)) return;
       if (kDebugMode) debugPrint('FCM: initial message handling failed: $e');
     }
   }
@@ -353,23 +374,56 @@ class NotificationService with WidgetsBindingObserver {
   }
 
   /// Remove token when notifications are disabled.
-  Future<void> removeToken() async {
+  Future<void> removeToken({bool handleInitialMessage = false}) async {
+    final generation = ++_lifecycleGeneration;
+    _initialized = false;
+    await _cancelDeliverySubscriptions();
+    if (!_isCurrentGeneration(generation)) return;
+
+    var notificationsCleared = false;
+    var tokenRemoved = false;
     try {
-      _messaging ??= FirebaseMessaging.instance;
+      _messageOpenedSubscription ??= _openedMessages.listen(_onMessageTap);
+      if (handleInitialMessage) {
+        _messaging ??= FirebaseMessaging.instance;
+        await _handleInitialMessage(generation);
+        if (!_isCurrentGeneration(generation)) return;
+      }
       final userId = _currentUserId;
       if (userId != null) {
         await _firestore.collection('fcm_tokens').doc(userId).delete();
+        if (!_isCurrentGeneration(generation)) return;
+        tokenRemoved = true;
       }
     } catch (e) {
+      if (!_isCurrentGeneration(generation)) return;
       if (kDebugMode) debugPrint('FCM: Token removal failed: $e');
+    }
+    if (!_isCurrentGeneration(generation)) return;
+
+    try {
+      try {
+        await _localNotifier.clearAll();
+        if (!_isCurrentGeneration(generation)) return;
+        notificationsCleared = true;
+      } catch (e) {
+        if (!_isCurrentGeneration(generation)) return;
+        if (kDebugMode) debugPrint('FCM: Notification clear failed: $e');
+      }
+      if (notificationsCleared && tokenRemoved) {
+        await _cancelTapRoutingSubscription();
+        if (!_isCurrentGeneration(generation)) return;
+      }
     } finally {
-      await _cancelSubscriptions();
-      _initialized = false;
-      _setStatus(NotificationStatus.off);
+      if (_isCurrentGeneration(generation)) {
+        _setStatus(NotificationStatus.off);
+      }
     }
   }
 
   Future<void> dispose() async {
+    _lifecycleGeneration += 1;
+    _initialized = false;
     await _cancelSubscriptions();
   }
 
@@ -406,8 +460,10 @@ class NotificationService with WidgetsBindingObserver {
   }
 
   Future<void> _recheckPermissionOnResume() async {
+    final generation = _lifecycleGeneration;
     try {
       final status = (await _getNotificationSettings()).authorizationStatus;
+      if (!_isCurrentGeneration(generation)) return;
       final granted =
           status == AuthorizationStatus.authorized ||
           status == AuthorizationStatus.provisional;
@@ -438,13 +494,30 @@ class NotificationService with WidgetsBindingObserver {
     _ref.read(notificationStatusProvider.notifier).state = status;
   }
 
-  Future<void> _cancelSubscriptions() async {
-    await _tokenRefreshSubscription?.cancel();
-    await _messageSubscription?.cancel();
-    await _messageOpenedSubscription?.cancel();
+  bool _isCurrentGeneration(int generation) =>
+      generation == _lifecycleGeneration;
+
+  bool _isActiveGeneration(int generation) =>
+      _initialized && _isCurrentGeneration(generation);
+
+  Future<void> _cancelDeliverySubscriptions() async {
+    final tokenRefreshCancellation = _tokenRefreshSubscription?.cancel();
+    final messageCancellation = _messageSubscription?.cancel();
     _tokenRefreshSubscription = null;
     _messageSubscription = null;
-    _messageOpenedSubscription = null;
     _removeLifecycleObserver();
+    await tokenRefreshCancellation;
+    await messageCancellation;
+  }
+
+  Future<void> _cancelTapRoutingSubscription() async {
+    final messageOpenedCancellation = _messageOpenedSubscription?.cancel();
+    _messageOpenedSubscription = null;
+    await messageOpenedCancellation;
+  }
+
+  Future<void> _cancelSubscriptions() async {
+    await _cancelDeliverySubscriptions();
+    await _cancelTapRoutingSubscription();
   }
 }
