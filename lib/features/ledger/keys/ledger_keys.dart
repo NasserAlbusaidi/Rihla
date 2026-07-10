@@ -28,6 +28,11 @@ abstract final class LedgerKeys {
     'editor_change_destination_button',
   );
 
+  // #1088: fixed add-mode destination disclosure under the editor top bar
+  static const editorDestinationBanner = Key(
+    'ledger_editor_destination_banner',
+  );
+
   // Parameterized keys for list items
   static Key expenseCard(String id) => Key('ledger_expense_card_$id');
 }
