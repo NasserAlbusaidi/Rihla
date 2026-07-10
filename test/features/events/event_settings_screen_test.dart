@@ -95,6 +95,8 @@ Event _makeEvent({
   String? description,
   bool isClosed = false,
   String? closedBy,
+  List<String> participantIds = const ['uid-creator'],
+  Map<String, String> participantNames = const {'uid-creator': 'Alice'},
 }) {
   return Event(
     id: id,
@@ -102,8 +104,8 @@ Event _makeEvent({
     type: type,
     groupId: 'group-1',
     createdBy: createdBy,
-    participantIds: const ['uid-creator'],
-    participantNames: const {'uid-creator': 'Alice'},
+    participantIds: participantIds,
+    participantNames: participantNames,
     modules: EventModules.forType(type),
     startDate: startDate,
     endDate: endDate,
@@ -129,12 +131,16 @@ Group _makeGroup({
   );
 }
 
-Expense _makeExpense({String id = 'expense-1', String eventId = 'evt-1'}) {
+Expense _makeExpense({
+  String id = 'expense-1',
+  String eventId = 'evt-1',
+  Decimal? amount,
+}) {
   return Expense(
     id: id,
     tripId: eventId,
     payerParticipantId: 'uid-creator',
-    amount: Decimal.fromInt(10),
+    amount: amount ?? Decimal.fromInt(10),
     scope: ExpenseScope.global,
     createdAt: DateTime(2026, 3, 2),
   );
@@ -265,6 +271,7 @@ Widget _wrapDangerSection({
       ),
       eventServiceProvider.overrideWithValue(eventService),
       groupActivityServiceProvider.overrideWithValue(activityService),
+      eventDetailProvider(eventRef).overrideWith((ref) => Stream.value(event)),
       eventExpensesProvider(
         eventRef,
       ).overrideWith((ref) => Stream.value(expenses)),
@@ -468,7 +475,10 @@ void main() {
     testWidgets('unsettled event shows warning and cancellable dialog body', (
       tester,
     ) async {
-      final event = _makeEvent();
+      final event = _makeEvent(
+        participantIds: const ['uid-creator', 'uid-member'],
+        participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+      );
       final service = _MockEventService();
       final activityService = _RecordingGroupActivityService();
 
@@ -502,6 +512,48 @@ void main() {
         ),
       );
     });
+
+    testWidgets(
+      '#1101 partial settlement keeps event deletion in the unsettled state',
+      (tester) async {
+        final event = _makeEvent(
+          participantIds: const ['uid-creator', 'uid-member'],
+          participantNames: const {'uid-creator': 'Alice', 'uid-member': 'Bob'},
+        );
+        final service = _MockEventService();
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrapDangerSection(
+            prefs: prefs,
+            event: event,
+            eventService: service,
+            activityService: activityService,
+            expenses: [
+              _makeExpense(eventId: event.id, amount: Decimal.fromInt(100)),
+            ],
+            settlements: [
+              Settlement(
+                id: 'settlement-1',
+                tripId: event.id,
+                payerParticipantId: 'uid-member',
+                recipientParticipantId: 'uid-creator',
+                amount: Decimal.fromInt(20),
+                settledAt: DateTime(2026, 3, 3),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('This event has unsettled balances.'), findsOneWidget);
+
+        await tester.tap(find.byKey(EventKeys.deleteEventTile));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('proceed anyway'), findsOneWidget);
+      },
+    );
 
     testWidgets('confirming delete logs activity, deletes, and routes back', (
       tester,

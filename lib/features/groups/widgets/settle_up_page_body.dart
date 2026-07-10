@@ -1164,7 +1164,7 @@ class _HistoryTile extends StatelessWidget {
                 TextButton.icon(
                   key: index == 0 ? GroupKeys.settleUpCorrectButton : null,
                   style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
+                    visualDensity: VisualDensity.standard,
                     minimumSize: const Size(0, 40),
                     padding: EdgeInsets.symmetric(horizontal: spacing.space8),
                     foregroundColor: context.colors.textSecondary,
@@ -1195,7 +1195,7 @@ class _HistoryTile extends StatelessWidget {
                   // anchors widget tests; every tile is still shareable.
                   key: index == 0 ? GroupKeys.settleUpShareReceiptButton : null,
                   style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
+                    visualDensity: VisualDensity.standard,
                     minimumSize: const Size(0, 40),
                     padding: EdgeInsets.symmetric(horizontal: spacing.space8),
                     foregroundColor: context.colors.primary,

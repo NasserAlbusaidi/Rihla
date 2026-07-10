@@ -92,7 +92,51 @@ SettleUpPageBody _bodyWithHistory({
   );
 }
 
+void _expectCompactButtonMeetsFloor(
+  WidgetTester tester,
+  Key key,
+  String label,
+) {
+  final target = find.byKey(key);
+  final button = tester.widget<TextButton>(target);
+  expect(
+    button.style!.minimumSize!.resolve(<WidgetState>{}),
+    const Size(0, 40),
+  );
+  final size = tester.getSize(target);
+  expect(size.width, greaterThanOrEqualTo(44), reason: 'width ${size.width}');
+  expect(
+    size.height,
+    greaterThanOrEqualTo(44),
+    reason: '$label effective hit target height ${size.height}dp',
+  );
+}
+
 void main() {
+  testWidgets('#1110 Correct meets the 44dp tap-target floor', (tester) async {
+    await tester.pumpWidget(_host(_bodyWithHistory(onCorrect: (_) {})));
+    await tester.pumpAndSettle();
+
+    _expectCompactButtonMeetsFloor(
+      tester,
+      GroupKeys.settleUpCorrectButton,
+      'Correct',
+    );
+  });
+
+  testWidgets('#1110 Share receipt meets the 44dp tap-target floor', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_host(_bodyWithHistory(onCorrect: (_) {})));
+    await tester.pumpAndSettle();
+
+    _expectCompactButtonMeetsFloor(
+      tester,
+      GroupKeys.settleUpShareReceiptButton,
+      'Share receipt',
+    );
+  });
+
   testWidgets(
     'a history tile shows a correct affordance that confirms then fires onCorrect',
     (tester) async {

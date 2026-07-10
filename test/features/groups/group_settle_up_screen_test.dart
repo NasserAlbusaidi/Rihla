@@ -548,6 +548,33 @@ void main() {
       expect(find.text('Mark paid'), findsOneWidget);
     });
 
+    testWidgets('#1110 Record payment meets the 44dp tap-target floor', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+          currentUid: 'uid-bob',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final target = find.byKey(GroupKeys.settleUpRecordPaymentButton);
+      final button = tester.widget<TextButton>(target);
+      expect(
+        button.style!.minimumSize!.resolve(<WidgetState>{}),
+        const Size(0, 40),
+      );
+      final size = tester.getSize(target);
+      expect(size.width, greaterThanOrEqualTo(44), reason: 'width ${size.width}');
+      expect(
+        size.height,
+        greaterThanOrEqualTo(44),
+        reason: 'Record payment effective hit target height ${size.height}dp',
+      );
+    });
+
     testWidgets('#282: creditor sees a "Mark received" record button', (
       tester,
     ) async {
