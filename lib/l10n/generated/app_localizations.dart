@@ -647,7 +647,7 @@ abstract class AppLocalizations {
   /// Sign-out dialog body for a Google-credentialed user with no linked email (#428): recovery is via Google sign-in, not an email link.
   ///
   /// In en, this message translates to:
-  /// **'Your data stays in the cloud. To restore, sign back in with the same Google account.'**
+  /// **'Your synced data stays in the cloud. To restore, sign back in with the same Google account.'**
   String get signOutContentGoogle;
 
   /// Label of the Account-card row showing the linked Google identity (#428).
@@ -671,7 +671,7 @@ abstract class AppLocalizations {
   /// First text run of the SignOutConfirmDialog content, ending just before the bold email address.
   ///
   /// In en, this message translates to:
-  /// **'Your data stays in the cloud. To restore, enter '**
+  /// **'Your synced data stays in the cloud. To restore, enter '**
   String get signOutContentPrefix;
 
   /// Trailing text run of the SignOutConfirmDialog content, immediately after the bold email address.
@@ -685,6 +685,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out'**
   String get signOutConfirm;
+
+  /// Title of the blocking dialog shown when sign-out cannot flush pending Firestore writes.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsynced changes'**
+  String get signOutPendingWritesTitle;
+
+  /// Body of the blocking sign-out dialog explaining the safe retry and explicit discard choices.
+  ///
+  /// In en, this message translates to:
+  /// **'Some changes are still waiting to sync. Connect to the internet and try again, or discard those changes and sign out.'**
+  String get signOutPendingWritesBody;
+
+  /// Safe action that cancels sign-out and preserves pending writes.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep changes'**
+  String get signOutPendingWritesKeep;
+
+  /// Destructive action that explicitly allows sign-out to discard pending writes.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes & sign out'**
+  String get signOutPendingWritesDiscard;
 
   /// Subtitle on the Journeys stat card.
   ///

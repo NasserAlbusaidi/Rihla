@@ -68,12 +68,14 @@ void main() {
   AuthRecoveryService buildService({
     FirebaseFirestore? firestore,
     CacheIsolationController? cacheIsolationController,
+    FcmTokenRemover? removeFcmToken,
   }) {
     return AuthRecoveryService(
       auth: auth,
       prefs: prefs,
       cacheIsolationController: cacheIsolationController ?? _NoopController(),
       firestore: firestore ?? defaultFirestore,
+      removeFcmToken: removeFcmToken,
     );
   }
 
@@ -314,19 +316,48 @@ void main() {
     });
 
     test(
-      'still restarts when waitForPendingWrites exceeds the timeout',
+      'aborts before isolation when pending writes do not flush (#1094)',
       () async {
         when(() => anonUser.email).thenReturn('foo@example.com');
         when(() => anonUser.isAnonymous).thenReturn(false);
         final firestore = _MockFirestore();
-        // Future that never completes so we exercise the timeout branch.
         when(
           firestore.waitForPendingWrites,
         ).thenAnswer((_) => Completer<void>().future);
         final events = <String>[];
+        final service = buildService(
+          firestore: firestore,
+          cacheIsolationController: _RecordingController(events),
+        );
+
+        await expectLater(
+          () => service.signOutCurrentDevice(
+            pendingWritesTimeout: const Duration(milliseconds: 50),
+          ),
+          throwsA(isA<PendingWritesNotFlushedException>()),
+        );
+
+        verifyNever(() => auth.signOut());
+        expect(events, isEmpty);
+        expect(prefs.getBool(kFirestorePersistenceDirtyKey), isNull);
+      },
+    );
+
+    test(
+      'explicit discard skips pending-write wait and signs out (#1094)',
+      () async {
+        when(() => anonUser.email).thenReturn('foo@example.com');
+        when(() => anonUser.isAnonymous).thenReturn(false);
+        final firestore = _MockFirestore();
         when(
-          () => auth.signOut(),
-        ).thenAnswer((_) async => events.add('signOut'));
+          firestore.waitForPendingWrites,
+        ).thenAnswer((_) => Completer<void>().future);
+        final events = <String>[];
+        bool? dirtyAtSignOut;
+        when(() => auth.signOut()).thenAnswer((_) async {
+          dirtyAtSignOut = prefs.getBool(kFirestorePersistenceDirtyKey);
+          events.add('signOut');
+        });
         final service = buildService(
           firestore: firestore,
           cacheIsolationController: _RecordingController(events),
@@ -334,11 +365,30 @@ void main() {
 
         await service.signOutCurrentDevice(
           pendingWritesTimeout: const Duration(milliseconds: 50),
+          discardPendingWrites: true,
         );
 
+        verifyNever(firestore.waitForPendingWrites);
+        expect(dirtyAtSignOut, isTrue);
         expect(events, ['engage', 'signOut', 'restart']);
       },
     );
+
+    test('removes the FCM token before isolation and signOut while the old UID '
+        'is authorized (#1095)', () async {
+      when(() => anonUser.email).thenReturn('foo@example.com');
+      when(() => anonUser.isAnonymous).thenReturn(false);
+      final events = <String>[];
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = buildService(
+        cacheIsolationController: _RecordingController(events),
+        removeFcmToken: () async => events.add('removeToken'),
+      );
+
+      await service.signOutCurrentDevice();
+
+      expect(events, ['removeToken', 'engage', 'signOut', 'restart']);
+    });
 
     test('restarts even if signOut throws (overlay never strands)', () async {
       when(() => anonUser.email).thenReturn('foo@example.com');
