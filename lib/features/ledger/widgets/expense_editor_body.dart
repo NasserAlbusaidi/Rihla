@@ -14,6 +14,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/a11y_announce.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
@@ -167,6 +168,10 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   /// mandatory at creation). Drives the inline "choose a category" hint; cleared
   /// the moment the user selects one.
   bool _categoryError = false;
+
+  /// #1080: set when a save is attempted with an invalid amount. Drives the
+  /// persistent inline error on [AmountHero]; cleared on the next amount edit.
+  String? _amountError;
   String? _selectedPayerId;
   late Set<String> _customSplitParticipants;
 
@@ -359,12 +364,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     try {
       amount = Decimal.parse(_amount);
     } on FormatException {
-      _showSnack(context.l10n.editorPleaseEnterValidAmount);
+      _rejectAmount(context.l10n.editorPleaseEnterValidAmount);
       return;
     }
 
     if (amount <= Decimal.zero) {
-      _showSnack(context.l10n.editorAmountGreaterThanZero);
+      _rejectAmount(context.l10n.editorAmountGreaterThanZero);
       return;
     }
 
@@ -374,7 +379,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     // against effectiveCurrency (the actual write currency — widget.currency is
     // stale in add-mode after the picker).
     if (!MoneySerializer.fitsSafeSubunits(amount, effectiveCurrency)) {
-      _showSnack(context.l10n.editorAmountTooLarge);
+      _rejectAmount(context.l10n.editorAmountTooLarge);
       return;
     }
 
@@ -606,6 +611,16 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// #1080: invalid amount at submit — persistent inline error on the hero
+  /// (cleared on the next edit), focus back on the field, and an assistive-tech
+  /// announcement. No snackbar: the field-associated error supersedes the old
+  /// transient-only cue.
+  void _rejectAmount(String message) {
+    setState(() => _amountError = message);
+    _amountFocusNode.requestFocus();
+    announceValidationError(context, message);
   }
 
   /// #485: scope is now picked inline on the Split card. Switching it reseeds a
@@ -883,8 +898,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         focusNode: _amountFocusNode,
                         amount: _amount,
                         currency: effectiveCurrency,
-                        onChanged: (value) =>
-                            setState(() => _amount = _sanitizeAmount(value)),
+                        errorText: _amountError,
+                        onChanged: (value) => setState(() {
+                          _amount = _sanitizeAmount(value);
+                          _amountError = null;
+                        }),
                         onTap: _queueSelectDefaultZero,
                       ),
                       // #382 PR-6: per-expense currency picker (add mode only).
