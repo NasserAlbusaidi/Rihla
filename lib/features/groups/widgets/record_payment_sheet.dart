@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/utils/a11y_announce.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -90,7 +91,18 @@ class _MarkPaidSheet extends StatefulWidget {
 class _MarkPaidSheetState extends State<_MarkPaidSheet> {
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
+  final FocusNode _amountFocusNode = FocusNode();
   bool _showAmountEditor = false;
+
+  /// #1080: set when confirm is tapped with an unparseable or non-positive
+  /// amount. Blocks the pop and drives the persistent inline error on the
+  /// amount field; cleared on the next amount edit.
+  String? _amountError;
+
+  /// The controller also notifies on selection-only changes (e.g. the
+  /// focus-attach after an invalid confirm), which must NOT clear the error —
+  /// only a real text edit does. Tracks the last seen text to tell them apart.
+  late String _lastAmountText;
 
   @override
   void initState() {
@@ -100,6 +112,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
         AppFormatters.currencyConfig[widget.currency]?.decimals ?? 2,
       ),
     );
+    _lastAmountText = _amountController.text;
     // #587: recompute the partial/full copy + remaining-after hint as the
     // amount changes.
     _amountController.addListener(_onAmountChanged);
@@ -113,6 +126,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
     _noteController.removeListener(_onNoteChanged);
     _amountController.dispose();
     _noteController.dispose();
+    _amountFocusNode.dispose();
     super.dispose();
   }
 
@@ -120,7 +134,49 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
   void _onNoteChanged() => setState(() {});
 
   // #587: recompute partial/full copy as the amount is edited.
-  void _onAmountChanged() => setState(() {});
+  // #1080: a real text edit also clears the inline validation error.
+  void _onAmountChanged() {
+    final textChanged = _amountController.text != _lastAmountText;
+    _lastAmountText = _amountController.text;
+    setState(() {
+      if (textChanged) _amountError = null;
+    });
+  }
+
+  /// #1080: validate BEFORE the pop so an invalid amount keeps the sheet open
+  /// with a persistent field-associated error (+ focus + announcement) instead
+  /// of dismissing and flashing a transient snackbar on the host screen. An
+  /// empty field stays legal — the callers treat it as "settle the full
+  /// suggested amount". The over-pay cap and #719/#773 revalidation remain the
+  /// callers' post-pop checks (they need live balance data).
+  void _handleConfirm() {
+    final text = _amountController.text.trim();
+    final parsed = Decimal.tryParse(normalizeLocalizedDecimalInput(text));
+    final String? error;
+    if (parsed == null && text.isNotEmpty) {
+      error = context.l10n.settleUpEnterValidAmount;
+    } else if (parsed != null && parsed <= Decimal.zero) {
+      error = context.l10n.settleUpAmountGreaterThanZero;
+    } else {
+      error = null;
+    }
+    if (error != null) {
+      setState(() {
+        _amountError = error;
+        _showAmountEditor = true;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _amountFocusNode.requestFocus();
+      });
+      announceValidationError(context, error);
+      return;
+    }
+    HapticService.medium();
+    Navigator.pop(
+      context,
+      RecordPaymentResult(amount: text, note: _noteController.text.trim()),
+    );
+  }
 
   // #282/#595: title / banner / button copy reframe per the writer's
   // relationship to the transfer. The persisted settlement is identical in
@@ -284,6 +340,8 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                   suggestedAmount: widget.suggestedAmount,
                   showEditor: _showAmountEditor,
                   amountController: _amountController,
+                  amountFocusNode: _amountFocusNode,
+                  errorText: _amountError,
                   onToggleEditor: () =>
                       setState(() => _showAmountEditor = !_showAmountEditor),
                 ),
@@ -445,16 +503,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                         height: 52,
                         child: ElevatedButton.icon(
                           key: GroupKeys.markAsPaidButton,
-                          onPressed: () {
-                            HapticService.medium();
-                            Navigator.pop(
-                              context,
-                              RecordPaymentResult(
-                                amount: _amountController.text.trim(),
-                                note: _noteController.text.trim(),
-                              ),
-                            );
-                          },
+                          onPressed: _handleConfirm,
                           icon: const Icon(Icons.check_rounded, size: 16),
                           label: Text(
                             _buttonLabel(context),
@@ -494,6 +543,8 @@ class _PayeeCard extends StatelessWidget {
     required this.suggestedAmount,
     required this.showEditor,
     required this.amountController,
+    required this.amountFocusNode,
+    required this.errorText,
     required this.onToggleEditor,
   });
 
@@ -503,6 +554,8 @@ class _PayeeCard extends StatelessWidget {
   final Decimal suggestedAmount;
   final bool showEditor;
   final TextEditingController amountController;
+  final FocusNode amountFocusNode;
+  final String? errorText;
   final VoidCallback onToggleEditor;
 
   @override
@@ -562,6 +615,7 @@ class _PayeeCard extends StatelessWidget {
             const SizedBox(height: 14),
             TextFormField(
               controller: amountController,
+              focusNode: amountFocusNode,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -579,6 +633,7 @@ class _PayeeCard extends StatelessWidget {
               ),
               decoration: InputDecoration(
                 labelText: context.l10n.settleUpAmountLabel(currency),
+                errorText: errorText,
                 filled: true,
                 fillColor: colors.inputFillWarm,
                 contentPadding: EdgeInsets.symmetric(

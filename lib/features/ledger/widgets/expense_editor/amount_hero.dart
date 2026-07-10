@@ -15,6 +15,7 @@ class AmountHero extends StatelessWidget {
     required this.currency,
     required this.onChanged,
     required this.onTap,
+    this.errorText,
   });
 
   final TextEditingController controller;
@@ -23,6 +24,11 @@ class AmountHero extends StatelessWidget {
   final String currency;
   final ValueChanged<String> onChanged;
   final VoidCallback onTap;
+
+  /// #1080: persistent field-associated validation error. Non-null turns the
+  /// underline into the error color and renders the message under it; the
+  /// parent clears it on the next amount edit.
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -124,10 +130,23 @@ class AmountHero extends StatelessWidget {
                 width: 120,
                 height: 2,
                 decoration: BoxDecoration(
-                  color: colors.primary,
+                  color: errorText != null ? colors.error : colors.primary,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
+              if (errorText != null)
+                Padding(
+                  padding: EdgeInsets.only(top: context.spacing.space8),
+                  child: Text(
+                    errorText!,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.sans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colors.errorText,
+                    ),
+                  ),
+                ),
             ],
           ),
           Positioned.fill(
