@@ -272,6 +272,7 @@ class EventService extends FirestoreRepository {
   /// Update event metadata (name, dates, and/or description).
   ///
   /// Only non-null fields are updated. Always updates [updatedAt].
+  /// Set [clearDescription] to true to delete the description field (#1103).
   Future<void> updateEvent({
     required String groupId,
     required String eventId,
@@ -279,6 +280,7 @@ class EventService extends FirestoreRepository {
     DateTime? startDate,
     DateTime? endDate,
     String? description,
+    bool clearDescription = false,
   }) async {
     final updateMap = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
@@ -292,7 +294,9 @@ class EventService extends FirestoreRepository {
     if (endDate != null) {
       updateMap['endDate'] = Timestamp.fromDate(endDate);
     }
-    if (description != null) {
+    if (clearDescription) {
+      updateMap['description'] = FieldValue.delete();
+    } else if (description != null) {
       updateMap['description'] = description;
     }
 

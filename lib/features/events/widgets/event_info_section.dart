@@ -102,6 +102,8 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
       final description = _descriptionController.text.trim();
       final connectivity = ref.read(connectivityProvider.notifier);
       final connectivityStatus = ref.read(connectivityProvider);
+      final clearDescription =
+          widget.event.description != null && description.isEmpty;
       final outcome = await awaitServerAck(
         ref
             .read(eventServiceProvider)
@@ -112,6 +114,7 @@ class _EventInfoSectionState extends ConsumerState<EventInfoSection> {
               startDate: _startDate,
               endDate: _endDate,
               description: description.isNotEmpty ? description : null,
+              clearDescription: clearDescription,
             ),
         skipWait: connectivityStatus != ConnectivityStatus.online,
       );

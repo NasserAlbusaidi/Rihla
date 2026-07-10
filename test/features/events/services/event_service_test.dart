@@ -137,6 +137,34 @@ void main() {
       expect(data['description'], 'Updated description');
     });
 
+    test('clears description when clearDescription is true (#1103)',
+        () async {
+      final db = FakeFirebaseFirestore();
+      await _seedEvent(db);
+      final service = EventService.withFirestore(db);
+
+      // First, add a description
+      await service.updateEvent(
+        groupId: _groupId,
+        eventId: _eventId,
+        description: 'Initial description',
+      );
+      var data = (await _eventRef(db).get()).data()!;
+      expect(data['description'], 'Initial description');
+
+      // Then clear it
+      await service.updateEvent(
+        groupId: _groupId,
+        eventId: _eventId,
+        clearDescription: true,
+      );
+
+      data = (await _eventRef(db).get()).data()!;
+      // FieldValue.delete() removes the key entirely
+      expect(data.containsKey('description'), isFalse);
+      expect(data['updatedAt'], isNotNull);
+    });
+
     test('updateEvent with no field changes only writes updatedAt', () async {
       final db = FakeFirebaseFirestore();
       await _seedEvent(db);
