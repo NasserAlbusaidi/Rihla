@@ -9,6 +9,7 @@ import '../../features/auth/providers/device_name_self_heal_provider.dart';
 import '../../features/auth/providers/durable_account_marker_provider.dart';
 import '../../features/auth/providers/recovery_outcome_notice_provider.dart';
 import '../models/app_settings_model.dart';
+import '../providers/connectivity_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/notification_service.dart';
 
@@ -81,6 +82,16 @@ final appBootstrapProvider = Provider<void>((ref) {
   // session is observed, so an anon-shell delete can be gated against silently
   // leaving the durable account intact.
   ref.watch(durableAccountMarkerProvider);
+
+  ref.listen<ConnectivityStatus>(connectivityProvider, (previous, next) {
+    if (next != ConnectivityStatus.online ||
+        previous == ConnectivityStatus.online) {
+      return;
+    }
+    unawaited(
+      ref.read(settingsProvider.notifier).reconcilePendingDisplayName(),
+    );
+  }, fireImmediately: true);
 
   // #635: the INITIAL eager sync is deferred to a post-first-frame callback in
   // SafarApp.initState (kickInitialNotificationSync) — NOT fired here — so it
