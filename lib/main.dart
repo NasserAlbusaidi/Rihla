@@ -82,9 +82,9 @@ void main() async {
       // Emulator hookup MUST run AFTER Firebase.initializeApp and BEFORE any
       // service construction or auth call (Pitfall 2 in 38-RESEARCH.md).
       if (_useFirebaseEmulator) {
-        // coverage:ignore-start — compile-time dead under test builds
-        // (const bool.fromEnvironment is false), so the diff-coverage floor
-        // can never see these lines executed.
+        // coverage:ignore-start
+        // Compile time dead under test builds (const bool.fromEnvironment is
+        // false), so the diff coverage floor can never see these lines run.
         // Android emulator maps host's localhost to 10.0.2.2; other platforms use localhost.
         final host = !kIsWeb && Platform.isAndroid ? '10.0.2.2' : 'localhost';
         await FirebaseAuth.instance.useAuthEmulator(host, 9099);
