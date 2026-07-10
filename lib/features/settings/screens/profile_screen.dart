@@ -1569,11 +1569,15 @@ class _PrefRow extends StatelessWidget {
     final trailingWidget =
         trailing ??
         (trailingText != null
-            ? Text(
-                trailingText!,
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  color: colors.textSecondary,
+            ? Flexible(
+                child: Text(
+                  trailingText!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.sans(
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                  ),
                 ),
               )
             : const SizedBox.shrink());
@@ -1594,6 +1598,8 @@ class _PrefRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTypography.sans(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,

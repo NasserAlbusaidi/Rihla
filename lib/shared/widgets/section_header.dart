@@ -77,7 +77,6 @@ class SectionHeader extends StatelessWidget {
               ),
             ),
           ),
-          const Spacer(),
           if (actionLabel != null)
             GestureDetector(
               key: actionKey,
