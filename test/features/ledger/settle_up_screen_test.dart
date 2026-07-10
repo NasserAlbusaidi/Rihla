@@ -2182,6 +2182,7 @@ class _RecordingSettlementService extends SettlementService {
 
   @override
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,
@@ -2221,6 +2222,7 @@ class _FailingSettlementService extends SettlementService {
 
   @override
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,
@@ -2242,6 +2244,7 @@ class _DeniedSettlementService extends SettlementService {
 
   @override
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,
