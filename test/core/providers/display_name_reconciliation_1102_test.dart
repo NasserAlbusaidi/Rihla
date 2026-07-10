@@ -113,6 +113,31 @@ void main() {
     },
   );
 
+  test(
+    'setDeviceName clears (not sets) the pending propagation marker when '
+    'the name normalizes to empty, and never fires propagation',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final settingsService = SettingsService(prefs);
+      await settingsService.savePendingDisplayNamePropagation('Stale');
+      final propagationService = _MockDisplayNamePropagationService();
+      final settings = SettingsNotifier(
+        settingsService,
+        deviceLanguageCode: 'en',
+        propagationServiceFactory: () => propagationService,
+      );
+      addTearDown(settings.dispose);
+
+      await settings.setDeviceName('   ');
+      await _drainAsync();
+
+      expect(settings.state.deviceName, '');
+      expect(settingsService.pendingDisplayNamePropagation, isNull);
+      verifyNever(() => propagationService.stage(any()));
+    },
+  );
+
   test('restore-seeded device name remains INBOUND-only (#990)', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
