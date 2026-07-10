@@ -160,8 +160,10 @@ void main() {
       );
 
       data = (await _eventRef(db).get()).data()!;
-      // FieldValue.delete() removes the key entirely
-      expect(data.containsKey('description'), isFalse);
+      // Explicit null with the key KEPT — validEventBase reads
+      // data.description unguarded, so a deleted key would be denied (#1103).
+      expect(data.containsKey('description'), isTrue);
+      expect(data['description'], isNull);
       expect(data['updatedAt'], isNotNull);
     });
 

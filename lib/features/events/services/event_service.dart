@@ -272,7 +272,12 @@ class EventService extends FirestoreRepository {
   /// Update event metadata (name, dates, and/or description).
   ///
   /// Only non-null fields are updated. Always updates [updatedAt].
-  /// Set [clearDescription] to true to delete the description field (#1103).
+  /// Set [clearDescription] to true to clear the description (#1103). The
+  /// clear writes an explicit null, NEVER FieldValue.delete(): every event doc
+  /// is born with the key (`toFirestoreMap`) and `validEventBase` reads
+  /// `data.description` unguarded, so an absent post-write key errors the
+  /// rules evaluation into PERMISSION_DENIED (opposite polarity to the #287
+  /// glyph clear, whose guards admit absent and reject null).
   Future<void> updateEvent({
     required String groupId,
     required String eventId,
@@ -295,7 +300,7 @@ class EventService extends FirestoreRepository {
       updateMap['endDate'] = Timestamp.fromDate(endDate);
     }
     if (clearDescription) {
-      updateMap['description'] = FieldValue.delete();
+      updateMap['description'] = null;
     } else if (description != null) {
       updateMap['description'] = description;
     }
