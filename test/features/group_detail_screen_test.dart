@@ -234,6 +234,7 @@ Widget _wrap(
   List<GroupActivityLog> activities = const [],
   List<Event> events = const [],
   String? currentUid = 'uid-creator',
+  Locale? locale,
 }) {
   return ProviderScope(
     overrides: [
@@ -255,6 +256,7 @@ Widget _wrap(
     ],
     child: MaterialApp(
       theme: AppTheme.lightTheme,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: child,
@@ -1116,7 +1118,7 @@ void main() {
       },
     );
 
-    testWidgets('event row renders a share that exists only in USD', (
+    testWidgets('event row labels a positive USD net as owed to you', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -1135,8 +1137,32 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_textContaining('USD 10.00'), findsOneWidget);
-      expect(find.text('your share'), findsOneWidget);
+      expect(find.text('owed to you'), findsOneWidget);
+      expect(find.text('your share'), findsNothing);
       expect(find.text('no share'), findsNothing);
+    });
+
+    testWidgets('event row labels a negative signed net as you owe', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(
+            _eventShareBalances({'OMR': Decimal.parse('-3.000')}),
+          ),
+          events: [_testEvent],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(_textContaining('3.000'), findsOneWidget);
+      expect(find.text('you owe'), findsOneWidget);
+      expect(find.text('your share'), findsNothing);
     });
 
     testWidgets(
@@ -1162,9 +1188,33 @@ void main() {
 
         expect(_textContaining('OMR 3.000'), findsOneWidget);
         expect(_textContaining('USD 10.00'), findsOneWidget);
-        expect(find.text('your share'), findsOneWidget);
+        expect(find.text('your balance'), findsOneWidget);
+        expect(find.text('your share'), findsNothing);
       },
     );
+
+    testWidgets('event row renders the positive-net caption in Arabic', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupDetailScreen(groupId: _groupId),
+          prefs,
+          balancesAsync: AsyncValue.data(
+            _eventShareBalances({'OMR': Decimal.parse('5.000')}),
+          ),
+          events: [_testEvent],
+          locale: const Locale('ar'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Beach Trip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('مستحق لك'), findsOneWidget);
+      expect(find.text('حصتك'), findsNothing);
+    });
 
     testWidgets('event row with no share keeps the "—" + no-share render', (
       tester,

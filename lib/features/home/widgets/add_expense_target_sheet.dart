@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/utils/calendar_date.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -81,14 +82,16 @@ class _AddExpenseTargetSheetState extends ConsumerState<AddExpenseTargetSheet> {
     final l10n = context.l10n;
     final start = target.startDate;
     final end = target.endDate;
+    // #1098: compare CALENDAR days — event dates are UTC-noon-anchored carriers,
+    // so raw-instant day-counting drifts by ±1 with the reader's local hour.
     if (start != null &&
         end != null &&
-        now.isAfter(start.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(end.add(const Duration(days: 1)))) {
+        calendarDayDiff(now, start) <= 0 &&
+        calendarDayDiff(now, end) >= 0) {
       return l10n.addExpenseSheetSubtitleOngoing(target.groupName);
     }
-    if (start != null && start.isAfter(now)) {
-      final days = (start.difference(now).inHours / 24).ceil().clamp(1, 365);
+    if (start != null && calendarDayDiff(now, start) >= 1) {
+      final days = calendarDayDiff(now, start).clamp(1, 365);
       return l10n.addExpenseSheetSubtitleUpcoming(target.groupName, days);
     }
     return target.groupName;

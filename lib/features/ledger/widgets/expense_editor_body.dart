@@ -91,6 +91,21 @@ class ExpenseEditorPayload {
   /// other mode (and always null until PR2 wires the itemized editor).
   final SplitExplanation? splitExplanation;
 
+  /// #1092: which field clusters the user actually dirtied in THIS editor
+  /// session (vs the pristine baseline frozen at open). The edit-screen `_save`
+  /// gates each write-map block on its flag so a stale form never reverts a
+  /// concurrent participant's edit to an untouched field. [moneyDirty] covers
+  /// the whole arithmetic cluster (amount + scope + custom set + mode +
+  /// distribution) as ONE flag because `sum(splits)==amount` couples them;
+  /// [explanationDirty] is SEPARATE (display-only, no arithmetic coupling — it
+  /// must not open the money gate). Add mode passes all-true (the flags are
+  /// ignored there; the add screen writes every field).
+  final bool moneyDirty;
+  final bool explanationDirty;
+  final bool descriptionDirty;
+  final bool categoryDirty;
+  final bool payerDirty;
+
   const ExpenseEditorPayload({
     required this.amount,
     required this.description,
@@ -102,6 +117,11 @@ class ExpenseEditorPayload {
     required this.splitDistribution,
     required this.currency,
     required this.splitExplanation,
+    required this.moneyDirty,
+    required this.explanationDirty,
+    required this.descriptionDirty,
+    required this.categoryDirty,
+    required this.payerDirty,
   });
 }
 
@@ -430,6 +450,45 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     HapticService.success();
     setState(() => _isSubmitting = true);
 
+    // #1092: partition dirtiness vs the pristine baseline so `_save` writes only
+    // clusters the user touched. Add mode has no baseline to diff — every field
+    // is authored fresh — so all flags are true there.
+    final bool moneyDirty;
+    final bool explanationDirty;
+    final bool descriptionDirty;
+    final bool categoryDirty;
+    final bool payerDirty;
+    if (_isEdit) {
+      moneyDirty =
+          _amount != _pristineAmount ||
+          _scope != _pristineScope ||
+          // #1092 Gate r1 [P1]: scope-masked — a custom→global round-trip leaves
+          // an inert _customSplitParticipants set (_handleScopeChange never
+          // clears it, seedCustomSplitOnScopeChange returns `current` for
+          // non-custom), and the payload only carries the set when scope==custom,
+          // so comparing it while scope!=custom false-dirties the money cluster
+          // and re-opens the revert.
+          (_scope == ExpenseScope.custom &&
+              !setEquals(_customSplitParticipants, _pristineCustomSplit)) ||
+          _splitMode != _pristineSplitMode ||
+          !mapEquals(_splitDistribution, _pristineSplitDistribution);
+      explanationDirty = !_explanationValueEquals(
+        _splitExplanation,
+        _pristineSplitExplanation,
+      );
+      // #1092: trimmed both sides so a trailing-whitespace-only edit doesn't
+      // produce a spurious {lastEditedBy}-only write.
+      descriptionDirty = _noteController.text.trim() != _pristineNote.trim();
+      categoryDirty = _selectedCategoryId != _pristineCategoryId;
+      payerDirty = _selectedPayerId != _pristinePayerId;
+    } else {
+      moneyDirty = true;
+      explanationDirty = true;
+      descriptionDirty = true;
+      categoryDirty = true;
+      payerDirty = true;
+    }
+
     try {
       final note = _noteController.text.trim();
       await widget.onSubmit(
@@ -452,6 +511,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
           splitExplanation: _splitMode == SplitMode.equally
               ? null
               : _splitExplanation,
+          moneyDirty: moneyDirty,
+          explanationDirty: explanationDirty,
+          descriptionDirty: descriptionDirty,
+          categoryDirty: categoryDirty,
+          payerDirty: payerDirty,
         ),
       );
     } catch (e, st) {
@@ -828,6 +892,41 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     if (a.length != b.length) return false;
     for (final v in a) {
       if (!b.contains(v)) return false;
+    }
+    return true;
+  }
+
+  /// #1092: VALUE equality for the itemized metadata, mirroring
+  /// `edit_expense_screen._explanationEquals`. Deliberately NOT `identical` (as
+  /// `_isDirty` uses): reopening the itemized editor with no change mints a
+  /// fresh instance with identical values; `identical` would false-dirty and
+  /// re-open the money revert `explanationDirty` exists to prevent. Compares
+  /// items AND adjustments (an adjustment change also folds into
+  /// `_splitDistribution`, caught by `!mapEquals` — this compare is
+  /// belt-and-braces). participantIds is order-independent (a SET).
+  bool _explanationValueEquals(SplitExplanation? a, SplitExplanation? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.items.length != b.items.length) return false;
+    for (var i = 0; i < a.items.length; i++) {
+      final ia = a.items[i];
+      final ib = b.items[i];
+      if (ia.label != ib.label ||
+          ia.amountFils != ib.amountFils ||
+          ia.quantity != ib.quantity ||
+          !setEquals(ia.participantIds.toSet(), ib.participantIds.toSet())) {
+        return false;
+      }
+    }
+    final aAdj = a.adjustments ?? const <SplitAdjustment>[];
+    final bAdj = b.adjustments ?? const <SplitAdjustment>[];
+    if (aAdj.length != bAdj.length) return false;
+    for (var i = 0; i < aAdj.length; i++) {
+      if (aAdj[i].type != bAdj[i].type ||
+          aAdj[i].amountFils != bAdj[i].amountFils ||
+          aAdj[i].allocation != bAdj[i].allocation) {
+        return false;
+      }
     }
     return true;
   }
