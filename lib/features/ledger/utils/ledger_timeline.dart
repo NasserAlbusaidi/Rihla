@@ -50,7 +50,8 @@ List<LedgerDayGroup> groupTimelineByDay(
   DateTime now, {
   required AppLocalizations l10n,
 }) {
-  final today = DateTime(now.year, now.month, now.day);
+  final localNow = now.toLocal();
+  final today = DateTime(localNow.year, localNow.month, localNow.day);
   final groups = <String, List<LedgerTimelineItem>>{};
   final dateByLabel = <String, DateTime>{};
   final order = <String>[];
@@ -62,7 +63,7 @@ List<LedgerDayGroup> groupTimelineByDay(
     () => DateFormat.MMMd(l10n.localeName),
   );
   for (final item in items) {
-    final ts = item.date;
+    final ts = item.date.toLocal();
     final day = DateTime(ts.year, ts.month, ts.day);
     final diff = today.difference(day).inDays;
     final monthDay = monthDayFormat.format(ts);
