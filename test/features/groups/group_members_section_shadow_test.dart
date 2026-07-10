@@ -348,6 +348,45 @@ void main() {
     },
   );
 
+  testWidgets(
+    '#1059 stage 1: the sheet discloses the re-split of existing (including '
+    'closed) events above the CTA, before anything commits',
+    (tester) async {
+      final calls = _Calls();
+      await tester.pumpWidget(
+        _wrap(
+          prefs: prefs,
+          serviceBuilder: (ref) => _MockGroupService(ref, calls: calls),
+          connectivity: _online(),
+          isCreator: true,
+          members: [_creator()],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.addPersonAction));
+      await tester.pumpAndSettle();
+
+      final disclosure = find.byKey(GroupKeys.addPersonResplitDisclosure);
+      expect(disclosure, findsOneWidget);
+      expect(
+        find.text(
+          "They'll be added to this group's existing events — including "
+          'closed ones — and equal splits may change.',
+        ),
+        findsOneWidget,
+      );
+      // Above the CTA, and rendered before any submission happened.
+      expect(
+        tester.getBottomLeft(disclosure).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(GroupKeys.addPersonSubmit)).dy,
+        ),
+      );
+      expect(calls.add, isEmpty);
+    },
+  );
+
   testWidgets('tap Add with an empty name shows inline validation feedback', (
     tester,
   ) async {
