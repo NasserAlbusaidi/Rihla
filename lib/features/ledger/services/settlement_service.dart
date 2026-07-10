@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
@@ -191,10 +190,16 @@ class SettlementService extends FirestoreRepository {
   /// Creates a new settlement document in Firestore and returns the resulting
   /// [Settlement] object.
   ///
+  /// [id] is REQUIRED (not defaulted) so every call site is forced to decide
+  /// its id — an optional param would silently reopen #1093. Production
+  /// callers derive it via [deterministicSettlementId] from the caller's
+  /// revalidation snapshot; see `settle_up_screen.dart`.
+  ///
   /// The [amount] is converted to integer fils via [MoneySerializer.toSubunits]
   /// before being stored. The returned [Settlement] is deserialized from the
   /// data that was written, so amount round-trips through [MoneySerializer].
   Future<Settlement> addSettlement({
+    required String id,
     required String groupId,
     required String eventId,
     required String payerParticipantId,
@@ -215,7 +220,6 @@ class SettlementService extends FirestoreRepository {
             'rules reject settlement writes without it.',
       );
     }
-    final id = const Uuid().v4();
     final data = buildSettlementDoc(
       id: id,
       eventId: eventId,

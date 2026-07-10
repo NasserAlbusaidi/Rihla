@@ -1480,6 +1480,7 @@ void main() {
       final service = _MockSettlementService();
       when(
         () => service.addSettlement(
+          id: any(named: 'id'),
           groupId: any(named: 'groupId'),
           eventId: any(named: 'eventId'),
           payerParticipantId: any(named: 'payerParticipantId'),

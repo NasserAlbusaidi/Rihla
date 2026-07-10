@@ -106,6 +106,7 @@ void main() {
       'addGroupSettlement writes document with scope=group and groupId',
       () async {
         final settlement = await service.addGroupSettlement(
+          id: 'test-id-scope-shape',
           createdBy: 'test-uid',
           groupId: groupId,
           payerParticipantId: 'p1',
@@ -131,6 +132,7 @@ void main() {
       () async {
         // OMR 10.500 = 10500 fils
         final settlement = await service.addGroupSettlement(
+          id: 'test-id-money-serializer',
           createdBy: 'test-uid',
           groupId: groupId,
           payerParticipantId: 'p1',
@@ -161,6 +163,7 @@ void main() {
       'equals the correction sentinel',
       () async {
         final settlement = await service.addGroupSettlement(
+          id: 'test-id-correction-sentinel',
           createdBy: 'test-uid',
           groupId: groupId,
           payerParticipantId: 'p1',
@@ -245,6 +248,7 @@ void main() {
         final fakeDb = FakeFirebaseFirestore();
         final service = GroupSettlementService.withFirestore(fakeDb);
         final s = await service.addGroupSettlement(
+          id: 'test-id-byte-parity',
           createdBy: 'uid',
           groupId: 'g1',
           payerParticipantId: 'p1',
@@ -320,6 +324,7 @@ void main() {
       final fakeDb = FakeFirebaseFirestore();
       final service = GroupSettlementService.withFirestore(fakeDb);
       final s = await service.addGroupSettlement(
+        id: 'test-id-gsu-provided',
         createdBy: 'uid',
         groupId: 'g1',
         payerParticipantId: 'p1',
@@ -341,6 +346,7 @@ void main() {
       final fakeDb = FakeFirebaseFirestore();
       final service = GroupSettlementService.withFirestore(fakeDb);
       final s = await service.addGroupSettlement(
+        id: 'test-id-gsu-omitted',
         createdBy: 'uid',
         groupId: 'g1',
         payerParticipantId: 'p1',
