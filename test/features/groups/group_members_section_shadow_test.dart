@@ -251,6 +251,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(GroupKeys.addPersonAction), findsOneWidget);
+    // #1077: the shared SectionHeader action carries the 44dp hit floor at
+    // this call site too (group "Add member").
+    expect(
+      tester.getSize(find.byKey(GroupKeys.addPersonAction)).height,
+      greaterThanOrEqualTo(44),
+    );
     // #807: the explanatory caption is a non-creator affordance only.
     expect(find.byKey(GroupKeys.membersCreatorOnlyNote), findsNothing);
 

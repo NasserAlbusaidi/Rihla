@@ -162,6 +162,44 @@ void main() {
     expect(tester.getSize(paintedPill).height, lessThan(44));
   });
 
+  testWidgets('#1077 scope chips expose button role and selected state', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pumpCard(tester);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(SplitCard)));
+    final everyone = tester.getSemantics(
+      find.bySemanticsLabel(l10n.editorScopeGlobal),
+    );
+    final justMe = tester.getSemantics(
+      find.bySemanticsLabel(l10n.editorScopePersonal),
+    );
+    expect(everyone.flagsCollection.isButton, isTrue);
+    expect(everyone.flagsCollection.isSelected, Tristate.isTrue);
+    expect(justMe.flagsCollection.isButton, isTrue);
+    expect(justMe.flagsCollection.isSelected, Tristate.isFalse);
+    handle.dispose();
+  });
+
+  testWidgets('#1077 scope chip hit region is >=44dp around a compact pill', (
+    tester,
+  ) async {
+    await pumpCard(tester);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(SplitCard)));
+    final label = find.text(l10n.editorScopeGlobal);
+    final hitRegion = find
+        .ancestor(of: label, matching: find.byType(GestureDetector))
+        .first;
+    final paintedPill = find
+        .ancestor(of: label, matching: find.byType(Container))
+        .first;
+
+    expect(tester.getSize(hitRegion).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(paintedPill).height, lessThan(44));
+  });
+
   testWidgets('Itemized is a first-class option on the card (split-clarity)', (
     tester,
   ) async {

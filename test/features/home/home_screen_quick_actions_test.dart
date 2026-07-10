@@ -203,8 +203,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807: the balance hero grew a tap-cue line, nudging rows down —
-      // bring the row fully on-screen before tapping.
+      // #807: the balance hero grew a tap-cue line, nudging rows down; #1077
+      // grew the GROUPS header action to the 44dp floor, pushing rows past
+      // the sliver build cull — scroll them into existence, then into view.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Desert Crew'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Desert Crew'));

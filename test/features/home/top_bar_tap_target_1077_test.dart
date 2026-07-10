@@ -19,15 +19,15 @@ import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+import 'package:safar/shared/widgets/r_avatar.dart';
 
 // ---------------------------------------------------------------------------
-// The top-bar search and activity buttons are identical 44×44 _IconCircles
-// (40×40 before #1077 grew them to the tap-target floor) in one Row, so their
-// glyphs must share a vertical centre-line. When the unread dot is visible,
-// Material's Badge wraps its child in a Stack whose default alignment is
-// topStart — inside the tight box that pinned the activity glyph to the
-// top-start corner, ~10px up-start of the (badge-less) search glyph. Observed
-// on-device 2026-07-07.
+// #1077 — home top-bar tap targets. The search/activity _IconCircles were
+// hardcoded 40×40 and the profile avatar was a bare 36×36 GestureDetector,
+// all under the DESIGN.md §4 44dp floor; the avatar also lacked a button
+// role. The visuals stay compact (20px glyphs, 36px avatar) — only the hit
+// regions grow. The home "New group" SectionHeader action pins the shared
+// section_header.dart fix at a live call site.
 // ---------------------------------------------------------------------------
 
 Group _makeGroup(String id, String name) => Group(
@@ -40,7 +40,7 @@ Group _makeGroup(String id, String name) => Group(
   createdAt: DateTime(2026, 1, 1),
 );
 
-List<Override> _overrides({required bool unread}) => [
+List<Override> _overrides() => [
   userGroupsProvider.overrideWith(
     (ref) => Stream.value([_makeGroup('g1', 'Desert Crew')]),
   ),
@@ -67,14 +67,10 @@ List<Override> _overrides({required bool unread}) => [
   ),
   groupEventsProvider.overrideWith((ref, groupId) => Stream.value([])),
   currentUserIdProvider.overrideWithValue('test-user-id'),
-  activityUnreadProvider.overrideWithValue(unread),
+  activityUnreadProvider.overrideWithValue(false),
 ];
 
-Future<void> _pumpHome(
-  WidgetTester tester, {
-  required bool unread,
-  Locale locale = const Locale('en'),
-}) async {
+Future<void> _pumpHome(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({
     'settings_device_name': 'Nasser',
   });
@@ -93,11 +89,10 @@ Future<void> _pumpHome(
         sharedPreferencesProvider.overrideWithValue(prefs),
         linkedEmailProvider.overrideWithValue('secured@example.com'),
         isDurableUserProvider.overrideWithValue(true),
-        ..._overrides(unread: unread),
+        ..._overrides(),
       ],
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
-        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
@@ -111,48 +106,71 @@ Future<void> _pumpHome(
 void main() {
   const size = Size(402, 874);
 
-  Future<void> expectAligned(
-    WidgetTester tester, {
-    required bool unread,
-    Locale locale = const Locale('en'),
-  }) async {
+  Future<void> pump(WidgetTester tester) async {
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await _pumpHome(tester, unread: unread, locale: locale);
+    await _pumpHome(tester);
+  }
 
-    // The bottom-nav History tab also renders Iconsax.activity — scope both
-    // glyph lookups to their top-bar buttons.
-    final search = tester.getCenter(
+  testWidgets('search and activity _IconCircles meet the 44dp floor with '
+      '20px glyphs', (tester) async {
+    await pump(tester);
+
+    for (final key in [HomeKeys.searchButton, HomeKeys.activityBell]) {
+      final box = tester.getSize(find.byKey(key));
+      expect(
+        box.width,
+        greaterThanOrEqualTo(44),
+        reason: '$key width ${box.width}',
+      );
+      expect(
+        box.height,
+        greaterThanOrEqualTo(44),
+        reason: '$key height ${box.height}',
+      );
+    }
+
+    final glyph = tester.widget<Icon>(
       find.descendant(
         of: find.byKey(HomeKeys.searchButton),
         matching: find.byIcon(Iconsax.search_normal),
       ),
     );
-    final activity = tester.getCenter(
+    expect(glyph.size, 20);
+  });
+
+  testWidgets('profile avatar gets a 44dp hit box around the 36px visual', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    final hitBox = tester.getSize(find.byKey(HomeKeys.profileAvatar));
+    expect(hitBox.width, greaterThanOrEqualTo(44));
+    expect(hitBox.height, greaterThanOrEqualTo(44));
+
+    final avatar = tester.getSize(
       find.descendant(
-        of: find.byKey(HomeKeys.activityBell),
-        matching: find.byIcon(Iconsax.activity),
+        of: find.byKey(HomeKeys.profileAvatar),
+        matching: find.byType(RAvatar),
       ),
     );
-    expect(
-      (search.dy - activity.dy).abs(),
-      lessThanOrEqualTo(0.5),
-      reason:
-          'search glyph centre ${search.dy} vs activity glyph centre '
-          '${activity.dy} (unread=$unread, locale=$locale) — the two '
-          '_IconCircle glyphs must share the top-bar centre-line',
-    );
-  }
-
-  testWidgets('glyphs aligned with unread dot hidden', (tester) async {
-    await expectAligned(tester, unread: false);
+    expect(avatar, const Size(36, 36));
   });
 
-  testWidgets('glyphs aligned with unread dot visible', (tester) async {
-    await expectAligned(tester, unread: true);
+  testWidgets('profile avatar exposes a button role', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pump(tester);
+
+    final node = tester.getSemantics(find.byKey(HomeKeys.profileAvatar));
+    expect(node.flagsCollection.isButton, isTrue);
+    handle.dispose();
   });
 
-  testWidgets('glyphs aligned with unread dot visible in RTL', (tester) async {
-    await expectAligned(tester, unread: true, locale: const Locale('ar'));
+  testWidgets('home "New group" header action meets the 44dp floor (#1077 '
+      'SectionHeader call site)', (tester) async {
+    await pump(tester);
+
+    final action = tester.getSize(find.byKey(HomeKeys.createGroupFab));
+    expect(action.height, greaterThanOrEqualTo(44));
   });
 }

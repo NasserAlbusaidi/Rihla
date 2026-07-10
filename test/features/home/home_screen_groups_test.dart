@@ -142,6 +142,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #1077: the GROUPS header action grew to the 44dp floor, nudging rows
+      // past the sliver build cull — bring them into view first.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      await tester.pumpAndSettle();
       expect(find.text('Desert Crew'), findsOneWidget);
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
       await tester.pumpAndSettle();
@@ -179,6 +183,11 @@ void main() {
             ],
           ),
         );
+        await tester.pumpAndSettle();
+
+        // #1077: the GROUPS header action grew to the 44dp floor, nudging
+        // rows past the sliver build cull — bring them into view first.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
         await tester.pumpAndSettle();
 
         final row = find
@@ -333,8 +342,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807: the balance hero grew a tap-cue line, nudging rows down —
-      // bring the row fully on-screen before tapping.
+      // #807: the balance hero grew a tap-cue line, nudging rows down; #1077
+      // grew the GROUPS header action to the 44dp floor, pushing rows past
+      // the sliver build cull — scroll them into existence, then into view.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Friends'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Friends'));
@@ -351,6 +363,11 @@ void main() {
           overrides: _overrides([_makeGroup('g1', 'Desert Crew')]),
         ),
       );
+      await tester.pumpAndSettle();
+
+      // #1077: the GROUPS header action grew to the 44dp floor, nudging the
+      // gap past the sliver build cull — bring it into view first.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
       await tester.pumpAndSettle();
 
       final gap = tester.widget<SizedBox>(

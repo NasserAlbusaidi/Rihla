@@ -652,29 +652,48 @@ class _Segmented<T> extends StatelessWidget {
           children: [
             for (final (optValue, label) in options)
               Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
+                child: Semantics(
+                  button: true,
+                  selected: optValue == value,
+                  label: label,
                   onTap: enabled ? () => onChanged(optValue) : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: optValue == value
-                          ? colors.cardSurface
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: optValue == value ? context.shadows.raised : null,
-                    ),
-                    child: Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.sans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: optValue == value
-                            ? colors.textPrimary
-                            : colors.textSecondary,
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: enabled ? () => onChanged(optValue) : null,
+                    // #1077 §4: the opaque wrapper supplies the 44dp hit
+                    // floor (mirrors _ModeChip); Center keeps the painted
+                    // pill at its compact vertical-8 padding while the
+                    // infinite width still fills the equal-weight segment.
+                    child: SizedBox(
+                      height: 44,
+                      child: Center(
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: optValue == value
+                                ? colors.cardSurface
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: optValue == value
+                                ? context.shadows.raised
+                                : null,
+                          ),
+                          child: Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.sans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: optValue == value
+                                  ? colors.textPrimary
+                                  : colors.textSecondary,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

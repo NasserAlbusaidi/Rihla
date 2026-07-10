@@ -533,6 +533,13 @@ class _TopBar extends ConsumerWidget {
     // saved; no dismissal flag, no SharedPreferences key.
     final showSetNameChip = deviceName.trim().isEmpty;
     const avatarSize = 36.0;
+    // #1077 §4: the tap target is 44dp while the painted avatar stays 36 —
+    // the chip budget below must subtract the occupied width, not the visual.
+    const avatarHitSize = 44.0;
+    void openProfile() {
+      HapticService.lightClick();
+      context.push('/profile');
+    }
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -557,7 +564,7 @@ class _TopBar extends ConsumerWidget {
                 (constraints.maxWidth / 2 -
                         wordmarkHalfWidth -
                         context.spacing.space8 -
-                        avatarSize -
+                        avatarHitSize -
                         context.spacing.space8)
                     .clamp(0.0, double.infinity);
             return Stack(
@@ -565,14 +572,26 @@ class _TopBar extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    GestureDetector(
-                      key: HomeKeys.profileAvatar,
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        HapticService.lightClick();
-                        context.push('/profile');
-                      },
-                      child: RAvatar(name: deviceName, size: avatarSize),
+                    Semantics(
+                      button: true,
+                      label: context.l10n.profileTitle,
+                      onTap: openProfile,
+                      excludeSemantics: true,
+                      child: GestureDetector(
+                        key: HomeKeys.profileAvatar,
+                        behavior: HitTestBehavior.opaque,
+                        onTap: openProfile,
+                        // #1077 §4: 44dp hit box; the avatar stays 36px and
+                        // keeps hugging the bar's start edge.
+                        child: SizedBox(
+                          width: avatarHitSize,
+                          height: avatarHitSize,
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: RAvatar(name: deviceName, size: avatarSize),
+                          ),
+                        ),
+                      ),
                     ),
                     if (showSetNameChip) ...[
                       SizedBox(width: context.spacing.space8),
@@ -698,8 +717,9 @@ class _SetNameChip extends StatelessWidget {
 }
 
 /// Ghost-variant icon button used in the home top bar. No background fill —
-/// just an icon in a 40×40 tap target. The wireframe shows this as the
-/// notifications affordance on the right of the top bar.
+/// just an icon in a 44×44 tap target (#1077 §4 floor; the wireframe's 40×40
+/// sat under it). The wireframe shows this as the notifications affordance on
+/// the right of the top bar.
 class _IconCircle extends StatelessWidget {
   const _IconCircle({
     super.key,
@@ -733,13 +753,13 @@ class _IconCircle extends StatelessWidget {
       label: semanticLabel,
       child: InkResponse(
         onTap: onTap,
-        radius: 24,
+        radius: 22,
         child: SizedBox(
-          width: 40,
-          height: 40,
+          width: 44,
+          height: 44,
           // Center, not a bare tight box: with the dot visible Badge wraps
           // its child in a Stack whose default alignment is topStart, so
-          // under tight 40×40 constraints the glyph pinned to the top-start
+          // under tight 44×44 constraints the glyph pinned to the top-start
           // corner — 10px off the badge-less glyph's centre-line. Centering
           // sizes the Badge to the glyph and hugs the dot to its corner,
           // matching bottom_nav_shell's NavigationDestination look.
