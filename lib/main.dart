@@ -82,9 +82,12 @@ void main() async {
       // Emulator hookup MUST run AFTER Firebase.initializeApp and BEFORE any
       // service construction or auth call (Pitfall 2 in 38-RESEARCH.md).
       if (_useFirebaseEmulator) {
+        // coverage:ignore-start
+        // Compile time dead under test builds (const bool.fromEnvironment is
+        // false), so the diff coverage floor can never see these lines run.
         // Android emulator maps host's localhost to 10.0.2.2; other platforms use localhost.
         final host = !kIsWeb && Platform.isAndroid ? '10.0.2.2' : 'localhost';
-        unawaited(FirebaseAuth.instance.useAuthEmulator(host, 9099));
+        await FirebaseAuth.instance.useAuthEmulator(host, 9099);
         FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
         FirebaseFunctions.instanceFor(
           region: 'us-central1',
@@ -94,6 +97,7 @@ void main() async {
             'Firebase emulators ON host=$host (auth:9099 firestore:8080 functions:5001)',
           );
         }
+        // coverage:ignore-end
       }
 
       // Initialize SharedPreferences
