@@ -142,6 +142,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #1078: the FAB action lane shortened the dashboard viewport — the
+      // group rows start below the fold on the test surface now.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      await tester.pumpAndSettle();
       expect(find.text('Desert Crew'), findsOneWidget);
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
       await tester.pumpAndSettle();
@@ -179,6 +183,11 @@ void main() {
             ],
           ),
         );
+        await tester.pumpAndSettle();
+
+        // #1078: the FAB action lane shortened the dashboard viewport —
+        // bring the row on screen first.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
         await tester.pumpAndSettle();
 
         final row = find
@@ -333,8 +342,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807: the balance hero grew a tap-cue line, nudging rows down —
-      // bring the row fully on-screen before tapping.
+      // #807/#1078: the tap-cue line and the FAB action lane push the row
+      // below the fold — scroll it into existence, then fully on-screen.
+      await tester.scrollUntilVisible(
+        find.text('Friends'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.ensureVisible(find.text('Friends'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Friends'));
@@ -351,6 +365,11 @@ void main() {
           overrides: _overrides([_makeGroup('g1', 'Desert Crew')]),
         ),
       );
+      await tester.pumpAndSettle();
+
+      // #1078: the FAB action lane shortened the dashboard viewport — the
+      // groups header gap sits below the fold on the test surface now.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
       await tester.pumpAndSettle();
 
       final gap = tester.widget<SizedBox>(

@@ -304,6 +304,51 @@ void main() {
     expect(find.text('AddExpenseRoute:$eventId'), findsOneWidget);
   });
 
+  testWidgets(
+    '#1078 FAB shows on the Expenses tab only — absent on Settle up and '
+    'Activity',
+    (tester) async {
+      await pumpTabbedEvent(tester, ev: event(), expenses: [expense()]);
+
+      expect(find.byKey(EventKeys.addExpenseFab), findsOneWidget);
+
+      await tester.tap(find.byKey(EventKeys.tabSettleUp));
+      await tester.pumpAndSettle();
+      expect(find.byKey(EventKeys.addExpenseFab), findsNothing);
+
+      await tester.tap(find.byKey(EventKeys.tabActivity));
+      await tester.pumpAndSettle();
+      expect(find.byKey(EventKeys.addExpenseFab), findsNothing);
+
+      await tester.tap(find.byKey(EventKeys.tabExpenses));
+      await tester.pumpAndSettle();
+      expect(find.byKey(EventKeys.addExpenseFab), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#1078 tap at the old FAB spot on the Settle up tab never fires '
+    'Add-expense',
+    (tester) async {
+      await pumpTabbedEvent(tester, ev: event(), expenses: [expense()]);
+
+      // Where the pill sits while the Expenses tab is active — the exact
+      // coordinates the mis-tap trap occupied on every other tab.
+      final oldFabCenter = tester.getCenter(
+        find.byKey(EventKeys.addExpenseFab),
+      );
+
+      await tester.tap(find.byKey(EventKeys.tabSettleUp));
+      await tester.pumpAndSettle();
+
+      await tester.tapAt(oldFabCenter);
+      await tester.pumpAndSettle();
+
+      expect(find.text('AddExpenseRoute:$eventId'), findsNothing);
+      expect(find.byType(SettleUpPageBody), findsOneWidget);
+    },
+  );
+
   testWidgets('#723 closed event: FAB absent, banner present', (tester) async {
     await pumpTabbedEvent(
       tester,

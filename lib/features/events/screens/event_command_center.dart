@@ -44,7 +44,8 @@ import 'event_recap_screen.dart';
 ///   5. Tab panels — the standalone screens in `embedded` mode, hosted in a
 ///      lazily-built keep-alive IndexedStack (state survives tab switches;
 ///      the #204 review sheet fires on first Settle-tab activation).
-///   6. Floating `+ Add expense` pill over every tab (hidden when closed).
+///   6. Floating `+ Add expense` pill over the Expenses tab only (#1078;
+///      hidden when closed).
 ///
 /// The standalone routes (`…/ledger`, `…/ledger/settle-up`, `…/activity`,
 /// `…/recap`) stay alive for deep links and render their full-chrome
@@ -320,7 +321,10 @@ class _ContentState extends ConsumerState<_Content> {
             ],
           ),
           // #723: spending is frozen on a closed event — no add affordance.
-          if (!event.isClosed)
+          // #1078: the pill overlays only its own panel — on Settle up /
+          // Activity / Recap it was a mis-tap trap sitting on money controls
+          // (Mark-received) at the rest scroll position.
+          if (!event.isClosed && tab == EventTab.expenses)
             PositionedDirectional(
               end: 16,
               bottom: 16,
