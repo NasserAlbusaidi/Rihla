@@ -38,6 +38,11 @@ Group _group() => Group(
   createdAt: DateTime(2026, 1, 1),
 );
 
+/// Default gate probe: server-confirmed empty → the recover (proceed) path
+/// stays live. Without an override the unbound default hits `[core/no-app]` →
+/// null → block, silently turning every proceed test into a block test.
+Future<bool?> _serverEmptyProbe(String uid) async => false;
+
 Uri _validAuthLink({String oobCode = 'ABC123'}) => Uri.parse(
   'https://${AuthEmailLinkConfig.hostingDomain}'
   '${AuthEmailLinkConfig.continuePath}'
@@ -89,6 +94,7 @@ void main() {
   Future<void> attach({
     Stream<User?>? users,
     Duration gateTimeout = const Duration(seconds: 5),
+    Future<bool?> Function(String uid) probe = _serverEmptyProbe,
   }) async {
     container = ProviderContainer(
       overrides: [
@@ -99,6 +105,7 @@ void main() {
         ),
         groupServiceProvider.overrideWithValue(groupService),
         shellEmptinessGateTimeoutProvider.overrideWithValue(gateTimeout),
+        shellEmptinessServerProbeProvider.overrideWithValue(probe),
       ],
     );
     container.read(authEmailLinkBootstrapProvider);
@@ -496,6 +503,42 @@ void main() {
       verifyNever(() => service.clearInFlightOp());
     });
 
+    test(
+      'cache-empty stream but server reports live data → blocks (#1091)',
+      () async {
+        // Cold/reinstall device: watchUserGroups → [] (cache-empty), but the
+        // server probe reports a LIVE membership. Stream-empty is not
+        // account-empty — the recover swap must be vetoed and the handshake
+        // cleared so no phantom op redispatches.
+        stubRecover();
+
+        await attach(probe: (_) async => true);
+        uriStream.add(_validAuthLink());
+        await settle();
+
+        verifyNever(() => service.restoreWithEmailLink(any()));
+        verify(() => service.clearInFlightOp()).called(1);
+        verify(() => service.clearPendingEmail()).called(1);
+      },
+    );
+
+    test(
+      'inconclusive server probe (null) → blocks the swap (destructive-null, '
+      '#1091)',
+      () async {
+        // The gate is destructive; an inconclusive probe blocks (unlike the
+        // #839 notice where null stays kind).
+        stubRecover();
+
+        await attach(probe: (_) async => null);
+        uriStream.add(_validAuthLink());
+        await settle();
+
+        verifyNever(() => service.restoreWithEmailLink(any()));
+        verify(() => service.clearInFlightOp()).called(1);
+      },
+    );
+
     test('groups stream error → blocks (fail-safe)', () async {
       when(
         () => groupService.watchUserGroups(any()),
@@ -606,6 +649,7 @@ void main() {
         shellEmptinessGateTimeoutProvider.overrideWithValue(
           const Duration(seconds: 5),
         ),
+        shellEmptinessServerProbeProvider.overrideWithValue(_serverEmptyProbe),
       ],
     );
 

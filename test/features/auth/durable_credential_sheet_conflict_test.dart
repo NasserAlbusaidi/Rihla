@@ -41,6 +41,11 @@ Group _group() => Group(
   createdAt: DateTime(2026, 1, 1),
 );
 
+/// Default gate probe: server-confirmed empty → the switch-offer (proceed)
+/// path stays live. Without an override the unbound default hits `[core/no-app]`
+/// → null → block, silently turning every empty-shell offer into a dead-end.
+Future<bool?> _serverEmptyProbe(String uid) async => false;
+
 void main() {
   late _MockAuthRecoveryService recovery;
   bool? result;
@@ -60,7 +65,10 @@ void main() {
         cause: FirebaseAuthException(code: 'credential-already-in-use'),
       );
 
-  Widget harness({required Stream<List<Group>> groups}) {
+  Widget harness({
+    required Stream<List<Group>> groups,
+    Future<bool?> Function(String uid) probe = _serverEmptyProbe,
+  }) {
     return ProviderScope(
       overrides: [
         authRecoveryServiceProvider.overrideWithValue(recovery),
@@ -68,6 +76,7 @@ void main() {
           (ref) => Stream.value(MockUser(uid: 'u1', isAnonymous: true)),
         ),
         userGroupsProvider.overrideWith((ref) => groups),
+        shellEmptinessServerProbeProvider.overrideWithValue(probe),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
@@ -98,6 +107,7 @@ void main() {
         firebaseUserProvider.overrideWith((ref) => users),
         groupServiceProvider.overrideWithValue(groupService),
         shellEmptinessGateTimeoutProvider.overrideWithValue(timeout),
+        shellEmptinessServerProbeProvider.overrideWithValue(_serverEmptyProbe),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
@@ -121,11 +131,12 @@ void main() {
     WidgetTester tester, {
     required Stream<List<Group>> groups,
     AuthCredential? credential,
+    Future<bool?> Function(String uid) probe = _serverEmptyProbe,
   }) async {
     when(
       () => recovery.linkGoogleToCurrentUser(),
     ).thenThrow(conflict(credential ?? _FakeAuthCredential()));
-    await tester.pumpWidget(harness(groups: groups));
+    await tester.pumpWidget(harness(groups: groups, probe: probe));
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     final l10n = tester.element(find.text('open')).l10n;
@@ -286,6 +297,27 @@ void main() {
       () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
     );
   });
+
+  testWidgets(
+    'conflict + cache-empty stream but server reports live data -> no switch '
+    '(#1091)',
+    (tester) async {
+      // Cold/reinstall device: local cache serves an EMPTY groups snapshot, but
+      // the server holds a live membership. The conflict switch must stay
+      // blocked — stream-empty is not account-empty.
+      final l10n = await openAndConflict(
+        tester,
+        groups: Stream.value(const []),
+        probe: (_) async => true,
+      );
+
+      expect(find.byKey(const Key('durableGate.switch')), findsNothing);
+      expect(find.text(l10n.durableGateConflict), findsOneWidget);
+      verifyNever(
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+      );
+    },
+  );
 
   testWidgets('conflict + groups error -> dead-end copy (fail-safe)', (
     tester,
