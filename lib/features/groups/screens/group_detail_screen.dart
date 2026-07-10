@@ -926,6 +926,17 @@ class _EventRow extends StatelessWidget {
     // shows it) — omit the subtitle line instead.
     final subtitle = dateLabel;
     final hasShare = shareLines.isNotEmpty;
+    final allPositive =
+        hasShare && shareLines.every((line) => line.net > Decimal.zero);
+    final allNegative =
+        hasShare && shareLines.every((line) => line.net < Decimal.zero);
+    final netCaption = !hasShare
+        ? context.l10n.groupNoShare
+        : allPositive
+        ? context.l10n.groupEventOwedToYou
+        : allNegative
+        ? context.l10n.groupEventYouOwe
+        : context.l10n.groupEventYourBalance;
 
     return InkWell(
       onTap: onTap,
@@ -1017,9 +1028,7 @@ class _EventRow extends StatelessWidget {
                       ),
                     const SizedBox(height: 2),
                     Text(
-                      hasShare
-                          ? context.l10n.groupYourShare
-                          : context.l10n.groupNoShare,
+                      netCaption,
                       style: AppTypography.sans(
                         fontSize: 11,
                         color: colors.textSecondary,
