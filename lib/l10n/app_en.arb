@@ -1840,6 +1840,10 @@
   "@groupAddPersonAction": {
     "description": "Submit button in the #278 add-a-person sheet."
   },
+  "groupAddPersonResplitDisclosure": "They'll be added to this group's existing events — including closed ones — and equal splits may change.",
+  "@groupAddPersonResplitDisclosure": {
+    "description": "#1059 stage 1: pre-submit disclosure above the add-a-person CTA — adding a member fans them into existing (even closed) events, so read-time equal splits shift and this states it before the action commits."
+  },
   "groupRemoveMemberTooltip": "Remove {name} from group",
   "@groupRemoveMemberTooltip": {
     "placeholders": {

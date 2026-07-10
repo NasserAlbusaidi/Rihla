@@ -2562,6 +2562,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupAddPersonAction => 'Add';
 
   @override
+  String get groupAddPersonResplitDisclosure =>
+      'They\'ll be added to this group\'s existing events — including closed ones — and equal splits may change.';
+
+  @override
   String groupRemoveMemberTooltip(Object name) {
     return 'Remove $name from group';
   }
