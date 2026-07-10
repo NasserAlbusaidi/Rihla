@@ -12,6 +12,7 @@ import '../../../core/services/app_messenger.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/calendar_date.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -241,7 +242,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _startDate = picked);
+    if (picked != null) {
+      setState(() => _startDate = anchorCalendarDate(picked));
+    }
   }
 
   Future<void> _pickEndDate() async {
@@ -251,7 +254,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       firstDate: _startDate ?? DateTime(2020),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _endDate = picked);
+    if (picked != null) {
+      setState(() => _endDate = anchorCalendarDate(picked));
+    }
   }
 
   // ---------------------------------------------------------------------------

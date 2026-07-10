@@ -12,7 +12,7 @@ import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https
 import { createHash } from 'crypto';
 import '../admin';
 import { BatchWriter } from './shared/batchWriter';
-import { replaceUid, renameMapKey } from './shared/mapReKey';
+import { mergeUidMapKey, replaceUid, renameMapKey } from './shared/mapReKey';
 
 // Server-side account deletion cascade. Each group is scrubbed in two phases:
 // (B) idempotent child-doc scrubs (events/expenses/settlements/activity) staged
@@ -114,8 +114,12 @@ async function enforceDeletionRateLimit(db: Firestore, uid: string): Promise<voi
 // must include every existing member id (incl. existing tombstones) so we never
 // overwrite a real member; on the (unrealistic, generated-UID) collision we add
 // a deterministic suffix rather than falling back to randomness.
+function tombstoneBaseId(uid: string): string {
+  return `deleted-${createHash('sha1').update(uid).digest('hex').slice(0, 8)}`;
+}
+
 function deterministicTombstoneId(uid: string, taken: Set<string>): string {
-  const base = `deleted-${createHash('sha1').update(uid).digest('hex').slice(0, 8)}`;
+  const base = tombstoneBaseId(uid);
   if (!taken.has(base)) return base;
   for (let suffix = 2; ; suffix += 1) {
     const candidate = `${base}-${suffix}`;
@@ -237,12 +241,14 @@ function expenseUpdates(
       touched = true;
     }
   }
-  const distribution = renameMapKey(
-    data.splitDistribution,
-    uid,
-    tombstoneId,
-    (data.splitDistribution as Record<string, unknown> | undefined)?.[uid],
-  );
+  // #1099: SUM on collision, never OVERWRITE. On a re-scrub of a re-joined member,
+  // one expense can hold BOTH the prior-pass tombstone T and the re-added uid U in
+  // splitDistribution; renameMapKey would set T=U's value and DROP T's slice
+  // (conservation broken). mergeUidMapKey sums to T=T+U. With an absent target key
+  // it behaves identically to renameMapKey, so first scrubs are unchanged (#710).
+  // Scope: splitDistribution ONLY — settlement scalar fields and participantNames
+  // (a NAME map, re-keyed by renameMapKey below) stay on their existing re-keyers.
+  const distribution = mergeUidMapKey(data.splitDistribution, uid, tombstoneId);
   if (distribution?.changed) {
     updates.splitDistribution = distribution.value;
     touched = true;
@@ -462,6 +468,18 @@ async function cascadeGroupAfterMarker(
   const membersSnap = await groupRef.collection('members').get();
   const taken = new Set<string>([...memberIds, ...membersSnap.docs.map((doc) => doc.id)]);
   taken.delete(uid);
+  // #1099: on a re-scrub of a re-joined group, the base deterministic tombstone id is
+  // already occupied by THIS uid's tombstone from a prior pass/run — REUSE it (drop it
+  // from `taken`) instead of minting deleted-<hash>-2. A genuine collision with a REAL
+  // member (occupant not a tombstone) still advances the suffix (pinned by the
+  // deterministic-id collision test). Ownership caveat (inherited, ~2^-32): a same-group
+  // sha1-prefix collision between two DIFFERENT deleted uids would merge their anonymized
+  // "Deleted member" ledgers under reuse — the class already accepted by this hash.
+  const baseTombstoneId = tombstoneBaseId(uid);
+  const baseOccupant = membersSnap.docs.find((doc) => doc.id === baseTombstoneId);
+  if (baseOccupant?.data().isTombstone === true) {
+    taken.delete(baseTombstoneId);
+  }
   const tombstoneId = deterministicTombstoneId(uid, taken);
 
   // #294/#524: match the deleted user's member doc by the `userId` FIELD,
@@ -874,6 +892,95 @@ export async function runAccountDeletionCascade(
   } catch (error) {
     cascadeFailed.push('joinAttempts');
     logger.error('deleteAccount join attempts delete failed', {
+      uid,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // #1099: a membership created concurrently DURING this cascade — a join
+  // (joinGroupByInviteCode is re-enabled the moment Phase C clears the accountDeletion
+  // freeze) or a creator-approved claim (claimShadow re-adds requesterUid to memberIds)
+  // landing after the S0 snapshot at the top of this function — would otherwise be a
+  // permanent ghost: the S0 loop never saw it, and a clean run writes NO deletionAudit
+  // marker, so the reaper never revisits it. Re-query the same arrayContains set and
+  // (re-)process anything still holding a live membership, bounded to 3 passes.
+  //
+  // Placed LAST — after the claim/fcm/joinAttempts scrubs above — ON PURPOSE: those
+  // scrubs take several round-trips, and a claim/join committing during THAT window
+  // must be caught by the final check below, not slip behind an early-placed gate.
+  // The re-query is AUTHORITATIVE (no exclude-set): a successfully-scrubbed group drops
+  // out of the arrayContains result by construction (Phase C removes the uid), so any
+  // group it returns currently holds a live membership; a monotonic processed-set would
+  // wrongly skip a RE-joined group. Groups already in cascadeFailed this run stay the
+  // reaper's job (they already block the gate) — re-processing them would self-heal the
+  // bounded failure injections the partial-cascade tests rely on.
+  for (let pass = 0; pass < 3; pass += 1) {
+    let requery: FirebaseFirestore.QuerySnapshot;
+    try {
+      requery = await db.collection('groups')
+        .where('memberIds', 'array-contains', uid)
+        .get();
+    } catch (error) {
+      // Degrade like the claim/fcm/joinAttempts blocks: block the gate + write the
+      // marker rather than throw out markerless (the reaper would never converge).
+      addCascadeFailure(cascadeFailed, 'requeryUnavailable');
+      logger.error('deleteAccount membership re-query failed', {
+        uid,
+        pass,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      break;
+    }
+    const fresh = requery.docs.filter((groupDoc) => !cascadeFailed.includes(groupDoc.id));
+    if (fresh.length === 0) break;
+    for (const groupDoc of fresh) {
+      try {
+        const result = await processGroup(db, groupDoc.ref, uid);
+        output.groupsProcessed += 1;
+        if (result.skipped) {
+          logger.info('deleteAccount re-query group skipped (uid no longer a member)', {
+            uid,
+            groupId: groupDoc.id,
+          });
+          continue;
+        }
+        output.tombstoneIds.push(result.tombstoneId);
+        output.expensesScrubbed += result.expensesScrubbed;
+        output.settlementsScrubbed += result.settlementsScrubbed;
+        output.activityLogsScrubbed += result.activityLogsScrubbed;
+        output.membersDeleted += result.membersDeleted;
+        if (result.groupOrphanedAndSoftDeleted) {
+          output.groupsOrphanedAndSoftDeleted += 1;
+        }
+        logger.info('deleteAccount re-query group scrubbed', {
+          uid,
+          groupId: groupDoc.id,
+          tombstoneId: result.tombstoneId,
+        });
+      } catch (error) {
+        addCascadeFailure(cascadeFailed, groupDoc.id);
+        logger.error('deleteAccount re-query group failed', {
+          uid,
+          groupId: groupDoc.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  // #1099: FINAL authoritative check. Anything STILL holding a live membership and not
+  // already in cascadeFailed goes to cascadeFailed — the gate then preserves the auth
+  // user, the marker is written, and the 24h deletionReaper re-runs this cascade to
+  // convergence (its marker's group list is observability-only). Wrapped so a transient
+  // query failure degrades (blocks the gate) rather than throwing out markerless.
+  try {
+    const finalCheck = await db.collection('groups')
+      .where('memberIds', 'array-contains', uid)
+      .get();
+    for (const groupDoc of finalCheck.docs) addCascadeFailure(cascadeFailed, groupDoc.id);
+  } catch (error) {
+    addCascadeFailure(cascadeFailed, 'requeryUnavailable');
+    logger.error('deleteAccount final membership check failed', {
       uid,
       error: error instanceof Error ? error.message : String(error),
     });

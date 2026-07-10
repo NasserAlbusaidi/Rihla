@@ -92,8 +92,9 @@ void main() {
         'participantNames': {'uid-1': 'Alice', 'uid-2': 'Bob'},
         'modules': {'ledger': true},
         'createdAt': Timestamp.fromDate(DateTime(2026, 3, 1)),
-        'startDate': Timestamp.fromDate(DateTime(2026, 4, 1)),
-        'endDate': Timestamp.fromDate(DateTime(2026, 4, 5)),
+        // #1098: event dates are UTC-noon-anchored calendar carriers.
+        'startDate': Timestamp.fromDate(DateTime.utc(2026, 4, 1, 12)),
+        'endDate': Timestamp.fromDate(DateTime.utc(2026, 4, 5, 12)),
         'isDeleted': false,
       });
 
@@ -108,8 +109,10 @@ void main() {
       expect(event.participantNames, {'uid-1': 'Alice', 'uid-2': 'Bob'});
       expect(event.modules.ledger, isTrue);
       expect(event.createdAt, DateTime(2026, 3, 1));
-      expect(event.startDate, DateTime(2026, 4, 1));
-      expect(event.endDate, DateTime(2026, 4, 5));
+      expect(event.startDate, DateTime.utc(2026, 4, 1, 12));
+      expect(event.startDate!.isUtc, isTrue);
+      expect(event.endDate, DateTime.utc(2026, 4, 5, 12));
+      expect(event.endDate!.isUtc, isTrue);
       expect(event.isDeleted, isFalse);
       expect(event.deletedAt, isNull);
       expect(event.updatedAt, isNull);
