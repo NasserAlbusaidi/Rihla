@@ -26,6 +26,11 @@ typedef GoogleCredentialFactory = Future<AuthCredential> Function();
 /// unaffected.
 typedef FcmTokenRemover = Future<void> Function();
 
+class PendingWritesNotFlushedException extends TimeoutException {
+  PendingWritesNotFlushedException(Duration timeout)
+    : super('Pending Firestore writes did not flush before sign-out', timeout);
+}
+
 /// True when a LINK attempt (#441 PR2 gate) failed because the chosen Google
 /// account already backs a different Firebase user. One-account-per-email can
 /// surface EITHER code, and [FirebaseAuthException.credential] is nullable
@@ -453,14 +458,14 @@ class AuthRecoveryService {
   /// email yet still be fully recoverable).
   ///
   /// Sign-out swaps the linked UID for a fresh anonymous one, so it is a
-  /// cross-UID swap: engage the cache-isolation overlay first, flush pending
-  /// writes (default 5s) so unsynced edits aren't lost, mark the cache dirty,
-  /// sign out, then trigger a true restart. The cold boot re-mints the anon
-  /// session and the barrier clears the outgoing UID's cache. There is no
-  /// in-session anon mint — it would run `clearPersistence()` on a started
-  /// Firestore instance, which throws (P1-1).
+  /// cross-UID swap: flush pending writes before cache isolation, mark the
+  /// cache dirty, sign out, then trigger a true restart. The cold boot re-mints
+  /// the anon session and the barrier clears the outgoing UID's cache. There
+  /// is no in-session anon mint — it would run `clearPersistence()` on a
+  /// started Firestore instance, which throws (P1-1).
   Future<void> signOutCurrentDevice({
     Duration pendingWritesTimeout = const Duration(seconds: 5),
+    bool discardPendingWrites = false,
   }) async {
     final user = _auth.currentUser;
     if (user == null || user.isAnonymous) {
@@ -468,19 +473,18 @@ class AuthRecoveryService {
         'signOutCurrentDevice requires a durable (non-anonymous) user',
       );
     }
-    _cacheIsolationController.engageIsolation();
-    // finally guarantees the restart even if signOut throws, so the overlay
-    // can never strand the user (divergence from plan §3.5; see plan doc).
-    try {
+    if (!discardPendingWrites) {
       try {
         final firestore = _firestore ?? FirebaseFirestore.instance;
         await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
       } on TimeoutException {
-        FirebaseConfig.log(
-          'Recovery: waitForPendingWrites timed out after '
-          '${pendingWritesTimeout.inSeconds}s — signing out anyway',
-        );
+        throw PendingWritesNotFlushedException(pendingWritesTimeout);
       }
+    }
+    _cacheIsolationController.engageIsolation();
+    // finally guarantees the restart even if signOut throws, so the overlay
+    // can never strand the user (divergence from plan §3.5; see plan doc).
+    try {
       await markFirestorePersistenceDirty(_prefs);
       await _auth.signOut();
       await writeRecoveryOutcome(

@@ -30,6 +30,7 @@ import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/providers/shell_emptiness_gate.dart';
+import '../../auth/services/auth_recovery_service.dart';
 import '../../auth/services/data_deletion_service.dart';
 import '../../auth/services/durable_account_marker.dart';
 import '../../auth/widgets/delete_account_dialog.dart';
@@ -1095,9 +1096,20 @@ class _AccountCard extends ConsumerWidget {
     final signOutFailed = context.l10n.profileSnackSignOutFailed;
     final confirmed = await SignOutConfirmDialog.show(context, email: email);
     if (confirmed != true) return;
+    final service = ref.read(authRecoveryServiceProvider);
     try {
-      await ref.read(authRecoveryServiceProvider).signOutCurrentDevice();
+      await service.signOutCurrentDevice();
       messenger.showSnackBar(SnackBar(content: Text(signedOut)));
+    } on PendingWritesNotFlushedException {
+      if (!context.mounted) return;
+      final discard = await SignOutPendingWritesDialog.show(context);
+      if (discard != true) return;
+      try {
+        await service.signOutCurrentDevice(discardPendingWrites: true);
+        messenger.showSnackBar(SnackBar(content: Text(signedOut)));
+      } catch (_) {
+        messenger.showSnackBar(SnackBar(content: Text(signOutFailed)));
+      }
     } catch (_) {
       messenger.showSnackBar(SnackBar(content: Text(signOutFailed)));
     }
