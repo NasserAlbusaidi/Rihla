@@ -220,9 +220,9 @@ class SettleUpPageBody extends StatelessWidget {
   /// shared single-`Settlement` contract stays untouched.
   final void Function(String groupSettleUpId)? onCorrectLogical;
 
-  /// Bottom padding of the scroll content. Defaults to the standard gutter; the
-  /// embedded event panel raises it (kEmbeddedEventPanelFabClearance) so the
-  /// last row clears the workspace's floating "+ Add expense" pill (#789).
+  /// Bottom padding of the scroll content. Defaults to the standard gutter.
+  /// (#789 raised it for the embedded event panel; moot since #1078 — the
+  /// workspace FAB shows on the Expenses tab only, so no caller raises it.)
   final double bottomInset;
 
   /// Optional caller-supplied section rendered after the payment-history

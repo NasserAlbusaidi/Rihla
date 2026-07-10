@@ -153,6 +153,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #1078: the FAB action lane shortened the dashboard viewport — the
+      // groups header (which carries the New-group action) sits below the
+      // fold on the test surface now.
+      await tester.scrollUntilVisible(
+        find.byKey(HomeKeys.createGroupFab),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.byKey(HomeKeys.createGroupFab));
       await tester.pumpAndSettle();
 
@@ -169,6 +177,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #1078: see above — the New-group action needs a scroll first.
+      await tester.scrollUntilVisible(
+        find.byKey(HomeKeys.createGroupFab),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.byKey(HomeKeys.createGroupFab));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(HomeKeys.createGroupOption));
@@ -186,6 +200,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #1078: see above — the New-group action needs a scroll first.
+      await tester.scrollUntilVisible(
+        find.byKey(HomeKeys.createGroupFab),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.byKey(HomeKeys.createGroupFab));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(HomeKeys.joinGroupOption));
@@ -203,8 +223,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807: the balance hero grew a tap-cue line, nudging rows down —
-      // bring the row fully on-screen before tapping.
+      // #807/#1078: the tap-cue line and the FAB action lane push the row
+      // below the fold — scroll it into existence, then fully on-screen.
+      await tester.scrollUntilVisible(
+        find.text('Desert Crew'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.ensureVisible(find.text('Desert Crew'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Desert Crew'));
