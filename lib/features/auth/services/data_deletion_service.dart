@@ -8,6 +8,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/cache_uid_barrier.dart';
 import '../../../core/services/firebase_functions_service.dart';
+import '../../../core/services/post_deletion_auth_barrier.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cache_isolation_controller_provider.dart';
 import 'durable_account_marker.dart';
@@ -70,11 +71,10 @@ class DataDeletionService {
       return result;
     }
 
-    // Cascade succeeded — the account is gone server-side. Engage isolation,
-    // mark the cache dirty, then restart. Local signOut is best-effort: the
-    // cold boot re-mints a fresh anon and the barrier clears the deleted UID's
-    // cache regardless (the new UID also differs from the last-active marker).
+    // Cascade succeeded — the account is gone server-side. Persist the UID so
+    // a failed local signOut can be identified and retried on the cold boot.
     FirebaseConfig.log('Deletion: server cascade completed');
+    await markExpectedDeletedUid(_prefs, user.uid);
     // #469: the durable account is gone — clear the device marker BEFORE the
     // restart (and before engageIsolation, outside the teardown try whose
     // signOut() could throw and skip it) so the next fresh-anon session is not

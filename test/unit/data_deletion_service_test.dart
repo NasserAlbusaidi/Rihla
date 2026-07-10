@@ -8,6 +8,8 @@ import 'package:safar/features/auth/services/data_deletion_service.dart';
 import 'package:safar/features/auth/services/durable_account_marker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const _expectedDeletedUidKey = 'auth.expectedDeletedUid';
+
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 class _MockUser extends Mock implements User {}
@@ -62,9 +64,11 @@ void main() {
   test('cascade → engage → dirty before signOut → restart → ok', () async {
     final events = <String>[];
     bool? dirtyAtSignOut;
+    String? expectedDeletedUidAtSignOut;
     when(() => auth.currentUser).thenReturn(user);
     when(() => auth.signOut()).thenAnswer((_) async {
       dirtyAtSignOut = prefs.getBool(kFirestorePersistenceDirtyKey);
+      expectedDeletedUidAtSignOut = prefs.getString(_expectedDeletedUidKey);
       events.add('signOut');
     });
     final service = build(
@@ -75,6 +79,7 @@ void main() {
     expect(await service.deleteAccount(), DeletionResult.ok);
     expect(events, ['callable', 'engage', 'signOut', 'restart']);
     expect(dirtyAtSignOut, isTrue);
+    expect(expectedDeletedUidAtSignOut, 'uid-1');
   });
 
   test(
@@ -92,6 +97,7 @@ void main() {
 
       expect(await service.deleteAccount(), DeletionResult.error);
       expect(events, ['callable']);
+      expect(prefs.getString(_expectedDeletedUidKey), isNull);
       verifyNever(() => auth.signOut());
     },
   );
@@ -112,6 +118,7 @@ void main() {
 
       expect(await service.deleteAccount(), DeletionResult.ok);
       expect(events, ['callable', 'engage', 'signOut', 'restart']);
+      expect(prefs.getString(_expectedDeletedUidKey), 'uid-1');
     },
   );
 
