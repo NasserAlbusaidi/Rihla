@@ -15,6 +15,14 @@ String addExpensePathFor(AddExpenseTarget target) {
   return '/group/${target.groupId}/event/${target.eventId}/ledger/add';
 }
 
+/// Fixed action lane the Groups-tab dashboard reserves BELOW its scroll
+/// viewport so [AddExpenseFab] never occludes list content at any scroll
+/// offset (#1078). A trailing spacer can't protect a row pinned by the
+/// content above it — the last group row's trailing balance sat under the
+/// FAB at the rest position with no useful scroll escape. 88 = the FAB's
+/// 56px footprint + its 16px Scaffold bottom margin + 16px breathing room.
+const double kHomeFabLaneClearance = 88;
+
 /// Persistent add-expense FAB for the tab shell (#364).
 ///
 /// Fast path (#900 / friction #1): a ranked `preferred` target exists (every
