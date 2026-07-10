@@ -8,6 +8,16 @@ import 'package:safar/features/ledger/utils/ledger_timeline.dart';
 import 'package:safar/l10n/generated/app_localizations_ar.dart';
 import 'package:safar/l10n/generated/app_localizations_en.dart';
 
+final _utcAfterLocalMidnight = DateTime.utc(2026, 7, 7, 20, 30);
+final _canExerciseUtcLocalRollover = !_sameCalendarDate(
+  _utcAfterLocalMidnight,
+  _utcAfterLocalMidnight.toLocal(),
+);
+
+bool _sameCalendarDate(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
 /// #154 — Ledger day labels must match Activity (day-month order) under
 /// Arabic, e.g. `19 مايو`, not the month-day `مايو 19` the manual concat
 /// produced. Digits stay Western per #145.
@@ -81,6 +91,30 @@ void main() {
     expect(groups[1].items.single, same(yesterdaySettlement));
     expect(yesterdaySettlement.date, DateTime(2026, 5, 24, 9));
   });
+
+  test(
+    'groupTimelineByDay buckets UTC activity timestamps by local calendar date after midnight',
+    skip: !_canExerciseUtcLocalRollover,
+    () {
+      final localNow = _utcAfterLocalMidnight.toLocal();
+      final utcExpense = LedgerExpenseItem(
+        expense('after-midnight-expense', _utcAfterLocalMidnight),
+      );
+      final utcSettlement = LedgerSettlementItem(
+        settlement('after-midnight-settlement', _utcAfterLocalMidnight),
+      );
+
+      final groups = groupTimelineByDay(
+        [utcExpense, utcSettlement],
+        localNow,
+        l10n: AppLocalizationsEn(),
+      );
+
+      expect(groups, hasLength(1));
+      expect(groups.single.label, startsWith('Today · '));
+      expect(groups.single.items, containsAll([utcExpense, utcSettlement]));
+    },
+  );
 
   test('formatEventDateRange handles null, one-sided, and full ranges', () {
     final l10n = AppLocalizationsEn();
