@@ -157,6 +157,11 @@ abstract final class GroupKeys {
   static const addPersonInput = Key('group_members_add_person_input');
   static const addPersonSubmit = Key('group_members_add_person_submit');
 
+  // #1059 stage 1: pre-submit re-split disclosure in the add-person sheet.
+  static const addPersonResplitDisclosure = Key(
+    'group_members_add_person_resplit_disclosure',
+  );
+
   // #807: non-creator explanation caption + group-screen promotions. The
   // detail-screen add-person action gets its OWN key (a tree that navigates
   // group → settings would otherwise hold two addPersonAction matches).

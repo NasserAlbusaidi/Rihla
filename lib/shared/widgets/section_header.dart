@@ -45,20 +45,33 @@ class SectionHeader extends StatelessWidget {
           // Row order alone puts it on the leading edge under RTL; the
           // diamond is point-symmetric so it never needs a mirror. A
           // rotated Container has no text baseline, so in this
-          // baseline-aligned Row it would otherwise sit low against the
-          // mono label's cap-height — the bottom nudge below re-centers it.
+          // baseline-aligned Row it would strand at the top when the
+          // action's 44dp hit box (#1077) moves the shared baseline down —
+          // the WidgetSpan gives it the title's own line metrics so it
+          // stays centred on the label wherever the baseline sits.
           Padding(
             key: const Key('section_header_tick'),
-            padding: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
-            child: Transform.rotate(
-              angle: 0.785398, // pi/4
-              child: Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  borderRadius: BorderRadius.circular(1),
+            padding: const EdgeInsetsDirectional.only(end: 8),
+            child: Text.rich(
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Transform.rotate(
+                  angle: 0.785398, // pi/4
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: colors.primary,
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
                 ),
+              ),
+              style: AppTypography.caption(
+                context,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
               ),
             ),
           ),
@@ -78,17 +91,31 @@ class SectionHeader extends StatelessWidget {
             ),
           ),
           if (actionLabel != null)
-            GestureDetector(
-              key: actionKey,
+            Semantics(
+              button: true,
+              label: actionLabel,
               onTap: onActionTap,
-              behavior: HitTestBehavior.opaque,
-              child: Text(
-                actionLabel!,
-                maxLines: 1,
-                style: AppTypography.sans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: colors.primaryDark,
+              excludeSemantics: true,
+              child: GestureDetector(
+                key: actionKey,
+                onTap: onActionTap,
+                behavior: HitTestBehavior.opaque,
+                // #1077 §4: the opaque wrapper supplies the 44dp hit floor;
+                // Center keeps the rendered link text compact so only the
+                // invisible target grows.
+                child: SizedBox(
+                  height: 44,
+                  child: Center(
+                    child: Text(
+                      actionLabel!,
+                      maxLines: 1,
+                      style: AppTypography.sans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primaryDark,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

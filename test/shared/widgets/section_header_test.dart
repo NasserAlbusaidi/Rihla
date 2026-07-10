@@ -97,6 +97,63 @@ void main() {
     },
   );
 
+  testWidgets(
+    '#1077 action affordance: button role + >=44dp-tall hit region',
+    (tester) async {
+      final handle = tester.ensureSemantics();
+      var taps = 0;
+      await pumpRihlaApp(
+        tester,
+        Scaffold(
+          body: SectionHeader(
+            title: 'Groups',
+            actionLabel: 'New group',
+            actionKey: const Key('header_action'),
+            onActionTap: () => taps++,
+          ),
+        ),
+      );
+
+      final node = tester.getSemantics(find.bySemanticsLabel('New group'));
+      expect(node.flagsCollection.isButton, isTrue);
+
+      final size = tester.getSize(find.byKey(const Key('header_action')));
+      expect(size.height, greaterThanOrEqualTo(44));
+
+      await tester.tap(find.byKey(const Key('header_action')));
+      expect(taps, 1);
+      handle.dispose();
+    },
+  );
+
+  testWidgets(
+    '#1077 the 44dp action keeps tick and title on a shared centre-line',
+    (tester) async {
+      await pumpRihlaApp(
+        tester,
+        Scaffold(
+          body: SectionHeader(
+            title: 'Groups',
+            actionLabel: 'New group',
+            onActionTap: () {},
+          ),
+        ),
+      );
+
+      // The action's 44dp hit box moves the row's shared text baseline down;
+      // the baseline-less tick must ride along, not strand at the row top.
+      final tick = tester.getRect(find.byKey(const Key('section_header_tick')));
+      final title = tester.getRect(find.text('GROUPS'));
+      expect(
+        (tick.center.dy - title.center.dy).abs(),
+        lessThanOrEqualTo(3),
+        reason:
+            'tick centre ${tick.center.dy} vs title centre ${title.center.dy} '
+            '— the diamond must stay on the label line',
+      );
+    },
+  );
+
   testWidgets('Falaj PR-3: RTL keeps the tick on the leading (right) edge', (
     tester,
   ) async {

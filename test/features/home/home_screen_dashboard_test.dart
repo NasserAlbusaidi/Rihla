@@ -657,8 +657,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807/#1078: the tap-cue line and the FAB action lane push the row
-      // below the fold — scroll it into existence, then fully on-screen.
+      // #807/#1077/#1078: the tap-cue line, 44dp header action, and FAB lane
+      // push the row below the fold — scroll it into existence first.
       await tester.scrollUntilVisible(
         find.text('Friends'),
         120,
@@ -811,8 +811,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #1078: the FAB action lane shortened the dashboard viewport — the
-      // group rows start below the fold on the test surface now.
+      // #1077/#1078: the 44dp header action and the FAB action lane push the
+      // group rows below the fold — scroll them into existence first.
       await tester.scrollUntilVisible(
         find.text('Desert Crew'),
         120,
