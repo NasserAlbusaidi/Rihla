@@ -144,6 +144,12 @@ void main() {
         for (var i = 0; i < 6; i++) {
           await tester.pump(const Duration(milliseconds: 16));
         }
+        // #1078: the FAB action lane shortened the dashboard viewport — the
+        // group rows start below the fold on the test surface now.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
 
         // #1077: the GROUPS header action grew to the 44dp floor, nudging
         // rows past the sliver build cull — bring them into view first
@@ -176,6 +182,9 @@ void main() {
             ),
           ),
         );
+        await tester.pumpAndSettle();
+        // #1078: FAB action lane — bring the group row on screen first.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
         await tester.pumpAndSettle();
 
         // #1077: the GROUPS header action grew to the 44dp floor, nudging
@@ -219,6 +228,9 @@ void main() {
             ),
           ),
         );
+        await tester.pumpAndSettle();
+        // #1078: FAB action lane — bring the group row on screen first.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
         await tester.pumpAndSettle();
 
         // #1077: the GROUPS header action grew to the 44dp floor, nudging

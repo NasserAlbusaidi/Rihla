@@ -142,9 +142,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #1077: the GROUPS header action grew to the 44dp floor, nudging rows
-      // past the sliver build cull — bring them into view first.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      // #1077/#1078: the 44dp header action and the FAB action lane push the
+      // group rows below the fold — scroll them into existence first.
+      await tester.scrollUntilVisible(
+        find.text('Desert Crew'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       expect(find.text('Desert Crew'), findsOneWidget);
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
@@ -185,9 +189,13 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // #1077: the GROUPS header action grew to the 44dp floor, nudging
-        // rows past the sliver build cull — bring them into view first.
-        await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+        // #1077/#1078: the 44dp header action and the FAB action lane push
+        // the row below the fold — scroll it into existence first.
+        await tester.scrollUntilVisible(
+          find.text('Desert Crew'),
+          120,
+          scrollable: find.byType(Scrollable).first,
+        );
         await tester.pumpAndSettle();
 
         final row = find
@@ -342,11 +350,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807: the balance hero grew a tap-cue line, nudging rows down; #1077
-      // grew the GROUPS header action to the 44dp floor, pushing rows past
-      // the sliver build cull — scroll them into existence, then into view.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
-      await tester.pumpAndSettle();
+      // #807/#1077/#1078: the tap-cue line, 44dp header action, and FAB lane
+      // push the row below the fold — scroll it into existence first.
+      await tester.scrollUntilVisible(
+        find.text('Friends'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.ensureVisible(find.text('Friends'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Friends'));
@@ -365,9 +375,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #1077: the GROUPS header action grew to the 44dp floor, nudging the
-      // gap past the sliver build cull — bring it into view first.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      // #1077/#1078: the 44dp header action and the FAB action lane push the
+      // groups header gap below the fold — scroll it into existence first.
+      await tester.scrollUntilVisible(
+        find.byKey(HomeKeys.groupsHeaderGap),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
 
       final gap = tester.widget<SizedBox>(

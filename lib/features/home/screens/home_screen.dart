@@ -34,6 +34,7 @@ import '../providers/active_journeys_provider.dart';
 import '../providers/activity_unread_provider.dart';
 import '../providers/dashboard_providers.dart';
 import '../widgets/account_backup_nudge.dart';
+import '../widgets/add_expense_fab.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
 import '../widgets/group_balance_breakdown_sheet.dart';
@@ -110,7 +111,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     final journeysAsync = ref.watch(activeJourneysProvider);
     final targetsAsync = ref.watch(addExpenseTargetsProvider);
 
-    return RefreshIndicator(
+    final dashboard = RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(userGroupsProvider);
         // #104/#410: refresh the one-shot FALLBACK path (offline / missing
@@ -280,10 +281,19 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               ),
             ),
           ),
-          // #364: tall enough that the last row clears the add-expense FAB.
-          const SliverToBoxAdapter(child: SizedBox(height: 96)),
+          // #364→#1078: the FAB lane below owns clearance now — this is just
+          // a scroll gutter.
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
+    );
+    // #1078: fixed action lane — the scroll viewport ends above the shell's
+    // add-expense FAB, so no row (in particular the last group row's trailing
+    // balance) can ever rest under it. A trailing sliver spacer cannot do
+    // this: it never moves a row pinned by the content above it.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: kHomeFabLaneClearance),
+      child: dashboard,
     );
   }
 

@@ -23,6 +23,7 @@ import 'package:safar/features/home/keys/home_keys.dart';
 import 'package:safar/features/home/providers/dashboard_providers.dart';
 import 'package:safar/features/home/screens/home_screen.dart';
 import 'package:safar/features/home/widgets/balance_hero_card.dart';
+import 'package:safar/features/home/widgets/group_glyph.dart';
 import 'package:safar/features/home/widgets/journey_ticket_card.dart';
 import 'package:safar/shared/widgets/activity_row.dart';
 import 'package:safar/shared/widgets/scroll_under_header.dart';
@@ -369,10 +370,24 @@ void main() {
         await tester.pumpAndSettle();
       }
 
+      // #1078: the FAB action lane shortened the dashboard viewport, so the
+      // RECENTLY section (whose ActivityRows carry the same group names) can
+      // share the window with the group rows — scope the assertion to actual
+      // group rows (the InkWells that carry a GroupGlyph).
+      final groupRows = find.ancestor(
+        of: find.byType(GroupGlyph),
+        matching: find.byType(InkWell),
+      );
       await scrollTo(find.text('Desert Crew'));
-      expect(find.text('Desert Crew'), findsOneWidget);
+      expect(
+        find.descendant(of: groupRows, matching: find.text('Desert Crew')),
+        findsOneWidget,
+      );
       await scrollTo(find.text('Mountain Pals'));
-      expect(find.text('Mountain Pals'), findsOneWidget);
+      expect(
+        find.descendant(of: groupRows, matching: find.text('Mountain Pals')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Test 4: renders ActivityRow widgets for activity entries', (
@@ -642,11 +657,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #807: the balance hero grew a tap-cue line, nudging rows down; #1077
-      // grew the GROUPS header action to the 44dp floor, pushing rows past
-      // the sliver build cull — scroll them into existence, then into view.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
-      await tester.pumpAndSettle();
+      // #807/#1077/#1078: the tap-cue line, 44dp header action, and FAB lane
+      // push the row below the fold — scroll it into existence first.
+      await tester.scrollUntilVisible(
+        find.text('Friends'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.ensureVisible(find.text('Friends'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Friends'));
@@ -757,6 +774,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #1078: the FAB action lane shortened the dashboard viewport — bring
+      // the ticket fully on-screen before tapping.
+      await tester.ensureVisible(find.byType(JourneyTicketCard));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(JourneyTicketCard));
       await tester.pumpAndSettle();
 
@@ -790,9 +811,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // #1077: the GROUPS header action grew to the 44dp floor, nudging rows
-      // past the sliver build cull — bring them into view first.
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      // #1077/#1078: the 44dp header action and the FAB action lane push the
+      // group rows below the fold — scroll them into existence first.
+      await tester.scrollUntilVisible(
+        find.text('Desert Crew'),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Desert Crew'), findsOneWidget);

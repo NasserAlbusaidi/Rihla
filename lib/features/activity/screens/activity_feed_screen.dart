@@ -14,7 +14,6 @@ import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../../events/embedded_panel_metrics.dart';
 import '../../events/providers/event_provider.dart';
 import '../keys/activity_keys.dart';
 import '../models/activity_log_model.dart';
@@ -162,13 +161,9 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
       key: ActivityKeys.feedList,
       restorationId: 'activity_feed_scroll',
       controller: _scrollController,
-      // #789: the panel clears the workspace's floating FAB.
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        20,
-        4,
-        20,
-        kEmbeddedEventPanelFabClearance,
-      ),
+      // #789→#1078: the workspace FAB now shows on the Expenses tab only —
+      // no clearance to reserve here, just a standard gutter.
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 4, 20, 24),
       itemCount: days.length + (_hasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i == days.length) {

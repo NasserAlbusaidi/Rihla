@@ -18,7 +18,6 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:safar/shared/widgets/offline_banner.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
-import 'package:safar/features/events/embedded_panel_metrics.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/events/providers/event_provider.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
@@ -241,7 +240,8 @@ void main() {
   });
 
   testWidgets(
-    '#789 embedded mode reserves FAB clearance at the scroll bottom',
+    '#789→#1078 embedded mode uses the default gutter — the workspace FAB '
+    'no longer overlays the Settle up tab, so no clearance is reserved',
     (tester) async {
       final fakeDb = FakeFirebaseFirestore();
       await tester.pumpWidget(buildScreen(fakeDb, embedded: true));
@@ -250,7 +250,7 @@ void main() {
       final body = tester.widget<SettleUpPageBody>(
         find.byType(SettleUpPageBody),
       );
-      expect(body.bottomInset, kEmbeddedEventPanelFabClearance);
+      expect(body.bottomInset, 24);
     },
   );
 
@@ -264,7 +264,7 @@ void main() {
     final body = tester.widget<SettleUpPageBody>(
       find.byType(SettleUpPageBody),
     );
-    expect(body.bottomInset, lessThan(kEmbeddedEventPanelFabClearance));
+    expect(body.bottomInset, 24);
   });
 
   // #818 Wave 5.3: nav-only CTA from standalone settle-up to the existing
