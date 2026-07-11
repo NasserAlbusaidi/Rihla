@@ -92,7 +92,7 @@ async function notifySettlement(
       body: settlementBody(locale, actorName, amountText),
     }),
     payload,
-    { dedupeKey },
+    { dedupeKey, requireCurrentMembershipOf: gid },
   );
 }
 

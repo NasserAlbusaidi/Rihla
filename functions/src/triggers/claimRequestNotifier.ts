@@ -104,12 +104,17 @@ export const claimRequestNotifier = onDocumentWritten(
           body: claimRequestBody(locale, requesterName, shadowName),
         }),
         { type: 'claim_request', groupId: gid },
-        { dedupeKey },
+        // #1141 — Branch A's recipient is the creator, whose contract is
+        // "current member" (#1132). Fence to fresh memberIds, fail-closed.
+        { dedupeKey, requireCurrentMembershipOf: gid },
       );
       return;
     }
 
     // Branch B (#565) — creator DECIDES a pending request: notify the REQUESTER.
+    // INTENTIONALLY UNFENCED (#1141): the requester is routinely a pre-join
+    // non-member (routeability 'pre_join'), so a membership fence here would
+    // silently swallow every decline/approve to a not-yet-member joiner.
     if (
       (beforeWasPending || beforeWasClaiming)
       && (afterStatus === 'claimed' || afterStatus === 'declined')

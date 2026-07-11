@@ -139,7 +139,12 @@ describe('claimRequestNotifier', () => {
     expect(messages[0].notification.body).toContain('approved');
   });
 
-  test('pending→declined notifies the REQUESTER with decline copy (#565)', async () => {
+  test('#1141 Branch B stays cross-membership: pending→declined notifies the non-member REQUESTER with decline copy (#565)', async () => {
+    // memberIds defaults to ['creator'] — the requester 'R' is deliberately NOT
+    // a member (routeability 'pre_join'). Branch B is INTENTIONALLY unfenced, so
+    // R must STILL receive the decision. This is the regression tripwire for an
+    // over-eager blanket fence: if Branch B ever gains requireCurrentMembershipOf,
+    // this delivery vanishes and the test goes red.
     await seedGroup('g1', 'Trip', 'creator');
     await seedToken('R');
     const sendEach = mockSendEach(1);
@@ -148,7 +153,7 @@ describe('claimRequestNotifier', () => {
 
     const messages = sendEach.mock.calls[0][0];
     expect(messages).toHaveLength(1);
-    expect(messages[0].token).toBe('tok-R');
+    expect(messages[0].token).toBe('tok-R'); // non-member requester, NOT fenced
     expect(messages[0].data).toEqual({
       type: 'claim_decided',
       groupId: 'g1',
@@ -311,5 +316,18 @@ describe('claimRequestNotifier', () => {
       inviteCode: 'ABC123',
       routeability: 'member',
     });
+  });
+
+  test('#1141 Branch A: departed stale createdBy gets no claim-request push', async () => {
+    // createdBy is 'creator' but they are absent from fresh memberIds (a departed
+    // creator — pre-succession legacy, or removed). Branch A's recipient contract
+    // is "current member", so the fence must drop the stale creator.
+    await seedGroup('g1', 'Trip', 'creator', 'ABC123', []); // creator NOT in memberIds
+    await seedToken('creator');
+    const sendEach = mockSendEach(0);
+
+    await fire(absent(), snap(pending()));
+
+    expect(sendEach).not.toHaveBeenCalled();
   });
 });
