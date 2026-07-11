@@ -349,3 +349,7 @@ Round 10 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P
 - Rubric P1 resolved: Task 2 now corrects the admin opening to require a current-member event/group creator, traces admin updates through `validEventUpdateCommon()` to the participant-subset check, and documents why ordinary admin edits/soft-delete share the stale-roster lockout while close-toggle is the explicit exception.
 
 Before round 11, `origin/main` advanced through #1142/#1145. The branch rebased onto `30266468`; those commits do not touch event rules, the target readiness suite, or `docs/SECURITY-RULES.md`. The unchanged baseline was rerun at 228/228 with `expression_ceiling_artifacts=49`.
+
+Round 11 (2026-07-11): rubric `0 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
+
+- Hardened Gate passed on the same current commit. Both reviewers independently confirmed the composed subset/additivity proof, four-state mutation matrix, current-member admin contract, close-toggle exception, exact warning baseline, tests/docs-only scope, and draft-PR boundary.
