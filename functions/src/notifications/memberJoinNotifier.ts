@@ -24,5 +24,12 @@ export async function notifyMemberJoin(
       body: memberJoinBody(locale, joinerName),
     }),
     { type: 'member_join', groupId: gid },
+    // #1141 fence: fresh memberIds intersect, fail-closed. This is the one
+    // best-effort, lost-row-at-worst notification (no redelivery path — a
+    // fire-and-forget call from joinGroupByInviteCode), so a transient lookup
+    // failure permanently loses the "X joined" announcement. Accepted: the
+    // pre-join snapshot's recipients are guarded by a sub-millisecond window,
+    // and fail-closed keeps the fence single-semantics.
+    { requireCurrentMembershipOf: gid },
   );
 }
