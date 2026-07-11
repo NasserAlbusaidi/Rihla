@@ -253,7 +253,7 @@ npm run test:emulator -- settlementIdempotency.rules.test.ts
 npm run test:emulator -- decomposed-settleup-batch.test.ts
 ```
 
-Expected: every suite exits 0. The rules blob stays byte-identical, but the combined runner stream's exact substring count is expected to rise by **exactly 2**: the rename and additive-current-member denials reach the existing fail-closed OR-chain ceiling, while the self-removal denial short-circuits at the cheap additivity guard. Use this exact counting contract (combined stdout/stderr from the wrapper; one increment per output line containing the literal phrase):
+Expected: every suite exits 0. The rules blob stays byte-identical, but the combined runner stream's exact substring count rises by **exactly 3** under the full production OR-chain: each new denied write contributes one artifact. The light-only control emits none, so this count is a property of the complete allow-chain evaluation rather than evidence that additivity failed to short-circuit its own branch. Use this exact counting contract (combined stdout/stderr from the wrapper; one increment per output line containing the literal phrase):
 
 ```bash
 set -o pipefail
@@ -261,7 +261,7 @@ npm run test:emulator -- firestore-rules-publish-readiness.test.ts 2>&1 \
   | awk '/maximum of 1000 expressions/{n++} /Test Suites:|Tests:|Script exited successfully/{print} END{print "expression_ceiling_artifacts=" n+0}'
 ```
 
-Gate round 1 and an independent controller run both measured `expression_ceiling_artifacts=49` on the pre-test suite. Verify `51` after implementation. A different delta requires investigation. Do not use the warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
+Gate round 1 and independent controller runs measured `expression_ceiling_artifacts=49` on the pre-test suite. Task 1 then isolated each new test and reproduced one additional artifact apiece under the full OR-chain, so verify `52` after implementation. A different delta requires investigation. Do not use the warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
 
 - [ ] **Step 2: Run repository checks**
 
@@ -297,7 +297,7 @@ Use a conventional commit and a draft PR. The PR body must include the live repr
 
 Round 1 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 1 P2 / 0 P3`.
 
-- Rubric P1 resolved: the plan no longer claims raw expression-warning count is unchanged. Each added denied write contributes one existing ceiling artifact; expected delta is +2, while a byte-identical rules diff is the rules-equivalence proof.
+- Rubric P1 resolved: the plan no longer claims raw expression-warning count is unchanged. At that round the plan had two added denied writes, so the expected delta was +2; a byte-identical rules diff remains the rules-equivalence proof.
 - Adversary P1s resolved without scope bundling: the phantom `event_deleted` side effect is tracked as #1140 and departed-recipient money pushes as #1141. Both are explicitly pre-existing, behaviorally untouched, and assigned focused fixes.
 - Adversary P2 resolved: Task 2 now corrects the documentation's “two update paths” statement and adds the close-toggle path as the third live path.
 
@@ -311,7 +311,7 @@ Round 3 (2026-07-11): rubric `0 P1 / 3 P2 / 0 P3`; adversary `1 P1 / 0 P2 / 0 P3
 
 - Adversary P1 resolved: #1141 now covers all three money-notification paths. Group-settlement membership is rechecked at delivery time because commit-time validity does not survive the commit-to-trigger delay; lookup failure must send nothing.
 - Rubric P2 mutation isolation resolved: Task 1 records unchanged-rules deny, light-only-with-guard deny, and light-only-without-guard allow as three distinct states.
-- Rubric P2 counting ambiguity resolved: Task 3 specifies the exact combined stream, substring, and `awk` counting command that produced baseline 49 and expects post-test 51.
+- Rubric P2 counting ambiguity resolved: Task 3 specifies the exact combined stream, substring, and `awk` counting command. At that round's two-test scope it produced baseline 49 and expected post-test 51.
 - Rubric P2 documentation gap resolved: Task 2 corrects the event-create close triple and its optional-but-pinned `false/null/null` birth state.
 
 Round 4 (2026-07-11): rubric `0 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 0 P2 / 0 P3`.
@@ -342,7 +342,7 @@ Round 8 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `1 P1 / 0 P2 / 0 P3
 
 Round 9 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
 
-- Rubric P1 resolved: Task 1 now pins the additivity premise with a departed-caller self-removal-plus-rename denial and a dedicated light-only mutation that removes only `hasAll(existing participantIds)`. The subset and additivity predicates are mutated independently; the new cheap denial does not change the expected +2 ceiling-artifact delta.
+- Rubric P1 resolved: Task 1 now pins the additivity premise with a departed-caller self-removal-plus-rename denial and a dedicated light-only mutation that removes only `hasAll(existing participantIds)`. The subset and additivity predicates are mutated independently. The round initially predicted no extra full-chain artifact for the cheap denial; Task 1's isolated measurement later corrected that expectation.
 
 Round 10 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
 
@@ -353,3 +353,5 @@ Before round 11, `origin/main` advanced through #1142/#1145. The branch rebased 
 Round 11 (2026-07-11): rubric `0 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
 
 - Hardened Gate passed on the same current commit. Both reviewers independently confirmed the composed subset/additivity proof, four-state mutation matrix, current-member admin contract, close-toggle exception, exact warning baseline, tests/docs-only scope, and draft-PR boundary.
+
+Post-Gate Task 1 evidence correction: the committed three-test suite passes 231/231, the four mutation states match exactly, and production rules remain byte-identical. Three repeated full runs measured `expression_ceiling_artifacts=52`; removing the entire new block restored 49, and running only the self-removal case measured one. The implementation expectation is therefore corrected from 51 to 52 without changing any authorization conclusion.
