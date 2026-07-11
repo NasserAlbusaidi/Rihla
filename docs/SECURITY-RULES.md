@@ -101,6 +101,42 @@ later modify the expense within the allowed field/value guards. If forging false
 problem, B2 (peer acknowledgement), the future `ledgerEditPolicy`, and B3
 (append-only settlements) would need to be revisited.
 
+### Current-party policy (#1144)
+
+The *parties* of new/edited money must be current members, not just the
+writer. `expensePartiesAreCurrentMembers` gates: expense creates (via the
+`enforceParticipantKeys` param on `validExpenseBase`), allocation-affecting
+edits (pre- AND post-state, behind a single `affectsExpenseAllocation()`
+gate shared with #192's non-negativity check — a #723 budget fold; the
+naive shape tipped allowed updates over the 1000-expression ceiling),
+expense soft-deletes (pre-state — soft-delete removes the doc from
+aggregation, a balance write), and roster-derived splits additionally
+require the event roster all-current (the roster is the equal-split
+divisor). Event-settlement parties are gated `in groupMembers()` — the
+same gate group settlements always had. D9: admin event updates may not
+REMOVE a roster key that is not a current member (the admin path has no
+additivity guard; dropping a departed key re-divides their splits
+post-departure). `correctSettlement`/`correctLogicalSettleUp` enforce the
+same membership on every leg server-side.
+
+Why `memberIds` is exactly right: it contains unclaimed-shadow uuids AND
+deleteAccount tombstone ids (`deleteAccount.ts` SWAPS uid→tombstoneId into
+`memberIds` and every event's `participantIds`), so ghost debt stays
+settleable/correctable, while leave/remove-departed identities — which
+passed the exact-zero departure gate — are blocked from ANY new exposure.
+
+Deliberate residuals (test-pinned): **R5** — rules cannot iterate
+`splitDistribution` keys to exclude ghosts, so a new expense CAN name a
+deleteAccount tombstone (client pickers filter; durable fix would be an
+`activeMemberIds` field); **R6** — expenses referencing a leave/removed
+party are permanently frozen (no allocation edit, no soft-delete; metadata
+edits stay open; Admin SDK remains the cleanup path — this deliberately
+closes the "legacy/forged doc stays soft-deletable" escape hatch for
+departed-party docs). **Offline corollary:** a roster-derived expense
+queued offline is silently dropped at replay if any roster member departs
+before reconnect — the #1131-accepted replay-drop class, now a permanent
+condition rather than fence-transient.
+
 ### B3 — Settlements are append-only
 
 Both event-level (`groups/{gid}/events/{eid}/settlements/{sid}`) and
