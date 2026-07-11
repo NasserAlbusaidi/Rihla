@@ -15,6 +15,18 @@ export type CopyBuilder = (locale: Locale) => NotificationCopy;
 
 export interface SendToUidsOptions {
   dedupeKey?: string;
+  /**
+   * #1141 membership fence. When set to a group id, targets are intersected
+   * with a FRESH read of groups/{gid}.memberIds immediately before delivery;
+   * lookup failure (missing doc, absent/non-array field, read error) sends
+   * NOTHING — never the committed recipient list. Pass it wherever the
+   * recipient contract is "current group member"; omit it for deliberate
+   * cross-membership sends (claim-decision Branch B).
+   * The unavoidable residue: a member who leaves after this read but before
+   * FCM fan-out still receives the push — revocation and delivery cannot be
+   * atomic. The fence shrinks the window from commit→send to read→send.
+   */
+  requireCurrentMembershipOf?: string;
 }
 
 // FCM error codes that mean the token is permanently dead → prune it so the
@@ -31,6 +43,21 @@ interface TokenRecord {
   uid: string;
   token: string;
   locale: Locale;
+}
+
+// #1141 — fresh membership read for the fence. null = lookup failed or the
+// group/field is unusable; callers treat null as "send nothing" (fail-closed).
+async function currentMemberIds(gid: string): Promise<Set<string> | null> {
+  try {
+    const snap = await getFirestore().doc(`groups/${gid}`).get();
+    if (!snap.exists) return null;
+    const ids = snap.data()?.memberIds;
+    if (!Array.isArray(ids)) return null;
+    return new Set(ids.filter((v): v is string => typeof v === 'string'));
+  } catch (error) {
+    logger.warn('fcm membership fence lookup failed', { gid, error: String(error) });
+    return null;
+  }
 }
 
 async function claimDeliveryMarker(
@@ -85,13 +112,31 @@ export async function sendToUids(
   options: SendToUidsOptions = {},
 ): Promise<void> {
   try {
-    if (!(await claimDeliveryMarker(options.dedupeKey, data))) return;
-
     const db = getFirestore();
-    const uniqueUids = [
+    let uniqueUids = [
       ...new Set(uids.filter((u) => typeof u === 'string' && u.length > 0)),
     ];
+
+    // #1141 membership fence: intersect targets with a FRESH memberIds read
+    // BEFORE the marker claim. A lookup failure sends nothing (fail-closed);
+    // a refused/empty send must not burn the dedupe key, so a duplicate trigger
+    // invocation (the only redelivery path — no notifier sets retry) can still
+    // deliver to eligible recipients later.
+    const fenceGid =
+      typeof options.requireCurrentMembershipOf === 'string'
+        ? options.requireCurrentMembershipOf.trim()
+        : '';
+    if (fenceGid.length > 0) {
+      const members = await currentMemberIds(fenceGid);
+      if (members === null) {
+        logger.warn('fcm membership fence refused send', { gid: fenceGid });
+        return;
+      }
+      uniqueUids = uniqueUids.filter((uid) => members.has(uid));
+    }
     if (uniqueUids.length === 0) return;
+
+    if (!(await claimDeliveryMarker(options.dedupeKey, data))) return;
 
     const snaps = await Promise.all(
       uniqueUids.map((uid) => db.doc(`fcm_tokens/${uid}`).get()),
