@@ -113,6 +113,11 @@ describe('Publish readiness Firestore rules', () => {
       inviteCode: `${groupId.toUpperCase()}123`,
       createdBy: 'owner',
       memberIds: ['owner'],
+      // #1144 R5: the create-path producer (group_provider.dart) writes
+      // activeMemberIds == memberIds; validGroupCreate requires equality.
+      // Tracks a memberIds override automatically; an explicit
+      // activeMemberIds override still wins (it spreads after this).
+      activeMemberIds: (overrides.memberIds as string[] | undefined) ?? ['owner'],
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -270,6 +275,7 @@ describe('Publish readiness Firestore rules', () => {
       inviteCode: 'NEW123',
       createdBy: 'owner',
       memberIds: ['owner'],
+      activeMemberIds: ['owner'], // #1144 R5: producer writes it == memberIds
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -298,6 +304,7 @@ describe('Publish readiness Firestore rules', () => {
         inviteCode: code,
         createdBy: uid,
         memberIds: [uid],
+        activeMemberIds: [uid], // #1144 R5: producer writes it == memberIds
         currency: 'OMR',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -967,6 +974,7 @@ describe('Publish readiness Firestore rules', () => {
       inviteCode: 'NEW123',
       createdBy: 'owner',
       memberIds: ['owner'],
+      activeMemberIds: ['owner'], // #1144 R5: producer writes it == memberIds
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -4088,10 +4096,12 @@ describe('Publish readiness Firestore rules', () => {
 
     test('R5-16c. group CREATE without activeMemberIds → denied (new clients always write it)', async () => {
       const creator = testEnv.authenticatedContext('newuser').firestore();
-      await assertFails(creator.doc('groups/gNew').set(validGroup('gNew', {
+      const data = validGroup('gNew', {
         createdBy: 'newuser',
         memberIds: ['newuser'],
-      })));
+      });
+      delete data.activeMemberIds; // the helper now defaults it — strip to model an OLD client
+      await assertFails(creator.doc('groups/gNew').set(data));
     });
 
     test('R5-17. client memberIds-refresh touching activeMemberIds → denied (server-maintained after create)', async () => {

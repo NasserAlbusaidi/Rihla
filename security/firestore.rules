@@ -333,6 +333,9 @@ service cloud.firestore {
             'inviteCode',
             'createdBy',
             'memberIds',
+            // #1144 R5: memberIds minus tombstones, server-maintained after
+            // create; at create the two must be identical (== [creator]).
+            'activeMemberIds',
             'currency',
             'createdAt',
             'updatedAt',
@@ -352,6 +355,7 @@ service cloud.firestore {
           && request.resource.data.inviteCode is string
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.memberIds == [request.auth.uid]
+          && request.resource.data.activeMemberIds == [request.auth.uid]
           && validCurrency(request.resource.data.currency)
           && request.resource.data.createdAt is timestamp
           && request.resource.data.updatedAt is timestamp
@@ -423,6 +427,20 @@ service cloud.firestore {
       match /events/{eventId} {
         function groupMembers() {
           return groupData(groupId).memberIds;
+        }
+
+        // #1144 R5: memberIds MINUS deleteAccount tombstone ids (shadow uuids
+        // stay in). Server-maintained by every roster writer (shared helper
+        // nextActiveMemberIds, functions/src/callables/shared/activeMembers.ts);
+        // clients write it only at group create. ABSENT on legacy groups →
+        // fall back to memberIds, i.e. exactly the pre-R5 behavior — a safe
+        // degradation that self-heals on the group's next roster write. Used
+        // by CREATE-side gates only (expense create parties, event create
+        // roster, roster-ADD deltas, D9 removals); the expense UPDATE path
+        // deliberately stays on memberIds so ghost history remains
+        // correctable (the deleteAccount cleanup lane).
+        function activeGroupMembers() {
+          return groupData(groupId).get('activeMemberIds', groupData(groupId).memberIds);
         }
 
         function requesterIsParticipant() {
@@ -562,9 +580,11 @@ service cloud.firestore {
             && validEventCreateFields(request.resource.data)
             && (
               // Standard: existing group, requester is a member, participants
-              // ⊆ committed members.
+              // ⊆ committed ACTIVE members (#1144 R5 — a new event may not
+              // roster a deleteAccount ghost; falls back to memberIds on
+              // legacy groups).
               (isGroupMember(groupId) && groupAllowsClientWrites(groupId)
-                && request.resource.data.participantIds.hasOnly(groupMembers()))
+                && request.resource.data.participantIds.hasOnly(activeGroupMembers()))
               // #874 founding batch: the #245 seeded event rides in the SAME
               // atomic batch as its brand-new group. participantIds ⊆ after-state
               // members (== [creator], so this collapses to exactly [creator]).
@@ -603,7 +623,14 @@ service cloud.firestore {
                 'description'
               ])
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantIds'])
-              || request.resource.data.participantIds.hasAll(resource.data.participantIds))
+              || (request.resource.data.participantIds.hasAll(resource.data.participantIds)
+                // #1144 R5: added roster keys must be ACTIVE members — a
+                // deleteAccount ghost passes the post-state memberIds check
+                // (its tombstoneId sits in memberIds) but adding it to a
+                // roster mints fresh equal-split exposure for a deleted user.
+                && request.resource.data.participantIds.toSet()
+                  .difference(resource.data.participantIds.toSet())
+                  .hasOnly(activeGroupMembers())))
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantNames'])
               || (request.resource.data.participantNames.diff(resource.data.participantNames).removedKeys().size() == 0
                 && request.resource.data.participantNames.diff(resource.data.participantNames).changedKeys().size() == 0))
@@ -631,13 +658,19 @@ service cloud.firestore {
             // is light-only), so dropping a departed uid produced an all-
             // current post-state that passed validEventBase — removing them
             // from the balance universe and re-dividing their equal splits
-            // POST-departure. Removed keys must all be current members (ghost
-            // removal still passes — tombstone ids sit in memberIds; R5).
-            // Cheap-first: non-roster admin updates short-circuit at hasAny.
+            // POST-departure. Since #1144 R5 the gate is ACTIVE members, so a
+            // ghost roster-key removal (which can drop the ghost's equal-split
+            // owed from the universe) is denied too; and added keys must be
+            // active (a ghost add mints fresh exposure — mirrors the light
+            // path). Cheap-first: non-roster admin updates short-circuit at
+            // hasAny.
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantIds'])
-              || resource.data.participantIds.toSet()
+              || (resource.data.participantIds.toSet()
                 .difference(request.resource.data.participantIds.toSet())
-                .hasOnly(groupMembers()))
+                .hasOnly(activeGroupMembers())
+                && request.resource.data.participantIds.toSet()
+                  .difference(resource.data.participantIds.toSet())
+                  .hasOnly(activeGroupMembers())))
             && validEventUpdateCommon()
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
               || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isDeleted', 'deletedAt', 'updatedAt'])
@@ -848,8 +881,13 @@ service cloud.firestore {
             // (participant keys + parties pre/post + #192) behind ONE
             // affectsExpenseAllocation() gate in validExpenseUpdate instead
             // (#723 budget: this saves a full diff evaluation there).
+            // #1144 R5: the CREATE arm gates parties to ACTIVE members — a
+            // deleteAccount ghost (tombstoneId ∈ memberIds) may not gain NEW
+            // exposure. The UPDATE path stays on memberIds (ghost history
+            // must remain correctable — validExpenseUpdate passes
+            // groupMembers() explicitly).
             && (!enforceParticipantKeys
-              || expensePartiesAreCurrentMembers(data, groupMembers()))
+              || expensePartiesAreCurrentMembers(data, activeGroupMembers()))
             && nullableString(data.receiptUrl)
             && nullableString(data.categoryId)
             && nullableString(data.description)
