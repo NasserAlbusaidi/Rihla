@@ -80,7 +80,7 @@ Choose. Emulator tests protect the actual deny behavior, a mutation check proves
 4. **Fields from the type:** `Event` carries `id`, `name`, `type`, `groupId`, `createdBy`, `participantIds`, `participantNames`, `modules`, `startDate`, `endDate`, `isDeleted`, `deletedAt`, `createdAt`, `updatedAt`, `description`, `isClosed`, `closedAt`, `closedBy`, and `spendingSnapshot`. This plan changes none.
 5. **Data contracts:** The metadata attack uses the exact `EventService.updateEvent()` partial-map shape: `name` plus `updatedAt`. The additive attack uses the rule's exact light allow-list shape: `participantIds`, `participantNames`, and `updatedAt`. The departure fixture changes group `memberIds` and deletes `groups/g1/members/member`, while event `e1` retains `member` in both participant fields.
 6. **Arithmetic decomposition:** N/A. Money algorithms and persisted monetary fields do not change. Keeping `participantIds` untouched preserves the existing balance-universe contract.
-7. **Orthogonal axes:** Identity: leave/remove state is reproduced exactly. Money: no participant pruning or oracle change. Time: #723 close/reopen remains on its separate admin path and its existing departed-participant allow test stays green. Offline: a queued light update replayed after departure remains denied by replay-time state. Locale/derived surfaces: this branch changes no user-facing copy, export, notification, activity, or l10n behavior. Gate round 1 found two PRE-EXISTING stale-participant side effects outside this branch: a denied event delete can leave a phantom activity row (#1140), and expense pushes can target departed parties who cannot open the ledger (#1141). Both are tracked separately rather than hidden or bundled here.
+7. **Orthogonal axes:** Identity: leave/remove state is reproduced exactly. Money: no participant pruning or oracle change. Time: #723 close/reopen remains on its separate admin path and its existing departed-participant allow test stays green. Offline: a queued light update replayed after departure remains denied by replay-time state. Locale/derived surfaces: this branch changes no user-facing copy, export, notification, activity, or l10n behavior. Gate review found two PRE-EXISTING stale-participant side effects outside this branch: a denied event delete can leave a phantom activity row (#1140), and asynchronous money pushes can target parties after membership revocation (#1141). Both are tracked separately rather than hidden or bundled here.
 
 ## Known Adjacent Behavior, Out of Scope
 
@@ -89,7 +89,7 @@ Because `validEventBase()` validates the whole post-write participant list, an e
 Two user-visible consequences discovered by the Gate are also real but independent of this tests/docs resolution:
 
 - **#1140:** `EventDangerSection._executeDelete()` starts the fire-and-forget `event_deleted` activity write before the event soft-delete. When stale participants make the soft-delete fail, history can falsely say the event was deleted. The fix needs atomic delete+activity semantics, especially offline.
-- **#1141:** `expenseNotifier` and `eventSettlementNotifier` target historical expense/event party UIDs without intersecting current `group.memberIds`, so departed members can receive money details and an unreadable ledger deep link. The fix belongs at notification-recipient selection; group-settlement parties are already current-member-gated and are not the hole.
+- **#1141:** `expenseNotifier`, `eventSettlementNotifier`, and `groupSettlementNotifier` send to committed money-party UIDs without a fresh delivery-time membership intersection. Expenses/event settlements can name already-departed historical parties; group-settlement parties are current at commit but may leave before the asynchronous trigger runs. The follow-up requires fail-closed current-membership lookup immediately before all money sends and explicitly acknowledges the remaining leave-after-final-lookup race.
 
 Both predate this branch, remain behaviorally unchanged by it, and require their own focused specs/tests. Folding either into #1135 would violate the one-concern rule and turn a rules-refutation PR into unrelated client and Cloud Functions changes.
 
@@ -152,17 +152,19 @@ npm run test:emulator -- firestore-rules-publish-readiness.test.ts -t '#1135'
 
 Expected: 2 passed. Passing immediately is the investigation result: production behavior already denies the attack; this task adds missing coverage rather than a new behavior.
 
-- [ ] **Step 3: Prove the tests discriminate the existing guard**
+- [ ] **Step 3: Prove the tests discriminate the existing guard in three states**
 
-In the isolated worktree only, temporarily remove this one conjunct from `validEventBase()`:
+Record all three states separately; do not combine two mutations into one unexplained rerun:
+
+1. **Unchanged rules:** both denial tests pass.
+2. **Light-only allow, guard present:** temporarily narrow event `allow update` to `validEventLightUpdate()` only; both denial tests still pass. This removes the OR-chain expression-ceiling confound.
+3. **Light-only allow, guard absent:** while state 2 is active, temporarily remove this one conjunct from `validEventBase()`:
 
 ```rules
 && data.participantIds.hasOnly(groupMembers())
 ```
 
-Also temporarily narrow the event update allow to `validEventLightUpdate()` only, so the OR-chain's fail-closed expression ceiling cannot mask the light-path result. Re-run the focused command.
-
-Expected: both tests FAIL with `Expected request to fail, but it succeeded.` Restore both temporary mutations with `git diff` as the source of truth, then re-run and expect 2 passed. Commit no rules change.
+Expected in state 3: both tests FAIL with `Expected request to fail, but it succeeded.` Restore the subset guard, verify state 2 passes again, then restore the full OR-chain and verify state 1 passes. Use `git diff -- security/firestore.rules` after each restoration and commit no rules change.
 
 - [ ] **Step 4: Commit the behavioral coverage**
 
@@ -196,7 +198,11 @@ State that retaining a departed UID makes ordinary light metadata updates fail. 
 
 Add a close-toggle subsection with its exact allow-list (`isClosed`, `closedAt`, `closedBy`, `updatedAt`, optional bounded `spendingSnapshot`), current-member event/group creator authority, and explicit reason for bypassing `validEventBase()` when historical participants remain.
 
-- [ ] **Step 5: Commit the documentation correction**
+- [ ] **Step 5: Correct the event-create key contract**
+
+The existing “exact keys” list omits `isClosed`, `closedAt`, and `closedBy`. Add the close triple and state that each key is optional on create, but when present the only valid birth state is `isClosed: false`, `closedAt: null`, `closedBy: null`, matching `Event.toFirestoreMap()` and `validEventCreate()`.
+
+- [ ] **Step 6: Commit the documentation correction**
 
 ```bash
 git add docs/SECURITY-RULES.md
@@ -221,7 +227,15 @@ npm run test:emulator -- settlementIdempotency.rules.test.ts
 npm run test:emulator -- decomposed-settleup-batch.test.ts
 ```
 
-Expected: every suite exits 0. The rules blob stays byte-identical, but the raw runner output's “maximum of 1000 expressions” count is expected to rise by **exactly 2** because each new denied write reaches the existing fail-closed OR-chain ceiling. Gate round 1 measured 49 occurrences on the pre-test suite and one occurrence per new case; verify 51 after implementation. A different delta requires investigation. Do not use unchanged raw warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
+Expected: every suite exits 0. The rules blob stays byte-identical, but the combined runner stream's exact substring count is expected to rise by **exactly 2** because each new denied write reaches the existing fail-closed OR-chain ceiling. Use this exact counting contract (combined stdout/stderr from the wrapper; one increment per output line containing the literal phrase):
+
+```bash
+set -o pipefail
+npm run test:emulator -- firestore-rules-publish-readiness.test.ts 2>&1 \
+  | awk '/maximum of 1000 expressions/{n++} /Test Suites:|Tests:|Script exited successfully/{print} END{print "expression_ceiling_artifacts=" n+0}'
+```
+
+Gate round 1 and an independent controller run both measured `expression_ceiling_artifacts=49` on the pre-test suite. Verify `51` after implementation. A different delta requires investigation. Do not use the warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
 
 - [ ] **Step 2: Run repository checks**
 
@@ -263,6 +277,13 @@ Round 1 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 1 P2 / 0 P3
 
 Round 2 (2026-07-11): rubric `0 P1 / 0 P2 / 1 P3`; adversary `1 P1 / 1 P2 / 0 P3`.
 
-- Adversary P1 resolved: #1141 now covers both expense-created and event-settlement pushes to departed parties, with separate regression boxes for each; group settlements are explicitly excluded because their counterparties remain current-member-gated.
+- Adversary P1 resolution at this round: #1141 was expanded to expense-created and event-settlement pushes. Its attempted group-settlement exemption was later refuted in round 3 because trigger delivery is asynchronous.
 - Adversary P2 resolved: the stale-participant section no longer implies a current UI/service recovery path. It distinguishes the rules-admissible admin repair from actual in-app recovery (rejoin) and out-of-band/future participant management.
 - Rubric P3 resolved: the branch rebased onto current `origin/main` `6cc3e679`, and the investigation baseline SHA above now matches it.
+
+Round 3 (2026-07-11): rubric `0 P1 / 3 P2 / 0 P3`; adversary `1 P1 / 0 P2 / 0 P3`.
+
+- Adversary P1 resolved: #1141 now covers all three money-notification paths. Group-settlement membership is rechecked at delivery time because commit-time validity does not survive the commit-to-trigger delay; lookup failure must send nothing.
+- Rubric P2 mutation isolation resolved: Task 1 records unchanged-rules deny, light-only-with-guard deny, and light-only-without-guard allow as three distinct states.
+- Rubric P2 counting ambiguity resolved: Task 3 specifies the exact combined stream, substring, and `awk` counting command that produced baseline 49 and expects post-test 51.
+- Rubric P2 documentation gap resolved: Task 2 corrects the event-create close triple and its optional-but-pinned `false/null/null` birth state.
