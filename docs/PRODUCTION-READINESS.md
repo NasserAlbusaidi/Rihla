@@ -158,12 +158,28 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-06, `1fa502b9`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-11, `cedc9d4b`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-06 deploy ceremony the `backend-deployed` tag is `1fa502b9`; prod
+    2026-07-11 deploy ceremony the `backend-deployed` tag is `cedc9d4b`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#972** — settlement-correction callables gate on a
+    Latest delta: **the post-departure integrity batch (7 changes, 2026-07-11
+    `cedc9d4b`)** — **#1144 PR1 (#1147)** departure fence: the leave/remove
+    exact-zero check now runs under a group-doc lock (`departureInProgress`
+    triple via shared `departureLock.ts`), fifth quiesce flag in
+    `groupAllowsClientWrites`, 9 Admin-SDK honor sites, `aborted` error
+    contract, NEW hourly `departureLockReaper` (**31 functions** now);
+    **#1144 PR2 (#1150)** current-party policy: expense payer/split-parties and
+    settlement parties must be CURRENT members (`expensePartiesAreCurrentMembers`
+    on create/edit/soft-delete, D9 roster-removal guard, correction-callable
+    party gates; deleteAccount tombstone ghosts stay settleable by design);
+    **#1133 Part A (#1142)** `deleteAccount` scrubs `closedBy` +
+    `spendingSnapshot` PII; **#1132 (#1137)** creator authority also requires
+    current membership; **#1131 (#1134)** expense writes require current group
+    membership; **#1130** deterministic settlement dedup ids (backend surface
+    test-only); **#1099 (#1127)** `deleteAccount` re-queries memberships before
+    the auth delete. See the DEPLOY-LEDGER `cedc9d4b` row for the full record.
+    Prior delta: **#972** — settlement-correction callables gate on a
     creator-or-party actor via the shared `correctionActor.ts`; **#963** —
     anon shadow sandbox (D6-R) moves the durable identity boundary from
     add-by-name to the claim decision (`addShadowMember`,
