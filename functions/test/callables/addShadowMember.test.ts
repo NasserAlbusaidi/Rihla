@@ -203,6 +203,22 @@ describe('addShadowMember callable — creator adds placeholder members by name 
     expect(await memberDocCount('g')).toBe(2);
   });
 
+  test('2c. #1132 departed creator (createdBy set, not in memberIds) → permission-denied; no shadow minted', async () => {
+    // createdBy stays OWNER but OWNER is dropped from memberIds — mirrors the
+    // successful create (test 2) so the isCurrentMember conjunct is the SOLE
+    // failure cause (pre-fix this SUCCEEDS at minting a shadow).
+    await seedGroup('g', { memberIds: [OUTSIDER] });
+    await seedMember('g', OUTSIDER);
+    await expect(
+      wrapped({
+        data: { groupId: 'g', displayName: 'Sara' },
+        auth: { uid: OWNER },
+      } as any),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect((await groupData('g')).memberIds).toEqual([OUTSIDER]);
+    expect(await memberDocCount('g')).toBe(1);
+  });
+
   test('3. invalid groupId ("" and "a/b") → invalid-argument', async () => {
     await expect(
       wrapped({ data: { groupId: '', displayName: 'Sara' }, auth: { uid: OWNER } } as any),
