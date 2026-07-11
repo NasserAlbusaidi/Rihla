@@ -73,6 +73,8 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
         || groupData.deletingInProgress === true
         || groupData.claimingInProgress === true
         || groupData.accountDeletionInProgress === true
+        // #1144: shadow fan-in writes event participantIds (an oracle input).
+        || groupData.departureInProgress === true
       ) {
         throw new HttpsError('not-found', 'Group not found.');
       }

@@ -195,6 +195,111 @@ function hasChanged(before: unknown, after: unknown): boolean {
   return JSON.stringify(before) !== JSON.stringify(after);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// #1133: does the deleted user's uid appear anywhere in the frozen spendingSnapshot?
+// Its ONLY raw-uid slots are biggest.<ccy>.payer, payers.<ccy>[].id, and owed.<ccy>
+// map KEYS. This is the collateral gate: an event whose snapshot never names the uid
+// is left byte-for-byte untouched (no desc drop, no re-key), so a co-member's
+// unrelated frozen recap is safe. Keys on the UID ONLY — never the display name.
+function snapshotReferencesUid(snapshot: Record<string, unknown>, uid: string): boolean {
+  const { biggest, payers, owed } = snapshot;
+  if (isRecord(biggest)) {
+    for (const ref of Object.values(biggest)) {
+      if (isRecord(ref) && ref.payer === uid) return true;
+    }
+  }
+  if (isRecord(payers)) {
+    for (const list of Object.values(payers)) {
+      if (Array.isArray(list) && list.some((p) => isRecord(p) && p.id === uid)) return true;
+    }
+  }
+  if (isRecord(owed)) {
+    for (const bucket of Object.values(owed)) {
+      if (isRecord(bucket) && Object.prototype.hasOwnProperty.call(bucket, uid)) return true;
+    }
+  }
+  return false;
+}
+
+// #1133: scrub the frozen, OPAQUE, DISPLAY-ONLY spendingSnapshot on a closed event.
+// The live-doc scrubs never reach it: biggest.<ccy>.payer / payers.<ccy>[].id /
+// owed.<ccy> keys hold raw participant uids, and biggest.<ccy>.desc is a verbatim
+// frozen copy of Expense.description captured at close (the live-expense scrub nulls
+// the LIVE description but never this frozen copy). Re-key uids to the tombstone (→
+// "Deleted member" on the recap, mirroring participantNames) and drop every frozen
+// description — but ONLY when the snapshot references the uid, so an unrelated event's
+// snapshot (incl. OTHER members' descriptions) takes zero collateral. The balance
+// oracle NEVER reads this field, so re-keying/dropping degrades only a cosmetic recap
+// label, never a balance.
+//
+// owed.<ccy> is a uid-keyed MONEY map: on the #1099 re-join re-delete collision (the
+// bucket holds BOTH the prior tombstone T and the re-added uid U) the two frozen
+// figures are SUMMED via mergeUidMapKey — the same precedent this file uses for
+// splitDistribution (see the #1099 note above) — never last-write-wins dropped.
+// payers is a LIST, so a re-key loses nothing (a collision just leaves two tombstone
+// rows, accepted cosmetic). Idempotent: a second pass finds no uid ⇒ changed=false.
+function scrubSpendingSnapshot(
+  snapshot: unknown,
+  uid: string,
+  tombstoneId: string,
+): { value: unknown; changed: boolean } {
+  if (!isRecord(snapshot) || !snapshotReferencesUid(snapshot, uid)) {
+    return { value: snapshot, changed: false };
+  }
+
+  const scrubBiggest = (biggest: unknown): unknown => {
+    if (!isRecord(biggest)) return biggest;
+    const next: Record<string, unknown> = {};
+    for (const [ccy, ref] of Object.entries(biggest)) {
+      if (!isRecord(ref)) {
+        next[ccy] = ref;
+        continue;
+      }
+      const rest = { ...ref };
+      delete rest.desc; // drop the frozen verbatim description
+      if (rest.payer === uid) rest.payer = tombstoneId;
+      next[ccy] = rest;
+    }
+    return next;
+  };
+
+  const scrubPayers = (payers: unknown): unknown => {
+    if (!isRecord(payers)) return payers;
+    const next: Record<string, unknown> = {};
+    for (const [ccy, list] of Object.entries(payers)) {
+      next[ccy] = Array.isArray(list)
+        ? list.map((item) => (isRecord(item) && item.id === uid ? { ...item, id: tombstoneId } : item))
+        : list;
+    }
+    return next;
+  };
+
+  const scrubOwed = (owed: unknown): unknown => {
+    if (!isRecord(owed)) return owed;
+    const next: Record<string, unknown> = {};
+    for (const [ccy, bucket] of Object.entries(owed)) {
+      const merged = mergeUidMapKey(bucket, uid, tombstoneId); // SUM on collision
+      next[ccy] = merged === null ? bucket : merged.value;
+    }
+    return next;
+  };
+
+  // Build the scrubbed value WITHOUT introducing keys: a forged but rules-legal
+  // snapshot may trip the gate via one section (e.g. an `owed` key) while another
+  // top-level section is ABSENT. `scrubBiggest(undefined)` returns `undefined`, and
+  // writing `spendingSnapshot.biggest: undefined` makes the Admin SDK reject the
+  // whole update (no ignoreUndefinedProperties) → the cascade throws → the victim's
+  // deletion is permanently blocked. Only scrub sections that are actually present.
+  const value: Record<string, unknown> = { ...snapshot };
+  if ('biggest' in snapshot) value.biggest = scrubBiggest(snapshot.biggest);
+  if ('payers' in snapshot) value.payers = scrubPayers(snapshot.payers);
+  if ('owed' in snapshot) value.owed = scrubOwed(snapshot.owed);
+  return { value, changed: true };
+}
+
 function findOriginalName(memberData: DocumentData | undefined): string | undefined {
   const displayName = memberData?.displayName;
   return typeof displayName === 'string' && displayName.trim().length > 0
@@ -383,6 +488,9 @@ async function acquireAccountDeletionGroupMarker(
     if (
       groupData.deletingInProgress === true
       || groupData.claimingInProgress === true
+      // #1144: the tombstone re-key rewrites oracle inputs — mutually
+      // exclusive with a departure's recompute window.
+      || groupData.departureInProgress === true
       || (
         groupData.accountDeletionInProgress === true
         && groupData.accountDeletionUid !== uid
@@ -518,6 +626,18 @@ async function cascadeGroupAfterMarker(
     }
     if (eventData.createdBy === uid) {
       eventUpdate.createdBy = deletedUserSentinel;
+    }
+    // #1133: closedBy is an actor-identity field resolved to a display NAME in the
+    // closed banner + trip receipt (like actorId, unlike the non-resolved event
+    // createdBy) — re-key to the tombstone so it renders "Deleted member".
+    if (eventData.closedBy === uid) {
+      eventUpdate.closedBy = tombstoneId;
+    }
+    // #1133: scrub the frozen spendingSnapshot (payer/payers/owed uids + verbatim
+    // biggest descriptions); owed collisions SUM, never drop (see the fn comment).
+    const snapshotScrub = scrubSpendingSnapshot(eventData.spendingSnapshot, uid, tombstoneId);
+    if (snapshotScrub.changed) {
+      eventUpdate.spendingSnapshot = snapshotScrub.value;
     }
     if (Object.keys(eventUpdate).length > 0) {
       eventUpdate.updatedAt = FieldValue.serverTimestamp();

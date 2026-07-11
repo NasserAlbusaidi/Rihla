@@ -1325,4 +1325,25 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect(group?.deleteLockedBy).toBe(OWNER);
     expect(group?.deleteLockedAt).toBeTruthy();
   });
+
+  test('#1144 acquire refuses while a departure lock is held — no delete lock taken, no mutation', async () => {
+    await seedGroup('g', {
+      departureInProgress: true,
+      departureLockedAt: new Date(),
+      departureLockedBy: MEMBER,
+    });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    const group = (await groupSnap('g')).data();
+    expect(group?.deletingInProgress ?? false).toBe(false);
+    expect(group?.isDeleted).toBe(false);
+    // The departure lock stays untouched for its owner.
+    expect(group?.departureInProgress).toBe(true);
+    expect(group?.departureLockedBy).toBe(MEMBER);
+  });
 });

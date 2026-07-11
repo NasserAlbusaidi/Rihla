@@ -258,6 +258,26 @@ describe('joinGroupByInviteCode', () => {
     expect(active.data()?.participantIds).toEqual(['owner']);
   });
 
+  test('join is rejected while a departure lock is held (#1144) — fan-in must not land in the recompute window', async () => {
+    const db = getFirestore();
+    await seedEvent('active');
+    await db.doc('groups/g1').update({
+      departureInProgress: true,
+      departureLockedAt: new Date(),
+      departureLockedBy: 'owner',
+    });
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).rejects.toMatchObject({ code: 'not-found' });
+
+    const groupSnap = await db.doc('groups/g1').get();
+    expect(groupSnap.data()?.memberIds).toEqual(['owner']);
+    const active = await db.doc('groups/g1/events/active').get();
+    expect(active.data()?.participantIds).toEqual(['owner']);
+  });
+
   test('quiesced group returns not-found before the event-count guard (#205)', async () => {
     const db = getFirestore();
     const batch = db.batch();

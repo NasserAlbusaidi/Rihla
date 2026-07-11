@@ -1,9 +1,10 @@
 # Cloud Functions
 
-Reference for the Firebase Cloud Functions Rihla ships: 11 HTTPS callables
+Reference for the Firebase Cloud Functions Rihla ships: 13 HTTPS callables
 (`firebase-functions/v2/https`), 13 Firestore document triggers
-(`firebase-functions/v2/firestore`), and 3 scheduled backstops
-(`firebase-functions/v2/scheduler`) — 27 functions total, all deployed to
+(`firebase-functions/v2/firestore`), and 5 scheduled backstops
+(`firebase-functions/v2/scheduler`) — 31 functions total (count from
+`tool/list_expected_functions.sh`, the deploy-drift SSOT), all deployed to
 `us-central1`. The deploy-drift check reads the expected set from
 `tool/list_expected_functions.sh` (add new functions as `export { … } from`
 re-exports in `index.ts` or they escape it). `joinGroupByInviteCode` enforces
@@ -14,8 +15,8 @@ App Check; `deleteAccount` runs with App Check in verify-if-present (soft) mode.
 | `joinGroupByInviteCode` | `functions/src/callables/joinGroupByInviteCode.ts` | Validate a 6-char invite code and atomically add the caller to the group + active events. |
 | `deleteAccount` | `functions/src/callables/deleteAccount.ts` | Server-side account-deletion cascade: revoke refresh tokens, scrub PII, replace UID with a per-group tombstone, delete FCM/joinAttempts/Auth user. On an incomplete cascade it writes a `deletionAudit/{uid}` marker (#76) for the reaper backstop. |
 | `deleteGroup` | `functions/src/callables/deleteGroup.ts` | Server-authoritative group delete + cascade; gated on the caller being the **current-member** group creator (#1132) + a zero net balance via the shared `recomputeNet` oracle (#190). |
-| `leaveGroup` | `functions/src/callables/leaveGroup.ts` | Member self-leave; gated on the leaver's net == 0 via `recomputeNet` (hard-delete, not tombstone — leave doesn't touch `participantIds`) (#290). |
-| `removeMember` | `functions/src/callables/removeMember.ts` | Current-member creator (#1132) removes another member; gates the TARGET's net == 0 via `recomputeNet`; self-removal rejected (#318). |
+| `leaveGroup` | `functions/src/callables/leaveGroup.ts` | Member self-leave; gated on the leaver's net == 0 via `recomputeNet` UNDER a `departureInProgress` lock (#1144 — contention/lost lock → `aborted`); hard-delete, not tombstone — leave doesn't touch `participantIds` (#290). |
+| `removeMember` | `functions/src/callables/removeMember.ts` | Current-member creator (#1132) removes another member; gates the TARGET's net == 0 via `recomputeNet` UNDER the #1144 departure lock; self-removal rejected (#318). |
 | `addShadowMember` | `functions/src/callables/addShadowMember.ts` | Current-member creator (#1132) adds an unclaimed placeholder ("shadow") member by name (uuid-keyed; `doc.id===userId===randomUUID()`) — the only path that mints a member doc by name (#278). |
 | `requestClaimShadow` | `functions/src/callables/requestClaimShadow.ts` | A joiner requests to claim an unclaimed shadow's identity + balance (#278). |
 | `decideClaimRequest` | `functions/src/callables/decideClaimRequest.ts` | Current-member creator (#1132) approves/denies a claim; on approve runs the uuid→uid re-key engine `claimShadowEngine` (de-exported — reachable only via this callable) (#278). |
@@ -78,11 +79,17 @@ scheduled reaper have no client surface — they fire server-side.
 
 ## Scheduled functions
 
-There are **3** `onSchedule` jobs: `deletionReaper` (below), `balanceReconciler`
+There are **5** `onSchedule` jobs: `deletionReaper` (below), `balanceReconciler`
 (`scheduled/balanceReconciler.ts` — periodically recomputes the
-`groups/{gid}/aggregates/balance` display cache, #366), and `deleteGroupLockReaper`
+`groups/{gid}/aggregates/balance` display cache, #366), `deleteGroupLockReaper`
 (`scheduled/deleteGroupLockReaper.ts` — resumes a `deleteGroup` cascade stalled
-past its lock horizon, #519/#529).
+past its lock horizon, #519/#529), `claimShadowLockReaper`
+(`scheduled/claimShadowLockReaper.ts` — resumes a claim re-key stalled past its
+lock horizon), and `departureLockReaper` (`scheduled/departureLockReaper.ts` —
+clears a `departureInProgress` lock lingering after a killed
+`leaveGroup`/`removeMember`; nothing to resume — the membership mutation
+releases the lock atomically, so a lingering lock proves it never committed,
+#1144).
 
 ### Deletion reaper (#76)
 
@@ -348,7 +355,13 @@ interface DeleteAccountOutput {
      member exists, set `createdBy = 'deleted-user'` and soft-delete
      the group (`isDeleted: true`, `deletedAt: serverTimestamp`).
    - For each event in the group: rewrite `participantIds`,
-     `participantNames`, and `createdBy` analogously.
+     `participantNames`, and `createdBy` analogously; re-key `closedBy`
+     → tombstoneId; and scrub the frozen `spendingSnapshot` (re-key
+     `biggest.payer` / `payers[].id` / `owed` keys → tombstoneId with a
+     SUM-on-collision merge for the uid-keyed `owed` money map, and drop
+     every frozen `biggest.desc`) — but only when the snapshot references
+     the uid (#1133). The cascade only reaches groups the uid is still a
+     member of at deletion time (`memberIds array-contains uid`).
    - For each expense: rewrite `createdBy`, `payerParticipantId`,
      `customSplitParticipants`, and `splitDistribution` keys. **Null
      out** `receiptUrl`, `note`, and `description` to scrub PII.
@@ -482,7 +495,7 @@ matches the current commit, and the App Check repo variables agree.
 
 | File | Lines | Notes |
 |------|-------|-------|
-| `functions/src/index.ts` | 39 | Region + 27 re-exports (11 callables, 13 triggers, 3 scheduled) |
+| `functions/src/index.ts` | 42 | Region + 31 re-exports (13 callables, 13 triggers, 5 scheduled) |
 | `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |

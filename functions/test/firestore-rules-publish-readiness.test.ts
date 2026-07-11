@@ -2198,34 +2198,44 @@ describe('Publish readiness Firestore rules', () => {
       }));
     });
 
-    // Over-blocking guard: the remaining member keeps full write authority —
-    // including on expenses whose splitDistribution still REFERENCES the
-    // departed participant (participants() untouched, #249 parity). The splits
-    // below must name 'member' explicitly: amountFils is allocation-affecting,
-    // so the edit re-runs splitDistribution.keys().hasOnly(participants())
-    // against a split containing the departed uid — a trivially-empty split
-    // would not exercise that axis.
-    test('remaining member still creates and edits normally after a departure', async () => {
+    // Over-blocking guard, #1144 revision: the remaining member keeps full
+    // write authority for CURRENT-member expenses. The pre-#1144 version of
+    // this test pinned the old #249-era counterparty allowance (creates/edits
+    // whose splitDistribution referenced the departed uid) — #1144's
+    // current-party policy deliberately reverses that (a leave-departed
+    // party left at exact zero; new exposure re-opens their balance), so
+    // those cases now live as DENY tests in the '#1144 current-party policy'
+    // describe. What must stay true: current-member-only writes flow freely,
+    // and metadata edits of departed-referencing docs stay open.
+    test('remaining member still creates and edits current-member expenses after a departure', async () => {
       await seedExpense({
         splitMode: 'exact',
-        splitDistribution: { owner: 5250, member: 5250 }, // departed uid as counterparty
+        splitDistribution: { owner: 5250, member: 5250 }, // written pre-departure
       });
       await departMember();
       const owner = testEnv.authenticatedContext('owner').firestore();
+      // Metadata edit of the departed-referencing doc stays open (#1144 R6).
       await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
-        amountFils: 12500,
-        splitDistribution: { owner: 6250, member: 6250 },
+        note: 'still annotatable',
         lastEditedBy: 'owner',
       }));
+      // New current-member-only expense on the same event flows freely
+      // (exact keys ⊆ memberIds; the departed uid stays on the roster).
       await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/expOwner').set(
         validExpense({
           id: 'expOwner',
           createdBy: 'owner',
           payerParticipantId: 'owner',
           splitMode: 'exact',
-          splitDistribution: { owner: 5250, member: 5250 }, // create referencing departed uid
+          splitDistribution: { owner: 10500 },
         }),
       ));
+      // And allocation-editing it keeps working (all parties current, pre+post).
+      await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/expOwner').update({
+        amountFils: 12500,
+        splitDistribution: { owner: 12500 },
+        lastEditedBy: 'owner',
+      }));
     });
   });
 
@@ -3408,6 +3418,360 @@ describe('Publish readiness Firestore rules', () => {
   test('#366 server (Admin SDK / rules-disabled) CAN write the balance aggregate', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await assertSucceeds(ctx.firestore().doc('groups/g1/aggregates/balance').set(validAggregate()));
+    });
+  });
+
+  describe('#1144 departure fence quiesces client writes', () => {
+    // leaveGroup/removeMember recompute the departing member's net UNDER a
+    // departureInProgress group-doc lock (the fifth groupAllowsClientWrites
+    // flag); every client write must freeze for that window or a mid-departure
+    // balance-input write invalidates the zero-check basis (the #1144-B race).
+    // Each case asserts the SAME write is denied under the fence and allowed
+    // once it lifts — pinning the freeze to the flag, not to fixture noise.
+    async function engageDepartureFence(): Promise<void> {
+      await updateSeedGroup({
+        departureInProgress: true,
+        departureLockedAt: new Date(),
+        departureLockedBy: 'member',
+      });
+    }
+
+    async function liftDepartureFence(): Promise<void> {
+      await updateSeedGroup({
+        departureInProgress: false,
+        departureLockedAt: deleteSentinel(),
+        departureLockedBy: deleteSentinel(),
+      });
+    }
+
+    test('fence blocks expense CREATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1/expenses/expFence').set(
+        validExpense({ id: 'expFence', createdBy: 'member', payerParticipantId: 'member' }),
+      );
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks expense metadata UPDATE; lifting restores it', async () => {
+      await seedExpense();
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1/expenses/exp1').update({
+        note: 'fenced note',
+        lastEditedBy: 'member',
+      });
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks event settlement CREATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1/settlements/setFence').set(
+        validSettlement({ id: 'setFence' }),
+      );
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks group settlement CREATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/settlements/gsetFence').set(
+        validGroupSettlement({ id: 'gsetFence' }),
+      );
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks event light UPDATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1').update({
+        name: 'Fenced Rename',
+        updatedAt: new Date(),
+      });
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks member self-rename; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/members/member').update({
+        displayName: 'Fenced Name',
+      });
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+  });
+
+  describe('#1144 current-party policy', () => {
+    // Parties of a NEW or allocation-edited expense must be CURRENT members;
+    // event-settlement parties must be current members too. `memberIds`
+    // contains unclaimed-shadow uuids (addShadowMember arrayUnion) AND
+    // deleteAccount tombstone ids (uid→tombstoneId SWAP, deleteAccount.ts:616
+    // — never a removal), so ghosts stay settleable while leave/remove-
+    // departed identities (hard-removed) are blocked. Fixtures:
+    //   D 'departed'  — in event participantIds, ABSENT from memberIds, no
+    //                   member doc (the leave/remove post-state).
+    //   T 'ghost-t'   — IN memberIds AND participantIds, member doc keyed T
+    //                   with isTombstone:true (the deleteAccount post-state;
+    //                   deleteAccount.ts:502 swaps it into participantIds).
+    const D = 'departed';
+    const T = 'ghost-t';
+    const SHADOW = 'shadow-uuid-9';
+
+    // e2: event whose roster retains departed D.
+    async function seedDepartedRosterEvent(): Promise<void> {
+      await seedEvent('e2', {
+        participantIds: ['owner', 'member', D],
+        participantNames: { owner: 'Owner', member: 'Member', [D]: 'Dana' },
+      });
+    }
+
+    // e3: event with ghost T — T also joins memberIds + gets a tombstone doc.
+    async function seedGhostEvent(): Promise<void> {
+      await updateSeedGroup({ memberIds: ['owner', 'member', T] });
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc(`groups/g1/members/${T}`).set({
+          id: T,
+          userId: T,
+          displayName: 'Former member',
+          role: 'MEMBER',
+          joinedAt: new Date(),
+          isShadow: false,
+          isTombstone: true,
+        });
+      });
+      await seedEvent('e3', {
+        participantIds: ['owner', 'member', T],
+        participantNames: { owner: 'Owner', member: 'Member', [T]: 'Former member' },
+      });
+    }
+
+    async function seedShadowEvent(): Promise<void> {
+      await updateSeedGroup({ memberIds: ['owner', 'member', SHADOW] });
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc(`groups/g1/members/${SHADOW}`).set({
+          id: SHADOW,
+          userId: SHADOW,
+          displayName: 'Guest',
+          role: 'MEMBER',
+          joinedAt: new Date(),
+          isShadow: true,
+        });
+      });
+      await seedEvent('e4', {
+        participantIds: ['owner', 'member', SHADOW],
+        participantNames: { owner: 'Owner', member: 'Member', [SHADOW]: 'Guest' },
+      });
+    }
+
+    async function seedE2Expense(overrides: Record<string, unknown> = {}): Promise<void> {
+      const data = validExpense({ id: 'expD', eventId: 'e2', createdBy: 'owner', ...overrides });
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc(`groups/g1/events/e2/expenses/${data.id}`).set(data);
+      });
+    }
+
+    // --- deny: new exposure for a leave/remove-departed party ---
+
+    test('1. expense CREATE with departed payer → denied', async () => {
+      await seedDepartedRosterEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/x1').set(
+        validExpense({ id: 'x1', eventId: 'e2', createdBy: 'member', payerParticipantId: D }),
+      ));
+    });
+
+    test('2. exact-mode CREATE with departed split key → denied', async () => {
+      await seedDepartedRosterEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/x2').set(
+        validExpense({
+          id: 'x2', eventId: 'e2', createdBy: 'member', payerParticipantId: 'member',
+          splitMode: 'exact', splitDistribution: { member: 5250, [D]: 5250 },
+        }),
+      ));
+    });
+
+    test('3. custom-scope CREATE with departed custom participant → denied', async () => {
+      await seedDepartedRosterEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/x3').set(
+        validExpense({
+          id: 'x3', eventId: 'e2', createdBy: 'member', payerParticipantId: 'member',
+          scope: 'custom', customSplitParticipants: ['member', D],
+        }),
+      ));
+    });
+
+    test('4. equal-mode CREATE on the departed-roster event → denied (roster is the divisor)', async () => {
+      await seedDepartedRosterEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/x4').set(
+        validExpense({ id: 'x4', eventId: 'e2', createdBy: 'member', payerParticipantId: 'member' }),
+      ));
+    });
+
+    test('5. allocation edit (amount) of an expense with departed payer → denied', async () => {
+      await seedDepartedRosterEvent();
+      await seedE2Expense({ payerParticipantId: D, splitMode: 'exact', splitDistribution: { owner: 5250, member: 5250 } });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/expD').update({
+        amountFils: 12500,
+        splitDistribution: { owner: 6250, member: 6250 },
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('6. allocation edit REMOVING the departed split key → denied (pre-state fail-closed)', async () => {
+      await seedDepartedRosterEvent();
+      await seedE2Expense({ payerParticipantId: 'owner', splitMode: 'exact', splitDistribution: { owner: 5250, [D]: 5250 } });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/expD').update({
+        splitDistribution: { owner: 10500 },
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('7. soft-delete of an expense with departed payer → denied', async () => {
+      await seedDepartedRosterEvent();
+      await seedE2Expense({ payerParticipantId: D, splitMode: 'exact', splitDistribution: { owner: 5250, member: 5250 } });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/expD').update({
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('8. soft-delete of an equal-mode expense on the departed-roster event → denied', async () => {
+      await seedDepartedRosterEvent();
+      await seedE2Expense({ payerParticipantId: 'owner' }); // global equal — roster-derived
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/expenses/expD').update({
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('9. event-settlement CREATE with departed party → denied', async () => {
+      await seedDepartedRosterEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e2/settlements/s1').set(
+        validSettlement({ id: 's1', eventId: 'e2', recipientParticipantId: D }),
+      ));
+    });
+
+    // --- allow: everything the policy must NOT break ---
+
+    test('10. metadata-only edit of a departed-payer expense → allowed (history stays annotatable)', async () => {
+      await seedDepartedRosterEvent();
+      await seedE2Expense({ payerParticipantId: D, splitMode: 'exact', splitDistribution: { owner: 5250, member: 5250 } });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e2/expenses/expD').update({
+        note: 'annotated after departure',
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('11. equal-mode CREATE on an all-current roster → allowed', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1/expenses/x11').set(
+        validExpense({ id: 'x11', createdBy: 'member', payerParticipantId: 'member' }),
+      ));
+    });
+
+    test('12. exact-mode CREATE with member-only keys ON the departed-roster event → allowed', async () => {
+      await seedDepartedRosterEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e2/expenses/x12').set(
+        validExpense({
+          id: 'x12', eventId: 'e2', createdBy: 'member', payerParticipantId: 'member',
+          splitMode: 'exact', splitDistribution: { owner: 5250, member: 5250 },
+        }),
+      ));
+    });
+
+    test('13. event settlement with ghost (tombstoned) recipient → allowed (debt-cleanup path)', async () => {
+      await seedGhostEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e3/settlements/s13').set(
+        validSettlement({ id: 's13', eventId: 'e3', recipientParticipantId: T }),
+      ));
+    });
+
+    test('14. event settlement between two live members → allowed', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/s14').set(
+        validSettlement({ id: 's14' }),
+      ));
+    });
+
+    test('15. shadow uuid as payer and split key → allowed (shadows are current members)', async () => {
+      await seedShadowEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e4/expenses/x15').set(
+        validExpense({
+          id: 'x15', eventId: 'e4', createdBy: 'member', payerParticipantId: SHADOW,
+          splitMode: 'exact', splitDistribution: { member: 5250, [SHADOW]: 5250 },
+        }),
+      ));
+    });
+
+    test('16. expense CREATE with ghost split key → ALLOWED — pins residual R5', async () => {
+      // R5: tombstone ids live in memberIds and rules cannot iterate
+      // splitDistribution keys to exclude them — a new expense CAN still name
+      // a deleteAccount ghost (PR3 filters pickers client-side; durable fix =
+      // activeMemberIds, deferred). Deliberate, documented, pinned here.
+      await seedGhostEvent();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e3/expenses/x16').set(
+        validExpense({
+          id: 'x16', eventId: 'e3', createdBy: 'member', payerParticipantId: 'member',
+          splitMode: 'exact', splitDistribution: { member: 5250, [T]: 5250 },
+        }),
+      ));
+    });
+
+    // --- D9: admin roster removals may not drop a non-current-member key ---
+
+    test('17. admin roster removal of the departed key → denied (D9 — dropping D re-divides their equal splits)', async () => {
+      await seedDepartedRosterEvent();
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e2').update({
+        participantIds: ['owner', 'member'],
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('18. admin roster removal of a CURRENT member → allowed', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        participantIds: ['owner'],
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('19. admin soft-delete of the departed-roster event → denied (existing L474 post-state freeze, pinned)', async () => {
+      await seedDepartedRosterEvent();
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e2').update({
+        isDeleted: true,
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      }));
     });
   });
 });

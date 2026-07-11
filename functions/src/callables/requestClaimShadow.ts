@@ -77,6 +77,9 @@ export const requestClaimShadow = onCall<RequestClaimShadowInput, Promise<Reques
       || groupData.deletingInProgress === true
       || groupData.claimingInProgress === true
       || groupData.accountDeletionInProgress === true
+      // #1144: defense-only (this callable writes no oracle input), matching
+      // the sibling honor checks.
+      || groupData.departureInProgress === true
     ) {
       throw new HttpsError('not-found', 'Group not found.');
     }

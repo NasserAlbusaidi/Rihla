@@ -146,7 +146,12 @@ service cloud.firestore {
         && (!groupData(groupId).keys().hasAny(['claimingInProgress'])
           || groupData(groupId).claimingInProgress == false)
         && (!groupData(groupId).keys().hasAny(['accountDeletionInProgress'])
-          || groupData(groupId).accountDeletionInProgress == false);
+          || groupData(groupId).accountDeletionInProgress == false)
+        // #1144: leaveGroup/removeMember recompute the departing member's net
+        // UNDER this lock; a client balance-input write landing mid-window
+        // would invalidate the zero-check basis (the departure race).
+        && (!groupData(groupId).keys().hasAny(['departureInProgress'])
+          || groupData(groupId).departureInProgress == false);
     }
 
     function isGroupMember(groupId) {
@@ -621,6 +626,18 @@ service cloud.firestore {
                 'updatedAt',
                 'description'
               ])
+            // #1144 D9: roster REMOVALS may not drop a non-current-member key.
+            // The admin path has no additivity guard (the light path's hasAll
+            // is light-only), so dropping a departed uid produced an all-
+            // current post-state that passed validEventBase — removing them
+            // from the balance universe and re-dividing their equal splits
+            // POST-departure. Removed keys must all be current members (ghost
+            // removal still passes — tombstone ids sit in memberIds; R5).
+            // Cheap-first: non-roster admin updates short-circuit at hasAny.
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantIds'])
+              || resource.data.participantIds.toSet()
+                .difference(request.resource.data.participantIds.toSet())
+                .hasOnly(groupMembers()))
             && validEventUpdateCommon()
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
               || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isDeleted', 'deletedAt', 'updatedAt'])
@@ -690,6 +707,38 @@ service cloud.firestore {
         match /{module}/{docId} {
           function participants() {
             return eventData(groupId, eventId).participantIds;
+          }
+
+          // #1144: parties of a NEW or allocation-edited expense must be in
+          // the CURRENT memberIds — which includes unclaimed-shadow uuids
+          // (addShadowMember.ts arrayUnion) AND deleteAccount tombstone ids
+          // (uid→tombstoneId SWAP, deleteAccount.ts — never a removal), so
+          // this blocks leave/remove-departed parties but NOT ghosts
+          // (residual R5: rules cannot iterate splitDistribution keys to
+          // exclude tombstones; the client filters pickers). Roster-derived
+          // splits (equal/global/sub_group/custom-empty) divide over the
+          // participantIds-seeded universe, so they additionally require the
+          // roster itself to be all-current. Callers diff-gate this —
+          // metadata-only edits never evaluate it (historical metadata stays
+          // editable). Reuses the already-fetched group + event docs: zero
+          // new document accesses.
+          // #723 budget discipline (this fn tipped the allowed expense-update
+          // path over the 1000-expression ceiling in its naive shape):
+          // members is passed as an ARG so groupMembers()'s expression tree
+          // evaluates ONCE per call instead of 4x; get(key, default) replaces
+          // keys().hasAny guards; participants() stays inside because the
+          // roster disjunct only evaluates for roster-derived splits
+          // (short-circuit).
+          function expensePartiesAreCurrentMembers(data, members) {
+            return data.payerParticipantId in members
+              && data.get('customSplitParticipants', []).hasOnly(members)
+              && data.get('splitDistribution', {}).keys().hasOnly(members)
+              && (data.scope == 'personal'
+                || (data.scope == 'custom'
+                  && data.get('customSplitParticipants', []).size() > 0)
+                || (data.get('splitMode', '') in ['shares', 'exact', 'percent']
+                  && data.get('splitDistribution', {}).size() > 0)
+                || participants().hasOnly(members));
           }
 
           function validExpenseSplit(data, enforceParticipantKeys) {
@@ -793,6 +842,14 @@ service cloud.firestore {
             && data.customSplitParticipants is list
             && data.customSplitParticipants.hasOnly(participants())
             && validExpenseSplit(data, enforceParticipantKeys)
+            // #1144: post-state party policy rides the SAME param as the
+            // participant-keys check. CREATE passes a literal true; UPDATE
+            // passes a literal false and runs the whole allocation bundle
+            // (participant keys + parties pre/post + #192) behind ONE
+            // affectsExpenseAllocation() gate in validExpenseUpdate instead
+            // (#723 budget: this saves a full diff evaluation there).
+            && (!enforceParticipantKeys
+              || expensePartiesAreCurrentMembers(data, groupMembers()))
             && nullableString(data.receiptUrl)
             && nullableString(data.categoryId)
             && nullableString(data.description)
@@ -808,10 +865,12 @@ service cloud.firestore {
             // #1131: leave/remove never prune event participantIds (balance-
             // universe preservation), so participation alone is NOT current
             // membership — a departed member would retain write authority
-            // forever. Require live memberIds too. The counterparty universe
-            // (participants()) is deliberately untouched: current members must
-            // keep writing expenses that REFERENCE departed participants
-            // (#249 parity contract).
+            // forever. Require live memberIds too.
+            // #1144 revises the #1131-era counterparty allowance: NEW
+            // allocations may no longer reference a leave/remove-departed
+            // party (they departed at exact zero; new exposure re-opens their
+            // balance). Historical docs keep folding (#249 parity untouched);
+            // ghosts (tombstone ids IN memberIds) still pass.
             return module == 'expenses'
               && isGroupMember(groupId)
               && isEventParticipant(groupId, eventId)
@@ -893,9 +952,24 @@ service cloud.firestore {
                   'lastEditedBy',
                   'splitExplanation'
                 ])
-              && validExpenseBase(request.resource.data, affectsExpenseAllocation())
-              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitDistribution'])
-                || splitValuesNonNegative(request.resource.data))
+              // #723: base gets a literal false — the whole allocation bundle
+              // (participant keys, #1144 parties pre+post, #192 non-negative)
+              // runs behind the SINGLE affectsExpenseAllocation() gate below,
+              // saving the diff evaluation the base param used to cost. The
+              // naive shape (base-arg diff + separate #192 gate + two party
+              // gates) tipped allowed updates over the 1000-expr ceiling.
+              && validExpenseBase(request.resource.data, false)
+              // #1144: an allocation-affecting edit must keep every party in
+              // BOTH pre- and post-state a current member — post-state alone
+              // would let an edit REMOVE a departed party's key, silently
+              // moving their net. Re-validating an unchanged stored
+              // distribution under #192 is a no-op verdict-wise.
+              // Metadata-only edits skip the whole bundle.
+              && (!affectsExpenseAllocation()
+                || (request.resource.data.get('splitDistribution', {}).keys().hasOnly(participants())
+                  && expensePartiesAreCurrentMembers(request.resource.data, groupMembers())
+                  && expensePartiesAreCurrentMembers(resource.data, groupMembers())
+                  && splitValuesNonNegative(request.resource.data)))
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['splitExplanation'])
                 || splitExplanationBounded(request.resource.data))
               // #382 PR-6: per-expense currency. An expense's currency need only be
@@ -921,7 +995,12 @@ service cloud.firestore {
                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
                   && request.resource.data.isDeleted == resource.data.isDeleted
                   && request.resource.data.deletedAt == resource.data.deletedAt)
-                || validSoftDelete()
+                // #1144: soft-delete IS a balance write (removes the doc from
+                // aggregation) — fail closed when the doc references a
+                // departed party. Attached to THIS arm only; the no-change
+                // arm above keeps metadata edits of departed-party docs open.
+                || (validSoftDelete()
+                  && expensePartiesAreCurrentMembers(resource.data, groupMembers()))
               );
           }
 
@@ -965,20 +1044,22 @@ service cloud.firestore {
           function validEventSettlementCreate() {
             // #752: writer need only be a group MEMBER (was isEventParticipant),
             // so a group-level settle-up decomposed into per-event settlement
-            // docs — and #595 settle-on-behalf — are accepted. The counterparties
-            // are STILL gated to event participants (validEventSettlementBase
-            // payerParticipantId/recipientParticipantId in participants()). This
-            // matches the #595 "any member may record a transfer between two
-            // others" model and is no broader than today's group-settlement
-            // permission (any member may already create a group settlement
-            // between two members). It is NOT a strict subset — participants()
-            // can include a departed event-participant no longer in memberIds
-            // (#249) — but is safe: parties are real prior event participants,
-            // settlements are append-only + offset-correctable, and the rule is
-            // a shape-gate not a value-gate.
+            // docs — and #595 settle-on-behalf — are accepted. Counterparties
+            // are gated to event participants (validEventSettlementBase
+            // payerParticipantId/recipientParticipantId in participants())
+            // AND — since #1144 — to current memberIds, the same gate group
+            // settlements always had (L1225-ish validGroupSettlementBase).
+            // The #1144 revision of the old "#249 departed-party allowance":
+            // a leave/remove-departed party departed at exact ZERO (hard-
+            // removed from memberIds), so any settlement naming them CREATES
+            // exposure — blocked. deleteAccount ghosts stay settleable: their
+            // tombstoneId is swapped INTO memberIds and participantIds
+            // (deleteAccount.ts), so the debt-cleanup path passes both gates.
             return module == 'settlements'
               && isGroupMember(groupId)
               && eventAllowsClientWrites(groupId, eventId)
+              && request.resource.data.payerParticipantId in groupMembers()
+              && request.resource.data.recipientParticipantId in groupMembers()
               && validEventSettlementBase(request.resource.data)
               && validFreeText(request.resource.data.note)
               && request.resource.data.createdBy == request.auth.uid
