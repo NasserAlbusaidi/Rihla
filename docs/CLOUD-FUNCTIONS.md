@@ -28,6 +28,16 @@ Functions live in `functions/` (Node 22 / TypeScript). They use the
 Firebase Admin SDK which **bypasses Firestore Security Rules** — every
 authorization check is implemented inside the callable bodies.
 
+**#1144 R5 — roster-writer contract:** every callable that mutates
+`groups/{gid}.memberIds` (join, addShadowMember, leaveGroup, removeMember,
+claimShadowEngine, deleteAccount) also maintains `activeMemberIds`
+(= memberIds minus tombstone ids; shadows in) through the shared
+`nextActiveMemberIds` helper (`callables/shared/activeMembers.ts`) inside
+the same transaction — present field: apply the op; absent (legacy):
+seed from memberIds − tombstone member docs, then apply. Never
+FieldValue-array-op this field; always write the computed array. A new
+roster writer MUST call the helper.
+
 Top-level wiring:
 
 ```ts

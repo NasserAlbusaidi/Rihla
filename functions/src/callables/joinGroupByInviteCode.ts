@@ -10,6 +10,7 @@ import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https
 import { logger } from 'firebase-functions/v2';
 import '../admin';
 import { notifyMemberJoin } from '../notifications/memberJoinNotifier';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import { normalizeInviteCode } from './shared/inviteCode';
 import {
   EventFanInUpdate,
@@ -300,8 +301,15 @@ export const joinGroupByInviteCode = onCall<
           collectEventFanIn(eventsSnap, uid, displayName);
 
         if (!memberIds.includes(uid)) {
+          // #1144 R5: maintained alongside memberIds (self-heals legacy
+          // groups). Must run before the tx writes below (it may READ the
+          // tombstone member docs on the absent-field branch).
+          const activeMemberIds = await nextActiveMemberIds(tx, groupRef, groupData, {
+            add: uid,
+          });
           tx.update(groupRef, {
             memberIds: FieldValue.arrayUnion(uid),
+            activeMemberIds,
             updatedAt: FieldValue.serverTimestamp(),
           });
         }

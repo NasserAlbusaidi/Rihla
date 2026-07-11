@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import '../admin';
 import { normalizeRequiredDisplayName } from './shared/displayName';
 import { MAX_FAN_IN_EVENTS, applyEventFanIn, collectEventFanIn } from './shared/eventFanIn';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import { isCurrentMember } from './shared/membership';
 
 export interface AddShadowMemberInput {
@@ -126,6 +127,12 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
       // (:375-384), with isShadow:true. isTombstone is omitted (defaults false in
       // GroupMember.fromDoc), matching the join write.
       const newId = randomUUID();
+      // #1144 R5: shadows ARE active parties — the uuid joins both sets. Must
+      // run before the tx writes below (reads-before-writes on the legacy
+      // self-heal branch).
+      const activeMemberIds = await nextActiveMemberIds(tx, groupRef, groupData, {
+        add: newId,
+      });
       tx.set(groupRef.collection('members').doc(newId), {
         id: newId,
         userId: newId,
@@ -136,6 +143,7 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
       });
       tx.update(groupRef, {
         memberIds: FieldValue.arrayUnion(newId),
+        activeMemberIds,
         updatedAt: FieldValue.serverTimestamp(),
       });
       // #245: mirror the join callable — a member absent from an event's
