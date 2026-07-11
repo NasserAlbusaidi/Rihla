@@ -740,6 +740,37 @@ export function computeNetFromSnapshot(snapshot: GroupBalanceSnapshot): Recomput
   };
 }
 
+// #1144 R1: events where `uid` has LIVE financial history but is absent from
+// participantIds — the "universe-only actor" states leaveGroup/removeMember
+// refuse to depart. Read-only consumer of the snapshot; NOT a universe input
+// (the claimShadow lock-step contract above is not in play). Detection covers
+// payers + settlement parties ONLY — the fold's non-member-gated universe
+// inputs (see the `financial` fold above): they fold in the instant the
+// departing member's docs are hard-deleted, resurrecting paid rows and an
+// equal-split share the pre-departure zero-gate cannot see. Split keys /
+// customSplitParticipants are deliberately NOT detected: their fold is
+// member-gated (`allMemberIds`), so after the hard-delete they DROP (the
+// pre-existing #249/drop-guard posture) — a split-key-only leaver is square
+// and must depart freely. Liveness mirrors the fold exactly (isLiveDoc /
+// strict `isDeleted === false`; no deleteGroup-resume window here — leave/
+// remove refuse under any live deleteGroup lock long before this runs).
+export function universeOnlyEventIds(snapshot: GroupBalanceSnapshot, uid: string): string[] {
+  const flagged: string[] = [];
+  for (const event of snapshot.events) {
+    if (!isLiveDoc(event.data)) continue;
+    if (stringArray(event.data.participantIds).includes(uid)) continue;
+    const appears =
+      event.expenses.some((e) => isLiveDoc(e) && e.payerParticipantId === uid)
+      || event.settlements.some(
+        (s) =>
+          isLiveDoc(s)
+          && (s.payerParticipantId === uid || s.recipientParticipantId === uid),
+      );
+    if (appears) flagged.push(event.id);
+  }
+  return flagged;
+}
+
 // Public entry point — exact HEAD signature preserved (5 callers + the Dart
 // parity tests pin it). Loads the snapshot, then runs the pure compute.
 export async function recomputeNet(

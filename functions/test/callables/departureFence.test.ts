@@ -25,6 +25,16 @@ jest.mock('../../src/callables/groupNetBalance', () => {
   const actual = jest.requireActual('../../src/callables/groupNetBalance');
   return {
     ...actual,
+    // #1144 R1 moved the callables from recomputeNet to
+    // loadGroupBalanceSnapshot + computeNetFromSnapshot (one snapshot shared
+    // with the universe-only guard) — hook the LOAD so the injection still
+    // fires at the balance-basis read site.
+    loadGroupBalanceSnapshot: jest.fn(
+      async (db: unknown, groupRef: DocumentReference) => {
+        await injectAtRecompute(groupRef);
+        return actual.loadGroupBalanceSnapshot(db, groupRef);
+      },
+    ),
     recomputeNet: jest.fn(async (db: unknown, groupRef: DocumentReference) => {
       await injectAtRecompute(groupRef);
       return actual.recomputeNet(db, groupRef);
