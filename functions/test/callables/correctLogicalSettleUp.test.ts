@@ -493,3 +493,27 @@ describe('correctLogicalSettleUp — actor policy (creator-or-party-on-every-ori
     expect(res).toMatchObject({ noop: false, eventScopeWrites: 1, groupScopeWrites: 1 });
   });
 });
+
+// #1144: event-scope legs of a logical reversal must have current-member
+// parties — same policy as correctSettlement; the residual group leg was
+// always memberIds-gated.
+describe('correctLogicalSettleUp — #1144 current-party policy', () => {
+  const DEPARTED = 'departed';
+
+  test('DENY: a tagged event leg whose party departed → failed-precondition, nothing written', async () => {
+    await seedGroup('g'); // memberIds [OWNER, MEMBER]
+    await seedEvent('g', 'e1', [OWNER, MEMBER, DEPARTED]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: DEPARTED,
+      recipientParticipantId: OWNER,
+    });
+    await seedGroupSettlement('groups/g/settlements/gsResidual');
+
+    await expect(
+      call({ groupId: 'g', groupSettleUpId: SU, correctionNote: CORRECTION_NOTE }, OWNER),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+
+    expect(await collectionDocs('groups/g/events/e1/settlements')).toHaveLength(1);
+    expect(await collectionDocs('groups/g/settlements')).toHaveLength(1);
+  });
+});
