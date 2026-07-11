@@ -386,6 +386,8 @@ void main() {
           startDate: null,
           endDate: null,
           modules: null,
+          activityActorId: any(named: 'activityActorId'),
+          activityActorName: any(named: 'activityActorName'),
         ),
       ).thenReturn((event: createdEvent, ack: Future<void>.value()));
       when(
@@ -428,6 +430,8 @@ void main() {
           startDate: null,
           endDate: null,
           modules: null,
+          activityActorId: any(named: 'activityActorId'),
+          activityActorName: any(named: 'activityActorName'),
         ),
       ).called(1);
       expect(find.text('EventHub:event-created'), findsOneWidget);
@@ -463,6 +467,8 @@ void main() {
             startDate: null,
             endDate: null,
             modules: null,
+            activityActorId: any(named: 'activityActorId'),
+            activityActorName: any(named: 'activityActorName'),
           ),
         ).thenReturn((event: createdEvent, ack: Future<void>.value()));
         when(
@@ -510,6 +516,8 @@ void main() {
             startDate: null,
             endDate: null,
             modules: null,
+            activityActorId: any(named: 'activityActorId'),
+            activityActorName: any(named: 'activityActorName'),
           ),
         ).called(1);
       },
@@ -707,6 +715,8 @@ void main() {
             startDate: null,
             endDate: null,
             modules: null,
+            activityActorId: any(named: 'activityActorId'),
+            activityActorName: any(named: 'activityActorName'),
           ),
         ).thenReturn((event: createdEvent, ack: Future<void>.value()));
         when(
@@ -748,18 +758,24 @@ void main() {
             startDate: null,
             endDate: null,
             modules: null,
+            // #1140: the event_created activity now rides stageEvent's batch —
+            // verify the actor is passed in (id/description/metadata are derived
+            // inside stageEvent and asserted on the written doc by the phantom
+            // regression test).
+            activityActorId: 'uid-creator',
+            activityActorName: 'Test User',
           ),
         ).called(1);
-        verify(
+        verifyNever(
           () => activityService.logGroupEvent(
-            groupId: 'group-1',
-            type: 'event_created',
-            actorId: 'uid-creator',
-            actorName: 'Test User',
-            description: 'created Beach Day',
-            metadata: {'eventId': 'event-created', 'eventName': 'Beach Day'},
+            groupId: any(named: 'groupId'),
+            type: any(named: 'type'),
+            actorId: any(named: 'actorId'),
+            actorName: any(named: 'actorName'),
+            description: any(named: 'description'),
+            metadata: any(named: 'metadata'),
           ),
-        ).called(1);
+        );
         expect(find.text('EventHub:event-created'), findsOneWidget);
       },
     );
@@ -797,6 +813,8 @@ void main() {
             startDate: null,
             endDate: null,
             modules: null,
+            activityActorId: any(named: 'activityActorId'),
+            activityActorName: any(named: 'activityActorName'),
           ),
         ).thenReturn((event: createdEvent, ack: Completer<void>().future));
         // Pre-fix the screen awaits createEvent, whose raw write never acks
@@ -858,17 +876,18 @@ void main() {
           findsOneWidget,
         );
 
-        // The queued event was logged optimistically.
-        verify(
+        // #1140: the queued event's activity now rides stageEvent's batch —
+        // never a separate logGroupEvent call.
+        verifyNever(
           () => activityService.logGroupEvent(
-            groupId: 'group-1',
-            type: 'event_created',
-            actorId: 'uid-creator',
-            actorName: 'Test User',
-            description: 'created Beach Day',
-            metadata: {'eventId': 'event-created', 'eventName': 'Beach Day'},
+            groupId: any(named: 'groupId'),
+            type: any(named: 'type'),
+            actorId: any(named: 'actorId'),
+            actorName: any(named: 'actorName'),
+            description: any(named: 'description'),
+            metadata: any(named: 'metadata'),
           ),
-        ).called(1);
+        );
       },
     );
 
@@ -944,6 +963,8 @@ void main() {
           startDate: null,
           endDate: null,
           modules: null,
+          activityActorId: any(named: 'activityActorId'),
+          activityActorName: any(named: 'activityActorName'),
         ),
       ).thenAnswer(
         (_) =>

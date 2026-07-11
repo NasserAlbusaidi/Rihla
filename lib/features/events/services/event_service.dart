@@ -98,6 +98,14 @@ class EventService extends FirestoreRepository {
   ///
   /// Per Pitfall 3: createdAt uses a client-generated UTC timestamp, not
   /// FieldValue.serverTimestamp(), so it is immediately readable.
+  ///
+  /// When [activityActorId] is supplied (an existing-group create — NEVER a
+  /// #874 founding batch, whose seeded event is hand-built in `group_provider`),
+  /// the `event_created` activity row is folded into the SAME [WriteBatch] as
+  /// the event doc (#1140): a rules rejection of the create (e.g. a participant
+  /// who left before replay) persists NEITHER, so no phantom "created X" row.
+  /// The activity id/description/metadata are derived here from the freshly
+  /// minted [eventId], so the caller passes only the actor.
   ({Event event, Future<void> ack}) stageEvent({
     required String groupId,
     required String name,
@@ -108,6 +116,8 @@ class EventService extends FirestoreRepository {
     DateTime? startDate,
     DateTime? endDate,
     EventModules? modules,
+    String? activityActorId,
+    String? activityActorName,
   }) {
     const uuid = Uuid();
     final eventId = uuid.v4();
@@ -130,14 +140,30 @@ class EventService extends FirestoreRepository {
       createdAt: now,
     );
 
-    final ack = db
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .set(event.toFirestoreMap());
-
-    return (event: event, ack: ack);
+    final eventRef =
+        db.collection('groups').doc(groupId).collection('events').doc(eventId);
+    if (activityActorId == null) {
+      return (event: event, ack: eventRef.set(event.toFirestoreMap()));
+    }
+    final batch = db.batch()
+      ..set(eventRef, event.toFirestoreMap())
+      ..set(
+        db
+            .collection('groups')
+            .doc(groupId)
+            .collection('activity')
+            .doc('evt_created_$eventId'),
+        GroupActivityService.buildActivityDoc(
+          id: 'evt_created_$eventId',
+          type: 'event_created',
+          actorId: activityActorId,
+          actorName: activityActorName ?? 'Someone',
+          description: 'created $name',
+          metadata: {'eventId': eventId, 'eventName': name},
+          timestampUtc: now,
+        ),
+      );
+    return (event: event, ack: batch.commit());
   }
 
   /// Create a new event in Firestore and return it once the SERVER has
