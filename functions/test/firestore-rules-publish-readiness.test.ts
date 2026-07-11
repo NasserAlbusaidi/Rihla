@@ -2132,9 +2132,10 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  // The boundary that matters: the gate is isEventParticipant (participantIds),
-  // NOT isGroupMember (memberIds). A group member who is not on THIS event's
-  // participant list cannot edit its expenses.
+  // The gate is BOTH isGroupMember (memberIds, #1131) AND isEventParticipant
+  // (participantIds). This test pins the participation half: a group member who
+  // is not on THIS event's participant list cannot edit its expenses. The
+  // membership half is pinned by the '#1131 departed member' describe below.
   test('#248 PR4 group-member who is NOT an event participant cannot update expense', async () => {
     await seedEvent('e2', { participantIds: ['owner'] }); // member NOT a participant of e2
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
