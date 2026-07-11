@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/utils/calendar_date.dart';
 import '../../../core/utils/safe_deserialize.dart';
+import '../../groups/services/group_activity_service.dart';
 import '../models/event_model.dart';
 
 /// Service for Event CRUD operations against Firestore.
@@ -182,21 +183,53 @@ class EventService extends FirestoreRepository {
   ///
   /// Per D-09: hard deletes are forbidden on events to preserve financial
   /// records. Uses FieldValue.serverTimestamp() for deletedAt per Pitfall 3.
+  /// Soft-delete an event; when the [activityId] + activity fields are
+  /// supplied, the `event_deleted` activity row is folded into the SAME atomic
+  /// [WriteBatch] as the soft-delete (#1140) — a rules rejection of the delete
+  /// (e.g. a departed actor no longer passing `validEventAdminUpdate`) persists
+  /// NEITHER, so a denied delete can never leave phantom history. With no
+  /// activity params it is the legacy single `.update()` (tests/scripts, and
+  /// the D7 no-actor fallback where a delete must never be blocked by activity).
   Future<void> deleteEvent({
     required String groupId,
     required String eventId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) async {
+    final eventRef =
+        db.collection('groups').doc(groupId).collection('events').doc(eventId);
+    final delta = <String, dynamic>{
+      'isDeleted': true,
+      'deletedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
     try {
-      await db
-          .collection('groups')
-          .doc(groupId)
-          .collection('events')
-          .doc(eventId)
-          .update({
-            'isDeleted': true,
-            'deletedAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+      if (activityId == null) {
+        await eventRef.update(delta);
+        return;
+      }
+      final batch = db.batch()
+        ..update(eventRef, delta)
+        ..set(
+          db
+              .collection('groups')
+              .doc(groupId)
+              .collection('activity')
+              .doc(activityId),
+          GroupActivityService.buildActivityDoc(
+            id: activityId,
+            type: 'event_deleted',
+            actorId: activityActorId!,
+            actorName: activityActorName!,
+            description: activityDescription!,
+            metadata: activityMetadata!,
+            timestampUtc: DateTime.now().toUtc(),
+          ),
+        );
+      await batch.commit();
     } on FirebaseException catch (e) {
       if (kDebugMode) {
         debugPrint('EventService.deleteEvent failed: ${e.code} ${e.message}');

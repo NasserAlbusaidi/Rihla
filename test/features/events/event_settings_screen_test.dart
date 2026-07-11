@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:safar/core/theme/app_theme.dart';
@@ -41,11 +42,48 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 
 class _MockEventService extends Mock implements EventService {}
 
-class _RecordingGroupActivityService extends GroupActivityService {
-  _RecordingGroupActivityService({this.throwOnLog = false})
-    : super.withFirestore(FakeFirebaseFirestore());
+// #1140 / #1124: event_danger_section reads FirebaseConfig.currentUser directly
+// for actorId, so the delete-activity path is only exercised with a signed-in
+// fake auth. Mutable single instance flips between a uid and null.
+class _FakeMultiFactorPlatform extends MultiFactorPlatform {
+  _FakeMultiFactorPlatform(super.auth);
+}
 
-  final bool throwOnLog;
+class _FakeUserPlatform extends UserPlatform {
+  _FakeUserPlatform(FirebaseAuthPlatform auth, String uid)
+      : super(
+          auth,
+          _FakeMultiFactorPlatform(auth),
+          PigeonUserDetails(
+            userInfo: PigeonUserInfo(
+              uid: uid,
+              isAnonymous: true,
+              isEmailVerified: false,
+            ),
+            providerData: const [],
+          ),
+        );
+}
+
+class _FakeFirebaseAuthPlatform extends FirebaseAuthPlatform {
+  _FakeFirebaseAuthPlatform(FirebaseApp app) : super(appInstance: app);
+  UserPlatform? _user;
+  void setUser(String? uid) =>
+      _user = uid == null ? null : _FakeUserPlatform(this, uid);
+  @override
+  FirebaseAuthPlatform delegateFor({required FirebaseApp app}) => this;
+  @override
+  FirebaseAuthPlatform setInitialValues({
+    PigeonUserDetails? currentUser,
+    String? languageCode,
+  }) => this;
+  @override
+  UserPlatform? get currentUser => _user;
+}
+
+class _RecordingGroupActivityService extends GroupActivityService {
+  _RecordingGroupActivityService() : super.withFirestore(FakeFirebaseFirestore());
+
   final calls =
       <
         ({
@@ -67,9 +105,6 @@ class _RecordingGroupActivityService extends GroupActivityService {
     required String description,
     Map<String, dynamic>? metadata,
   }) {
-    if (throwOnLog) {
-      throw StateError('log failed');
-    }
     calls.add((
       groupId: groupId,
       type: type,
@@ -299,20 +334,28 @@ Widget _wrapDangerSection({
 
 void main() {
   late SharedPreferences prefs;
+  late _FakeFirebaseAuthPlatform auth;
 
   setUpAll(() async {
     setupFirebaseCoreMocks();
+    late final FirebaseApp app;
     try {
-      await Firebase.initializeApp();
+      app = await Firebase.initializeApp();
     } on FirebaseException catch (e) {
       if (e.code != 'duplicate-app') rethrow;
+      app = Firebase.app();
     }
+    auth = _FakeFirebaseAuthPlatform(app);
+    FirebaseAuthPlatform.instance = auth;
     SharedPreferences.setMockInitialValues({
       'settings_device_name': 'Test User',
     });
     prefs = await SharedPreferences.getInstance();
     registerFallbackValue(DateTime.now());
+    registerFallbackValue(<String, dynamic>{});
   });
+
+  setUp(() => auth.setUser('uid-creator')); // signed in by default
 
   group('ECC-02: EventSettingsScreen', () {
     testWidgets('renders event name in text field', (tester) async {
@@ -555,9 +598,66 @@ void main() {
       },
     );
 
-    testWidgets('confirming delete logs activity, deletes, and routes back', (
+    testWidgets(
+        'confirming delete folds event_deleted activity INTO deleteEvent, '
+        'deletes, and routes back (#1140)', (
       tester,
     ) async {
+      final event = _makeEvent();
+      final service = _MockEventService();
+      final activityService = _RecordingGroupActivityService();
+      // Signed in (setUp) → actorId non-empty → the 7-arg activity overload.
+      when(
+        () => service.deleteEvent(
+          groupId: any(named: 'groupId'),
+          eventId: any(named: 'eventId'),
+          activityId: any(named: 'activityId'),
+          activityActorId: any(named: 'activityActorId'),
+          activityActorName: any(named: 'activityActorName'),
+          activityDescription: any(named: 'activityDescription'),
+          activityMetadata: any(named: 'activityMetadata'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        _wrapDangerSection(
+          prefs: prefs,
+          event: event,
+          eventService: service,
+          activityService: activityService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(EventKeys.deleteEventTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(EventKeys.deleteEventConfirmButton));
+      await tester.pumpAndSettle();
+
+      // #1140: the activity is now a deleteEvent PARAM (atomic), not a separate
+      // logGroupEvent call — so activityService is untouched and the payload is
+      // verified on the mocked deleteEvent instead.
+      expect(activityService.calls, isEmpty);
+      verify(
+        () => service.deleteEvent(
+          groupId: event.groupId,
+          eventId: event.id,
+          activityId: 'evt_deleted_${event.id}',
+          activityActorId: 'uid-creator',
+          activityActorName: 'Test User',
+          activityDescription: 'deleted the event ${event.name}',
+          activityMetadata: {'eventId': event.id, 'eventName': event.name},
+        ),
+      ).called(1);
+      expect(find.text('Group:${event.groupId}'), findsOneWidget);
+    });
+
+    testWidgets(
+        'D7: with no signed-in user, delete falls back to domain-only '
+        '(no activity params) and still routes back (#1140)', (
+      tester,
+    ) async {
+      auth.setUser(null); // actorId == '' → never block the delete on activity
       final event = _makeEvent();
       final service = _MockEventService();
       final activityService = _RecordingGroupActivityService();
@@ -583,50 +683,11 @@ void main() {
       await tester.tap(find.byKey(EventKeys.deleteEventConfirmButton));
       await tester.pumpAndSettle();
 
+      // Domain-only overload (2 args), no activity, still routes.
       verify(
         () => service.deleteEvent(groupId: event.groupId, eventId: event.id),
       ).called(1);
-      expect(find.text('Group:${event.groupId}'), findsOneWidget);
-      expect(activityService.calls.single.groupId, event.groupId);
-      expect(activityService.calls.single.type, 'event_deleted');
-      expect(activityService.calls.single.actorName, 'Test User');
-      expect(activityService.calls.single.metadata, {
-        'eventId': event.id,
-        'eventName': event.name,
-      });
-    });
-
-    testWidgets('activity logging failure does not block delete routing', (
-      tester,
-    ) async {
-      final event = _makeEvent();
-      final service = _MockEventService();
-      final activityService = _RecordingGroupActivityService(throwOnLog: true);
-      when(
-        () => service.deleteEvent(
-          groupId: any(named: 'groupId'),
-          eventId: any(named: 'eventId'),
-        ),
-      ).thenAnswer((_) async {});
-
-      await tester.pumpWidget(
-        _wrapDangerSection(
-          prefs: prefs,
-          event: event,
-          eventService: service,
-          activityService: activityService,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(EventKeys.deleteEventTile));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(EventKeys.deleteEventConfirmButton));
-      await tester.pumpAndSettle();
-
-      verify(
-        () => service.deleteEvent(groupId: event.groupId, eventId: event.id),
-      ).called(1);
+      expect(activityService.calls, isEmpty);
       expect(find.text('Group:${event.groupId}'), findsOneWidget);
     });
 
@@ -640,6 +701,11 @@ void main() {
         () => service.deleteEvent(
           groupId: any(named: 'groupId'),
           eventId: any(named: 'eventId'),
+          activityId: any(named: 'activityId'),
+          activityActorId: any(named: 'activityActorId'),
+          activityActorName: any(named: 'activityActorName'),
+          activityDescription: any(named: 'activityDescription'),
+          activityMetadata: any(named: 'activityMetadata'),
         ),
       ).thenThrow(StateError('boom'));
 
@@ -659,7 +725,15 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(
-        () => service.deleteEvent(groupId: event.groupId, eventId: event.id),
+        () => service.deleteEvent(
+          groupId: event.groupId,
+          eventId: event.id,
+          activityId: any(named: 'activityId'),
+          activityActorId: any(named: 'activityActorId'),
+          activityActorName: any(named: 'activityActorName'),
+          activityDescription: any(named: 'activityDescription'),
+          activityMetadata: any(named: 'activityMetadata'),
+        ),
       ).called(1);
       // #356: a raw error is translated to a friendly cause, never shown verbatim.
       expect(
