@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 >
-> Gate history: R1 rubric 2 P1 / 1 P2 / 2 P3; R1 adversary 1 P1 / 1 P2 / 2 P3 (the bucket-aggregate P1 was found independently by both). This is v2 with the full union applied.
+> Gate history: R1 rubric 2 P1 / 1 P2 / 2 P3; R1 adversary 1 P1 / 1 P2 / 2 P3 (the bucket-aggregate P1 was found independently by both) → v2 applied the union. R2 rubric 0 P1 / 1 P2 / 2 P3; R2 adversary 0 P1 / 0 P2 / 2 P3 — **Gate CLOSED (both P1-clean in the same round)**. This is v3 folding the R2 P2/P3 refinements.
 
 **Goal:** Remove the four raw-`permission-denied` UX cliffs left by the #1144 server enforcement — expense pickers, settle-up pair lists, frozen departed-party expenses, correct-settlement affordance — plus give departure-lock `aborted` retry-inviting copy and stop Sentry-capturing it.
 
@@ -132,7 +132,7 @@ bool expenseReferencesOnlyCurrentMembers(
 /// for CREATE-side party checks only; update/settlement checks use memberIds.
 Set<String> get activeMemberIdSet => (activeMemberIds ?? memberIds).toSet();
 ```
-**Write path untouched:** the group-create write map already carries `activeMemberIds` (`group_provider.dart:211`); `copyWith`/`toJson` surfaces get the field only if they exist and are exercised — do not add the field to any Firestore WRITE serialization beyond what exists.
+**Write path untouched:** the group-create write map already carries `activeMemberIds` (`group_provider.dart:211`); the model has NO Firestore write serialization (only the dead-SQLite `toMap` + `copyWith`) — do not add one.
 
 **Step 5:** commit `feat(#1149): parse group.activeMemberIds (INBOUND mirror of activeGroupMembers)`.
 
@@ -167,8 +167,8 @@ bool settlementPartiesAreCurrentMembers(Settlement s, Set<String> memberIds) {
 
 Keys (final copy at implementation; keep the intent; none carry a count → no ICU plural risk):
 1. `editorDepartedFrozenBanner` — "Someone in this expense left the group, so its amount and split are locked. Details like the description and category can still be edited."
-2. `editorPartiesNotCurrentWarning` — "A former member is part of this split. Equal splits aren't available on this event — choose who's included with an exact, shares, or percent split."
-3. `settleUpDepartedPairsHidden` — "Suggestions involving former members are hidden — those transfers can no longer be recorded."
+2. `editorPartiesNotCurrentWarning` — "A former member is part of this split. Equal splits aren't available on this event — choose who's included with an exact, shares, or percent split, or record it as a personal expense." (R2-adversary P3: the exact/shares/percent remedy is unreachable in a group shrunk to one member; the personal-scope escape must be named.)
+3. `settleUpDepartedPairsHidden` — takes `{count}`: "{count} suggestion(s) involving former members are hidden — those transfers can no longer be recorded." (R2-adversary P3: the headline shows the UNPRUNED count, so the note must carry the number that reconciles headline-vs-tiles. No ICU plural gymnastics required — a simple placeholder form acceptable in both EN/AR is fine.)
 4. `groupMembershipChangeInProgress` — "Another membership change is happening right now. Please try again in a moment."
 
 Steps: add EN+AR pairs (genuine AR translations) with `@key.description` documenting the trigger; regenerate l10n; RED surface-test block first → implement → PASS → commit `feat(#1149): l10n for departure-mirror UX (EN+AR)`.
@@ -212,8 +212,8 @@ In `_executeLeave` this placement inherently removes `aborted` from the `Sentry.
 
 Inside the body:
 1. **Pure top-level fn** (unit-testable next to `steppedSettlePairs`): `filterDepartedSuggestions(List<Map<String, dynamic>> optimalSettlements, Set<String>? currentMemberIds)` → returns (kept, hiddenCount), dropping pairs where `settlement['fromUserId']` or `['toUserId']` ∉ set; null set → input unchanged, 0 hidden. Applied per bucket at the tile loop and to the bucket list handed to `steppedSettlePairs` (build stepped input from pruned copies WITHOUT rebinding the aggregate reads above).
-2. Hidden count > 0 → one muted explanatory line (`settleUpDepartedPairsHidden`) rendered in the transfers area — **placed OUTSIDE the `optimalSettlements.isNotEmpty` guard** so it still renders when a bucket's suggestions are FULLY pruned (Gate R1 P3). Needs `// textMuted-decorative-justified:` comment if using `.textMuted`; run `tool/check_theme_purity.sh` locally.
-3. **Correction hide (d):** AND `settlementPartiesAreCurrentMembers(settlement, currentMemberIds)` into the solo-button render gate (~L1156-1163, composing with — not replacing — the existing `groupSettleUpId == null && !soloCorrectionHidden` logic) and into the logical row's ternary (~L789-792, checking `row.representative`; every leg of a decomposed set shares one pair, so the representative check is complete). When `currentMemberIds == null` → treat as current (fail-open).
+2. Hidden count > 0 → one muted explanatory line (`settleUpDepartedPairsHidden(count)`) rendered in the transfers area — **placed OUTSIDE the `optimalSettlements.isNotEmpty` guard** so it still renders when a bucket's suggestions are FULLY pruned (Gate R1 P3). Needs `// textMuted-decorative-justified:` comment if using `.textMuted`; run `tool/check_theme_purity.sh` locally.
+3. **Correction hide (d):** plumbing per R2-rubric P3 — do NOT add a `_HistoryTile` param. For SOLO rows fold the check into the PARENT's wiring: `onCorrect: (_canCorrect(s) && _partiesCurrent(s)) ? onCorrect : null` at the `_HistoryTile` construction sites (~L750/L770); for LOGICAL rows AND `_partiesCurrent(row.representative)` into the existing ternary (~L789-792; every leg of a decomposed set shares one pair, so the representative check is complete). `_partiesCurrent` = `currentMemberIds == null || settlementPartiesAreCurrentMembers(s, currentMemberIds)` (fail-open). The existing in-tile gate (~L1156-1163: `groupSettleUpId == null && !soloCorrectionHidden`) is untouched — a nulled `onCorrect` already collapses it.
 4. `preSelectedMemberId` deep-link pointing at a now-pruned tile becomes a silent no-op (~L381-383) — acceptable; leave a one-line code comment (Gate R1 P3).
 
 **RED tests first:**
@@ -279,7 +279,7 @@ Commit `feat(#1149): filter expense pickers to active members; block roster-trap
 Effects when frozen:
 1. Banner at the top of the form (`editorDepartedFrozenBanner`, same visual pattern as Task 7's warning; render at the OfflineBanner slot ~L993 or after `ExpenseProvenanceByline` ~L1038).
 2. `DeleteCard` `enabled: !_isSubmitting && !frozen` (soft-delete is rules-blocked on pre-state).
-3. `_submit`: allocation-affecting change attempted while frozen → show `editorDepartedFrozenBanner` copy as snackbar, don't write. Metadata-only diffs proceed normally (rules allow). **Detecting "allocation-affecting" must compare ALL the fields in the rules' `affectsExpenseAllocation` list — in particular `payerParticipantId`. Do NOT reuse the editor's `moneyDirty` flag: it deliberately EXCLUDES the payer (tracked separately as `payerDirty`, `expense_editor_body.dart:~483`) — reusing it lets a payer-only edit of a frozen expense slip past the client block into a generic rules denial** (Gate R1 P2). Compare form state against `widget.initial` on: payer, amount, scope, subGroupId (defensive), customSplitParticipants, splitMode, splitDistribution (currency is edit-immutable already).
+3. `_submit`: allocation-affecting change attempted while frozen → show `editorDepartedFrozenBanner` copy as snackbar, don't write. Metadata-only diffs proceed normally (rules allow). **Detecting "allocation-affecting" = `moneyDirty || payerDirty` — BOTH existing flags (`expense_editor_body.dart:462-483`), composed** (Gate R1 P2 + R2-rubric P2): `moneyDirty` alone EXCLUDES the payer (payer-only edit would slip to a generic rules denial); a hand-rolled all-fields comparison alone re-introduces the #1092 scope-mask false-dirty (`moneyDirty` compares `customSplitParticipants` only when `scope == custom` on purpose — an unconditional comparison would false-block a metadata-only edit after a scope round-trip, violating "never block a write rules would accept").
 4. Ghost-party expense (payer = tombstone id): NOT frozen (ghost ∈ memberIds) — pin with a test.
 
 **RED tests (fixture: expense whose payer is `departedUid`, group memberIds without it):** banner visible; delete button disabled; editing only the description saves successfully (calls `onSubmit`); changing the amount then saving shows the frozen snackbar and does NOT call the update service; **changing ONLY the payer then saving is blocked with the frozen copy (the `moneyDirty` trap pin)**; ghost-payer expense shows no banner and delete stays enabled. Equal-split expense on a departed-participant event (payer still live) IS frozen — the roster branch — pin one test on exactly that.
