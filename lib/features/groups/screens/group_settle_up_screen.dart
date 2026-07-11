@@ -554,9 +554,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   }) async {
     // Steps ≥2 of the stepped walk re-enter here in the async continuation
     // after the previous sheet closed — the context may be disposed.
+    // coverage:ignore-start
     if (!context.mounted) {
       return const _StepOutcome(_StepOutcomeKind.cancelled);
     }
+    // coverage:ignore-end
     // #1106: the live balance provider proceeds-on-partial while per-event
     // streams deliver their FIRST snapshot (the #244 loading-skip, deliberately
     // kept for display). A sheet opened inside that window carries an
