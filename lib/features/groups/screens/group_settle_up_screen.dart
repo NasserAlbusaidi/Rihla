@@ -806,10 +806,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // Fall back to today's atomic single group write (no decompose) when a
     // party has departed, there's no per-event attribution, OR the leg count
     // would blow the shared 20-access-call batch budget (#929 §ceiling: a
-    // decompose costs 2·N+1 access calls, so N > kMaxDecomposeLegsAtomic records
-    // one atomic group settlement instead — aggregate-correct, though the
-    // per-event ledgers keep showing the debt: a bounded carve-out to the #752
-    // decompose contract, chosen over chunking, which reopens partial-persist).
+    // decompose costs 2·N+2 access calls since #1140 folded the group_settlement
+    // activity row in, so N > kMaxDecomposeLegsAtomic records one atomic group
+    // settlement instead — aggregate-correct, though the per-event ledgers keep
+    // showing the debt: a bounded carve-out to the #752 decompose contract,
+    // chosen over chunking, which reopens partial-persist).
     if (!bothLiveMembers ||
         decomposition.perEvent.isEmpty ||
         decomposition.perEvent.length > kMaxDecomposeLegsAtomic) {
@@ -903,6 +904,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       // while queued) persists NOTHING — no path (any N ≤ cap, online or
       // offline) can leave a partial logical settle-up (#929, retiring #752's
       // partial-persist PR2 deferral). The caller races the single commit ack.
+      // #1140: ONE group_settlement activity row for the whole logical settle-up
+      // is folded INTO the same batch (#282: name the OTHER party relative to the
+      // actor), so a rejected leg discards the activity too — no phantom row.
+      final counterpartyName = currentUid == toUserId ? fromName : toName;
       final result = ref
           .read(groupSettlementServiceProvider)
           .stageDecomposedSettleUp(
@@ -917,6 +922,19 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             payerName: fromName,
             recipientName: toName,
             note: note,
+            activityActorId: currentUid,
+            activityActorName: actorName,
+            activityDescription:
+                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+            activityMetadata: {
+              'amount': amount.toString(),
+              'recipientId': toUserId,
+              'currency': currency,
+              'fromUserId': fromUserId,
+              'toUserId': toUserId,
+              'fromName': fromName,
+              'toName': toName,
+            },
           );
       final ack = await awaitServerAck(result.ack, skipWait: skipWait);
       final anyQueued = ack == WriteAck.queued;
@@ -934,29 +952,6 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       } else {
         connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
       }
-
-      // Activity log ONCE for the whole logical settle-up, amount = A (#282:
-      // name the OTHER party relative to the actor).
-      final counterpartyName = currentUid == toUserId ? fromName : toName;
-      ref
-          .read(groupActivityServiceProvider)
-          .logGroupEvent(
-            groupId: widget.groupId,
-            type: 'group_settlement',
-            actorId: currentUid,
-            actorName: actorName,
-            description:
-                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-            metadata: {
-              'amount': amount.toString(),
-              'recipientId': toUserId,
-              'currency': currency,
-              'fromUserId': fromUserId,
-              'toUserId': toUserId,
-              'fromName': fromName,
-              'toName': toName,
-            },
-          );
 
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1071,8 +1066,19 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ),
       );
 
+      // #282: name the OTHER party relative to the actor. When the creditor
+      // (recipient) records the payment, the counterparty is the payer — not
+      // `toName`, which would otherwise read "Alice settled … with Alice".
+      // Corrections no longer call this method (#889: they route through the
+      // correctSettlement callable, which writes no client activity row) — so
+      // every remaining caller is a forward record and always logs.
+      final counterpartyName = currentUid == toUserId ? fromName : toName;
+
       // #412: never gate the UI on the raw server-ack future — offline it
       // stays pending until reconnect. Race it; queued means the SDK replays.
+      // #1140: the group_settlement activity row is folded into
+      // addGroupSettlement's OWN batch, so a group settlement denied at replay
+      // persists no phantom "settled X" row.
       final outcome = await awaitServerAck(
         ref
             .read(groupSettlementServiceProvider)
@@ -1087,6 +1093,20 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
               payerName: fromName,
               recipientName: toName,
               createdBy: currentUid,
+              activityId: 'stl_$id',
+              activityActorId: currentUid,
+              activityActorName: actorName,
+              activityDescription:
+                  'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
+              activityMetadata: {
+                'amount': amount.toString(),
+                'recipientId': toUserId,
+                'currency': currency,
+                'fromUserId': fromUserId,
+                'toUserId': toUserId,
+                'fromName': fromName,
+                'toName': toName,
+              },
             ),
         skipWait: connectivityStatus != ConnectivityStatus.online,
       );
@@ -1096,33 +1116,6 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       } else {
         connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
       }
-
-      // #282: name the OTHER party relative to the actor. When the creditor
-      // (recipient) records the payment, the counterparty is the payer — not
-      // `toName`, which would otherwise read "Alice settled … with Alice".
-      // Corrections no longer call this method (#889: they route through the
-      // correctSettlement callable, which writes no client activity row) — so
-      // every remaining caller is a forward record and always logs.
-      final counterpartyName = currentUid == toUserId ? fromName : toName;
-      ref
-          .read(groupActivityServiceProvider)
-          .logGroupEvent(
-            groupId: widget.groupId,
-            type: 'group_settlement',
-            actorId: currentUid,
-            actorName: actorName,
-            description:
-                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-            metadata: {
-              'amount': amount.toString(),
-              'recipientId': toUserId,
-              'currency': currency,
-              'fromUserId': fromUserId,
-              'toUserId': toUserId,
-              'fromName': fromName,
-              'toName': toName,
-            },
-          );
 
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
