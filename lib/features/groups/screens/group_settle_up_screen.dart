@@ -4,18 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'package:go_router/go_router.dart';
-import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
-import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
+import '../../../core/services/money_serializer.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/settle_notify.dart';
 import '../../../core/utils/settlement_write_error.dart';
 import '../../../core/utils/share_helper.dart';
 import '../../../core/utils/whatsapp_share.dart';
-import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
@@ -35,7 +33,6 @@ import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_presettle_review_provider.dart';
 import '../providers/group_provider.dart';
-import '../services/group_settlement_service.dart';
 import '../widgets/record_payment_sheet.dart';
 import '../widgets/settle_notify_sheet.dart';
 import '../widgets/settle_up_page_body.dart';
@@ -477,7 +474,6 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final successColor = context.colors.success;
 
     var recorded = 0;
-    var anyQueued = false;
     for (var i = 0; i < steps.length; i++) {
       final step = steps[i];
       final outcome = await _showRecordPaymentSheet(
@@ -498,21 +494,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       );
       if (outcome.kind != _StepOutcomeKind.recorded) break; // L3: stop the walk
       recorded++;
-      if (outcome.ack == WriteAck.queued) anyQueued = true;
     }
 
     if (recorded == 0) return; // cancel at step 1 → no final snackbar
-    final allRecorded = recorded == steps.length;
-    final message = allRecorded
-        ? (anyQueued
-              ? l10n.settleUpSteppedRecordedAllWillSync(recorded)
-              : l10n.settleUpSteppedRecordedAll(recorded))
-        : (anyQueued
-              ? l10n.settleUpSteppedRecordedPartialWillSync(
-                  recorded,
-                  steps.length,
-                )
-              : l10n.settleUpSteppedRecordedPartial(recorded, steps.length));
+    // #1129: no queued branch — settlement creates are callable-backed, so a
+    // recorded step IS server-acked.
+    final message = recorded == steps.length
+        ? l10n.settleUpSteppedRecordedAll(recorded)
+        : l10n.settleUpSteppedRecordedPartial(recorded, steps.length);
     if (context.mounted) {
       messenger.showSnackBar(
         SnackBar(
@@ -680,7 +669,6 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
 
     final outcome = await _recordDecomposedSettlement(
       context,
-      group: group,
       balancesData: writeBalances,
       eventOrder: eventOrder,
       fromUserId: fromUserId,
@@ -699,9 +687,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // as the event screen: single-tile (stepLabel == null), paying perspective
     // (creditor-records #282 / on-behalf #595 never nudge), clean record. A
     // GROUP settle spans events, so the message names only the group.
+    // An #1129 idempotent replay never re-nudges — the user already recorded
+    // (and was offered the nudge for) this exact payment once.
     if (stepLabel == null &&
         currentUid == fromUserId &&
         outcome.kind == _StepOutcomeKind.recorded &&
+        !outcome.alreadyRecorded &&
         context.mounted) {
       await _offerWhatsAppNotify(
         context,
@@ -745,38 +736,27 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   }
 
   /// #752: record a group transfer by DECOMPOSING it into per-event settlement
-  /// writes (which the event ledgers read) + one residual group settlement —
+  /// legs (which the event ledgers read) + one residual group settlement —
   /// instead of a single group settlement that only moved the aggregate. The
   /// pure allocator ([BalanceCalculator.decomposeGroupSettlement]) is the SSOT
   /// shared with the displayed breakdown (it is called with the SAME
   /// [eventOrder]). Returns the aggregate [_StepOutcome] so the stepped walk can
   /// decide whether to continue.
   ///
-  /// Falls back to a single [GroupSettlementService.addGroupSettlement] (the
-  /// atomic single-doc path) when the transfer can't be safely decomposed:
-  ///  - either party is NOT a live group member (`group.memberIds`): the
-  ///    residual group write requires both parties in `memberIds`, but event
-  ///    writes only require event participation, so a departed party (#249)
-  ///    could pass the event legs then hit permission-denied on the residual.
-  ///    The single group write fails atomically instead (you already cannot
-  ///    settle a departed member at the group level). Read from
-  ///    `group.memberIds` — the EXACT set the residual rule checks — not a
-  ///    member-subcollection stream that can diverge.
-  ///  - no per-event attribution at all (pure cross-event / no shared event):
-  ///    identical to today's single group settlement.
-  ///  - more than [kMaxDecomposeLegsAtomic] event legs: a larger batch exceeds
-  ///    the shared 20-access-call rules budget and would reject in toto (#929
-  ///    §ceiling). The single group settlement is aggregate-correct.
-  ///
-  /// Once-semantics (#929): the N event settlements + residual stage into ONE
-  /// atomic [GroupSettlementService.stageDecomposedSettleUp] WriteBatch — all
-  /// commit or none do. The activity log and success/queued snackbar fire
-  /// EXACTLY ONCE (amount = A), and `ledgerRevisionProvider` is bumped ONCE
-  /// after the ack resolves (the home one-shot reads event settlements; any
-  /// single bump invalidates it — there is no partial walk to keep fresh).
+  /// Since #1129 the whole decompose is ONE `recordSettlement` server
+  /// transaction (mode `'groupSettleUp'`) — all legs + residual + the ONE
+  /// #1140 activity row commit or nothing does; the server re-verifies
+  /// conservation (`Σ legs + residual == total`), caps the total at the
+  /// pair's aggregate outstanding and each leg at its event's drill-down
+  /// overlap, enforces #1144 membership itself (#720 defer-to-server), and
+  /// derives the shared `groupSettleUpId`. The old departed-party
+  /// (`bothLiveMembers`) and `kMaxDecomposeLegsAtomic` routing conditions are
+  /// GONE with the client `WriteBatch` (the 20-access-call rules budget no
+  /// longer applies; the server bound is 400 legs). The ONE remaining
+  /// fallback: no per-event attribution at all (pure cross-event pair) →
+  /// [_recordSettlement], a single aggregate group settlement.
   Future<_StepOutcome> _recordDecomposedSettlement(
     BuildContext context, {
-    required Group group,
     required GroupBalances balancesData,
     required List<String> eventOrder,
     required String fromUserId,
@@ -789,6 +769,27 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     bool showSuccessSnackbar = true,
     ConnectivityNotifier? connectivity,
   }) async {
+    // #1129 pre-flight (this is the single entry to BOTH group write paths —
+    // it covers the mode-'group' fallback below too): settlement creates are
+    // an HTTPS callable with no offline queue, so a provably-offline device
+    // gets the honest failure copy instead of a doomed call. `syncing`
+    // PROCEEDS (the device is online; the up-to-60s stale-probe window must
+    // not block recording).
+    if (ref.read(connectivityProvider) == ConnectivityStatus.offline) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.settleUpRecordFailed),
+            backgroundColor: context.colors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+      return const _StepOutcome(_StepOutcomeKind.failed);
+    }
     final decomposition = BalanceCalculator.decomposeGroupSettlement(
       payerPerEventNet:
           balancesData.perEventBreakdown[fromUserId] ??
@@ -800,23 +801,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       amount: amount,
       eventOrder: eventOrder,
     );
-    final bothLiveMembers =
-        group.memberIds.contains(fromUserId) &&
-        group.memberIds.contains(toUserId);
-    // Fall back to today's atomic single group write (no decompose) when a
-    // party has departed, there's no per-event attribution, OR the leg count
-    // would blow the shared 20-access-call batch budget (#929 §ceiling: a
-    // decompose costs 2·N+2 access calls since #1140 folded the group_settlement
-    // activity row in, so N > kMaxDecomposeLegsAtomic records one atomic group
-    // settlement instead — aggregate-correct, though the per-event ledgers keep
-    // showing the debt: a bounded carve-out to the #752 decompose contract,
-    // chosen over chunking, which reopens partial-persist).
-    if (!bothLiveMembers ||
-        decomposition.perEvent.isEmpty ||
-        decomposition.perEvent.length > kMaxDecomposeLegsAtomic) {
+    if (decomposition.perEvent.isEmpty) {
       return _recordSettlement(
         context,
-        group: group,
         fromUserId: fromUserId,
         toUserId: toUserId,
         fromName: fromName,
@@ -829,136 +816,80 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       );
     }
 
+    // #104: capture before the await so post-write effects survive a disposal
+    // during the wait.
     final ConnectivityNotifier connectivityNotifier =
         connectivity ?? ref.read(connectivityProvider.notifier);
-    final skipWait =
-        ref.read(connectivityProvider) != ConnectivityStatus.online;
+    final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
 
     try {
-      String actorName;
-      try {
-        actorName = ref.read(settingsProvider).deviceName.isNotEmpty
-            ? ref.read(settingsProvider).deviceName
-            : fromName;
-      } catch (_) {
-        actorName = fromName;
-      }
-
-      String currentUid;
-      try {
-        currentUid = FirebaseConfig.currentUser?.uid ?? fromUserId;
-      } catch (_) {
-        currentUid = fromUserId;
-      }
-      if (currentUid.isEmpty) {
-        throw StateError(
-          'Cannot record group settlement without an authenticated user.',
-        );
-      }
-
-      // #1093: derive a deterministic dedup id for the whole logical
-      // decomposed settle-up from the SAME `gsu:` basis both providers this
-      // screen already watches (`:141,144`) — a racing second decompose of
-      // the identical pair/amount/epoch derives the SAME groupSettleUpId, so
-      // every leg + residual id it feeds (Task 2) collides too, and the
-      // loser's WHOLE batch is denied atomically (#929 all-or-nothing).
+      // #1093/#1129: the client OBSERVES the gsu directed-pair epoch from the
+      // SAME bases both providers this screen already watches; the SERVER
+      // derives the shared groupSettleUpId — and every leg/residual id — from
+      // it, so a racing second decompose of the identical observation
+      // resolves to ONE recorded settle-up. Fails closed on a valueless
+      // basis read.
       final groupDocs = ref
           .read(groupSettlementsProvider(widget.groupId))
           .valueOrNull;
       if (groupDocs == null) {
         throw StateError(
-          'group settlement basis unavailable — cannot derive dedup id',
+          'group settlement basis unavailable — cannot derive dedup epoch',
         );
       }
       final taggedLegs = ref.read(
         groupTaggedEventSettlementsProvider(widget.groupId),
       );
       final pairSettlements = [...groupDocs, ...taggedLegs];
-      final groupSettleUpId = SettlementService.deterministicSettlementId(
-        scopeKey: 'gsu:${widget.groupId}',
+      final observedPairEpoch = SettlementService.directedPairEpoch(
+        pairSettlements,
         payerParticipantId: fromUserId,
         recipientParticipantId: toUserId,
-        currency: currency,
-        amount: amount, // the TOTAL being decomposed
-        pairEpoch: SettlementService.directedPairEpoch(
-          pairSettlements,
-          payerParticipantId: fromUserId,
-          recipientParticipantId: toUserId,
-        ),
       );
 
-      final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
-
       // Build the event legs from the SAME eventOrder the displayed breakdown
-      // used (skip null slices) — the WYSIWYG invariant. perEvent holds only
-      // positive slices for eventOrder ids, so eventLegs.length equals the
-      // pre-gate count and can never exceed kMaxDecomposeLegsAtomic here.
+      // used (skip null slices) — the WYSIWYG invariant (#752).
       final eventLegs = <({String eventId, Decimal amount})>[];
       for (final eventId in eventOrder) {
         final slice = decomposition.perEvent[eventId];
         if (slice != null) eventLegs.add((eventId: eventId, amount: slice));
       }
 
-      // ONE atomic WriteBatch: the N event settlements + residual commit or
-      // none do. A rules rejection of any leg (membership/participation changed
-      // while queued) persists NOTHING — no path (any N ≤ cap, online or
-      // offline) can leave a partial logical settle-up (#929, retiring #752's
-      // partial-persist PR2 deferral). The caller races the single commit ack.
-      // #1140: ONE group_settlement activity row for the whole logical settle-up
-      // is folded INTO the same batch (#282: name the OTHER party relative to the
-      // actor), so a rejected leg discards the activity too — no phantom row.
-      final counterpartyName = currentUid == toUserId ? fromName : toName;
-      final result = ref
+      // ONE server transaction (#1129): the N event legs + residual + the ONE
+      // #1140 group_settlement activity row commit atomically or not at all.
+      // The server authors the activity row (actor name, description) — the
+      // client sends money facts only.
+      final result = await ref
           .read(groupSettlementServiceProvider)
-          .stageDecomposedSettleUp(
+          .recordDecomposedSettleUp(
             groupId: widget.groupId,
             eventLegs: eventLegs,
-            residual: decomposition.residual,
+            amount: amount,
             payerParticipantId: fromUserId,
             recipientParticipantId: toUserId,
             currency: currency,
-            createdBy: currentUid,
-            groupSettleUpId: groupSettleUpId,
+            observedPairEpoch: observedPairEpoch,
             payerName: fromName,
             recipientName: toName,
             note: note,
-            activityActorId: currentUid,
-            activityActorName: actorName,
-            activityDescription:
-                'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-            activityMetadata: {
-              'amount': amount.toString(),
-              'recipientId': toUserId,
-              'currency': currency,
-              'fromUserId': fromUserId,
-              'toUserId': toUserId,
-              'fromName': fromName,
-              'toName': toName,
-            },
           );
-      final ack = await awaitServerAck(result.ack, skipWait: skipWait);
-      final anyQueued = ack == WriteAck.queued;
 
-      // ONE bump after the ack resolves — any single bump invalidates the home
-      // once-provider (the old walk's N bumps were N redundant refetches). Only
-      // when there are event legs: a pure-residual decompose (unreachable — the
-      // pre-gate falls back on an empty perEvent) is a group-only write that
-      // needs no bump (CLAUDE.md #366).
-      if (eventLegs.isNotEmpty) ledgerRevision.state++;
+      // ONE bump per successful settle-up, server-gated: true iff event-scope
+      // legs were written (the home once-provider reads event settlements; a
+      // pure group write is live-watched and needs no bump, CLAUDE.md #366).
+      // The fail-safe parse defaults toward bumping.
+      if (result.shouldBumpLedgerRevision) ledgerRevision.state++;
 
-      // Connectivity note ONCE after the write (#357/#412).
-      if (anyQueued) {
-        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId);
-      } else {
-        connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
-      }
+      // #357: the callable just round-tripped the server — provably online.
+      // noteQueuedWrite is dead for settlement creates (nothing ever queues).
+      connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
 
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              anyQueued
-                  ? context.l10n.settleUpRecordedWillSync
+              result.alreadyRecorded
+                  ? context.l10n.settleUpAlreadyRecorded
                   : context.l10n.settleUpRecorded,
             ),
             backgroundColor: context.colors.success,
@@ -971,20 +902,30 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       }
       return _StepOutcome(
         _StepOutcomeKind.recorded,
-        ack: anyQueued ? WriteAck.queued : WriteAck.acked,
+        alreadyRecorded: result.alreadyRecorded,
       );
     } catch (e) {
       // L4: error snackbar stays loud even during a walk; the caller breaks on a
       // non-recorded outcome.
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              settlementWriteErrorMessage(
+        // #1129: an over-outstanding rejection carries the LIVE server-side
+        // outstanding — surface it with the #773 balance-changed copy so the
+        // user re-reviews against the real number instead of a generic error.
+        final overFils = overOutstandingFils(e);
+        final message = overFils != null
+            ? context.l10n.settleUpBalanceChangedReviewAgain(
+                AppFormatters.formatCurrency(
+                  MoneySerializer.fromSubunits(overFils, currency),
+                  currency,
+                ),
+              )
+            : settlementWriteErrorMessage(
                 context.l10n,
                 classifySettlementWriteError(e),
-              ),
-            ),
+              );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -997,9 +938,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     }
   }
 
+  /// #1129 mode-'group' fallback: ONE aggregate group settlement, for the
+  /// pure cross-event pair with no per-event attribution. The server writes
+  /// the doc with the `eventId: groupId` sentinel + `scope: 'group'`, caps
+  /// the amount at the pair's full-group outstanding, and authors the
+  /// `group_settlement` activity row atomically. The #1129 offline pre-flight
+  /// lives in [_recordDecomposedSettlement] — the single entry to this path.
   Future<_StepOutcome> _recordSettlement(
     BuildContext context, {
-    required Group group,
     required String fromUserId,
     required String toUserId,
     required String fromName,
@@ -1010,120 +956,58 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     bool showSuccessSnackbar = true,
     ConnectivityNotifier? connectivity,
   }) async {
+    // #104: capture before the await so post-write effects survive a disposal
+    // during the wait. The stepped walk passes the notifier it captured once
+    // before its loop; the single-tile path reads it here.
+    final ConnectivityNotifier connectivityNotifier =
+        connectivity ?? ref.read(connectivityProvider.notifier);
+    final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
     try {
-      String? actorName;
-      try {
-        actorName = ref.read(settingsProvider).deviceName.isNotEmpty
-            ? ref.read(settingsProvider).deviceName
-            : fromName;
-      } catch (_) {
-        actorName = fromName;
-      }
-
-      String currentUid;
-      try {
-        currentUid = FirebaseConfig.currentUser?.uid ?? fromUserId;
-      } catch (_) {
-        currentUid = fromUserId;
-      }
-      if (currentUid.isEmpty) {
-        throw StateError(
-          'Cannot record group settlement without an authenticated user.',
-        );
-      }
-
-      // #104/#412: capture before the await so post-write effects survive a
-      // disposal during the (now bounded) wait. NO ledgerRevision bump here —
-      // group settlements are live-watched (groupSettlementsProvider) (L6). The
-      // stepped walk passes the notifier it captured once before its loop; the
-      // single-tile path reads it here.
-      final ConnectivityNotifier connectivityNotifier =
-          connectivity ?? ref.read(connectivityProvider.notifier);
-      final connectivityStatus = ref.read(connectivityProvider);
-
-      // #1093: same pattern as the decompose path, scoped to `group:` and
-      // epoch over groupSettlementsProvider docs only — this is the fallback
-      // single atomic group write (no per-event legs), so it has no tagged
-      // event-settlement basis to union in.
+      // #1093/#1129: epoch over groupSettlementsProvider docs only — this is
+      // the aggregate single write (no per-event legs), so it has no tagged
+      // event-settlement basis to union in. The SERVER derives the `group:`
+      // dedup id from it. Fails closed on a valueless basis read.
       final groupDocs = ref
           .read(groupSettlementsProvider(widget.groupId))
           .valueOrNull;
       if (groupDocs == null) {
         throw StateError(
-          'group settlement basis unavailable — cannot derive dedup id',
+          'group settlement basis unavailable — cannot derive dedup epoch',
         );
       }
-      final id = SettlementService.deterministicSettlementId(
-        scopeKey: 'group:${widget.groupId}',
-        payerParticipantId: fromUserId,
-        recipientParticipantId: toUserId,
-        currency: currency,
-        amount: amount,
-        pairEpoch: SettlementService.directedPairEpoch(
-          groupDocs,
-          payerParticipantId: fromUserId,
-          recipientParticipantId: toUserId,
-        ),
-      );
-
-      // #282: name the OTHER party relative to the actor. When the creditor
-      // (recipient) records the payment, the counterparty is the payer — not
-      // `toName`, which would otherwise read "Alice settled … with Alice".
-      // Corrections no longer call this method (#889: they route through the
-      // correctSettlement callable, which writes no client activity row) — so
-      // every remaining caller is a forward record and always logs.
-      final counterpartyName = currentUid == toUserId ? fromName : toName;
-
-      // #412: never gate the UI on the raw server-ack future — offline it
-      // stays pending until reconnect. Race it; queued means the SDK replays.
-      // #1140: the group_settlement activity row is folded into
-      // addGroupSettlement's OWN batch, so a group settlement denied at replay
-      // persists no phantom "settled X" row.
-      final outcome = await awaitServerAck(
-        ref
-            .read(groupSettlementServiceProvider)
-            .addGroupSettlement(
-              id: id,
-              groupId: widget.groupId,
+      final result = await ref
+          .read(groupSettlementServiceProvider)
+          .addGroupSettlement(
+            groupId: widget.groupId,
+            payerParticipantId: fromUserId,
+            recipientParticipantId: toUserId,
+            amount: amount,
+            currency: currency,
+            note: note,
+            payerName: fromName,
+            recipientName: toName,
+            observedPairEpoch: SettlementService.directedPairEpoch(
+              groupDocs,
               payerParticipantId: fromUserId,
               recipientParticipantId: toUserId,
-              amount: amount,
-              currency: currency,
-              note: note,
-              payerName: fromName,
-              recipientName: toName,
-              createdBy: currentUid,
-              activityId: 'stl_$id',
-              activityActorId: currentUid,
-              activityActorName: actorName,
-              activityDescription:
-                  'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-              activityMetadata: {
-                'amount': amount.toString(),
-                'recipientId': toUserId,
-                'currency': currency,
-                'fromUserId': fromUserId,
-                'toUserId': toUserId,
-                'fromName': fromName,
-                'toName': toName,
-              },
             ),
-        skipWait: connectivityStatus != ConnectivityStatus.online,
-      );
+          );
 
-      if (outcome == WriteAck.acked) {
-        connectivityNotifier.noteLocalWrite(groupId: widget.groupId); // #357
-      } else {
-        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
-      }
+      // A pure group write is live-watched (groupSettlementsProvider, L6) and
+      // the server returns shouldBumpLedgerRevision=false for it — honor the
+      // flag anyway (the fail-safe parse defaults toward bumping).
+      if (result.shouldBumpLedgerRevision) ledgerRevision.state++;
+      // #357: the callable just round-tripped the server — provably online.
+      // noteQueuedWrite is dead for settlement creates (nothing ever queues).
+      connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
 
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              outcome == WriteAck.acked
-                  ? context.l10n.settleUpRecorded
-                  : context.l10n.settleUpRecordedWillSync,
+              result.alreadyRecorded
+                  ? context.l10n.settleUpAlreadyRecorded
+                  : context.l10n.settleUpRecorded,
             ),
             backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
@@ -1133,19 +1017,31 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
           ),
         );
       }
-      return _StepOutcome(_StepOutcomeKind.recorded, ack: outcome);
+      return _StepOutcome(
+        _StepOutcomeKind.recorded,
+        alreadyRecorded: result.alreadyRecorded,
+      );
     } catch (e) {
       // L4: per-step ERROR snackbar stays loud even during a walk; the walk
       // then stops (the caller breaks on a non-recorded outcome).
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              settlementWriteErrorMessage(
+        // #1129: surface an over-outstanding rejection with the LIVE number
+        // via the #773 balance-changed copy (see the decompose catch).
+        final overFils = overOutstandingFils(e);
+        final message = overFils != null
+            ? context.l10n.settleUpBalanceChangedReviewAgain(
+                AppFormatters.formatCurrency(
+                  MoneySerializer.fromSubunits(overFils, currency),
+                  currency,
+                ),
+              )
+            : settlementWriteErrorMessage(
                 context.l10n,
                 classifySettlementWriteError(e),
-              ),
-            ),
+              );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -1312,15 +1208,17 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   }
 }
 
-/// Outcome of one stepped-settle step (#382 PR-5). Only [recorded] carries the
-/// queued/acked [ack]; the walk continues only on [recorded] (L3).
+/// Outcome of one stepped-settle step (#382 PR-5). The walk continues only on
+/// [recorded] (L3). [alreadyRecorded] marks the #1129 idempotent-replay
+/// success — it shows the "already recorded" copy and suppresses the #367
+/// nudge; there is no queued state (creates are callable-backed, #1129).
 enum _StepOutcomeKind { recorded, cancelled, invalid, failed }
 
 class _StepOutcome {
-  const _StepOutcome(this.kind, {this.ack});
+  const _StepOutcome(this.kind, {this.alreadyRecorded = false});
 
   final _StepOutcomeKind kind;
-  final WriteAck? ack;
+  final bool alreadyRecorded;
 }
 
 class _SettlementTopBar extends StatelessWidget {

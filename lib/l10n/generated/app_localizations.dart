@@ -1832,6 +1832,12 @@ abstract class AppLocalizations {
   /// **'Settlement recorded.'**
   String get settleUpRecorded;
 
+  /// Success copy when the recordSettlement callable reports an idempotent replay (#1129): the payment exists exactly once; nothing was recorded twice.
+  ///
+  /// In en, this message translates to:
+  /// **'This payment was already recorded.'**
+  String get settleUpAlreadyRecorded;
+
   /// No description provided for @settleUpRecordedWillSync.
   ///
   /// In en, this message translates to:

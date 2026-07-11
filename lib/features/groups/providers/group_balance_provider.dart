@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/supported_currencies.dart';
 import '../../../core/providers/balance_aggregate_freshness_provider.dart';
 import '../../../core/providers/connectivity_provider.dart';
+import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../events/models/event_model.dart';
@@ -26,9 +27,12 @@ import 'group_provider.dart';
 // Service providers
 // ---------------------------------------------------------------------------
 
-/// Provider for [GroupSettlementService].
+/// Provider for [GroupSettlementService] — Firestore-backed reads; creates
+/// route through the injected `recordSettlement` callable (#1129).
 final groupSettlementServiceProvider = Provider<GroupSettlementService>(
-  (ref) => GroupSettlementService(),
+  (ref) => GroupSettlementService(
+    functionsService: ref.read(firebaseFunctionsServiceProvider),
+  ),
 );
 
 /// Provider for [GroupActivityService].

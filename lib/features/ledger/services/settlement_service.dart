@@ -1,33 +1,51 @@
-import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/utils/safe_deserialize.dart';
-import '../../groups/services/group_activity_service.dart';
+import '../models/record_settlement_result.dart';
 import '../models/settlement_model.dart';
 
-/// Firestore-backed service for Settlement CRUD operations.
-///
-/// Extends [FirestoreRepository] for production use or test injection via
-/// [SettlementService.withFirestore].
+/// Settlement service: Firestore-backed READS, callable-backed CREATE (#1129).
 ///
 /// Settlements are stored in the subcollection:
 ///   `groups/{groupId}/events/{eventId}/settlements/{settlementId}`
 ///
-/// All money amounts are stored as integer fils via [MoneySerializer] at the
-/// Firestore boundary. Internal logic always uses [Decimal].
+/// Reads (streams / one-shots) come straight from Firestore and are served by
+/// the SDK's offline cache. The CREATE is the server-authoritative
+/// `recordSettlement` callable — `firestore.rules` denies client direct
+/// settlement writes in both scopes, the server recomputes the pair's
+/// outstanding inside a transaction and caps the amount, and it derives the
+/// #1093 `sd1` dedup id from [directedPairEpoch]'s observation. Creates are
+/// therefore ONLINE-ONLY (HTTPS callables have no offline queue) — callers
+/// pre-flight `ConnectivityStatus.offline`.
+///
+/// All money amounts cross the wire as integer fils via [MoneySerializer] at
+/// the boundary. Internal logic always uses [Decimal].
 class SettlementService extends FirestoreRepository {
-  SettlementService() : super();
+  SettlementService({FirebaseFunctionsService? functionsService})
+    : _functionsServiceOverride = functionsService,
+      super();
 
   /// Test constructor -- injects a [FakeFirebaseFirestore] for unit testing.
   @visibleForTesting
   // ignore: invalid_use_of_visible_for_testing_member
-  SettlementService.withFirestore(super.db) : super.withFirestore();
+  SettlementService.withFirestore(
+    super.db, {
+    FirebaseFunctionsService? functionsService,
+  }) : _functionsServiceOverride = functionsService,
+       super.withFirestore();
+
+  final FirebaseFunctionsService? _functionsServiceOverride;
+
+  /// Lazy so pure-stream tests (`withFirestore`, no functions fake) never
+  /// touch `FirebaseConfig.functions` — it THROWS `[core/no-app]` without a
+  /// Firebase app, it does not return null. Production wiring injects it via
+  /// `settlementServiceProvider`.
+  late final FirebaseFunctionsService _functionsService =
+      _functionsServiceOverride ?? FirebaseFunctionsService();
 
   /// Returns a real-time stream of non-deleted settlements for the given event,
   /// ordered newest first.
@@ -78,91 +96,14 @@ class SettlementService extends FirestoreRepository {
     );
   }
 
-  /// Builds the Firestore document map for an event settlement — the SINGLE
-  /// source of the event-settlement write shape (#929).
-  ///
-  /// [addSettlement] delegates here for a directly-recorded settlement;
-  /// [GroupSettlementService.stageDecomposedSettleUp] calls it for each
-  /// per-event leg of a decomposed group settle-up, so both paths write a
-  /// byte-identical doc. [amount] is quantized to integer fils via
-  /// [MoneySerializer.toSubunits]; [settledAtUtc] is stamped by the caller so a
-  /// batch can share ONE timestamp across all its legs.
-  static Map<String, dynamic> buildSettlementDoc({
-    required String id,
-    required String eventId,
-    required String payerParticipantId,
-    required String recipientParticipantId,
-    required Decimal amount,
-    required String createdBy,
-    required String currency,
-    required DateTime settledAtUtc,
-    String? payerName,
-    String? recipientName,
-    String? note,
-    String? groupSettleUpId,
-  }) {
-    final data = <String, dynamic>{
-      'id': id,
-      'eventId': eventId,
-      'payerParticipantId': payerParticipantId,
-      'recipientParticipantId': recipientParticipantId,
-      // Fields absent on pre-2026-05-16 docs render as 'Someone' via the model fallback.
-      'payerName': payerName,
-      'recipientName': recipientName,
-      'amountFils': MoneySerializer.toSubunits(amount, currency),
-      'currency': currency,
-      'note': note,
-      'isDeleted': false,
-      'deletedAt': null,
-      'settledAt': settledAtUtc.toIso8601String(),
-      'createdBy': createdBy,
-    };
-    // Omit the key when null so directly-recorded settlements keep the existing
-    // shape and legacy docs stay valid (#752; rules guard `!('x' in data) ||`).
-    if (groupSettleUpId != null) data['groupSettleUpId'] = groupSettleUpId;
-    return data;
-  }
-
-  /// Derives a deterministic settlement doc id (#1093) from the settle state
-  /// so two writers observing the same state produce the SAME id: the second
-  /// identical write collides with the first and is denied by the already-live
-  /// `allow update: if false` on both settlement blocks (no rules change).
-  ///
-  /// [amountFils] is derived here via [MoneySerializer.toSubunits] — the exact
-  /// conversion [buildSettlementDoc] performs — so id-amount and stored
-  /// `amountFils` cannot drift. [pairEpoch] must come from
-  /// [directedPairEpoch] over a provider-filtered (`isDeleted == false`) live
-  /// settlement list; this function itself does no filtering.
-  ///
-  /// Deliberately EXCLUDES `settledAt` (differs per device), names (mirrors
-  /// differ per device), `note` (a different note is still the same payment),
-  /// and `createdBy` (settling-on-behalf must collide with self-settling).
-  static String deterministicSettlementId({
-    required String scopeKey,
-    required String payerParticipantId,
-    required String recipientParticipantId,
-    required String currency,
-    required Decimal amount,
-    required int pairEpoch,
-  }) {
-    final fils = MoneySerializer.toSubunits(amount, currency);
-    final canonical = [
-      'sd1',
-      scopeKey,
-      payerParticipantId,
-      recipientParticipantId,
-      currency,
-      '$fils',
-      '$pairEpoch',
-    ].join('\x1f');
-    return 'sd1${sha256.convert(utf8.encode(canonical)).toString().substring(0, 40)}';
-  }
-
   /// Counts settlements for the DIRECTED pair (payer -> recipient) in
-  /// [settlements] — the epoch input to [deterministicSettlementId]. Pure: it
-  /// counts exactly the list it is given. Callers are responsible for feeding
-  /// provider-filtered `isDeleted == false` rows so both devices apply the
-  /// identical filter and determinism holds.
+  /// [settlements] — the `observedPairEpoch` sent to `recordSettlement`, from
+  /// which the SERVER derives the #1093 dedup id (a dedup nonce, never an
+  /// equality gate — the server's outstanding cap is the money guard). Pure:
+  /// it counts exactly the list it is given. Callers are responsible for
+  /// feeding provider-filtered `isDeleted == false` rows so two devices
+  /// observing the same state send the identical epoch and their retries
+  /// collide into one recorded payment.
   static int directedPairEpoch(
     Iterable<Settlement> settlements, {
     required String payerParticipantId,
@@ -176,110 +117,45 @@ class SettlementService extends FirestoreRepository {
           )
           .length;
 
-  /// Deterministic id for one per-event leg of a decomposed group settle-up
-  /// (#752/#1093), keyed by the shared `groupSettleUpId` + the leg's event id
-  /// — legs are per-event unique, so this cannot collide across legs of the
-  /// same decompose.
-  static String decomposeLegSettlementId(String groupSettleUpId, String eventId) =>
-      'sd1${sha256.convert(utf8.encode('sd1leg\x1f$groupSettleUpId\x1f$eventId')).toString().substring(0, 40)}';
-
-  /// Deterministic id for the residual group-scoped leg of a decomposed
-  /// group settle-up (#752/#1093), keyed by the shared `groupSettleUpId`.
-  static String decomposeResidualSettlementId(String groupSettleUpId) =>
-      'sd1${sha256.convert(utf8.encode('sd1res\x1f$groupSettleUpId')).toString().substring(0, 40)}';
-
-  /// Creates a new settlement document in Firestore and returns the resulting
-  /// [Settlement] object.
+  /// Records an EVENT-scope settlement via the `recordSettlement` callable
+  /// (#1129) — the only settlement create path (rules deny direct writes).
   ///
-  /// [id] is REQUIRED (not defaulted) so every call site is forced to decide
-  /// its id — an optional param would silently reopen #1093. Production
-  /// callers derive it via [deterministicSettlementId] from the caller's
-  /// revalidation snapshot; see `settle_up_screen.dart`.
+  /// The server recomputes the pair's outstanding on this event's basis inside
+  /// a transaction, caps the amount (`failed-precondition` with
+  /// `details.kind == 'over-outstanding'`), derives the #1093 dedup id from
+  /// [observedPairEpoch], writes the doc + the ONE activity row atomically,
+  /// and stamps `settledAt`/actor fields itself. [amount] is converted to
+  /// integer fils via [MoneySerializer.toSubunits] at this boundary — the
+  /// exact conversion the old direct write performed, so id-amount and stored
+  /// `amountFils` cannot drift.
   ///
-  /// The [amount] is converted to integer fils via [MoneySerializer.toSubunits]
-  /// before being stored. The returned [Settlement] is deserialized from the
-  /// data that was written, so amount round-trips through [MoneySerializer].
-  /// When [activityId] + the activity fields are supplied, the
-  /// `event_settlement` activity row is folded into the SAME [WriteBatch] as the
-  /// settlement doc (#1140): a rules rejection of the settlement (membership /
-  /// participation / dedup-id collision at replay) persists NEITHER, so a denied
-  /// settlement can never leave a phantom "settled X" row. With no activity
-  /// params it is the legacy single `.set()` (tests/scripts).
-  Future<Settlement> addSettlement({
-    required String id,
+  /// ONLINE-ONLY: propagates [FirebaseFunctionsException] which callers
+  /// classify via `classifySettlementWriteError`; nothing ever queues.
+  Future<RecordSettlementResult> addSettlement({
     required String groupId,
     required String eventId,
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
+    required String currency,
+    required int observedPairEpoch,
     String? payerName,
     String? recipientName,
     String? note,
-    String? groupSettleUpId,
-    String? activityId,
-    String? activityActorId,
-    String? activityActorName,
-    String? activityDescription,
-    Map<String, dynamic>? activityMetadata,
-  }) async {
-    if (createdBy.isEmpty) {
-      throw ArgumentError.value(
-        createdBy,
-        'createdBy',
-        'createdBy must be the auth UID of the current user — Firestore '
-            'rules reject settlement writes without it.',
-      );
-    }
-    final data = buildSettlementDoc(
-      id: id,
+  }) {
+    return _functionsService.recordSettlement(
+      groupId: groupId,
+      mode: 'event',
       eventId: eventId,
       payerParticipantId: payerParticipantId,
       recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      createdBy: createdBy,
+      amountFils: MoneySerializer.toSubunits(amount, currency),
       currency: currency,
-      settledAtUtc: DateTime.now().toUtc(),
+      note: note,
       payerName: payerName,
       recipientName: recipientName,
-      note: note,
-      groupSettleUpId: groupSettleUpId,
+      observedPairEpoch: observedPairEpoch,
     );
-    final ref = eventSubcollection(groupId, eventId, 'settlements').doc(id);
-    try {
-      if (activityId == null) {
-        await ref.set(data);
-      } else {
-        final batch = db.batch()
-          ..set(ref, data)
-          ..set(
-            db
-                .collection('groups')
-                .doc(groupId)
-                .collection('activity')
-                .doc(activityId),
-            GroupActivityService.buildActivityDoc(
-              id: activityId,
-              type: 'event_settlement',
-              actorId: activityActorId!,
-              actorName: activityActorName!,
-              description: activityDescription!,
-              metadata: activityMetadata!,
-              timestampUtc: DateTime.now().toUtc(),
-            ),
-          );
-        await batch.commit();
-      }
-    } on FirebaseException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          'SettlementService.addSettlement failed: ${e.code} ${e.message}',
-        );
-      }
-      rethrow;
-    }
-    return Settlement.fromFirestore(data);
   }
 
   // E3 / B3: settlements are append-only. There is no deleteSettlement —
