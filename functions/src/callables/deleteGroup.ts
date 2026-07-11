@@ -158,7 +158,11 @@ async function acquireDeleteGroupLock(
           : null,
       };
     }
-    if (groupData.claimingInProgress === true || groupData.accountDeletionInProgress === true) {
+    if (
+      groupData.claimingInProgress === true
+      || groupData.accountDeletionInProgress === true
+      || groupData.departureInProgress === true // #1144
+    ) {
       throw new HttpsError('failed-precondition', 'Group is temporarily locked.');
     }
 
@@ -268,7 +272,11 @@ export async function finalizeGroupDeletion(
 ): Promise<{ eventsSoftDeleted: number }> {
   const groupSnap = await groupRef.get();
   const groupData = groupSnap.data() ?? {};
-  if (groupData.claimingInProgress === true || groupData.accountDeletionInProgress === true) {
+  if (
+    groupData.claimingInProgress === true
+    || groupData.accountDeletionInProgress === true
+    || groupData.departureInProgress === true // #1144
+  ) {
     throw new HttpsError('aborted', 'Group is temporarily locked.');
   }
 

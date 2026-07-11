@@ -651,6 +651,26 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect((await expenseDoc('groups/g/events/e1/expenses/x1')).payerParticipantId).toBe(OWNER);
   });
 
+  test('#1144 a held departure lock rejects claim approval before any money mutation', async () => {
+    await seedGroup('g', [OWNER, SHADOW], {
+      departureInProgress: true,
+      departureLockedAt: Timestamp.fromMillis(1000),
+      departureLockedBy: OWNER,
+    });
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    await seedEvent('g', 'e1', [OWNER, SHADOW], { [OWNER]: 'Owner', [SHADOW]: 'Ali' });
+    const rid = await seedPendingRequest('g', OUTSIDER, SHADOW, 'Ali');
+
+    await expect(decide({ groupId: 'g', requestId: rid, approve: true })).rejects.toMatchObject({
+      code: 'failed-precondition',
+    });
+
+    expect((await reqDoc('g', rid))?.status).toBe('pending');
+    expect((await groupDoc('g')).memberIds).toEqual([OWNER, SHADOW]);
+    expect(await memberDoc('g', OUTSIDER)).toBeUndefined();
+  });
+
   test('#710 D16. existing per-shadow lock rejects approval even if the group mirror is missing', async () => {
     const lockedAt = Timestamp.fromMillis(2222);
     await seedGroup('g', [OWNER, SHADOW]);

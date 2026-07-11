@@ -383,6 +383,9 @@ async function acquireAccountDeletionGroupMarker(
     if (
       groupData.deletingInProgress === true
       || groupData.claimingInProgress === true
+      // #1144: the tombstone re-key rewrites oracle inputs — mutually
+      // exclusive with a departure's recompute window.
+      || groupData.departureInProgress === true
       || (
         groupData.accountDeletionInProgress === true
         && groupData.accountDeletionUid !== uid

@@ -78,7 +78,10 @@ export async function refreshGroupBalanceAggregate(
     groupData.isDeleted === true ||
     groupData.deletingInProgress === true ||
     groupData.claimingInProgress === true ||
-    groupData.accountDeletionInProgress === true
+    groupData.accountDeletionInProgress === true ||
+    // #1144: skip during a departure window; the post-departure member-doc
+    // write re-triggers, and balanceReconciler self-heals any missed refresh.
+    groupData.departureInProgress === true
   ) {
     return;
   }
@@ -148,7 +151,8 @@ export async function refreshGroupBalanceAggregate(
       freshGroupData.isDeleted === true ||
       freshGroupData.deletingInProgress === true ||
       freshGroupData.claimingInProgress === true ||
-      freshGroupData.accountDeletionInProgress === true
+      freshGroupData.accountDeletionInProgress === true ||
+      freshGroupData.departureInProgress === true // #1144
     ) {
       return;
     }

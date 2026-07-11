@@ -149,7 +149,7 @@ describe('correctSettlement — scope: event', () => {
   });
 
   test('3. locked/deleted group (all four flags) → not-found', async () => {
-    for (const flag of ['isDeleted', 'deletingInProgress', 'claimingInProgress', 'accountDeletionInProgress']) {
+    for (const flag of ['isDeleted', 'deletingInProgress', 'claimingInProgress', 'accountDeletionInProgress', 'departureInProgress']) {
       const gid = `locked-${flag}`;
       await seedGroup(gid, { [flag]: true });
       await expect(
