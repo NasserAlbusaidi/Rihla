@@ -58,7 +58,7 @@ The rules file defines reusable predicates near the top of the
 | `isGroupCreator(gid)` | Group exists and caller is `createdBy` | Dead helper — zero callers (the group-scoped `isCreator`/`requesterIsGroupCreator` do this inline). Creator authority also requires current membership since #1132. |
 | `eventPath(gid, eid)` / `eventData(gid, eid)` | Path / data helpers for event docs | |
 | `isEventParticipant(gid, eid)` | Event exists and caller is in `participantIds` | One half of the expense write gate — paired with `isGroupMember` since #1131 (`participantIds` is never pruned on departure, so participation alone is not current membership). |
-| `requesterIsRecordCreator()` | `resource.data.createdBy == request.auth.uid` | Retained settlement-corrections scaffold; live settlement updates are hard-denied and live expense updates no longer call it. |
+| `requesterIsRecordCreator()` | `resource.data.createdBy == request.auth.uid` | UNREFERENCED since #1129 (the dead settlement validators that called it were deleted); retained as settlement-corrections (#283) scaffolding only. |
 
 `get` and `getAfter` cost one document read per invocation and Firestore
 caps them at 10 per request. The rules are carefully written to stay
@@ -91,9 +91,10 @@ function requesterIsRecordCreator() {
 }
 ```
 
-`requesterIsRecordCreator()` is retained only for dead settlement-update helper
-paths kept as settlement-corrections scaffolding. Those match blocks still
-hard-deny update, so the helper is not part of live expense authorization.
+`requesterIsRecordCreator()` has ZERO references since #1129 (the dead
+settlement validators that called it were deleted); it is retained only as
+settlement-corrections (#283) scaffolding and is not part of any live
+authorization.
 
 Implication: any current member in an event can create a record naming someone
 else as `payerParticipantId`, and any current-member event participant can
@@ -560,9 +561,13 @@ stripped `gear` / `vault` / `logistics` / `memories` subcollections).
 
 #### Create
 
-`allow create: if validExpenseCreate() || validEventSettlementCreate();`
+`allow create: if validExpenseCreate();`
 
-Each branch enforces the module name plus its own schema.
+Only expenses are client-creatable. **Settlement creates are DENIED in both
+scopes since #1129** — the `recordSettlement` callable is the single create
+path (it recomputes the pair's outstanding inside a transaction, caps the
+amount, derives the #1093 deterministic id server-side, and authors the
+settlement doc + activity row through the Admin SDK).
 
 **Expenses** (`validExpenseBase` + `validExpenseCreate`):
 
@@ -577,14 +582,6 @@ Each branch enforces the module name plus its own schema.
 - Optional string fields: `subGroupId`, `description`, `note`, `receiptUrl`, `categoryId`
 - `isDeleted: false`, `deletedAt: null` at create
 - `createdBy == request.auth.uid` and caller `isGroupMember` + `isEventParticipant` (#1131)
-
-**Event settlements** (`validEventSettlementBase` + `validEventSettlementCreate`):
-
-- Exact key set: `id, eventId, createdBy, payerParticipantId, recipientParticipantId, amountFils, currency, note, payerName, recipientName, isDeleted, deletedAt, settledAt`
-- Payer and recipient must both be participants AND different from each other
-- `payerName` / `recipientName` are nullable valid display names
-- `amountFils` positive int, `currency` passes the supported-code `validCurrency` allowlist
-- `createdBy == request.auth.uid` and caller `isGroupMember`; the caller need not be an event participant (#752)
 
 **Activity logs**:
 
@@ -624,13 +621,13 @@ This prevents accidentally exposing future child collections.
 
 ### 4.7 `groups/{gid}/events/{eid}/settlements/{sid}` (B3 override)
 
-The polymorphic `{module}` create rule above never references a
-settlement-update validator, and this explicit `allow update/delete: if
-false` enforces B3. Note: `validEventSettlementUpdate` /
-`validGroupSettlementUpdate` are defined in the rules file but are
-intentionally left unwired (dead) — B3 keeps settlements append-only, so
-no `allow update` clause ever calls them. The rules add this explicit
-match to make B3 visible:
+The polymorphic `{module}` create rule above no longer has a settlement
+branch (#1129 — creates route through the `recordSettlement` callable),
+and this explicit `allow update/delete: if false` enforces B3. The old
+settlement validators (`validSettlementCore`,
+`validEventSettlementBase/Create/Update`,
+`validGroupSettlementBase/Create/Update`) were DELETED with the flip.
+The rules keep this explicit match to make B3 visible:
 
 ```
 match /settlements/{settlementId} {
@@ -672,15 +669,14 @@ Append-only audit log for group-scoped events (member joined, group
 renamed, etc.). `validGroupActivityCreate` enforces the exact key set
 and `actorId == request.auth.uid`.
 
-Client-writable `type` allow-list (5 entries): `event_created`,
-`event_deleted`, `event_settlement` (#831 — written by the event
-settle-up record path; corrections and #752 decomposed settle-up slices
-deliberately log nothing), `group_settlement`, `member_joined`.
-`expense_*` and `member_left` are Admin-SDK-only (fan-in trigger /
-callables) — a client claiming them is a forgery. The
-`writeRateMonitor` skip list covers only the server-written `expense_*`
-types; client-written types (both settlement flavors included) are
-counted as real client writes.
+Client-writable `type` allow-list (3 entries since #1129):
+`event_created`, `event_deleted`, `member_joined`. `expense_*`,
+`member_left`, and both settlement flavors (`event_settlement`,
+`group_settlement` — server-authored by the `recordSettlement` callable
+since #1129; a client claiming them is a phantom-history forgery) are
+Admin-SDK-only. The `writeRateMonitor` T3 skip list covers the
+server-written `expense_*` and settlement types; the remaining
+client-written types are counted as real client writes.
 
 ### 4.10 `groups/{gid}/settlements/{sid}` (group-level, B3)
 
@@ -689,20 +685,15 @@ for cross-event settle-ups.
 
 ```
 allow read: if isGroupMember(gid);
-allow create: if validGroupSettlementCreate();
+allow create: if false;  // #1129: recordSettlement callable only
 allow update: if false;  // B3
 allow delete: if false;  // B3
 ```
 
-`validGroupSettlementBase` enforces:
-
-- Exact key set: `id, groupId, eventId, createdBy, scope, payerParticipantId, recipientParticipantId, amountFils, currency, note, payerName, recipientName, isDeleted, deletedAt, settledAt`
-- `groupId == {gid}` and `eventId == {gid}` (yes — group settlements
-  intentionally set `eventId` to the group ID to keep the shape
-  uniform with event settlements)
-- `scope == 'group'`
-- Payer and recipient must both be in `memberIds` and different
-- `payerName` / `recipientName` are nullable valid display names (snapshot of who paid/received at the time of the settlement)
+The doc shape (`eventId == groupId` sentinel, `scope: 'group'`, the
+exact key set, ISO-string `settledAt`) is authored by the
+`recordSettlement` callable and pinned by the emulator tables in
+`functions/test/callables/recordSettlement.group.test.ts`.
 
 ---
 
@@ -720,6 +711,7 @@ rewrite once it bypasses the rules, see
 | Account deletion cascade | Cross-collection scrub across hundreds of docs exceeds rules' write surface. | `deleteAccount` callable. |
 | Currency whitelist | Rules enforce the same supported-code allowlist shape as the app; no FX, sign/sum, or cross-currency arithmetic is enforced in rules. | `validCurrency` + client `MoneySerializer` / balance tests. |
 | Money math correctness | Rules can validate fields, not arithmetic. | `BalanceCalculator` + unit tests under `test/unit/`. |
+| Settlement outstanding cap + dedup (#1129) | Rules cannot recompute a pair's balance across collections. | `recordSettlement` callable — transactional oracle recompute, amount cap, server-derived deterministic ids. |
 | Server-side App Check enforcement | Rules don't see App Check tokens. | `{ enforceAppCheck: true }` on every callable. |
 
 ---

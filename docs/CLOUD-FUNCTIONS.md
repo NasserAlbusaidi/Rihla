@@ -1,7 +1,7 @@
 # Cloud Functions
 
-Reference for the Firebase Cloud Functions Rihla ships: 13 HTTPS callables
-(`firebase-functions/v2/https`), 13 Firestore document triggers
+Reference for the Firebase Cloud Functions Rihla ships: 14 HTTPS callables
+(`firebase-functions/v2/https`), 12 Firestore document triggers
 (`firebase-functions/v2/firestore`), and 5 scheduled backstops
 (`firebase-functions/v2/scheduler`) — 31 functions total (count from
 `tool/list_expected_functions.sh`, the deploy-drift SSOT), all deployed to
@@ -23,6 +23,9 @@ App Check; `deleteAccount` runs with App Check in verify-if-present (soft) mode.
 | `listMyClaimRequests` | `functions/src/callables/listMyClaimRequests.ts` | Lists the caller's pending/decided claim requests (#278). |
 | `listGroupClaimRequests` | `functions/src/callables/listGroupClaimRequests.ts` | Current-member creator-side (#1132) list of pending claim requests for a group (#278). |
 | `listUnclaimedShadows` | `functions/src/callables/listUnclaimedShadows.ts` | Lists a group's unclaimed shadows so a joiner can offer to claim one (#278). |
+| `recordSettlement` | `functions/src/callables/recordSettlement.ts` | **The ONLY settlement create path (#1129)** — one transaction recomputes the pair's outstanding on the settle's scope basis via the shared oracle, rejects `amountFils > outstanding` (`{kind:'over-outstanding'}`), derives the #1093 `sd1` dedup id from the client's `observedPairEpoch` (retry → `alreadyRecorded`), and writes the settlement doc(s) + the ONE activity row atomically. Modes: `event` \| `group` \| `groupSettleUp` (≤400 legs; conservation + per-event leg caps server-verified). Online-only by nature. |
+| `correctSettlement` | `functions/src/callables/correctSettlement.ts` | Server-authoritative solo correction (#889): writes the offsetting reverse row with the un-forgeable `correctionOfSettlementId` marker. |
+| `correctLogicalSettleUp` | `functions/src/callables/correctLogicalSettleUp.ts` | Reverses every live doc sharing one `groupSettleUpId` atomically (#889/#753). |
 
 Functions live in `functions/` (Node 22 / TypeScript). They use the
 Firebase Admin SDK which **bypasses Firestore Security Rules** — every
@@ -48,9 +51,9 @@ export { decideClaimRequest } from './callables/decideClaimRequest';
 export { listMyClaimRequests } from './callables/listMyClaimRequests';
 export { listGroupClaimRequests } from './callables/listGroupClaimRequests';
 export { listUnclaimedShadows } from './callables/listUnclaimedShadows';
+export { recordSettlement } from './callables/recordSettlement';
 export {
   eventWriteRateMonitor,
-  groupSettlementWriteRateMonitor,
   groupActivityWriteRateMonitor,
 } from './triggers/writeRateMonitor';
 export {
@@ -119,19 +122,22 @@ token. It does **not** retroactively invalidate an outstanding ID token
 
 ## Firestore triggers — write-rate monitor (#198)
 
-`functions/src/triggers/writeRateMonitor.ts` ships three `onDocumentCreated`
+`functions/src/triggers/writeRateMonitor.ts` ships two `onDocumentCreated`
 triggers that share one handler. They are **detection-only**: expense /
-settlement / activity creates are client-direct (Firestore offline replay —
-a trigger fires *after* commit and cannot reject), so the monitor only
-**flags** per-UID write bursts; it never deletes or mutates the financial
-doc. App Check is irrelevant here (triggers are server-internal, not called
-by clients).
+activity creates are client-direct (Firestore offline replay — a trigger
+fires *after* commit and cannot reject), so the monitor only **flags**
+per-UID write bursts; it never deletes or mutates the financial doc.
+Settlement creates are NOT counted since #1129 — they are callable-routed
+(`recordSettlement`, unforgeable via rules), and a large decomposed
+settle-up would otherwise false-flag the threshold; the old
+`groupSettlementWriteRateMonitor` trigger was deleted with the flip. App
+Check is irrelevant here (triggers are server-internal, not called by
+clients).
 
 | Trigger | Document path | Covers |
 |---------|---------------|--------|
-| `eventWriteRateMonitor` | `groups/{gid}/events/{eid}/{module}/{docId}` | event `expenses` / `settlements` / `activity_logs` (wildcard `{module}`, filtered to those three) |
-| `groupSettlementWriteRateMonitor` | `groups/{gid}/settlements/{settlementId}` | group-level settlements |
-| `groupActivityWriteRateMonitor` | `groups/{gid}/activity/{activityId}` | group-level activity |
+| `eventWriteRateMonitor` | `groups/{gid}/events/{eid}/{module}/{docId}` | event `expenses` only (wildcard `{module}`, filtered) |
+| `groupActivityWriteRateMonitor` | `groups/{gid}/activity/{activityId}` | group-level activity (server-authored types incl. both settlement flavors are skip-listed) |
 
 Each create increments `groups/{gid}/_writeCounters/{uid}` (server-only,
 TTL on `expiresAt`) in a transaction. Actor = `createdBy` (expenses/
