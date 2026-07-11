@@ -85,6 +85,21 @@ void main() {
       expect(l10n.groupEventYourBalance, 'رصيدك');
     });
   });
+
+  group('#1106 settle-up converging-basis refuse', () {
+    test('English still-syncing notice is reachable', () {
+      expect(
+        AppLocalizationsEn().settleUpBalanceStillSyncing,
+        contains('still syncing'),
+      );
+    });
+
+    test('Arabic still-syncing notice is translated', () {
+      final ar = AppLocalizationsAr().settleUpBalanceStillSyncing;
+      expect(ar, isNotEmpty);
+      expect(ar, isNot(AppLocalizationsEn().settleUpBalanceStillSyncing));
+    });
+  });
 }
 
 final _pr2bCalls = <_L10nString>[

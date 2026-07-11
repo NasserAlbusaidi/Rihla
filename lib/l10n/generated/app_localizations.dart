@@ -1820,6 +1820,12 @@ abstract class AppLocalizations {
   /// **'Balance changed while you were recording — it\'s now {amount}. Review and try again.'**
   String settleUpBalanceChangedReviewAgain(Object amount);
 
+  /// No description provided for @settleUpBalanceStillSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Balances are still syncing — try again in a moment.'**
+  String get settleUpBalanceStillSyncing;
+
   /// No description provided for @settleUpRecorded.
   ///
   /// In en, this message translates to:

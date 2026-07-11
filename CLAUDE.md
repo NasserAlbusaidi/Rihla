@@ -145,6 +145,8 @@ Feature-first under `lib/features/` (`models/ providers/ screens/ services/ widg
 
 Settlement doc ids are deterministic dedup keys (`sd1…`, #1093) derived from (scope, directed pair, currency, subunits, pair-epoch) — never revert to random uuids on a create path, and never add inputs that differ across devices (names, timestamps, notes).
 
+**Group settle-up RECORD refuses a converging basis (#1106).** `groupBalancesProvider` deliberately proceeds-on-partial while per-event streams deliver their FIRST snapshot (#244 display decision — keep it), so a cold-`push()` entry can render an understated balance with a live Record CTA; `_showRecordPaymentSheet` therefore gates BOTH its entry and the #719 confirm-time re-read on `groupConvergingEventIdsProvider` (the loading-skip mirror of `groupFailedEventIdsProvider`). Don't wire the converging set into the balance provider or the #244 error banner (display stays warn-not-block), and don't remove the gate to "simplify" — the #719 re-read alone cannot catch the window (it re-reads the same still-converging provider).
+
 ## Key Invariants
 
 - Soft delete: expenses `isDeleted`+`deletedAt`; settlements **append-only** (B3 — corrections = new offsetting row); events/groups soft-delete too.

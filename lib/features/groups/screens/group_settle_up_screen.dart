@@ -552,6 +552,25 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     bool showSuccessSnackbar = true,
     ConnectivityNotifier? connectivity,
   }) async {
+    // Steps ≥2 of the stepped walk re-enter here in the async continuation
+    // after the previous sheet closed — the context may be disposed.
+    // coverage:ignore-start
+    if (!context.mounted) {
+      return const _StepOutcome(_StepOutcomeKind.cancelled);
+    }
+    // coverage:ignore-end
+    // #1106: the live balance provider proceeds-on-partial while per-event
+    // streams deliver their FIRST snapshot (the #244 loading-skip, deliberately
+    // kept for display). A sheet opened inside that window carries an
+    // understated suggestion the #719 re-read below can never catch (an
+    // understated amount passes a later-converged higher outstanding). Refuse
+    // to open — write-time only; the screen itself stays proceed-on-partial.
+    if (ref.read(groupConvergingEventIdsProvider(widget.groupId)).isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.settleUpBalanceStillSyncing)),
+      );
+      return const _StepOutcome(_StepOutcomeKind.invalid);
+    }
     final fromDisplayName =
         settlement['fromUserName'] as String? ?? fromRawName;
     final toDisplayName = settlement['toUserName'] as String? ?? toRawName;
@@ -623,6 +642,16 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // the write reflects current per-event nets — note the tile's last-rendered
     // breakdown may then differ from the fresh write (aggregate stays capped at
     // `editedAmount`; `eventOrder` is unchanged so the WYSIWYG order contract holds).
+    // #1106 (confirm-time twin of the entry gate): a convergence window can
+    // OPEN while the sheet is up (another device adds an event — its streams
+    // have no first snapshot here yet). The fresh re-read below would silently
+    // omit that event's money and revalidate against itself — refuse instead.
+    if (ref.read(groupConvergingEventIdsProvider(widget.groupId)).isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.settleUpBalanceStillSyncing)),
+      );
+      return const _StepOutcome(_StepOutcomeKind.invalid);
+    }
     var writeBalances = balancesData;
     final fresh = ref.read(groupBalancesProvider(widget.groupId)).valueOrNull;
     if (fresh != null) {
