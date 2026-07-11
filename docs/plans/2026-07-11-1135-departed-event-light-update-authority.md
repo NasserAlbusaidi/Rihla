@@ -80,11 +80,18 @@ Choose. Emulator tests protect the actual deny behavior, a mutation check proves
 4. **Fields from the type:** `Event` carries `id`, `name`, `type`, `groupId`, `createdBy`, `participantIds`, `participantNames`, `modules`, `startDate`, `endDate`, `isDeleted`, `deletedAt`, `createdAt`, `updatedAt`, `description`, `isClosed`, `closedAt`, `closedBy`, and `spendingSnapshot`. This plan changes none.
 5. **Data contracts:** The metadata attack uses the exact `EventService.updateEvent()` partial-map shape: `name` plus `updatedAt`. The additive attack uses the rule's exact light allow-list shape: `participantIds`, `participantNames`, and `updatedAt`. The departure fixture changes group `memberIds` and deletes `groups/g1/members/member`, while event `e1` retains `member` in both participant fields.
 6. **Arithmetic decomposition:** N/A. Money algorithms and persisted monetary fields do not change. Keeping `participantIds` untouched preserves the existing balance-universe contract.
-7. **Orthogonal axes:** Identity: leave/remove state is reproduced exactly. Money: no participant pruning or oracle change. Time: #723 close/reopen remains on its separate admin path and its existing departed-participant allow test stays green. Offline: a queued light update replayed after departure remains denied by replay-time state. Locale/derived surfaces: no user-facing copy, export, notification, activity, or l10n change.
+7. **Orthogonal axes:** Identity: leave/remove state is reproduced exactly. Money: no participant pruning or oracle change. Time: #723 close/reopen remains on its separate admin path and its existing departed-participant allow test stays green. Offline: a queued light update replayed after departure remains denied by replay-time state. Locale/derived surfaces: this branch changes no user-facing copy, export, notification, activity, or l10n behavior. Gate round 1 found two PRE-EXISTING stale-participant side effects outside this branch: a denied event delete can leave a phantom activity row (#1140), and expense pushes can target departed parties who cannot open the ledger (#1141). Both are tracked separately rather than hidden or bundled here.
 
 ## Known Adjacent Behavior, Out of Scope
 
 Because `validEventBase()` validates the whole post-write participant list, an event retaining any departed participant also blocks ordinary light metadata edits by remaining participants until a current admin removes the stale participant in the same update. `validEventCloseToggle()` deliberately bypasses `validEventBase()` so close/reopen still works with departed participants. This is the inverse of #1135's security claim and may deserve a separate product decision, but changing that coupling would require a new rule that admits existing departed IDs while constraining only newly-added IDs to current members. That is not a safe side effect for this PR.
+
+Two user-visible consequences discovered by the Gate are also real but independent of this tests/docs resolution:
+
+- **#1140:** `EventDangerSection._executeDelete()` starts the fire-and-forget `event_deleted` activity write before the event soft-delete. When stale participants make the soft-delete fail, history can falsely say the event was deleted. The fix needs atomic delete+activity semantics, especially offline.
+- **#1141:** `expenseNotifier` targets historical expense/event party UIDs without intersecting current `group.memberIds`, so departed members can receive expense details and an unreadable ledger deep link. The fix belongs at notification-recipient selection.
+
+Both predate this branch, remain behaviorally unchanged by it, and require their own focused specs/tests. Folding either into #1135 would violate the one-concern rule and turn a rules-refutation PR into unrelated client and Cloud Functions changes.
 
 ---
 
@@ -179,13 +186,17 @@ Change the event update cell from `event participants (light)` to `current-membe
 
 - [ ] **Step 2: Explain the indirect membership proof in the light-path section**
 
-After “Any current event participant,” state that current group membership is enforced by composition: caller in existing `participantIds`, additive post-write list, and `validEventBase()` requiring the post-write list to contain only current `group.memberIds`. State that a separate `isGroupMember()` conjunct is intentionally omitted because it is redundant on the #723 near-ceiling OR-chain.
+Change the section introduction from “two update paths” to **three**: light, admin, and close-toggle. After “Any current event participant,” state that current group membership is enforced by composition: caller in existing `participantIds`, additive post-write list, and `validEventBase()` requiring the post-write list to contain only current `group.memberIds`. State that a separate `isGroupMember()` conjunct is intentionally omitted because it is redundant on the #723 near-ceiling OR-chain.
 
 - [ ] **Step 3: Document the stale-participant consequence without fixing it here**
 
 State that retaining a departed UID makes ordinary light metadata updates fail until an admin removes the stale participant, while close/reopen remains available through `validEventCloseToggle()`'s deliberate base-validation bypass. Label any redesign of this coupling as separate scope.
 
-- [ ] **Step 4: Commit the documentation correction**
+- [ ] **Step 4: Document the close-toggle path as a first-class third path**
+
+Add a close-toggle subsection with its exact allow-list (`isClosed`, `closedAt`, `closedBy`, `updatedAt`, optional bounded `spendingSnapshot`), current-member event/group creator authority, and explicit reason for bypassing `validEventBase()` when historical participants remain.
+
+- [ ] **Step 5: Commit the documentation correction**
 
 ```bash
 git add docs/SECURITY-RULES.md
@@ -210,7 +221,7 @@ npm run test:emulator -- settlementIdempotency.rules.test.ts
 npm run test:emulator -- decomposed-settleup-batch.test.ts
 ```
 
-Expected: every suite exits 0. Compare the full readiness suite's “maximum of 1000 expressions” artifact count to the unchanged baseline; a tests/docs-only diff must not change it.
+Expected: every suite exits 0. The rules blob stays byte-identical, but the raw runner output's “maximum of 1000 expressions” count is expected to rise by **exactly 2** because each new denied write reaches the existing fail-closed OR-chain ceiling. Gate round 1 measured 49 occurrences on the pre-test suite and one occurrence per new case; verify 51 after implementation. A different delta requires investigation. Do not use unchanged raw warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
 
 - [ ] **Step 2: Run repository checks**
 
@@ -241,3 +252,11 @@ Use a conventional commit and a draft PR. The PR body must include the live repr
 - Documentation describes the actual composed authorization proof and the adjacent stale-participant metadata lockout.
 - The hardened Gate reaches a same-round pair with zero P1 findings before implementation.
 - The final draft PR carries `Closes #1135` and does not claim a production rules change.
+
+## Gate Record
+
+Round 1 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 1 P2 / 0 P3`.
+
+- Rubric P1 resolved: the plan no longer claims raw expression-warning count is unchanged. Each added denied write contributes one existing ceiling artifact; expected delta is +2, while a byte-identical rules diff is the rules-equivalence proof.
+- Adversary P1s resolved without scope bundling: the phantom `event_deleted` side effect is tracked as #1140 and departed-recipient expense pushes as #1141. Both are explicitly pre-existing, behaviorally untouched, and assigned focused fixes.
+- Adversary P2 resolved: Task 2 now corrects the documentation's “two update paths” statement and adds the close-toggle path as the third live path.
