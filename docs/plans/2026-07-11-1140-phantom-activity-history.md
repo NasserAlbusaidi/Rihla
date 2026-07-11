@@ -33,7 +33,26 @@ The mutations are all **client-writable** (`set`/`update`), so one client batch 
 ### D2 — No `firestore.rules` change
 `validGroupActivityCreate` (rules L1138-1173) already allow-lists `event_created`, `event_deleted`, `event_settlement`, `group_settlement` and validates the activity doc **standalone**. Batch atomicity is a Firestore commit property, not a rules construct — each op still evaluates against its own match block. Verified: activity op cost = **1 document-access call** (both `isGroupMember` and `groupAllowsClientWrites` read only `groups/{gid}`; `validActivityMetadata` does zero gets).
 
-**Semantic-inversion check (the one real risk):** folding activity into the batch means an *activity-op* denial could now block a money write. But the activity op's only authz conjuncts — `isGroupMember(gid)` + `groupAllowsClientWrites(gid)` — are a **strict subset** of what every domain leg already requires (event-settlement create gates on `isGroupMember` + `eventAllowsClientWrites`⊇`groupAllowsClientWrites`; group-settlement create gates on `isGroupMember` + `groupAllowsClientWrites`; event create/soft-delete gate on membership + event/group writability). So the activity op can **never be the sole cause** of a batch denial — if it would be denied, the domain leg is already denied. Folding therefore never blocks an otherwise-successful mutation. (Recorded here so the Gate/refuter can check it directly.)
+**Semantic-inversion — the activity op must NEVER independently deny the batch (the load-bearing safety property; Gate R1 P1).** Folding activity into the batch means *any* predicate of `validGroupActivityCreate` — not just its authz — could block a money/lifecycle write. `validGroupActivityCreate` has **seven** predicates beyond the authz pair. An authz-subset argument alone is **insufficient** (the earlier version of this section was wrong). Each predicate must be provably satisfiable at stage time:
+
+| Predicate (rules L1141-1172) | How we guarantee it | Verified |
+|---|---|---|
+| `isGroupMember(gid)` + `groupAllowsClientWrites(gid)` | **Strict subset** of every domain leg's authz — event-create standard branch L561, event-settlement L980-981 (`eventAllowsClientWrites`⊇`groupAllowsClientWrites`), group-settlement L1240-1241 (identical), event soft-delete L609-610 (`requesterIsEventAdmin` L457-458 ⟹ `uid∈memberIds`). If the activity authz fails, the domain leg already fails. | ✓ vs rules |
+| `type in [event_created,event_deleted,event_settlement,group_settlement,…]` | Hardcoded constant per callsite (allow-listed). | ✓ |
+| `id == activityId` | We set both to the same derived id. | ✓ |
+| `actorId == request.auth.uid` | **Force `actorId = auth.uid`** (see D7). Settlement paths already compute a guarded non-empty `currentUid`; event-delete's `?? ''` is fixed to fall back to the domain-only write if no uid. | D7 |
+| `description is string` | Always a Dart `String`. | ✓ |
+| `metadata is map` + `validActivityMetadata` | Each callsite builds a fixed-shape map ≤ 8 keys (≤ 16 cap) with code-typed values; verified each already passes today (`amountFils` int≥0, `currency` valid, `amount`/`eventName`/names strings). | ✓ vs L1122-1136 |
+| `isValidDisplayName(actorName)` | **Clamp `actorName`** to a guaranteed-valid form before staging (see D7) — 1–32, no control chars, strip the `member_name_resolver.dart` `' (former member)'` suffix, fall back to a safe constant. | D7 |
+
+With D7's clamp in place, no predicate of `validGroupActivityCreate` can independently veto — so the activity op never blocks an otherwise-successful mutation. **This clamp, not the authz subset alone, is the safety argument.**
+
+### D7 — Activity payload sanitization (money-safety, closes Gate R1 P1)
+Reachable pre-clamp denials that would convert a would-succeed money/lifecycle write into `permission-denied` once co-batched (today `logGroupEvent`'s `catchError` swallows them and the mutation still commits):
+- **(a) actorId:** `event_danger_section.dart:497` sets `actorId = FirebaseConfig.currentUser?.uid ?? ''`; `'' != auth.uid` → deny.
+- **(b) actorName:** a live member settling on behalf of a **departed event participant** (#752/#249) with an empty own `deviceName` falls back to `fromName`, which `member_name_resolver.dart:71` can render as `"Name (former member)"` — rejected by `isValidDisplayName` (rules L44); likewise a name pushed `>32` by the #196 disambiguator, or control chars.
+
+Mitigation (single chokepoint): a pure static `GroupActivityService.sanitizeActorName(String raw) → String` — trim; strip control chars (`\x00-\x1f\x7f`); strip a trailing `MemberNameResolver.formerSuffix`; clamp to 32 UTF-16 code units; if the result is empty, return `'Someone'`. `buildActivityDoc` calls it on `actorName`, so **every** activity write (batched paths AND the surviving `logGroupEvent`/`member_joined`) is guaranteed rule-valid — this strictly *improves* `member_joined`, whose fire-and-forget write silently *failed* on a malformed name before. For **actorId**: the settlement/create paths already pass a guarded non-empty `auth.uid`; fix event-delete to compute `actorId` up front and, if it is empty, take the **domain-only** `deleteEvent` path (no activity leg) — preserving D-14 (a delete is never blocked by activity).
 
 ### D3 — Shared boundary: one activity-doc builder, deterministic ids
 Hoist a pure static `GroupActivityService.buildActivityDoc({...}) → Map<String,dynamic>` (single source of the activity shape; the fire-and-forget `logGroupEvent` also calls it). Each **domain service** owns its batch and stages the activity leg via this static builder from **its own `db`** (so a single injected fake in tests receives both writes — the two services do NOT share a `db` in tests).
@@ -74,8 +93,9 @@ Settlement corrections route through the `correctSettlement` callable and write 
 - Success → exactly one matching row: every task's GREEN twin
 - Offline replay commits both or neither: batching (Tasks 2–6)
 - Retry/idempotency → no duplicate: deterministic ids (D3), asserted in Task 4/6 idempotency tests
-- Corrections suppressed & pinned: Task 7 regression re-run (unchanged)
-- Every callsite inventoried; best-effort documented: Task 8 (member_joined)
+- Corrections suppressed & pinned: Task 8 regression re-run (unchanged)
+- Existing activity-assertion tests migrated (no phantom re-introduction): Task 7
+- Every callsite inventoried; best-effort documented: Task 9 (member_joined)
 - Failure copy / queued feedback / nav intact: each task preserves snackbars + `context.go`
 
 ---
@@ -86,13 +106,26 @@ Settlement corrections route through the `correctSettlement` callable and write 
 - Modify: `lib/features/groups/services/group_activity_service.dart`
 - Test: `test/unit/group_activity_service_test.dart`
 
-**Step 1 — Write failing test:** add a group verifying (a) `GroupActivityService.buildActivityDoc(...)` returns exactly the 7 keys with the passed values and ISO-8601 `timestamp`, and (b) `stageActivity(batch, ...)` calls `batch.set` once on `groups/{gid}/activity/{id}` with that map. Use a spy `WriteBatch` (mirror `_StubWriteBatch` from `group_settle_up_atomic_929_test.dart`).
+**Step 1 — Write failing test:** add a group verifying (a) `sanitizeActorName` clamps: `'Bob (former member)' → 'Bob'`, a 40-char name → 32, a control-char name → stripped, `'' → 'Someone'`; (b) `GroupActivityService.buildActivityDoc(...)` returns exactly the 7 keys, applies `sanitizeActorName` to `actorName`, and emits ISO-8601 `timestamp`; (c) `stageActivity(batch, ...)` calls `batch.set` once on `groups/{gid}/activity/{id}` with that map. Use a spy `WriteBatch` (mirror `_StubWriteBatch` from `group_settle_up_atomic_929_test.dart`).
 
-**Step 2 — Run, expect FAIL** (`buildActivityDoc`/`stageActivity` undefined):
+**Step 2 — Run, expect FAIL** (`sanitizeActorName`/`buildActivityDoc`/`stageActivity` undefined):
 `flutter test test/unit/group_activity_service_test.dart`
 
-**Step 3 — Implement:** hoist the doc map into a static builder; add a batch stager; make `logGroupEvent` delegate to the builder (behaviour unchanged for member_joined).
+**Step 3 — Implement:** hoist the doc map into a static builder that sanitizes `actorName`; add the sanitizer + a batch stager; make `logGroupEvent` delegate to the builder (member_joined now also gets a guaranteed-valid name).
 ```dart
+/// Coerces any actor label into a value that always passes the rules'
+/// `isValidDisplayName` (#1140 D7) so the co-batched activity op can never
+/// veto the paired money/lifecycle write on a name-shape check.
+static String sanitizeActorName(String raw) {
+  var s = raw.trim();
+  if (s.endsWith(MemberNameResolver.formerSuffix)) {
+    s = s.substring(0, s.length - MemberNameResolver.formerSuffix.length).trim();
+  }
+  s = s.replaceAll(RegExp(r'[\x00-\x1f\x7f]'), '').trim();
+  if (s.length > 32) s = s.substring(0, 32).trim();
+  return s.isEmpty ? 'Someone' : s;
+}
+
 static Map<String, dynamic> buildActivityDoc({
   required String id,
   required String type,
@@ -105,7 +138,7 @@ static Map<String, dynamic> buildActivityDoc({
   'id': id,
   'type': type,
   'actorId': actorId,
-  'actorName': actorName,
+  'actorName': sanitizeActorName(actorName),
   'description': description,
   'metadata': metadata,
   'timestamp': timestampUtc.toIso8601String(),
@@ -191,7 +224,9 @@ Future<void> deleteEvent({
   await batch.commit();
 }
 ```
-`event_danger_section._executeDelete`: delete the separate `logGroupEvent` block (L494-513); build the activity payload with safe fallbacks (`actorName` = deviceName or 'Someone'), pass `activityId: 'evt_deleted_${event.id}'` + fields into `deleteEvent`; keep the existing `awaitServerAck` race, connectivity note, `context.go('/group/$groupId')`, and error snackbar.
+`event_danger_section._executeDelete`: delete the separate `logGroupEvent` block (L494-513); resolve `actorId` up front (`FirebaseConfig.currentUser?.uid`), and **only** pass activity params to `deleteEvent` when `actorId` is non-empty — if it is empty, call the legacy domain-only `deleteEvent` (D7: a delete is never blocked by activity). `actorName` = deviceName or 'Someone' (also clamped by `buildActivityDoc`). `activityId: 'evt_deleted_${event.id}'`. Keep the existing `awaitServerAck` race, connectivity note, `context.go('/group/$groupId')`, and error snackbar.
+
+> Note (Gate R1 P3): the activity `timestamp` now stamps at batch-stage time (a few ms before the ack) instead of post-ack. The feed orders by client ISO timestamp desc; the shift is negligible. The decomposed path shares the batch's single `now` (already the settlement `settledAt`).
 
 **Step 4 — Run, expect PASS** + add the GREEN twin (denied → empty; success → exactly one `event_deleted` row keyed `evt_deleted_<id>`).
 
@@ -283,12 +318,15 @@ Screen `_recordSettlement`: replace the `addSettlement` + separate `logGroupEven
 - Test: `test/features/groups/group_settle_up_atomic_929_test.dart` (update), `test/unit/decomposed_settleup_batch_test.dart` (update), `test/unit/group_settlement_service_test.dart` (update)
 
 **Step 1 — Update/failing tests (RED):**
-- In `group_settle_up_atomic_929_test.dart`: the **offline** test's expectations change — `setCount` `3 → 4` (activity now in the batch), the separate `logCalls` assertion is replaced by asserting a real `gstl_<groupSettleUpId>` doc is staged in the batch (the activity is no longer a `logGroupEvent` call). Add a **new** RED-shaped test: offline **rejecting** batch + real activity service on the same fake → assert `activity` empty after denial.
+- First, **extend `_StubWriteBatch`** (`group_settle_up_atomic_929_test.dart:143-168`) to capture staged writes: `final staged = <(DocumentReference, Object?)>[];` and push `(document, data)` in `set()` (still counting `setCount`). Gate R1 P3: today `set()` is a pure no-op, so nothing lands in the fake — the extension lets a test assert the activity leg's ref/data.
+- In the **offline** test: `setCount` `3 → 4` (activity now in the batch), and replace the `logCalls, hasLength(1)` assertion with `expect(queuedBatch.staged.where((s) => s.$1.id == 'gstl_$groupSettleUpId'), hasLength(1))` (the activity is no longer a `logGroupEvent` call). Add a **new** RED-shaped test: offline **rejecting** batch + real `GroupActivityService.withFirestore(fake)` on the same fake → assert `groups/{gid}/activity` empty after denial.
 - Add a boundary test: 8-leg decompose stays on the batch path; 9-leg now routes to the single group write (cap moved).
 
-**Step 2 — Run, expect FAIL** (setCount 3, or the old cap boundary).
+**Step 2 — Run, expect FAIL** (setCount 3, missing `gstl_` staged, or the old cap boundary).
 
-**Step 3 — Implement:** in `stageDecomposedSettleUp`, add the activity params and, before `return`, `batch.set(_activityRef(groupId).doc('gstl_$groupSettleUpId'), GroupActivityService.buildActivityDoc(type:'group_settlement', id:'gstl_$groupSettleUpId', ..., timestampUtc: now))` using the batch's shared `now`. Change `const kMaxDecomposeLegsAtomic = 9;` → `8` and update its docstring math to `2·N+2 ≤ 20 → N ≤ 9; drop to 8 for a 2-call margin`. Screen `_recordDecomposedSettlement`: pass activity fields into `stageDecomposedSettleUp`; delete the separate `logGroupEvent` (L941-959); keep the single `ledgerRevision.state++` (gated on `eventLegs.isNotEmpty`) and the queued/acked snackbars; the >cap pre-gate now compares against 8.
+**Step 3 — Implement:** in `stageDecomposedSettleUp`, add the activity params and, before `return`, stage the activity leg onto the batch using **this service's own `db`** (the private `_activityRef` lives on `GroupActivityService`, not here): `batch.set(db.collection('groups').doc(groupId).collection('activity').doc('gstl_$groupSettleUpId'), GroupActivityService.buildActivityDoc(id: 'gstl_$groupSettleUpId', type: 'group_settlement', ..., timestampUtc: now))` — reusing the batch's shared `now`. Change `const kMaxDecomposeLegsAtomic = 9;` → `8` and update its docstring math to `2·N+2 ≤ 20 → N ≤ 9; drop to 8 for a 2-call margin`. Screen `_recordDecomposedSettlement`: pass activity fields into `stageDecomposedSettleUp`; delete the separate `logGroupEvent` (L941-959); keep the single `ledgerRevision.state++` (gated on `eventLegs.isNotEmpty`) and the queued/acked snackbars; the >cap pre-gate now compares against 8.
+
+> The event-settlement and group-settlement fallback services (Tasks 4/5) build the activity ref the same longhand way from their own `db` — do NOT reference `GroupActivityService._activityRef` from another service.
 
 **Step 4 — Run, expect PASS.** Re-run `group_settlement_service_test.dart` / `decomposed_settleup_batch_test.dart` and fix leg-count assertions (`N+1 → N+2` sets when residual, `N → N+1` otherwise... note activity is always +1).
 
@@ -296,18 +334,38 @@ Screen `_recordSettlement`: replace the `addSettlement` + separate `logGroupEven
 
 ---
 
-## Task 7: Regression guard — corrections still suppress activity
+## Task 7: Migrate existing activity-assertion tests (Gate R1 P2 — mandatory, do NOT re-green by re-adding `logGroupEvent`)
+
+After the fold the five screens **stop calling `groupActivityServiceProvider.logGroupEvent`** for the mutation-paired rows, so every existing test that asserts `logCalls`/`verify(logGroupEvent)`/`verifyNever`/`verifyZeroInteractions` on those paths goes red. **The forbidden fix is re-adding a separate `logGroupEvent` to re-green — that silently reintroduces the phantom.** Port each to prove the activity via the batched write instead. Grep to confirm the live surface before porting: `grep -rn "logCalls\|logGroupEvent\|_RecordingGroupActivityService\|verifyNever\|verifyZeroInteractions" test/`.
+
+**Files (enumerated — confirm line numbers at port time; counts are 2026-07-11 grep hits):**
+- `test/features/events/create_event_test.dart` (~10 hits: `verify(()=>activityService.logGroupEvent(...))` + `verifyNever`) → replace with reading `groups/{gid}/activity` from the shared fake (real `GroupActivityService.withFirestore(fake)`), asserting exactly one `evt_created_<eventId>` row on success / none on the failure paths.
+- `test/features/groups/group_settle_up_screen_test.dart` (~37 hits incl. the multi-currency `logCalls hasLength(2)` case) → port each `logCalls` assertion to an activity-collection read; the two-currency case becomes two `gstl_`/`stl_` rows (one per currency settle-up).
+- `test/features/groups/group_settle_up_decompose_test.dart` (~12 hits incl. `logCalls` content `amount '7.75'` + metadata shape) → assert the staged `gstl_` activity doc's `metadata`/`description` instead of `logCalls`.
+- `test/features/groups/group_settle_up_dedup_1093_test.dart` (~5 hits) and `test/features/ledger/settle_up_dedup_1093_test.dart` (`_RecordingGroupActivityService`) → the idempotency assertion becomes: two records from the identical epoch snapshot → exactly ONE `stl_<id>`/`gstl_<id>` activity row (the second batch collides on the deterministic settlement id and is denied in toto).
+- `test/features/events/event_settings_offline_412_test.dart` (~1 hit, stubs `GroupActivityService`) → keep the offline-delete routing assertions; the activity is now part of `deleteEvent`'s batch, so drop the separate-log stub expectation.
+- `test/features/groups/group_settle_up_atomic_929_test.dart` — already handled in Task 6.
+
+**Porting pattern (the D3 real-service-on-shared-fake shape, already used at `settle_up_screen_test.dart:138-147`):** override the DOMAIN service provider with `Service.withFirestore(fake)` and read the activity collection back from that SAME `fake`; where a `_StubWriteBatch` is used (no-op `set`), assert via the extended `staged` capture (Task 6) or `setCount`. Tests that used a **mock** `GroupActivityService` (mocktail) must switch to a real one on the shared fake — a mock no longer sees the write.
+
+**Step 1:** run the full affected suites; expect a known set of reds. Port each red per the pattern above. Re-run to green.
+
+**Step 2 — Commit:** `test(activity): port logGroupEvent assertions to batched-activity reads (#1140)`
+
+---
+
+## Task 8: Regression guard — corrections still suppress activity
 
 **Files:**
 - Test: `test/features/ledger/settle_up_screen_test.dart` (#831/#283/#889 block), `test/features/groups/group_settle_up_screen_test.dart` (#283/#889 block) — **run unchanged**.
 
-**Step 1:** run both correction tests; expect PASS (corrections route through `correctSettlement`, untouched). If any needs a mechanical fixture tweak (e.g. a service now returns a batch ack), adjust the fixture only — never the suppression assertion.
+**Step 1:** run both correction tests; expect PASS (corrections route through the `correctSettlement` callable — `_recordSettlement`/`_recordDecomposedSettlement` are NOT on that path; the line-760 comment is stale wording only). If any needs a mechanical fixture tweak (e.g. a service now returns a batch ack), adjust the fixture only — never the suppression assertion.
 
 **Step 2 — Commit** only if a fixture tweak was needed: `test(settle): keep correction-suppression pinned post-#1140`.
 
 ---
 
-## Task 8: Document member_joined + update invariants
+## Task 9: Document member_joined + update invariants
 
 **Files:**
 - Modify: `lib/features/groups/screens/join_group_screen.dart` (doc-comment only)
