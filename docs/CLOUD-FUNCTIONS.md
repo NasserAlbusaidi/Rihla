@@ -355,7 +355,13 @@ interface DeleteAccountOutput {
      member exists, set `createdBy = 'deleted-user'` and soft-delete
      the group (`isDeleted: true`, `deletedAt: serverTimestamp`).
    - For each event in the group: rewrite `participantIds`,
-     `participantNames`, and `createdBy` analogously.
+     `participantNames`, and `createdBy` analogously; re-key `closedBy`
+     → tombstoneId; and scrub the frozen `spendingSnapshot` (re-key
+     `biggest.payer` / `payers[].id` / `owed` keys → tombstoneId with a
+     SUM-on-collision merge for the uid-keyed `owed` money map, and drop
+     every frozen `biggest.desc`) — but only when the snapshot references
+     the uid (#1133). The cascade only reaches groups the uid is still a
+     member of at deletion time (`memberIds array-contains uid`).
    - For each expense: rewrite `createdBy`, `payerParticipantId`,
      `customSplitParticipants`, and `splitDistribution` keys. **Null
      out** `receiptUrl`, `note`, and `description` to scrub PII.
