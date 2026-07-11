@@ -161,7 +161,12 @@ export const correctLogicalSettleUp = onCall<
               'Settlement parties are not event participants.',
             );
           }
-        } else if (!memberIds.includes(payer) || !memberIds.includes(recipient)) {
+        }
+        // #1144: EVERY leg's parties must be current members (event legs were
+        // participantIds-only) — reversing a departed party's folded leg
+        // re-opens their balance. Ghost tombstone ids sit IN memberIds and
+        // stay correctable (mirrors correctSettlement.ts).
+        if (!memberIds.includes(payer) || !memberIds.includes(recipient)) {
           throw new HttpsError(
             'failed-precondition',
             'Settlement parties are not current group members.',

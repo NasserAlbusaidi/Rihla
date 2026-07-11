@@ -638,3 +638,45 @@ describe('correctSettlement — actor policy (creator-or-party)', () => {
     expect(res.noop).toBe(false);
   });
 });
+
+// #1144: event-scope correction parties must ALSO be current members —
+// reversing a settlement that a leave/remove-departed party's exact-zero gate
+// already folded re-opens their balance post-departure. Ghosts (deleteAccount
+// tombstone ids, swapped INTO memberIds) stay correctable.
+describe('correctSettlement — #1144 current-party policy (event scope)', () => {
+  const DEPARTED = 'departed';
+  const GHOST = 'ghost-t';
+
+  function callAs(uid: string, data: Record<string, unknown>) {
+    return wrapped({ data, auth: { uid } } as any);
+  }
+
+  test('DENY: correction of a settlement whose party departed via leave/remove → failed-precondition, no reverse row', async () => {
+    await seedGroup('g'); // memberIds [OWNER, MEMBER] — DEPARTED absent
+    await seedEvent('g', 'e1', [OWNER, MEMBER, DEPARTED]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: DEPARTED,
+      recipientParticipantId: OWNER,
+    });
+
+    await expect(
+      callAs(OWNER, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    const docs = await collectionDocs('groups/g/events/e1/settlements');
+    expect(docs).toHaveLength(1);
+  });
+
+  test('ALLOW: correction of a ghost-party settlement (tombstoneId in memberIds) still works', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, GHOST] });
+    await seedEvent('g', 'e1', [OWNER, MEMBER, GHOST]);
+    await seedEventSettlement('groups/g/events/e1/settlements/s1', {
+      payerParticipantId: GHOST,
+      recipientParticipantId: OWNER,
+    });
+
+    const res = await callAs(OWNER, { groupId: 'g', scope: 'event', eventId: 'e1', settlementId: 's1', correctionNote: CORRECTION_NOTE });
+    expect(res.noop).toBe(false);
+    const docs = await collectionDocs('groups/g/events/e1/settlements');
+    expect(docs).toHaveLength(2);
+  });
+});

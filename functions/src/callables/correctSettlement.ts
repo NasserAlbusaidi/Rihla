@@ -149,7 +149,14 @@ export const correctSettlement = onCall<
             'Settlement parties are not event participants.',
           );
         }
-      } else if (
+      }
+      // #1144: EVERY scope's parties must be current members (event scope was
+      // participantIds-only). A leave/remove-departed party's exact-zero gate
+      // already folded this settlement — reversing it post-departure re-opens
+      // their balance. Ghosts pass: deleteAccount SWAPS the tombstoneId into
+      // memberIds, so their rows stay correctable (mirrors the #1144 rules
+      // gate on validEventSettlementCreate).
+      if (
         !memberIds.includes(payerParticipantId)
         || !memberIds.includes(recipientParticipantId)
       ) {
