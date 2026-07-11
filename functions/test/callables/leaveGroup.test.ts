@@ -400,3 +400,123 @@ describe('leaveGroup callable — server-authoritative self-leave + balance gate
     expect((await groupData('g')).memberIds).toEqual([OWNER]);
   });
 });
+
+// #1138: creator succession. leaveGroup never reassigned createdBy, so a creator
+// leave produced an admin-less group under the #1132 membership-conjunct rules
+// (and a permanently admin-less one after leave-then-deleteAccount, which skips
+// non-member groups). Succession mirrors deleteAccount Phase C: hand createdBy
+// to the oldest real remaining member (never an unclaimed shadow — it's in
+// memberIds via addShadowMember's arrayUnion but never AUTHENTICATES — and never
+// a torn doc whose userId fell out of memberIds), flip that member's roster
+// role, and soft-delete the group when no real survivor exists.
+describe('#1138 creator succession on leave', () => {
+  const memberDoc = async (groupId: string, docId: string) =>
+    (await getFirestore().doc(`groups/${groupId}/members/${docId}`).get()).data() ?? {};
+
+  test('S1. creator leave hands createdBy to the survivor and flips their roster role', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+
+    const res = await wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any);
+
+    expect(res).toMatchObject({ mode: 'left', alreadyLeft: false });
+    const g = await groupData('g');
+    expect(g.createdBy).toBe(MEMBER);
+    expect(g.isDeleted).toBeFalsy();
+    expect(g.memberIds).toEqual([MEMBER]);
+    // #1144 lock released atomically with the succession write.
+    expect(g.departureInProgress).toBe(false);
+    expect(g.departureLockedBy).toBeUndefined();
+    // The roster badge reads member.role, not group.createdBy — keep it truthful.
+    expect((await memberDoc('g', MEMBER)).role).toBe('CREATOR');
+    const activity = await activityDocs('g');
+    expect(activity).toEqual([expect.objectContaining({ type: 'member_left', actorId: OWNER })]);
+  });
+
+  test('S2. oldest-joined real member wins succession', async () => {
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, 'third'] });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER, { joinedAt: new Date('2026-01-02T00:00:00.000Z') });
+    await seedMember('g', 'third', { joinedAt: new Date('2026-01-03T00:00:00.000Z') });
+
+    await wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any);
+
+    expect((await groupData('g')).createdBy).toBe(MEMBER);
+    expect((await memberDoc('g', MEMBER)).role).toBe('CREATOR');
+    expect((await memberDoc('g', 'third')).role).toBe('MEMBER');
+  });
+
+  test('S3. an unclaimed shadow is never appointed, even when it joined first', async () => {
+    // Production shape: addShadowMember arrayUnions the shadow uuid INTO
+    // memberIds, so only the isShadow flag can exclude it. Seed it IN memberIds
+    // and OLDER than the real member — the succession must skip it anyway.
+    const shadowUuid = 'shadow-uuid-1111';
+    await seedGroup('g', { memberIds: [OWNER, MEMBER, shadowUuid] });
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER, { joinedAt: new Date('2026-01-02T00:00:00.000Z') });
+    await seedMember(
+      'g',
+      shadowUuid,
+      { isShadow: true, joinedAt: new Date('2026-01-01T00:00:00.000Z') },
+      shadowUuid,
+    );
+
+    await wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any);
+
+    expect((await groupData('g')).createdBy).toBe(MEMBER);
+    expect((await memberDoc('g', MEMBER)).role).toBe('CREATOR');
+    expect((await memberDoc('g', shadowUuid)).role).toBe('MEMBER');
+  });
+
+  test('S4. no real survivor -> the group is soft-deleted, createdBy tombstoned', async () => {
+    const shadowUuid = 'shadow-uuid-2222';
+    await seedGroup('g', { memberIds: [OWNER, shadowUuid] });
+    await seedMember('g', OWNER);
+    await seedMember('g', shadowUuid, { isShadow: true }, shadowUuid);
+
+    const res = await wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any);
+
+    expect(res).toMatchObject({ mode: 'left', alreadyLeft: false });
+    const g = await groupData('g');
+    expect(g.isDeleted).toBe(true);
+    expect(g.deletedAt).toBeTruthy();
+    expect(g.createdBy).toBe('deleted-user');
+    // Mirror deleteAccount's no-survivor branch: no shadow-doc cleanup.
+    expect(await docExists(`groups/g/members/${shadowUuid}`)).toBe(true);
+  });
+
+  test('S5. a non-creator leave never touches createdBy or roles', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+
+    await wrapped({ data: { groupId: 'g' }, auth: { uid: MEMBER } } as any);
+
+    const g = await groupData('g');
+    expect(g.createdBy).toBe(OWNER);
+    expect(g.isDeleted).toBeFalsy();
+    expect((await memberDoc('g', OWNER)).role).toBe('CREATOR');
+  });
+
+  test('S6. a torn doc whose userId fell out of memberIds is never appointed', async () => {
+    // Defense-in-depth: a non-shadow doc outside memberIds would be equally
+    // admin-less as createdBy (#1132 rules require createdBy ∈ memberIds). The
+    // ghost joins EARLIER than MEMBER so ordering alone cannot save the test.
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER, { joinedAt: new Date('2026-01-02T00:00:00.000Z') });
+    await seedMember(
+      'g',
+      'ghost',
+      { joinedAt: new Date('2026-01-01T00:00:00.000Z') },
+      'ghost-doc',
+    );
+
+    await wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any);
+
+    expect((await groupData('g')).createdBy).toBe(MEMBER);
+    expect((await memberDoc('g', MEMBER)).role).toBe('CREATOR');
+    expect((await memberDoc('g', 'ghost-doc')).role).toBe('MEMBER');
+  });
+});
