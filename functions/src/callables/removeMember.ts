@@ -7,6 +7,7 @@ import {
   loadGroupBalanceSnapshot,
   universeOnlyEventIds,
 } from './groupNetBalance';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import { isCurrentMember } from './shared/membership';
 import {
   acquireDepartureLock,
@@ -248,8 +249,15 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
           ?? 'Someone';
 
         const now = Timestamp.now();
+        // #1144 R5: maintained alongside memberIds (self-heals legacy groups).
+        // A tx READ on the absent-field branch — must precede every tx write,
+        // which it does (writes start at tx.update below).
+        const activeMemberIds = await nextActiveMemberIds(tx, groupRef, freshGroup, {
+          remove: targetUserId,
+        });
         tx.update(groupRef, {
           memberIds: FieldValue.arrayRemove(targetUserId),
+          activeMemberIds,
           updatedAt: now,
           // #1144: release the lock atomically with the mutation.
           ...departureLockClearFields(),

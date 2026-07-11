@@ -12,6 +12,7 @@ import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https
 import { createHash } from 'crypto';
 import '../admin';
 import { BatchWriter } from './shared/batchWriter';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import { mergeUidMapKey, replaceUid, renameMapKey } from './shared/mapReKey';
 import { deletedUserSentinel, oldestRealMemberUid } from './shared/membership';
 
@@ -711,8 +712,16 @@ async function cascadeGroupAfterMarker(
     const remainingRealCreator = oldestRealMemberUid(members, uid, currentMemberIds);
     const hasRealSurvivor = remainingRealCreator != null;
 
+    // #1144 R5: the tombstone NEVER enters activeMemberIds — the departing uid
+    // is simply removed ({remove}, not {replace}). A tx READ on the absent-
+    // field branch; derived from the PRE-swap membership and placed before
+    // every tx write below (reads-before-writes).
+    const activeMemberIds = await nextActiveMemberIds(tx, groupRef, gData, {
+      remove: uid,
+    });
     const groupUpdate: DocumentData = {
       memberIds: replaceUid(currentMemberIds, uid, tombstoneId).values,
+      activeMemberIds,
       accountDeletionInProgress: FieldValue.delete(),
       accountDeletionUid: FieldValue.delete(),
       accountDeletionLockedAt: FieldValue.delete(),

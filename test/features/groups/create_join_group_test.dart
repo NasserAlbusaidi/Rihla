@@ -229,6 +229,10 @@ void main() {
         final groups = await fakeDb.collection('groups').get();
         expect(groups.docs.length, 1, reason: 'exactly one group created');
         expect(groups.docs.first.data()['currency'], 'USD');
+        // #1144 R5: the create write-map carries activeMemberIds == memberIds
+        // (validGroupCreate requires equality; server writers maintain after).
+        expect(groups.docs.first.data()['memberIds'], ['uid-creator']);
+        expect(groups.docs.first.data()['activeMemberIds'], ['uid-creator']);
       },
     );
 

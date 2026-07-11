@@ -11,6 +11,7 @@ import { logger } from 'firebase-functions/v2';
 import type Decimal from 'decimal.js';
 import '../admin';
 import { BatchWriter } from './shared/batchWriter';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import { replaceUid, renameMapKey, mergeUidMapKey } from './shared/mapReKey';
 import {
   computeNetFromSnapshot,
@@ -750,8 +751,14 @@ export async function claimShadowEngine(
     }
     const sData = shadowTx[0].data;
 
+    // #1144 R5: the shadow uuid was active; the claimer inherits that slot.
+    // A tx READ on the absent-field branch — precedes every tx write below.
+    const activeMemberIds = await nextActiveMemberIds(tx, groupRef, gData, {
+      replace: { from: shadowMemberId, to: claimerUid },
+    });
     const groupUpdate: DocumentData = {
       memberIds: replaceUid(currentMemberIds, shadowMemberId, claimerUid).values,
+      activeMemberIds,
       updatedAt: FieldValue.serverTimestamp(),
     };
     if (gData.createdBy === shadowMemberId) groupUpdate.createdBy = claimerUid; // defensive

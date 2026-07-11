@@ -349,6 +349,10 @@ describe('deleteAccount', () => {
     expect(groupATombstoneId).toBeDefined();
     expect(groupAMemberIds).toContain(otherUid);
     expect(groupAMemberIds).not.toContain(deletedUid);
+    // #1144 R5: the legacy group (no activeMemberIds) self-heals on this
+    // roster write — seeded memberIds-minus-tombstones, then {remove: uid}.
+    // The tombstone NEVER enters the active set.
+    expect(groupA.data()?.activeMemberIds).toEqual([otherUid]);
 
     const tombstoneMember = await db.doc(`groups/groupA/members/${groupATombstoneId}`).get();
     const oldMember = await db.doc(`groups/groupA/members/${deletedUid}`).get();

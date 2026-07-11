@@ -206,6 +206,9 @@ class GroupService extends FirestoreRepository {
       'inviteCode': inviteCode,
       'createdBy': uid,
       'memberIds': [uid],
+      // #1144 R5: memberIds minus tombstones — validGroupCreate requires it
+      // == memberIds at create; server roster writers maintain it afterwards.
+      'activeMemberIds': [uid],
       'currency': currency,
       // #190 HARD REQ #6: new groups carry explicit soft-delete state. Rules
       // require this pair; userGroupsProvider still filters in memory so legacy
