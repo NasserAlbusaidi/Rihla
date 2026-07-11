@@ -70,8 +70,15 @@ export interface RecordSettlementOutput {
 const MAX_OBSERVED_EPOCH = 10_000_000;
 
 function positiveInt(value: unknown, label: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
-    throw new HttpsError('invalid-argument', `${label} must be a positive integer.`);
+  // #528 mirror: cap at Number.MAX_SAFE_INTEGER — a JSON number above it has
+  // already lost precision in transit, so it must never reach money math.
+  if (
+    typeof value !== 'number'
+    || !Number.isInteger(value)
+    || value <= 0
+    || value > 9007199254740991
+  ) {
+    throw new HttpsError('invalid-argument', `${label} must be a positive safe integer.`);
   }
   return value;
 }
@@ -95,7 +102,7 @@ function nullableDisplayName(value: unknown, label: string): string | null {
   if (value == null) return null;
   try {
     return normalizeRequiredDisplayName(value);
-  } catch (_) {
+  } catch {
     throw new HttpsError('invalid-argument', `${label} is not a valid display name.`);
   }
 }
@@ -512,7 +519,7 @@ export const recordSettlement = onCall<
       if (typeof memberDoc?.data.displayName === 'string') {
         try {
           actorName = normalizeRequiredDisplayName(memberDoc.data.displayName);
-        } catch (_) {
+        } catch {
           actorName = null;
         }
       }

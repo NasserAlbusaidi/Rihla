@@ -97,33 +97,11 @@ service cloud.firestore {
       return value is int && value > 0 && value <= 9007199254740991;
     }
 
-    // Settlement predicates shared by event-scope and group-scope settlements
-    // (#48). The scope-specific shape — allowed keys, doc/parent-id binding,
-    // participant set, scope literal, and group display names — stays in the
-    // per-scope validators below; only these scope-agnostic field checks live here.
-    function validSettlementCore(data) {
-      return data.createdBy is string
-        && data.createdBy.size() > 0
-        && data.payerParticipantId != data.recipientParticipantId
-        && positiveInt(data.amountFils)
-        && validCurrency(data.currency)
-        && nullableString(data.note)
-        && data.isDeleted is bool
-        && (data.deletedAt == null || data.deletedAt is string)
-        && data.settledAt is string
-        // #752 group-settle-up link. OPTIONAL — the client OMITS the key when
-        // null (it is not written as explicit null), so this MUST use the
-        // `!('x' in data) ||` guard. A direct `data.groupSettleUpId == ...`
-        // access on the absent key would deny EVERY keyless settlement write
-        // (i.e. all existing settle-ups), since this core runs on every create.
-        // #889: tightened from a bare `is string` — a blank/whitespace-only
-        // value is denied so it isn't normalized three different ways by
-        // rules, model code, and history grouping. `.matches()` is a
-        // FULL-STRING RE2 match (rules has no `trim()`), so this checks for a
-        // non-space char ANYWHERE in the string, not a substring "contains."
-        && (!('groupSettleUpId' in data)
-          || (data.groupSettleUpId is string && data.groupSettleUpId.matches('.*[^ ].*')));
-    }
+    // #1129: the settlement shape validators (validSettlementCore + both
+    // scopes' base/create/update fns) were DELETED — settlement creates are
+    // CALLABLE-ONLY (recordSettlement mirrors every check server-side) and
+    // updates were always hard-denied (B3). Client settlement writes now fail
+    // on the absent allow, whatever the payload.
 
     function groupPath(groupId) {
       return /databases/$(database)/documents/groups/$(groupId);
@@ -237,10 +215,10 @@ service cloud.firestore {
     //   `ledgerEditPolicy` ('open' | 'related') will wrap the participant branch.
     // - SETTLEMENTS are append-only: updates are denied outright (both settlement
     //   match blocks: `allow update: if false`). Corrections = a new offsetting row.
-    // The `requesterIsRecordCreator` helper below is now referenced ONLY by
-    // validEventSettlementUpdate/validGroupSettlementUpdate, which are themselves
-    // dead (their match blocks hard-deny update) — retained as scaffolding for the
-    // settlement-corrections track (#283), not wired to any live `allow` clause.
+    // The `requesterIsRecordCreator` helper below is UNREFERENCED since #1129
+    // deleted the dead settlement-update validators (its last callers) —
+    // retained as scaffolding for the settlement-corrections track (#283), not
+    // wired to any live `allow` clause. Do NOT cite it as governing anything.
     function requesterIsRecordCreator() {
       return signedIn() && resource.data.createdBy == request.auth.uid;
     }
@@ -894,11 +872,10 @@ service cloud.firestore {
             // #248: a new client stamps lastEditedBy on soft-delete so PR2's
             // trigger can attribute the deleter — permit it alongside the
             // isDeleted/deletedAt pair. The lastEditedBy value is pinned to the
-            // caller by validExpenseUpdate's diff-gated check. Only the LIVE
-            // expense path reaches this fn (validSoftDelete's other reference,
-            // inside validEventSettlementUpdate, is dead code — settlement
-            // updates are denied at `allow update: if false`, firestore.rules
-            // settlements block), so this loosening cannot widen settlements.
+            // caller by validExpenseUpdate's diff-gated check. The expense path
+            // is this fn's ONLY reference (#1129 deleted the dead settlement
+            // validators that once also named it), so this loosening cannot
+            // widen settlements.
             return request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['isDeleted', 'deletedAt', 'lastEditedBy'])
               && resource.data.isDeleted == false
@@ -1004,85 +981,14 @@ service cloud.firestore {
               );
           }
 
-          function validEventSettlementBase(data) {
-            // #889: deliberately does NOT list `correctionOfSettlementId` —
-            // hasOnly-omission denies any client create carrying it (deny-by-
-            // omission, not an explicit deny). This is what makes the
-            // settlementNotifier.ts / writeRateMonitor.ts presence-only
-            // marker skips un-forgeable: only the Admin SDK (which bypasses
-            // this check) can write the key. Do NOT add the marker here.
-            return data.keys().hasOnly([
-              'id',
-              'eventId',
-              'createdBy',
-              'payerParticipantId',
-              'recipientParticipantId',
-              'amountFils',
-              'currency',
-              'note',
-              'payerName',
-              'recipientName',
-              'isDeleted',
-              'deletedAt',
-              'settledAt',
-              'groupSettleUpId'
-            ])
-            && data.id == docId
-            && data.eventId == eventId
-            && data.payerParticipantId in participants()
-            && data.recipientParticipantId in participants()
-            && isValidNullableDisplayName(data.payerName)
-            && isValidNullableDisplayName(data.recipientName)
-            // #382 PR-6: a settlement's currency need only be a SUPPORTED code
-            // (validSettlementCore validCurrency floor), no longer one that equals
-            // group.currency — the old currencyMatchesGroup equality is deleted.
-            // The stepped-settle UI only offers currencies with a non-zero bucket
-            // client-side (L3); the server just validates a supported code.
-            && validSettlementCore(data);
-          }
-
-          function validEventSettlementCreate() {
-            // #752: writer need only be a group MEMBER (was isEventParticipant),
-            // so a group-level settle-up decomposed into per-event settlement
-            // docs — and #595 settle-on-behalf — are accepted. Counterparties
-            // are gated to event participants (validEventSettlementBase
-            // payerParticipantId/recipientParticipantId in participants())
-            // AND — since #1144 — to current memberIds, the same gate group
-            // settlements always had (L1225-ish validGroupSettlementBase).
-            // The #1144 revision of the old "#249 departed-party allowance":
-            // a leave/remove-departed party departed at exact ZERO (hard-
-            // removed from memberIds), so any settlement naming them CREATES
-            // exposure — blocked. deleteAccount ghosts stay settleable: their
-            // tombstoneId is swapped INTO memberIds and participantIds
-            // (deleteAccount.ts), so the debt-cleanup path passes both gates.
-            return module == 'settlements'
-              && isGroupMember(groupId)
-              && eventAllowsClientWrites(groupId, eventId)
-              && request.resource.data.payerParticipantId in groupMembers()
-              && request.resource.data.recipientParticipantId in groupMembers()
-              && validEventSettlementBase(request.resource.data)
-              && validFreeText(request.resource.data.note)
-              && request.resource.data.createdBy == request.auth.uid
-              && request.resource.data.isDeleted == false
-              && request.resource.data.deletedAt == null;
-          }
-
-          function validEventSettlementUpdate() {
-            return module == 'settlements'
-              && isEventParticipant(groupId, eventId)
-              && eventAllowsClientWrites(groupId, eventId)
-              && requesterIsRecordCreator()
-              && request.resource.data.createdBy == resource.data.createdBy
-              && request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['note', 'isDeleted', 'deletedAt'])
-              && validEventSettlementBase(request.resource.data)
-              && (
-                (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
-                  && request.resource.data.isDeleted == resource.data.isDeleted
-                  && request.resource.data.deletedAt == resource.data.deletedAt)
-                || validSoftDelete()
-              );
-          }
+          // #1129: validEventSettlementBase/Create/Update were DELETED —
+          // settlement creates are CALLABLE-ONLY (recordSettlement, which
+          // mirrors every gate: isGroupMember writer, event !isDeleted,
+          // counterparties in participantIds AND memberIds (#1144), shape,
+          // currency, names, note, PLUS the outstanding-balance cap rules
+          // never had). The polymorphic allow-create below no longer carries
+          // a settlements branch, so a client settlement write fails the
+          // module gate whatever the payload.
 
           allow read: if isGroupMember(groupId)
             && module in ['expenses', 'settlements', 'activity_logs'];
@@ -1091,8 +997,8 @@ service cloud.firestore {
           // never create/update/delete — a client cannot forge an audit entry.
           // (update is validExpenseUpdate(), module-gated to 'expenses'; delete is
           // false; create no longer has an activity branch.)
-          allow create: if validExpenseCreate()
-            || validEventSettlementCreate();
+          // #1129: no settlements branch — settlement creates are callable-only.
+          allow create: if validExpenseCreate();
           allow update: if validExpenseUpdate();
           allow delete: if false;
 
@@ -1231,19 +1137,17 @@ service cloud.firestore {
             && request.resource.data.id == activityId
             && request.resource.data.actorId == request.auth.uid
             // #808 PR1: allow-list of CLIENT-written types. member_left is
-            // written only by the leaveGroup/removeMember callables and
-            // expense_* only by the expenseAuditLogger fan-in (both Admin
-            // SDK, bypassing rules) — a client claiming them is a forgery.
-            // The writeRateMonitor's expense_* skip is only safe because of
-            // this list; extend BOTH together. #831: event_settlement is
-            // CLIENT-written (event settle-up record path) — allow-listed
-            // here and deliberately NOT in the monitor skip (a real client
-            // write is counted, like group_settlement).
+            // written only by the leaveGroup/removeMember callables,
+            // expense_* only by the expenseAuditLogger fan-in, and — since
+            // #1129 — event_settlement/group_settlement only by the
+            // recordSettlement callable (all Admin SDK, bypassing rules): a
+            // client claiming ANY of them is a forgery (a settlement-typed
+            // row with no settlement doc behind it would be phantom money
+            // history). The writeRateMonitor's type skips are only safe
+            // because of this list; extend BOTH together.
             && request.resource.data.type in [
               'event_created',
               'event_deleted',
-              'event_settlement',
-              'group_settlement',
               'member_joined'
             ]
             && isValidDisplayName(request.resource.data.actorName)
@@ -1270,87 +1174,14 @@ service cloud.firestore {
       }
 
       match /settlements/{settlementId} {
-        function validGroupSettlementBase(data) {
-          // #889: deliberately does NOT list `correctionOfSettlementId` —
-          // hasOnly-omission denies any client create carrying it (deny-by-
-          // omission, not an explicit deny). This is what makes the
-          // settlementNotifier.ts / writeRateMonitor.ts presence-only marker
-          // skips un-forgeable: only the Admin SDK (which bypasses this
-          // check) can write the key. Do NOT add the marker here.
-          return data.keys().hasOnly([
-            'id',
-            'groupId',
-            'eventId',
-            'createdBy',
-            'scope',
-            'payerParticipantId',
-            'recipientParticipantId',
-            'amountFils',
-            'currency',
-            'note',
-            'payerName',
-            'recipientName',
-            'isDeleted',
-            'deletedAt',
-            'settledAt',
-            'groupSettleUpId'
-          ])
-          && data.id == settlementId
-          && data.groupId == groupId
-          // Group settlements reuse the Settlement model with eventId pinned to
-          // groupId as a sentinel (group-level, not tied to any event). Migrating
-          // this overloaded field is tracked in #71 — do not relax this binding
-          // without that schema change.
-          && data.eventId == groupId
-          && data.scope == 'group'
-          && data.payerParticipantId in groupData(groupId).memberIds
-          && data.recipientParticipantId in groupData(groupId).memberIds
-          && isValidNullableDisplayName(data.payerName)
-          && isValidNullableDisplayName(data.recipientName)
-          // #382 PR-6: a group settlement's currency need only be a SUPPORTED code
-          // (validSettlementCore validCurrency floor), no longer one that equals
-          // group.currency — the old equality is deleted. The stepped-settle UI
-          // only offers currencies with a non-zero bucket client-side (L3); the
-          // server just validates a supported code. A crafted settlement in a
-          // no-debt currency is append-only (B3) and correctable by an offsetting
-          // row, so no server bucket-existence check is needed.
-          && validSettlementCore(data);
-        }
-
-        function validGroupSettlementCreate() {
-          return isGroupMember(groupId)
-            && groupAllowsClientWrites(groupId)
-            && validGroupSettlementBase(request.resource.data)
-            && validFreeText(request.resource.data.note)
-            && request.resource.data.createdBy == request.auth.uid
-            && request.resource.data.isDeleted == false
-            && request.resource.data.deletedAt == null;
-        }
-
-        function validGroupSettlementUpdate() {
-          return isGroupMember(groupId)
-            && groupAllowsClientWrites(groupId)
-            && requesterIsRecordCreator()
-            && request.resource.data.createdBy == resource.data.createdBy
-            && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['note', 'isDeleted', 'deletedAt'])
-            && validGroupSettlementBase(request.resource.data)
-            && (
-              (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'deletedAt'])
-                && request.resource.data.isDeleted == resource.data.isDeleted
-                && request.resource.data.deletedAt == resource.data.deletedAt)
-              || (
-                request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['isDeleted', 'deletedAt'])
-                && resource.data.isDeleted == false
-                && request.resource.data.isDeleted == true
-                && request.resource.data.deletedAt is string
-              )
-            );
-        }
+        // #1129: validGroupSettlementBase/Create/Update were DELETED —
+        // settlement creates are CALLABLE-ONLY (recordSettlement mirrors the
+        // membership/shape/#1144 gates server-side, plus the outstanding cap
+        // rules never had).
 
         allow read: if isGroupMember(groupId);
-        allow create: if validGroupSettlementCreate();
+        // #1129: settlement creates are callable-only (recordSettlement).
+        allow create: if false;
         // B3: settlements are append-only.
         allow update: if false;
         // B3: settlements are append-only.

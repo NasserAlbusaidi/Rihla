@@ -396,6 +396,7 @@ describe('recordSettlement — event mode', () => {
       ['zero amount', { amountFils: 0 }],
       ['negative amount', { amountFils: -5 }],
       ['fractional amount', { amountFils: 1.5 }],
+      ['amount beyond Number.MAX_SAFE_INTEGER (#528 mirror)', { amountFils: 9007199254740992 }],
       ['unsupported currency', { currency: 'XXX' }],
       ['non-canonical currency case', { currency: 'omr' }],
       ['over-long name', { payerName: 'x'.repeat(33) }],
