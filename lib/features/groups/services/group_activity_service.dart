@@ -21,6 +21,8 @@ import 'member_name_resolver.dart';
 ///
 /// Key design decisions (from D-32, D-33, D-34):
 ///   - [logGroupEvent] is fire-and-forget (returns `void`, not `Future<void>`)
+///     and, since #1140, is reserved for `member_joined` only — every
+///     mutation-paired row is folded into the mutation's own [WriteBatch]
 ///   - Timestamps are client-side ISO 8601 strings (not FieldValue.serverTimestamp)
 ///     per RESEARCH Pitfall 5 — avoids ordering issues with optimistic local reads
 ///   - [watchRecentActivity] defaults to the 5 most recent entries (D-34)
