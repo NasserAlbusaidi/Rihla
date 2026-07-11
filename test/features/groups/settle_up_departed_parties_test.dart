@@ -92,7 +92,8 @@ void main() {
     settlementsAsync: AsyncValue.data(history),
     currentUid: bob,
     currentMemberIds: currentMemberIds,
-    tileKeys: <int, GlobalKey>{},
+    // Mutable on purpose — _buildTile writes each tile's GlobalKey into it.
+    tileKeys: <int, GlobalKey>{}, // ignore: prefer_const_literals_to_create_immutables
     onCorrect: onCorrect,
     onRecord:
         ({
