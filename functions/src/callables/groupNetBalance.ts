@@ -39,11 +39,11 @@ const CURRENCY_SCALE: Record<string, number> = {
   QAR: 100,
 };
 
-function isSupportedCurrency(currency: string): boolean {
+export function isSupportedCurrency(currency: string): boolean {
   return Object.prototype.hasOwnProperty.call(CURRENCY_SCALE, currency.toUpperCase());
 }
 
-function currencyScale(currency: string): number {
+export function currencyScale(currency: string): number {
   return CURRENCY_SCALE[currency.toUpperCase()];
 }
 
