@@ -230,6 +230,21 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
   });
 
+  // #1132: a DEPARTED creator (createdBy still == uid, but uid removed from
+  // memberIds by leaveGroup) must lose delete authority. Seed the exact
+  // net-zero state that test 5 soft-deletes successfully, but drop OWNER from
+  // memberIds — so membership is the SOLE remaining failure cause (pre-fix this
+  // SUCCEEDS; only the new isCurrentMember conjunct turns it into
+  // permission-denied). Asserts the specific code, not a bare throw.
+  test('2b. #1132 departed creator (createdBy set, not in memberIds) is rejected with permission-denied', async () => {
+    await seedGroup('g', { memberIds: [MEMBER] }); // createdBy still OWNER
+    await seedMember('g', MEMBER);
+    await expect(
+      wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect((await groupSnap('g')).data()?.isDeleted).toBe(false);
+  });
+
   test('3. missing group is rejected with not-found', async () => {
     await expect(
       wrapped({ data: { groupId: 'ghost' }, auth: { uid: OWNER } } as any),

@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import '../admin';
 import { normalizeRequiredDisplayName } from './shared/displayName';
 import { MAX_FAN_IN_EVENTS, applyEventFanIn, collectEventFanIn } from './shared/eventFanIn';
+import { isCurrentMember } from './shared/membership';
 
 export interface AddShadowMemberInput {
   groupId: string;
@@ -75,7 +76,9 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
       ) {
         throw new HttpsError('not-found', 'Group not found.');
       }
-      if (groupData.createdBy !== uid) {
+      // #1132: createdBy alone is membership-blind — a departed creator must not
+      // retain add-by-name authority.
+      if (groupData.createdBy !== uid || !isCurrentMember(groupData, uid)) {
         throw new HttpsError(
           'permission-denied',
           'Only the group creator can add members by name.',

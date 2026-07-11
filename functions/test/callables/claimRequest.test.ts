@@ -372,6 +372,20 @@ describe('decideClaimRequest (#278 PR8)', () => {
     expect((await groupDoc('g')).memberIds).toEqual([OWNER, MEMBER2, SHADOW]);
   });
 
+  test('D2b. #1132 departed creator (createdBy set, not in memberIds) → permission-denied; request unchanged', async () => {
+    // Seed the exact state D-approve succeeds on (valid pending request + shadow)
+    // but drop OWNER from memberIds — createdBy stays OWNER, so the new
+    // isCurrentMember conjunct is the SOLE failure cause (pre-fix this APPROVES).
+    await seedGroup('g', [MEMBER2, SHADOW]); // OWNER is createdBy but NOT a member
+    await seedMember('g', MEMBER2);
+    await seedShadow('g', SHADOW);
+    const rid = await seedPendingRequest('g', CLAIMER, SHADOW);
+    await expect(
+      decide({ groupId: 'g', requestId: rid, approve: true }, authOf(OWNER)),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect((await reqDoc('g', rid))?.status).toBe('pending');
+  });
+
   test('D3. invalid groupId / requestId / non-boolean approve → invalid-argument', async () => {
     await expect(decide({ groupId: 'a/b', requestId: 'x', approve: true })).rejects.toMatchObject({
       code: 'invalid-argument',

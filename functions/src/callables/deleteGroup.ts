@@ -11,6 +11,7 @@ import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
 import { recomputeNet, timestampMillis } from './groupNetBalance';
+import { isCurrentMember } from './shared/membership';
 
 // #190: server-authoritative group deletion. The callable recomputes per-actor
 // net balances via the shared groupNetBalance oracle (EXACTLY as the client
@@ -142,7 +143,9 @@ async function acquireDeleteGroupLock(
         lockedBy: null,
       };
     }
-    if (groupData.createdBy !== uid) {
+    if (groupData.createdBy !== uid || !isCurrentMember(groupData, uid)) {
+      // #1132: createdBy alone is membership-blind — a departed creator (still
+      // == createdBy, no longer in memberIds) must not retain delete authority.
       throw new HttpsError('permission-denied', 'Only the group creator can delete the group.');
     }
     if (groupData.deletingInProgress === true) {

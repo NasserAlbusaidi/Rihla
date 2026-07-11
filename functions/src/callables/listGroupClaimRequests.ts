@@ -2,6 +2,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import '../admin';
 import { validId } from './shared/ids';
+import { isCurrentMember } from './shared/membership';
 
 // #278 claim/merge PR8 (D1). The group CREATOR polls the pending claim requests
 // to approve/decline (claimRequests is `allow read: if false`, so no client
@@ -53,8 +54,11 @@ export const listGroupClaimRequests = onCall<
     if (!groupSnap.exists) {
       throw new HttpsError('not-found', 'Group not found.');
     }
-    // D1 trust anchor: only the group creator may list claim requests.
-    if ((groupSnap.data() ?? {}).createdBy !== uid) {
+    // D1 trust anchor: only the CURRENT-member group creator may list claim
+    // requests. #1132: createdBy alone is membership-blind — a departed creator
+    // must not retain read access to the claim queue.
+    const groupData = groupSnap.data() ?? {};
+    if (groupData.createdBy !== uid || !isCurrentMember(groupData, uid)) {
       throw new HttpsError('permission-denied', 'Only the group creator can view claim requests.');
     }
 

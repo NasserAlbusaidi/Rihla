@@ -2229,6 +2229,107 @@ describe('Publish readiness Firestore rules', () => {
     });
   });
 
+  describe('#1132 departed creator loses admin authority', () => {
+    // leaveGroup never reassigns createdBy, so a creator who left kept every
+    // createdBy-keyed power. Membership is now a conjunct on isCreator,
+    // requesterIsEventAdmin, and validMemberDelete's creator branch.
+    //
+    // CONFOUND GUARD (Gate round 1): validEventBase re-asserts
+    // participantIds.hasOnly(groupMembers()). If we left the departed creator in
+    // e1.participantIds while dropping them from memberIds, the admin soft-delete
+    // would deny PRE-fix via that check (not via authority) → false RED. So
+    // departCreator ALSO prunes 'owner' from e1.participantIds/participantNames,
+    // making requesterIsEventAdmin the SOLE gate (createdBy stays 'owner'). The
+    // close path (validEventCloseToggle) skips validEventBase, but we prune
+    // uniformly so every event test isolates the conjunct.
+    async function departCreator(): Promise<void> {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await db.doc('groups/g1').update({ memberIds: ['member'], updatedAt: new Date() });
+        await db.doc('groups/g1/members/owner').delete();
+        await db.doc('groups/g1/events/e1').update({
+          participantIds: ['member'],
+          participantNames: { member: 'Member' },
+        });
+      });
+    }
+
+    async function seedShadow(id: string, name: string): Promise<void> {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc(`groups/g1/members/${id}`).set({
+          id, userId: id, displayName: name,
+          role: 'MEMBER', joinedAt: new Date(), isShadow: true,
+        });
+      });
+    }
+
+    test('departed creator cannot rename the group', async () => {
+      await departCreator();
+      const departed = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(departed.doc('groups/g1').update({
+        name: 'Hijacked', updatedAt: new Date(),
+      }));
+    });
+
+    test('departed creator cannot set the group stamp', async () => {
+      await departCreator();
+      const departed = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(departed.doc('groups/g1').update({
+        glyph: 'tent', inkIndex: 2, updatedAt: new Date(),
+      }));
+    });
+
+    test('departed creator cannot admin-soft-delete an event', async () => {
+      await departCreator();
+      const departed = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1').update({
+        isDeleted: true, deletedAt: new Date(), updatedAt: new Date(),
+      }));
+    });
+
+    test('departed creator cannot close an event', async () => {
+      await departCreator();
+      const departed = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1').update({
+        isClosed: true, closedAt: new Date(), closedBy: 'owner', updatedAt: new Date(),
+      }));
+    });
+
+    test('departed creator cannot delete a shadow member doc', async () => {
+      await seedShadow('shadow-uuid-1', 'Guest');
+      await departCreator();
+      const departed = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(departed.doc('groups/g1/members/shadow-uuid-1').delete());
+    });
+
+    // Over-block guards: a creator who is STILL a member keeps every power.
+    test('current creator still renames, stamps, and closes', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1').update({
+        name: 'Renamed Crew', updatedAt: new Date(),
+      }));
+      await assertSucceeds(owner.doc('groups/g1').update({
+        glyph: 'tent', inkIndex: 2, updatedAt: new Date(),
+      }));
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        isClosed: true, closedAt: new Date(), closedBy: 'owner', updatedAt: new Date(),
+      }));
+    });
+
+    test('current creator still admin-soft-deletes an event', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1').update({
+        isDeleted: true, deletedAt: new Date(), updatedAt: new Date(),
+      }));
+    });
+
+    test('current creator still deletes a shadow member doc', async () => {
+      await seedShadow('shadow-uuid-2', 'Guest2');
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/members/shadow-uuid-2').delete());
+    });
+  });
+
   // B3 append-only guard. NOTE: stays green regardless of the validSoftDelete
   // loosening, because settlement updates are dead-denied at `allow update: if
   // false` (firestore.rules:735) — it does NOT detect drift in validSoftDelete

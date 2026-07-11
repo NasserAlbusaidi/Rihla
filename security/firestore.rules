@@ -311,7 +311,13 @@ service cloud.firestore {
       }
 
       function isCreator() {
-        return signedIn() && request.auth.uid == resource.data.createdBy;
+        // #1132: creator authority requires CURRENT membership — leaveGroup never
+        // reassigns createdBy, so a departed creator would otherwise keep rename/
+        // stamp authority forever (writes don't need read access). Same-doc check,
+        // zero extra reads.
+        return signedIn()
+          && request.auth.uid == resource.data.createdBy
+          && request.auth.uid in resource.data.memberIds;
       }
 
       function validGroupCreate() {
@@ -435,7 +441,21 @@ service cloud.firestore {
         }
 
         function requesterIsEventAdmin() {
-          return requesterIsEventCreator() || requesterIsGroupCreator();
+          // #1132: fold ONE membership term over BOTH branches — a departed group
+          // creator is usually also the event creator, so gating only the group-
+          // creator branch would leave the event-creator branch open.
+          // #723: the event allow-update OR-chain is at the ~1000-expression
+          // ceiling, so this uses the INLINE membership term
+          // (`uid in groupData.memberIds`) rather than isGroupMember() — dropping
+          // isGroupMember's redundant signedIn()+exists() (both already
+          // established: requesterIsEvent/GroupCreator read request.auth.uid, and
+          // eventAllowsClientWrites → groupAllowsClientWrites already exists()es
+          // the group). groupData()'s get is deduped (same doc as
+          // requesterIsGroupCreator), so no new document access. The fuller
+          // isGroupMember() form tipped 3 admin-update allow tests over the
+          // ceiling into PERMISSION_DENIED.
+          return (requesterIsEventCreator() || requesterIsGroupCreator())
+            && request.auth.uid in groupData(groupId).memberIds;
         }
 
         function validModules(modules) {
@@ -557,6 +577,14 @@ service cloud.firestore {
         }
 
         function validEventLightUpdate() {
+          // #723/#1132: the cheap participant-additivity guards run BEFORE the
+          // heavy validEventUpdateCommon() (→ validEventBase). A participant
+          // REMOVAL fails hasAll() here and short-circuits the light branch
+          // WITHOUT paying for validEventBase, leaving expression budget for the
+          // admin branch that follows in the OR-chain. Reorder only — the AND set
+          // is unchanged, so light-update semantics are identical; it just stops
+          // the light+admin double-validEventBase from tipping the ~1000-expr
+          // ceiling once #1132 added a membership term to requesterIsEventAdmin.
           return requesterIsParticipant()
             && eventAllowsClientWrites(groupId, eventId)
             && request.resource.data.diff(resource.data).affectedKeys()
@@ -569,12 +597,12 @@ service cloud.firestore {
                 'updatedAt',
                 'description'
               ])
-            && validEventUpdateCommon()
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantIds'])
               || request.resource.data.participantIds.hasAll(resource.data.participantIds))
             && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantNames'])
               || (request.resource.data.participantNames.diff(resource.data.participantNames).removedKeys().size() == 0
-                && request.resource.data.participantNames.diff(resource.data.participantNames).changedKeys().size() == 0));
+                && request.resource.data.participantNames.diff(resource.data.participantNames).changedKeys().size() == 0))
+            && validEventUpdateCommon();
         }
 
         function validEventAdminUpdate() {
@@ -1067,6 +1095,13 @@ service cloud.firestore {
                 && resource.data.userId == request.auth.uid
                 && !(request.auth.uid in groupAfterMemberIds()))
               || (groupData(groupId).createdBy == request.auth.uid
+                // #1132: creator branch requires CURRENT membership — else a
+                // departed creator (createdBy dangles after leaveGroup) can
+                // delete shadow member docs (uuid userId never in memberIds → the
+                // after-guard passes on a lone delete), orphaning the shadow's
+                // balance + breaking the claim flow. Same-doc read (groupData
+                // already fetched by groupAllowsClientWrites above), no new access.
+                && request.auth.uid in groupData(groupId).memberIds
                 && (!groupExistsAfter()
                   || !(resource.data.userId in groupAfterMemberIds())))
             );

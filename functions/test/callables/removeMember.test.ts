@@ -292,6 +292,26 @@ describe('removeMember callable — server-authoritative creator-remove + balanc
     expect(await activityDocs('g')).toHaveLength(0);
   });
 
+  test('6b. #1132 departed creator (createdBy set, not in memberIds) is rejected with permission-denied; no writes', async () => {
+    // Seed the net-zero removable state test 7 succeeds on, but drop OWNER from
+    // memberIds (createdBy still OWNER) — so the isCurrentMember conjunct is the
+    // SOLE failure cause (pre-fix this SUCCEEDS at removing THIRD).
+    await seedGroup('g', { memberIds: [MEMBER, THIRD] });
+    await seedMember('g', MEMBER);
+    await seedMember('g', THIRD);
+
+    await expect(
+      wrapped({
+        data: { groupId: 'g', targetUserId: THIRD },
+        auth: { uid: OWNER },
+      } as any),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+
+    expect((await groupData('g')).memberIds).toEqual([MEMBER, THIRD]);
+    expect(await docExists('groups/g/members/third')).toBe(true);
+    expect(await activityDocs('g')).toHaveLength(0);
+  });
+
   test('7. square target leaves: memberIds loses target, member doc deleted, member_left logged with removed metadata + creator actorName', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);
