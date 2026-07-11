@@ -25,7 +25,7 @@ explicitly allowed is refused.
 | `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self, or current-member creator for a non-member (shadow) doc (#1132); after server-authoritative memberIds removal |
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
 | `groups/{gid}/settlements/{sid}` (group-level) | members | members (creator must be self) | ❌ (B3 append-only) | ❌ (B3 append-only) |
-| `groups/{gid}/events/{eid}` | members | members | event participants (light) / current-member event-or-group creator (admin, #1132) | ❌ (soft-delete only) |
+| `groups/{gid}/events/{eid}` | members | members | current-member event participants (light, #1135) / current-member event-or-group creator (admin, #1132) | ❌ (soft-delete only) |
 | `groups/{gid}/events/{eid}/expenses/{xid}` | members | member + event participant (creator must be self, #1131) | member + event participant, allowed-fields, soft-delete one-way (#1131) | ❌ |
 | `groups/{gid}/events/{eid}/settlements/{sid}` | members | members (creator must be self; counterparties must be event participants, #752) | ❌ (B3) | ❌ (B3) |
 | `groups/{gid}/events/{eid}/activity_logs/{aid}` | members | ❌ (server audit trigger only) | ❌ | ❌ |
@@ -366,7 +366,7 @@ settlement records reachable.
 
 ### 4.5 `groups/{gid}/events/{eid}` (C-Hierarchy)
 
-Events have two update paths reflecting a two-tier permission model.
+Events have three update paths: light, admin, and close-toggle.
 
 #### Read
 
@@ -379,8 +379,8 @@ in (so the group detail screen can list every event).
 
 #### Create (`validEventCreate`)
 
-Caller must be a group member. The new doc must contain exactly these
-keys:
+Caller must be a group member. The create payload has two key sets.
+These base keys are required:
 
 ```
 ['name', 'type', 'groupId', 'createdBy', 'participantIds',
@@ -389,7 +389,18 @@ keys:
  'updatedAt', 'description']
 ```
 
-`validEventBase` enforces:
+These close-lifecycle keys are optional and allowlisted:
+
+```
+['isClosed', 'closedAt', 'closedBy']
+```
+
+Each close key is optional under the rules' create contract. When present,
+its only valid birth value is `isClosed: false`, `closedAt: null`, or
+`closedBy: null`, respectively. `Event.toFirestoreMap()` emits all three with
+those open-state defaults, matching `validEventCreate()`.
+
+`validEventCreate()` and its `validEventCreateFields()` helper enforce:
 
 - `name` valid display name
 - `type` in `['trip', 'camping', 'travel', 'night_day_out', 'custom']`
@@ -397,7 +408,7 @@ keys:
 - `participantIds` non-empty, all UIDs are members of the group
 - `participantNames` is a map whose values all pass `isValidDisplayName`
 - `modules` is a map with the single key `ledger: bool` (Phase 39 lock)
-- Optional `startDate`, `endDate` are nullable timestamps
+- `startDate` and `endDate` are nullable timestamps
 - `description` is nullable string
 - `isDeleted: false`, `deletedAt: null` at create time
 - Caller must include themselves in `participantIds`
@@ -407,7 +418,22 @@ the stripped gear/logistics/memories/vault modules at the schema level.
 
 #### Update — light path (`validEventLightUpdate`)
 
-Any current event participant. May edit only these fields:
+Any current event participant. The light path proves current group
+membership by composition:
+
+1. `requesterIsParticipant()` requires the caller in the existing
+   `participantIds`.
+2. The additive guard requires the post-write `participantIds` to retain
+   every existing ID.
+3. `validEventUpdateCommon()` → `validEventBase()` requires the post-write
+   `participantIds` to contain only current `group.memberIds`.
+
+Together, those predicates require the caller to be a current group member.
+`validEventLightUpdate()` intentionally omits a separate `isGroupMember()`
+conjunct because it would be redundant on the #723 near-ceiling event-update
+OR-chain.
+
+The light path may edit only these fields:
 
 ```
 ['name', 'participantIds', 'participantNames', 'startDate',
@@ -421,13 +447,14 @@ Additional constraints:
 - Cannot rename or delete entries in `participantNames` — only adding
   new entries.
 
-This is the "any participant can update event metadata" path: rename
-the event, extend the date range, add a description, add a participant.
+This is the current-participant metadata path: rename the event, extend the
+date range, add a description, or add a participant.
 
 > **Decision (#57): additive participant-add is the intended collaboration model.**
-> Any event participant may *add* members to an event; removing and renaming are
-> admin-only. This is deliberate — events are collaborative and people on a trip
-> routinely add each other. **Abuse boundary:** added IDs are constrained to
+> Any current-member event participant may *add* group members to an event;
+> removing and renaming are admin-only. This is deliberate — events are
+> collaborative and people on a trip routinely add each other. **Abuse
+> boundary:** added IDs are constrained to
 > **existing group members** — the light path calls `validEventUpdateCommon()` →
 > `validEventBase()`, which enforces `participantIds.hasOnly(groupMembers())`. So
 > the blast radius is in-group griefing (a member adding another member to an
@@ -438,7 +465,9 @@ the event, extend the date range, add a description, add a participant.
 
 #### Update — admin path (`validEventAdminUpdate`)
 
-Event creator **OR** group creator. May edit a superset:
+A current group member who is the event creator **OR** group creator.
+`requesterIsEventAdmin()` enforces both creator authority and current group
+membership. The admin path may edit a superset:
 
 ```
 ['name', 'participantIds', 'participantNames', 'modules',
@@ -449,6 +478,10 @@ Event creator **OR** group creator. May edit a superset:
 Plus: can remove participants, edit `modules`, and perform the one-way
 `isDeleted: false → true` transition (along with `deletedAt: timestamp`).
 
+`validEventAdminUpdate()` still reaches `validEventBase()` through
+`validEventUpdateCommon()`, so admin authority does not bypass the common
+event validation or the current-member participant-subset guard.
+
 The soft-delete sub-rule is strict:
 
 ```
@@ -458,6 +491,45 @@ request.resource.data.diff(resource.data).affectedKeys()
 && request.resource.data.isDeleted == true
 && request.resource.data.deletedAt is timestamp
 ```
+
+#### Update — close-toggle path (`validEventCloseToggle`)
+
+A current group member who is the event creator **OR** group creator may
+close or reopen an event. The diff may contain only these fields:
+
+```
+['isClosed', 'closedAt', 'closedBy', 'updatedAt', 'spendingSnapshot']
+```
+
+This is an allowlist, not a requirement to change all five fields.
+`spendingSnapshot` is optional: an absent post-write key passes, an explicit
+null fails, and a present value must be a map with at most 16 top-level
+entries. The rules otherwise treat it as an opaque display-only blob. The
+post-write `updatedAt` must be a timestamp. Closing changes an open or legacy
+event to `isClosed: true`, with `closedAt` as a timestamp and `closedBy`
+pinned to the caller. Reopening changes a closed event to `isClosed: false`,
+`closedAt: null`, and `closedBy: null`.
+
+This path deliberately bypasses `validEventUpdateCommon()` and
+`validEventBase()`. Rechecking the base would reject historical events whose
+`participantIds` retain departed members; the narrow diff allowlist keeps
+every unrelated field immutable while close/reopen remains available.
+
+#### Retained departed participants
+
+Retaining a departed UID in `participantIds` makes ordinary light metadata
+updates and admin metadata or soft-delete updates that preserve the roster
+fail the post-write participant-subset guard. At the rules layer, a current
+admin can satisfy the guard by removing every stale UID in the same admin
+update. No current client service or UI exposes participant removal, however.
+Roster cleanup cannot be bundled with soft-delete: when the delete fields
+change, the diff may contain only `isDeleted`, `deletedAt`, and `updatedAt`.
+Cleanup must succeed first; soft-delete can follow in a separate update.
+
+Practical recovery therefore requires every stale real member to rejoin, or
+an out-of-band Admin SDK repair or future participant-management feature.
+Close/reopen remains available through `validEventCloseToggle()`'s deliberate
+base-validation bypass. Redesigning this roster coupling is separate scope.
 
 #### Delete
 
