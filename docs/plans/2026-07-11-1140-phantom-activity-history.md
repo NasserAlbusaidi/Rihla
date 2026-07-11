@@ -54,8 +54,10 @@ Reachable pre-clamp denials that would convert a would-succeed money/lifecycle w
 
 Mitigation (single chokepoint): a pure static `GroupActivityService.sanitizeActorName(String raw) → String` — trim; strip control chars (`\x00-\x1f\x7f`); strip a trailing `MemberNameResolver.formerSuffix`; clamp to 32 UTF-16 code units; if the result is empty, return `'Someone'`. `buildActivityDoc` calls it on `actorName`, so **every** activity write (batched paths AND the surviving `logGroupEvent`/`member_joined`) is guaranteed rule-valid — this strictly *improves* `member_joined`, whose fire-and-forget write silently *failed* on a malformed name before. For **actorId**: the settlement/create paths already pass a guarded non-empty `auth.uid`; fix event-delete to compute `actorId` up front and, if it is empty, take the **domain-only** `deleteEvent` path (no activity leg) — preserving D-14 (a delete is never blocked by activity).
 
-### D3 — Shared boundary: one activity-doc builder, deterministic ids
+### D3 — Shared boundary: one activity-doc builder, deterministic ids, EXTEND-not-add
 Hoist a pure static `GroupActivityService.buildActivityDoc({...}) → Map<String,dynamic>` (single source of the activity shape; the fire-and-forget `logGroupEvent` also calls it). Each **domain service** owns its batch and stages the activity leg via this static builder from **its own `db`** (so a single injected fake in tests receives both writes — the two services do NOT share a `db` in tests).
+
+**The activity params are OPTIONAL on the EXISTING domain method — never a parallel `stage…WithActivity` method (Gate R2 P1).** `addSettlement`, `stageEvent`, `deleteEvent`, `addGroupSettlement`, and `stageDecomposedSettleUp` each *gain* optional named activity params and batch internally when they are present (null → legacy single-write, unchanged). Rationale: the affected screen keeps calling the **same** method, and the many test doubles that `extends`-override those methods (`_RecordingSettlementService`/`_FailingSettlementService`/`_DeniedSettlementService` `settle_up_screen_test.dart:2170/2220/2242`, the mocked `EventService`/`GroupSettlementService`) are forced by the analyzer to update their override signatures (adding optional named params invalidates a stale override) — a **compile error, not a silent bypass** of a would-be new method the double doesn't override. This is the single most important structural decision for keeping the test surface honest.
 
 Activity doc ids become **deterministic from the mutation identity** (satisfies the "no duplicate on retry/replay" acceptance box via the same free-idempotency floor as #1093 — `allow update/delete: if false` denies a colliding replay):
 - event create → `evt_created_<eventId>`
@@ -117,14 +119,30 @@ Settlement corrections route through the `correctSettlement` callable and write 
 /// `isValidDisplayName` (#1140 D7) so the co-batched activity op can never
 /// veto the paired money/lifecycle write on a name-shape check.
 static String sanitizeActorName(String raw) {
-  var s = raw.trim();
-  if (s.endsWith(MemberNameResolver.formerSuffix)) {
+  // Order matters (Gate R2 P3): strip control chars FIRST so a crafted
+  // 'Bob (former member)\x01' can't hide the suffix from the endsWith check.
+  var s = raw.replaceAll(RegExp(r'[\x00-\x1f\x7f]'), '').trim();
+  // Loop the suffix strip so a (pathological) doubled ' (former member)'
+  // can't survive and hit the rules' `.* \(former member\)$` reject.
+  while (s.endsWith(MemberNameResolver.formerSuffix)) {
     s = s.substring(0, s.length - MemberNameResolver.formerSuffix.length).trim();
   }
-  s = s.replaceAll(RegExp(r'[\x00-\x1f\x7f]'), '').trim();
   if (s.length > 32) s = s.substring(0, 32).trim();
-  return s.isEmpty ? 'Someone' : s;
+  // TOTALITY GUARD (Gate R2 P2): after every transform, assert the result
+  // actually satisfies isValidDisplayName; if the 32-clamp re-exposed a
+  // trailing suffix or anything else slipped through, floor to the constant.
+  // This makes "every input maps to a rule-valid string" trivially true.
+  if (s.isEmpty ||
+      s.endsWith(MemberNameResolver.formerSuffix) ||
+      RegExp(r'[\x00-\x1f\x7f]').hasMatch(s) ||
+      s.length > 32) {
+    return 'Someone';
+  }
+  return s;
 }
+```
+> `'Someone'` is a last-resort floor (unreachable — every `actorName` source is non-empty) kept non-localized to match the existing `'Unknown'`/`'Someone'` persisted defaults (`group_activity_log_model.dart:65`, `event_danger_section.dart:500`); the display layer localizes its own fallback separately (Gate R2 P3, cosmetic).
+```dart
 
 static Map<String, dynamic> buildActivityDoc({
   required String id,
@@ -224,7 +242,7 @@ Future<void> deleteEvent({
   await batch.commit();
 }
 ```
-`event_danger_section._executeDelete`: delete the separate `logGroupEvent` block (L494-513); resolve `actorId` up front (`FirebaseConfig.currentUser?.uid`), and **only** pass activity params to `deleteEvent` when `actorId` is non-empty — if it is empty, call the legacy domain-only `deleteEvent` (D7: a delete is never blocked by activity). `actorName` = deviceName or 'Someone' (also clamped by `buildActivityDoc`). `activityId: 'evt_deleted_${event.id}'`. Keep the existing `awaitServerAck` race, connectivity note, `context.go('/group/$groupId')`, and error snackbar.
+`event_danger_section._executeDelete`: delete the separate `logGroupEvent` block (L494-513); resolve `actorId` up front **inside a try/catch** (Gate R2 P2 — `FirebaseConfig.currentUser` THROWS `[core/no-app]` when Firebase isn't initialized, per CLAUDE.md, it does NOT return null; the existing code wraps its read at L496-513 for exactly this). On throw **or** empty uid → call the legacy domain-only `deleteEvent` (no activity params) so a delete is never blocked (D7/D-14). Otherwise pass `activityId: 'evt_deleted_${event.id}'` + `activityActorId: actorId` + `activityActorName` (deviceName or 'Someone', also clamped by `buildActivityDoc`) + `activityMetadata: {'eventId': event.id, 'eventName': event.name}`. Keep the existing `awaitServerAck` race, connectivity note, `context.go('/group/$groupId')`, and error snackbar.
 
 > Note (Gate R1 P3): the activity `timestamp` now stamps at batch-stage time (a few ms before the ack) instead of post-ack. The feed orders by client ISO timestamp desc; the shift is negligible. The decomposed path shares the batch's single `now` (already the settlement `settledAt`).
 
@@ -256,34 +274,45 @@ Future<void> deleteEvent({
 ## Task 4: Event settlement — atomic settlement + activity (money)
 
 **Files:**
-- Modify: `lib/features/ledger/services/settlement_service.dart` (add `stageSettlementWithActivity`)
+- Modify: `lib/features/ledger/services/settlement_service.dart` (**extend** `addSettlement` — NOT a new method, D3)
 - Modify: `lib/features/ledger/screens/settle_up_screen.dart:842-937`
-- Test: `test/features/ledger/settle_up_phantom_1140_test.dart` (new)
+- Test: `test/features/ledger/settle_up_phantom_1140_test.dart` (new); `test/features/ledger/settle_up_screen_test.dart` (migrate doubles, Task 7)
 
 **Step 1 — Failing test (RED):** offline queued-then-denied primary settlement + real activity service on the same fake → assert `activity` empty after denial. Plus an **idempotency** case: two `recordOnce` from the identical `#1093` epoch snapshot → assert **one** settlement doc AND **one** `stl_<id>` activity row.
 
 **Step 2 — Run, expect FAIL** (separate post-ack log lands a row).
 
-**Step 3 — Implement:** add
+**Step 3 — Implement:** `addSettlement` gains OPTIONAL activity params and batches internally when present (keeps its `Future<Settlement>` return + server-ack semantics, so the screen still races it via `awaitServerAck`):
 ```dart
-({Settlement settlement, Future<void> ack}) stageSettlementWithActivity({
-  ...existing addSettlement params...,
-  required String activityActorId,
-  required String activityActorName,
-  required String activityDescription,
-  required Map<String, dynamic> activityMetadata,
-}) {
+Future<Settlement> addSettlement({
+  ...existing params...,
+  String? activityId,
+  String? activityActorId,
+  String? activityActorName,
+  String? activityDescription,
+  Map<String, dynamic>? activityMetadata,
+}) async {
   final data = buildSettlementDoc(...);           // unchanged money shape
+  final ref = eventSubcollection(groupId, eventId, 'settlements').doc(id);
+  if (activityId == null) {                        // legacy path — unchanged
+    await ref.set(data);
+    return Settlement.fromFirestore(data);
+  }
   final batch = db.batch()
-    ..set(eventSubcollection(groupId, eventId, 'settlements').doc(id), data)
+    ..set(ref, data)
     ..set(
-      db.collection('groups').doc(groupId).collection('activity').doc('stl_$id'),
-      GroupActivityService.buildActivityDoc(id: 'stl_$id', type: 'event_settlement', ...),
+      db.collection('groups').doc(groupId).collection('activity').doc(activityId),
+      GroupActivityService.buildActivityDoc(
+        id: activityId, type: 'event_settlement',
+        actorId: activityActorId!, actorName: activityActorName!,
+        description: activityDescription!, metadata: activityMetadata!,
+        timestampUtc: DateTime.now().toUtc()),
     );
-  return (settlement: Settlement.fromFirestore(data), ack: batch.commit());
+  await batch.commit();
+  return Settlement.fromFirestore(data);
 }
 ```
-Screen `_recordSettlement`: replace the `addSettlement` + separate `logGroupEvent` with the single staged call, race `.ack`, keep the `ledgerRevision.state++` bump (exactly once, after the ack) and the queued/acked snackbars. Settlement id stays the #1093 deterministic id.
+Screen `_recordSettlement`: pass `activityId: 'stl_$id'` + the activity fields to `addSettlement`, drop the separate `logGroupEvent` (L908-937), keep the `ledgerRevision.state++` bump (exactly once, after the ack) and the queued/acked snackbars. Settlement id stays the #1093 deterministic id. Because the screen still calls `addSettlement`, the three `settle_up_screen_test.dart` doubles keep intercepting (after the analyzer forces their signatures to add the optional params — Task 7).
 
 **Step 4 — Run, expect PASS** + GREEN twin.
 
@@ -334,34 +363,47 @@ Screen `_recordSettlement`: replace the `addSettlement` + separate `logGroupEven
 
 ---
 
-## Task 7: Migrate existing activity-assertion tests (Gate R1 P2 — mandatory, do NOT re-green by re-adding `logGroupEvent`)
+## Task 7: Migrate existing activity- AND domain-service test doubles (Gate R1 P2 + R2 P1 — mandatory)
 
-After the fold the five screens **stop calling `groupActivityServiceProvider.logGroupEvent`** for the mutation-paired rows, so every existing test that asserts `logCalls`/`verify(logGroupEvent)`/`verifyNever`/`verifyZeroInteractions` on those paths goes red. **The forbidden fix is re-adding a separate `logGroupEvent` to re-green — that silently reintroduces the phantom.** Port each to prove the activity via the batched write instead. Grep to confirm the live surface before porting: `grep -rn "logCalls\|logGroupEvent\|_RecordingGroupActivityService\|verifyNever\|verifyZeroInteractions" test/`.
+Two independent break classes after the fold. **The forbidden fix for either is re-adding a separate `logGroupEvent` to re-green — that silently reintroduces the phantom.**
+
+**Class A — activity-assertion breaks (R1 P2):** the five screens stop calling `groupActivityServiceProvider.logGroupEvent` for the mutation-paired rows, so tests asserting `logCalls`/`verify(logGroupEvent)`/`verifyNever`/`verifyZeroInteractions` go red.
+
+**Class B — domain-double breaks (R2 P1 — the subtle one):** the activity now rides *inside* the domain method (`addSettlement`/`deleteEvent`/`stageEvent`/`addGroupSettlement`/`stageDecomposedSettleUp`). Because those methods **gain optional named params** (D3), every test double that `extends`-overrides them (`_RecordingSettlementService`/`_FailingSettlementService`/`_DeniedSettlementService`, mocked `EventService`, recording/failing `GroupSettlementService`) gets an **analyzer `invalid_override`** until its signature is updated — a compile error that *forces* the migration (no silent bypass). Update each override's signature to include the new optional params; its existing behavior (record/throw/deny) then still intercepts the call. A **mocktail-mocked** domain service (e.g. `event_settings_screen_test.dart`) instead needs its `when(...)`/`verify(...)` extended with the new `any(named:)` args.
+
+**Confirm the live surface before porting:** `grep -rn "logCalls\|logGroupEvent\|_RecordingGroupActivityService\|verifyNever\|verifyZeroInteractions\|addSettlement\|deleteEvent(\|stageEvent(\|addGroupSettlement" test/`.
 
 **Files (enumerated — confirm line numbers at port time; counts are 2026-07-11 grep hits):**
-- `test/features/events/create_event_test.dart` (~10 hits: `verify(()=>activityService.logGroupEvent(...))` + `verifyNever`) → replace with reading `groups/{gid}/activity` from the shared fake (real `GroupActivityService.withFirestore(fake)`), asserting exactly one `evt_created_<eventId>` row on success / none on the failure paths.
-- `test/features/groups/group_settle_up_screen_test.dart` (~37 hits incl. the multi-currency `logCalls hasLength(2)` case) → port each `logCalls` assertion to an activity-collection read; the two-currency case becomes two `gstl_`/`stl_` rows (one per currency settle-up).
-- `test/features/groups/group_settle_up_decompose_test.dart` (~12 hits incl. `logCalls` content `amount '7.75'` + metadata shape) → assert the staged `gstl_` activity doc's `metadata`/`description` instead of `logCalls`.
-- `test/features/groups/group_settle_up_dedup_1093_test.dart` (~5 hits) and `test/features/ledger/settle_up_dedup_1093_test.dart` (`_RecordingGroupActivityService`) → the idempotency assertion becomes: two records from the identical epoch snapshot → exactly ONE `stl_<id>`/`gstl_<id>` activity row (the second batch collides on the deterministic settlement id and is denied in toto).
-- `test/features/events/event_settings_offline_412_test.dart` (~1 hit, stubs `GroupActivityService`) → keep the offline-delete routing assertions; the activity is now part of `deleteEvent`'s batch, so drop the separate-log stub expectation.
-- `test/features/groups/group_settle_up_atomic_929_test.dart` — already handled in Task 6.
+- `test/features/ledger/settle_up_screen_test.dart` — **Class B**: `_RecordingSettlementService:2170`, `_FailingSettlementService:2220`, `_DeniedSettlementService:2242` each override `addSettlement` → add the optional activity params to each signature (behavior unchanged: record/throw/deny still fire on the batched call). Any offline-412 double/Completer that gates on `addSettlement` — re-point to the new signature. The `#831` activity-presence assertion (~L781-789, reads `fakeDb…/activity`) must run against a **real** `SettlementService.withFirestore(fake)` so the batched activity row lands and is readable.
+- `test/features/events/event_settings_screen_test.dart:558-631` — **Class A+B**: mock `_MockEventService` + `_RecordingGroupActivityService`. (1) L586-588 `verify(deleteEvent(groupId,eventId))` → extend the `when(...)` stub (L564-569) and the `verify` with the 5 new `any(named:)`/expected args. (2) L590-596 `activityService.calls.single.type=='event_deleted'` → the activity is now a `deleteEvent` PARAM, not a `logGroupEvent` call: assert it via `verify(() => service.deleteEvent(..., activityId: 'evt_deleted_${event.id}', activityActorName: 'Test User', activityMetadata: {'eventId':…,'eventName':…}, activityActorId: any(named:'activityActorId')))`. (3) L599-631 `throwOnLog:true` "logging failure doesn't block delete" → **re-purpose** to the D7 fallback: force an empty/throwing `actorId` and assert `deleteEvent` is called **without** activity params and the screen still routes back — preserving the D-14 "delete never blocked by activity" coverage the old premise loses.
+- `test/features/events/create_event_test.dart` (~10 hits: mock `stageEvent` + `verify(logGroupEvent)`/`verifyNever`) → **Class A+B**: extend the mocked `stageEvent` `when/verify` with the new activity args; port the `logGroupEvent` verifies to `verify` the activity params on `stageEvent` (success → passed; failure paths → the domain-only branch, no activity params).
+- `test/features/groups/group_settle_up_screen_test.dart` (~37 hits incl. multi-currency `logCalls hasLength(2)`) → **Class A(+B if it uses GroupSettlementService doubles)**: port `logCalls` to activity-collection reads on a real service/fake; two-currency → two disjoint `gstl_`/`stl_` rows.
+- `test/features/groups/group_settle_up_decompose_test.dart` (~12 hits incl. `logCalls` content `amount '7.75'` + metadata) → assert the staged `gstl_` activity doc's `metadata`/`description` (via the Task 6 `_StubWriteBatch.staged` capture or a real fake) instead of `logCalls`.
+- `test/features/groups/group_settle_up_dedup_1093_test.dart` (~5) and `test/features/ledger/settle_up_dedup_1093_test.dart` (`_RecordingGroupActivityService`) → idempotency: two records from the identical epoch snapshot → exactly ONE `stl_`/`gstl_` activity row (the second batch collides on the deterministic settlement id, denied in toto).
+- `test/features/events/event_settings_offline_412_test.dart` (~1 hit, stubs `GroupActivityService`; mocks `deleteEvent`) → **Class B**: extend the `deleteEvent` stub with the new args; the activity now rides the batch, so drop the separate-log stub expectation.
+- `test/features/groups/group_settle_up_atomic_929_test.dart` — handled in Task 6; note the old `expect(logCalls, isEmpty)` (L295) is now vacuous — replace it with a real-service-on-fake "denied ⇒ no activity row" assertion (Gate R2 P3).
 
-**Porting pattern (the D3 real-service-on-shared-fake shape, already used at `settle_up_screen_test.dart:138-147`):** override the DOMAIN service provider with `Service.withFirestore(fake)` and read the activity collection back from that SAME `fake`; where a `_StubWriteBatch` is used (no-op `set`), assert via the extended `staged` capture (Task 6) or `setCount`. Tests that used a **mock** `GroupActivityService` (mocktail) must switch to a real one on the shared fake — a mock no longer sees the write.
+**Porting patterns:**
+- **Activity presence/absence** → real `Service.withFirestore(fake)`, read `groups/{gid}/activity` back from that SAME `fake` (the D3 shape, already used at `settle_up_screen_test.dart:138-147`).
+- **Domain-double behavior** (record/throw/deny/offline) → keep the `extends`-override; just widen its signature with the optional activity params (analyzer-forced). It won't write an activity row itself — that's fine; activity atomicity is proven by the new real-service RED/GREEN tests, not by these doubles.
+- **`_StubWriteBatch`** (no-op `set`) → assert via the extended `staged` capture (Task 6) or `setCount`.
 
-**Step 1:** run the full affected suites; expect a known set of reds. Port each red per the pattern above. Re-run to green.
+**Step 1:** `flutter analyze` — fix every `invalid_override` (Class B) first; then run the affected suites and port each red per above. Re-run to green.
 
-**Step 2 — Commit:** `test(activity): port logGroupEvent assertions to batched-activity reads (#1140)`
+**Step 2 — Commit:** `test(activity): migrate activity + domain-service doubles to batched-activity (#1140)`
 
 ---
 
 ## Task 8: Regression guard — corrections still suppress activity
 
 **Files:**
-- Test: `test/features/ledger/settle_up_screen_test.dart` (#831/#283/#889 block), `test/features/groups/group_settle_up_screen_test.dart` (#283/#889 block) — **run unchanged**.
+- Test: `test/features/ledger/settle_up_screen_test.dart` (#831/#283/#889 correction block), `test/features/groups/group_settle_up_screen_test.dart` (#283/#889 block).
 
-**Step 1:** run both correction tests; expect PASS (corrections route through the `correctSettlement` callable — `_recordSettlement`/`_recordDecomposedSettlement` are NOT on that path; the line-760 comment is stale wording only). If any needs a mechanical fixture tweak (e.g. a service now returns a batch ack), adjust the fixture only — never the suppression assertion.
+The **correction-suppression ASSERTIONS** stay semantically unchanged — corrections route through the `correctSettlement` callable (`_recordSettlement`/`_recordDecomposedSettlement` are NOT on that path; the line-760 comment is stale wording only), so a correction still writes NO activity row. Note: these files' test *doubles* (the SettlementService subclasses / mocks) DO get signature updates in Task 7 — "unchanged" refers to the suppression assertions and their intent, not the whole file compiling untouched.
 
-**Step 2 — Commit** only if a fixture tweak was needed: `test(settle): keep correction-suppression pinned post-#1140`.
+**Step 1:** after Task 7's double migration, run both correction blocks; expect the suppression assertions still PASS (a corrected settlement produces zero `activity` rows). Never weaken a suppression assertion to re-green — if one fails, the fold wrongly reached the correction path (a real bug).
+
+**Step 2 — Commit** folded into Task 7 (same files) unless a correction-specific fixture tweak stands alone: `test(settle): keep correction-suppression pinned post-#1140`.
 
 ---
 
