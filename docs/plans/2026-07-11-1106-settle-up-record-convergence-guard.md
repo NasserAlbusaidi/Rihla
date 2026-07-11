@@ -40,7 +40,7 @@ In that window the screen shows an understated suggested amount with a live, unw
 
 ### D1 — `groupConvergingEventIdsProvider` (new, in `group_balance_provider.dart`)
 
-Loading-skip mirror of `groupFailedEventIdsProvider`: iterates the SAME `groupEventsProvider` list and the SAME per-event family instances the live balance provider watches (zero new Firestore listeners — the cached `StreamProvider.family` argument used by `groupTaggedEventSettlementsProvider:261-266`), flagging event ids where `(expenses.isLoading && !expenses.hasValue) || (settlements.isLoading && !settlements.hasValue)`.
+Loading-skip mirror of `groupFailedEventIdsProvider`: iterates the SAME `groupEventsProvider` list and the SAME per-event family instances the live balance provider watches (zero new Firestore listeners — the cached `StreamProvider.family` argument used by `groupTaggedEventSettlementsProvider:267-283`), flagging event ids where `(expenses.isLoading && !expenses.hasValue) || (settlements.isLoading && !settlements.hasValue)`.
 
 Set (not bool) for symmetry with the failed-ids provider and testability.
 
@@ -77,9 +77,9 @@ Block, not warn: the #719 precedent for write-time staleness is abort-with-snack
 - **Await convergence with timeout at confirm** — seamless but complex; a #997-style wedged listener would hang the confirm. Snackbar-retry is simpler and self-healing.
 - **Warm the two `push()` entries (go-navigation / ancestor materialization)** — fixes only the two *known* entries and breaks the deliberate #996 push-leaf behavior; the write gate is entry-point-agnostic.
 
-### Accepted trade-off (surface for Gate review)
+### Accepted trade-off (surfaced to Gate round 1; both reviewers accepted the direction)
 
-If an event's stream **never** emits (the #997 DNS-blackhole wedge: listener up, no snapshot, no error), recording on this screen stays blocked until it does. That is the fail-safe direction: a basis that never delivers is a basis money must not be written from (same fail-safe stance as `outgoingShellProvablyEmpty`'s timeout→block). Display, history, and all server-authoritative actions stay available. Offline is NOT this case: the SDK delivers an initial from-cache snapshot (even empty) for every listener (#50 — offline reads served by SDK persistence), so convergence completes offline and the gate adds no offline blocker; the residual "offline + never-cached event" case shows that event's money nowhere on screen either, so blocking its basis from being *written* is precisely #1106, not a regression.
+The gate is deliberately COARSE: `.isNotEmpty` blocks recording for **every** pair while **any** event's streams are converging — including pairs whose own basis is fully resolved. In the normal (cold-entry) case that costs a sub-second retry; if an event's stream **never** emits (the #997 DNS-blackhole wedge: listener up, no snapshot, no error), the whole screen's RECORD stays blocked until it does. That is the fail-safe direction: a basis that never delivers is a basis money must not be written from (same fail-safe stance as `outgoingShellProvablyEmpty`'s timeout→block). Display, history, and all server-authoritative actions stay available. Offline is NOT this case: the SDK delivers an initial from-cache snapshot (even empty) for every listener (#50 — offline reads served by SDK persistence), so convergence completes offline and the gate adds no offline blocker; the residual "offline + never-cached event" case shows that event's money nowhere on screen either, so blocking its basis from being *written* is precisely #1106, not a regression.
 
 ---
 
@@ -354,6 +354,11 @@ Paste the failing output into the PR (RED evidence, #329).
 (a) At the top of the method body (before the `fromDisplayName` line, `:555`):
 
 ```dart
+    // Steps ≥2 of the stepped walk re-enter here in the async continuation
+    // after the previous sheet closed — the context may be disposed (Gate R1).
+    if (!context.mounted) {
+      return const _StepOutcome(_StepOutcomeKind.cancelled);
+    }
     // #1106: the live balance provider proceeds-on-partial while per-event
     // streams deliver their FIRST snapshot (the #244 loading-skip, deliberately
     // kept for display). A sheet opened inside that window carries an
@@ -369,6 +374,8 @@ Paste the failing output into the PR (RED evidence, #329).
       return const _StepOutcome(_StepOutcomeKind.invalid);
     }
 ```
+
+(Gate R1 union applied: the adversary's [P2] — the spec originally claimed gate (a) "runs synchronously from the tap", which is false for stepped-walk iterations ≥2; the mounted guard resolves it, returning `cancelled` so the walk stops quietly, mirroring the sheet-dismissed path.)
 
 (b) Inside the #719 revalidation block, immediately before `var writeBalances = balancesData;` / `final fresh = ...` (`:626-627`):
 
@@ -387,7 +394,7 @@ Paste the failing output into the PR (RED evidence, #329).
     }
 ```
 
-(`context.mounted` is already guaranteed at both sites: (a) runs synchronously from the tap; (b) sits after the existing `!context.mounted` early-return at `:577`.)
+(Mounted-ness: gate (a) carries its own guard above — the stepped walk re-enters this method after awaits; gate (b) sits after the existing `!context.mounted` early-return at `:577`.)
 
 **Step 3.4: Run — expect PASS** (A, B, C green). Re-run Task 1's provider tests, the sibling suites `group_settle_up_revalidation_test.dart`, `group_settle_up_decompose_test.dart`, `group_settle_up_atomic_929_test.dart`, `group_settle_up_dedup_1093_test.dart`, `group_settle_up_screen_test.dart` — expect all green (the gate must not trip any converged-basis fixture; those suites override `groupBalancesProvider` and either override the per-event families with emitting streams or leave them erroring — errors are NOT converging, so no false block).
 
