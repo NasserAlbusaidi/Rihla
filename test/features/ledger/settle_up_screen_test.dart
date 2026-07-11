@@ -1491,6 +1491,11 @@ void main() {
           currency: any(named: 'currency'),
           createdBy: any(named: 'createdBy'),
           note: any(named: 'note'),
+          activityId: any(named: 'activityId'),
+          activityActorId: any(named: 'activityActorId'),
+          activityActorName: any(named: 'activityActorName'),
+          activityDescription: any(named: 'activityDescription'),
+          activityMetadata: any(named: 'activityMetadata'),
         ),
       ).thenAnswer((_) => Completer<Settlement>().future);
 
@@ -2194,6 +2199,11 @@ class _RecordingSettlementService extends SettlementService {
     String? recipientName,
     String? note,
     String? groupSettleUpId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) async {
     calls.add((
       payerParticipantId: payerParticipantId,
@@ -2234,6 +2244,11 @@ class _FailingSettlementService extends SettlementService {
     String? recipientName,
     String? note,
     String? groupSettleUpId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) {
     throw StateError('write failed');
   }
@@ -2256,6 +2271,11 @@ class _DeniedSettlementService extends SettlementService {
     String? recipientName,
     String? note,
     String? groupSettleUpId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) {
     throw FirebaseException(
       plugin: 'cloud_firestore',

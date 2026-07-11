@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/services/firestore_repository.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/utils/safe_deserialize.dart';
+import '../../groups/services/group_activity_service.dart';
 import '../models/settlement_model.dart';
 
 /// Firestore-backed service for Settlement CRUD operations.
@@ -198,6 +199,12 @@ class SettlementService extends FirestoreRepository {
   /// The [amount] is converted to integer fils via [MoneySerializer.toSubunits]
   /// before being stored. The returned [Settlement] is deserialized from the
   /// data that was written, so amount round-trips through [MoneySerializer].
+  /// When [activityId] + the activity fields are supplied, the
+  /// `event_settlement` activity row is folded into the SAME [WriteBatch] as the
+  /// settlement doc (#1140): a rules rejection of the settlement (membership /
+  /// participation / dedup-id collision at replay) persists NEITHER, so a denied
+  /// settlement can never leave a phantom "settled X" row. With no activity
+  /// params it is the legacy single `.set()` (tests/scripts).
   Future<Settlement> addSettlement({
     required String id,
     required String groupId,
@@ -211,6 +218,11 @@ class SettlementService extends FirestoreRepository {
     String? recipientName,
     String? note,
     String? groupSettleUpId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) async {
     if (createdBy.isEmpty) {
       throw ArgumentError.value(
@@ -234,12 +246,31 @@ class SettlementService extends FirestoreRepository {
       note: note,
       groupSettleUpId: groupSettleUpId,
     );
+    final ref = eventSubcollection(groupId, eventId, 'settlements').doc(id);
     try {
-      await eventSubcollection(
-        groupId,
-        eventId,
-        'settlements',
-      ).doc(id).set(data);
+      if (activityId == null) {
+        await ref.set(data);
+      } else {
+        final batch = db.batch()
+          ..set(ref, data)
+          ..set(
+            db
+                .collection('groups')
+                .doc(groupId)
+                .collection('activity')
+                .doc(activityId),
+            GroupActivityService.buildActivityDoc(
+              id: activityId,
+              type: 'event_settlement',
+              actorId: activityActorId!,
+              actorName: activityActorName!,
+              description: activityDescription!,
+              metadata: activityMetadata!,
+              timestampUtc: DateTime.now().toUtc(),
+            ),
+          );
+        await batch.commit();
+      }
     } on FirebaseException catch (e) {
       if (kDebugMode) {
         debugPrint(
