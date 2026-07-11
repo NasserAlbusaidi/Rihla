@@ -39,7 +39,7 @@ PASS test/issue-1135-probe.test.ts
 Tests: 2 passed, 2 total
 ```
 
-A mutation probe isolated the load-bearing predicate. With the event `allow update` temporarily narrowed to `validEventLightUpdate()` alone, both writes still denied. Removing only `validEventBase()`'s `participantIds.hasOnly(groupMembers())` then made both attacks succeed:
+A mutation probe isolated the subset predicate used by the issue's two claimed attacks. With the event `allow update` temporarily narrowed to `validEventLightUpdate()` alone, both writes still denied. Removing only `validEventBase()`'s `participantIds.hasOnly(groupMembers())` then made both attacks succeed:
 
 ```text
 FAIL test/issue-1135-probe.test.ts
@@ -58,6 +58,8 @@ post-write participantIds ⊆ current group.memberIds        (validEventBase)
 therefore caller ∈ current group.memberIds
 ```
 
+Gate round 9 identified the complementary regression needed to pin the whole implication: if additivity alone were removed, a departed caller could remove its own stale UID while renaming, leaving a current-only post-write list that passes the subset guard. Task 1 therefore adds that third denial and mutates each premise independently.
+
 ## Options Considered
 
 ### 1. Add `isGroupMember(groupId)` to `validEventLightUpdate()`
@@ -70,7 +72,7 @@ Reject. The inline form is cheaper but still behaviorally redundant. No behavior
 
 ### 3. Keep rules unchanged; pin and document the existing proof
 
-Choose. Emulator tests protect the actual deny behavior, a mutation check proves the tests discriminate the load-bearing subset guard, and documentation makes the indirect authorization contract reviewable without weakening the #723 ceiling margin.
+Choose. Emulator tests protect the actual deny behavior, independent mutation states prove the suite discriminates both load-bearing participant guards, and documentation makes the indirect authorization contract reviewable without weakening the #723 ceiling margin.
 
 ## Verification Principles
 
@@ -78,7 +80,7 @@ Choose. Emulator tests protect the actual deny behavior, a mutation check proves
 2. **Concrete claims:** Every path, function, line, and write-map claim above was re-read from live code in this worktree. The issue text and #1132 spec were treated as hypotheses, not proof.
 3. **Read path per write path:** No data shape changes. A successful metadata write would flow through `EventService.watchGroupEvents()`/`watchEvent()` into `Event.fromDoc()`; the tested departed writes are denied before persistence, so those readers see no mutation.
 4. **Fields from the type:** `Event` carries `id`, `name`, `type`, `groupId`, `createdBy`, `participantIds`, `participantNames`, `modules`, `startDate`, `endDate`, `isDeleted`, `deletedAt`, `createdAt`, `updatedAt`, `description`, `isClosed`, `closedAt`, `closedBy`, and `spendingSnapshot`. This plan changes none.
-5. **Data contracts:** The metadata attack uses the exact `EventService.updateEvent()` partial-map shape: `name` plus `updatedAt`. The additive attack uses the rule's exact light allow-list shape: `participantIds`, `participantNames`, and `updatedAt`. The departure fixture changes group `memberIds` and deletes `groups/g1/members/member`, while event `e1` retains `member` in both participant fields.
+5. **Data contracts:** The metadata attack uses the exact `EventService.updateEvent()` partial-map shape: `name` plus `updatedAt`. The additive attack uses the rule's exact light allow-list shape: `participantIds`, `participantNames`, and `updatedAt`. The additivity-regression attack uses `name`, a current-only `participantIds: ['owner']`, and `updatedAt` while leaving `participantNames` unchanged. The departure fixture changes group `memberIds` and deletes `groups/g1/members/member`, while event `e1` initially retains `member` in both participant fields.
 6. **Arithmetic decomposition:** N/A. Money algorithms and persisted monetary fields do not change. Keeping `participantIds` untouched preserves the existing balance-universe contract.
 7. **Orthogonal axes:** Identity: leave/remove state is reproduced exactly. Money: no participant pruning or oracle change in this branch; the distinct post-departure balance-input and removal-serialization bug is tracked as #1144. Time: #723 close/reopen remains on its separate admin path and its existing departed-participant allow test stays green. Offline: a queued light update replayed after departure remains denied by replay-time state. Locale/derived surfaces: this branch changes no user-facing copy, export, notification, activity, or l10n behavior. Gate review found PRE-EXISTING stale-participant side effects outside this branch: independently queued mutations can leave phantom activity (#1140), and membership-scoped pushes—including claim-request Branch A to the creator—can target users after revocation (#1141). All are tracked separately rather than hidden or bundled here.
 
@@ -105,7 +107,7 @@ All three predate this branch, remain behaviorally unchanged by it, and require 
 - Consumes: `seedBaseData()`, `addGroupMember()`, `testEnv`, `assertFails()`.
 - Produces: the `#1135 departed event participant light-update authority` regression block.
 
-- [ ] **Step 1: Add the exact departure fixture and two behavioral tests**
+- [ ] **Step 1: Add the exact departure fixture and three behavioral tests**
 
 ```ts
 describe('#1135 departed event participant light-update authority', () => {
@@ -139,6 +141,16 @@ describe('#1135 departed event participant light-update authority', () => {
       updatedAt: new Date(),
     }));
   });
+
+  test('departed participant cannot remove self while renaming an event', async () => {
+    await departMember(['owner']);
+    const departed = testEnv.authenticatedContext('member').firestore();
+    await assertFails(departed.doc('groups/g1/events/e1').update({
+      name: 'Hijacked Camp',
+      participantIds: ['owner'],
+      updatedAt: new Date(),
+    }));
+  });
 });
 ```
 
@@ -151,21 +163,30 @@ cd functions
 npm run test:emulator -- firestore-rules-publish-readiness.test.ts -t '#1135'
 ```
 
-Expected: 2 passed. Passing immediately is the investigation result: production behavior already denies the attack; this task adds missing coverage rather than a new behavior.
+Expected: 3 passed. Passing immediately is the investigation result: production behavior already denies the attacks; this task adds missing coverage rather than a new behavior.
 
-- [ ] **Step 3: Prove the tests discriminate the existing guard in three states**
+- [ ] **Step 3: Prove the tests discriminate both existing guards in four states**
 
-Record all three states separately; do not combine two mutations into one unexplained rerun:
+Record all four states separately; do not combine two mutations into one unexplained rerun:
 
-1. **Unchanged rules:** both denial tests pass.
-2. **Light-only allow, guard present:** temporarily narrow event `allow update` to `validEventLightUpdate()` only; both denial tests still pass. This removes the OR-chain expression-ceiling confound.
-3. **Light-only allow, guard absent:** while state 2 is active, temporarily remove this one conjunct from `validEventBase()`:
+1. **Unchanged rules:** all three denial tests pass.
+2. **Light-only allow, both guards present:** temporarily narrow event `allow update` to `validEventLightUpdate()` only; all three denial tests still pass. This removes the OR-chain expression-ceiling confound.
+3. **Light-only allow, subset guard absent:** while state 2 is active, temporarily remove this one conjunct from `validEventBase()`:
 
 ```rules
 && data.participantIds.hasOnly(groupMembers())
 ```
 
-Expected in state 3: both tests FAIL with `Expected request to fail, but it succeeded.` Restore the subset guard, verify state 2 passes again, then restore the full OR-chain and verify state 1 passes. Use `git diff -- security/firestore.rules` after each restoration and commit no rules change.
+Expected in state 3: the rename and additive-current-member tests FAIL with `Expected request to fail, but it succeeded.` The self-removal test still passes because additivity remains. Restore the subset guard and verify state 2 passes again.
+
+4. **Light-only allow, additivity guard absent:** with the subset guard restored, temporarily remove only the participant-ID additivity conjunct from `validEventLightUpdate()`:
+
+```rules
+&& (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['participantIds'])
+  || request.resource.data.participantIds.hasAll(resource.data.participantIds))
+```
+
+Expected in state 4: only the self-removal-plus-rename test FAILS with `Expected request to fail, but it succeeded.` The other two writes retain the departed UID and remain denied by the subset guard. Restore additivity, verify state 2 passes, then restore the full OR-chain and verify state 1 passes. Use `git diff -- security/firestore.rules` after each restoration and commit no rules change.
 
 - [ ] **Step 4: Commit the behavioral coverage**
 
@@ -228,7 +249,7 @@ npm run test:emulator -- settlementIdempotency.rules.test.ts
 npm run test:emulator -- decomposed-settleup-batch.test.ts
 ```
 
-Expected: every suite exits 0. The rules blob stays byte-identical, but the combined runner stream's exact substring count is expected to rise by **exactly 2** because each new denied write reaches the existing fail-closed OR-chain ceiling. Use this exact counting contract (combined stdout/stderr from the wrapper; one increment per output line containing the literal phrase):
+Expected: every suite exits 0. The rules blob stays byte-identical, but the combined runner stream's exact substring count is expected to rise by **exactly 2**: the rename and additive-current-member denials reach the existing fail-closed OR-chain ceiling, while the self-removal denial short-circuits at the cheap additivity guard. Use this exact counting contract (combined stdout/stderr from the wrapper; one increment per output line containing the literal phrase):
 
 ```bash
 set -o pipefail
@@ -260,8 +281,8 @@ Use a conventional commit and a draft PR. The PR body must include the live repr
 
 ## Acceptance Checklist
 
-- The committed emulator tests deny both the metadata-vandalism and additive-injection shapes from a departed participant whose UID remains in the event.
-- Mutation proof shows those tests fail if the existing participant-subset invariant is removed.
+- The committed emulator tests deny metadata vandalism, additive participant injection, and self-removal-plus-rename from a departed participant whose UID remains in the event.
+- Independent mutation states show the claimed attacks fail open without the participant-subset invariant and the self-removal attack fails open without additivity.
 - Existing current-participant rename/add tests and #723 close-with-departed-participant test remain green.
 - `security/firestore.rules` has no branch diff.
 - Documentation describes the actual composed authorization proof and the adjacent stale-participant metadata lockout.
@@ -314,3 +335,7 @@ Before round 8, `origin/main` advanced through #1143. The branch rebased onto `e
 Round 8 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `1 P1 / 0 P2 / 0 P3`.
 
 - Shared claim-notification P1 resolved: #1141 now treats claim-request Branch A (new/reopened request to `group.createdBy`) as membership-scoped and requires a fresh current-creator check. Only claim decision Branch B remains intentionally cross-membership, with separate regression coverage for its external requester delivery.
+
+Round 9 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
+
+- Rubric P1 resolved: Task 1 now pins the additivity premise with a departed-caller self-removal-plus-rename denial and a dedicated light-only mutation that removes only `hasAll(existing participantIds)`. The subset and additivity predicates are mutated independently; the new cheap denial does not change the expected +2 ceiling-artifact delta.
