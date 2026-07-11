@@ -17,6 +17,8 @@ import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
+import '../../helpers/recording_functions_service.dart';
+
 /// #261 PR-A: event settle-up must write the OWNING GROUP's currency, not a
 /// hardcoded 'OMR'. RED before A4: settle_up_screen had `const currency = 'OMR'`
 /// so a USD group's settlement persisted as OMR (amountFils scaled by 1000).
@@ -30,6 +32,13 @@ void main() {
   const groupId = 'group-1';
   const eventId = 'event-1';
   const eventRef = (groupId: groupId, eventId: eventId);
+
+  // #1129: creates route through the recordSettlement callable — assert the
+  // wire payload; the persisted doc is server-authored (emulator-pinned).
+  late RecordingFunctionsService recordingFunctions;
+  setUp(() {
+    recordingFunctions = RecordingFunctionsService();
+  });
 
   final event = Event(
     id: eventId,
@@ -85,7 +94,10 @@ void main() {
           ),
         ),
         settlementServiceProvider.overrideWithValue(
-          SettlementService.withFirestore(fakeDb),
+          SettlementService.withFirestore(
+            fakeDb,
+            functionsService: recordingFunctions,
+          ),
         ),
       ],
       child: MaterialApp(
@@ -97,7 +109,7 @@ void main() {
     );
   }
 
-  Future<Map<String, dynamic>> recordAndRead(
+  Future<Map<String, Object?>> recordAndRead(
     WidgetTester tester,
     FakeFirebaseFirestore fakeDb, {
     required String currency,
@@ -113,28 +125,21 @@ void main() {
     await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
     await tester.pumpAndSettle();
 
-    final snap = await fakeDb
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .collection('settlements')
-        .get();
-    expect(snap.docs, hasLength(1));
-    return snap.docs.first.data();
+    expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+    return recordingFunctions.lastCall;
   }
 
-  testWidgets('USD group → settlement persists currency USD + amountFils 1000', (
+  testWidgets('USD group → settlement sends currency USD + amountFils 1000', (
     tester,
   ) async {
     final fakeDb = FakeFirebaseFirestore();
     final data = await recordAndRead(tester, fakeDb, currency: 'USD');
     expect(data['currency'], 'USD');
-    // USD scale = 100 → 10 = 1000 fils. The OMR bug would store 10000.
+    // USD scale = 100 → 10 = 1000 fils. The OMR bug would send 10000.
     expect(data['amountFils'], 1000);
   });
 
-  testWidgets('OMR group → settlement persists currency OMR + amountFils 10000', (
+  testWidgets('OMR group → settlement sends currency OMR + amountFils 10000', (
     tester,
   ) async {
     final fakeDb = FakeFirebaseFirestore();

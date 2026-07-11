@@ -22,20 +22,18 @@ import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-// #1093: a settlement written twice from the SAME observed state (neither
-// device has seen the other's write yet) must collapse to ONE Firestore doc,
-// not two. This models the concurrent/offline-replay double-record by wiring
-// eventSettlementsProvider to a SINGLE-SHOT `Stream.value(const [])` — it
-// emits exactly once and then never again, so BOTH record actions read the
-// identical epoch-0 snapshot no matter how much the widget is pumped between
-// them (a stronger guarantee than merely "don't pump between the calls").
-//
-// RED today (pre-fix): _recordSettlement has no id-derivation wired in yet —
-// settlement_service.dart's `addSettlement` now REQUIRES an id (Task 2), so
-// this file cannot even compile against a naive/no-op id until Task 3 lands.
-// The genuine RED evidence for "two uuid docs" was captured against an
-// interim `id: const Uuid().v4()` callsite before the deterministic
-// derivation replaced it (see PR body for the pasted output).
+import '../../helpers/recording_functions_service.dart';
+
+// #1093 → #1129: a settlement recorded twice from the SAME observed state
+// (neither device has seen the other's write yet) must collapse to ONE
+// recorded payment. Since #1129 the id derivation is SERVER-side: the client's
+// contribution to determinism is sending the same `observedPairEpoch` for the
+// same observed snapshot — pinned here by wiring eventSettlementsProvider to a
+// SINGLE-SHOT `Stream.value(const [])` (emits once, never again), so BOTH
+// record actions must put the identical epoch-0 + money payload on the wire.
+// The one-doc guarantee itself (identical payload → same sd1 id →
+// alreadyRecorded) is pinned by the emulator idempotency tables in
+// functions/test/callables/recordSettlement.event.test.ts.
 
 void main() {
   const groupId = 'group-1';
@@ -43,9 +41,11 @@ void main() {
   const eventRef = (groupId: groupId, eventId: eventId);
 
   late SharedPreferences prefs;
+  late RecordingFunctionsService recordingFunctions;
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+    recordingFunctions = RecordingFunctionsService();
   });
 
   final event = Event(
@@ -102,7 +102,10 @@ void main() {
         ),
       ),
       settlementServiceProvider.overrideWithValue(
-        SettlementService.withFirestore(fakeDb),
+        SettlementService.withFirestore(
+          fakeDb,
+          functionsService: recordingFunctions,
+        ),
       ),
       groupActivityServiceProvider.overrideWithValue(
         GroupActivityService.withFirestore(fakeDb),
@@ -139,37 +142,29 @@ void main() {
   }
 
   testWidgets(
-    '#1093: two settle-up records from the same epoch-0 snapshot collapse '
-    'to ONE settlement doc (deterministic id dedup)',
+    '#1093/#1129: two settle-up records from the same epoch-0 snapshot send '
+    'the IDENTICAL callable intent (server-side deterministic-id dedup)',
     (tester) async {
       final fakeDb = FakeFirebaseFirestore();
       await tester.pumpWidget(buildScreen(fakeDb));
       await tester.pumpAndSettle();
 
       // Two full record round-trips. Because eventSettlementsProvider is
-      // single-shot ([] forever), the screen's balance/tile — and therefore
-      // the id-derivation epoch inside _recordSettlement — NEVER learns about
-      // the first write. Both derive from the identical epoch-0 snapshot,
-      // exactly modeling two devices racing the same debt.
+      // single-shot ([] forever), the screen's epoch basis NEVER learns about
+      // the first record. Both calls must carry the identical epoch-0 money
+      // payload — the server derives the same sd1 id from it, so the second
+      // lands as alreadyRecorded (one doc), never a double-record.
       await recordOnce(tester);
       await recordOnce(tester);
 
-      final snap = await fakeDb
-          .collection('groups')
-          .doc(groupId)
-          .collection('events')
-          .doc(eventId)
-          .collection('settlements')
-          .get();
-
-      expect(
-        snap.docs,
-        hasLength(1),
-        reason:
-            'both writes derive the same deterministic id — the fake '
-            'overwrites the same doc; production is denied by the already-'
-            'live `allow update: if false`',
-      );
+      expect(recordingFunctions.recordSettlementCalls, hasLength(2));
+      final first = Map.of(recordingFunctions.recordSettlementCalls[0]);
+      final second = Map.of(recordingFunctions.recordSettlementCalls[1]);
+      expect(first['observedPairEpoch'], 0);
+      expect(second, first,
+          reason:
+              'identical observed snapshot ⇒ byte-identical callable intent '
+              '⇒ the server derives ONE deterministic id for both');
     },
   );
 }

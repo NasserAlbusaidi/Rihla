@@ -13,6 +13,7 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/record_settlement_result.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/screens/settle_up_screen.dart';
@@ -97,35 +98,25 @@ class _RecordingEventSettlementService extends SettlementService {
   int addCalls = 0;
 
   @override
-  Future<Settlement> addSettlement({
-    required String id,
+  Future<RecordSettlementResult> addSettlement({
     required String groupId,
     required String eventId,
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
+    required String currency,
+    required int observedPairEpoch,
     String? payerName,
     String? recipientName,
     String? note,
-    String? groupSettleUpId,
-    String? activityId,
-    String? activityActorId,
-    String? activityActorName,
-    String? activityDescription,
-    Map<String, dynamic>? activityMetadata,
   }) async {
     addCalls++;
-    return Settlement(
-      id: 'evt-set-$addCalls',
-      tripId: eventId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      currency: currency,
-      createdBy: createdBy,
-      settledAt: DateTime(2026, 4, 1),
+    return const RecordSettlementResult(
+      alreadyRecorded: false,
+      eventScopeWrites: 1,
+      groupScopeWrites: 0,
+      shouldBumpLedgerRevision: true,
+      settledAt: '2026-04-01T00:00:00.000Z',
     );
   }
 }
