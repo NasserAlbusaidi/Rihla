@@ -1070,13 +1070,14 @@ void main() {
     );
 
     testWidgets(
-      '#1144 lock-contention (aborted) shows the LOCALIZED generic failure, never the raw server string',
+      '#1144/#1149 lock-contention (aborted) shows the retry-inviting copy, never the raw server string',
       (tester) async {
         // The departure fence throws `aborted` on lock contention with an
-        // English-only server message. The generic branch must route through
-        // friendlyMessageFor — interpolating e.message would show untranslated
-        // English to an Arabic user (and `failed-precondition` stays reserved
-        // for the settle-up snackbar, so this must NOT surface that either).
+        // English-only server message. #1149: this transient race gets its
+        // own retry-inviting copy (groupMembershipChangeInProgress) instead
+        // of the generic "Something went wrong" — and `failed-precondition`
+        // stays reserved for the settle-up snackbar, so this must NOT
+        // surface that either.
         final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(
@@ -1087,7 +1088,7 @@ void main() {
               onRemove: ({required groupId, required userId}) {
                 throw FirebaseFunctionsException(
                   code: 'aborted',
-                  message: 'Another membership change is in progress. Try again.',
+                  message: 'departure lock held by another operation.',
                 );
               },
             ),
@@ -1101,14 +1102,13 @@ void main() {
 
         expect(
           find.text(
-            'Failed to remove Bob: Something went wrong. Please try again.',
+            'Another membership change is happening right now. '
+            'Please try again in a moment.',
           ),
           findsOneWidget,
         );
-        expect(
-          find.textContaining('Another membership change'),
-          findsNothing,
-        );
+        expect(find.textContaining('departure lock'), findsNothing);
+        expect(find.textContaining('Failed to remove'), findsNothing);
         expect(find.widgetWithText(SnackBarAction, 'Settle up'), findsNothing);
         expect(activityService.logCalls, isEmpty);
       },

@@ -51,6 +51,7 @@ class SplitCard extends StatefulWidget {
     required this.onCustomSplitChanged,
     required this.onPickMode,
     required this.onPickItemized,
+    this.eligiblePickerIds,
   });
 
   final Event event;
@@ -85,6 +86,12 @@ class SplitCard extends StatefulWidget {
   /// gets its own signal; the parent opens the itemized editor directly instead
   /// of routing through a mode the user didn't ask for.
   final VoidCallback onPickItemized;
+
+  /// #1149: NEW-expense candidate allow-list forwarded to the custom
+  /// participant selector (active, non-tombstone members; already-selected ids
+  /// retained downstream). Null → no filtering. The equal-split PREVIEW is
+  /// deliberately NOT filtered — it is money display, not a candidate list.
+  final Set<String>? eligiblePickerIds;
 
   @override
   State<SplitCard> createState() => _SplitCardState();
@@ -228,6 +235,7 @@ class _SplitCardState extends State<SplitCard> {
               CustomParticipantSelector(
                 event: widget.event,
                 customSplitParticipants: widget.customSplitParticipants,
+                eligibleIds: widget.eligiblePickerIds,
                 onCustomSplitChanged: widget.onCustomSplitChanged,
               ),
             ],

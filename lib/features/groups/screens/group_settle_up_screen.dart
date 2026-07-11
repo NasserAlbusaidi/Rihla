@@ -221,6 +221,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     // group creator or a party only (mirrors the
                     // correctSettlement/correctLogicalSettleUp gate).
                     groupCreatorId: group.createdBy,
+                    // #1149: FULL memberIds — prunes departed-party suggestion
+                    // tiles/stepped cards and hides Correct on departed-party
+                    // history (ghosts and shadows are IN memberIds and stay).
+                    currentMemberIds: group.memberIds.toSet(),
                     tileKeys: _tileKeys,
                     // #595: group settlement-create only requires isGroupMember,
                     // and every viewer of this screen is already a member (read

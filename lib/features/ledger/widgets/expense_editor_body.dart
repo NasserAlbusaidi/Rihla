@@ -21,6 +21,8 @@ import '../../../core/utils/localized_decimal_input.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../events/models/event_model.dart';
 import '../../events/providers/event_provider.dart';
+import '../../groups/models/group_member_model.dart';
+import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../../groups/widgets/currency_picker_sheet.dart';
@@ -30,12 +32,14 @@ import '../keys/ledger_keys.dart';
 import '../models/expense_model.dart';
 import '../models/split_explanation.dart';
 import '../providers/category_provider.dart';
+import '../utils/expense_party_policy.dart';
 import 'custom_split_sheet.dart';
 import 'expense_editor/amount_hero.dart';
 import 'expense_editor/category_strip.dart';
 import 'expense_editor/currency_mismatch_notice.dart';
 import 'expense_editor/currency_row.dart';
 import 'expense_editor/delete_card.dart';
+import 'expense_editor/departure_policy_note.dart';
 import 'expense_editor/description_field.dart';
 import 'expense_editor/destination_banner.dart';
 import 'expense_editor/editor_section.dart';
@@ -447,9 +451,6 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       return;
     }
 
-    HapticService.success();
-    setState(() => _isSubmitting = true);
-
     // #1092: partition dirtiness vs the pristine baseline so `_save` writes only
     // clusters the user touched. Add mode has no baseline to diff — every field
     // is authored fresh — so all flags are true there.
@@ -488,6 +489,37 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
       categoryDirty = true;
       payerDirty = true;
     }
+
+    // #1149 pre-write mirrors — refuse ONLY writes the rules would refuse
+    // (both checks fail open on unresolved providers, and metadata-only edits
+    // never evaluate them: moneyDirty||payerDirty mirrors the rules'
+    // affectsExpenseAllocation diff gate, payer included — `moneyDirty` alone
+    // deliberately excludes the payer, and a hand-rolled field comparison
+    // would re-introduce the #1092 scope-mask false-dirty).
+    final policyGroup = ref
+        .read(groupDetailProvider(widget.groupId))
+        .valueOrNull;
+    final policyEvent = ref
+        .read(
+          eventDetailProvider((
+            groupId: widget.groupId,
+            eventId: widget.eventId,
+          )),
+        )
+        .valueOrNull;
+    if (moneyDirty || payerDirty) {
+      if (_frozenDepartedParty(policyEvent, policyGroup)) {
+        _showSnack(context.l10n.editorDepartedFrozenBanner);
+        return;
+      }
+      if (!_formPartiesOk(policyEvent, policyGroup, payerId)) {
+        _showSnack(context.l10n.editorPartiesNotCurrentWarning);
+        return;
+      }
+    }
+
+    HapticService.success();
+    setState(() => _isSubmitting = true);
 
     try {
       final note = _noteController.text.trim();
@@ -748,12 +780,22 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
               )),
             )
             ?.id;
+    // #1149: fresh payer candidates come from the ACTIVE set; the current
+    // selection is unioned in so a legacy ghost payer never strands.
+    final eligible = _eligiblePickerIds(
+      event,
+      ref.read(groupDetailProvider(widget.groupId)).valueOrNull,
+      ref.read(groupMembersProvider(widget.groupId)).valueOrNull,
+    );
     final selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) =>
-          PayerPickerSheet(event: event, selectedPayerId: currentId),
+      builder: (sheetContext) => PayerPickerSheet(
+        event: event,
+        selectedPayerId: currentId,
+        eligibleIds: eligible == null ? null : {...eligible, ?currentId},
+      ),
     );
     if (selected != null && selected != _selectedPayerId) {
       HapticService.selection();
@@ -790,7 +832,22 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   }) async {
     HapticService.lightClick();
     final amount = Decimal.tryParse(_amount) ?? Decimal.zero;
-    final ids = _splitParticipantIds(event);
+    // #1149: sheet candidates come from the ACTIVE set; ids already carrying
+    // a selection (custom set / distribution keys) are retained so reopening
+    // an existing split never strands its parties.
+    final eligible = _eligiblePickerIds(
+      event,
+      ref.read(groupDetailProvider(widget.groupId)).valueOrNull,
+      ref.read(groupMembersProvider(widget.groupId)).valueOrNull,
+    );
+    final retained = {..._customSplitParticipants, ...?_splitDistribution?.keys};
+    final ids = [
+      for (final id in _splitParticipantIds(event))
+        if (eligible == null ||
+            eligible.contains(id) ||
+            retained.contains(id))
+          id,
+    ];
     if (ids.length < 2) {
       _showSnack(context.l10n.editorPickAtLeastTwoPeople);
       return;
@@ -937,6 +994,80 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   /// as a fresh Event instance, so identity refreshes the map; `==` would keep a
   /// stale name. INBOUND/display-only — write paths key by uid and strip the
   /// `(#…)` discriminator, never persist the returned string.
+  // ── #1149 departure-policy mirrors (all fail open on unresolved data) ──
+
+  /// CREATE-side legality set — exact mirror of rules `activeGroupMembers()`
+  /// incl. its legacy fallback (absent field → full memberIds). Null (group
+  /// unresolved) or empty (malformed — a real group is never memberless) →
+  /// every #1149 gate fails open.
+  Set<String>? _activeSetOf(Group? group) {
+    final set = group?.activeMemberIdSet;
+    return (set == null || set.isEmpty) ? null : set;
+  }
+
+  /// R5 picker candidates: event participants ∩ active set, additionally
+  /// dropping tombstone member docs (belt-and-braces for legacy groups whose
+  /// absent activeMemberIds falls back to full memberIds; skipped while the
+  /// members stream is unresolved). Null → callers don't filter; empty after
+  /// filtering degenerates to null so a picker can never render empty.
+  Set<String>? _eligiblePickerIds(
+    Event event,
+    Group? group,
+    List<GroupMember>? members,
+  ) {
+    final active = _activeSetOf(group);
+    if (active == null) return null;
+    final tombstones = {
+      for (final m in members ?? const <GroupMember>[])
+        if (m.isTombstone) m.userId,
+    };
+    final eligible = {
+      for (final id in event.participantIds)
+        if (active.contains(id) && !tombstones.contains(id)) id,
+    };
+    return eligible.isEmpty ? null : eligible;
+  }
+
+  /// R6 pre-state freeze: the STORED expense references a leave/remove-
+  /// departed party — checked against FULL memberIds (a ghost-party expense
+  /// is NOT frozen), mirroring the rules' soft-delete gate and the pre-state
+  /// half of the allocation-edit bundle.
+  bool _frozenDepartedParty(Event? event, Group? group) {
+    final initial = widget.initial;
+    if (!_isEdit || initial == null || event == null || group == null) {
+      return false;
+    }
+    if (group.memberIds.isEmpty) return false;
+    return !expenseReferencesOnlyCurrentMembers(
+      initial,
+      event.participantIds,
+      group.memberIds.toSet(),
+    );
+  }
+
+  /// Would the CURRENT form selection pass the rules party check? Add mode
+  /// mirrors the CREATE gate (active set, rules:890); edit mode mirrors the
+  /// UPDATE gate (full memberIds, rules:1008). True when unresolved.
+  bool _formPartiesOk(Event? event, Group? group, String? payerId) {
+    if (event == null || group == null || payerId == null) return true;
+    final members = _isEdit
+        ? (group.memberIds.isEmpty ? null : group.memberIds.toSet())
+        : _activeSetOf(group);
+    if (members == null) return true;
+    return expensePartiesAreCurrentMembers(
+      payerParticipantId: payerId,
+      scope: _scope,
+      splitMode: _splitMode,
+      customSplitParticipants: _scope == ExpenseScope.custom
+          ? _customSplitParticipants.toList()
+          : null,
+      splitDistributionKeys:
+          (_splitMode == SplitMode.equally ? null : _splitDistribution)?.keys,
+      eventParticipantIds: event.participantIds,
+      members: members,
+    );
+  }
+
   Map<String, String> _disambiguatedNames(Event event) {
     if (!identical(event, _displayNamesKey)) {
       _displayNamesKey = event;
@@ -959,6 +1090,25 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
         eventId: widget.eventId,
       )),
     );
+
+    // #1149 departure-policy mirrors — all fail open while providers resolve.
+    final group = ref.watch(groupDetailProvider(widget.groupId)).valueOrNull;
+    final rosterMembers = ref
+        .watch(groupMembersProvider(widget.groupId))
+        .valueOrNull;
+    final frozen = _frozenDepartedParty(event, group);
+    // Frozen takes precedence over the roster-trap warning (one note at a
+    // time; a frozen expense's stored parties would fail the form check too).
+    final partiesOk =
+        frozen ||
+        _formPartiesOk(
+          event,
+          group,
+          _selectedPayerId ?? currentParticipant?.id,
+        );
+    final eligiblePickerIds = event == null
+        ? null
+        : _eligiblePickerIds(event, group, rosterMembers);
 
     return PopScope(
       // #818 Wave 3.2: a pristine screen keeps canPop true so Android
@@ -991,6 +1141,14 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                   onChangeDestination: _handleChangeDestination,
                 ),
               const OfflineBanner(),
+              if (frozen)
+                DeparturePolicyNote(
+                  text: context.l10n.editorDepartedFrozenBanner,
+                )
+              else if (!partiesOk)
+                DeparturePolicyNote(
+                  text: context.l10n.editorPartiesNotCurrentWarning,
+                ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.only(bottom: context.spacing.space24),
@@ -1098,6 +1256,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                             splitMode: _splitMode,
                             splitDistribution: _splitDistribution,
                             splitExplanation: _splitExplanation,
+                            eligiblePickerIds: eligiblePickerIds,
                             onChangePayer: () => _openPayerSheet(event),
                             onScopeChanged: (scope) => _handleScopeChange(
                               scope,
@@ -1134,7 +1293,10 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
                         ),
                       if (_isEdit && widget.onDelete != null)
                         DeleteCard(
-                          enabled: !_isSubmitting,
+                          // #1149: soft-delete of a departed-party expense is
+                          // rules-blocked on pre-state (R6) — disable, the
+                          // banner explains.
+                          enabled: !_isSubmitting && !frozen,
                           onDelete: _confirmDelete,
                         ),
                     ],

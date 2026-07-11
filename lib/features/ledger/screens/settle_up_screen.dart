@@ -383,6 +383,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             // Actor policy: Correct renders per-settlement for the group
             // creator or a party only (mirrors the correctSettlement gate).
             groupCreatorId: group.createdBy,
+            // #1149: FULL memberIds — prunes departed-party suggestion tiles
+            // and hides Correct on departed-party history (ghosts stay).
+            currentMemberIds: group.memberIds.toSet(),
             tileKeys: _tileKeys,
             canRecord: canRecord,
             preSelectedMemberId: widget.preSelectedMemberId,

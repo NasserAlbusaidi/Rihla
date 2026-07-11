@@ -1127,6 +1127,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpDepartedPairsHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count suggestions involving former members are hidden — those transfers can no longer be recorded.',
+      one:
+          '1 suggestion involving a former member is hidden — that transfer can no longer be recorded.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String settleUpNoOptimizedPayments(Object subjectName) {
     return 'No optimized payments are needed across $subjectName.';
   }
@@ -2085,6 +2098,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.';
 
   @override
+  String get editorDepartedFrozenBanner =>
+      'Someone in this expense left the group, so its amount and split are locked. Details like the description and category can still be edited.';
+
+  @override
+  String get editorPartiesNotCurrentWarning =>
+      'A former member is part of this split. Equal splits aren\'t available on this event — choose who\'s included with an exact, shares, or percent split, or record it as a personal expense.';
+
+  @override
   String get eventTabExpenses => 'Expenses';
 
   @override
@@ -2507,6 +2528,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupSettleBeforeLeaving => 'Settle up before leaving the group.';
+
+  @override
+  String get groupMembershipChangeInProgress =>
+      'Another membership change is happening right now. Please try again in a moment.';
 
   @override
   String groupFailedLeave(Object error) {
