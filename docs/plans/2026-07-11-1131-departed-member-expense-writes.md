@@ -55,7 +55,7 @@ function validExpenseUpdate() {
 
 **Rejected alternative:** pruning `participantIds` on leave/remove — would perturb the balance universe that `leaveGroup`/`removeMember` deliberately preserve (per-event drill-down, equal-split divisors, oracle parity). The rules conjunct is strictly narrower.
 
-**Expression-ceiling risk (#723):** the expense-update path is near the ~1000-expression rules ceiling. `isGroupMember` adds ~5 expressions (`signedIn` + `exists(groupPath)` + `in memberIds`); the group doc is ALREADY read by `groupAllowsClientWrites` (inside `eventAcceptsExpenseWrites`), so document-access count is unchanged (same-doc access bills once) — batch budgets (#929) unaffected; no batch writes multiple expenses anyway. **Fallback if any rules test trips "maximum of 1000 expressions":** inline the single term `request.auth.uid in groupData(groupId).memberIds` instead of calling `isGroupMember` (drops the redundant `signedIn()`/`exists()` — both already established by `isEventParticipant`/`groupAllowsClientWrites` on every reachable path).
+**Expression-ceiling risk (#723):** the documented ~1000-expression pressure is on the EVENT `allow update` OR-chain (whose heavy branches re-run `validEventBase`), not directly on `validExpenseUpdate` — but the same ceiling applies per-request, so treat it as a test-gated risk, not a proven safety. `isGroupMember` adds ~5 expressions (`signedIn` + `exists(groupPath)` + `in memberIds`); the group doc is ALREADY read by `groupAllowsClientWrites` (inside `eventAcceptsExpenseWrites`), so document-access count is unchanged (same-doc access bills once) — batch budgets (#929) unaffected; no batch writes multiple expenses anyway. **Fallback if any rules test trips "maximum of 1000 expressions":** inline the single term `request.auth.uid in groupData(groupId).memberIds` instead of calling `isGroupMember` (drops the redundant `signedIn()`/`exists()` — both already established by `isEventParticipant`/`groupAllowsClientWrites` on every reachable path).
 
 ## Verification principles report (run while authoring)
 
@@ -69,7 +69,7 @@ function validExpenseUpdate() {
    - **Founding batch (#874):** `eventAcceptsExpenseWrites → groupAllowsClientWrites → exists(groupPath)` already requires the group to exist in BEFORE-state, so an expense could never ride the founding batch even today; the new before-state `isGroupMember` adds no new batch constraint.
    - **Settlements:** create already `isGroupMember` (#752); updates dead-denied (`allow update: if false`). No change.
    - **Departed member as COUNTERPARTY:** current member editing an expense whose payer/split includes a departed participant still passes — `participants()` (event `participantIds`) untouched, and the remaining-member test below pins it (seeded expense has `createdBy: 'owner'`, split across owner+member, edited by owner AFTER member departs).
-   - **Offline replay:** a member with a queued expense write who is removed before reconnect now gets the replay silently discarded (SDK drops denied replays). Correct — matches their simultaneous read loss; no UI gating change needed (they can't see the group anymore anyway).
+   - **Offline replay:** a member with a queued expense write who is removed before reconnect now gets the replay silently discarded (SDK drops denied replays). **Accepted trade-off, not a no-op** — a legitimately-authored expense is lost with no client feedback. Rules-unavoidable (rules see only replay-time state), symmetric with the simultaneous read loss, acceptable pre-launch with no real users.
    - **Shadow members:** uuid-keyed, never authenticate, never write — unaffected.
    - **Event-doc / group-settlement / activity_logs write paths:** out of scope (activity_logs client-create already impossible; event-update authz is a different surface — no known hole; group-settlement create already member-gated).
 
@@ -127,18 +127,32 @@ describe('#1131 departed member loses expense write authority', () => {
   });
 
   // Over-blocking guard: the remaining member keeps full write authority —
-  // including on an expense whose split still references the departed
-  // participant (participants() untouched, #249 parity).
+  // including on expenses whose splitDistribution still REFERENCES the departed
+  // participant (participants() untouched, #249 parity). The splits below must
+  // name 'member' explicitly: amountFils is allocation-affecting, so the edit
+  // re-runs splitDistribution.keys().hasOnly(participants()) against a split
+  // containing the departed uid — a trivially-empty split would not exercise
+  // that axis (Gate round-1 P2).
   test('remaining member still creates and edits normally after a departure', async () => {
-    await seedExpense(); // split references both owner and member
+    await seedExpense({
+      splitMode: 'exact',
+      splitDistribution: { owner: 5250, member: 5250 }, // departed uid as counterparty
+    });
     await departMember();
     const owner = testEnv.authenticatedContext('owner').firestore();
     await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
       amountFils: 12500,
+      splitDistribution: { owner: 6250, member: 6250 },
       lastEditedBy: 'owner',
     }));
     await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/expOwner').set(
-      validExpense({ id: 'expOwner', createdBy: 'owner', payerParticipantId: 'owner' }),
+      validExpense({
+        id: 'expOwner',
+        createdBy: 'owner',
+        payerParticipantId: 'owner',
+        splitMode: 'exact',
+        splitDistribution: { owner: 5250, member: 5250 }, // create referencing departed uid
+      }),
     ));
   });
 });
@@ -188,6 +202,7 @@ git commit -m "fix(rules): require current group membership for expense writes (
 **Files:**
 - Modify: `CLAUDE.md` — Key Invariants B1 bullet: "any event participant may edit/soft-delete any non-deleted expense — `validExpenseUpdate` gates on `isEventParticipant` alone" → gates on `isGroupMember` + `isEventParticipant` (#1131); keep the `ledgerEditPolicy` future note intact.
 - Modify: `docs/SECURITY-RULES.md` — expense rows/sections describing the write gate as "event participants" (lines ~29, 59, 79, 95, 108, 370, 461-485): add the current-membership conjunct. Do NOT touch settlement rows (out of scope; note any staleness as follow-up).
+- Modify: `docs/POST-LAUNCH-ROADMAP.md:71` — the #248 row ("open to any event participant") under-describes the gate after #1131; append "(current members only since #1131)" so it doesn't read as current behavior (Gate round-1 adversary P3).
 
 **Step: Commit**
 
@@ -207,4 +222,9 @@ git commit -m "docs(rules): expense write gate now requires current membership (
 ## Out of scope (follow-ups, not bundled)
 
 - `docs/SECURITY-RULES.md:30` describes event-settlement create as "event participants" — stale since #752 (now `isGroupMember`). File a docs follow-up if confirmed.
-- Departed-member authority on OTHER surfaces (event-doc updates, group-doc writes) — #1132 territory (departed-creator authority), separately tracked.
+- **`validEventLightUpdate` sibling hole** (`firestore.rules` ~:559-603): event-doc light updates (name/dates/description/additive participantIds) gate on `requesterIsParticipant()` alone — the identical membership-blind class one surface over. NOT covered by #1132 (which is `createdBy`-scoped): a departed NON-creator can still edit event metadata. **File a distinct follow-up issue at ship time** (Gate round-1 rubric P3) so it doesn't fall through the #1131/#1132 gap.
+- Departed-CREATOR authority (createdBy-gated callables/paths) — #1132, separately tracked.
+
+## Gate record
+
+Round 1 (2026-07-11): rubric reviewer 0 P1 / 1 P2 / 2 P3; orthogonal-axis adversary 0 P1 / 0 P2 / 4 P3 — **both P1-clean in the same round, Gate passed.** The P2 (over-block guard test didn't exercise the #249 counterparty axis) and material P3s (expression-ceiling premise precision, POST-LAUNCH-ROADMAP row, offline-replay framing, validEventLightUpdate follow-up routing) are folded into this revision.
