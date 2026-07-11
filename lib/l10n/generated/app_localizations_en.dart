@@ -986,6 +986,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settleUpBalanceStillSyncing =>
+      'Balances are still syncing — try again in a moment.';
+
+  @override
   String get settleUpRecorded => 'Settlement recorded.';
 
   @override
