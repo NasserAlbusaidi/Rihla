@@ -115,7 +115,15 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   Future<void> _submitForm(List<GroupMember> members) async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedParticipantIds.isEmpty) {
+    // #1159: [members] is the eligible (active, non-tombstone) list the card
+    // rendered — prune the stored selection to it so a ghost or a
+    // now-ineligible id can never reach the write (WYSIWYG). This also covers a
+    // selection emptied by pruning below.
+    final selected = _selectedParticipantIds.intersection({
+      for (final m in members) m.userId,
+    });
+
+    if (selected.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.eventSelectAtLeastOneParticipant),
@@ -130,7 +138,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     // Build participantNames map from selected members (immutable pattern)
     final participantNames = Map<String, String>.unmodifiable({
       for (final m in members)
-        if (_selectedParticipantIds.contains(m.userId)) m.userId: m.displayName,
+        if (selected.contains(m.userId)) m.userId: m.displayName,
     });
 
     final uid = _resolveCurrentUid();
@@ -164,7 +172,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             groupId: widget.groupId,
             name: _nameController.text.trim(),
             type: _selectedType,
-            participantIds: List.unmodifiable(_selectedParticipantIds.toList()),
+            participantIds: List.unmodifiable(selected.toList()),
             participantNames: participantNames,
             createdBy: uid,
             startDate: _startDate,
@@ -255,10 +263,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(eventLoadingProvider);
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
-    final groupName = ref
-        .watch(groupDetailProvider(widget.groupId))
-        .valueOrNull
-        ?.name;
+    // #1159: hoisted from `.valueOrNull?.name` — the participant filter also
+    // needs the group's activeMemberIdSet, and the same watch feeds both.
+    final group = ref.watch(groupDetailProvider(widget.groupId)).valueOrNull;
 
     return Scaffold(
       key: EventKeys.createEventScreen,
@@ -268,7 +275,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           ModuleHeader(
             useDarkTheme: true,
             title: context.l10n.eventNew,
-            subtitle: groupName,
+            subtitle: group?.name,
           ),
           const OfflineBanner(),
           Expanded(
@@ -285,14 +292,39 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                     ref.invalidate(groupMembersProvider(widget.groupId)),
               ),
               data: (members) {
+                // #1159: event create is gated on
+                // participantIds.hasOnly(activeGroupMembers()) (firestore.rules)
+                // — never offer or default-select a candidate that gate would
+                // deny. Eligible = non-tombstone docs ∩ activeMemberIdSet (the
+                // exact rules mirror incl. its legacy absent-field fallback;
+                // #1149 convention). Group unresolved → tombstone drop only
+                // (fail-open). Filter-emptied → unfiltered (degenerate; the
+                // viewer is a live member, so it can't happen in practice, but
+                // never render an empty picker because of a filter).
+                final active = group?.activeMemberIdSet;
+                var eligible = members
+                    .where(
+                      (m) =>
+                          !m.isTombstone &&
+                          (active == null || active.contains(m.userId)),
+                    )
+                    .toList();
+                if (eligible.isEmpty) eligible = members;
+                final eligibleIds = {for (final m in eligible) m.userId};
+                // Stateless prune: the one-shot initial selection may predate
+                // the group doc (or a later roster change); intersecting here
+                // keeps the rendered card and the write consistent with the
+                // tightest known set without setState-in-build.
+                final selection = Set<String>.unmodifiable(
+                  _selectedParticipantIds.intersection(eligibleIds),
+                );
+
                 // Pre-populate participant selection once on first data load (D-04)
                 if (!_participantsInitialized && members.isNotEmpty) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) {
                       setState(() {
-                        _selectedParticipantIds = Set.unmodifiable(
-                          members.map((m) => m.userId).toSet(),
-                        );
+                        _selectedParticipantIds = Set.unmodifiable(eligibleIds);
                         _participantsInitialized = true;
                       });
                     }
@@ -323,8 +355,8 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 );
 
                 final participantsCard = EventParticipantsCard(
-                  members: members,
-                  selectedIds: _selectedParticipantIds,
+                  members: eligible,
+                  selectedIds: selection,
                   onSelectAllChanged: (ids) =>
                       setState(() => _selectedParticipantIds = ids),
                   onToggle: (userId) {
@@ -401,7 +433,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                               ? context.l10n.eventCreating
                               : context.l10n.eventCreate,
                           isLoading: isLoading,
-                          onPressed: () => _submitForm(members),
+                          onPressed: () => _submitForm(eligible),
                         ),
 
                         SizedBox(height: context.spacing.space32),
