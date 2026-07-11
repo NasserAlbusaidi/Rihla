@@ -2198,34 +2198,44 @@ describe('Publish readiness Firestore rules', () => {
       }));
     });
 
-    // Over-blocking guard: the remaining member keeps full write authority —
-    // including on expenses whose splitDistribution still REFERENCES the
-    // departed participant (participants() untouched, #249 parity). The splits
-    // below must name 'member' explicitly: amountFils is allocation-affecting,
-    // so the edit re-runs splitDistribution.keys().hasOnly(participants())
-    // against a split containing the departed uid — a trivially-empty split
-    // would not exercise that axis.
-    test('remaining member still creates and edits normally after a departure', async () => {
+    // Over-blocking guard, #1144 revision: the remaining member keeps full
+    // write authority for CURRENT-member expenses. The pre-#1144 version of
+    // this test pinned the old #249-era counterparty allowance (creates/edits
+    // whose splitDistribution referenced the departed uid) — #1144's
+    // current-party policy deliberately reverses that (a leave-departed
+    // party left at exact zero; new exposure re-opens their balance), so
+    // those cases now live as DENY tests in the '#1144 current-party policy'
+    // describe. What must stay true: current-member-only writes flow freely,
+    // and metadata edits of departed-referencing docs stay open.
+    test('remaining member still creates and edits current-member expenses after a departure', async () => {
       await seedExpense({
         splitMode: 'exact',
-        splitDistribution: { owner: 5250, member: 5250 }, // departed uid as counterparty
+        splitDistribution: { owner: 5250, member: 5250 }, // written pre-departure
       });
       await departMember();
       const owner = testEnv.authenticatedContext('owner').firestore();
+      // Metadata edit of the departed-referencing doc stays open (#1144 R6).
       await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
-        amountFils: 12500,
-        splitDistribution: { owner: 6250, member: 6250 },
+        note: 'still annotatable',
         lastEditedBy: 'owner',
       }));
+      // New current-member-only expense on the same event flows freely
+      // (exact keys ⊆ memberIds; the departed uid stays on the roster).
       await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/expOwner').set(
         validExpense({
           id: 'expOwner',
           createdBy: 'owner',
           payerParticipantId: 'owner',
           splitMode: 'exact',
-          splitDistribution: { owner: 5250, member: 5250 }, // create referencing departed uid
+          splitDistribution: { owner: 10500 },
         }),
       ));
+      // And allocation-editing it keeps working (all parties current, pre+post).
+      await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/expOwner').update({
+        amountFils: 12500,
+        splitDistribution: { owner: 12500 },
+        lastEditedBy: 'owner',
+      }));
     });
   });
 
