@@ -19,7 +19,6 @@ export { correctLogicalSettleUp } from './callables/correctLogicalSettleUp';
 export { recordSettlement } from './callables/recordSettlement';
 export {
   eventWriteRateMonitor,
-  groupSettlementWriteRateMonitor,
   groupActivityWriteRateMonitor,
 } from './triggers/writeRateMonitor';
 export {
