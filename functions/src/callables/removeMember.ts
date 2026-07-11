@@ -3,6 +3,7 @@ import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
 import { recomputeNet } from './groupNetBalance';
+import { isCurrentMember } from './shared/membership';
 
 // #318: server-authoritative creator-remove. The client guard ("settle before
 // removing") was skipped whenever the balance had not loaded (offline / slow /
@@ -99,8 +100,10 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
       throw new HttpsError('not-found', 'Group not found.');
     }
 
-    // Only the group creator may remove another member (deleteGroup.ts:145).
-    if (group.createdBy !== uid) {
+    // Only the CURRENT-member group creator may remove another member
+    // (deleteGroup.ts:145). #1132: createdBy alone is membership-blind — a
+    // departed creator must not retain removal authority.
+    if (group.createdBy !== uid || !isCurrentMember(group, uid)) {
       throw new HttpsError(
         'permission-denied',
         'Only the group creator can remove a member.',
@@ -172,7 +175,9 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
       ) {
         throw new HttpsError('not-found', 'Group not found.');
       }
-      if (freshGroup.createdBy !== uid) {
+      // #1132: re-check membership in the tx too — a leave can commit between
+      // the first check and here.
+      if (freshGroup.createdBy !== uid || !isCurrentMember(freshGroup, uid)) {
         throw new HttpsError(
           'permission-denied',
           'Only the group creator can remove a member.',

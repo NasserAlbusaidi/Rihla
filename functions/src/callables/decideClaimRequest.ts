@@ -12,6 +12,7 @@ import '../admin';
 import { validId } from './shared/ids';
 import { claimShadowEngine, finalizeClaimAndRelease } from './claimShadow';
 import { refreshGroupBalanceAggregate } from '../triggers/balanceAggregator';
+import { isCurrentMember } from './shared/membership';
 
 // #278 claim/merge PR8 (D1). The group CREATOR approves or declines a pending
 // claim request. This is the impersonation gate: the raw claimShadow onCall was
@@ -192,8 +193,10 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
     if (groupData.claimingInProgress === true || groupData.accountDeletionInProgress === true) {
       throw new HttpsError('failed-precondition', 'Group is temporarily locked.');
     }
-    // D1 trust anchor (removeMember.ts:90): only the group creator decides.
-    if (groupData.createdBy !== uid) {
+    // D1 trust anchor (removeMember.ts:90): only the CURRENT-member group creator
+    // decides. #1132: createdBy alone is membership-blind — a departed creator
+    // must not retain claim-approval (identity re-key) authority.
+    if (groupData.createdBy !== uid || !isCurrentMember(groupData, uid)) {
       throw new HttpsError('permission-denied', 'Only the group creator can approve a claim.');
     }
 
@@ -217,7 +220,9 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
       if (lockedGroupData.claimingInProgress === true || lockedGroupData.accountDeletionInProgress === true) {
         throw new HttpsError('failed-precondition', 'Group is temporarily locked.');
       }
-      if (lockedGroupData.createdBy !== uid) {
+      // #1132: re-check membership in the tx too — a leave can commit between
+      // the first check and here.
+      if (lockedGroupData.createdBy !== uid || !isCurrentMember(lockedGroupData, uid)) {
         throw new HttpsError('permission-denied', 'Only the group creator can approve a claim.');
       }
 
