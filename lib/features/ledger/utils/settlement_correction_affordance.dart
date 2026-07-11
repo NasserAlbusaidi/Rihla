@@ -105,3 +105,20 @@ bool logicalSetAffordanceCorrected(List<Settlement> members) {
     ),
   );
 }
+
+/// #1149 client mirror of the correctSettlement.ts / correctLogicalSettleUp.ts
+/// current-party check: both parties must be in FULL `group.memberIds`.
+/// Ghosts (deleteAccount tombstones) and shadows ARE in memberIds — exact
+/// set-membership only, nothing fancier; NEVER the active set here, ghost
+/// debt cleanup stays live. A null party id is never current.
+bool settlementPartiesAreCurrentMembers(
+  Settlement settlement,
+  Set<String> memberIds,
+) {
+  final payer = settlement.payerParticipantId;
+  final recipient = settlement.recipientParticipantId;
+  return payer != null &&
+      recipient != null &&
+      memberIds.contains(payer) &&
+      memberIds.contains(recipient);
+}

@@ -127,4 +127,46 @@ void main() {
       expect(logicalSetAffordanceCorrected([original, reverse]), isTrue);
     });
   });
+
+  group('settlementPartiesAreCurrentMembers (#1149)', () {
+    const memberIds = {'uid-alice', 'uid-bob', 'deleted-ghost1'};
+
+    test('both parties live members', () {
+      expect(
+        settlementPartiesAreCurrentMembers(_s('s1'), memberIds),
+        isTrue,
+      );
+    });
+
+    test('ghost party stays correctable (tombstone id IS in memberIds)', () {
+      expect(
+        settlementPartiesAreCurrentMembers(
+          _s('s2', payer: 'deleted-ghost1'),
+          memberIds,
+        ),
+        isTrue,
+      );
+    });
+
+    test('departed recipient hides (id absent from memberIds)', () {
+      expect(
+        settlementPartiesAreCurrentMembers(
+          _s('s3', recipient: 'uid-departed'),
+          memberIds,
+        ),
+        isFalse,
+      );
+    });
+
+    test('null payer id is never current', () {
+      final s = Settlement(
+        id: 's4',
+        tripId: 'event-1',
+        recipientParticipantId: 'uid-alice',
+        amount: Decimal.parse('10.000'),
+        settledAt: DateTime(2026, 5, 17),
+      );
+      expect(settlementPartiesAreCurrentMembers(s, memberIds), isFalse);
+    });
+  });
 }
