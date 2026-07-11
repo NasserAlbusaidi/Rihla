@@ -92,7 +92,7 @@ async function notifyEventCreated(
       body: eventBody(locale, actorName, eventName),
     }),
     { type: 'event', groupId: gid, eventId: eid },
-    { dedupeKey: `event:create:${gid}:${eid}:${eventId}` },
+    { dedupeKey: `event:create:${gid}:${eid}:${eventId}`, requireCurrentMembershipOf: gid },
   );
 }
 

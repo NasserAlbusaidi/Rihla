@@ -42,8 +42,8 @@ async function seedToken(uid: string, locale = 'en'): Promise<void> {
     .set({ user_id: uid, token: `tok-${uid}`, locale, platform: 'android' });
 }
 
-async function seedGroup(gid: string, name: string): Promise<void> {
-  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name });
+async function seedGroup(gid: string, name: string, memberIds: string[]): Promise<void> {
+  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name, memberIds });
 }
 
 // Seed a member doc keyed by a NON-uid id with userId as a FIELD — proves the
@@ -87,7 +87,7 @@ const base = {
 
 describe('eventNotifier', () => {
   test('notifies all event participants minus the creator', async () => {
-    await seedGroup('g1', 'Road Trips');
+    await seedGroup('g1', 'Road Trips', ['creator', 'p2', 'p3']);
     await seedMember('g1', 'creator', 'Ahmed');
     await seedToken('p2');
     await seedToken('p3');
@@ -111,7 +111,7 @@ describe('eventNotifier', () => {
   // [P2 Gate] third-party creator: the body must name the CREATOR (the actor),
   // never a recipient — the settlementNotifier mislabel-the-actor guard, applied.
   test('body names the creator, not a recipient', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedMember('g1', 'creator', 'Layla');
     await seedMember('g1', 'p2', 'Bilal');
     await seedToken('p2');
@@ -130,7 +130,7 @@ describe('eventNotifier', () => {
   });
 
   test('single-participant (creator-only) event notifies nobody', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator']);
     await seedMember('g1', 'creator', 'Ahmed');
     await seedToken('creator');
     const sendEach = mockSendEach(0);
@@ -146,7 +146,7 @@ describe('eventNotifier', () => {
   });
 
   test('deleted-on-create event is not notified', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedToken('p2');
     const sendEach = mockSendEach(0);
 
@@ -161,7 +161,7 @@ describe('eventNotifier', () => {
   });
 
   test('unresolved actor falls back to localized "Someone" per recipient locale', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2', 'p3']);
     // no member doc for creator -> actor unresolved
     await seedToken('p2', 'en');
     await seedToken('p3', 'ar');
@@ -185,7 +185,7 @@ describe('eventNotifier', () => {
   });
 
   test('target with no token is skipped (no send)', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedMember('g1', 'creator', 'Ahmed');
     // no token for p2
     const sendEach = mockSendEach(0);
@@ -201,7 +201,7 @@ describe('eventNotifier', () => {
   });
 
   test('empty event name drops the trailing separator cleanly', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedMember('g1', 'creator', 'Ahmed');
     await seedToken('p2');
     const sendEach = mockSendEach(1);
@@ -220,7 +220,7 @@ describe('eventNotifier', () => {
   });
 
   test('retrying the same Eventarc create event sends only once', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedMember('g1', 'creator', 'Ahmed');
     await seedToken('p2');
     const sendEach = mockSendEach(1);
@@ -234,5 +234,27 @@ describe('eventNotifier', () => {
     await wrap(event);
 
     expect(sendEach).toHaveBeenCalledTimes(1);
+  });
+
+  test('#1141: departed participant in committed doc gets no push; current ones still do', async () => {
+    await seedGroup('g1', 'Muscat Trip', ['creator-1', 'staying-1']);
+    await seedMember('g1', 'creator-1', 'Ali');
+    await seedToken('staying-1');
+    await seedToken('departed-1'); // still holds a token, no longer a member
+    const sendEach = mockSendEach(1);
+
+    await wrap(
+      eventCreated(
+        {
+          createdBy: 'creator-1',
+          participantIds: ['creator-1', 'staying-1', 'departed-1'],
+          name: 'Dinner',
+          isDeleted: false,
+        },
+        { gid: 'g1', eid: 'e1' },
+      ),
+    );
+
+    expect(tokensOf(sendEach)).toEqual(['tok-staying-1']);
   });
 });
