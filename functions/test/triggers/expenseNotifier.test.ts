@@ -42,8 +42,8 @@ async function seedToken(uid: string, locale = 'en'): Promise<void> {
     .set({ user_id: uid, token: `tok-${uid}`, locale, platform: 'android' });
 }
 
-async function seedGroup(gid: string, name: string): Promise<void> {
-  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name });
+async function seedGroup(gid: string, name: string, memberIds: string[]): Promise<void> {
+  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name, memberIds });
 }
 
 async function seedEvent(
@@ -100,7 +100,7 @@ const base = {
 
 describe('expenseNotifier', () => {
   test('equally/global (no splitDistribution) notifies all event participants minus creator', async () => {
-    await seedGroup('g1', 'Salalah Trip');
+    await seedGroup('g1', 'Salalah Trip', ['creator', 'p2', 'p3']);
     await seedEvent('g1', 'e1', ['creator', 'p2', 'p3']);
     await seedMember('g1', 'creator', 'Ahmed');
     await seedToken('p2');
@@ -124,7 +124,7 @@ describe('expenseNotifier', () => {
   });
 
   test('splitDistribution keys are the recipients; payer added when payer != creator', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2', 'p3', 'payer']);
     await seedMember('g1', 'creator', 'Sara');
     await seedToken('p2');
     await seedToken('p3');
@@ -150,7 +150,7 @@ describe('expenseNotifier', () => {
   });
 
   test('zero-share participant is NOT notified (false-buzz guard)', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2', 'p3']);
     await seedMember('g1', 'creator', 'Sara');
     await seedToken('p2');
     await seedToken('p3');
@@ -174,7 +174,7 @@ describe('expenseNotifier', () => {
   });
 
   test('custom + equally uses customSplitParticipants (no distribution)', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2', 'p3']);
     await seedMember('g1', 'creator', 'Sara');
     await seedToken('p2');
     await seedToken('p3');
@@ -198,7 +198,7 @@ describe('expenseNotifier', () => {
   });
 
   test('personal scope notifies nobody when payer is the creator', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator']);
     await seedToken('creator');
     const sendEach = mockSendEach(0);
 
@@ -219,7 +219,7 @@ describe('expenseNotifier', () => {
   });
 
   test('deleted-on-create expense is not notified', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedEvent('g1', 'e1', ['creator', 'p2']);
     await seedToken('p2');
     const sendEach = mockSendEach(0);
@@ -235,7 +235,7 @@ describe('expenseNotifier', () => {
   });
 
   test('unresolved actor falls back to localized "Someone" per recipient locale', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2', 'p3']);
     await seedEvent('g1', 'e1', ['creator', 'p2', 'p3']);
     // no member doc for creator -> actor unresolved
     await seedToken('p2', 'en');
@@ -260,7 +260,7 @@ describe('expenseNotifier', () => {
   });
 
   test('target with no token is skipped (no send)', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedEvent('g1', 'e1', ['creator', 'p2']);
     await seedMember('g1', 'creator', 'Ahmed');
     // no token for p2
@@ -277,7 +277,7 @@ describe('expenseNotifier', () => {
   });
 
   test('formats the expense currency (JPY scale 1), not the group currency', async () => {
-    await seedGroup('g1', 'Tokyo');
+    await seedGroup('g1', 'Tokyo', ['creator', 'p2']);
     await seedEvent('g1', 'e1', ['creator', 'p2']);
     await seedMember('g1', 'creator', 'Ahmed');
     await seedToken('p2');
@@ -294,7 +294,7 @@ describe('expenseNotifier', () => {
   });
 
   test('retrying the same Eventarc create event sends only once', async () => {
-    await seedGroup('g1', 'Trip');
+    await seedGroup('g1', 'Trip', ['creator', 'p2']);
     await seedEvent('g1', 'e1', ['creator', 'p2']);
     await seedMember('g1', 'creator', 'Ahmed');
     await seedToken('p2');
@@ -309,5 +309,32 @@ describe('expenseNotifier', () => {
     await wrap(event);
 
     expect(sendEach).toHaveBeenCalledTimes(1);
+  });
+
+  test('#1141: split naming a departed historical participant does not push them; current parties do', async () => {
+    // leave/remove never prunes event participantIds (#1131), so a split can
+    // still name a departed member with a positive share and a live token.
+    await seedGroup('g1', 'Muscat Trip', ['creator', 'staying']);
+    await seedMember('g1', 'creator', 'Ali');
+    await seedToken('staying');
+    await seedToken('departed'); // positive share + valid token, no longer a member
+    const sendEach = mockSendEach(1);
+
+    await wrap(
+      expenseEvent(
+        {
+          ...base,
+          scope: 'custom',
+          splitMode: 'shares',
+          splitDistribution: { staying: 1, departed: 1 },
+          payerParticipantId: 'creator',
+          createdBy: 'creator',
+          lastEditedBy: 'creator',
+        },
+        { gid: 'g1', eid: 'e1', expenseId: 'x1' },
+      ),
+    );
+
+    expect(tokensOf(sendEach)).toEqual(['tok-staying']);
   });
 });

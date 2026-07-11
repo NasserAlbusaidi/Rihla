@@ -8,6 +8,11 @@ async function clearNotificationState(): Promise<void> {
   const db = getFirestore();
   await db.recursiveDelete(db.collection('fcm_tokens'));
   await db.recursiveDelete(db.collection('notificationDeliveries'));
+  await db.recursiveDelete(db.collection('groups'));
+}
+
+async function seedGroup(gid: string, memberIds: string[]): Promise<void> {
+  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name: 'G', memberIds });
 }
 
 async function seedToken(
@@ -207,5 +212,89 @@ describe('sendToUids', () => {
     );
 
     expect(sendEach).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('membership fence (#1141)', () => {
+  test('drops targets absent from fresh memberIds, keeps current members', async () => {
+    await seedGroup('g1', ['a']);
+    await seedToken('a', 'tok-a', 'en');
+    await seedToken('departed', 'tok-departed', 'en');
+    const sendEach = mockSendEach([{ success: true }]);
+
+    await sendToUids(['a', 'departed'], build, { type: 'expense', groupId: 'g1' }, {
+      requireCurrentMembershipOf: 'g1',
+    });
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
+    const tokens = sendEach.mock.calls[0][0].map((m: { token: string }) => m.token);
+    expect(tokens).toEqual(['tok-a']);
+  });
+
+  test('group doc missing → sends nothing', async () => {
+    await seedToken('a', 'tok-a', 'en');
+    const sendEach = mockSendEach([]);
+
+    await sendToUids(['a'], build, { type: 'expense', groupId: 'missing' }, {
+      requireCurrentMembershipOf: 'missing',
+    });
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('memberIds absent → sends nothing (fail-closed, never committed fallback)', async () => {
+    await getFirestore().doc('groups/g2').set({ id: 'g2', name: 'G' }); // no memberIds
+    await seedToken('a', 'tok-a', 'en');
+    const sendEach = mockSendEach([]);
+
+    await sendToUids(['a'], build, { type: 'expense', groupId: 'g2' }, {
+      requireCurrentMembershipOf: 'g2',
+    });
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('fence refusal does not burn the dedupe marker', async () => {
+    await seedToken('a', 'tok-a', 'en');
+    const sendEach = mockSendEach([{ success: true }]);
+
+    // First attempt: group missing → nothing sent, marker NOT claimed.
+    await sendToUids(['a'], build, { type: 'expense', groupId: 'g3' }, {
+      dedupeKey: 'k-1141', requireCurrentMembershipOf: 'g3',
+    });
+    expect(sendEach).not.toHaveBeenCalled();
+    const markers = await getFirestore().collection('notificationDeliveries').get();
+    expect(markers.size).toBe(0);
+
+    // Duplicate invocation after the group exists: same key still deliverable.
+    await seedGroup('g3', ['a']);
+    await sendToUids(['a'], build, { type: 'expense', groupId: 'g3' }, {
+      dedupeKey: 'k-1141', requireCurrentMembershipOf: 'g3',
+    });
+    expect(sendEach).toHaveBeenCalledTimes(1);
+  });
+
+  test('post-fence empty target set does not burn the dedupe marker', async () => {
+    await seedGroup('g4', ['member-without-token']);
+    await seedToken('departed', 'tok-departed', 'en');
+    const sendEach = mockSendEach([]);
+
+    await sendToUids(['departed'], build, { type: 'expense', groupId: 'g4' }, {
+      dedupeKey: 'k-empty', requireCurrentMembershipOf: 'g4',
+    });
+
+    expect(sendEach).not.toHaveBeenCalled();
+    const markers = await getFirestore().collection('notificationDeliveries').get();
+    expect(markers.size).toBe(0);
+  });
+
+  test('option absent → committed targets pass through unchanged', async () => {
+    // No group doc at all; legacy behavior must not require one.
+    await seedToken('a', 'tok-a', 'en');
+    const sendEach = mockSendEach([{ success: true }]);
+
+    await sendToUids(['a'], build, { type: 'claim_decided', groupId: 'nowhere' });
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
   });
 });

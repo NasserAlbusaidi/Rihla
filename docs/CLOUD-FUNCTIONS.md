@@ -179,10 +179,13 @@ never fails the join).
 
 Shared sender infrastructure under `functions/src/notifications/`:
 
-- `fcmSender.ts` — `sendToUids(uids, build, data)`: reads `fcm_tokens/{uid}`,
-  sends one **per-recipient-locale** `Message` via `getMessaging().sendEach`,
-  prunes not-registered/invalid tokens, and **never throws**. uids that have
-  no token doc (shadow/unclaimed members, opted-out users) are skipped.
+- `fcmSender.ts` — `sendToUids(uids, build, data, options?)`: reads
+  `fcm_tokens/{uid}`, sends one **per-recipient-locale** `Message` via
+  `getMessaging().sendEach`, prunes not-registered/invalid tokens, and **never
+  throws**. uids that have no token doc (shadow/unclaimed members, opted-out
+  users) are skipped. `options.requireCurrentMembershipOf` is the **#1141
+  membership fence** (below); `options.dedupeKey` claims an at-most-once
+  delivery marker.
 - `strings.ts` — bilingual (en/ar) copy + `normalizeLocale`. The recipient
   locale is read from `fcm_tokens/{uid}.locale` (written by the client), so
   copy renders correctly even when the app is terminated and the OS draws the
@@ -196,6 +199,44 @@ notification_service.dart` (+ `local_notifier.dart`). **iOS push is inert**
 until APNs cert + entitlement are configured (no iOS CI) — tracked as a
 follow-up; the client stays crash-safe and the token is still stored.
 
+### Membership fence (#1141)
+
+A membership-scoped push targets recipients captured at domain-commit
+(`participantIds`, split share-set, settlement parties, a pre-join member
+snapshot). A user who **lost membership** between that commit and the trigger
+firing would otherwise still receive group/event/money/claim details they can
+no longer read. The fence closes this: when `sendToUids` is passed
+`requireCurrentMembershipOf: gid`, it reads `groups/{gid}` **fresh** immediately
+before delivery, intersects the committed targets with `memberIds`, and on any
+lookup failure (missing doc, absent/non-array field, read error) sends
+**nothing** — never falling back to the committed list (**fail-closed**).
+
+- **Which senders opt in:** `eventNotifier`, `expenseNotifier`,
+  `eventSettlementNotifier` + `groupSettlementNotifier` (via the shared
+  `notifySettlement`), `notifyMemberJoin`, and `claimRequestNotifier` **Branch A**
+  (the claim-request push to the group creator).
+- **Branch B is intentionally NOT fenced.** The claim-**decision** push
+  (`pending → claimed|declined`) targets the requester, who is routinely a
+  pre-join non-member (`routeability: 'pre_join'`). A fence there would swallow
+  every approve/decline to a not-yet-member joiner. Pinned by a regression test.
+- **`memberIds`, not `activeMemberIds`.** Tombstone ids sit in `memberIds` but
+  never mint FCM tokens, and unclaimed-shadow uuids never authenticate, so the
+  two sets are delivery-equivalent; `memberIds` avoids the absent-field legacy
+  fallback (`activeMemberIds` is absent on pre-#1144 groups).
+- **Fence before marker.** The fence runs **before** the `dedupeKey` delivery
+  marker is claimed, so a refused/empty send never burns the marker — a
+  duplicate trigger invocation (the only redelivery path; no notifier sets
+  `retry`) can still deliver to eligible recipients later. `notifyMemberJoin`
+  is the exception: it is a fire-and-forget call with **no** redelivery path, so
+  a transient fence-read failure permanently loses the "X joined" announcement
+  (accepted — member-join is the one best-effort, lost-row-at-worst push).
+- **Non-atomic race (honest residual):** membership revocation and FCM delivery
+  cannot be atomic — a member who leaves after the fence read but before fan-out
+  can still receive that one push. The fence shrinks the window from
+  commit→send (unbounded trigger latency) to read→send (milliseconds); it
+  **cannot close it**. A group soft-deleted between commit and send is also not
+  fenced (its members are still members — degraded UX, not a leak).
+
 ## Firestore triggers — audit log & balance aggregation
 
 Beyond the write-rate monitor (#198) and settlement notifiers (#53), these
@@ -206,7 +247,7 @@ triggers fire server-side after commit:
 | `expenseAuditLogger` | `onDocumentWritten` `groups/{gid}/events/{eid}/expenses/{expenseId}` | Server-authored, tamper-proof audit of every expense create/edit/soft-delete; attributes the actor from the rules-pinned `lastEditedBy` (B1 / #248). |
 | `expenseNotifier` | `onDocumentCreated` `groups/{gid}/events/{eid}/expenses/{expenseId}` | Push to event participants on a new expense (#179). |
 | `eventNotifier` | `onDocumentCreated` `groups/{gid}/events/{eid}` | Push to group members on a new event (#179). |
-| `claimRequestNotifier` | `onDocumentWritten` `groups/{gid}/claimRequests/{requestId}` | Push to the group creator when a claim request arrives (re-open-safe status guard) (#560). |
+| `claimRequestNotifier` | `onDocumentWritten` `groups/{gid}/claimRequests/{requestId}` | Push to the group creator when a claim request arrives (re-open-safe status guard) (#560); **Branch A is membership-fenced** (#1141), Branch B (the decision push to the requester) is intentionally not. |
 | `eventModuleBalanceAggregator` | `onDocumentWritten` `groups/{gid}/events/{eid}/{module}/{docId}` | Maintains the per-currency `groups/{gid}/aggregates/balance` display cache via `recomputeNet` (#366/#382). |
 | `eventBalanceAggregator` | `onDocumentWritten` `groups/{gid}/events/{eid}` | Same cache, on event-doc changes. |
 | `groupSettlementBalanceAggregator` | `onDocumentWritten` `groups/{gid}/settlements/{settlementId}` | Same cache, on group-settlement changes. |
