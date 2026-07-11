@@ -1269,6 +1269,49 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  describe('#1135 departed event participant light-update authority', () => {
+    async function departMember(remainingMemberIds: string[]): Promise<void> {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await db.doc('groups/g1').update({
+          memberIds: remainingMemberIds,
+          updatedAt: new Date(),
+        });
+        await db.doc('groups/g1/members/member').delete();
+      });
+    }
+
+    test('departed participant cannot rename an event', async () => {
+      await departMember(['owner']);
+      const departed = testEnv.authenticatedContext('member').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1').update({
+        name: 'Hijacked Camp',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('departed participant cannot add a current member to an event', async () => {
+      await addGroupMember('guest', 'Guest');
+      await departMember(['owner', 'guest']);
+      const departed = testEnv.authenticatedContext('member').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1').update({
+        participantIds: ['owner', 'member', 'guest'],
+        participantNames: { owner: 'Owner', member: 'Member', guest: 'Guest' },
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('departed participant cannot remove self while renaming an event', async () => {
+      await departMember(['owner']);
+      const departed = testEnv.authenticatedContext('member').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1').update({
+        name: 'Hijacked Camp',
+        participantIds: ['owner'],
+        updatedAt: new Date(),
+      }));
+    });
+  });
+
   test('participant can rename event', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
 
