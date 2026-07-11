@@ -3593,10 +3593,16 @@ describe('Publish readiness Firestore rules', () => {
       ));
     });
 
-    test('R5-11. event settlement with the ghost as recipient → allowed (memberIds gate unchanged — debt cleanup)', async () => {
+    test('R5-11. event settlement with the ghost as recipient → DENIED like every client settlement create (#1129); ghost settleability lives in the callable', async () => {
+      // Pre-#1129 this pinned "ghosts stay settleable" at the RULES layer
+      // (memberIds gate — debt cleanup). Settlement creates are now
+      // callable-only, so the rules deny this for everyone; the ghost
+      // (tombstone) settleability property is pinned server-side by the
+      // recordSettlement emulator table ("tombstone ghost in both → allowed",
+      // functions/test/callables/recordSettlement.event.test.ts).
       await seedActivatedGhostGroup();
       const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e5/settlements/rs11').set(
+      await assertFails(member.doc('groups/g1/events/e5/settlements/rs11').set(
         validSettlement({
           id: 'rs11', eventId: 'e5', createdBy: 'member',
           payerParticipantId: 'member', recipientParticipantId: T,
