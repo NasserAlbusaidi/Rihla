@@ -1139,6 +1139,25 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String settleUpDepartedPairsHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'تم إخفاء $count اقتراح يخص أعضاء سابقين — لم يعد بالإمكان تسجيل هذه التحويلات.',
+      many:
+          'تم إخفاء $count اقتراحًا يخص أعضاء سابقين — لم يعد بالإمكان تسجيل هذه التحويلات.',
+      few:
+          'تم إخفاء $count اقتراحات تخص أعضاء سابقين — لم يعد بالإمكان تسجيل هذه التحويلات.',
+      two:
+          'تم إخفاء اقتراحين يخصان أعضاء سابقين — لم يعد بالإمكان تسجيل هذين التحويلين.',
+      one:
+          'تم إخفاء اقتراح واحد يخص عضوًا سابقًا — لم يعد بالإمكان تسجيل هذا التحويل.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String settleUpNoOptimizedPayments(Object subjectName) {
     return 'لا توجد دفعات محسّنة مطلوبة ضمن $subjectName.';
   }
@@ -2125,6 +2144,14 @@ class AppLocalizationsAr extends AppLocalizations {
       'هذه الفعالية مُغلقة والإنفاق مُجمّد. أعد فتحها من الإعدادات لإضافة المصروفات أو تعديلها.';
 
   @override
+  String get editorDepartedFrozenBanner =>
+      'أحد الأشخاص في هذا المصروف غادر المجموعة، لذا المبلغ وطريقة التقسيم مقفلان. لا يزال بإمكانك تعديل التفاصيل مثل الوصف والفئة.';
+
+  @override
+  String get editorPartiesNotCurrentWarning =>
+      'عضو سابق ضمن هذا التقسيم. التقسيم بالتساوي غير متاح في هذه الفعالية — اختر المشمولين عبر تقسيم دقيق أو بالحصص أو بالنسبة، أو سجّله كمصروف شخصي.';
+
+  @override
   String get eventTabExpenses => 'المصاريف';
 
   @override
@@ -2547,6 +2574,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get groupSettleBeforeLeaving => 'سوِّ الحساب قبل مغادرة المجموعة.';
+
+  @override
+  String get groupMembershipChangeInProgress =>
+      'هناك تغيير آخر في العضوية قيد التنفيذ الآن. يرجى المحاولة مرة أخرى بعد لحظات.';
 
   @override
   String groupFailedLeave(Object error) {

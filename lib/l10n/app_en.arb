@@ -924,6 +924,15 @@
       }
     }
   },
+  "settleUpDepartedPairsHidden": "{count, plural, =1{1 suggestion involving a former member is hidden — that transfer can no longer be recorded.} other{{count} suggestions involving former members are hidden — those transfers can no longer be recorded.}}",
+  "@settleUpDepartedPairsHidden": {
+    "description": "#1149 — muted note under the settle-up transfer list when suggestions naming a leave/remove-departed party are pruned (rules would deny the write). Carries the count because the transfers headline deliberately keeps the UNPRUNED total (a departed party's debt is real, unsettleable R1 money); the note reconciles headline-vs-tiles.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "settleUpNoOptimizedPayments": "No optimized payments are needed across {subjectName}.",
   "@settleUpNoOptimizedPayments": {
     "placeholders": {
@@ -1609,6 +1618,14 @@
   },
   "editorEventClosedTitle": "Event closed",
   "editorEventClosedMessage": "This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.",
+  "editorDepartedFrozenBanner": "Someone in this expense left the group, so its amount and split are locked. Details like the description and category can still be edited.",
+  "@editorDepartedFrozenBanner": {
+    "description": "#1149 R6 mirror \u2014 banner + blocked-save snackbar on an expense whose STORED parties include a leave/remove-departed member (full-memberIds check; deleteAccount ghosts do NOT freeze). Metadata edits stay open; allocation edits and delete are rules-blocked."
+  },
+  "editorPartiesNotCurrentWarning": "A former member is part of this split. Equal splits aren't available on this event \u2014 choose who's included with an exact, shares, or percent split, or record it as a personal expense.",
+  "@editorPartiesNotCurrentWarning": {
+    "description": "#1149 create-side roster-trap warning + pre-submit block: the current form selection would fail rules expensePartiesAreCurrentMembers against activeGroupMembers() (departed participant on the event roster, or a deleteAccount ghost on create). Names the personal-scope escape because exact/shares/percent is unreachable in a group shrunk to one member."
+  },
   "eventTabExpenses": "Expenses",
   "eventTabSettleUp": "Settle up",
   "eventTabActivity": "Activity",
@@ -1809,6 +1826,10 @@
   "groupStayInGroup": "Stay in group",
   "groupLeaveGroup": "Leave group",
   "groupSettleBeforeLeaving": "Settle up before leaving the group.",
+  "groupMembershipChangeInProgress": "Another membership change is happening right now. Please try again in a moment.",
+  "@groupMembershipChangeInProgress": {
+    "description": "#1144/#1149 — leave/removeMember threw `aborted` (departure-lock contention): transient by design, retry-inviting copy, never the settle-up snackbar and never Sentry."
+  },
   "groupFailedLeave": "Failed to leave group: {error}",
   "@groupFailedLeave": {
     "placeholders": {

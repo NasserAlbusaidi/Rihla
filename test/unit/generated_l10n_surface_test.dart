@@ -86,6 +86,38 @@ void main() {
     });
   });
 
+  group('#1149 departure-mirror UX localization surface', () {
+    test('English keys are reachable', () {
+      final en = AppLocalizationsEn();
+      expect(en.editorDepartedFrozenBanner, contains('left the group'));
+      expect(en.editorPartiesNotCurrentWarning, contains('former member'));
+      expect(en.settleUpDepartedPairsHidden(2), contains('2'));
+      expect(en.groupMembershipChangeInProgress, contains('membership'));
+    });
+
+    test('Arabic keys are translated (non-empty, differ from EN)', () {
+      final ar = AppLocalizationsAr();
+      final en = AppLocalizationsEn();
+      expect(ar.editorDepartedFrozenBanner, isNotEmpty);
+      expect(ar.editorDepartedFrozenBanner, isNot(en.editorDepartedFrozenBanner));
+      expect(ar.editorPartiesNotCurrentWarning, isNotEmpty);
+      expect(
+        ar.editorPartiesNotCurrentWarning,
+        isNot(en.editorPartiesNotCurrentWarning),
+      );
+      expect(ar.settleUpDepartedPairsHidden(3), isNotEmpty);
+      expect(
+        ar.settleUpDepartedPairsHidden(3),
+        isNot(en.settleUpDepartedPairsHidden(3)),
+      );
+      expect(ar.groupMembershipChangeInProgress, isNotEmpty);
+      expect(
+        ar.groupMembershipChangeInProgress,
+        isNot(en.groupMembershipChangeInProgress),
+      );
+    });
+  });
+
   group('#1106 settle-up converging-basis refuse', () {
     test('English still-syncing notice is reachable', () {
       expect(
