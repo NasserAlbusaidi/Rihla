@@ -20,7 +20,7 @@
 
 ## Investigation Result
 
-Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `6cc3e67959fd7dec48423e960ad0903a626b277d` disproves that claim:
+Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `e49daf7deb6c59553fd517827ca19848d85d8e8c` disproves that claim:
 
 - `security/firestore.rules:423-425`: `requesterIsParticipant()` requires the caller UID in the existing event `participantIds`.
 - `security/firestore.rules:579-605`: every light update ends in `validEventUpdateCommon()`.
@@ -308,3 +308,5 @@ Round 7 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 0 P2 / 0 P3
 
 - Shared balance-input P1 resolved: #1144 now derives its fence coverage from a reviewed client/server oracle dependency matrix rather than a ledger-document list. It explicitly includes event `participantIds` and `isDeleted`, light/admin updates, join fan-in, recovery/rekey, every other Admin producer, both commit orderings, and offline replay.
 - Adversary activity P1 resolved: #1140 now covers independently queued event create/delete and event/group-settlement activity, requires atomic/deduplicated mutation-plus-history semantics, and inventories every remaining mutation-adjacent `logGroupEvent` callsite.
+
+Before round 8, `origin/main` advanced through #1143. The branch rebased onto `e49daf7d`; the unchanged publish-readiness baseline was rerun at 228/228 with `expression_ceiling_artifacts=49`. The interrupted pre-rebase reviewers supplied no verdict and do not count as a Gate round.
