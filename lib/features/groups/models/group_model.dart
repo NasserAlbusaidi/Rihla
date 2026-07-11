@@ -14,6 +14,13 @@ class Group {
   final String inviteCode;
   final String createdBy;
   final List<String> memberIds;
+
+  /// #1144-R5 / #1149: server-maintained `memberIds` minus deleteAccount
+  /// tombstone ghosts; null on legacy groups that predate the field. INBOUND
+  /// only — the client's sole write of it is the group-create map
+  /// (`group_provider.dart`), pinned by rules. Use [activeMemberIdSet] for
+  /// CREATE-side party checks; update/settlement checks use [memberIds].
+  final List<String>? activeMemberIds;
   final String currency;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -40,6 +47,7 @@ class Group {
     required this.inviteCode,
     required this.createdBy,
     required this.memberIds,
+    this.activeMemberIds,
     this.currency = 'OMR',
     required this.createdAt,
     this.updatedAt,
@@ -69,6 +77,9 @@ class Group {
       memberIds: data['memberIds'] is List
           ? (data['memberIds'] as List).whereType<String>().toList()
           : const <String>[],
+      activeMemberIds: data['activeMemberIds'] is List
+          ? (data['activeMemberIds'] as List).whereType<String>().toList()
+          : null,
       currency: data['currency'] is String ? data['currency'] as String : 'OMR',
       createdAt: dateOrNow(data['createdAt']),
       updatedAt: dateOrNull(data['updatedAt']),
@@ -121,6 +132,11 @@ class Group {
     };
   }
 
+  /// Mirror of rules `activeGroupMembers()` (firestore.rules ~L442) INCLUDING
+  /// its legacy fallback: absent field → full [memberIds] (ghosts included).
+  /// CREATE-side party checks only; update/settlement checks use [memberIds].
+  Set<String> get activeMemberIdSet => (activeMemberIds ?? memberIds).toSet();
+
   /// Create a copy with updated fields (immutable pattern).
   Group copyWith({
     String? id,
@@ -128,6 +144,7 @@ class Group {
     String? inviteCode,
     String? createdBy,
     List<String>? memberIds,
+    List<String>? activeMemberIds,
     String? currency,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -142,6 +159,7 @@ class Group {
       inviteCode: inviteCode ?? this.inviteCode,
       createdBy: createdBy ?? this.createdBy,
       memberIds: memberIds ?? this.memberIds,
+      activeMemberIds: activeMemberIds ?? this.activeMemberIds,
       currency: currency ?? this.currency,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

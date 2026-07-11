@@ -16,10 +16,17 @@ class PayerPickerSheet extends StatelessWidget {
     super.key,
     required this.event,
     required this.selectedPayerId,
+    this.eligibleIds,
   });
 
   final Event event;
   final String? selectedPayerId;
+
+  /// #1149: candidate allow-list (active members ∪ the current selection —
+  /// the caller unions in the selection so a legacy ghost payer never
+  /// strands). Null → no filtering (membership unknown → fail open, and the
+  /// pre-#1149 behavior for direct constructions).
+  final Set<String>? eligibleIds;
 
   @override
   Widget build(BuildContext context) {
@@ -73,14 +80,15 @@ class PayerPickerSheet extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 children: [
                   for (final id in event.participantIds)
-                    _PayerOption(
-                      name:
-                          displayNames[id] ??
-                          event.participantNames[id] ??
-                          context.l10n.editorUnknownParticipant,
-                      selected: id == selectedPayerId,
-                      onTap: () => Navigator.of(context).pop(id),
-                    ),
+                    if (eligibleIds == null || eligibleIds!.contains(id))
+                      _PayerOption(
+                        name:
+                            displayNames[id] ??
+                            event.participantNames[id] ??
+                            context.l10n.editorUnknownParticipant,
+                        selected: id == selectedPayerId,
+                        onTap: () => Navigator.of(context).pop(id),
+                      ),
                 ],
               ),
             ),

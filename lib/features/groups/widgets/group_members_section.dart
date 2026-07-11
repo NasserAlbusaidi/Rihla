@@ -271,9 +271,17 @@ class GroupMembersSection extends ConsumerWidget {
         );
         return;
       }
-      // #1144: never interpolate the raw server string — the departure-lock
-      // contention path throws `aborted` with an English-only message; an
-      // Arabic user losing the lock race must see the localized fallback.
+      // #1144/#1149: departure-lock contention is transient by design —
+      // retry-inviting copy, never the settle-up snackbar (and never the raw
+      // English-only server string).
+      if (e.code == 'aborted') {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.groupMembershipChangeInProgress),
+          ),
+        );
+        return;
+      }
       messenger.showSnackBar(
         SnackBar(
           content: Text(

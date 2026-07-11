@@ -432,6 +432,41 @@ void main() {
     expect(find.textContaining('Bad state: boom'), findsNothing);
   });
 
+  testWidgets(
+    '#1149 leave aborted (departure-lock contention) shows retry copy, '
+    'no settle action, no navigation',
+    (tester) async {
+      final groupService = _MockGroupService();
+      when(() => groupService.leaveGroup(groupId: any(named: 'groupId'))).thenThrow(
+        FirebaseFunctionsException(
+          message: 'departure lock held by another operation.',
+          code: 'aborted',
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildApp(
+          buildOverrides(
+            groupService: groupService,
+            eventExpenses: Stream.value(const <Expense>[]),
+            eventSettlements: Stream.value(const <Settlement>[]),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await confirmLeave(tester);
+
+      verify(() => groupService.leaveGroup(groupId: 'g1')).called(1);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.groupMembershipChangeInProgress), findsOneWidget);
+      expect(find.textContaining('Failed to leave group'), findsNothing);
+      expect(find.textContaining('departure lock'), findsNothing);
+      expect(find.widgetWithText(SnackBarAction, 'Settle up'), findsNothing);
+      expect(find.text('Home'), findsNothing);
+    },
+  );
+
   // The server `leaveGroup` callable is the sole balance authority (#290); the
   // client UX short-circuit is uid-gated (FirebaseConfig.currentUser, not set in
   // this harness) so the balance gate is exercised server-side in

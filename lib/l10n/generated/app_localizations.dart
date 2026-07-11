@@ -1988,6 +1988,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{One transfer\nuntil everyone\'s even.} other{{count} transfers\nuntil everyone\'s even.}}'**
   String settleUpTransfersHeadline(int count);
 
+  /// #1149 — muted note under the settle-up transfer list when suggestions naming a leave/remove-departed party are pruned (rules would deny the write). Carries the count because the transfers headline deliberately keeps the UNPRUNED total (a departed party's debt is real, unsettleable R1 money); the note reconciles headline-vs-tiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 suggestion involving a former member is hidden — that transfer can no longer be recorded.} other{{count} suggestions involving former members are hidden — those transfers can no longer be recorded.}}'**
+  String settleUpDepartedPairsHidden(int count);
+
   /// No description provided for @settleUpNoOptimizedPayments.
   ///
   /// In en, this message translates to:
@@ -3525,6 +3531,18 @@ abstract class AppLocalizations {
   /// **'This event is closed and its spending is frozen. Reopen it from Settings to add or edit expenses.'**
   String get editorEventClosedMessage;
 
+  /// #1149 R6 mirror — banner + blocked-save snackbar on an expense whose STORED parties include a leave/remove-departed member (full-memberIds check; deleteAccount ghosts do NOT freeze). Metadata edits stay open; allocation edits and delete are rules-blocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone in this expense left the group, so its amount and split are locked. Details like the description and category can still be edited.'**
+  String get editorDepartedFrozenBanner;
+
+  /// #1149 create-side roster-trap warning + pre-submit block: the current form selection would fail rules expensePartiesAreCurrentMembers against activeGroupMembers() (departed participant on the event roster, or a deleteAccount ghost on create). Names the personal-scope escape because exact/shares/percent is unreachable in a group shrunk to one member.
+  ///
+  /// In en, this message translates to:
+  /// **'A former member is part of this split. Equal splits aren\'t available on this event — choose who\'s included with an exact, shares, or percent split, or record it as a personal expense.'**
+  String get editorPartiesNotCurrentWarning;
+
   /// No description provided for @eventTabExpenses.
   ///
   /// In en, this message translates to:
@@ -4292,6 +4310,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settle up before leaving the group.'**
   String get groupSettleBeforeLeaving;
+
+  /// #1144/#1149 — leave/removeMember threw `aborted` (departure-lock contention): transient by design, retry-inviting copy, never the settle-up snackbar and never Sentry.
+  ///
+  /// In en, this message translates to:
+  /// **'Another membership change is happening right now. Please try again in a moment.'**
+  String get groupMembershipChangeInProgress;
 
   /// No description provided for @groupFailedLeave.
   ///

@@ -197,12 +197,15 @@ void main() {
     );
 
     testWidgets(
-      'a settle-up involving a NON-member (departed #249) defers to the '
-      'SERVER: intent sent, transaction rejects atomically, denied copy shown',
+      'a suggestion naming a NON-member (departed #249) is pruned from the '
+      'tile list (#1149) — no Record affordance, so the #1129 server '
+      'transaction fence never even receives an intent',
       (tester) async {
-        // Charlie has a balance but is NOT in group.memberIds. Pre-#1129 the
-        // client pre-fenced this (bothLiveMembers) to avoid a partial-persist;
-        // the single server transaction made that fence obsolete (#720).
+        // Charlie has a balance but is NOT in group.memberIds → #1149 hides
+        // the suggestion tile (the counted note explains; R1 balance rows
+        // stay visible). The #1129 server fence (party-not-member →
+        // failed-precondition, rejected atomically) remains the enforcement
+        // boundary for any non-tile path — armed below, never reached.
         final balances = (
           balances: <String, List<UserBalance>>{
             'OMR': [
@@ -266,21 +269,30 @@ void main() {
         ));
         await tester.pumpAndSettle();
 
-        await _recordFullAmount(tester);
+        // The departed pair's tile is pruned — no Record affordance at all.
+        expect(
+          find.byKey(GroupKeys.settleUpRecordPaymentButton),
+          findsNothing,
+        );
+        expect(
+          find.text(
+            '1 suggestion involving a former member is hidden — '
+            'that transfer can no longer be recorded.',
+          ),
+          findsOneWidget,
+        );
+        // The R1 balance row keeps the unpruned truth.
+        expect(find.text('Charlie'), findsWidgets);
 
-        // #720 defer-to-server: the client no longer pre-fences membership —
-        // the decomposed intent IS sent, and the SERVER transaction rejects it
-        // in toto (no partial-persist possible in one transaction).
-        expect(recordingFunctions.recordSettlementCalls, hasLength(1));
-        expect(recordingFunctions.lastCall['mode'], 'groupSettleUp');
-        // The rejection maps to the denied copy (party-not-member is authz,
-        // not staleness), and no success copy shows.
+        // #1149: with the tile gone, the decomposed intent is NEVER sent —
+        // no callable call, no denied snackbar, no success copy.
+        expect(recordingFunctions.recordSettlementCalls, isEmpty);
         expect(
           find.text(
             "This settlement wasn't allowed. Please check the details and "
             'try again.',
           ),
-          findsOneWidget,
+          findsNothing,
         );
         expect(find.text('Settlement recorded.'), findsNothing);
       },

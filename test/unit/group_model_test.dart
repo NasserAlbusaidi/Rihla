@@ -122,6 +122,56 @@ void main() {
       });
     });
 
+    group('#1149 activeMemberIds (INBOUND mirror of activeGroupMembers())', () {
+      Map<String, dynamic> baseDoc() => {
+        'name': 'Road Crew',
+        'inviteCode': 'ABC123',
+        'createdBy': 'uid-001',
+        'memberIds': const ['uid-001', 'deleted-ghost1'],
+        'currency': 'OMR',
+        'createdAt': Timestamp.fromDate(DateTime(2026, 3, 1, 12, 0, 0)),
+      };
+
+      test('fromDoc parses activeMemberIds when present', () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.doc('groups/g-active');
+        await ref.set({
+          ...baseDoc(),
+          'activeMemberIds': const ['uid-001'],
+        });
+
+        final g = Group.fromDoc(await ref.get());
+
+        expect(g.activeMemberIds, equals(['uid-001']));
+        expect(g.activeMemberIdSet, equals({'uid-001'}));
+      });
+
+      test(
+        'absent field (legacy group) → null, and activeMemberIdSet falls '
+        'back to FULL memberIds (ghosts included) — the rules:442 fallback',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final ref = firestore.doc('groups/g-legacy-active');
+          await ref.set(baseDoc());
+
+          final g = Group.fromDoc(await ref.get());
+
+          expect(g.activeMemberIds, isNull);
+          expect(g.activeMemberIdSet, equals({'uid-001', 'deleted-ghost1'}));
+        },
+      );
+
+      test('wrong-typed field salvages to null (total-parse #532)', () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.doc('groups/g-bad-active');
+        await ref.set({...baseDoc(), 'activeMemberIds': 'nonsense'});
+
+        final g = Group.fromDoc(await ref.get());
+
+        expect(g.activeMemberIds, isNull);
+      });
+    });
+
     group('glyph / inkIndex (trip-stamps)', () {
       test('fromDoc reads camelCase glyph + inkIndex', () async {
         final firestore = FakeFirebaseFirestore();

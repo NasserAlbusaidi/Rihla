@@ -263,6 +263,17 @@ class GroupDangerSection extends ConsumerWidget {
         );
         return;
       }
+      // #1144/#1149: departure-lock contention is transient by design —
+      // retry-inviting copy, never the settle-up snackbar, and never Sentry
+      // (expected contention, not a defect).
+      if (e.code == 'aborted') {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.groupMembershipChangeInProgress),
+          ),
+        );
+        return;
+      }
       unawaited(Sentry.captureException(e));
       messenger.showSnackBar(
         SnackBar(
