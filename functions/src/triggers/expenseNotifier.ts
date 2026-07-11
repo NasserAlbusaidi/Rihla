@@ -142,7 +142,7 @@ async function notifyExpenseCreated(
       body: expenseBody(locale, actorName, amountText, description),
     }),
     { type: 'expense', groupId: gid, eventId: eid },
-    { dedupeKey: `expense:create:${gid}:${eid}:${expenseId}:${eventId}` },
+    { dedupeKey: `expense:create:${gid}:${eid}:${expenseId}:${eventId}`, requireCurrentMembershipOf: gid },
   );
 }
 
