@@ -26,7 +26,7 @@ explicitly allowed is refused.
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
 | `groups/{gid}/settlements/{sid}` (group-level) | members | members (creator must be self) | ❌ (B3 append-only) | ❌ (B3 append-only) |
 | `groups/{gid}/events/{eid}` | members | members | event participants (light) / event-or-group creator (admin) | ❌ (soft-delete only) |
-| `groups/{gid}/events/{eid}/expenses/{xid}` | members | event participants (creator must be self) | event participants, allowed-fields, soft-delete one-way | ❌ |
+| `groups/{gid}/events/{eid}/expenses/{xid}` | members | member + event participant (creator must be self, #1131) | member + event participant, allowed-fields, soft-delete one-way (#1131) | ❌ |
 | `groups/{gid}/events/{eid}/settlements/{sid}` | members | event participants (creator must be self) | ❌ (B3) | ❌ (B3) |
 | `groups/{gid}/events/{eid}/activity_logs/{aid}` | members | ❌ (server audit trigger only) | ❌ | ❌ |
 
@@ -53,10 +53,10 @@ The rules file defines reusable predicates near the top of the
 | `groupPath(gid)` | Path to `/groups/{gid}` | Avoids string concatenation in every rule. |
 | `groupData(gid)` | `get(groupPath).data` | Current Firestore state. |
 | `groupAfterData(gid)` | `getAfter(groupPath).data` | State after the in-flight write commits — needed for cross-doc invariants. |
-| `isGroupMember(gid)` | Group exists and caller is in `memberIds` | Used as the read gate on subcollections. |
+| `isGroupMember(gid)` | Group exists and caller is in `memberIds` | The read gate on subcollections; since #1131 also a conjunct on expense writes. |
 | `isGroupCreator(gid)` | Group exists and caller is `createdBy` | Used for elevated operations. |
 | `eventPath(gid, eid)` / `eventData(gid, eid)` | Path / data helpers for event docs | |
-| `isEventParticipant(gid, eid)` | Event exists and caller is in `participantIds` | The expense/settlement write gate. |
+| `isEventParticipant(gid, eid)` | Event exists and caller is in `participantIds` | One half of the expense write gate — paired with `isGroupMember` since #1131 (`participantIds` is never pruned on departure, so participation alone is not current membership). |
 | `requesterIsRecordCreator()` | `resource.data.createdBy == request.auth.uid` | Retained settlement-corrections scaffold; live settlement updates are hard-denied and live expense updates no longer call it. |
 
 `get` and `getAfter` cost one document read per invocation and Firestore
@@ -76,10 +76,13 @@ These guardrails apply across multiple collections. They are the
 Every expense and settlement carries `createdBy` (auth UID). The field
 is **immutable** after creation.
 
-Expense edits are now open-edit: any event participant may update or
-soft-delete any expense through `validExpenseUpdate`. The editor is pinned by
-`lastEditedBy == request.auth.uid`, and the `expenseAuditLogger` trigger logs
-the change. Settlements stay append-only; corrections are new offsetting rows.
+Expense edits are now open-edit: any current group member who is an event
+participant may update or soft-delete any expense through `validExpenseUpdate`
+(#1131 added the `isGroupMember` conjunct — departure/removal never prunes
+event `participantIds`, so participation alone must not grant writes). The
+editor is pinned by `lastEditedBy == request.auth.uid`, and the
+`expenseAuditLogger` trigger logs the change. Settlements stay append-only;
+corrections are new offsetting rows.
 
 ```
 function requesterIsRecordCreator() {
@@ -91,9 +94,9 @@ function requesterIsRecordCreator() {
 paths kept as settlement-corrections scaffolding. Those match blocks still
 hard-deny update, so the helper is not part of live expense authorization.
 
-Implication: anyone in an event can create a record naming someone else as
-`payerParticipantId`, and any event participant can later modify the expense
-within the allowed field/value guards. If forging false claims becomes a real
+Implication: any current member in an event can create a record naming someone
+else as `payerParticipantId`, and any current-member event participant can
+later modify the expense within the allowed field/value guards. If forging false claims becomes a real
 problem, B2 (peer acknowledgement), the future `ledgerEditPolicy`, and B3
 (append-only settlements) would need to be revisited.
 
@@ -105,8 +108,8 @@ group-level (`groups/{gid}/settlements/{sid}`) settlements deny
 settlement, not by mutating the old one. This preserves an audit trail
 for money movement.
 
-The expense rules permit updates and soft-deletes by event participants; only
-settlements are absolute.
+The expense rules permit updates and soft-deletes by current-member event
+participants (#1131); only settlements are absolute.
 
 ### Identity rewrites vs. financial immutability (Admin-SDK maintenance)
 
@@ -462,7 +465,7 @@ Each branch enforces the module name plus its own schema.
 - `splitMode in ['equally', 'shares', 'exact', 'percent']` (if present)
 - Optional string fields: `subGroupId`, `description`, `note`, `receiptUrl`, `categoryId`
 - `isDeleted: false`, `deletedAt: null` at create
-- `createdBy == request.auth.uid` and caller `isEventParticipant`
+- `createdBy == request.auth.uid` and caller `isGroupMember` + `isEventParticipant` (#1131)
 
 **Event settlements** (`validEventSettlementBase` + `validEventSettlementCreate`):
 
@@ -482,7 +485,7 @@ Each branch enforces the module name plus its own schema.
 
 Only expenses are updatable (`validExpenseUpdate`):
 
-- Caller is an event participant; creator-only edit was removed in #248 PR4
+- Caller is a current group member AND an event participant (#1131); creator-only edit was removed in #248 PR4
 - `createdBy` cannot change
 - `lastEditedBy == request.auth.uid` on every update for audit attribution
 - Affected keys ⊆ `{payerParticipantId, amountFils, currency, description, scope, subGroupId, customSplitParticipants, splitMode, splitDistribution, receiptUrl, categoryId, note, isDeleted, deletedAt, lastEditedBy, splitExplanation}`

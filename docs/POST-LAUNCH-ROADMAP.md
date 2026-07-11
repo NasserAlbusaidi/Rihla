@@ -68,7 +68,7 @@ The trust boundary and the recovery machinery are where being silently-wrong cos
 | Issue | Milestone | Note |
 |---|---|---|
 | #223 | Post-launch hardening | Server-side `sum==amount` within tolerance. Not a rules tweak — callable vs trigger arch decision. **Gate.** |
-| #248 | Shipped | Expense edit/soft-delete is now open to any event participant, with immutable `createdBy`, mandatory `lastEditedBy == auth.uid`, and audit logging. Future policy tightening would be a new `ledgerEditPolicy` track. |
+| #248 | Shipped | Expense edit/soft-delete is now open to any event participant (current group members only since #1131), with immutable `createdBy`, mandatory `lastEditedBy == auth.uid`, and audit logging. Future policy tightening would be a new `ledgerEditPolicy` track. |
 | #244 | Post-launch hardening | Home-hero graceful-partial signal (money-safety already shipped PR #253). **Gate.** |
 | #220 | Post-launch hardening | Client free-text validator + inline editor feedback (pure UX; rules half already deployed). |
 
