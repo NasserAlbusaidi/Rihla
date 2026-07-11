@@ -12,7 +12,9 @@ import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https
 import { createHash } from 'crypto';
 import '../admin';
 import { BatchWriter } from './shared/batchWriter';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import { mergeUidMapKey, replaceUid, renameMapKey } from './shared/mapReKey';
+import { deletedUserSentinel, oldestRealMemberUid } from './shared/membership';
 
 // Server-side account deletion cascade. Each group is scrubbed in two phases:
 // (B) idempotent child-doc scrubs (events/expenses/settlements/activity) staged
@@ -22,7 +24,6 @@ import { mergeUidMapKey, replaceUid, renameMapKey } from './shared/mapReKey';
 // until C commits, so a torn or interrupted cascade converges on retry (#46).
 // Future upload flows should add receipt Storage object deletion here.
 const deletedMemberName = 'Deleted member';
-const deletedUserSentinel = 'deleted-user';
 
 // #73: per-UID invocation rate limit (compensating control for soft App Check).
 const DELETION_ATTEMPT_LIMIT = 5;
@@ -154,16 +155,6 @@ function asStringArray(value: unknown, path: string): string[] {
     throw new HttpsError('failed-precondition', `${path} is malformed.`);
   }
   return value;
-}
-
-function timestampMillis(value: unknown): number {
-  if (value instanceof Timestamp) return value.toMillis();
-  if (value instanceof Date) return value.getTime();
-  if (typeof value === 'string') {
-    const millis = Date.parse(value);
-    return Number.isNaN(millis) ? Number.MAX_SAFE_INTEGER : millis;
-  }
-  return Number.MAX_SAFE_INTEGER;
 }
 
 function rewriteString(value: unknown, originalName: string | undefined): unknown {
@@ -305,17 +296,6 @@ function findOriginalName(memberData: DocumentData | undefined): string | undefi
   return typeof displayName === 'string' && displayName.trim().length > 0
     ? displayName
     : undefined;
-}
-
-function oldestRealMemberUid(
-  members: Array<{ id: string; data: DocumentData }>,
-  uid: string,
-): string | null {
-  const candidates = members
-    .filter(({ data }) => data.userId !== uid && data.isTombstone !== true && data.isDeleted !== true)
-    .sort((a, b) => timestampMillis(a.data.joinedAt) - timestampMillis(b.data.joinedAt));
-  const first = candidates[0]?.data.userId;
-  return typeof first === 'string' && first.length > 0 ? first : null;
 }
 
 function expenseUpdates(
@@ -729,11 +709,19 @@ async function cascadeGroupAfterMarker(
     // cleaned up too.
     const oldTxMembers = members.filter((m) => m.data.userId === uid);
     const oldTxMember = oldTxMembers[0]?.data;
-    const remainingRealCreator = oldestRealMemberUid(members, uid);
+    const remainingRealCreator = oldestRealMemberUid(members, uid, currentMemberIds);
     const hasRealSurvivor = remainingRealCreator != null;
 
+    // #1144 R5: the tombstone NEVER enters activeMemberIds — the departing uid
+    // is simply removed ({remove}, not {replace}). A tx READ on the absent-
+    // field branch; derived from the PRE-swap membership and placed before
+    // every tx write below (reads-before-writes).
+    const activeMemberIds = await nextActiveMemberIds(tx, groupRef, gData, {
+      remove: uid,
+    });
     const groupUpdate: DocumentData = {
       memberIds: replaceUid(currentMemberIds, uid, tombstoneId).values,
+      activeMemberIds,
       accountDeletionInProgress: FieldValue.delete(),
       accountDeletionUid: FieldValue.delete(),
       accountDeletionLockedAt: FieldValue.delete(),
@@ -761,6 +749,13 @@ async function cascadeGroupAfterMarker(
       tx.delete(groupRef.collection('members').doc(m.id));
     }
     tx.update(groupRef, groupUpdate);
+    // #1138: the roster badge reads member.role (group_members_section.dart), a
+    // derived display surface of createdBy — keep it truthful in the same tx.
+    if (gData.createdBy === uid && hasRealSurvivor) {
+      for (const m of members.filter((mm) => mm.data.userId === remainingRealCreator)) {
+        tx.update(groupRef.collection('members').doc(m.id), { role: 'CREATOR' });
+      }
+    }
 
     return { membersDeleted: oldTxMember ? 1 : 0, orphaned: !hasRealSurvivor, applied: true };
   });

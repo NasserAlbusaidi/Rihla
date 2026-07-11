@@ -288,6 +288,9 @@ describe('claimShadowEngine — uuid→uid re-key (#278 PR7; auth re-homed to cl
     expect(res.alreadyClaimed).toBe(false);
 
     expect((await groupDoc('g')).memberIds).toEqual([OWNER, CLAIMER]);
+    // #1144 R5: legacy group self-heals activeMemberIds on the claim swap —
+    // the shadow's active slot transfers to the claimer.
+    expect((await groupDoc('g')).activeMemberIds).toEqual([OWNER, CLAIMER]);
     const claimerDoc = await memberDoc('g', CLAIMER);
     expect(claimerDoc).toMatchObject({
       id: CLAIMER,

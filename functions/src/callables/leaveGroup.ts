@@ -1,14 +1,21 @@
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
+import type { DocumentData } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
-import { recomputeNet } from './groupNetBalance';
+import {
+  computeNetFromSnapshot,
+  loadGroupBalanceSnapshot,
+  universeOnlyEventIds,
+} from './groupNetBalance';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import {
   acquireDepartureLock,
   assertDepartureLockHeld,
   clearDepartureLockForFailure,
   departureLockClearFields,
 } from './shared/departureLock';
+import { deletedUserSentinel, oldestRealMemberUid } from './shared/membership';
 
 // #290: server-authoritative group self-leave. The client guard ("settle before
 // leaving") was skipped whenever the balance had not loaded (offline / slow /
@@ -118,10 +125,13 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
 
     let mutation: { alreadyLeft: boolean };
     try {
-      // Balance gate: the leaver must be square. recomputeNet is the SAME
-      // oracle the client ledger + deleteGroup use; a missing entry means the
-      // leaver never had a financial position ⇒ owes nothing ⇒ allowed.
-      const { net } = await recomputeNet(db, groupRef);
+      // Balance gate: the leaver must be square. This is the SAME oracle the
+      // client ledger + deleteGroup use (recomputeNet = compute ∘ load); a
+      // missing entry means the leaver never had a financial position ⇒ owes
+      // nothing ⇒ allowed. The snapshot is loaded once and shared with the
+      // #1144 R1 universe-only guard below.
+      const snapshot = await loadGroupBalanceSnapshot(db, groupRef);
+      const { net } = computeNetFromSnapshot(snapshot);
       // #382 PR-2: net is per-currency buckets (currency -> uid -> net). The
       // leaver may leave only when they net exactly zero in EVERY currency bucket
       // — no FX, so each currency must clear independently. (The old
@@ -137,6 +147,21 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
         throw new HttpsError(
           'failed-precondition',
           'You have an unsettled balance and cannot leave the group.',
+        );
+      }
+
+      // #1144 R1: a member with universe-only history (payer or settlement
+      // party in an event that no longer rosters them) folds INTO the balance
+      // universe the instant they stop being live — gaining paid rows and an
+      // equal-split share the zero-gate above cannot see (the live fold DROPS
+      // their rows). Refuse; the state is reachable only via a forged write
+      // or a D9 roster removal of a current payer (no client UI writes roster
+      // removals), and Admin roster repair is the remedy. Runs inside this
+      // try so a refusal releases OUR lock like every other exit.
+      if (universeOnlyEventIds(snapshot, uid).length > 0) {
+        throw new HttpsError(
+          'failed-precondition',
+          'You have unsettled event history and cannot leave the group.',
         );
       }
 
@@ -174,13 +199,56 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
             .find((name): name is string => typeof name === 'string' && name.length > 0)
           ?? actorName;
 
+        // #1138: creator succession. leaveGroup never reassigned createdBy, so
+        // a creator leave produced an admin-less group (#1132 closed the
+        // security half and deliberately opened this availability half).
+        // Mirror deleteAccount Phase C: hand createdBy to the oldest real
+        // remaining member; when none survives, tombstone createdBy and
+        // soft-delete the group (a creator leaving an otherwise-empty group).
+        // Succession is a PERMANENT handoff — a rejoining ex-creator comes
+        // back as a plain MEMBER. The full-roster read runs only on a creator
+        // leave, and before any write (Firestore tx ordering).
+        const isCreatorLeave = freshGroup.createdBy === uid;
+        let successorUid: string | null = null;
+        let successorDocIds: string[] = [];
+        if (isCreatorLeave) {
+          const membersSnap = await tx.get(groupRef.collection('members'));
+          const members = membersSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
+          successorUid = oldestRealMemberUid(members, uid, freshMemberIds);
+          successorDocIds = members
+            .filter((m) => m.data.userId === successorUid)
+            .map((m) => m.id);
+        }
+
         const now = Timestamp.now();
-        tx.update(groupRef, {
+        // #1144 R5: maintained alongside memberIds (self-heals legacy groups).
+        // A tx READ on the absent-field branch — must precede every tx write,
+        // which it does (writes start at tx.update below).
+        const activeMemberIds = await nextActiveMemberIds(tx, groupRef, freshGroup, {
+          remove: uid,
+        });
+        const groupUpdate: DocumentData = {
           memberIds: FieldValue.arrayRemove(uid),
+          activeMemberIds,
           updatedAt: now,
           // #1144: release the lock atomically with the mutation.
           ...departureLockClearFields(),
-        });
+        };
+        if (isCreatorLeave) {
+          if (successorUid != null) {
+            groupUpdate.createdBy = successorUid;
+          } else {
+            groupUpdate.createdBy = deletedUserSentinel;
+            groupUpdate.isDeleted = true;
+            groupUpdate.deletedAt = now;
+          }
+        }
+        tx.update(groupRef, groupUpdate);
+        // #1138: the roster badge reads member.role (group_members_section.dart),
+        // a derived display surface of createdBy — keep it truthful in the same tx.
+        for (const docId of successorDocIds) {
+          tx.update(groupRef.collection('members').doc(docId), { role: 'CREATOR' });
+        }
         for (const memberDoc of freshMemberDocsSnap.docs) {
           tx.delete(memberDoc.ref);
         }

@@ -2,7 +2,12 @@ import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
-import { recomputeNet } from './groupNetBalance';
+import {
+  computeNetFromSnapshot,
+  loadGroupBalanceSnapshot,
+  universeOnlyEventIds,
+} from './groupNetBalance';
+import { nextActiveMemberIds } from './shared/activeMembers';
 import { isCurrentMember } from './shared/membership';
 import {
   acquireDepartureLock,
@@ -153,11 +158,13 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
 
     let mutation: { alreadyRemoved: boolean };
     try {
-      // Balance gate: the TARGET must be square. recomputeNet is the SAME
-      // oracle the client ledger + deleteGroup + leaveGroup use; a missing
-      // entry means the target never had a financial position ⇒ owes nothing
-      // ⇒ allowed.
-      const { net } = await recomputeNet(db, groupRef);
+      // Balance gate: the TARGET must be square. This is the SAME oracle the
+      // client ledger + deleteGroup + leaveGroup use (recomputeNet =
+      // compute ∘ load); a missing entry means the target never had a
+      // financial position ⇒ owes nothing ⇒ allowed. The snapshot is loaded
+      // once and shared with the #1144 R1 universe-only guard below.
+      const snapshot = await loadGroupBalanceSnapshot(db, groupRef);
+      const { net } = computeNetFromSnapshot(snapshot);
       // #382 PR-2: net is per-currency buckets (currency -> uid -> net). The
       // target may be removed only when they net exactly zero in EVERY currency
       // bucket — no FX, so each currency must clear independently. (The old
@@ -173,6 +180,21 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
         throw new HttpsError(
           'failed-precondition',
           'This member has an unsettled balance and cannot be removed.',
+        );
+      }
+
+      // #1144 R1: a target with universe-only history (payer or settlement
+      // party in an event that no longer rosters them) folds INTO the balance
+      // universe the instant they stop being live — gaining paid rows and an
+      // equal-split share the zero-gate above cannot see (the live fold DROPS
+      // their rows). Refuse; the state is reachable only via a forged write
+      // or a D9 roster removal of a current payer (no client UI writes roster
+      // removals), and Admin roster repair is the remedy. Runs inside this
+      // try so a refusal releases OUR lock like every other exit.
+      if (universeOnlyEventIds(snapshot, targetUserId).length > 0) {
+        throw new HttpsError(
+          'failed-precondition',
+          'This member has unsettled event history and cannot be removed.',
         );
       }
 
@@ -227,8 +249,15 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
           ?? 'Someone';
 
         const now = Timestamp.now();
+        // #1144 R5: maintained alongside memberIds (self-heals legacy groups).
+        // A tx READ on the absent-field branch — must precede every tx write,
+        // which it does (writes start at tx.update below).
+        const activeMemberIds = await nextActiveMemberIds(tx, groupRef, freshGroup, {
+          remove: targetUserId,
+        });
         tx.update(groupRef, {
           memberIds: FieldValue.arrayRemove(targetUserId),
+          activeMemberIds,
           updatedAt: now,
           // #1144: release the lock atomically with the mutation.
           ...departureLockClearFields(),

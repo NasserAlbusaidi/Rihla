@@ -113,6 +113,11 @@ describe('Publish readiness Firestore rules', () => {
       inviteCode: `${groupId.toUpperCase()}123`,
       createdBy: 'owner',
       memberIds: ['owner'],
+      // #1144 R5: the create-path producer (group_provider.dart) writes
+      // activeMemberIds == memberIds; validGroupCreate requires equality.
+      // Tracks a memberIds override automatically; an explicit
+      // activeMemberIds override still wins (it spreads after this).
+      activeMemberIds: (overrides.memberIds as string[] | undefined) ?? ['owner'],
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -270,6 +275,7 @@ describe('Publish readiness Firestore rules', () => {
       inviteCode: 'NEW123',
       createdBy: 'owner',
       memberIds: ['owner'],
+      activeMemberIds: ['owner'], // #1144 R5: producer writes it == memberIds
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -298,6 +304,7 @@ describe('Publish readiness Firestore rules', () => {
         inviteCode: code,
         createdBy: uid,
         memberIds: [uid],
+        activeMemberIds: [uid], // #1144 R5: producer writes it == memberIds
         currency: 'OMR',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -967,6 +974,7 @@ describe('Publish readiness Firestore rules', () => {
       inviteCode: 'NEW123',
       createdBy: 'owner',
       memberIds: ['owner'],
+      activeMemberIds: ['owner'], // #1144 R5: producer writes it == memberIds
       currency: 'OMR',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -3368,10 +3376,11 @@ describe('Publish readiness Firestore rules', () => {
     });
 
     test('16. expense CREATE with ghost split key → ALLOWED — pins residual R5', async () => {
-      // R5: tombstone ids live in memberIds and rules cannot iterate
-      // splitDistribution keys to exclude them — a new expense CAN still name
-      // a deleteAccount ghost (PR3 filters pickers client-side; durable fix =
-      // activeMemberIds, deferred). Deliberate, documented, pinned here.
+      // R5 LEGACY-FALLBACK pin: this group has NO activeMemberIds, so the
+      // gates fall back to memberIds and a ghost split key still lands —
+      // exactly the pre-#1144-R5 behavior. With the field present this is
+      // DENIED (see "#1144 R5 activeMemberIds" R5-2 below). Converges when
+      // any roster writer self-heals the field.
       await seedGhostEvent();
       const member = testEnv.authenticatedContext('member').firestore();
       await assertSucceeds(member.doc('groups/g1/events/e3/expenses/x16').set(
@@ -3407,6 +3416,294 @@ describe('Publish readiness Firestore rules', () => {
       await assertFails(owner.doc('groups/g1/events/e2').update({
         isDeleted: true,
         deletedAt: new Date(),
+        updatedAt: new Date(),
+      }));
+    });
+  });
+
+  describe('#1144 R5 activeMemberIds', () => {
+    // activeMemberIds = memberIds MINUS deleteAccount tombstone ids (shadow
+    // uuids stay in — shadows are legitimate expense parties). Server-
+    // maintained after create; rules fall back to memberIds when ABSENT
+    // (legacy groups keep today's exact behavior). Gates switched to it:
+    // expense CREATE parties (:852 arm), the D9 roster-removal guard, event
+    // CREATE rosters, and roster-ADD deltas on light+admin event updates.
+    // The expense UPDATE path (pre/post/soft-delete) deliberately stays on
+    // memberIds — ghost history must remain correctable (deleteAccount
+    // cleanup lane; Gate R1 adversary P1).
+    const T = 'ghost-t';
+    const SHADOW = 'shadow-uuid-9';
+
+    // Ghost fixture with the field PRESENT: T in memberIds+participantIds
+    // (deleteAccount post-state) but excluded from activeMemberIds.
+    async function seedActivatedGhostGroup(): Promise<void> {
+      await updateSeedGroup({
+        // Shadows are arrayUnion'd into memberIds by addShadowMember — the
+        // shadow sits in BOTH sets; the tombstone only in memberIds.
+        memberIds: ['owner', 'member', T, SHADOW],
+        activeMemberIds: ['owner', 'member', SHADOW],
+      });
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc(`groups/g1/members/${T}`).set({
+          id: T,
+          userId: T,
+          displayName: 'Former member',
+          role: 'MEMBER',
+          joinedAt: new Date(),
+          isShadow: false,
+          isTombstone: true,
+        });
+        await ctx.firestore().doc(`groups/g1/members/${SHADOW}`).set({
+          id: SHADOW,
+          userId: SHADOW,
+          displayName: 'Guest',
+          role: 'MEMBER',
+          joinedAt: new Date(),
+          isShadow: true,
+        });
+      });
+      // e5: ghost-rostered event; e6: all-active event with the shadow.
+      await seedEvent('e5', {
+        participantIds: ['owner', 'member', T],
+        participantNames: { owner: 'Owner', member: 'Member', [T]: 'Former member' },
+      });
+      await seedEvent('e6', {
+        participantIds: ['owner', 'member', SHADOW],
+        participantNames: { owner: 'Owner', member: 'Member', [SHADOW]: 'Guest' },
+      });
+    }
+
+    async function seedGhostPaidExpense(): Promise<void> {
+      const data = validExpense({
+        id: 'expT', eventId: 'e5', createdBy: 'owner', payerParticipantId: T,
+        splitMode: 'exact', splitDistribution: { member: 5250, [T]: 5250 },
+      });
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc(`groups/g1/events/e5/expenses/${data.id}`).set(data);
+      });
+    }
+
+    // --- deny: no NEW exposure for a ghost when the field is present ---
+
+    test('R5-1. expense CREATE with ghost payer → denied', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e5/expenses/r1').set(
+        validExpense({ id: 'r1', eventId: 'e5', createdBy: 'member', payerParticipantId: T }),
+      ));
+    });
+
+    test('R5-2. exact-mode CREATE with ghost split key → denied (flips the legacy R5 pin when the field is present)', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e5/expenses/r2').set(
+        validExpense({
+          id: 'r2', eventId: 'e5', createdBy: 'member', payerParticipantId: 'member',
+          splitMode: 'exact', splitDistribution: { member: 5250, [T]: 5250 },
+        }),
+      ));
+    });
+
+    test('R5-3. custom-scope CREATE with ghost in customSplitParticipants → denied', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e5/expenses/r3').set(
+        validExpense({
+          id: 'r3', eventId: 'e5', createdBy: 'member', payerParticipantId: 'member',
+          scope: 'custom', customSplitParticipants: ['member', T],
+        }),
+      ));
+    });
+
+    test('R5-4. roster-derived (equal) CREATE on the ghost-rostered event → denied (roster is the divisor)', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e5/expenses/r4').set(
+        validExpense({ id: 'r4', eventId: 'e5', createdBy: 'member', payerParticipantId: 'member' }),
+      ));
+    });
+
+    test('R5-5. admin roster removal of the ghost key → denied (D9 gate switched to activeMemberIds)', async () => {
+      await seedActivatedGhostGroup();
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e5').update({
+        participantIds: ['owner', 'member'],
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('R5-6. event CREATE rostering the ghost → denied', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/eNew').set(validEvent({
+        participantIds: ['owner', 'member', T],
+        participantNames: { owner: 'Owner', member: 'Member', [T]: 'Former member' },
+        createdBy: 'member',
+      })));
+    });
+
+    test('R5-7. light roster ADD of the ghost → denied (added keys must be active)', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1/events/e1').update({
+        participantIds: ['owner', 'member', T],
+        participantNames: { owner: 'Owner', member: 'Member', [T]: 'Former member' },
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('R5-8. admin roster ADD of the ghost → denied (creator NOT a participant → light path unreachable, ADMIN branch exercised)', async () => {
+      await seedActivatedGhostGroup();
+      // e7: creator-owned event that does NOT roster the creator — the light
+      // path's requesterIsParticipant fails, so this write can only pass (or
+      // be denied) through validEventAdminUpdate.
+      await seedEvent('e7', {
+        participantIds: ['member'],
+        participantNames: { member: 'Member' },
+      });
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1/events/e7').update({
+        participantIds: ['member', T],
+        participantNames: { member: 'Member', [T]: 'Former member' },
+        updatedAt: new Date(),
+      }));
+    });
+
+    // --- allow: shadows stay first-class; ghost HISTORY stays correctable ---
+
+    test('R5-9. shadow as payer and split key → allowed (shadows are IN activeMemberIds)', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e6/expenses/r9').set(
+        validExpense({
+          id: 'r9', eventId: 'e6', createdBy: 'member', payerParticipantId: SHADOW,
+          splitMode: 'exact', splitDistribution: { member: 5250, [SHADOW]: 5250 },
+        }),
+      ));
+    });
+
+    test('R5-10. exact-mode CREATE among active members on the ghost-rostered event → allowed (frozen-entry events stay usable)', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e5/expenses/r10').set(
+        validExpense({
+          id: 'r10', eventId: 'e5', createdBy: 'member', payerParticipantId: 'member',
+          splitMode: 'exact', splitDistribution: { owner: 5250, member: 5250 },
+        }),
+      ));
+    });
+
+    test('R5-11. event settlement with the ghost as recipient → allowed (memberIds gate unchanged — debt cleanup)', async () => {
+      await seedActivatedGhostGroup();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e5/settlements/rs11').set(
+        validSettlement({
+          id: 'rs11', eventId: 'e5', createdBy: 'member',
+          payerParticipantId: 'member', recipientParticipantId: T,
+          payerName: 'Member', recipientName: 'Former member',
+        }),
+      ));
+    });
+
+    test('R5-12. soft-delete of a ghost-paid expense → allowed (update path stays memberIds — cleanup lane)', async () => {
+      await seedActivatedGhostGroup();
+      await seedGhostPaidExpense();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e5/expenses/expT').update({
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('R5-13. amount edit of a ghost-paid expense → allowed (ghost history stays correctable)', async () => {
+      await seedActivatedGhostGroup();
+      await seedGhostPaidExpense();
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e5/expenses/expT').update({
+        amountFils: 9000,
+        splitDistribution: { member: 4500, [T]: 4500 },
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('R5-14. allocation edit INTRODUCING the ghost → allowed — pins residual R5-edit', async () => {
+      // Deliberate boundary: the update path stays on memberIds so ghost
+      // history remains correctable; an introduction-only gate was rejected
+      // as #723 budget on the update chain. Pickers filter ghosts (#1149).
+      await seedActivatedGhostGroup();
+      const data = validExpense({
+        id: 'expM', eventId: 'e5', createdBy: 'member', payerParticipantId: 'member',
+        splitMode: 'exact', splitDistribution: { owner: 5250, member: 5250 },
+      });
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc('groups/g1/events/e5/expenses/expM').set(data);
+      });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e5/expenses/expM').update({
+        splitDistribution: { member: 5250, [T]: 5250 },
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('R5-15. legacy group WITHOUT activeMemberIds: ghost payer CREATE → allowed (fallback pins the safe degradation)', async () => {
+      // Same state as R5-1 but the field is absent → rules fall back to
+      // memberIds, i.e. exactly today's shipped behavior. The pre-existing
+      // "16. expense CREATE with ghost split key → ALLOWED" pin above is the
+      // split-key twin of this fallback.
+      await updateSeedGroup({ memberIds: ['owner', 'member', T] });
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await ctx.firestore().doc(`groups/g1/members/${T}`).set({
+          id: T, userId: T, displayName: 'Former member', role: 'MEMBER',
+          joinedAt: new Date(), isShadow: false, isTombstone: true,
+        });
+      });
+      await seedEvent('e5', {
+        participantIds: ['owner', 'member', T],
+        participantNames: { owner: 'Owner', member: 'Member', [T]: 'Former member' },
+      });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(member.doc('groups/g1/events/e5/expenses/r15').set(
+        validExpense({ id: 'r15', eventId: 'e5', createdBy: 'member', payerParticipantId: T }),
+      ));
+    });
+
+    // --- group create + refresh contracts ---
+
+    test('R5-16a. group CREATE with activeMemberIds == [uid] → allowed', async () => {
+      const creator = testEnv.authenticatedContext('newuser').firestore();
+      await assertSucceeds(creator.doc('groups/gNew').set(validGroup('gNew', {
+        createdBy: 'newuser',
+        memberIds: ['newuser'],
+        activeMemberIds: ['newuser'],
+      })));
+    });
+
+    test('R5-16b. group CREATE with activeMemberIds ≠ memberIds → denied', async () => {
+      const creator = testEnv.authenticatedContext('newuser').firestore();
+      await assertFails(creator.doc('groups/gNew').set(validGroup('gNew', {
+        createdBy: 'newuser',
+        memberIds: ['newuser'],
+        activeMemberIds: ['newuser', 'someone-else'],
+      })));
+    });
+
+    test('R5-16c. group CREATE without activeMemberIds → denied (new clients always write it)', async () => {
+      const creator = testEnv.authenticatedContext('newuser').firestore();
+      const data = validGroup('gNew', {
+        createdBy: 'newuser',
+        memberIds: ['newuser'],
+      });
+      delete data.activeMemberIds; // the helper now defaults it — strip to model an OLD client
+      await assertFails(creator.doc('groups/gNew').set(data));
+    });
+
+    test('R5-17. client memberIds-refresh touching activeMemberIds → denied (server-maintained after create)', async () => {
+      await updateSeedGroup({ activeMemberIds: ['owner', 'member'] });
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1').update({
+        memberIds: ['owner', 'member'],
+        activeMemberIds: ['owner'],
         updatedAt: new Date(),
       }));
     });

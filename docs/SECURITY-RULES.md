@@ -126,10 +126,51 @@ deleteAccount tombstone ids (`deleteAccount.ts` SWAPS uid→tombstoneId into
 settleable/correctable, while leave/remove-departed identities — which
 passed the exact-zero departure gate — are blocked from ANY new exposure.
 
-Deliberate residuals (test-pinned): **R5** — rules cannot iterate
-`splitDistribution` keys to exclude ghosts, so a new expense CAN name a
-deleteAccount tombstone (client pickers filter; durable fix would be an
-`activeMemberIds` field); **R6** — expenses referencing a leave/removed
+**R1 is closed at the departure chokepoint (#1144 PR-A), not in rules.**
+A departed *universe-only* actor (payer or settlement party in an event
+that no longer rosters them) is invisible to `participants()`-based rules
+— but the state is now unreachable through `leaveGroup`/`removeMember`:
+both callables run `universeOnlyEventIds` over the same balance snapshot
+as the zero-gate, UNDER the #1147 departure lock, and refuse with
+`failed-precondition`. Rationale: payers/settlement parties are the
+fold's NON-member-gated universe inputs — they fold in the instant the
+member docs are hard-deleted, minting a non-zero departed balance with no
+post-departure write. Split keys are member-gated and DROP instead (a
+split-key-only leaver departs freely; pinned by
+`universeOnlyDepartureGuard.test.ts`). The refused state is reachable
+only via a forged write or a D9 roster removal of a current payer; Admin
+roster repair (re-add to `participantIds`) is the remedy. Admin-SDK
+writes can still manufacture departed universe-only actors — documented,
+out of rules scope.
+
+**R5 is closed CREATE-side by `activeMemberIds` (#1144 PR-B).** The group
+doc carries `activeMemberIds` = `memberIds` MINUS deleteAccount tombstone
+ids (shadow uuids stay in). Rules read it via `activeGroupMembers()` —
+absent (legacy group) → fall back to `memberIds`, i.e. exactly the pre-R5
+behavior, self-healed on the group's next roster write (every roster
+writer maintains the field through the shared `nextActiveMemberIds`
+helper, `functions/src/callables/shared/activeMembers.ts`; the client
+writes it only at group create, `validGroupCreate` forces equality).
+Gates switched to it: expense CREATE parties, event CREATE rosters,
+light+admin roster-ADD deltas, and the D9 removal guard (a ghost
+roster-key removal is now denied too). **The expense UPDATE path
+(pre-state, post-state, soft-delete arm) deliberately stays on
+`memberIds`** — deleteAccount re-keys the deleted user's history to the
+tombstoneId, so ghost-referencing docs are the ORDINARY aftermath and
+must remain amount-editable and soft-deletable (the cleanup lane, same
+sanction as ghost settlements). **Offline corollary:** an expense queued
+offline naming a party who is tombstoned before replay is silently
+dropped at the create gate — same accepted class as the roster-derived
+replay-drop below, and arguably correct.
+
+Deliberate residuals (test-pinned): **R5-edit** — an allocation EDIT can
+still introduce a ghost party (the update path stays on `memberIds` so
+ghost history remains correctable; an introduction-only gate was rejected
+as #723 budget on the update chain; pickers filter, #1149 — pinned
+ALLOWED by publish-readiness R5-14); **R5-legacy** — a group whose
+`activeMemberIds` hasn't been seeded yet keeps the old `memberIds` gates
+until its first roster write (pinned by R5-15 + the legacy twin of the
+old test 16); **R6** — expenses referencing a leave/removed
 party are permanently frozen (no allocation edit, no soft-delete; metadata
 edits stay open; Admin SDK remains the cleanup path — this deliberately
 closes the "legacy/forged doc stays soft-deletable" escape hatch for

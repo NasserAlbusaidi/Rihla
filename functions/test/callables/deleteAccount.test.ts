@@ -349,6 +349,10 @@ describe('deleteAccount', () => {
     expect(groupATombstoneId).toBeDefined();
     expect(groupAMemberIds).toContain(otherUid);
     expect(groupAMemberIds).not.toContain(deletedUid);
+    // #1144 R5: the legacy group (no activeMemberIds) self-heals on this
+    // roster write — seeded memberIds-minus-tombstones, then {remove: uid}.
+    // The tombstone NEVER enters the active set.
+    expect(groupA.data()?.activeMemberIds).toEqual([otherUid]);
 
     const tombstoneMember = await db.doc(`groups/groupA/members/${groupATombstoneId}`).get();
     const oldMember = await db.doc(`groups/groupA/members/${deletedUid}`).get();
@@ -1241,6 +1245,70 @@ describe('deleteAccount', () => {
     expect(group.data()).toMatchObject({ createdBy: otherUid, isDeleted: false });
     expect(group.data()?.memberIds).toContain(otherUid);
     expect(group.data()?.memberIds).not.toContain(deletedUid);
+  });
+
+  // #1138: succession must never appoint an unclaimed shadow or a torn doc as
+  // createdBy. A shadow IS in memberIds (addShadowMember arrayUnions the uuid)
+  // but never AUTHENTICATES — no request.auth.uid ever equals it — so every
+  // createdBy-keyed gate would be permanently unsatisfiable (admin-less group).
+  test('#1138 a shadow-only survivor soft-deletes the group instead of being appointed', async () => {
+    const db = getFirestore();
+    const shadowUuid = 'shadow-uuid-aaaa';
+    await seedAuthUser();
+    await seedGroup('sg1', [deletedUid, shadowUuid], { createdBy: deletedUid });
+    await seedMember('sg1', deletedUid);
+    await seedMember('sg1', shadowUuid, {
+      isShadow: true,
+      displayName: 'Shadow Friend',
+      joinedAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.groupsOrphanedAndSoftDeleted).toBe(1);
+    const group = (await db.doc('groups/sg1').get()).data() ?? {};
+    expect(group.isDeleted).toBe(true);
+    expect(group.createdBy).toBe('deleted-user');
+  });
+
+  test('#1138 an older shadow loses succession to a newer real member (role flipped)', async () => {
+    const db = getFirestore();
+    const shadowUuid = 'shadow-uuid-bbbb';
+    await seedAuthUser();
+    await seedGroup('sg2', [deletedUid, otherUid, shadowUuid], { createdBy: deletedUid });
+    await seedMember('sg2', deletedUid);
+    await seedMember('sg2', otherUid, { joinedAt: new Date('2026-01-05T00:00:00.000Z') });
+    await seedMember('sg2', shadowUuid, {
+      isShadow: true,
+      displayName: 'Shadow Friend',
+      joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    const group = (await db.doc('groups/sg2').get()).data() ?? {};
+    expect(group.createdBy).toBe(otherUid);
+    expect(group.isDeleted).toBe(false);
+    // Role-flip parity with leaveGroup: the roster badge reads member.role.
+    expect((await db.doc(`groups/sg2/members/${otherUid}`).get()).data()?.role).toBe('CREATOR');
+    expect((await db.doc(`groups/sg2/members/${shadowUuid}`).get()).data()?.role).toBe('MEMBER');
+  });
+
+  test('#1138 a torn doc whose userId fell out of memberIds is never appointed', async () => {
+    const db = getFirestore();
+    await seedAuthUser();
+    await seedGroup('sg3', [deletedUid], { createdBy: deletedUid });
+    await seedMember('sg3', deletedUid);
+    // Non-shadow doc outside memberIds (torn state): equally admin-less as
+    // createdBy under the #1132 rules conjunct — soft-delete instead.
+    await seedMember('sg3', 'ghost-user', { joinedAt: new Date('2026-01-02T00:00:00.000Z') });
+
+    const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+    expect(result.groupsOrphanedAndSoftDeleted).toBe(1);
+    const group = (await db.doc('groups/sg3').get()).data() ?? {};
+    expect(group.isDeleted).toBe(true);
+    expect(group.createdBy).toBe('deleted-user');
   });
 
   // #1099: a membership created concurrently AFTER the S0 snapshot (a join or
