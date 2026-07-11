@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +31,7 @@ import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/correct_settlement_result.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/record_settlement_result.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/widgets/pre_settlement_review_sheet.dart';
@@ -39,7 +40,7 @@ import 'package:safar/features/ledger/screens/settle_up_screen.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-class _MockSettlementService extends Mock implements SettlementService {}
+import '../../helpers/recording_functions_service.dart';
 
 class _MockFunctionsService extends Mock implements FirebaseFunctionsService {}
 
@@ -56,9 +57,14 @@ void main() {
   // explainer (#382 PR-5), a ConsumerWidget reading settingsProvider — so every
   // app-booting test here must override sharedPreferencesProvider.
   late SharedPreferences prefs;
+  // #1129: settlement creates route through the recordSettlement callable —
+  // the recording fake captures each wire payload (the doc shape itself is
+  // pinned server-side by the emulator tables).
+  late RecordingFunctionsService recordingFunctions;
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+    recordingFunctions = RecordingFunctionsService();
   });
 
   final event = Event(
@@ -135,13 +141,18 @@ void main() {
           ),
         ),
       ),
+      // #1129: the CREATE goes through the injected recording functions fake;
+      // the fakeDb half only backs the (untouched) read streams.
       settlementServiceProvider.overrideWithValue(
-        settlementService ?? SettlementService.withFirestore(fakeDb),
+        settlementService ??
+            SettlementService.withFirestore(
+              fakeDb,
+              functionsService: recordingFunctions,
+            ),
       ),
-      // #831: the record path fire-and-forgets an event_settlement activity
-      // row; back it with the same fake so tests can assert on
-      // groups/{gid}/activity (an unoverridden service throws [core/no-app]
-      // into its swallowing catchError → false-empty collection).
+      // Legacy #831 note: activity rows are server-authored since #1129; the
+      // override stays only so any stray read of the provider can't construct
+      // a real service ([core/no-app]).
       groupActivityServiceProvider.overrideWithValue(
         GroupActivityService.withFirestore(fakeDb),
       ),
@@ -745,63 +756,28 @@ void main() {
     await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
     await tester.pumpAndSettle();
 
-    final snap = await fakeDb
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .collection('settlements')
-        .get();
-
-    expect(snap.docs, hasLength(1));
-    expect(snap.docs.first.data()['payerParticipantId'], equals('bob'));
-    expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
-    expect(snap.docs.first.data()['payerName'], equals('Bob'));
-    expect(snap.docs.first.data()['recipientName'], equals('Alice'));
+    // #1129: the write is the recordSettlement callable — assert the wire
+    // payload (mode/direction/names/subunits/epoch). The persisted doc shape
+    // and the event_settlement activity row are server-authored, pinned by
+    // functions/test/callables/recordSettlement.event.test.ts.
+    expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+    expect(recordingFunctions.lastCall, {
+      'groupId': groupId,
+      'mode': 'event',
+      'eventId': eventId,
+      'payerParticipantId': 'bob',
+      'recipientParticipantId': 'alice',
+      'amountFils': 10000, // OMR scale 1000 → 10.000
+      'currency': 'OMR',
+      'note': null,
+      'payerName': 'Bob',
+      'recipientName': 'Alice',
+      'observedPairEpoch': 0,
+      'legs': null,
+    });
+    expect(find.text('Settlement recorded.'), findsOneWidget);
     expect(find.byType(OfflineBanner), findsOneWidget);
   });
-
-  testWidgets(
-    '#831: recording an event settlement writes ONE event_settlement activity '
-    'row with the direction+event metadata contract',
-    (tester) async {
-      final fakeDb = FakeFirebaseFirestore();
-
-      await tester.pumpWidget(buildScreen(fakeDb));
-      await tester.pumpAndSettle();
-
-      await tester.ensureVisible(
-        find.byKey(GroupKeys.settleUpRecordPaymentButton),
-      );
-      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
-      await tester.pumpAndSettle();
-
-      final activity = await fakeDb
-          .collection('groups')
-          .doc(groupId)
-          .collection('activity')
-          .get();
-
-      // The Dinner (20.000 OMR, alice paid, global split) leaves bob owing
-      // alice 10.000 — the record sheet's suggested transfer.
-      expect(activity.docs, hasLength(1));
-      final data = activity.docs.first.data();
-      expect(data['type'], 'event_settlement');
-      expect(data['actorId'], 'bob');
-      expect(data['metadata'], {
-        'amountFils': 10000, // OMR scale 1000 → 10.000
-        'currency': 'OMR',
-        'fromUserId': 'bob',
-        'toUserId': 'alice',
-        'fromName': 'Bob',
-        'toName': 'Alice',
-        'eventId': eventId,
-        'eventName': 'Beach Trip',
-      });
-    },
-  );
 
   testWidgets(
     '#831/#283/#889: correcting a recorded payment invokes the '
@@ -1098,20 +1074,12 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
       await tester.pumpAndSettle();
 
-      final snap = await fakeDb
-          .collection('groups')
-          .doc(groupId)
-          .collection('events')
-          .doc(eventId)
-          .collection('settlements')
-          .get();
-
-      expect(snap.docs, hasLength(1));
-      // Direction follows the optimal transfer, NOT who tapped.
-      expect(snap.docs.first.data()['payerParticipantId'], equals('bob'));
-      expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
-      // createdBy is the writer (Carol) — identity is orthogonal to direction.
-      expect(snap.docs.first.data()['createdBy'], equals('carol'));
+      expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+      // Direction follows the optimal transfer, NOT who tapped. (The writer's
+      // identity — old createdBy — is now the server's auth uid, pinned by the
+      // emulator's actorId table.)
+      expect(recordingFunctions.lastCall['payerParticipantId'], 'bob');
+      expect(recordingFunctions.lastCall['recipientParticipantId'], 'alice');
       // #367: settle-on-behalf (currentUid is NEITHER party) never nudges —
       // the gate is currentUid == fromUserId, not merely != toUserId. This is
       // the third-party case that distinguishes the two formulations.
@@ -1437,75 +1405,19 @@ void main() {
   });
 
   testWidgets(
-    '#357: an offline settlement flips connectivity to syncing '
-    '("Saved — will sync")',
+    '#1129 offline pre-flight: no callable invocation, honest failure copy, '
+    'no bump, connectivity untouched',
     (tester) async {
       final fakeDb = FakeFirebaseFirestore();
-      // Timer-free notifier seeded offline; the write should set it to syncing.
-      // Riverpod owns the overridden instance and disposes it on teardown, so
-      // no addTearDown here (that would double-dispose).
+      // Timer-free notifier seeded offline; the pre-flight must refuse before
+      // any call — settlement creates have no offline queue. Riverpod owns the
+      // overridden instance and disposes it on teardown (no addTearDown).
       final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
         ..setOffline();
 
       await tester.pumpWidget(
         buildScreen(
           fakeDb,
-          extraOverrides: [
-            connectivityProvider.overrideWith((ref) => connectivity),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.ensureVisible(
-        find.byKey(GroupKeys.settleUpRecordPaymentButton),
-      );
-      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
-      await tester.pumpAndSettle();
-
-      expect(connectivity.state, ConnectivityStatus.syncing);
-    },
-  );
-
-  testWidgets(
-    '#412: an offline settlement whose write never acks still confirms '
-    'within bounded time',
-    (tester) async {
-      registerFallbackValue(Decimal.zero);
-      final fakeDb = FakeFirebaseFirestore();
-      // Real offline behavior: addSettlement's Firestore set() future stays
-      // pending until reconnect — FakeFirebaseFirestore can't model this.
-      final service = _MockSettlementService();
-      when(
-        () => service.addSettlement(
-          id: any(named: 'id'),
-          groupId: any(named: 'groupId'),
-          eventId: any(named: 'eventId'),
-          payerParticipantId: any(named: 'payerParticipantId'),
-          recipientParticipantId: any(named: 'recipientParticipantId'),
-          payerName: any(named: 'payerName'),
-          recipientName: any(named: 'recipientName'),
-          amount: any(named: 'amount'),
-          currency: any(named: 'currency'),
-          createdBy: any(named: 'createdBy'),
-          note: any(named: 'note'),
-          activityId: any(named: 'activityId'),
-          activityActorId: any(named: 'activityActorId'),
-          activityActorName: any(named: 'activityActorName'),
-          activityDescription: any(named: 'activityDescription'),
-          activityMetadata: any(named: 'activityMetadata'),
-        ),
-      ).thenAnswer((_) => Completer<Settlement>().future);
-
-      final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
-        ..setOffline();
-
-      await tester.pumpWidget(
-        buildScreen(
-          fakeDb,
-          settlementService: service,
           extraOverrides: [
             connectivityProvider.overrideWith((ref) => connectivity),
           ],
@@ -1523,18 +1435,57 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
-      await tester.pump();
-      // Past kWriteAckTimeout — fixed pumps only (never pumpAndSettle while
-      // racing; the snackbar entrance also needs a frame).
-      await tester.pump(const Duration(seconds: 6));
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
 
+      expect(recordingFunctions.recordSettlementCalls, isEmpty);
+      expect(container.read(ledgerRevisionProvider), 0);
       expect(
-        find.text('Settlement recorded — will sync when online.'),
+        find.text(
+          "Couldn't record settlement. Check your connection and try again.",
+        ),
         findsOneWidget,
       );
-      expect(container.read(ledgerRevisionProvider), 1); // #104 bump fired
+      expect(find.text('Settlement recorded.'), findsNothing);
+      // No phantom queued-write signal: the state stays offline, not syncing.
+      expect(connectivity.state, ConnectivityStatus.offline);
+      // #367 honesty guard: a refused record must not nudge.
+      expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
+    },
+  );
+
+  testWidgets(
+    '#1129: `syncing` PROCEEDS — the pre-flight blocks only provably-offline '
+    'devices, and success notes the write (#357)',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      // offline → noteQueuedWrite = the #412 queued transition to `syncing`
+      // (an expense replaying). Recording a settlement must still work.
+      final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
+        ..setOffline()
+        ..noteQueuedWrite(groupId: groupId);
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'alice',
+          extraOverrides: [
+            connectivityProvider.overrideWith((ref) => connectivity),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
       expect(connectivity.state, ConnectivityStatus.syncing);
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+      expect(find.text('Settlement recorded.'), findsOneWidget);
     },
   );
 
@@ -1557,20 +1508,11 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
       await tester.pumpAndSettle();
 
-      final snap = await fakeDb
-          .collection('groups')
-          .doc(groupId)
-          .collection('events')
-          .doc(eventId)
-          .collection('settlements')
-          .get();
-
-      expect(snap.docs, hasLength(1));
-      // Direction is fixed by the debt, not by who tapped record.
-      expect(snap.docs.first.data()['payerParticipantId'], equals('bob'));
-      expect(snap.docs.first.data()['recipientParticipantId'], equals('alice'));
-      // The actor (creditor) is the audited author.
-      expect(snap.docs.first.data()['createdBy'], equals('alice'));
+      expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+      // Direction is fixed by the debt, not by who tapped record. (The
+      // audited author — old createdBy — is now the server's auth uid.)
+      expect(recordingFunctions.lastCall['payerParticipantId'], 'bob');
+      expect(recordingFunctions.lastCall['recipientParticipantId'], 'alice');
     },
   );
 
@@ -1650,17 +1592,10 @@ void main() {
 
     expect(find.text('Please enter a valid amount'), findsOneWidget);
 
-    final snap = await fakeDb
-        .collection('groups')
-        .doc(groupId)
-        .collection('events')
-        .doc(eventId)
-        .collection('settlements')
-        .get();
     expect(
-      snap.docs,
+      recordingFunctions.recordSettlementCalls,
       isEmpty,
-      reason: 'a rejected amount must not write a settlement',
+      reason: 'a rejected amount must not invoke the settlement callable',
     );
   });
 
@@ -2166,12 +2101,83 @@ void main() {
         expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
       },
     );
+
+    testWidgets(
+      '#1129: an alreadyRecorded replay shows the already-recorded copy and '
+      'does NOT re-nudge the debtor',
+      (tester) async {
+        final fakeDb = FakeFirebaseFirestore();
+        recordingFunctions.result = const RecordSettlementResult(
+          alreadyRecorded: true,
+          eventScopeWrites: 1,
+          groupScopeWrites: 0,
+          shouldBumpLedgerRevision: true,
+          settledAt: '2026-05-16T00:00:00.000Z',
+        );
+
+        // Default currentUid = bob, the debtor — the ONE perspective that
+        // normally nudges, so this is non-vacuous.
+        await tester.pumpWidget(buildScreen(fakeDb));
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(GroupKeys.settleUpRecordPaymentButton),
+        );
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(find.text('This payment was already recorded.'), findsOneWidget);
+        expect(find.text('Settlement recorded.'), findsNothing);
+        expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
+      },
+    );
   });
+
+  testWidgets(
+    '#1129: an over-outstanding rejection surfaces the LIVE server cap via '
+    'the balance-changed copy (#773 reuse)',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      recordingFunctions.error = FirebaseFunctionsException(
+        message: 'cap',
+        code: 'failed-precondition',
+        details: const {
+          'kind': 'over-outstanding',
+          'outstandingFils': 4000,
+          'currency': 'OMR',
+        },
+      );
+
+      await tester.pumpWidget(buildScreen(fakeDb));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          "Balance changed while you were recording — it's now OMR 4.000. "
+          'Review and try again.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Settlement recorded.'), findsNothing);
+      // #367 honesty guard: a capped (failed) record must not nudge.
+      expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
+    },
+  );
 }
 
-/// Records each [addSettlement] call so a stepped walk can be asserted, and
-/// returns a deserialized [Settlement] (the acked path). [throwOnCall] (1-based)
-/// makes that call throw to exercise the per-step error stop.
+/// Records each [addSettlement] call so a stepped walk can be asserted.
+/// [throwOnCall] (1-based) makes that call throw to exercise the per-step
+/// error stop.
 class _RecordingSettlementService extends SettlementService {
   _RecordingSettlementService({this.throwOnCall})
     : super.withFirestore(FakeFirebaseFirestore());
@@ -2186,24 +2192,17 @@ class _RecordingSettlementService extends SettlementService {
   calls = [];
 
   @override
-  Future<Settlement> addSettlement({
-    required String id,
+  Future<RecordSettlementResult> addSettlement({
     required String groupId,
     required String eventId,
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
+    required String currency,
+    required int observedPairEpoch,
     String? payerName,
     String? recipientName,
     String? note,
-    String? groupSettleUpId,
-    String? activityId,
-    String? activityActorId,
-    String? activityActorName,
-    String? activityDescription,
-    Map<String, dynamic>? activityMetadata,
   }) async {
     calls.add((
       payerParticipantId: payerParticipantId,
@@ -2214,15 +2213,12 @@ class _RecordingSettlementService extends SettlementService {
     if (throwOnCall != null && calls.length == throwOnCall) {
       throw StateError('write failed');
     }
-    return Settlement(
-      id: 'settlement-${calls.length}',
-      tripId: eventId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      currency: currency,
-      createdBy: createdBy,
-      settledAt: DateTime(2026, 5, 16),
+    return const RecordSettlementResult(
+      alreadyRecorded: false,
+      eventScopeWrites: 1,
+      groupScopeWrites: 0,
+      shouldBumpLedgerRevision: true,
+      settledAt: '2026-05-16T00:00:00.000Z',
     );
   }
 }
@@ -2231,24 +2227,17 @@ class _FailingSettlementService extends SettlementService {
   _FailingSettlementService() : super.withFirestore(FakeFirebaseFirestore());
 
   @override
-  Future<Settlement> addSettlement({
-    required String id,
+  Future<RecordSettlementResult> addSettlement({
     required String groupId,
     required String eventId,
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
+    required String currency,
+    required int observedPairEpoch,
     String? payerName,
     String? recipientName,
     String? note,
-    String? groupSettleUpId,
-    String? activityId,
-    String? activityActorId,
-    String? activityActorName,
-    String? activityDescription,
-    Map<String, dynamic>? activityMetadata,
   }) {
     throw StateError('write failed');
   }
@@ -2258,29 +2247,23 @@ class _DeniedSettlementService extends SettlementService {
   _DeniedSettlementService() : super.withFirestore(FakeFirebaseFirestore());
 
   @override
-  Future<Settlement> addSettlement({
-    required String id,
+  Future<RecordSettlementResult> addSettlement({
     required String groupId,
     required String eventId,
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
+    required String currency,
+    required int observedPairEpoch,
     String? payerName,
     String? recipientName,
     String? note,
-    String? groupSettleUpId,
-    String? activityId,
-    String? activityActorId,
-    String? activityActorName,
-    String? activityDescription,
-    Map<String, dynamic>? activityMetadata,
   }) {
-    throw FirebaseException(
-      plugin: 'cloud_firestore',
-      code: 'permission-denied',
+    // The callable's denial shape (#1129) — FirebaseFunctionsException, which
+    // classifySettlementWriteError must branch on BEFORE FirebaseException.
+    throw FirebaseFunctionsException(
       message: 'Missing or insufficient permissions.',
+      code: 'permission-denied',
     );
   }
 }

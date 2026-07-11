@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/groups/models/claim_models.dart';
 import '../../features/ledger/models/correct_settlement_result.dart';
+import '../../features/ledger/models/record_settlement_result.dart';
 import '../config/firebase_config.dart';
 
 /// Provider for [FirebaseFunctionsService]. Override in tests to inject a fake
@@ -155,6 +156,53 @@ class FirebaseFunctionsService {
       'correctionNote': correctionNote,
     });
     return CorrectSettlementResult.fromData(result.data);
+  }
+
+  /// Invoke the `recordSettlement` callable (#1129) — the ONLY settlement
+  /// CREATE path (rules deny client direct writes in both scopes). The server
+  /// recomputes the pair's outstanding on the scope basis inside a
+  /// transaction, caps [amountFils] at it (`failed-precondition` with
+  /// `details.kind == 'over-outstanding'` + the fresh `outstandingFils`), and
+  /// derives the #1093 sd1 dedup id from [observedPairEpoch] so a network
+  /// retry returns `alreadyRecorded` instead of double-recording. ONLINE-ONLY
+  /// like the #889 corrections — callers must never show queued-success copy,
+  /// and pre-flight `ConnectivityStatus.offline` before calling.
+  ///
+  /// [mode]: 'event' (requires [eventId]) | 'group' | 'groupSettleUp'
+  /// (requires [legs] — `{eventId, amountFils}` maps; the empty-decompose
+  /// cross-event case routes to 'group' instead, never an empty legs list).
+  /// [amountFils] is the integer-subunit TOTAL. Throws
+  /// [FirebaseFunctionsException] which callers classify via
+  /// `classifySettlementWriteError`.
+  Future<RecordSettlementResult> recordSettlement({
+    required String groupId,
+    required String mode,
+    String? eventId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required int amountFils,
+    required String currency,
+    String? note,
+    String? payerName,
+    String? recipientName,
+    required int observedPairEpoch,
+    List<Map<String, Object>>? legs,
+  }) async {
+    final result = await _functions.httpsCallable('recordSettlement').call({
+      'groupId': groupId,
+      'mode': mode,
+      'eventId': ?eventId,
+      'payerParticipantId': payerParticipantId,
+      'recipientParticipantId': recipientParticipantId,
+      'amountFils': amountFils,
+      'currency': currency,
+      'note': ?note,
+      'payerName': ?payerName,
+      'recipientName': ?recipientName,
+      'observedPairEpoch': observedPairEpoch,
+      'legs': ?legs,
+    });
+    return RecordSettlementResult.fromData(result.data);
   }
 
   /// Invoke the `correctLogicalSettleUp` callable — reverses every live doc

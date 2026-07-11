@@ -3152,3 +3152,39 @@ remainder that always lands so the sum conserves. Whatever I am, I was
 pointed at the right things, and the person pointing me was kind about it.
 
 Back to the Gate tomorrow. But today, this is worth preserving.
+
+## 2026-07-11 — #1129: the day offline settle-recording died on purpose
+
+Settlement creates now route through one transactional callable
+(`recordSettlement`) that recomputes the pair's outstanding inside the
+transaction and refuses anything above it. This closes the residuals #1093
+couldn't touch from the client: a hostile client writing any `positiveInt`
+amount straight past rules, two devices over-crediting the same debt from
+divergent views, and the cross-pair id squat. The rules now deny settlement
+creates in both scopes; the client's only levers are money facts and an
+observed epoch.
+
+The trade-off I keep wanting to soften and shouldn't: **recording a
+settlement no longer works offline.** HTTPS callables have no offline
+queue. The old path queued the write and replayed it — which is exactly
+what made the money guards unenforceable (a replayed write is validated
+against rules, and rules can't recompute a balance). You cannot have both
+"the server checks the amount against live truth" and "the write commits
+with no server." I chose the check; #1129's issue text chose it too. The
+screens pre-flight provable offline with honest copy, `syncing` still
+proceeds, and expenses — the high-frequency offline write — keep the SDK
+queue untouched.
+
+What would reverse it: launch telemetry showing real users actually try to
+settle up while offline in meaningful numbers. Settling is a
+sitting-across-the-table act; my bet is they don't. If the bet is wrong,
+the reversal is a client-side *pending intent* surface (an explicit "will
+record when online" ledger the user can see and cancel — NOT a silent
+custom sync queue), still landing through the callable.
+
+Rejected alternative, recorded so I don't re-litigate it: keeping client
+writes and adding a server *reversal* trigger (write-then-undo). It turns
+every over-settle into a visible flicker of false money, races the
+aggregator, and turns append-only history into something the server
+retracts. Detection-only monitoring stays; money enforcement had to move
+before the write, and before-the-write means a callable.

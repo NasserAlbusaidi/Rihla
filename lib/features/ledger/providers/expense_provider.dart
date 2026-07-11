@@ -5,6 +5,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/constants/supported_currencies.dart';
 import '../../../core/models/split_mode.dart';
+import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/types/event_ref.dart';
 import '../../events/models/event_model.dart';
@@ -49,9 +50,12 @@ final expenseServiceProvider = Provider<ExpenseService>(
   (ref) => ExpenseService(),
 );
 
-/// Provider for the Firestore-backed [SettlementService].
+/// Provider for [SettlementService] — Firestore-backed reads; the CREATE
+/// routes through the injected `recordSettlement` callable (#1129).
 final settlementServiceProvider = Provider<SettlementService>(
-  (ref) => SettlementService(),
+  (ref) => SettlementService(
+    functionsService: ref.read(firebaseFunctionsServiceProvider),
+  ),
 );
 
 // ---------------------------------------------------------------------------

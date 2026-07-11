@@ -4,13 +4,11 @@ import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 import {
   eventWriteRateMonitor,
-  groupSettlementWriteRateMonitor,
   groupActivityWriteRateMonitor,
 } from '../../src/triggers/writeRateMonitor';
 
 const testEnv = functionsTest({ projectId: 'rihla-safar-test' });
 const wrapEvent = testEnv.wrap(eventWriteRateMonitor);
-const wrapGroupSettlement = testEnv.wrap(groupSettlementWriteRateMonitor);
 const wrapGroupActivity = testEnv.wrap(groupActivityWriteRateMonitor);
 
 function eventCreate(
@@ -18,14 +16,6 @@ function eventCreate(
   params: { gid: string; eid: string; module: string; docId: string },
 ): { data: unknown; params: typeof params } {
   const path = `groups/${params.gid}/events/${params.eid}/${params.module}/${params.docId}`;
-  return { data: testEnv.firestore.makeDocumentSnapshot(data, path), params };
-}
-
-function groupSettlementCreate(
-  data: Record<string, unknown>,
-  params: { gid: string; settlementId: string },
-): { data: unknown; params: typeof params } {
-  const path = `groups/${params.gid}/settlements/${params.settlementId}`;
   return { data: testEnv.firestore.makeDocumentSnapshot(data, path), params };
 }
 
@@ -70,7 +60,7 @@ describe('writeRateMonitor', () => {
     expect((c?.expiresAt as Timestamp).toMillis()).toBe(start + 60_000 + 60_000);
   });
 
-  test('event settlement is counted but event activity_logs are NOT (server-written, #526)', async () => {
+  test('#1129 event settlement create is NOT counted (callable-only, un-forgeable)', async () => {
     await wrapEvent(eventCreate(
       { createdBy: 'payer', amountFils: 500 },
       { gid: 'g1', eid: 'e1', module: 'settlements', docId: 's1' },
@@ -84,7 +74,9 @@ describe('writeRateMonitor', () => {
       { gid: 'g1', eid: 'e1', module: 'activity_logs', docId: 'a1' },
     ));
 
-    expect((await counter('g1', 'payer'))?.count).toBe(1);
+    // A 400-leg decomposed settle-up must consume ZERO of the per-uid expense
+    // budget — pre-#1129 the leg writes false-flagged the 100/60s threshold.
+    expect(await counter('g1', 'payer')).toBeUndefined();
     expect(await counter('g1', 'logger-uid')).toBeUndefined();
   });
 
@@ -98,57 +90,30 @@ describe('writeRateMonitor', () => {
     expect(counters).toHaveLength(0);
   });
 
-  test('group-level settlement (T2) and activity (T3) are counted', async () => {
-    await wrapGroupSettlement(groupSettlementCreate(
-      { createdBy: 'gs-uid', amountFils: 700 },
-      { gid: 'g1', settlementId: 'gs1' },
-    ));
+  test('T3 lifecycle group activity is still counted', async () => {
     await wrapGroupActivity(groupActivityCreate(
       { actorId: 'ga-uid', description: 'group event' },
       { gid: 'g1', activityId: 'ga1' },
     ));
 
-    expect((await counter('g1', 'gs-uid'))?.count).toBe(1);
     expect((await counter('g1', 'ga-uid'))?.count).toBe(1);
   });
 
-  // #889: a marked settlement-correction reverse is a server-owned offsetting
-  // row (Admin SDK, stamped createdBy: callerUid) — a 21-slice logical
-  // correction would otherwise bill 22 counted writes to one tap.
-  test('#889 T1 event settlement carrying correctionOfSettlementId is NOT counted', async () => {
-    await wrapEvent(eventCreate(
-      { createdBy: 'caller', amountFils: 500, correctionOfSettlementId: 'orig1' },
-      { gid: 'g1', eid: 'e1', module: 'settlements', docId: 'correction1' },
+  // #1129: settlement-typed activity rows are authored ONLY by the
+  // recordSettlement callable (removed from validGroupActivityCreate's client
+  // allow-list) — counting them would bill the settler's un-forgeable server
+  // write against the expense-abuse budget.
+  test('#1129 T3 event_settlement/group_settlement activity rows are NOT counted', async () => {
+    await wrapGroupActivity(groupActivityCreate(
+      { actorId: 'settler', type: 'group_settlement', description: 'settled OMR 7.000 with Owner' },
+      { gid: 'g1', activityId: 'gstl_x' },
+    ));
+    await wrapGroupActivity(groupActivityCreate(
+      { actorId: 'settler', type: 'event_settlement', description: 'settled OMR 3.000 with Owner' },
+      { gid: 'g1', activityId: 'stl_x' },
     ));
 
-    expect(await counter('g1', 'caller')).toBeUndefined();
-  });
-
-  test('#889 T1 an UNMARKED event settlement (even with a sentinel note) is STILL counted', async () => {
-    await wrapEvent(eventCreate(
-      { createdBy: 'payer', amountFils: 500, note: 'Correction of a recorded payment' },
-      { gid: 'g1', eid: 'e1', module: 'settlements', docId: 's1' },
-    ));
-
-    expect((await counter('g1', 'payer'))?.count).toBe(1);
-  });
-
-  test('#889 T2 group settlement carrying correctionOfSettlementId is NOT counted', async () => {
-    await wrapGroupSettlement(groupSettlementCreate(
-      { createdBy: 'caller', amountFils: 700, correctionOfSettlementId: 'orig2' },
-      { gid: 'g1', settlementId: 'correction2' },
-    ));
-
-    expect(await counter('g1', 'caller')).toBeUndefined();
-  });
-
-  test('#889 T2 an UNMARKED group settlement create is STILL counted', async () => {
-    await wrapGroupSettlement(groupSettlementCreate(
-      { createdBy: 'gs-uid', amountFils: 700 },
-      { gid: 'g1', settlementId: 'gs1' },
-    ));
-
-    expect((await counter('g1', 'gs-uid'))?.count).toBe(1);
+    expect(await counter('g1', 'settler')).toBeUndefined();
   });
 
   test('#808 a server fan-in expense_* group activity create is NOT counted (T1 already counted the expense)', async () => {

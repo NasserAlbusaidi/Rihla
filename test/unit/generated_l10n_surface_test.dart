@@ -100,6 +100,21 @@ void main() {
       expect(ar, isNot(AppLocalizationsEn().settleUpBalanceStillSyncing));
     });
   });
+
+  group('#1129 already-recorded replay copy', () {
+    test('English already-recorded notice is reachable', () {
+      expect(
+        AppLocalizationsEn().settleUpAlreadyRecorded,
+        contains('already recorded'),
+      );
+    });
+
+    test('Arabic already-recorded notice is translated', () {
+      final ar = AppLocalizationsAr().settleUpAlreadyRecorded;
+      expect(ar, isNotEmpty);
+      expect(ar, isNot(AppLocalizationsEn().settleUpAlreadyRecorded));
+    });
+  });
 }
 
 final _pr2bCalls = <_L10nString>[

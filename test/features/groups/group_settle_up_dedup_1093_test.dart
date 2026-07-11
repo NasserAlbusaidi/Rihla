@@ -12,21 +12,24 @@ import 'package:safar/features/groups/models/group_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
-import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-// #1093: a group settle-up written twice from the SAME observed state (neither
-// device has seen the other's write yet) must collapse — decomposed legs +
-// residual to N+1 docs (not 2·(N+1)), and the fallback single group write to
-// ONE doc (not two). Epoch is pinned at 0 for BOTH record actions by directly
-// overriding groupSettlementsProvider (single-shot) and
-// groupTaggedEventSettlementsProvider (a plain Provider.family, overridden to
-// a fixed empty list) so no amount of pumping between the two actions can
-// advance the basis — a stronger guarantee than merely "don't pump between
-// the calls."
+import '../../helpers/recording_functions_service.dart';
+
+// #1093 → #1129: a group settle-up recorded twice from the SAME observed
+// state (neither device has seen the other's write yet) must collapse to ONE
+// logical payment. Since #1129 the id derivation is SERVER-side: the client's
+// contribution to determinism is sending the identical `observedPairEpoch` +
+// money payload for the identical observed snapshot. Epoch is pinned at 0 for
+// BOTH record actions by overriding groupSettlementsProvider (single-shot)
+// and groupTaggedEventSettlementsProvider (fixed empty list) so no amount of
+// pumping between the two actions can advance the basis. The one-payment
+// guarantee itself (identical payload → same gsu/group sd1 id →
+// alreadyRecorded) is pinned by the emulator idempotency tables in
+// functions/test/callables/recordSettlement.group.test.ts.
 
 const _groupId = 'grp-1';
 
@@ -65,7 +68,7 @@ UserBalance _bal(String id, String name, String net) => UserBalance(
     );
 
 /// Bob owes Alice 10.000: 3 attributable in each of two events + a 4.000
-/// cross-event residual → a decompose of 2 event legs + 1 residual (3 docs).
+/// cross-event residual → a decompose of 2 event legs + the server residual.
 GroupBalances _balancesTwoEventsWithResidual() => (
       balances: <String, List<UserBalance>>{
         'OMR': [
@@ -89,48 +92,21 @@ GroupBalances _balancesTwoEventsWithResidual() => (
       memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
     );
 
-/// Bob owes Alice across TEN events (1.000 each) → over kMaxDecomposeLegsAtomic
-/// → the screen routes to the single atomic group-write fallback.
-GroupBalances _balancesTenEvents() {
-  final alice = <String, Map<String, Decimal>>{};
-  final bob = <String, Map<String, Decimal>>{};
-  for (var i = 1; i <= 10; i++) {
-    alice['event-$i'] = {'OMR': Decimal.parse('1.000')};
-    bob['event-$i'] = {'OMR': Decimal.parse('-1.000')};
-  }
-  return (
-    balances: <String, List<UserBalance>>{
-      'OMR': [
-        _bal('uid-alice', 'Alice', '10.000'),
-        _bal('uid-bob', 'Bob', '-10.000'),
-      ],
-    },
-    totalSpent: <String, Decimal>{'OMR': Decimal.parse('20.000')},
-    eventCount: 10,
-    perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
-      'uid-alice': alice,
-      'uid-bob': bob,
-    },
-    memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
-    memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
-  );
-}
-
-class _RecordingGroupActivityService extends GroupActivityService {
-  _RecordingGroupActivityService() : super.withFirestore(FakeFirebaseFirestore());
-
-  @override
-  void logGroupEvent({
-    required String groupId,
-    required String type,
-    required String actorId,
-    required String actorName,
-    required String description,
-    Map<String, dynamic>? metadata,
-  }) {
-    // Swallow — activity logging is not under test here.
-  }
-}
+/// Bob owes Alice 10.000 with NO per-event attribution (pure cross-event
+/// pair) → the screen routes to the mode-'group' single aggregate write.
+GroupBalances _balancesCrossEventOnly() => (
+      balances: <String, List<UserBalance>>{
+        'OMR': [
+          _bal('uid-alice', 'Alice', '10.000'),
+          _bal('uid-bob', 'Bob', '-10.000'),
+        ],
+      },
+      totalSpent: <String, Decimal>{'OMR': Decimal.parse('20.000')},
+      eventCount: 2,
+      perEventBreakdown: const <String, Map<String, Map<String, Decimal>>>{},
+      memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+      memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+    );
 
 Widget _wrap({
   required GroupBalances balances,
@@ -148,8 +124,8 @@ Widget _wrap({
         _groupId,
       ).overrideWith((_) => Stream.value(const <Settlement>[])),
       // Directly overridden (bypassing its normal live-event derivation) so
-      // decompose legs landing in the fake between the two record actions
-      // cannot advance this basis either.
+      // nothing landing between the two record actions can advance this
+      // basis either.
       groupTaggedEventSettlementsProvider(
         _groupId,
       ).overrideWith((_) => const <Settlement>[]),
@@ -184,43 +160,27 @@ Future<void> _recordFullAmount(WidgetTester tester) async {
   }
 }
 
-Future<int> _totalSettlementDocs(FakeFirebaseFirestore fake) async {
-  var count = 0;
-  for (final eventId in const ['event-1', 'event-2']) {
-    final snap = await fake
-        .collection('groups')
-        .doc(_groupId)
-        .collection('events')
-        .doc(eventId)
-        .collection('settlements')
-        .get();
-    count += snap.docs.length;
-  }
-  final groupSnap = await fake
-      .collection('groups')
-      .doc(_groupId)
-      .collection('settlements')
-      .get();
-  count += groupSnap.docs.length;
-  return count;
-}
-
 void main() {
-  testWidgets(
-    '#1093 (a): a decomposed settle-up staged twice from the same epoch-0 '
-    'snapshot collapses to N+1 docs, not 2*(N+1)',
-    (tester) async {
-      final fake = FakeFirebaseFirestore();
-      final groupService = GroupSettlementService.withFirestore(fake);
-      final activityService = _RecordingGroupActivityService();
+  late RecordingFunctionsService recordingFunctions;
+  setUp(() {
+    recordingFunctions = RecordingFunctionsService();
+  });
 
+  GroupSettlementService service() => GroupSettlementService.withFirestore(
+        FakeFirebaseFirestore(),
+        functionsService: recordingFunctions,
+      );
+
+  testWidgets(
+    '#1093/#1129 (a): a decomposed settle-up recorded twice from the same '
+    'epoch-0 snapshot sends the IDENTICAL groupSettleUp intent twice',
+    (tester) async {
       await tester.pumpWidget(_wrap(
         balances: _balancesTwoEventsWithResidual(),
         events: [_event1, _event2],
         group: _group(),
         overrides: [
-          groupSettlementServiceProvider.overrideWithValue(groupService),
-          groupActivityServiceProvider.overrideWithValue(activityService),
+          groupSettlementServiceProvider.overrideWithValue(service()),
         ],
       ));
       await tester.pumpAndSettle();
@@ -228,34 +188,37 @@ void main() {
       await _recordFullAmount(tester);
       await _recordFullAmount(tester);
 
+      expect(recordingFunctions.recordSettlementCalls, hasLength(2));
+      final first = recordingFunctions.recordSettlementCalls[0];
+      final second = recordingFunctions.recordSettlementCalls[1];
+      expect(first['mode'], 'groupSettleUp');
+      expect(first['observedPairEpoch'], 0);
+      expect(first['amountFils'], 10000);
+      expect(first['legs'], [
+        {'eventId': 'event-1', 'amountFils': 3000},
+        {'eventId': 'event-2', 'amountFils': 3000},
+      ]);
       expect(
-        await _totalSettlementDocs(fake),
-        3,
+        second,
+        first,
         reason:
-            '2 event legs + 1 residual = 3 unique docs; both decompose calls '
-            'derive the same groupSettleUpId (and therefore the same leg/'
-            'residual ids), so the second batch overwrites the first rather '
-            'than doubling it. Production is denied by the already-live '
-            '`allow update: if false`.',
+            'identical observed snapshot ⇒ byte-identical callable intent ⇒ '
+            'the server derives ONE gsu id (and therefore one leg/residual '
+            'set) for both — the second lands as alreadyRecorded',
       );
     },
   );
 
   testWidgets(
-    '#1093 (b): the fallback single group settle recorded twice from the same '
-    'epoch-0 snapshot collapses to ONE group doc',
+    '#1093/#1129 (b): the mode-group fallback recorded twice from the same '
+    'epoch-0 snapshot sends the IDENTICAL group intent twice',
     (tester) async {
-      final fake = FakeFirebaseFirestore();
-      final groupService = GroupSettlementService.withFirestore(fake);
-      final activityService = _RecordingGroupActivityService();
-
       await tester.pumpWidget(_wrap(
-        balances: _balancesTenEvents(),
-        events: [for (var i = 1; i <= 10; i++) _event('event-$i', 'E$i', EventType.trip)],
+        balances: _balancesCrossEventOnly(),
+        events: [_event1, _event2],
         group: _group(),
         overrides: [
-          groupSettlementServiceProvider.overrideWithValue(groupService),
-          groupActivityServiceProvider.overrideWithValue(activityService),
+          groupSettlementServiceProvider.overrideWithValue(service()),
         ],
       ));
       await tester.pumpAndSettle();
@@ -263,17 +226,19 @@ void main() {
       await _recordFullAmount(tester);
       await _recordFullAmount(tester);
 
-      final groupDocs = await fake
-          .collection('groups')
-          .doc(_groupId)
-          .collection('settlements')
-          .get();
+      expect(recordingFunctions.recordSettlementCalls, hasLength(2));
+      final first = recordingFunctions.recordSettlementCalls[0];
+      final second = recordingFunctions.recordSettlementCalls[1];
+      expect(first['mode'], 'group');
+      expect(first['observedPairEpoch'], 0);
+      expect(first['amountFils'], 10000);
+      expect(first['legs'], isNull);
       expect(
-        groupDocs.docs,
-        hasLength(1),
+        second,
+        first,
         reason:
-            'both fallback writes derive the same deterministic group-scope '
-            'id from the identical epoch-0 snapshot.',
+            'identical observed snapshot ⇒ byte-identical callable intent ⇒ '
+            'the server derives ONE group-scope id for both',
       );
     },
   );

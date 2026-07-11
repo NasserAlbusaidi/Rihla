@@ -18,6 +18,8 @@ import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
+import '../../helpers/recording_functions_service.dart';
+
 // #719: the live balances feeding the screen, mutated mid-test to model another
 // device paying while the record sheet is open.
 final _testBalances = StateProvider<GroupBalances>((_) => _balances('10.000'));
@@ -85,34 +87,21 @@ GroupBalances _balances(String net) => (
 // GroupSettlementService, so event legs no longer flow through
 // SettlementService.addSettlement. These tests use REAL services on ONE shared
 // FakeFirebaseFirestore and count the persisted docs.
-Future<int> _eventSettlementCount(FakeFirebaseFirestore fake) async {
-  final snap = await fake
-      .collection('groups')
-      .doc(_groupId)
-      .collection('events')
-      .doc('event-1')
-      .collection('settlements')
-      .get();
-  return snap.docs.length;
-}
-
-Future<int> _groupSettlementCount(FakeFirebaseFirestore fake) async {
-  final snap = await fake
-      .collection('groups')
-      .doc(_groupId)
-      .collection('settlements')
-      .get();
-  return snap.docs.length;
-}
-
 void main() {
   testWidgets(
     '#719: outstanding shrinks while the record sheet is open → block with '
     'review-again, no settlement written',
     (tester) async {
+      final recordingFunctions = RecordingFunctionsService();
       final fake = FakeFirebaseFirestore();
-      final eventService = SettlementService.withFirestore(fake);
-      final groupService = GroupSettlementService.withFirestore(fake);
+      final eventService = SettlementService.withFirestore(
+        fake,
+        functionsService: recordingFunctions,
+      );
+      final groupService = GroupSettlementService.withFirestore(
+        fake,
+        functionsService: recordingFunctions,
+      );
 
       await tester.pumpWidget(
         ProviderScope(
@@ -165,18 +154,24 @@ void main() {
       // Blocked: the review-again message shows the FRESH outstanding (2.000)…
       expect(find.textContaining('Balance changed'), findsOneWidget);
       expect(find.textContaining('2.000'), findsWidgets);
-      // …and nothing was written.
-      expect(await _eventSettlementCount(fake), 0);
-      expect(await _groupSettlementCount(fake), 0);
+      // …and the settlement callable was never invoked (#1129 seam).
+      expect(recordingFunctions.recordSettlementCalls, isEmpty);
     },
   );
 
   testWidgets('#719: unchanged balance records normally (no false block)', (
     tester,
   ) async {
+    final recordingFunctions = RecordingFunctionsService();
     final fake = FakeFirebaseFirestore();
-    final eventService = SettlementService.withFirestore(fake);
-    final groupService = GroupSettlementService.withFirestore(fake);
+    final eventService = SettlementService.withFirestore(
+      fake,
+      functionsService: recordingFunctions,
+    );
+    final groupService = GroupSettlementService.withFirestore(
+      fake,
+      functionsService: recordingFunctions,
+    );
 
     await tester.pumpWidget(
       ProviderScope(
@@ -215,8 +210,10 @@ void main() {
     await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
     await tester.pumpAndSettle();
 
-    // No staleness → the single-event write lands, no review-again block.
+    // No staleness → the settle-up goes to the server, no review-again block.
     expect(find.textContaining('Balance changed'), findsNothing);
-    expect(await _eventSettlementCount(fake), 1);
+    expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+    expect(recordingFunctions.lastCall['mode'], 'groupSettleUp');
+    expect(find.text('Settlement recorded.'), findsOneWidget);
   });
 }

@@ -993,6 +993,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settleUpRecorded => 'Settlement recorded.';
 
   @override
+  String get settleUpAlreadyRecorded => 'This payment was already recorded.';
+
+  @override
   String get settleUpRecordedWillSync =>
       'Settlement recorded — will sync when online.';
 

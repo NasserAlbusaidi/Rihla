@@ -1,27 +1,29 @@
 import {
   initializeTestEnvironment,
   assertFails,
-  assertSucceeds,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-// #1093: deterministic settlement dedup ids lean on ONE floor — a second
-// `set()` at an id that already exists is evaluated as an UPDATE by Firestore
-// rules, and both settlement blocks already hard-deny update
-// (`allow update: if false`, security/firestore.rules:988 event / :1230
-// group — verified 2026-07-11). This suite pins that floor directly against
-// the emulator so a future rules edit that accidentally opens update on
-// either settlement block cannot silently break the #1093 design without a
-// test going red. NO rules change ships with this file.
+// #1093 → #1129 lineage. #1093's deterministic dedup ids leaned on ONE rules
+// floor: a second `set()` at an existing id is an UPDATE, and both settlement
+// blocks hard-deny update (`allow update: if false` — event block + group
+// block, security/firestore.rules). #1129 then made settlement creates
+// CALLABLE-ONLY (recordSettlement, Admin SDK): the CREATE arm is now denied
+// for clients too, so the dedup collision fires server-side in the callable's
+// idempotency probe instead of at the rules boundary. This suite pins BOTH
+// floors: any client create is denied regardless of payload/id, and the
+// update-deny still holds for a client set() at an EXISTING (Admin-seeded) id
+// — including merge:true — so a legacy queued client replay can never mutate a
+// recorded settlement.
 
 const PROJECT_ID = 'rihla-settlement-idempotency-rules-test';
 const RULES_PATH = resolve(__dirname, '../../security/firestore.rules');
 const [FIRESTORE_HOST, FIRESTORE_PORT] =
   (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
 
-describe('#1093 settlement idempotency — deny-on-existing-id floor', () => {
+describe('#1093/#1129 settlement write floors — callable-only create + deny-on-existing-id', () => {
   let testEnv: RulesTestEnvironment;
 
   beforeAll(async () => {
@@ -75,10 +77,6 @@ describe('#1093 settlement idempotency — deny-on-existing-id floor', () => {
         joinedAt: new Date(),
         isShadow: false,
       });
-      await db.doc('inviteCodes/ABC123').set({
-        groupId: 'g1',
-        createdAt: new Date(),
-      });
       await db.doc('groups/g1/events/e1').set({
         id: 'e1',
         name: 'Weekend Camp',
@@ -103,10 +101,9 @@ describe('#1093 settlement idempotency — deny-on-existing-id floor', () => {
     });
   }
 
-  // A deterministic-shaped id — 'sd1' + 40 hex chars, matching
-  // SettlementService.deterministicSettlementId's output shape. The rules
-  // never inspect id format (Invariant 3), so a literal fixed string is an
-  // equally valid probe of the deny-on-existing-id floor.
+  // A deterministic-shaped id — 'sd1' + 40 hex chars, matching the (now
+  // server-side) deterministicSettlementId output shape. The rules never
+  // inspect id format, so a literal fixed string is an equally valid probe.
   const DETERMINISTIC_ID =
     'sd1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
@@ -150,130 +147,89 @@ describe('#1093 settlement idempotency — deny-on-existing-id floor', () => {
     };
   }
 
+  async function seedExisting(path: string, data: Record<string, unknown>): Promise<void> {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(path).set(data);
+    });
+  }
+
   describe('event scope (groups/{gid}/events/{eid}/settlements/{id})', () => {
-    test('(1) create at a deterministic id with a valid payload is ALLOWED', async () => {
+    test('(1) #1129: create at a fresh id with a fully-valid payload is DENIED — callable-only', async () => {
       const member = testEnv.authenticatedContext('member').firestore();
 
-      await assertSucceeds(
+      await assertFails(
         member
           .doc(`groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`)
           .set(validSettlement()),
       );
     });
 
-    test(
-      '(2) a second set() at the SAME id — same auth member — is DENIED ' +
-        '(evaluated as an update; allow update: if false)',
-      async () => {
-        const member = testEnv.authenticatedContext('member').firestore();
-        await member
+    test('(2) set() at an EXISTING id is DENIED (update path, allow update: if false)', async () => {
+      await seedExisting(
+        `groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`,
+        validSettlement(),
+      );
+      const member = testEnv.authenticatedContext('member').firestore();
+
+      await assertFails(
+        member
           .doc(`groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`)
-          .set(validSettlement());
+          .set(validSettlement()),
+      );
+    });
 
-        await assertFails(
-          member
-            .doc(`groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`)
-            .set(validSettlement()),
-        );
-      },
-    );
+    test('(3) set(..., { merge: true }) at an EXISTING id is ALSO DENIED — merge does not escape the update deny', async () => {
+      await seedExisting(
+        `groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`,
+        validSettlement(),
+      );
+      const member = testEnv.authenticatedContext('member').firestore();
 
-    test(
-      '(2b) a second set() at the SAME id — DIFFERENT auth member (settle-on-' +
-        'behalf racing the same pair from another device) — is DENIED',
-      async () => {
-        const member = testEnv.authenticatedContext('member').firestore();
-        const owner = testEnv.authenticatedContext('owner').firestore();
-        await member
+      await assertFails(
+        member
           .doc(`groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`)
-          .set(validSettlement());
-
-        await assertFails(
-          owner
-            .doc(`groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`)
-            .set(validSettlement({ createdBy: 'owner' })),
-        );
-      },
-    );
-
-    test(
-      '(3) set(..., { merge: true }) at the SAME id is ALSO DENIED — merge ' +
-        'does not escape the update-path deny',
-      async () => {
-        const member = testEnv.authenticatedContext('member').firestore();
-        await member
-          .doc(`groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`)
-          .set(validSettlement());
-
-        await assertFails(
-          member
-            .doc(`groups/g1/events/e1/settlements/${DETERMINISTIC_ID}`)
-            .set(validSettlement({ note: 'merged note' }), { merge: true }),
-        );
-      },
-    );
+          .set(validSettlement({ note: 'merged note' }), { merge: true }),
+      );
+    });
   });
 
   describe('group scope (groups/{gid}/settlements/{id})', () => {
-    test('(1) create at a deterministic id with a valid payload is ALLOWED', async () => {
+    test('(1) #1129: create at a fresh id with a fully-valid payload is DENIED — callable-only', async () => {
       const member = testEnv.authenticatedContext('member').firestore();
 
-      await assertSucceeds(
+      await assertFails(
         member
           .doc(`groups/g1/settlements/${DETERMINISTIC_ID}`)
           .set(validGroupSettlement()),
       );
     });
 
-    test(
-      '(2) a second set() at the SAME id — same auth member — is DENIED ' +
-        '(evaluated as an update; allow update: if false)',
-      async () => {
-        const member = testEnv.authenticatedContext('member').firestore();
-        await member
+    test('(2) set() at an EXISTING id is DENIED (update path, allow update: if false)', async () => {
+      await seedExisting(
+        `groups/g1/settlements/${DETERMINISTIC_ID}`,
+        validGroupSettlement(),
+      );
+      const member = testEnv.authenticatedContext('member').firestore();
+
+      await assertFails(
+        member
           .doc(`groups/g1/settlements/${DETERMINISTIC_ID}`)
-          .set(validGroupSettlement());
+          .set(validGroupSettlement()),
+      );
+    });
 
-        await assertFails(
-          member
-            .doc(`groups/g1/settlements/${DETERMINISTIC_ID}`)
-            .set(validGroupSettlement()),
-        );
-      },
-    );
+    test('(3) set(..., { merge: true }) at an EXISTING id is ALSO DENIED — merge does not escape the update deny', async () => {
+      await seedExisting(
+        `groups/g1/settlements/${DETERMINISTIC_ID}`,
+        validGroupSettlement(),
+      );
+      const member = testEnv.authenticatedContext('member').firestore();
 
-    test(
-      '(2b) a second set() at the SAME id — DIFFERENT auth member — is DENIED',
-      async () => {
-        const member = testEnv.authenticatedContext('member').firestore();
-        const owner = testEnv.authenticatedContext('owner').firestore();
-        await member
+      await assertFails(
+        member
           .doc(`groups/g1/settlements/${DETERMINISTIC_ID}`)
-          .set(validGroupSettlement());
-
-        await assertFails(
-          owner
-            .doc(`groups/g1/settlements/${DETERMINISTIC_ID}`)
-            .set(validGroupSettlement({ createdBy: 'owner' })),
-        );
-      },
-    );
-
-    test(
-      '(3) set(..., { merge: true }) at the SAME id is ALSO DENIED — merge ' +
-        'does not escape the update-path deny',
-      async () => {
-        const member = testEnv.authenticatedContext('member').firestore();
-        await member
-          .doc(`groups/g1/settlements/${DETERMINISTIC_ID}`)
-          .set(validGroupSettlement());
-
-        await assertFails(
-          member
-            .doc(`groups/g1/settlements/${DETERMINISTIC_ID}`)
-            .set(validGroupSettlement({ note: 'merged note' }), { merge: true }),
-        );
-      },
-    );
+          .set(validGroupSettlement({ note: 'merged note' }), { merge: true }),
+      );
+    });
   });
 });

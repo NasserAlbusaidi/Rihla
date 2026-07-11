@@ -317,6 +317,7 @@
   "settleUpBalanceChangedReviewAgain": "تغيّر الرصيد أثناء التسجيل — أصبح الآن {amount}. راجِع المبلغ وحاول مرة أخرى.",
   "settleUpBalanceStillSyncing": "لا تزال الأرصدة قيد المزامنة — حاول مرة أخرى بعد لحظات.",
   "settleUpRecorded": "تم تسجيل التسوية.",
+  "settleUpAlreadyRecorded": "هذه الدفعة مسجّلة من قبل.",
   "settleUpCorrect": "تصحيح",
   "settleUpCorrectTitle": "تصحيح هذه الدفعة؟",
   "settleUpCorrectBody": "سيُسجِّل هذا دفعة عكسية بقيمة {amount} من {recipient} إلى {payer}. تبقى الدفعة الأصلية في سجلّك.",
