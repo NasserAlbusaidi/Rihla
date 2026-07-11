@@ -287,15 +287,17 @@ function scrubSpendingSnapshot(
     return next;
   };
 
-  return {
-    value: {
-      ...snapshot,
-      biggest: scrubBiggest(snapshot.biggest),
-      payers: scrubPayers(snapshot.payers),
-      owed: scrubOwed(snapshot.owed),
-    },
-    changed: true,
-  };
+  // Build the scrubbed value WITHOUT introducing keys: a forged but rules-legal
+  // snapshot may trip the gate via one section (e.g. an `owed` key) while another
+  // top-level section is ABSENT. `scrubBiggest(undefined)` returns `undefined`, and
+  // writing `spendingSnapshot.biggest: undefined` makes the Admin SDK reject the
+  // whole update (no ignoreUndefinedProperties) → the cascade throws → the victim's
+  // deletion is permanently blocked. Only scrub sections that are actually present.
+  const value: Record<string, unknown> = { ...snapshot };
+  if ('biggest' in snapshot) value.biggest = scrubBiggest(snapshot.biggest);
+  if ('payers' in snapshot) value.payers = scrubPayers(snapshot.payers);
+  if ('owed' in snapshot) value.owed = scrubOwed(snapshot.owed);
+  return { value, changed: true };
 }
 
 function findOriginalName(memberData: DocumentData | undefined): string | undefined {

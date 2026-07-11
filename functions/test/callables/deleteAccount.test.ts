@@ -555,6 +555,37 @@ describe('deleteAccount', () => {
       const event = (await getFirestore().doc('groups/groupB/events/eventB').get()).data();
       expect(event?.spendingSnapshot).toEqual(untouched); // no collateral desc drop
     });
+
+    it('converges on a forged partial-shape snapshot (gate trips, biggest/payers absent) without injecting undefined', async () => {
+      await seedAuthUser();
+      await seedGroup('groupD', [deletedUid, otherUid], { createdBy: otherUid });
+      await seedMember('groupD', deletedUid);
+      await seedMember('groupD', otherUid);
+      // Rules-legal but hand-rolled: spendingSnapshotBounded checks only
+      // `is map && size()<=16`, so a co-member can write a snapshot with the gate
+      // tripping via `owed` while `biggest`/`payers` are ABSENT. The scrub must NOT
+      // inject `spendingSnapshot.biggest: undefined` (Admin SDK rejects undefined →
+      // cascade throws → deletion permanently blocked).
+      await seedEvent('groupD', 'eventD', {
+        createdBy: otherUid,
+        isClosed: true,
+        closedAt: new Date('2026-01-06T00:00:00.000Z'),
+        closedBy: otherUid,
+        spendingSnapshot: { owed: { OMR: { [deletedUid]: 1000 } } },
+      });
+
+      const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+      // Cascade CONVERGES: no cascadeFailed, auth user deleted.
+      expect(result.cascadeFailed).toEqual([]);
+      expect(result.authUserDeleted).toBe(true);
+      const snap = (await getFirestore().doc('groups/groupD/events/eventD').get()).data()
+        ?.spendingSnapshot;
+      const t = tombstoneIdFor(deletedUid);
+      expect(snap.owed.OMR[t]).toBe(1000); // re-keyed, value preserved
+      expect(snap).not.toHaveProperty('biggest'); // no undefined key injected
+      expect(snap).not.toHaveProperty('payers');
+    });
   });
 
   test('second run is idempotent after the UID has been scrubbed', async () => {
