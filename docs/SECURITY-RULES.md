@@ -519,15 +519,17 @@ every unrelated field immutable while close/reopen remains available.
 
 Retaining a departed UID in `participantIds` makes ordinary light metadata
 updates and admin metadata or soft-delete updates that preserve the roster
-fail the post-write participant-subset guard. At the rules layer, a current
-admin can satisfy the guard by removing every stale UID in the same admin
-update. No current client service or UI exposes participant removal, however.
-Roster cleanup cannot be bundled with soft-delete: when the delete fields
-change, the diff may contain only `isDeleted`, `deletedAt`, and `updatedAt`.
-Cleanup must succeed first; soft-delete can follow in a separate update.
+fail the post-write participant-subset guard. The admin path cannot remove a
+departed UID either: #1144 D9 requires every removed participant ID to still
+be a current group member. This prevents roster cleanup from retroactively
+re-dividing historical equal splits. There is no client/rules cleanup sequence
+for an already-departed roster key.
 
-Practical recovery therefore requires every stale real member to rejoin, or
-an out-of-band Admin SDK repair or future participant-management feature.
+Practical recovery therefore requires every stale real member to rejoin
+(making the ID current again before any admin removal), or an out-of-band
+Admin SDK repair that explicitly accounts for historical balances. A future
+participant-management feature would need a balance-safe server/rules design;
+the current client service and UI expose no participant removal.
 Close/reopen remains available through `validEventCloseToggle()`'s deliberate
 base-validation bypass. Redesigning this roster coupling is separate scope.
 

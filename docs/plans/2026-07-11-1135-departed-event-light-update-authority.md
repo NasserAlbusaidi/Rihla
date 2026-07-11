@@ -20,7 +20,7 @@
 
 ## Investigation Result
 
-Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `cedc9d4b71074aa27bf3db054ce6523dd42f64e8` disproves that claim:
+Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `863a7b84e54f7685ccf387a0ad4325285daef3ec` disproves that claim:
 
 - `security/firestore.rules:423-425`: `requesterIsParticipant()` requires the caller UID in the existing event `participantIds`.
 - `security/firestore.rules:579-605`: every light update ends in `validEventUpdateCommon()`.
@@ -86,7 +86,7 @@ Choose. Emulator tests protect the actual deny behavior, independent mutation st
 
 ## Known Adjacent Behavior, Out of Scope
 
-Because `validEventBase()` validates the whole post-write participant list, an event retaining any departed participant also blocks ordinary light metadata edits by remaining participants. The rules would admit a current-admin update that removes every stale participant, but the current `EventService` and event settings UI expose no participant-add/remove method. Practical in-app recovery is therefore limited to every stale real member rejoining (fan-in restores current membership); otherwise repair needs an out-of-band Admin SDK write or a future participant-management feature. `validEventCloseToggle()` deliberately bypasses `validEventBase()` so close/reopen still works with departed participants. This is the inverse of #1135's security claim and may deserve a separate product decision, but changing that coupling would require a new rule that admits existing departed IDs while constraining only newly-added IDs to current members. That is not a safe side effect for this PR.
+Because `validEventBase()` validates the whole post-write participant list, an event retaining any departed participant also blocks ordinary light metadata edits by remaining participants. #1144 D9 also rejects an admin attempt to remove the departed key: every removed participant ID must still be a current group member, preventing historical equal splits from being retroactively re-divided. The current client/rules therefore have no cleanup path for an already-departed roster key. Practical in-app recovery is limited to every stale real member rejoining (fan-in restores current membership); otherwise repair needs an out-of-band Admin SDK write that explicitly accounts for historical balances. `validEventCloseToggle()` deliberately bypasses `validEventBase()` so close/reopen still works with departed participants. This is the inverse of #1135's security claim and may deserve a separate product decision, but changing that coupling requires a balance-safe server/rules design. That is not a safe side effect for this PR.
 
 Three adjacent consequences discovered by the Gate are also real but independent of this tests/docs resolution:
 
@@ -214,11 +214,11 @@ Change the section introduction from “two update paths” to **three**: light,
 
 - [ ] **Step 3: Correct the admin-path authority and validation contract**
 
-Replace the admin-path opening “Event creator OR group creator” with “A current group member who is the event creator OR group creator.” Explain that `requesterIsEventAdmin()` enforces current membership and that `validEventAdminUpdate()` still reaches `validEventBase()` through `validEventUpdateCommon()`. Therefore ordinary admin metadata updates and soft-delete also fail when the retained roster contains a departed UID; an admin update that removes every stale UID can satisfy the subset guard, but no current client service/UI exposes that cleanup.
+Replace the admin-path opening “Event creator OR group creator” with “A current group member who is the event creator OR group creator.” Explain that `requesterIsEventAdmin()` enforces current membership and that `validEventAdminUpdate()` still reaches `validEventBase()` through `validEventUpdateCommon()`. Therefore ordinary admin metadata updates and soft-delete fail when the retained roster contains a departed UID. Also document #1144 D9: an admin cannot remove the departed key because every removed participant ID must still be a current group member; this prevents historical equal splits from being re-divided.
 
 - [ ] **Step 4: Document the stale-participant consequence without fixing it here**
 
-State that retaining a departed UID makes ordinary light and admin metadata/soft-delete updates that preserve the roster fail. Clarify that the rules could admit a current-admin cleanup but no current client service/UI exposes participant removal; rejoin or out-of-band/future repair is required. Close/reopen remains available through `validEventCloseToggle()`'s deliberate base-validation bypass. Label any redesign of this coupling as separate scope.
+State that retaining a departed UID makes ordinary light and admin metadata/soft-delete updates fail and that #1144 D9 also denies removal of the departed key. There is no current client/rules cleanup sequence: the member must rejoin before a current-admin removal, or repair must use an out-of-band Admin SDK path that accounts for historical balances. Close/reopen remains available through `validEventCloseToggle()`'s deliberate base-validation bypass. Label any redesign of this coupling as separate scope.
 
 - [ ] **Step 5: Document the close-toggle path as a first-class third path**
 
@@ -261,7 +261,7 @@ npm run test:emulator -- firestore-rules-publish-readiness.test.ts 2>&1 \
   | awk '/maximum of 1000 expressions/{n++} /Test Suites:|Tests:|Script exited successfully/{print} END{print "expression_ceiling_artifacts=" n+0}'
 ```
 
-After rebasing onto current `origin/main` `cedc9d4b`, the pre-#1135 suite is 253/253 with `expression_ceiling_artifacts=78`; the branch suite is 256/256 with `expression_ceiling_artifacts=81`. Each new denial still contributes exactly one artifact under the full OR-chain. A different delta requires investigation. Do not use the warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
+After rebasing onto current `origin/main` `863a7b84`, the pre-#1135 suite is 253/253 with `expression_ceiling_artifacts=78`; the branch suite is 256/256 with `expression_ceiling_artifacts=81`. #1140 changed neither the production rules nor this emulator-test file, so those counts remain directly comparable. Each new denial still contributes exactly one artifact under the full OR-chain. A different delta requires investigation. Do not use the warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
 
 - [ ] **Step 2: Run repository checks**
 
@@ -304,7 +304,7 @@ Round 1 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 1 P2 / 0 P3
 Round 2 (2026-07-11): rubric `0 P1 / 0 P2 / 1 P3`; adversary `1 P1 / 1 P2 / 0 P3`.
 
 - Adversary P1 resolution at this round: #1141 was expanded to expense-created and event-settlement pushes. Its attempted group-settlement exemption was later refuted in round 3 because trigger delivery is asynchronous.
-- Adversary P2 resolved: the stale-participant section no longer implies a current UI/service recovery path. It distinguishes the rules-admissible admin repair from actual in-app recovery (rejoin) and out-of-band/future participant management.
+- Adversary P2 resolution at that round distinguished the then-rules-admissible admin repair from actual in-app recovery. Current `main` later added #1144 D9, which removed that rules path; the merge-time correction below supersedes this historical note.
 - Rubric P3 resolved: the branch rebased onto current `origin/main` `6cc3e679`, and the investigation baseline SHA above now matches it.
 
 Round 3 (2026-07-11): rubric `0 P1 / 3 P2 / 0 P3`; adversary `1 P1 / 0 P2 / 0 P3`.
@@ -356,4 +356,6 @@ Round 11 (2026-07-11): rubric `0 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P
 
 Post-Gate Task 1 evidence correction: the committed three-test suite passes 231/231, the four mutation states match exactly, and production rules remain byte-identical. Three repeated full runs measured `expression_ceiling_artifacts=52`; removing the entire new block restored 49, and running only the self-removal case measured one. The implementation expectation is therefore corrected from 51 to 52 without changing any authorization conclusion.
 
-Merge-time evidence refresh after #1144 landed on `main` (2026-07-11): the branch rebased onto `cedc9d4b`. Current `main` passes 253/253 with 78 ceiling artifacts; the branch passes 256/256 with 81. The four focused states were reproduced from the rebased head: production OR-chain `3/3` denied, light-only with both guards `3/3` denied with no ceiling artifact, light-only without the subset guard `2` expected fail-open / `1` denied, and light-only without additivity `1` expected fail-open / `2` denied. After restoration, `security/firestore.rules` and current `origin/main` share SHA-256 `629ba37135efdb78b6952ecb0f23f974158822be6186d08400e513002757b92a`.
+Merge-time evidence refresh after #1144 landed on `main` (2026-07-11): the branch rebased onto `cedc9d4b`. Current `main` passes 253/253 with 78 ceiling artifacts; the branch passes 256/256 with 81. The four focused states were reproduced from the rebased head: production OR-chain `3/3` denied, light-only with both guards `3/3` denied with no ceiling artifact, light-only without the subset guard `2` expected fail-open / `1` denied, and light-only without additivity `1` expected fail-open / `2` denied. After restoration, `security/firestore.rules` and current `origin/main` share SHA-256 `629ba37135efdb78b6952ecb0f23f974158822be6186d08400e513002757b92a`. The later rebase onto `863a7b84` (#1140) preserved byte-identical rules and emulator-test inputs, so the mutation proof and counts remain applicable on the new base.
+
+Merge-time documentation correction after #1144 D9: current admins cannot remove an already-departed roster key because removed IDs must be current group members. The docs/spec now state the only supported recovery choices accurately: rejoin before admin removal, or an out-of-band balance-aware Admin SDK repair. Production rules remain unchanged by this branch.
