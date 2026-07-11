@@ -24,6 +24,29 @@ jest.mock('../../src/callables/groupNetBalance', () => ({
       eventCount: 0,
     };
   }),
+  // #1144 R1: the callables now load ONE snapshot (shared with the
+  // universe-only guard) instead of calling recomputeNet — keep this suite's
+  // deterministic empty-net semantics: the race hook fires at the load site,
+  // the compute returns an empty net, and the guard sees no events.
+  loadGroupBalanceSnapshot: jest.fn(
+    async (_db: unknown, groupRef: DocumentReference) => {
+      await mockMutateGroup(groupRef);
+      return {
+        groupExists: true,
+        groupData: {},
+        members: [],
+        events: [],
+        groupSettlements: [],
+      };
+    },
+  ),
+  computeNetFromSnapshot: jest.fn(() => ({
+    net: new Map(),
+    liveEventRefs: [],
+    perEventNet: new Map(),
+    eventCount: 0,
+  })),
+  universeOnlyEventIds: jest.fn(() => []),
 }));
 
 async function seedGroup(groupId: string): Promise<void> {
