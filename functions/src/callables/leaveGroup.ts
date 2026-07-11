@@ -1,4 +1,5 @@
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
+import type { DocumentData } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
@@ -9,6 +10,7 @@ import {
   clearDepartureLockForFailure,
   departureLockClearFields,
 } from './shared/departureLock';
+import { deletedUserSentinel, oldestRealMemberUid } from './shared/membership';
 
 // #290: server-authoritative group self-leave. The client guard ("settle before
 // leaving") was skipped whenever the balance had not loaded (offline / slow /
@@ -174,13 +176,49 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
             .find((name): name is string => typeof name === 'string' && name.length > 0)
           ?? actorName;
 
+        // #1138: creator succession. leaveGroup never reassigned createdBy, so
+        // a creator leave produced an admin-less group (#1132 closed the
+        // security half and deliberately opened this availability half).
+        // Mirror deleteAccount Phase C: hand createdBy to the oldest real
+        // remaining member; when none survives, tombstone createdBy and
+        // soft-delete the group (a creator leaving an otherwise-empty group).
+        // Succession is a PERMANENT handoff — a rejoining ex-creator comes
+        // back as a plain MEMBER. The full-roster read runs only on a creator
+        // leave, and before any write (Firestore tx ordering).
+        const isCreatorLeave = freshGroup.createdBy === uid;
+        let successorUid: string | null = null;
+        let successorDocIds: string[] = [];
+        if (isCreatorLeave) {
+          const membersSnap = await tx.get(groupRef.collection('members'));
+          const members = membersSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
+          successorUid = oldestRealMemberUid(members, uid, freshMemberIds);
+          successorDocIds = members
+            .filter((m) => m.data.userId === successorUid)
+            .map((m) => m.id);
+        }
+
         const now = Timestamp.now();
-        tx.update(groupRef, {
+        const groupUpdate: DocumentData = {
           memberIds: FieldValue.arrayRemove(uid),
           updatedAt: now,
           // #1144: release the lock atomically with the mutation.
           ...departureLockClearFields(),
-        });
+        };
+        if (isCreatorLeave) {
+          if (successorUid != null) {
+            groupUpdate.createdBy = successorUid;
+          } else {
+            groupUpdate.createdBy = deletedUserSentinel;
+            groupUpdate.isDeleted = true;
+            groupUpdate.deletedAt = now;
+          }
+        }
+        tx.update(groupRef, groupUpdate);
+        // #1138: the roster badge reads member.role (group_members_section.dart),
+        // a derived display surface of createdBy — keep it truthful in the same tx.
+        for (const docId of successorDocIds) {
+          tx.update(groupRef.collection('members').doc(docId), { role: 'CREATOR' });
+        }
         for (const memberDoc of freshMemberDocsSnap.docs) {
           tx.delete(memberDoc.ref);
         }
