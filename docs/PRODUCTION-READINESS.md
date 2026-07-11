@@ -82,7 +82,7 @@ starts a new run.
 - [x] Firebase emulator/rules tests pass under Java 21.
   - Command: `npm --prefix functions run test:emulator`
   - Latest result (2026-05-20): 5 suites passed, 105 tests passed
-  - Note: raw `npm --prefix functions test` expects the Firestore emulator to already be running; use `test:emulator` for the normal local/CI backend gate. The script delegates to `tool/run_firebase_emulator_tests.sh`, which defaults to isolated Auth/Firestore ports `19099`/`18080` so local services on Firebase's default emulator ports do not break the gate.
+  - Note: raw `npm --prefix functions test` fails fast without the emulator env (#1157 guard); use `test:emulator` for the normal local/CI backend gate. The script delegates to `tool/run_firebase_emulator_tests.sh`, which allocates free Auth/Firestore/hub/logging ports per invocation (#1157) so concurrent runs and local services on Firebase's default emulator ports do not break the gate; `RIHLA_AUTH_EMULATOR_PORT`/`RIHLA_FIRESTORE_EMULATOR_PORT` pin exact ports when needed.
   - Note: Homebrew Java 21 may be installed even when `/usr/libexec/java_home -v 21` still resolves to Java 17; prefer the explicit `brew --prefix openjdk@21` path above.
 - [x] Firestore production database exists for `rihla-safar`.
   - Database: `(default)`, Native mode, location `nam5`

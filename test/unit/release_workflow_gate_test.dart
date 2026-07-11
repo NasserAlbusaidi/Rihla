@@ -447,8 +447,16 @@ exit 64
     final releaseWorkflow = read('.github/workflows/release_android.yml');
     final productionReadiness = read('docs/PRODUCTION-READINESS.md');
 
-    expect(emulatorRunner, contains('RIHLA_FIRESTORE_EMULATOR_PORT:-18080'));
-    expect(emulatorRunner, contains('RIHLA_AUTH_EMULATOR_PORT:-19099'));
+    // #1157: ports are allocated per invocation (private emulator per run);
+    // fixed defaults would let concurrent runs share an instance and
+    // cross-contaminate. Env overrides must stay supported.
+    expect(emulatorRunner, contains('pick_free_port'));
+    expect(emulatorRunner, contains('RIHLA_FIRESTORE_EMULATOR_PORT'));
+    expect(emulatorRunner, contains('RIHLA_AUTH_EMULATOR_PORT'));
+    expect(emulatorRunner, isNot(contains(':-18080')));
+    expect(emulatorRunner, isNot(contains(':-19099')));
+    expect(emulatorRunner, contains('"hub": { "port"'));
+    expect(emulatorRunner, contains('"logging": { "port"'));
     expect(emulatorRunner, contains(r'${TEMP_FILES[@]-}'));
     expect(emulatorRunner, contains('FIREBASE_TOOLS_VERSION:-15.8.0'));
     expect(
