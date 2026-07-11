@@ -350,4 +350,75 @@ void main() {
       },
     );
   });
+
+  // #1140: the shared, batch-injectable activity-doc boundary.
+  group('sanitizeActorName (#1140 D7)', () {
+    test('strips the " (former member)" suffix so isValidDisplayName passes', () {
+      expect(GroupActivityService.sanitizeActorName('Bob (former member)'),
+          equals('Bob'));
+    });
+
+    test('clamps a >32 code-unit name to 32', () {
+      final long = 'A' * 40;
+      expect(GroupActivityService.sanitizeActorName(long).length, equals(32));
+    });
+
+    test('strips control characters', () {
+      expect(GroupActivityService.sanitizeActorName('Bob'), equals('Bob'));
+    });
+
+    test('empty / whitespace-only floors to "Someone"', () {
+      expect(GroupActivityService.sanitizeActorName(''), equals('Someone'));
+      expect(GroupActivityService.sanitizeActorName('   '), equals('Someone'));
+    });
+
+    test('a control char hiding the suffix is still stripped (order guard)', () {
+      // 'Bob (former member)' — control-strip first exposes the suffix.
+      expect(
+          GroupActivityService.sanitizeActorName('Bob (former member)'),
+          equals('Bob'));
+    });
+
+    test('a doubled suffix is fully stripped', () {
+      expect(
+          GroupActivityService.sanitizeActorName(
+              'Bob (former member) (former member)'),
+          equals('Bob'));
+    });
+
+    test('an already-valid name is returned unchanged', () {
+      expect(GroupActivityService.sanitizeActorName('Alice'), equals('Alice'));
+    });
+  });
+
+  group('buildActivityDoc (#1140)', () {
+    test('emits exactly the 7 rule-allowed keys with sanitized actorName', () {
+      final ts = DateTime.utc(2026, 7, 11, 8, 30);
+      final doc = GroupActivityService.buildActivityDoc(
+        id: 'stl_sd1abc',
+        type: 'event_settlement',
+        actorId: 'uid1',
+        actorName: 'Carol (former member)',
+        description: 'settled OMR 5.000 with Dave',
+        metadata: const {'amountFils': 5000, 'currency': 'OMR'},
+        timestampUtc: ts,
+      );
+
+      expect(doc.keys.toSet(), <String>{
+        'id',
+        'type',
+        'actorId',
+        'actorName',
+        'description',
+        'metadata',
+        'timestamp',
+      });
+      expect(doc['id'], equals('stl_sd1abc'));
+      expect(doc['type'], equals('event_settlement'));
+      expect(doc['actorId'], equals('uid1'));
+      expect(doc['actorName'], equals('Carol')); // sanitized
+      expect(doc['timestamp'], equals(ts.toIso8601String()));
+      expect(doc['metadata'], containsPair('amountFils', 5000));
+    });
+  });
 }

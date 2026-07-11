@@ -136,6 +136,32 @@ GroupBalances _balancesTenEvents() {
   );
 }
 
+/// Bob owes Alice across [n] events (1.000 each) → [n] legs, no residual.
+GroupBalances _balancesNEvents(int n) {
+  final alice = <String, Map<String, Decimal>>{};
+  final bob = <String, Map<String, Decimal>>{};
+  for (var i = 1; i <= n; i++) {
+    alice['event-$i'] = {'OMR': Decimal.parse('1.000')};
+    bob['event-$i'] = {'OMR': Decimal.parse('-1.000')};
+  }
+  return (
+    balances: <String, List<UserBalance>>{
+      'OMR': [
+        _bal('uid-alice', 'Alice', '$n.000'),
+        _bal('uid-bob', 'Bob', '-$n.000'),
+      ],
+    },
+    totalSpent: <String, Decimal>{'OMR': Decimal.parse('${2 * n}.000')},
+    eventCount: n,
+    perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+      'uid-alice': alice,
+      'uid-bob': bob,
+    },
+    memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+    memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
+  );
+}
+
 /// Hand-rolled spy WriteBatch injected via `batchFactoryOverride`: counts
 /// set()/commit() and returns a caller-supplied commit future so a test can
 /// model a rejected (Future.error) or never-acking (offline) commit. `set` is a
@@ -148,10 +174,15 @@ class _StubWriteBatch implements WriteBatch {
   final Future<void> Function() _commitFactory;
   int setCount = 0;
   int commitCount = 0;
+  // #1140: capture (docId, data) for each staged write so a test can assert the
+  // co-batched activity leg's ref/data even though `set` is a no-op (nothing
+  // lands in the fake).
+  final staged = <({String id, Object? data})>[];
 
   @override
   void set<T>(DocumentReference<T> document, T data, [SetOptions? options]) {
     setCount++;
+    staged.add((id: document.id, data: data));
   }
 
   @override
@@ -292,7 +323,15 @@ void main() {
       // no activity, and the denied error copy (not the success copy) shows.
       expect(await _settlementDocCount(fake), 0);
       expect(container.read(ledgerRevisionProvider), 0);
+      // #1140: the activity is no longer a separate logGroupEvent call — it was
+      // staged INTO the rejected batch (2 event legs + 1 gstl_ activity = 3),
+      // so it shares the rejection and never persists. Non-vacuous proof:
       expect(activityService.logCalls, isEmpty);
+      expect(rejectingBatch.setCount, 3);
+      expect(
+        rejectingBatch.staged.where((s) => s.id.startsWith('gstl_')),
+        hasLength(1),
+      );
       expect(
         find.text(
           "This settlement wasn't allowed. Please check the details and "
@@ -335,16 +374,23 @@ void main() {
 
       await _recordFullAmount(tester);
 
-      // 2 event legs + 1 residual staged into ONE batch, committed once.
-      expect(queuedBatch.setCount, 3);
+      // #1140: 2 event legs + 1 residual + 1 group_settlement activity staged
+      // into ONE batch, committed once.
+      expect(queuedBatch.setCount, 4);
       expect(queuedBatch.commitCount, 1);
       // Exactly ONE bump for the whole logical settle-up (not per leg).
       expect(container.read(ledgerRevisionProvider), 1);
       // Queued-offline: noteQueuedWrite moved connectivity to syncing.
       expect(container.read(connectivityProvider), ConnectivityStatus.syncing);
-      // Activity logged ONCE for the aggregate settle-up.
-      expect(activityService.logCalls, hasLength(1));
-      expect(activityService.logCalls.single.type, 'group_settlement');
+      // The activity is folded into the batch (a gstl_ doc), NOT a separate
+      // logGroupEvent call.
+      expect(activityService.logCalls, isEmpty);
+      final act = queuedBatch.staged.where((s) => s.id.startsWith('gstl_'));
+      expect(act, hasLength(1));
+      expect(
+        (act.single.data! as Map)['type'],
+        'group_settlement',
+      );
       expect(
         find.text('Settlement recorded — will sync when online.'),
         findsOneWidget,
@@ -398,6 +444,89 @@ void main() {
       expect(groupDocs.docs.single.data()['amountFils'], 10000);
       // A group-only write needs no home bump (group settlements are live-watched).
       expect(container.read(ledgerRevisionProvider), 0);
+    },
+  );
+
+  // #1140: adding the activity op moved the budget from 2·N+1 to 2·N+2, so the
+  // cap dropped 9→8. Pin the new boundary: 8 decomposes atomically, 9 falls back.
+  testWidgets(
+    'exactly kMaxDecomposeLegsAtomic (8) event legs stay on the decomposed '
+    'batch path (2·8 legs + 1 activity = 17 sets)',
+    (tester) async {
+      expect(kMaxDecomposeLegsAtomic, 8);
+      final fake = FakeFirebaseFirestore();
+      final queuedBatch = _StubWriteBatch(() => Completer<void>().future);
+      final groupService = GroupSettlementService.withFirestore(fake)
+        ..batchFactoryOverride = () => queuedBatch;
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(_wrap(
+        balances: _balancesNEvents(8),
+        events: [for (var i = 1; i <= 8; i++) _event('event-$i', 'E$i', EventType.trip)],
+        group: _group(),
+        connectivity: ConnectivityNotifier(startPeriodicChecks: false)..setOffline(),
+        overrides: [
+          groupSettlementServiceProvider.overrideWithValue(groupService),
+          groupActivityServiceProvider.overrideWithValue(activityService),
+        ],
+      ));
+      await tester.pumpAndSettle();
+      await _recordFullAmount(tester);
+
+      // 8 event legs (no residual) + 1 group_settlement activity = 9 sets.
+      expect(queuedBatch.commitCount, 1);
+      expect(queuedBatch.setCount, 9);
+      expect(
+        queuedBatch.staged.where((s) => s.id.startsWith('gstl_')),
+        hasLength(1),
+      );
+    },
+  );
+
+  testWidgets(
+    'nine event legs (> cap 8) route to the single atomic group write '
+    '(no event docs, no decomposed batch)',
+    (tester) async {
+      final fake = FakeFirebaseFirestore();
+      final groupService = GroupSettlementService.withFirestore(fake);
+      final activityService = _RecordingGroupActivityService();
+
+      await tester.pumpWidget(_wrap(
+        balances: _balancesNEvents(9),
+        events: [for (var i = 1; i <= 9; i++) _event('event-$i', 'E$i', EventType.trip)],
+        group: _group(),
+        connectivity: ConnectivityNotifier(startPeriodicChecks: false),
+        overrides: [
+          groupSettlementServiceProvider.overrideWithValue(groupService),
+          groupActivityServiceProvider.overrideWithValue(activityService),
+        ],
+      ));
+      await tester.pumpAndSettle();
+      await _recordFullAmount(tester);
+
+      // Over the cap → ONE atomic group settlement, zero event docs.
+      final eventDocs = await fake
+          .collection('groups')
+          .doc(_groupId)
+          .collection('events')
+          .doc('event-1')
+          .collection('settlements')
+          .get();
+      expect(eventDocs.docs, isEmpty);
+      final groupDocs = await fake
+          .collection('groups')
+          .doc(_groupId)
+          .collection('settlements')
+          .get();
+      expect(groupDocs.docs, hasLength(1));
+      // The single group write folds its own group_settlement activity row.
+      final activity = await fake
+          .collection('groups')
+          .doc(_groupId)
+          .collection('activity')
+          .get();
+      expect(activity.docs, hasLength(1));
+      expect(activity.docs.single.data()['type'], 'group_settlement');
     },
   );
 }

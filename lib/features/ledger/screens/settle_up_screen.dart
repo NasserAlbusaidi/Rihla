@@ -871,6 +871,22 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           recipientParticipantId: toUserId,
         ),
       );
+      // #831/#1140: one activity row per recorded event settlement, folded into
+      // addSettlement's OWN atomic batch so a settlement denied at replay
+      // persists no phantom "settled X" row. Corrections no longer call this
+      // method (#889: they route through the correctSettlement callable, which
+      // writes no client activity row) — so every remaining caller is a forward
+      // record and always logs. #282: name the OTHER party relative to the actor.
+      String actorName;
+      try {
+        final deviceName = ref.read(settingsProvider).deviceName;
+        actorName = deviceName.isNotEmpty ? deviceName : fromName;
+      } catch (_) {
+        // A settings read failure must never block the money write (the
+        // activity leg still gets a valid, sanitized actorName from fromName).
+        actorName = fromName;
+      }
+      final counterpartyName = currentUid == toUserId ? fromName : toName;
       // #412: never gate the UI on the raw server-ack future — offline it
       // stays pending until reconnect. Race it; queued means the SDK replays.
       final outcome = await awaitServerAck(
@@ -888,37 +904,12 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               currency: currency,
               createdBy: currentUid,
               note: note,
-            ),
-        skipWait: connectivityStatus != ConnectivityStatus.online,
-      );
-
-      ledgerRevisionNotifier.state++; // #104: refresh home balance
-      if (outcome == WriteAck.acked) {
-        connectivityNotifier.noteLocalWrite(groupId: widget.groupId); // #357
-      } else {
-        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
-      }
-      // #831: one activity row per recorded event settlement. Corrections no
-      // longer call this method (#889: they route through the
-      // correctSettlement callable, which writes no client activity row) — so
-      // every remaining caller is a forward record and always logs. Guarded
-      // as a whole: activity logging must never affect the money outcome — a
-      // throw here would report an already-succeeded write as failed and
-      // abort a stepped walk.
-      try {
-        final deviceName = ref.read(settingsProvider).deviceName;
-        final actorName = deviceName.isNotEmpty ? deviceName : fromName;
-        final counterpartyName = currentUid == toUserId ? fromName : toName;
-        ref
-            .read(groupActivityServiceProvider)
-            .logGroupEvent(
-              groupId: widget.groupId,
-              type: 'event_settlement',
-              actorId: currentUid,
-              actorName: actorName,
-              description:
+              activityId: 'stl_$id',
+              activityActorId: currentUid,
+              activityActorName: actorName,
+              activityDescription:
                   'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-              metadata: {
+              activityMetadata: {
                 'amountFils': MoneySerializer.toSubunits(amount, currency),
                 'currency': currency,
                 'fromUserId': fromUserId,
@@ -929,11 +920,15 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                 if (eventName != null && eventName.isNotEmpty)
                   'eventName': eventName,
               },
-            );
-      } catch (_) {
-        // The settlement itself succeeded; a lost activity row is the
-        // accepted fire-and-forget contract (same as logGroupEvent's own
-        // catchError).
+            ),
+        skipWait: connectivityStatus != ConnectivityStatus.online,
+      );
+
+      ledgerRevisionNotifier.state++; // #104: refresh home balance
+      if (outcome == WriteAck.acked) {
+        connectivityNotifier.noteLocalWrite(groupId: widget.groupId); // #357
+      } else {
+        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
       }
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

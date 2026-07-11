@@ -22,7 +22,6 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
-import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
@@ -295,6 +294,15 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
           String? note,
           String? payerName,
           String? recipientName,
+          // #1140: the group_settlement activity row is co-batched INTO
+          // addGroupSettlement — the screen passes it via these params instead
+          // of a separate GroupActivityService.logGroupEvent call. Capturing
+          // them here is how the screen tests now assert the activity content.
+          String? activityId,
+          String? activityActorId,
+          String? activityActorName,
+          String? activityDescription,
+          Map<String, dynamic>? activityMetadata,
         })
       >[];
 
@@ -311,6 +319,11 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
     String? payerName,
     String? recipientName,
     String? groupSettleUpId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) async {
     if (errorToThrow != null) {
       throw errorToThrow!;
@@ -328,6 +341,11 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
       note: note,
       payerName: payerName,
       recipientName: recipientName,
+      activityId: activityId,
+      activityActorId: activityActorId,
+      activityActorName: activityActorName,
+      activityDescription: activityDescription,
+      activityMetadata: activityMetadata,
     ));
     if (neverAck) {
       return Completer<Settlement>().future;
@@ -347,41 +365,6 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
   }
 }
 
-class _RecordingGroupActivityService extends GroupActivityService {
-  _RecordingGroupActivityService()
-    : super.withFirestore(FakeFirebaseFirestore());
-
-  final logCalls =
-      <
-        ({
-          String groupId,
-          String type,
-          String actorId,
-          String actorName,
-          String description,
-          Map<String, dynamic>? metadata,
-        })
-      >[];
-
-  @override
-  void logGroupEvent({
-    required String groupId,
-    required String type,
-    required String actorId,
-    required String actorName,
-    required String description,
-    Map<String, dynamic>? metadata,
-  }) {
-    logCalls.add((
-      groupId: groupId,
-      type: type,
-      actorId: actorId,
-      actorName: actorName,
-      description: description,
-      metadata: metadata,
-    ));
-  }
-}
 
 Widget _wrapWithGroupStream(Stream<Group?> groupStream) {
   final router = GoRouter(
@@ -624,7 +607,6 @@ void main() {
       '#282: creditor recording keeps payer=debtor, recipient=creditor',
       (tester) async {
         final settlementService = _RecordingGroupSettlementService();
-        final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(
           _wrap(
@@ -635,7 +617,6 @@ void main() {
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
               ),
-              groupActivityServiceProvider.overrideWithValue(activityService),
             ],
           ),
         );
@@ -663,7 +644,7 @@ void main() {
       'correctSettlement(scope: group) with the original id + sentinel '
       'note (no activity log, no bump — group settlements are live-watched)',
       (tester) async {
-        final activityService = _RecordingGroupActivityService();
+        final settlementService = _RecordingGroupSettlementService();
         final functionsService = _MockFunctionsService();
         when(
           () => functionsService.correctSettlement(
@@ -704,7 +685,9 @@ void main() {
             settlements: [original],
             currentUid: 'uid-alice',
             extraOverrides: [
-              groupActivityServiceProvider.overrideWithValue(activityService),
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
               firebaseFunctionsServiceProvider.overrideWithValue(
                 functionsService,
               ),
@@ -736,11 +719,11 @@ void main() {
           ),
         ).called(1);
 
-        // A correction must NOT appear in the activity feed as a fresh payment.
-        expect(
-          activityService.logCalls.where((c) => c.type == 'group_settlement'),
-          isEmpty,
-        );
+        // A correction routes through the correctSettlement callable — it must
+        // NOT write a fresh client settlement. Since #1140 the co-batched
+        // group_settlement activity row rides ONLY on that fresh settlement, so
+        // no fresh payment ⇒ no fresh activity row (corrections stay suppressed).
+        expect(settlementService.addCalls, isEmpty);
         // Standalone group-only correction never bumps — group settlements
         // are live-watched (groupSettlementsProvider).
         expect(container.read(ledgerRevisionProvider), 0);
@@ -905,7 +888,6 @@ void main() {
       SharedPreferences.setMockInitialValues({'settings_device_name': 'Bobby'});
       final prefs = await SharedPreferences.getInstance();
       final settlementService = _RecordingGroupSettlementService();
-      final activityService = _RecordingGroupActivityService();
 
       await tester.pumpWidget(
         _wrap(
@@ -915,7 +897,6 @@ void main() {
           extraOverrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
             groupSettlementServiceProvider.overrideWithValue(settlementService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ),
       );
@@ -938,10 +919,13 @@ void main() {
       expect(settlementService.addCalls.single.amount, Decimal.parse('7.750'));
       expect(settlementService.addCalls.single.createdBy, 'uid-bob');
       expect(settlementService.addCalls.single.note, 'bank receipt');
-      expect(activityService.logCalls, hasLength(1));
-      expect(activityService.logCalls.single.type, 'group_settlement');
-      expect(activityService.logCalls.single.actorName, 'Bobby');
-      expect(activityService.logCalls.single.metadata, {
+      // #1140: the group_settlement activity row is folded into
+      // addGroupSettlement's atomic batch (deterministic id `stl_<id>`), not a
+      // separate logGroupEvent — so a denied write persists no phantom row.
+      // Assert the co-batched activity params carry the same content.
+      expect(settlementService.addCalls.single.activityId, startsWith('stl_'));
+      expect(settlementService.addCalls.single.activityActorName, 'Bobby');
+      expect(settlementService.addCalls.single.activityMetadata, {
         'amount': '7.75',
         'recipientId': 'uid-alice',
         'currency': 'OMR',
@@ -961,7 +945,6 @@ void main() {
         });
         final prefs = await SharedPreferences.getInstance();
         final settlementService = _RecordingGroupSettlementService();
-        final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(
           _wrap(
@@ -973,7 +956,6 @@ void main() {
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
               ),
-              groupActivityServiceProvider.overrideWithValue(activityService),
             ],
           ),
         );
@@ -1001,7 +983,6 @@ void main() {
         tester,
       ) async {
         final settlementService = _RecordingGroupSettlementService();
-        final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(
           _wrap(
@@ -1012,7 +993,6 @@ void main() {
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
               ),
-              groupActivityServiceProvider.overrideWithValue(activityService),
             ],
           ),
         );
@@ -1039,7 +1019,6 @@ void main() {
         });
         final prefs = await SharedPreferences.getInstance();
         final settlementService = _RecordingGroupSettlementService();
-        final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(
           _wrap(
@@ -1051,7 +1030,6 @@ void main() {
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
               ),
-              groupActivityServiceProvider.overrideWithValue(activityService),
             ],
           ),
         );
@@ -1078,7 +1056,6 @@ void main() {
         final settlementService = _RecordingGroupSettlementService(
           neverAck: true,
         );
-        final activityService = _RecordingGroupActivityService();
         final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
           ..setOffline();
 
@@ -1092,7 +1069,6 @@ void main() {
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
               ),
-              groupActivityServiceProvider.overrideWithValue(activityService),
             ],
           ),
         );
@@ -1118,9 +1094,10 @@ void main() {
         expect(connectivity.state, ConnectivityStatus.syncing);
         // The settlement write was handed to the SDK queue…
         expect(settlementService.addCalls, hasLength(1));
-        // …and the activity entry was ALSO queued — before #412 it sat after
-        // the hung await and was lost if the app died mid-hang.
-        expect(activityService.logCalls, hasLength(1));
+        // …and the activity row was co-batched INTO that same queued write
+        // (#1140) — before it was a separate logGroupEvent that could diverge
+        // from the settlement; now it queues (and replays) atomically with it.
+        expect(settlementService.addCalls.single.activityId, startsWith('stl_'));
         // Group settlements are live-watched (groupSettlementsProvider) — the
         // one-shot home revision must NOT be bumped (CLAUDE.md invariant).
         expect(container.read(ledgerRevisionProvider), 0);
@@ -1131,7 +1108,6 @@ void main() {
       tester,
     ) async {
       final settlementService = _RecordingGroupSettlementService();
-      final activityService = _RecordingGroupActivityService();
 
       await tester.pumpWidget(
         _wrap(
@@ -1140,7 +1116,6 @@ void main() {
           currentUid: 'uid-bob',
           extraOverrides: [
             groupSettlementServiceProvider.overrideWithValue(settlementService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ),
       );
@@ -1160,14 +1135,12 @@ void main() {
 
       expect(find.text('Amount must be greater than zero'), findsOneWidget);
       expect(settlementService.addCalls, isEmpty);
-      expect(activityService.logCalls, isEmpty);
     });
 
     testWidgets('recording too much shows outstanding amount snackbar', (
       tester,
     ) async {
       final settlementService = _RecordingGroupSettlementService();
-      final activityService = _RecordingGroupActivityService();
 
       await tester.pumpWidget(
         _wrap(
@@ -1176,7 +1149,6 @@ void main() {
           currentUid: 'uid-bob',
           extraOverrides: [
             groupSettlementServiceProvider.overrideWithValue(settlementService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ),
       );
@@ -1199,13 +1171,11 @@ void main() {
         findsOneWidget,
       );
       expect(settlementService.addCalls, isEmpty);
-      expect(activityService.logCalls, isEmpty);
     });
 
     testWidgets('#530: ambiguous European amount is rejected, not silently '
         'coerced to the suggested amount', (tester) async {
       final settlementService = _RecordingGroupSettlementService();
-      final activityService = _RecordingGroupActivityService();
 
       await tester.pumpWidget(
         _wrap(
@@ -1214,7 +1184,6 @@ void main() {
           currentUid: 'uid-bob',
           extraOverrides: [
             groupSettlementServiceProvider.overrideWithValue(settlementService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ),
       );
@@ -1235,7 +1204,6 @@ void main() {
 
       expect(find.text('Please enter a valid amount'), findsOneWidget);
       expect(settlementService.addCalls, isEmpty);
-      expect(activityService.logCalls, isEmpty);
     });
 
     testWidgets('unknown service failure shows the generic message, not network (#360)', (
@@ -1244,7 +1212,6 @@ void main() {
       final settlementService = _RecordingGroupSettlementService(
         throwOnAdd: true,
       );
-      final activityService = _RecordingGroupActivityService();
 
       await tester.pumpWidget(
         _wrap(
@@ -1253,7 +1220,6 @@ void main() {
           currentUid: 'uid-bob',
           extraOverrides: [
             groupSettlementServiceProvider.overrideWithValue(settlementService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ),
       );
@@ -1274,7 +1240,9 @@ void main() {
         ),
         findsNothing,
       );
-      expect(activityService.logCalls, isEmpty);
+      // #1140: the activity row is co-batched, so a thrown write persists no
+      // phantom row by atomicity (the reject case is pinned at the service
+      // level in group_settle_up_atomic_929_test).
       // #367 honesty guard: a FAILED write must not nudge.
       expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
     });
@@ -1289,7 +1257,6 @@ void main() {
           message: 'Missing or insufficient permissions.',
         ),
       );
-      final activityService = _RecordingGroupActivityService();
 
       await tester.pumpWidget(
         _wrap(
@@ -1298,7 +1265,6 @@ void main() {
           currentUid: 'uid-bob',
           extraOverrides: [
             groupSettlementServiceProvider.overrideWithValue(settlementService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ),
       );
@@ -1321,7 +1287,8 @@ void main() {
         ),
         findsNothing,
       );
-      expect(activityService.logCalls, isEmpty);
+      // #1140: co-batched activity → a permission-denied write persists no
+      // phantom row by atomicity (reject case pinned at the service level).
       // #367 honesty guard: a permission-denied write must not nudge.
       expect(find.byKey(GroupKeys.settleNotifySheet), findsNothing);
     });
@@ -1449,14 +1416,13 @@ void main() {
   group('#382 PR-5: stepped settle walk (group screen)', () {
     testWidgets(
       'happy walk: two addGroupSettlement (OMR then USD), revision stays 0, '
-      'two logGroupEvent with per-bucket currency, one final snackbar',
+      'two co-batched activity rows with per-bucket currency, one final snackbar',
       (tester) async {
         SharedPreferences.setMockInitialValues({
           'settings_device_name': 'Bobby',
         });
         final prefs = await SharedPreferences.getInstance();
         final settlementService = _RecordingGroupSettlementService();
-        final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(
           _wrap(
@@ -1468,7 +1434,6 @@ void main() {
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
               ),
-              groupActivityServiceProvider.overrideWithValue(activityService),
             ],
           ),
         );
@@ -1498,11 +1463,12 @@ void main() {
         expect(settlementService.addCalls[1].currency, 'USD');
         // L6: group settlements are live-watched — NO ledgerRevision bump.
         expect(container.read(ledgerRevisionProvider), 0);
-        // Each step logs a group_settlement row carrying its BUCKET currency.
-        expect(activityService.logCalls, hasLength(2));
-        expect(activityService.logCalls[0].type, 'group_settlement');
-        expect(activityService.logCalls[0].actorName, 'Bobby');
-        expect(activityService.logCalls[0].metadata, {
+        // Each step co-batches a group_settlement row carrying its BUCKET
+        // currency INTO addGroupSettlement (#1140) — assert the activity params
+        // per step (addCalls length pinned at 2 above).
+        expect(settlementService.addCalls[0].activityId, startsWith('stl_'));
+        expect(settlementService.addCalls[0].activityActorName, 'Bobby');
+        expect(settlementService.addCalls[0].activityMetadata, {
           'amount': '10',
           'recipientId': 'uid-alice',
           'currency': 'OMR',
@@ -1511,7 +1477,7 @@ void main() {
           'fromName': 'Bob',
           'toName': 'Alice',
         });
-        expect(activityService.logCalls[1].metadata, {
+        expect(settlementService.addCalls[1].activityMetadata, {
           'amount': '20',
           'recipientId': 'uid-alice',
           'currency': 'USD',
@@ -1537,7 +1503,6 @@ void main() {
         final settlementService = _RecordingGroupSettlementService(
           neverAck: true,
         );
-        final activityService = _RecordingGroupActivityService();
         final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
           ..setOffline();
 
@@ -1552,7 +1517,6 @@ void main() {
               groupSettlementServiceProvider.overrideWithValue(
                 settlementService,
               ),
-              groupActivityServiceProvider.overrideWithValue(activityService),
             ],
           ),
         );
@@ -1585,8 +1549,10 @@ void main() {
         // Both writes were handed to the SDK queue (noteQueuedWrite per step).
         expect(settlementService.addCalls, hasLength(2));
         expect(connectivity.state, ConnectivityStatus.syncing);
-        // Both activity rows were ALSO queued (not lost behind the hung await).
-        expect(activityService.logCalls, hasLength(2));
+        // Both activity rows were co-batched INTO their settlements' queued
+        // writes (#1140) — not lost behind the hung await, atomic with them.
+        expect(settlementService.addCalls[0].activityId, startsWith('stl_'));
+        expect(settlementService.addCalls[1].activityId, startsWith('stl_'));
         // L6 holds offline too.
         expect(container.read(ledgerRevisionProvider), 0);
         // The final summary reports the queued (will-sync) outcome.

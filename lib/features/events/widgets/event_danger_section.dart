@@ -15,7 +15,6 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/error_message_translator.dart';
 import '../../../core/utils/write_ack.dart';
-import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../ledger/providers/ledger_view_provider.dart';
@@ -491,34 +490,43 @@ class EventDangerSection extends ConsumerWidget {
   }
 
   Future<void> _executeDelete(BuildContext context, WidgetRef ref) async {
-    // Log event_deleted activity (deferred from Phase 30 P01 per STATE.md D-14).
-    // Wrapped in try/catch — logging failure must never crash the delete flow.
+    // #1140: the `event_deleted` activity row is folded into deleteEvent's OWN
+    // atomic WriteBatch, so a denied/queued-then-denied soft-delete persists no
+    // phantom history. Resolve the actor up front, inside a try/catch —
+    // FirebaseConfig.currentUser THROWS [core/no-app] (not null) with no
+    // Firebase app. On a throw OR an empty uid, fall back to the domain-only
+    // delete (no activity leg) so a delete is NEVER blocked by activity (D7 /
+    // D-14). actorName is further clamped by buildActivityDoc.
+    String actorId = '';
+    String actorName = 'Someone';
     try {
-      final actorId = FirebaseConfig.currentUser?.uid ?? '';
-      final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
-          ? ref.read(settingsProvider).deviceName
-          : 'Someone';
-      ref
-          .read(groupActivityServiceProvider)
-          .logGroupEvent(
-            groupId: groupId,
-            type: 'event_deleted',
-            actorId: actorId,
-            actorName: actorName,
-            description: 'deleted the event ${event.name}',
-            metadata: {'eventId': event.id, 'eventName': event.name},
-          );
+      actorId = FirebaseConfig.currentUser?.uid ?? '';
+      final deviceName = ref.read(settingsProvider).deviceName;
+      if (deviceName.isNotEmpty) actorName = deviceName;
     } catch (_) {
-      // Activity logging failure must never crash the delete flow.
+      actorId = '';
     }
 
     try {
       final connectivity = ref.read(connectivityProvider.notifier);
       final connectivityStatus = ref.read(connectivityProvider);
       final outcome = await awaitServerAck(
-        ref
-            .read(eventServiceProvider)
-            .deleteEvent(groupId: groupId, eventId: eventId),
+        actorId.isEmpty
+            ? ref
+                .read(eventServiceProvider)
+                .deleteEvent(groupId: groupId, eventId: eventId)
+            : ref.read(eventServiceProvider).deleteEvent(
+                  groupId: groupId,
+                  eventId: eventId,
+                  activityId: 'evt_deleted_${event.id}',
+                  activityActorId: actorId,
+                  activityActorName: actorName,
+                  activityDescription: 'deleted the event ${event.name}',
+                  activityMetadata: {
+                    'eventId': event.id,
+                    'eventName': event.name,
+                  },
+                ),
         skipWait: connectivityStatus != ConnectivityStatus.online,
       );
       if (outcome == WriteAck.acked) {

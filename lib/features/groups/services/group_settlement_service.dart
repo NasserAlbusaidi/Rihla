@@ -7,6 +7,7 @@ import '../../../core/services/money_serializer.dart';
 import '../../../core/utils/safe_deserialize.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/services/settlement_service.dart';
+import 'group_activity_service.dart';
 
 /// The most event legs a decomposed group settle-up may stage into ONE atomic
 /// [WriteBatch] (#929). Security rules give a batched write a SHARED budget of
@@ -14,14 +15,16 @@ import '../../ledger/services/settlement_service.dart';
 /// "Access call limits"; single-doc requests get 10 each). Each event-settlement
 /// create reads TWO distinct docs — the group (`isGroupMember` +
 /// `groupAllowsClientWrites`) and the event (`eventAllowsClientWrites` +
-/// `participants()`); the residual group-settlement create reads ONE (the group).
-/// So an N-event batch costs `2·N + 1` access calls: N = 9 → 19 ≤ 20; N = 10
-/// would be `permission-denied` in toto (and, recorded OFFLINE, silently
-/// discarded in full at replay). Above this cap the caller falls back to a
+/// `participants()`); the residual group-settlement create reads ONE (the group);
+/// and since #1140 the ONE co-batched `group_settlement` activity create reads
+/// ONE (the group again — `validGroupActivityCreate` touches only that doc). So
+/// an N-event batch costs `2·N + 2` access calls: N = 8 → 18 ≤ 20; N = 9 would
+/// sit at exactly 20/20 with zero margin, so the cap drops to 8 to keep the
+/// #929-doctrine 2-call safety margin. Above this cap the caller falls back to a
 /// single atomic group settlement (§ceiling of the #929 spec). The bound is
 /// conservative (assumes zero cross-op caching); widening it requires emulator
 /// evidence, not the doc's best-effort same-doc caching promise.
-const kMaxDecomposeLegsAtomic = 9;
+const kMaxDecomposeLegsAtomic = 8;
 
 /// Firestore-backed service for group-level settlement operations.
 ///
@@ -133,6 +136,11 @@ class GroupSettlementService extends FirestoreRepository {
   /// its id — an optional param would silently reopen #1093. Production
   /// callers derive it via [SettlementService.deterministicSettlementId] from
   /// the caller's revalidation snapshot; see `group_settle_up_screen.dart`.
+  /// When [activityId] + the activity fields are supplied, the
+  /// `group_settlement` activity row is folded into the SAME [WriteBatch] as the
+  /// settlement doc (#1140): a rules rejection persists NEITHER, so a denied
+  /// group settlement can never leave a phantom "settled X" row. With no
+  /// activity params it is the legacy single `.set()`.
   Future<Settlement> addGroupSettlement({
     required String id,
     required String groupId,
@@ -145,6 +153,11 @@ class GroupSettlementService extends FirestoreRepository {
     String? payerName,
     String? recipientName,
     String? groupSettleUpId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) async {
     if (createdBy.isEmpty) {
       throw ArgumentError.value(
@@ -168,8 +181,31 @@ class GroupSettlementService extends FirestoreRepository {
       note: note,
       groupSettleUpId: groupSettleUpId,
     );
+    final ref = _settlementsRef(groupId).doc(id);
     try {
-      await _settlementsRef(groupId).doc(id).set(data);
+      if (activityId == null) {
+        await ref.set(data);
+      } else {
+        final batch = db.batch()
+          ..set(ref, data)
+          ..set(
+            db
+                .collection('groups')
+                .doc(groupId)
+                .collection('activity')
+                .doc(activityId),
+            GroupActivityService.buildActivityDoc(
+              id: activityId,
+              type: 'group_settlement',
+              actorId: activityActorId!,
+              actorName: activityActorName!,
+              description: activityDescription!,
+              metadata: activityMetadata!,
+              timestampUtc: DateTime.now().toUtc(),
+            ),
+          );
+        await batch.commit();
+      }
     } on FirebaseException catch (e) {
       if (kDebugMode) debugPrint('GroupSettlementService.addGroupSettlement failed: ${e.code} ${e.message}');
       rethrow;
@@ -212,6 +248,10 @@ class GroupSettlementService extends FirestoreRepository {
     String? payerName,
     String? recipientName,
     String? note,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) {
     if (createdBy.isEmpty) {
       throw ArgumentError.value(
@@ -294,6 +334,30 @@ class GroupSettlementService extends FirestoreRepository {
       );
       batch.set(_settlementsRef(groupId).doc(id), data);
       staged.add(Settlement.fromFirestore(data));
+    }
+
+    // #1140: ONE `group_settlement` activity row for the whole logical settle-up,
+    // folded into the SAME atomic batch (id `gstl_<groupSettleUpId>`). A rules
+    // rejection of any money leg discards this too — no phantom "settled X" row —
+    // and its `validGroupActivityCreate` cost (the group doc only) is the +1 that
+    // moved kMaxDecomposeLegsAtomic 9→8. Skipped when no actor is supplied.
+    if (activityActorId != null) {
+      batch.set(
+        db
+            .collection('groups')
+            .doc(groupId)
+            .collection('activity')
+            .doc('gstl_$groupSettleUpId'),
+        GroupActivityService.buildActivityDoc(
+          id: 'gstl_$groupSettleUpId',
+          type: 'group_settlement',
+          actorId: activityActorId,
+          actorName: activityActorName ?? 'Someone',
+          description: activityDescription ?? '',
+          metadata: activityMetadata ?? const <String, dynamic>{},
+          timestampUtc: now,
+        ),
+      );
     }
 
     return (ack: batch.commit(), staged: staged);

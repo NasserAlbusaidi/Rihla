@@ -191,6 +191,16 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   void _logJoined(String groupId) {
     // Log member_joined activity (D-14) — fire-and-forget; failure must never
     // crash the join flow (FirebaseConfig.currentUser throws without Firebase).
+    //
+    // #1140: member_joined is the ONE deliberately best-effort activity row.
+    // It is emitted ONLY here — after the `joinGroup` callable has already
+    // committed the membership server-side (caller at :165, guarded by the
+    // awaited success at :158) — so it is lexically unreachable unless the join
+    // actually happened and can NEVER be a phantom. Its only failure mode is a
+    // LOST row (display-only feed, D-32 tolerance), never a fabricated one, so
+    // it needs no atomic-batch pairing. Every CLIENT-writable mutation-paired
+    // row (event create/delete, settlements) IS batch-folded (see
+    // GroupActivityService), because those CAN otherwise persist a phantom.
     try {
       final actorId = FirebaseConfig.currentUser?.uid ?? '';
       final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
