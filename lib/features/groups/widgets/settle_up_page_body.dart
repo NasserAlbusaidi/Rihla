@@ -38,6 +38,33 @@ typedef SettleBucket = ({
   List<Map<String, dynamic>> optimalSettlements,
 });
 
+/// #1149: prunes settle suggestions naming a party OUTSIDE [currentMemberIds]
+/// (a leave/remove-departed uid — rules would deny the write; ghosts and
+/// shadows ARE in memberIds and survive the filter). Null set → membership
+/// unknown → fail open, nothing pruned. Display-layer only: aggregate
+/// quantities (transfers headline, summary totals, all-settled) must keep
+/// reading the UNPRUNED list — a departed party's debt is real, unsettleable
+/// R1 money, and pruning it out of the aggregates would render "All settled"
+/// over a nonzero balance row.
+({List<Map<String, dynamic>> kept, int hiddenCount}) filterDepartedSuggestions(
+  List<Map<String, dynamic>> optimalSettlements,
+  Set<String>? currentMemberIds,
+) {
+  // Empty = malformed/unresolved data, not "everyone departed": a real group
+  // is never memberless (create seeds [creator]; a no-survivor departure
+  // soft-deletes the group) — fail open like null (#532 display robustness).
+  if (currentMemberIds == null || currentMemberIds.isEmpty) {
+    return (kept: optimalSettlements, hiddenCount: 0);
+  }
+  final kept = [
+    for (final s in optimalSettlements)
+      if (currentMemberIds.contains(s['fromUserId'] as String) &&
+          currentMemberIds.contains(s['toUserId'] as String))
+        s,
+  ];
+  return (kept: kept, hiddenCount: optimalSettlements.length - kept.length);
+}
+
 /// One step of a stepped-settle walk (#382 PR-5 D2): a single per-currency
 /// settlement, in the bucket [currency] it was computed in. Mirrors the named
 /// args of [SettleUpPageBody.onRecord] so the walk driver can reuse the exact
@@ -220,6 +247,12 @@ class SettleUpPageBody extends StatelessWidget {
   /// shared single-`Settlement` contract stays untouched.
   final void Function(String groupSettleUpId)? onCorrectLogical;
 
+  /// #1149: FULL `group.memberIds` (never the tombstone-stripped active set —
+  /// ghosts stay settleable/correctable). Prunes suggestion TILES + stepped
+  /// cards whose party left the group, and hides the Correct affordance on
+  /// departed-party history rows. Null = membership unknown → fail open.
+  final Set<String>? currentMemberIds;
+
   /// Bottom padding of the scroll content. Defaults to the standard gutter.
   /// (#789 raised it for the embedded event panel; moot since #1078 — the
   /// workspace FAB shows on the Expenses tab only, so no caller raises it.)
@@ -247,6 +280,7 @@ class SettleUpPageBody extends StatelessWidget {
     this.onRecordStepped,
     this.onCorrect,
     this.onCorrectLogical,
+    this.currentMemberIds,
     this.bottomInset = 24,
     this.footer,
   });
@@ -263,8 +297,21 @@ class SettleUpPageBody extends StatelessWidget {
         ? const <
             ({String otherUid, String otherName, List<SettleStepRequest> steps})
           >[]
+        // #1149: stepped cards are a RECORD surface like the tiles — they
+        // must not leak a pruned departed pair. Aggregates below stay on the
+        // unpruned buckets on purpose (see filterDepartedSuggestions).
         : steppedSettlePairs(
-            buckets: buckets,
+            buckets: [
+              for (final b in buckets)
+                (
+                  currency: b.currency,
+                  balances: b.balances,
+                  optimalSettlements: filterDepartedSuggestions(
+                    b.optimalSettlements,
+                    currentMemberIds,
+                  ).kept,
+                ),
+            ],
             currentUid: currentUid,
             rawNames: rawNames,
           );
@@ -297,14 +344,36 @@ class SettleUpPageBody extends StatelessWidget {
           const AllSettledState(),
         ]);
       }
-      if (bucket.optimalSettlements.isNotEmpty) {
+      // #1149: only the actionable tiles are pruned; totalPending/allSettled/
+      // headline above keep the unpruned truth. The counted note reconciles
+      // the gap and renders even when a bucket's suggestions fully prune.
+      final filtered = filterDepartedSuggestions(
+        bucket.optimalSettlements,
+        currentMemberIds,
+      );
+      if (filtered.kept.isNotEmpty) {
         sections.add(const SizedBox(height: 18));
-        for (final settlement in bucket.optimalSettlements) {
+        for (final settlement in filtered.kept) {
           sections.add(
             _buildTile(context, settlement, bucket.currency, tileIndex),
           );
           tileIndex++;
         }
+      }
+      if (filtered.hiddenCount > 0) {
+        sections.add(
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: 12),
+            child: Text(
+              context.l10n.settleUpDepartedPairsHidden(filtered.hiddenCount),
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.4,
+                color: context.colors.textSecondary,
+              ),
+            ),
+          ),
+        );
       }
       if (bucket.balances.isNotEmpty) {
         sections.addAll([
@@ -354,6 +423,7 @@ class SettleUpPageBody extends StatelessWidget {
               subjectName: subjectName,
               currentUid: currentUid,
               groupCreatorId: groupCreatorId,
+              currentMemberIds: currentMemberIds,
               onCorrect: onCorrect,
               onCorrectLogical: onCorrectLogical,
             ),
@@ -698,6 +768,7 @@ class _PaymentHistorySection extends StatelessWidget {
     required this.subjectName,
     this.currentUid,
     this.groupCreatorId,
+    this.currentMemberIds,
     this.onCorrect,
     this.onCorrectLogical,
   });
@@ -719,12 +790,27 @@ class _PaymentHistorySection extends StatelessWidget {
   /// Non-null ONLY on the group screen — it also switches on the regroup.
   final void Function(String groupSettleUpId)? onCorrectLogical;
 
+  /// #1149 party gate — see [SettleUpPageBody.currentMemberIds]. Null fails
+  /// open; otherwise mirrors the callables' failed-precondition check
+  /// (correctSettlement.ts / correctLogicalSettleUp.ts: both parties must be
+  /// in FULL memberIds — ghosts stay correctable). Orthogonal to
+  /// [_canCorrect], which is ACTOR eligibility.
+  final Set<String>? currentMemberIds;
+
   bool _canCorrect(Settlement settlement) {
     if (groupCreatorId == null) return true;
     if (currentUid == null) return false;
     return currentUid == groupCreatorId ||
         settlement.payerParticipantId == currentUid ||
         settlement.recipientParticipantId == currentUid;
+  }
+
+  bool _partiesCurrent(Settlement settlement) {
+    final ids = currentMemberIds;
+    // Empty = malformed data, not "everyone departed" — fail open like null
+    // (same reasoning as filterDepartedSuggestions).
+    if (ids == null || ids.isEmpty) return true;
+    return settlementPartiesAreCurrentMembers(settlement, ids);
   }
 
   @override
@@ -747,7 +833,9 @@ class _PaymentHistorySection extends StatelessWidget {
             displayNames: displayNames,
             subjectName: subjectName,
             index: i,
-            onCorrect: _canCorrect(settlement) ? onCorrect : null,
+            onCorrect: (_canCorrect(settlement) && _partiesCurrent(settlement))
+                ? onCorrect
+                : null,
             soloCorrectionHidden: isSoloCorrectionHidden(
               settlement,
               settlements,
@@ -767,7 +855,10 @@ class _PaymentHistorySection extends StatelessWidget {
                 displayNames: displayNames,
                 subjectName: subjectName,
                 index: i,
-                onCorrect: _canCorrect(settlement) ? onCorrect : null,
+                onCorrect:
+                    (_canCorrect(settlement) && _partiesCurrent(settlement))
+                    ? onCorrect
+                    : null,
                 soloCorrectionHidden: isSoloCorrectionHidden(
                   settlement,
                   settlements,
@@ -788,7 +879,8 @@ class _PaymentHistorySection extends StatelessWidget {
                 // the whole set; the server still checks EVERY original.
                 onCorrectLogical:
                     (row.affordanceCorrected ||
-                        !_canCorrect(row.representative))
+                        !_canCorrect(row.representative) ||
+                        !_partiesCurrent(row.representative))
                     ? null
                     : () => onCorrectLogical!(row.groupSettleUpId),
               ),
