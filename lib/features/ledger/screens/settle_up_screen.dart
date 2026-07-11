@@ -6,7 +6,6 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
-import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/money_serializer.dart';
@@ -17,7 +16,6 @@ import '../../../core/utils/settle_notify.dart';
 import '../../../core/utils/settlement_write_error.dart';
 import '../../../core/utils/share_helper.dart';
 import '../../../core/utils/whatsapp_share.dart';
-import '../../../core/utils/write_ack.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
@@ -503,7 +501,6 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final successColor = context.colors.success;
 
     var recorded = 0;
-    var anyQueued = false;
     for (var i = 0; i < steps.length; i++) {
       final step = steps[i];
       final outcome = await _showRecordPaymentSheet(
@@ -523,21 +520,14 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       );
       if (outcome.kind != _StepOutcomeKind.recorded) break; // L3: stop the walk
       recorded++;
-      if (outcome.ack == WriteAck.queued) anyQueued = true;
     }
 
     if (recorded == 0) return; // cancel at step 1 → no final snackbar
-    final allRecorded = recorded == steps.length;
-    final message = allRecorded
-        ? (anyQueued
-              ? l10n.settleUpSteppedRecordedAllWillSync(recorded)
-              : l10n.settleUpSteppedRecordedAll(recorded))
-        : (anyQueued
-              ? l10n.settleUpSteppedRecordedPartialWillSync(
-                  recorded,
-                  steps.length,
-                )
-              : l10n.settleUpSteppedRecordedPartial(recorded, steps.length));
+    // #1129: no queued branch — settlement creates are callable-backed, so a
+    // recorded step IS server-acked.
+    final message = recorded == steps.length
+        ? l10n.settleUpSteppedRecordedAll(recorded)
+        : l10n.settleUpSteppedRecordedPartial(recorded, steps.length);
     if (context.mounted) {
       messenger.showSnackBar(
         SnackBar(
@@ -746,7 +736,6 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       amount: editedAmount,
       note: noteText,
       currency: currency,
-      eventName: eventName,
       showSuccessSnackbar: showSuccessSnackbar,
       ledgerRevision: ledgerRevision,
       connectivity: connectivity,
@@ -756,12 +745,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     // path, offer to let the creditor know via WhatsApp. Gated to: single-tile
     // (stepLabel == null — the stepped walk shows its own aggregate snackbar and
     // carries one amount/currency), the paying perspective (creditor-records
-    // #282 / settle-on-behalf #595 never nudge), and a clean record. The
-    // correction path (onCorrect) calls _recordSettlement directly, bypassing
-    // this method, so it never reaches here.
+    // #282 / settle-on-behalf #595 never nudge), and a clean record. An #1129
+    // idempotent replay never re-nudges — the user already recorded (and was
+    // offered the nudge for) this exact payment once.
     if (stepLabel == null &&
         currentUid == fromUserId &&
         outcome.kind == _StepOutcomeKind.recorded &&
+        !outcome.alreadyRecorded &&
         context.mounted) {
       await _offerWhatsAppNotify(
         context,
@@ -818,11 +808,29 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     required Decimal amount,
     required String currency,
     String? note,
-    String? eventName,
     bool showSuccessSnackbar = true,
     StateController<int>? ledgerRevision,
     ConnectivityNotifier? connectivity,
   }) async {
+    // #1129 pre-flight: settlement creates are an HTTPS callable — there is
+    // no offline queue, so a provably-offline device gets the honest failure
+    // copy instead of a doomed call. `syncing` PROCEEDS (the device is
+    // online; the up-to-60s stale-probe window must not block recording).
+    if (ref.read(connectivityProvider) == ConnectivityStatus.offline) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.settleUpRecordFailed),
+            backgroundColor: context.colors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+      return const _StepOutcome(_StepOutcomeKind.failed);
+    }
     HapticService.success();
     final currentUid = ref.read(currentUserIdProvider);
     if (currentUid == null || currentUid.isEmpty) {
@@ -830,22 +838,21 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         'Cannot record settlement without an authenticated user.',
       );
     }
-    // #104/#412: capture before the await so post-write effects survive a
-    // disposal during the (now bounded) wait. The stepped walk passes the
-    // notifiers it captured once before its loop; the single-tile path reads
-    // them here.
+    // #104: capture before the await so post-write effects survive a disposal
+    // during the wait. The stepped walk passes the notifiers it captured once
+    // before its loop; the single-tile path reads them here.
     final StateController<int> ledgerRevisionNotifier =
         ledgerRevision ?? ref.read(ledgerRevisionProvider.notifier);
     final ConnectivityNotifier connectivityNotifier =
         connectivity ?? ref.read(connectivityProvider.notifier);
-    final connectivityStatus = ref.read(connectivityProvider);
     try {
-      // #1093: derive a deterministic dedup id from the SAME revalidation
-      // snapshot used by the #773 outstanding-cap check — two writers
-      // observing the identical epoch produce the identical id, so a racing
-      // second write collides with the first and is denied by the already-
-      // live `allow update: if false` (client-side: fails closed on a
-      // valueless basis read, mirroring the #1028 skip semantics).
+      // #1093/#1129: the client OBSERVES the directed-pair epoch from the
+      // SAME provider-filtered basis as the #773 revalidation; the SERVER
+      // derives the deterministic dedup id from it, so two devices observing
+      // the identical state converge on ONE recorded payment. Fails closed on
+      // a valueless basis read, mirroring the #1028 skip semantics. The
+      // server authors the settlement doc AND the activity row (actor name,
+      // description, event name) — the client sends money facts only.
       final settlements = ref
           .read(
             eventSettlementsProvider((
@@ -856,87 +863,41 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           .valueOrNull;
       if (settlements == null) {
         throw StateError(
-          'settlement basis unavailable — cannot derive dedup id',
+          'settlement basis unavailable — cannot derive dedup epoch',
         );
       }
-      final id = SettlementService.deterministicSettlementId(
-        scopeKey: 'event:${widget.groupId}:${widget.eventId}',
-        payerParticipantId: fromUserId,
-        recipientParticipantId: toUserId,
-        currency: currency,
-        amount: amount,
-        pairEpoch: SettlementService.directedPairEpoch(
-          settlements,
-          payerParticipantId: fromUserId,
-          recipientParticipantId: toUserId,
-        ),
-      );
-      // #831/#1140: one activity row per recorded event settlement, folded into
-      // addSettlement's OWN atomic batch so a settlement denied at replay
-      // persists no phantom "settled X" row. Corrections no longer call this
-      // method (#889: they route through the correctSettlement callable, which
-      // writes no client activity row) — so every remaining caller is a forward
-      // record and always logs. #282: name the OTHER party relative to the actor.
-      String actorName;
-      try {
-        final deviceName = ref.read(settingsProvider).deviceName;
-        actorName = deviceName.isNotEmpty ? deviceName : fromName;
-      } catch (_) {
-        // A settings read failure must never block the money write (the
-        // activity leg still gets a valid, sanitized actorName from fromName).
-        actorName = fromName;
-      }
-      final counterpartyName = currentUid == toUserId ? fromName : toName;
-      // #412: never gate the UI on the raw server-ack future — offline it
-      // stays pending until reconnect. Race it; queued means the SDK replays.
-      final outcome = await awaitServerAck(
-        ref
-            .read(settlementServiceProvider)
-            .addSettlement(
-              id: id,
-              groupId: widget.groupId,
-              eventId: widget.eventId,
+      final result = await ref
+          .read(settlementServiceProvider)
+          .addSettlement(
+            groupId: widget.groupId,
+            eventId: widget.eventId,
+            payerParticipantId: fromUserId,
+            recipientParticipantId: toUserId,
+            payerName: fromName,
+            recipientName: toName,
+            amount: amount,
+            currency: currency,
+            note: note,
+            observedPairEpoch: SettlementService.directedPairEpoch(
+              settlements,
               payerParticipantId: fromUserId,
               recipientParticipantId: toUserId,
-              payerName: fromName,
-              recipientName: toName,
-              amount: amount,
-              currency: currency,
-              createdBy: currentUid,
-              note: note,
-              activityId: 'stl_$id',
-              activityActorId: currentUid,
-              activityActorName: actorName,
-              activityDescription:
-                  'settled ${AppFormatters.formatCurrency(amount, currency)} with $counterpartyName',
-              activityMetadata: {
-                'amountFils': MoneySerializer.toSubunits(amount, currency),
-                'currency': currency,
-                'fromUserId': fromUserId,
-                'toUserId': toUserId,
-                'fromName': fromName,
-                'toName': toName,
-                'eventId': widget.eventId,
-                if (eventName != null && eventName.isNotEmpty)
-                  'eventName': eventName,
-              },
             ),
-        skipWait: connectivityStatus != ConnectivityStatus.online,
-      );
+          );
 
-      ledgerRevisionNotifier.state++; // #104: refresh home balance
-      if (outcome == WriteAck.acked) {
-        connectivityNotifier.noteLocalWrite(groupId: widget.groupId); // #357
-      } else {
-        connectivityNotifier.noteQueuedWrite(groupId: widget.groupId); // #412
-      }
+      // #104: refresh home balance — the server reports whether event-scope
+      // content changed (the fail-safe parse defaults toward bumping).
+      if (result.shouldBumpLedgerRevision) ledgerRevisionNotifier.state++;
+      // #357: the callable just round-tripped the server — provably online.
+      // noteQueuedWrite is dead for settlement creates (nothing ever queues).
+      connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
       if (showSuccessSnackbar && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              outcome == WriteAck.acked
-                  ? context.l10n.settleUpRecorded
-                  : context.l10n.settleUpRecordedWillSync,
+              result.alreadyRecorded
+                  ? context.l10n.settleUpAlreadyRecorded
+                  : context.l10n.settleUpRecorded,
             ),
             backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
@@ -946,19 +907,32 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           ),
         );
       }
-      return _StepOutcome(_StepOutcomeKind.recorded, ack: outcome);
+      return _StepOutcome(
+        _StepOutcomeKind.recorded,
+        alreadyRecorded: result.alreadyRecorded,
+      );
     } catch (e) {
       // L4: per-step ERROR snackbar stays loud even during a walk; the walk
       // then stops (the caller breaks on a non-recorded outcome).
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              settlementWriteErrorMessage(
+        // #1129: an over-outstanding rejection carries the LIVE server-side
+        // outstanding — surface it with the #773 balance-changed copy so the
+        // user re-reviews against the real number instead of a generic error.
+        final overFils = overOutstandingFils(e);
+        final message = overFils != null
+            ? context.l10n.settleUpBalanceChangedReviewAgain(
+                AppFormatters.formatCurrency(
+                  MoneySerializer.fromSubunits(overFils, currency),
+                  currency,
+                ),
+              )
+            : settlementWriteErrorMessage(
                 context.l10n,
                 classifySettlementWriteError(e),
-              ),
-            ),
+              );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
             backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -1038,15 +1012,17 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   }
 }
 
-/// Outcome of one stepped-settle step (#382 PR-5). Only [recorded] carries the
-/// queued/acked [ack]; the walk continues only on [recorded] (L3).
+/// Outcome of one stepped-settle step (#382 PR-5). The walk continues only on
+/// [recorded] (L3). [alreadyRecorded] marks the #1129 idempotent-replay
+/// success — it shows the "already recorded" copy and suppresses the #367
+/// nudge; there is no queued state (creates are callable-backed, #1129).
 enum _StepOutcomeKind { recorded, cancelled, invalid, failed }
 
 class _StepOutcome {
-  const _StepOutcome(this.kind, {this.ack});
+  const _StepOutcome(this.kind, {this.alreadyRecorded = false});
 
   final _StepOutcomeKind kind;
-  final WriteAck? ack;
+  final bool alreadyRecorded;
 }
 
 class _SettleUpTopBar extends StatelessWidget {

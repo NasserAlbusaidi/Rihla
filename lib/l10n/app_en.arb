@@ -830,6 +830,10 @@
   },
   "settleUpBalanceStillSyncing": "Balances are still syncing — try again in a moment.",
   "settleUpRecorded": "Settlement recorded.",
+  "settleUpAlreadyRecorded": "This payment was already recorded.",
+  "@settleUpAlreadyRecorded": {
+    "description": "Success copy when the recordSettlement callable reports an idempotent replay (#1129): the payment exists exactly once; nothing was recorded twice."
+  },
   "settleUpRecordedWillSync": "Settlement recorded — will sync when online.",
   "settleUpRecordFailed": "Couldn't record settlement. Check your connection and try again.",
   "settleUpRecordFailedDenied": "This settlement wasn't allowed. Please check the details and try again.",

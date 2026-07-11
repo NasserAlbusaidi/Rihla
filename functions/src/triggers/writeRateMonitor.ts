@@ -4,19 +4,28 @@ import { logger } from 'firebase-functions/v2';
 import '../admin';
 
 // #198: DETECTION-ONLY per-UID write-rate monitor.
-// Event expense/settlement creates are CLIENT-DIRECT (Firestore offline
-// persistence + replay — see CLAUDE.md; routing them through a callable/queue is
-// forbidden), so a trigger fires AFTER the write commits and CANNOT reject it. This
-// monitor only FLAGS bursts (a `logger.warn` + a `lastFlaggedAt` marker) for ops
-// visibility; it never deletes or mutates the financial doc. Auto-deleting an
-// over-threshold money write on a false positive would be money-wrong.
-// Spec + threat model: docs/plans/2026-06-04-198-write-rate-detection.md.
+// Event EXPENSE creates are CLIENT-DIRECT (Firestore offline persistence +
+// replay — see CLAUDE.md), so a trigger fires AFTER the write commits and CANNOT
+// reject it. This monitor only FLAGS bursts (a `logger.warn` + a `lastFlaggedAt`
+// marker) for ops visibility; it never deletes or mutates the financial doc.
+// Auto-deleting an over-threshold money write on a false positive would be
+// money-wrong. Spec + threat model: docs/plans/2026-06-04-198-write-rate-detection.md.
+//
+// #1129 superseded the old "settlement creates are client-direct" premise:
+// settlement creates are now CALLABLE-ONLY (recordSettlement, Admin SDK; rules
+// deny client settlement writes in both scopes), so settlement docs and
+// settlement-typed activity rows are UN-FORGEABLE and no longer counted —
+// counting them was vestigial for this monitor's client-abuse purpose and a
+// single legitimate large decomposed settle-up (up to 400 legs in one tx, the
+// old 8-leg client cap is gone) would have false-flagged the 100/60s threshold
+// AND pre-consumed the per-uid budget that exists to catch expense abuse.
+// Expenses remain client-direct and counted.
 //
 // #526: the EVENT activity_logs subcollection is NOT counted — post-#248 it is
 // written SERVER-SIDE by the expenseAuditLogger trigger (stamped with the expense
 // creator's uid), so counting it would double-count the actor on every expense and
-// effectively halve the threshold. Only the client-direct event paths
-// (expenses / settlements) are counted here.
+// effectively halve the threshold. Only the client-direct event expense path is
+// counted here.
 
 const WRITE_RATE_WINDOW_MS = 60_000;
 const WINDOW_BUFFER_MS = 60_000;
@@ -29,9 +38,10 @@ function resolveWriteRateLimit(): number {
 
 // T1's `{module}` wildcard matches ANY direct sub-collection of an event, so filter
 // to the client-direct paths we count. activity_logs is intentionally excluded
-// (#526 — server-written by expenseAuditLogger, see header). A future
+// (#526 — server-written by expenseAuditLogger, see header); settlements are
+// excluded since #1129 (callable-only, un-forgeable, see header). A future
 // sub-collection silently won't be monitored.
-const COUNTED_EVENT_MODULES = new Set(['expenses', 'settlements']);
+const COUNTED_EVENT_MODULES = new Set(['expenses']);
 
 // Expenses/settlements stamp `createdBy`; group-level `activity` stamps `actorId`.
 // No counted doc carries both, so the order is unambiguous. Rules pin the field ==
@@ -95,20 +105,6 @@ async function recordWrite(gid: string, uid: string): Promise<void> {
   }
 }
 
-// #889: presence-only marker check — same un-forgeability rationale as the
-// #526/#808 activity_logs/expense_* skips below: rules deny a client-created
-// `correctionOfSettlementId` (firestore.rules event/group settlement
-// hasOnly() key lists), so presence alone proves a server-written correction
-// reverse. Deliberately a LOCAL copy, not an import of
-// callables/shared/settlementCorrection.ts's isMarkedCorrection — triggers
-// stay presence-only with no shared-classifier dependency (delta 3). If a
-// future rules edit ever admits a client-written marker, this skip becomes
-// forgeable.
-function isMarkedCorrection(data: DocumentData): boolean {
-  const value = data.correctionOfSettlementId;
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
 async function countCreate(
   gid: string,
   snap: { data(): DocumentData; ref: { path: string } } | undefined,
@@ -122,43 +118,37 @@ async function countCreate(
   await recordWrite(gid, uid);
 }
 
-// T1 — counted event sub-collections (expenses / settlements) in one trigger via
-// the `{module}` wildcard-collection segment; activity_logs is filtered out (#526).
+// T1 — counted event sub-collections (expenses only since #1129) via the
+// `{module}` wildcard-collection segment; activity_logs (#526) and settlements
+// (#1129 callable-only — a marked #889 correction reverse was already skipped,
+// now the whole module is) are filtered out.
 export const eventWriteRateMonitor = onDocumentCreated(
   'groups/{gid}/events/{eid}/{module}/{docId}',
   (event) => {
     if (!COUNTED_EVENT_MODULES.has(event.params.module)) return Promise.resolve();
-    // #889: a marked settlement-correction reverse is a server-owned
-    // offsetting row (Admin SDK), not a fresh user write — skip it. Cross-ref:
-    // settlementNotifier.ts's same-marker skip; firestore.rules
-    // validEventSettlementBase hasOnly() key list (the marker's absence there
-    // is what makes this skip un-forgeable).
-    if (isMarkedCorrection(event.data?.data() ?? {})) return Promise.resolve();
     return countCreate(event.params.gid, event.data);
   },
 );
 
-// T2 — group-level settlements.
-export const groupSettlementWriteRateMonitor = onDocumentCreated(
-  'groups/{gid}/settlements/{settlementId}',
-  (event) => {
-    // #889: cross-ref: settlementNotifier.ts's same-marker skip;
-    // firestore.rules validGroupSettlementBase hasOnly() key list.
-    if (isMarkedCorrection(event.data?.data() ?? {})) return Promise.resolve();
-    return countCreate(event.params.gid, event.data);
-  },
-);
+// T2 (groupSettlementWriteRateMonitor) was DELETED by #1129: group-scope
+// settlement docs are callable-only (recordSettlement / correctSettlement /
+// correctLogicalSettleUp, all Admin SDK) — nothing client-forgeable remains on
+// that path to monitor.
 
-// T3 — group-level activity. expense_* entries are the expenseAuditLogger's
-// server fan-in of an expense create T1 already counted — counting them would
-// double-bill the actor (#808 PR1). Keying the skip on `type` is safe ONLY
-// because validGroupActivityCreate's allow-list makes expense_* un-forgeable
-// by clients (same rationale as the #526 activity_logs filter).
+// T3 — group-level activity. Skipped types are the SERVER-authored rows:
+// expense_* (expenseAuditLogger fan-in of an expense T1 already counted, #808
+// PR1) and event_settlement/group_settlement (recordSettlement's co-written
+// row, #1129 — also no longer in validGroupActivityCreate's client allow-list).
+// Keying the skip on `type` is safe ONLY because that allow-list makes these
+// types un-forgeable by clients (same rationale as the #526 activity_logs
+// filter) — extend BOTH together.
+const SKIPPED_ACTIVITY_TYPES = new Set(['event_settlement', 'group_settlement']);
+
 export const groupActivityWriteRateMonitor = onDocumentCreated(
   'groups/{gid}/activity/{activityId}',
   (event) => {
     const type = event.data?.data()?.type;
-    if (typeof type === 'string' && type.startsWith('expense_')) {
+    if (typeof type === 'string' && (type.startsWith('expense_') || SKIPPED_ACTIVITY_TYPES.has(type))) {
       return Promise.resolve();
     }
     return countCreate(event.params.gid, event.data);

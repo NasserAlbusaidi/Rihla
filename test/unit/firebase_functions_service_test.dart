@@ -169,6 +169,167 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // #1129 — recordSettlement, the ONLY settlement CREATE path. Pins the
+  // OUTBOUND payload (including that ABSENT optionals are OMITTED, not sent
+  // as nulls — the TS callable validates the map shape) AND the INBOUND
+  // parse into RecordSettlementResult.
+  // -------------------------------------------------------------------------
+  group('recordSettlement callable (#1129)', () {
+    test(
+      'mode=event sends every provided field and parses the result',
+      () async {
+        final (:functions, :callable, :service) = _harness(
+          data: {
+            'alreadyRecorded': false,
+            'eventScopeWrites': 1,
+            'groupScopeWrites': 0,
+            'shouldBumpLedgerRevision': true,
+            'settledAt': '2026-07-11T12:00:00.000Z',
+          },
+        );
+
+        final result = await service.recordSettlement(
+          groupId: 'g1',
+          mode: 'event',
+          eventId: 'e1',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amountFils: 10500,
+          currency: 'OMR',
+          note: 'lunch',
+          payerName: 'Ali',
+          recipientName: 'Sara',
+          observedPairEpoch: 3,
+        );
+
+        verify(() => functions.httpsCallable('recordSettlement')).called(1);
+        final payload =
+            verify(() => callable.call(captureAny())).captured.single;
+        expect(payload, {
+          'groupId': 'g1',
+          'mode': 'event',
+          'eventId': 'e1',
+          'payerParticipantId': 'p1',
+          'recipientParticipantId': 'p2',
+          'amountFils': 10500,
+          'currency': 'OMR',
+          'note': 'lunch',
+          'payerName': 'Ali',
+          'recipientName': 'Sara',
+          'observedPairEpoch': 3,
+        });
+        expect(result.alreadyRecorded, isFalse);
+        expect(result.eventScopeWrites, 1);
+        expect(result.shouldBumpLedgerRevision, isTrue);
+        expect(result.settledAt, '2026-07-11T12:00:00.000Z');
+      },
+    );
+
+    test(
+      'mode=group OMITS absent optionals (eventId/note/names/legs) from the '
+      'payload entirely',
+      () async {
+        final (:functions, :callable, :service) = _harness(
+          data: {
+            'alreadyRecorded': true,
+            'eventScopeWrites': 0,
+            'groupScopeWrites': 0,
+            'shouldBumpLedgerRevision': false,
+            'settledAt': '2026-07-11T12:00:00.000Z',
+          },
+        );
+
+        final result = await service.recordSettlement(
+          groupId: 'g1',
+          mode: 'group',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amountFils: 5000,
+          currency: 'OMR',
+          observedPairEpoch: 0,
+        );
+
+        final payload =
+            verify(() => callable.call(captureAny())).captured.single;
+        expect(payload, {
+          'groupId': 'g1',
+          'mode': 'group',
+          'payerParticipantId': 'p1',
+          'recipientParticipantId': 'p2',
+          'amountFils': 5000,
+          'currency': 'OMR',
+          'observedPairEpoch': 0,
+        });
+        expect(payload, isNot(contains('eventId')));
+        expect(payload, isNot(contains('legs')));
+        // Idempotent replay flag round-trips (#1093 → alreadyRecorded copy).
+        expect(result.alreadyRecorded, isTrue);
+        expect(result.shouldBumpLedgerRevision, isFalse);
+      },
+    );
+
+    test(
+      'mode=groupSettleUp sends the legs list in caller order (#752 WYSIWYG)',
+      () async {
+        final (:functions, :callable, :service) = _harness(
+          data: {
+            'alreadyRecorded': false,
+            'eventScopeWrites': 2,
+            'groupScopeWrites': 1,
+            'shouldBumpLedgerRevision': true,
+            'settledAt': '2026-07-11T12:00:00.000Z',
+          },
+        );
+
+        await service.recordSettlement(
+          groupId: 'g1',
+          mode: 'groupSettleUp',
+          payerParticipantId: 'p1',
+          recipientParticipantId: 'p2',
+          amountFils: 7000,
+          currency: 'OMR',
+          observedPairEpoch: 5,
+          legs: [
+            {'eventId': 'e2', 'amountFils': 3000},
+            {'eventId': 'e1', 'amountFils': 2500},
+          ],
+        );
+
+        final payload =
+            verify(() => callable.call(captureAny())).captured.single;
+        expect(payload['mode'], 'groupSettleUp');
+        expect(payload['legs'], [
+          {'eventId': 'e2', 'amountFils': 3000},
+          {'eventId': 'e1', 'amountFils': 2500},
+        ]);
+      },
+    );
+
+    test('a malformed result degrades fail-safe (never throws)', () async {
+      final (:functions, :callable, :service) = _harness(
+        data: <String, dynamic>{},
+      );
+
+      final result = await service.recordSettlement(
+        groupId: 'g1',
+        mode: 'event',
+        eventId: 'e1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amountFils: 1000,
+        currency: 'OMR',
+        observedPairEpoch: 0,
+      );
+
+      expect(result.alreadyRecorded, isFalse);
+      expect(result.eventScopeWrites, 0);
+      // Fail toward bumping: a missed bump is a money-wrong home balance.
+      expect(result.shouldBumpLedgerRevision, isTrue);
+      expect(result.settledAt, '');
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // #889 — settlement correction callables. Each test pins the OUTBOUND
   // payload keys AND the INBOUND parse into the typed CorrectSettlementResult
   // (the wire shape is shared by both callables).

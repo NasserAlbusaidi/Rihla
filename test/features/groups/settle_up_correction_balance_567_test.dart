@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:safar/core/models/split_mode.dart';
+import 'package:safar/core/services/money_serializer.dart';
 import 'package:safar/features/events/models/event_model.dart';
 import 'package:safar/features/groups/models/group_member_model.dart';
 import 'package:safar/features/groups/providers/group_balance_provider.dart';
@@ -76,6 +77,44 @@ Decimal _net(GroupBalances b, String currency, String uid) {
   return ub?.netBalance ?? Decimal.zero;
 }
 
+
+/// #1129: settlement creates are callable-only — seed the group-settlement
+/// docs these pure-balance tests fold DIRECTLY (server doc shape), instead of
+/// through the retired client write path.
+Future<void> _seedGroupSettlement(
+  FakeFirebaseFirestore firestore, {
+  required String id,
+  required String payer,
+  required String recipient,
+  required Decimal amount,
+  required String currency,
+  String? payerName,
+  String? recipientName,
+}) {
+  return firestore
+      .collection('groups')
+      .doc(gid)
+      .collection('settlements')
+      .doc(id)
+      .set({
+    'id': id,
+    'groupId': gid,
+    'eventId': gid, // sentinel — group settlements have no eventId
+    'scope': 'group',
+    'payerParticipantId': payer,
+    'recipientParticipantId': recipient,
+    'amountFils': MoneySerializer.toSubunits(amount, currency),
+    'currency': currency,
+    'note': null,
+    'payerName': payerName,
+    'recipientName': recipientName,
+    'isDeleted': false,
+    'deletedAt': null,
+    'settledAt': DateTime.now().toUtc().toIso8601String(),
+    'createdBy': 'seeder-uid',
+  });
+}
+
 void main() {
   group('#567 group settle-up correction re-opens the balance (pure path)', () {
     test('OMR: original settles, correction re-opens to +5 / -5', () async {
@@ -99,14 +138,13 @@ void main() {
       expect(_net(pre, 'OMR', sara), Decimal.parse('-5.000'),
           reason: 'pre: Sara owes 5');
 
-      await service.addGroupSettlement(
+      await _seedGroupSettlement(
+        firestore,
         id: 'test-id-567-omr-original',
-        groupId: gid,
-        payerParticipantId: sara,
-        recipientParticipantId: ahmed,
+        payer: sara,
+        recipient: ahmed,
         amount: Decimal.parse('5.000'),
         currency: 'OMR',
-        createdBy: sara,
         payerName: 'Sara',
         recipientName: 'Ahmed',
       );
@@ -127,14 +165,13 @@ void main() {
           reason: 'after original: Sara settled (0)');
 
       // The screen's exact onCorrect swap.
-      await service.addGroupSettlement(
+      await _seedGroupSettlement(
+        firestore,
         id: 'test-id-567-omr-correction',
-        groupId: gid,
-        payerParticipantId: original.recipientParticipantId!,
-        recipientParticipantId: original.payerParticipantId!,
+        payer: original.recipientParticipantId!,
+        recipient: original.payerParticipantId!,
         amount: original.amount,
         currency: original.currency,
-        createdBy: ahmed,
         payerName: original.recipientName,
         recipientName: original.payerName,
       );
@@ -163,14 +200,13 @@ void main() {
       final members = _members();
       final expense = _expense(amount: Decimal.parse('10.00'), currency: 'USD');
 
-      await service.addGroupSettlement(
+      await _seedGroupSettlement(
+        firestore,
         id: 'test-id-567-usd-original',
-        groupId: gid,
-        payerParticipantId: sara,
-        recipientParticipantId: ahmed,
+        payer: sara,
+        recipient: ahmed,
         amount: Decimal.parse('5.00'),
         currency: 'USD',
-        createdBy: sara,
         payerName: 'Sara',
         recipientName: 'Ahmed',
       );
@@ -189,14 +225,13 @@ void main() {
       expect(_net(settled, 'USD', ahmed), Decimal.zero);
       expect(_net(settled, 'USD', sara), Decimal.zero);
 
-      await service.addGroupSettlement(
+      await _seedGroupSettlement(
+        firestore,
         id: 'test-id-567-usd-correction',
-        groupId: gid,
-        payerParticipantId: original.recipientParticipantId!,
-        recipientParticipantId: original.payerParticipantId!,
+        payer: original.recipientParticipantId!,
+        recipient: original.payerParticipantId!,
         amount: original.amount,
         currency: original.currency,
-        createdBy: ahmed,
         payerName: original.recipientName,
         recipientName: original.payerName,
       );

@@ -1001,6 +1001,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settleUpRecorded => 'تم تسجيل التسوية.';
 
   @override
+  String get settleUpAlreadyRecorded => 'هذه الدفعة مسجّلة من قبل.';
+
+  @override
   String get settleUpRecordedWillSync =>
       'تم تسجيل التسوية — ستتم المزامنة عند الاتصال.';
 

@@ -1,473 +1,302 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 
+import '../helpers/recording_functions_service.dart';
+
+Map<String, dynamic> _settlementDoc({
+  required String id,
+  required String eventId,
+  String payer = 'p1',
+  String recipient = 'p2',
+  int amountFils = 5000,
+  String currency = 'OMR',
+  String? payerName,
+  String? recipientName,
+  String? note,
+  bool isDeleted = false,
+}) {
+  return {
+    'id': id,
+    'eventId': eventId,
+    'payerParticipantId': payer,
+    'recipientParticipantId': recipient,
+    'payerName': payerName,
+    'recipientName': recipientName,
+    'amountFils': amountFils,
+    'currency': currency,
+    'note': note,
+    'isDeleted': isDeleted,
+    'deletedAt': isDeleted ? '2026-07-11T10:00:00.000Z' : null,
+    'settledAt': '2026-07-11T09:00:00.000Z',
+    'createdBy': 'test-uid',
+  };
+}
+
 void main() {
-  group('SettlementService (Firestore)', () {
-    late FakeFirebaseFirestore fakeDb;
+  group('SettlementService.addSettlement → recordSettlement wire contract (#1129)', () {
+    late RecordingFunctionsService functions;
     late SettlementService service;
 
     setUp(() {
-      fakeDb = FakeFirebaseFirestore();
-      service = SettlementService.withFirestore(fakeDb);
+      functions = RecordingFunctionsService();
+      service = SettlementService.withFirestore(
+        FakeFirebaseFirestore(),
+        functionsService: functions,
+      );
     });
 
-    group('addSettlement #1140 activity batching', () {
-      Future<List<Map<String, dynamic>>> activityDocs(String groupId) async {
-        final snap = await fakeDb
-            .collection('groups')
-            .doc(groupId)
-            .collection('activity')
-            .get();
-        return snap.docs.map((d) => d.data()).toList();
-      }
-
-      test(
-        'with activity params writes settlement + ONE stl_<id> activity row '
-        'atomically; a repeat (same id) stays ONE row (idempotent)',
-        () async {
-          Future<void> record() => service.addSettlement(
-                id: 'sd1abc',
-                groupId: 'g1',
-                eventId: 'e1',
-                payerParticipantId: 'bob',
-                recipientParticipantId: 'alice',
-                amount: Decimal.parse('10.000'),
-                createdBy: 'bob',
-                currency: 'OMR',
-                activityId: 'stl_sd1abc',
-                activityActorId: 'bob',
-                activityActorName: 'Bob',
-                activityDescription: 'settled OMR 10.000 with Alice',
-                activityMetadata: const {
-                  'amountFils': 10000,
-                  'currency': 'OMR',
-                  'fromUserId': 'bob',
-                  'toUserId': 'alice',
-                },
-              );
-          await record();
-          await record(); // retry / second device — same deterministic ids
-
-          final settlements = await fakeDb
-              .collection('groups')
-              .doc('g1')
-              .collection('events')
-              .doc('e1')
-              .collection('settlements')
-              .get();
-          expect(settlements.docs, hasLength(1));
-
-          final activity = await activityDocs('g1');
-          expect(activity, hasLength(1));
-          expect(activity.single['id'], equals('stl_sd1abc'));
-          expect(activity.single['type'], equals('event_settlement'));
-          expect(activity.single['actorId'], equals('bob'));
-        },
+    test('sends mode=event with every field and integer-subunit amount (OMR 3dp)', () async {
+      final result = await service.addSettlement(
+        groupId: 'g1',
+        eventId: 'e1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amount: Decimal.parse('10.500'),
+        currency: 'OMR',
+        observedPairEpoch: 3,
+        payerName: 'Ali',
+        recipientName: 'Sara',
+        note: 'lunch',
       );
 
-      test('without activity params writes NO activity row (legacy)', () async {
-        await service.addSettlement(
-          id: 'sd1none',
-          groupId: 'g1',
-          eventId: 'e1',
-          payerParticipantId: 'bob',
-          recipientParticipantId: 'alice',
-          amount: Decimal.parse('5.000'),
-          createdBy: 'bob',
-        );
-        expect(await activityDocs('g1'), isEmpty);
+      expect(functions.recordSettlementCalls, hasLength(1));
+      expect(functions.lastCall, {
+        'groupId': 'g1',
+        'mode': 'event',
+        'eventId': 'e1',
+        'payerParticipantId': 'p1',
+        'recipientParticipantId': 'p2',
+        'amountFils': 10500,
+        'currency': 'OMR',
+        'note': 'lunch',
+        'payerName': 'Ali',
+        'recipientName': 'Sara',
+        'observedPairEpoch': 3,
+        'legs': null,
       });
+      // The callable's result is returned verbatim — the screens branch on it.
+      expect(result.alreadyRecorded, isFalse);
+      expect(result.shouldBumpLedgerRevision, isTrue);
     });
 
-    group('addSettlement', () {
-      test(
-        'writes settlement document to groups/{groupId}/events/{eventId}/settlements',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
-
-          final settlement = await service.addSettlement(
-            id: 'test-id-write-shape',
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('10.500'),
-          );
-
-          final snap = await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('settlements')
-              .doc(settlement.id)
-              .get();
-
-          expect(snap.exists, isTrue);
-          expect(snap.data()!['eventId'], equals(eventId));
-          expect(snap.data()!['payerParticipantId'], equals('p1'));
-          expect(snap.data()!['recipientParticipantId'], equals('p2'));
-          expect(snap.data()!['isDeleted'], isFalse);
-        },
+    test('JPY converts at scale 1 (no fractional subunits invented)', () async {
+      await service.addSettlement(
+        groupId: 'g1',
+        eventId: 'e1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amount: Decimal.parse('250'),
+        currency: 'JPY',
+        observedPairEpoch: 0,
       );
-
-      // #889: correctionOfSettlementId is Admin-only, written solely by the
-      // server correction callables. addSettlement has no such parameter, so
-      // a normal forward write can never carry it — even when the caller's
-      // note happens to equal the localized correction sentinel (a normal
-      // payment note is NOT a safe discriminator, which is the whole reason
-      // #889 exists).
-      test(
-        'a normal write omits correctionOfSettlementId, even when note '
-        'equals the correction sentinel',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
-
-          final settlement = await service.addSettlement(
-            id: 'test-id-correction-sentinel',
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('10.500'),
-            note: 'Correction of a recorded payment', // en sentinel
-          );
-
-          final snap = await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('settlements')
-              .doc(settlement.id)
-              .get();
-
-          expect(snap.data(), isNot(contains('correctionOfSettlementId')));
-          expect(settlement.isMarkedCorrection, isFalse);
-        },
-      );
-
-      test('uses MoneySerializer.toSubunits to store amountFils', () async {
-        const groupId = 'g1';
-        const eventId = 'e1';
-
-        // OMR 10.500 = 10500 fils
-        final settlement = await service.addSettlement(
-          id: 'test-id-money-serializer',
-          createdBy: 'test-uid',
-          groupId: groupId,
-          eventId: eventId,
-          payerParticipantId: 'p1',
-          recipientParticipantId: 'p2',
-          amount: Decimal.parse('10.500'),
-        );
-
-        final snap = await fakeDb
-            .collection('groups')
-            .doc(groupId)
-            .collection('events')
-            .doc(eventId)
-            .collection('settlements')
-            .doc(settlement.id)
-            .get();
-
-        expect(snap.data()!['amountFils'], equals(10500));
-        expect(snap.data()!['currency'], equals('OMR'));
-
-        // Verify round-trip
-        expect(settlement.amount, equals(Decimal.parse('10.500')));
-      });
+      expect(functions.lastCall['amountFils'], 250);
+      expect(functions.lastCall['currency'], 'JPY');
     });
 
-    group('watchSettlements', () {
-      test(
-        'returns a stream of settlements from Firestore subcollection',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
-
-          await service.addSettlement(
-            id: 'test-id-stream',
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('5.000'),
-            note: 'Test settlement',
-          );
-
-          final settlements = await service
-              .watchSettlements(groupId, eventId)
-              .first;
-
-          expect(settlements, hasLength(1));
-          expect(settlements.first.note, equals('Test settlement'));
-          expect(settlements.first.amount, equals(Decimal.parse('5.000')));
-        },
+    test('optional fields default to null on the wire', () async {
+      await service.addSettlement(
+        groupId: 'g1',
+        eventId: 'e1',
+        payerParticipantId: 'p1',
+        recipientParticipantId: 'p2',
+        amount: Decimal.parse('1.000'),
+        currency: 'OMR',
+        observedPairEpoch: 0,
       );
-
-      test('round-trips payer and recipient names through Firestore', () async {
-        const groupId = 'g1';
-        const eventId = 'e1';
-
-        await service.addSettlement(
-          id: 'test-id-names-roundtrip',
-          createdBy: 'test-uid',
-          groupId: groupId,
-          eventId: eventId,
-          payerParticipantId: 'uid-ali',
-          recipientParticipantId: 'uid-sara',
-          payerName: 'Ali',
-          recipientName: 'Sara',
-          amount: Decimal.parse('7.250'),
-        );
-
-        final settlements = await service
-            .watchSettlements(groupId, eventId)
-            .first;
-
-        expect(settlements, hasLength(1));
-        expect(settlements.first.payerName, equals('Ali'));
-        expect(settlements.first.recipientName, equals('Sara'));
-      });
-
-      test(
-        'filters out legacy soft-deleted settlements (isDeleted=true)',
-        () async {
-          // E3 / B3: addSettlement no longer pairs with a deleteSettlement
-          // method — settlements are append-only at the rules layer. This
-          // test still asserts the watchSettlements stream filters any
-          // pre-B3 records that legitimately had isDeleted set, by
-          // writing such a row directly through the fake DB.
-          const groupId = 'g1';
-          const eventId = 'e1';
-
-          final settlement = await service.addSettlement(
-            id: 'test-id-soft-deleted-filter',
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('5.000'),
-          );
-
-          await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('settlements')
-              .doc(settlement.id)
-              .update({
-                'isDeleted': true,
-                'deletedAt': DateTime.now().toUtc().toIso8601String(),
-              });
-
-          final settlements = await service
-              .watchSettlements(groupId, eventId)
-              .first;
-
-          expect(settlements, isEmpty);
-        },
-      );
+      expect(functions.lastCall['note'], isNull);
+      expect(functions.lastCall['payerName'], isNull);
+      expect(functions.lastCall['recipientName'], isNull);
     });
 
-    group('Settlement serialization', () {
-      test(
-        'fromFirestore and toFirestore round-trip produces equivalent Settlement',
-        () async {
-          const groupId = 'g1';
-          const eventId = 'e1';
-
-          final original = await service.addSettlement(
-            id: 'test-id-roundtrip',
-            createdBy: 'test-uid',
-            groupId: groupId,
-            eventId: eventId,
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('10.500'),
-            note: 'Round trip test',
-          );
-
-          final snap = await fakeDb
-              .collection('groups')
-              .doc(groupId)
-              .collection('events')
-              .doc(eventId)
-              .collection('settlements')
-              .doc(original.id)
-              .get();
-
-          final restored = Settlement.fromFirestore({
-            ...snap.data()!,
-            'id': snap.id,
-          });
-
-          expect(restored.id, equals(original.id));
-          expect(restored.amount, equals(original.amount));
-          expect(restored.note, equals('Round trip test'));
-          expect(restored.isDeleted, isFalse);
-        },
-      );
-    });
-
-    // #929: buildSettlementDoc is the SINGLE source of the event-settlement
-    // write shape (addSettlement AND the atomic decompose batch both call it).
-    // These pin the exact 14-key map and that addSettlement stays byte-identical
-    // to the builder — a revert that inlines a second map turns them red.
-    group('buildSettlementDoc single-source shape (#929)', () {
-      test('produces the exact 14-key event-settlement doc', () {
-        final settledAt = DateTime.utc(2026, 4, 1, 9, 30);
-        final doc = SettlementService.buildSettlementDoc(
-          id: 'set-1',
-          eventId: 'e1',
-          payerParticipantId: 'p1',
-          recipientParticipantId: 'p2',
-          amount: Decimal.parse('10.500'),
-          createdBy: 'uid',
-          currency: 'OMR',
-          settledAtUtc: settledAt,
-          payerName: 'Ali',
-          recipientName: 'Sara',
-          note: 'dinner',
-          groupSettleUpId: 'su-1',
-        );
-
-        expect(doc, {
-          'id': 'set-1',
-          'eventId': 'e1',
-          'payerParticipantId': 'p1',
-          'recipientParticipantId': 'p2',
-          'payerName': 'Ali',
-          'recipientName': 'Sara',
-          'amountFils': 10500,
+    test('propagates FirebaseFunctionsException unchanged (screens classify it)', () async {
+      functions.error = FirebaseFunctionsException(
+        message: 'cap',
+        code: 'failed-precondition',
+        details: const {
+          'kind': 'over-outstanding',
+          'outstandingFils': 400,
           'currency': 'OMR',
-          'note': 'dinner',
-          'isDeleted': false,
-          'deletedAt': null,
-          'settledAt': settledAt.toIso8601String(),
-          'createdBy': 'uid',
-          'groupSettleUpId': 'su-1',
-        });
-      });
-
-      test('omits groupSettleUpId when null', () {
-        final doc = SettlementService.buildSettlementDoc(
-          id: 'set-1',
+        },
+      );
+      await expectLater(
+        service.addSettlement(
+          groupId: 'g1',
           eventId: 'e1',
           payerParticipantId: 'p1',
           recipientParticipantId: 'p2',
           amount: Decimal.parse('1.000'),
-          createdBy: 'uid',
           currency: 'OMR',
-          settledAtUtc: DateTime.utc(2026),
-        );
-        expect(doc.containsKey('groupSettleUpId'), isFalse);
-      });
+          observedPairEpoch: 0,
+        ),
+        throwsA(isA<FirebaseFunctionsException>()),
+      );
+      // The doomed payload was still well-formed — nothing was half-sent.
+      expect(functions.recordSettlementCalls, hasLength(1));
+    });
+  });
 
-      test(
-        'addSettlement persists exactly buildSettlementDoc output (byte parity)',
-        () async {
-          final s = await service.addSettlement(
-            id: 'test-id-byte-parity',
-            createdBy: 'uid',
-            groupId: 'g1',
-            eventId: 'e1',
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('7.250'),
-            currency: 'OMR',
-            payerName: 'Ali',
-            recipientName: 'Sara',
-            note: 'n',
-            groupSettleUpId: 'su-9',
-          );
-          final snap = await fakeDb
-              .collection('groups')
-              .doc('g1')
-              .collection('events')
-              .doc('e1')
-              .collection('settlements')
-              .doc(s.id)
-              .get();
-          final persisted = snap.data()!;
-          // Rebuild with the id + settledAt addSettlement stamped, then assert
-          // the persisted doc equals the builder output field-for-field.
-          final expected = SettlementService.buildSettlementDoc(
-            id: persisted['id'] as String,
-            eventId: 'e1',
-            payerParticipantId: 'p1',
-            recipientParticipantId: 'p2',
-            amount: Decimal.parse('7.250'),
-            createdBy: 'uid',
-            currency: 'OMR',
-            settledAtUtc: DateTime.parse(persisted['settledAt'] as String),
-            payerName: 'Ali',
-            recipientName: 'Sara',
-            note: 'n',
-            groupSettleUpId: 'su-9',
-          );
-          expect(persisted, equals(expected));
-        },
+  group('SettlementService.directedPairEpoch', () {
+    Settlement s(String payer, String recipient) =>
+        Settlement.fromFirestore(_settlementDoc(
+          id: 'sid-$payer-$recipient-x',
+          eventId: 'e1',
+          payer: payer,
+          recipient: recipient,
+        ));
+
+    test('counts only the DIRECTED pair — reverse direction excluded', () {
+      final rows = [s('a', 'b'), s('a', 'b'), s('b', 'a'), s('a', 'c')];
+      expect(
+        SettlementService.directedPairEpoch(
+          rows,
+          payerParticipantId: 'a',
+          recipientParticipantId: 'b',
+        ),
+        2,
+      );
+      expect(
+        SettlementService.directedPairEpoch(
+          rows,
+          payerParticipantId: 'b',
+          recipientParticipantId: 'a',
+        ),
+        1,
       );
     });
 
-    group('groupSettleUpId field (#752)', () {
-      test('addSettlement writes groupSettleUpId when provided', () async {
-        final s = await service.addSettlement(
-          id: 'test-id-gsu-provided',
-          createdBy: 'uid',
-          groupId: 'g1',
-          eventId: 'e1',
-          payerParticipantId: 'p1',
-          recipientParticipantId: 'p2',
-          amount: Decimal.parse('3.000'),
-          groupSettleUpId: 'su-123',
-        );
-        final snap = await fakeDb
-            .collection('groups')
-            .doc('g1')
-            .collection('events')
-            .doc('e1')
-            .collection('settlements')
-            .doc(s.id)
-            .get();
-        expect(snap.data()!['groupSettleUpId'], equals('su-123'));
-        expect(s.groupSettleUpId, equals('su-123'));
-      });
+    test('empty basis → epoch 0', () {
+      expect(
+        SettlementService.directedPairEpoch(
+          const <Settlement>[],
+          payerParticipantId: 'a',
+          recipientParticipantId: 'b',
+        ),
+        0,
+      );
+    });
 
-      test('addSettlement omits groupSettleUpId key when null', () async {
-        final s = await service.addSettlement(
-          id: 'test-id-gsu-omitted',
-          createdBy: 'uid',
-          groupId: 'g1',
-          eventId: 'e1',
-          payerParticipantId: 'p1',
-          recipientParticipantId: 'p2',
-          amount: Decimal.parse('3.000'),
-        );
-        final snap = await fakeDb
-            .collection('groups')
-            .doc('g1')
-            .collection('events')
-            .doc('e1')
-            .collection('settlements')
-            .doc(s.id)
-            .get();
-        expect(snap.data()!.containsKey('groupSettleUpId'), isFalse);
-        expect(s.groupSettleUpId, isNull);
-      });
+    test('pure: counts exactly the list given (no hidden isDeleted filter)', () {
+      // Callers feed provider-filtered rows; the function itself must not
+      // second-guess them or two devices could diverge on the epoch.
+      final deleted = Settlement.fromFirestore(_settlementDoc(
+        id: 'sid-del',
+        eventId: 'e1',
+        payer: 'a',
+        recipient: 'b',
+        isDeleted: true,
+      ));
+      expect(
+        SettlementService.directedPairEpoch(
+          [deleted],
+          payerParticipantId: 'a',
+          recipientParticipantId: 'b',
+        ),
+        1,
+      );
+    });
+  });
+
+  group('SettlementService reads (Firestore)', () {
+    late FakeFirebaseFirestore fakeDb;
+    late SettlementService service;
+
+    Future<void> seed(Map<String, dynamic> doc) => fakeDb
+        .collection('groups')
+        .doc('g1')
+        .collection('events')
+        .doc('e1')
+        .collection('settlements')
+        .doc(doc['id'] as String)
+        .set(doc);
+
+    setUp(() {
+      fakeDb = FakeFirebaseFirestore();
+      // No functions fake on purpose: the read paths must never touch the
+      // callable seam (constructing the default lazily would throw
+      // [core/no-app] here if they did).
+      service = SettlementService.withFirestore(fakeDb);
+    });
+
+    test('watchSettlements streams non-deleted settlements', () async {
+      await seed(_settlementDoc(
+        id: 's1',
+        eventId: 'e1',
+        amountFils: 5000,
+        note: 'Test settlement',
+      ));
+
+      final settlements = await service.watchSettlements('g1', 'e1').first;
+
+      expect(settlements, hasLength(1));
+      expect(settlements.first.note, 'Test settlement');
+      expect(settlements.first.amount, Decimal.parse('5.000'));
+    });
+
+    test('round-trips payer and recipient names', () async {
+      await seed(_settlementDoc(
+        id: 's2',
+        eventId: 'e1',
+        payer: 'uid-ali',
+        recipient: 'uid-sara',
+        payerName: 'Ali',
+        recipientName: 'Sara',
+        amountFils: 7250,
+      ));
+
+      final settlements = await service.watchSettlements('g1', 'e1').first;
+
+      expect(settlements, hasLength(1));
+      expect(settlements.first.payerName, 'Ali');
+      expect(settlements.first.recipientName, 'Sara');
+      expect(settlements.first.amount, Decimal.parse('7.250'));
+    });
+
+    test('filters out legacy soft-deleted settlements (isDeleted=true)', () async {
+      // E3 / B3: settlements are append-only; this pins that the stream still
+      // filters any pre-B3 records that legitimately had isDeleted set.
+      await seed(_settlementDoc(id: 's3', eventId: 'e1', isDeleted: true));
+
+      final settlements = await service.watchSettlements('g1', 'e1').first;
+
+      expect(settlements, isEmpty);
+    });
+
+    test('getSettlements one-shot matches the stream query (#104)', () async {
+      await seed(_settlementDoc(id: 's4', eventId: 'e1', amountFils: 1250));
+      await seed(_settlementDoc(id: 's5', eventId: 'e1', isDeleted: true));
+
+      final settlements = await service.getSettlements('g1', 'e1');
+
+      expect(settlements, hasLength(1));
+      expect(settlements.first.id, 's4');
+    });
+
+    test('fromFirestore round-trip preserves id/amount/note', () async {
+      await seed(_settlementDoc(
+        id: 's6',
+        eventId: 'e1',
+        amountFils: 10500,
+        note: 'Round trip test',
+      ));
+
+      final snap = await fakeDb
+          .collection('groups')
+          .doc('g1')
+          .collection('events')
+          .doc('e1')
+          .collection('settlements')
+          .doc('s6')
+          .get();
+      final restored = Settlement.fromFirestore({...snap.data()!, 'id': snap.id});
+
+      expect(restored.id, 's6');
+      expect(restored.amount, Decimal.parse('10.500'));
+      expect(restored.note, 'Round trip test');
+      expect(restored.isDeleted, isFalse);
     });
   });
 }

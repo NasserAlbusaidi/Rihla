@@ -21,6 +21,8 @@ import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
+import '../../helpers/recording_functions_service.dart';
+
 // #1106: unlike the #719 revalidation tests, these use the REAL
 // groupBalancesProvider — the convergence window must be modeled honestly
 // through per-event family overrides (a never-emitting stream = a stream
@@ -110,6 +112,7 @@ Widget _app(List<Override> overrides) => ProviderScope(
 List<Override> _baseOverrides({
   required Stream<List<Event>> events,
   required FakeFirebaseFirestore fake,
+  RecordingFunctionsService? functions,
 }) => [
   groupDetailProvider(_groupId).overrideWith((_) => Stream.value(_group())),
   groupEventsProvider(_groupId).overrideWith((_) => events),
@@ -129,10 +132,10 @@ List<Override> _baseOverrides({
   )).overrideWith((_) => Stream.value(const <Settlement>[])),
   currentUserIdProvider.overrideWithValue('bob'),
   settlementServiceProvider.overrideWithValue(
-    SettlementService.withFirestore(fake),
+    SettlementService.withFirestore(fake, functionsService: functions),
   ),
   groupSettlementServiceProvider.overrideWithValue(
-    GroupSettlementService.withFirestore(fake),
+    GroupSettlementService.withFirestore(fake, functionsService: functions),
   ),
 ];
 
@@ -222,7 +225,8 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
       await tester.pumpAndSettle();
 
-      // Blocked at confirm: still-syncing notice, zero writes.
+      // Blocked at confirm: still-syncing notice, zero writes (the #1129
+      // callable seam was never invoked — the un-faked service would throw).
       expect(find.textContaining('still syncing'), findsOneWidget);
       expect(await _eventSettlementCount(fake, 'event-1'), 0);
       expect(await _groupSettlementCount(fake), 0);
@@ -233,10 +237,15 @@ void main() {
     '#1106 control: converged basis records normally (no false block)',
     (tester) async {
       final fake = FakeFirebaseFirestore();
+      final functions = RecordingFunctionsService();
 
       await tester.pumpWidget(
         _app(
-          _baseOverrides(events: Stream.value([_event('event-1')]), fake: fake),
+          _baseOverrides(
+            events: Stream.value([_event('event-1')]),
+            fake: fake,
+            functions: functions,
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -246,9 +255,10 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
       await tester.pumpAndSettle();
 
-      // The decomposed single-event leg lands; no still-syncing block.
+      // The decomposed settle-up goes to the server; no still-syncing block.
       expect(find.textContaining('still syncing'), findsNothing);
-      expect(await _eventSettlementCount(fake, 'event-1'), 1);
+      expect(functions.recordSettlementCalls, hasLength(1));
+      expect(functions.lastCall['mode'], 'groupSettleUp');
     },
   );
 }

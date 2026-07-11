@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -17,8 +18,9 @@ import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
-import 'package:safar/features/ledger/services/settlement_service.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
+
+import '../../helpers/recording_functions_service.dart';
 
 const _groupId = 'grp-1';
 
@@ -100,50 +102,11 @@ GroupBalances _balancesSingleEvent({String debtorId = 'uid-bob'}) => (
       memberRawNames: <String, String>{'uid-alice': 'Alice', debtorId: 'Bob'},
     );
 
-// #929: the decompose write is now ONE atomic WriteBatch staged by
-// GroupSettlementService (event legs routed through ITS db), so the old
-// per-service recording wrappers can't observe the event legs anymore. The
-// happy-path tests use REAL services on ONE shared FakeFirebaseFirestore and
-// read the persisted docs back through that fake.
-Future<List<Settlement>> _eventSettlements(
-  FakeFirebaseFirestore fake,
-  String eventId,
-) async {
-  final snap = await fake
-      .collection('groups')
-      .doc(_groupId)
-      .collection('events')
-      .doc(eventId)
-      .collection('settlements')
-      .get();
-  return snap.docs
-      .map((d) => Settlement.fromFirestore({...d.data(), 'id': d.id}))
-      .toList();
-}
-
-Future<List<Settlement>> _groupSettlements(FakeFirebaseFirestore fake) async {
-  final snap = await fake
-      .collection('groups')
-      .doc(_groupId)
-      .collection('settlements')
-      .get();
-  return snap.docs
-      .map((d) => Settlement.fromFirestore({...d.data(), 'id': d.id}))
-      .toList();
-}
-
-// #1140: activity rows are now persisted docs folded INTO the settle-up's
-// atomic batch (a rejected money leg discards them too), NOT separate
-// GroupActivityService.logGroupEvent calls — so the tests read them back from
-// the group's `activity` subcollection through the same shared fake.
-Future<List<Map<String, dynamic>>> _activityDocs(FakeFirebaseFirestore fake) async {
-  final snap = await fake
-      .collection('groups')
-      .doc(_groupId)
-      .collection('activity')
-      .get();
-  return snap.docs.map((d) => d.data()).toList();
-}
+// #1129: the decompose write is ONE recordSettlement server transaction —
+// the client's observable surface is the callable payload, captured by
+// RecordingFunctionsService; the persisted docs, residual, and the ONE
+// group_settlement activity row are pinned by the emulator tables in
+// functions/test/callables/recordSettlement.group.test.ts.
 
 Widget _wrap({
   required GroupBalances balances,
@@ -185,22 +148,20 @@ Future<void> _recordFullAmount(WidgetTester tester) async {
 void main() {
   group('#752 group settle-up decomposes into per-event writes', () {
     testWidgets(
-      'a single-event group settle-up writes an EVENT settlement (reducing the '
-      'event ledger), no residual group doc, and bumps ledgerRevision',
+      'a single-event group settle-up sends ONE groupSettleUp intent whose '
+      'single leg carries the full amount, and bumps ledgerRevision',
       (tester) async {
-        // ONE shared fake injected into BOTH services: the batch routes ALL
-        // legs through GroupSettlementService.db, so a two-fake harness would
-        // read the wrong db (#929 R1 rubric P2).
-        final fake = FakeFirebaseFirestore();
-        final eventService = SettlementService.withFirestore(fake);
-        final groupService = GroupSettlementService.withFirestore(fake);
+        final recordingFunctions = RecordingFunctionsService();
+        final groupService = GroupSettlementService.withFirestore(
+          FakeFirebaseFirestore(),
+          functionsService: recordingFunctions,
+        );
 
         await tester.pumpWidget(_wrap(
           balances: _balancesSingleEvent(),
           events: [_event1],
           group: _group(),
           overrides: [
-            settlementServiceProvider.overrideWithValue(eventService),
             groupSettlementServiceProvider.overrideWithValue(groupService),
           ],
         ));
@@ -212,49 +173,23 @@ void main() {
 
         await _recordFullAmount(tester);
 
-        // The money truth landed in the EVENT subcollection — this is the bug
-        // fix: a group settle-up now reduces the per-event ledger.
-        final eventDocs = await _eventSettlements(fake, 'event-1');
-        expect(eventDocs, hasLength(1));
-        final call = eventDocs.single;
-        expect(call.tripId, 'event-1');
-        expect(call.payerParticipantId, 'uid-bob');
-        expect(call.recipientParticipantId, 'uid-alice');
-        expect(call.amount, Decimal.parse('7.750'));
-        expect(call.currency, 'OMR');
-        expect(call.groupSettleUpId, isNotNull);
+        // The whole debt is attributable to event-1 → ONE leg carrying the
+        // full amount; the server writes it into the EVENT subcollection
+        // (the #752 fix), derives residual 0 (no group doc), and authors the
+        // ONE gstl_ activity row — all emulator-pinned.
+        expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+        final call = recordingFunctions.lastCall;
+        expect(call['mode'], 'groupSettleUp');
+        expect(call['payerParticipantId'], 'uid-bob');
+        expect(call['recipientParticipantId'], 'uid-alice');
+        expect(call['currency'], 'OMR');
+        expect(call['amountFils'], 7750);
+        expect(call['legs'], [
+          {'eventId': 'event-1', 'amountFils': 7750},
+        ]);
 
-        // residual == 0 → NO group settlement doc.
-        expect(await _groupSettlements(fake), isEmpty);
-
-        // Activity persisted ONCE for the whole logical settle-up, amount = A.
-        // #1140: the row is folded into the SAME atomic batch (id
-        // `gstl_<groupSettleUpId>`), so it is a doc in the group's activity
-        // subcollection — a rejected money leg would discard it too.
-        // #831: the decomposed event-settlement SLICES emit NO event_settlement
-        // rows — they are staged as bare settlement docs in the batch, so the
-        // activity collection holds exactly the one aggregate group_settlement.
-        final activityDocs = await _activityDocs(fake);
-        expect(activityDocs, hasLength(1));
-        expect(activityDocs.single['type'], 'group_settlement');
-        expect(activityDocs.single['id'], startsWith('gstl_'));
-        expect(
-          activityDocs.where((d) => d['type'] == 'event_settlement'),
-          isEmpty,
-        );
-
-        // #818 Wave 3.1: direction keys stamped alongside the legacy shape —
-        // cardinality stays exactly 1 (this spec only widens the metadata map).
-        final metadata = activityDocs.single['metadata'] as Map<String, dynamic>;
-        expect(metadata['amount'], '7.75');
-        expect(metadata['fromUserId'], 'uid-bob');
-        expect(metadata['toUserId'], 'uid-alice');
-        expect(metadata['fromName'], isA<String>());
-        expect(metadata['fromName'], isNotEmpty);
-        expect(metadata['toName'], isA<String>());
-        expect(metadata['toName'], isNotEmpty);
-
-        // Per-event write happened → home one-shot must be refreshed.
+        // Event-scope legs were written → home one-shot must be refreshed
+        // (the recording fake's default result says shouldBumpLedgerRevision).
         expect(container.read(ledgerRevisionProvider), 1);
 
         expect(find.text('Settlement recorded.'), findsOneWidget);
@@ -262,11 +197,12 @@ void main() {
     );
 
     testWidgets(
-      'a settle-up involving a NON-member (departed #249) falls back to a single '
-      'group settlement — no partial-persist of event writes',
+      'a settle-up involving a NON-member (departed #249) defers to the '
+      'SERVER: intent sent, transaction rejects atomically, denied copy shown',
       (tester) async {
-        // Charlie has a balance but is NOT in group.memberIds → the residual
-        // group write would be permission-denied, so decompose must not run.
+        // Charlie has a balance but is NOT in group.memberIds. Pre-#1129 the
+        // client pre-fenced this (bothLiveMembers) to avoid a partial-persist;
+        // the single server transaction made that fence obsolete (#720).
         final balances = (
           balances: <String, List<UserBalance>>{
             'OMR': [
@@ -306,9 +242,18 @@ void main() {
           },
         );
 
-        final fake = FakeFirebaseFirestore();
-        final eventService = SettlementService.withFirestore(fake);
-        final groupService = GroupSettlementService.withFirestore(fake);
+        final recordingFunctions = RecordingFunctionsService()
+          // #1144 server-side: the transaction rejects a non-member party
+          // atomically — nothing persists, no partial event legs.
+          ..error = FirebaseFunctionsException(
+            message: 'party not member',
+            code: 'failed-precondition',
+            details: const {'kind': 'party-not-member'},
+          );
+        final groupService = GroupSettlementService.withFirestore(
+          FakeFirebaseFirestore(),
+          functionsService: recordingFunctions,
+        );
 
         await tester.pumpWidget(_wrap(
           balances: balances,
@@ -316,7 +261,6 @@ void main() {
           group: _group(memberIds: const ['uid-alice', 'uid-bob']), // charlie absent
           currentUid: 'uid-charlie',
           overrides: [
-            settlementServiceProvider.overrideWithValue(eventService),
             groupSettlementServiceProvider.overrideWithValue(groupService),
           ],
         ));
@@ -324,12 +268,21 @@ void main() {
 
         await _recordFullAmount(tester);
 
-        // No event writes (would orphan if the residual were denied).
-        expect(await _eventSettlements(fake, 'event-1'), isEmpty);
-        // Fell back to today's single atomic group settlement.
-        final groupDocs = await _groupSettlements(fake);
-        expect(groupDocs, hasLength(1));
-        expect(groupDocs.single.amount, Decimal.parse('7.750'));
+        // #720 defer-to-server: the client no longer pre-fences membership —
+        // the decomposed intent IS sent, and the SERVER transaction rejects it
+        // in toto (no partial-persist possible in one transaction).
+        expect(recordingFunctions.recordSettlementCalls, hasLength(1));
+        expect(recordingFunctions.lastCall['mode'], 'groupSettleUp');
+        // The rejection maps to the denied copy (party-not-member is authz,
+        // not staleness), and no success copy shows.
+        expect(
+          find.text(
+            "This settlement wasn't allowed. Please check the details and "
+            'try again.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Settlement recorded.'), findsNothing);
       },
     );
   });

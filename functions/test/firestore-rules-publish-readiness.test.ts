@@ -1664,10 +1664,10 @@ describe('Publish readiness Firestore rules', () => {
       }));
     });
 
-    test('closed event STILL ACCEPTS settlement create (settlements stay live)', async () => {
+    test('#1129 closed-event settlement create is DENIED like any client settlement create (post-close acceptance lives in recordSettlement)', async () => {
       await updateSeedEvent({ isClosed: true, closedAt: new Date(), closedBy: 'owner' });
       const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setClosed').set(
+      await assertFails(member.doc('groups/g1/events/e1/settlements/setClosed').set(
         validSettlement({ id: 'setClosed' }),
       ));
     });
@@ -1770,9 +1770,8 @@ describe('Publish readiness Firestore rules', () => {
     await assertSucceeds(member.doc('groups/g1/events/e1/expenses/expCap').set(
       validExpense({ id: 'expCap', amountFils: 9007199254740991 }),
     ));
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setCap').set(
-      validSettlement({ id: 'setCap', amountFils: 9007199254740991 }),
-    ));
+    // #1129: the settlement half of this pin moved into recordSettlement's
+    // own input validation (client settlement creates are denied outright).
   });
 
   test('expenses require valid participant and positive amount', async () => {
@@ -2406,39 +2405,23 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('event settlements and group settlements validate participants and amount', async () => {
+  test('#1129 client settlement creates are DENIED in both scopes with fully-VALID payloads (callable-only)', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/set1').set(validSettlement()));
-    await assertFails(member.doc('groups/g1/events/e1/settlements/set2').set(
-      validSettlement({ id: 'set2', recipientParticipantId: 'eve' }),
-    ));
-    await assertSucceeds(member.doc('groups/g1/settlements/gset1').set(validGroupSettlement()));
-    await assertFails(member.doc('groups/g1/settlements/gset2').set(
-      validGroupSettlement({ id: 'gset2', amountFils: -1 }),
-    ));
+    await assertFails(member.doc('groups/g1/events/e1/settlements/set1').set(validSettlement()));
+    await assertFails(member.doc('groups/g1/settlements/gset1').set(validGroupSettlement()));
   });
 
-  test('new settlement creates with createdBy stamps still succeed', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setB3').set(
-      validSettlement({ id: 'setB3', createdBy: 'member' }),
-    ));
-    await assertSucceeds(member.doc('groups/g1/settlements/gsetB3').set(
-      validGroupSettlement({ id: 'gsetB3', createdBy: 'member' }),
-    ));
-  });
-
-  describe('#752 group-settlement decompose: event-settlement authz + groupSettleUpId link', () => {
-    // validEventSettlementCreate now gates on isGroupMember (was
-    // isEventParticipant), so a group-level settle-up decomposed into per-event
-    // docs — written by a group member who is NOT a participant of the event —
-    // is accepted. The counterparties STILL must be event participants.
-    test('group member who is NOT an event participant CAN create an event settlement between two participants', async () => {
-      await addGroupMember('peer', 'Peer'); // peer ∈ g1.memberIds, NOT in eRelax.participantIds
+  describe('#1129 settlement create denial (formerly the #752 client authz surface)', () => {
+    // The #752 relaxations (isGroupMember writer, groupSettleUpId link shape)
+    // moved INTO the recordSettlement callable, which mirrors them server-side
+    // (functions/test/callables/recordSettlement.*.test.ts). Rules-side, every
+    // client create is denied — member, non-participant peer, and stranger
+    // alike — whatever the payload carries.
+    test('a group-member peer (the old #752 relaxation) can no longer client-create an event settlement', async () => {
+      await addGroupMember('peer', 'Peer');
       await seedEvent('eRelax', { participantIds: ['owner', 'member'] });
       const peer = testEnv.authenticatedContext('peer').firestore();
-      await assertSucceeds(peer.doc('groups/g1/events/eRelax/settlements/setRelax').set(
+      await assertFails(peer.doc('groups/g1/events/eRelax/settlements/setRelax').set(
         validSettlement({
           id: 'setRelax',
           eventId: 'eRelax',
@@ -2465,50 +2448,10 @@ describe('Publish readiness Firestore rules', () => {
       ));
     });
 
-    test('counterparties must STILL be event participants (party gate unchanged)', async () => {
-      await addGroupMember('peer', 'Peer');
-      await seedEvent('eRelax', { participantIds: ['owner', 'member'] });
-      const peer = testEnv.authenticatedContext('peer').firestore();
-      // peer is a group member but NOT an eRelax participant — using it as a
-      // counterparty must still fail.
-      await assertFails(peer.doc('groups/g1/events/eRelax/settlements/setBad').set(
-        validSettlement({
-          id: 'setBad',
-          eventId: 'eRelax',
-          createdBy: 'peer',
-          payerParticipantId: 'owner',
-          recipientParticipantId: 'peer', // NOT an eRelax participant
-        }),
-      ));
-    });
-
-    test('event settlement carrying a string groupSettleUpId is accepted', async () => {
+    test('a groupSettleUpId-tagged (decompose-shaped) client leg is denied like any other create', async () => {
       const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setLink').set(
+      await assertFails(member.doc('groups/g1/events/e1/settlements/setLink').set(
         validSettlement({ id: 'setLink', groupSettleUpId: 'su-abc' }),
-      ));
-    });
-
-    test('event settlement carrying a non-string groupSettleUpId is rejected', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertFails(member.doc('groups/g1/events/e1/settlements/setLinkBad').set(
-        validSettlement({ id: 'setLinkBad', groupSettleUpId: 123 }),
-      ));
-    });
-
-    test('group settlement carrying a string groupSettleUpId is accepted', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/settlements/gsetLink').set(
-        validGroupSettlement({ id: 'gsetLink', groupSettleUpId: 'su-xyz' }),
-      ));
-    });
-
-    test('settlement with the groupSettleUpId key omitted is still accepted', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      // validSettlement() carries NO groupSettleUpId key — pins the
-      // `!('groupSettleUpId' in data) || ...` guard against a direct-access regression.
-      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNoLink').set(
-        validSettlement({ id: 'setNoLink' }),
       ));
     });
   });
@@ -2539,14 +2482,6 @@ describe('Publish readiness Firestore rules', () => {
       isDeleted: true,
       deletedAt: new Date().toISOString(),
     }));
-  });
-
-  test('event settlement create without createdBy is rejected', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setMissingCreator').set(
-      withoutField(validSettlement({ id: 'setMissingCreator' }), 'createdBy'),
-    ));
   });
 
   test('event settlement creator cannot delete own record', async () => {
@@ -2584,14 +2519,6 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  test('group settlement create without createdBy is rejected', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-
-    await assertFails(member.doc('groups/g1/settlements/gsetMissingCreator').set(
-      withoutField(validGroupSettlement({ id: 'gsetMissingCreator' }), 'createdBy'),
-    ));
-  });
-
   test('group settlement update cannot mutate createdBy', async () => {
     await seedGroupSettlement();
     const owner = testEnv.authenticatedContext('owner').firestore();
@@ -2606,164 +2533,6 @@ describe('Publish readiness Firestore rules', () => {
     const owner = testEnv.authenticatedContext('owner').firestore();
 
     await assertFails(owner.doc('groups/g1/settlements/gset1').delete());
-  });
-
-  // --- #48 shared-settlement-core characterization ---
-  // These lock the 9 predicates shared by validEventSettlementBase and
-  // validGroupSettlementBase. They must be green BEFORE the validSettlementCore
-  // extraction (current behavior) and stay green AFTER (preservation proof).
-  // Each negative doc is otherwise-valid so the only failing predicate is the
-  // one under test (assertFails reports permission-denied, not the reason).
-
-  test('settlement rejects non-positive amount in both scopes', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setZero').set(
-      validSettlement({ id: 'setZero', amountFils: 0 }),
-    ));
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setNeg').set(
-      validSettlement({ id: 'setNeg', amountFils: -1 }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetZero').set(
-      validGroupSettlement({ id: 'gsetZero', amountFils: 0 }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetNeg').set(
-      validGroupSettlement({ id: 'gsetNeg', amountFils: -1 }),
-    ));
-  });
-
-  test('settlement rejects invalid currency type and length in both scopes', async () => {
-    // validCurrency (rules:48) only checks `is string && size() == 3`, so a bogus
-    // 3-letter code like 'ZZZ' PASSES by design (see #48 plan, Gate [P2]). We
-    // assert only the two real rejections: non-string, and wrong length.
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setCurType').set(
-      validSettlement({ id: 'setCurType', currency: 123 }),
-    ));
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setCurLen').set(
-      validSettlement({ id: 'setCurLen', currency: 'US' }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetCurType').set(
-      validGroupSettlement({ id: 'gsetCurType', currency: 123 }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetCurLen').set(
-      validGroupSettlement({ id: 'gsetCurLen', currency: 'EURO' }),
-    ));
-  });
-
-  test('settlement rejects payer equal to recipient in both scopes', async () => {
-    // 'owner' is a valid participant (event) and member (group) in both scopes,
-    // so the only failing predicate is payerParticipantId != recipientParticipantId.
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setSelf').set(
-      validSettlement({ id: 'setSelf', payerParticipantId: 'owner', recipientParticipantId: 'owner' }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetSelf').set(
-      validGroupSettlement({ id: 'gsetSelf', payerParticipantId: 'owner', recipientParticipantId: 'owner' }),
-    ));
-  });
-
-  test('settlement rejects non-string note in both scopes', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setNote').set(
-      validSettlement({ id: 'setNote', note: 123 }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetNote').set(
-      validGroupSettlement({ id: 'gsetNote', note: 123 }),
-    ));
-  });
-
-  test('settlement rejects missing settledAt in both scopes', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setNoSettledAt').set(
-      withoutField(validSettlement({ id: 'setNoSettledAt' }), 'settledAt'),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetNoSettledAt').set(
-      withoutField(validGroupSettlement({ id: 'gsetNoSettledAt' }), 'settledAt'),
-    ));
-  });
-
-  // --- #48 scope-shape characterization ---
-  // These stay OUT of validSettlementCore but are touched by the edit. They prove
-  // keys().hasOnly and the group-only predicates remain in the per-scope validators.
-
-  test('settlement rejects unknown extra key in both scopes', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setExtra').set(
-      validSettlement({ id: 'setExtra', surprise: 'x' }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetExtra').set(
-      validGroupSettlement({ id: 'gsetExtra', surprise: 'x' }),
-    ));
-  });
-
-  test('group settlement rejects eventId not equal to groupId (sentinel lock for #71)', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/settlements/gsetBadEventId').set(
-      validGroupSettlement({ id: 'gsetBadEventId', eventId: 'e1' }),
-    ));
-  });
-
-  test('group settlement rejects scope other than group', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/settlements/gsetBadScope').set(
-      validGroupSettlement({ id: 'gsetBadScope', scope: 'personal' }),
-    ));
-  });
-
-  test('group settlement rejects invalid payer and recipient display names', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/settlements/gsetCtrlPayer').set(
-      validGroupSettlement({ id: 'gsetCtrlPayer', payerName: 'Bad\nName' }),
-    ));
-    await assertFails(member.doc('groups/g1/settlements/gsetLongRecipient').set(
-      validGroupSettlement({ id: 'gsetLongRecipient', recipientName: 'A'.repeat(33) }),
-    ));
-  });
-
-  // --- #185 event-settlement display-name parity ---
-  // validEventSettlementBase omitted payerName/recipientName from hasOnly while
-  // the client writes them on every event settlement -> PERMISSION_DENIED, event
-  // settle-up broken. These lock the event rule to the group rule's name handling.
-
-  test('event settlement create accepts the full client key-set incl payer/recipient names', async () => {
-    // Regression lock for #185: built from settlement_service.dart addSettlement's
-    // exact key-set, independent of the validSettlement() builder so a future
-    // builder refactor cannot silently drop this coverage.
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNames').set({
-      id: 'setNames',
-      eventId: 'e1',
-      payerParticipantId: 'member',
-      recipientParticipantId: 'owner',
-      payerName: 'Member',
-      recipientName: 'Owner',
-      amountFils: 5000,
-      currency: 'OMR',
-      note: null,
-      isDeleted: false,
-      deletedAt: null,
-      settledAt: new Date().toISOString(),
-      createdBy: 'member',
-    }));
-  });
-
-  test('event settlement accepts null payer and recipient display names', async () => {
-    // Pre-name-field docs and name-less rows render as 'Someone'; null must stay
-    // allowed via isValidNullableDisplayName.
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNullNames').set(
-      validSettlement({ id: 'setNullNames', payerName: null, recipientName: null }),
-    ));
-  });
-
-  test('event settlement rejects invalid payer and recipient display names', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setCtrlPayer').set(
-      validSettlement({ id: 'setCtrlPayer', payerName: 'Bad\nName' }),
-    ));
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setLongRecipient').set(
-      validSettlement({ id: 'setLongRecipient', recipientName: 'A'.repeat(33) }),
-    ));
   });
 
   // ===========================================================================
@@ -2881,74 +2650,6 @@ describe('Publish readiness Firestore rules', () => {
   // and every group is OMR); Phase 2 MUST move settle-up off the 'OMR' hardcode
   // to group.currency or non-OMR groups' settle-up writes get PERMISSION_DENIED.
   // ===========================================================================
-  test('#193 event settlement with a supported currency is allowed', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setOmr').set(
-      validSettlement({ id: 'setOmr', currency: 'OMR' }),
-    ));
-  });
-
-  test('#193 event settlement with an unsupported 3-char currency is denied', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setXyz').set(
-      validSettlement({ id: 'setXyz', currency: 'XYZ' }),
-    ));
-  });
-
-  test('#193 event settlement with a lowercase currency code is denied', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setLower').set(
-      validSettlement({ id: 'setLower', currency: 'omr' }),
-    ));
-  });
-
-  test('#193 group settlement with currency matching the group currency is allowed', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/settlements/gsetMatch').set(
-      validGroupSettlement({ id: 'gsetMatch', currency: 'OMR' }),
-    ));
-  });
-
-  test('#382 group settlement with a supported-but-divergent currency is allowed', async () => {
-    // Group g1 currency is OMR; USD is in the allow-list. Post-PR-6 the
-    // group-settlement currency==group.currency equality is gone, so a divergent
-    // supported code is accepted (the stepped-settle UI only offers non-zero
-    // buckets client-side; the server validates a supported code, L3).
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/settlements/gsetUsd').set(
-      validGroupSettlement({ id: 'gsetUsd', currency: 'USD' }),
-    ));
-  });
-
-  test('#382 group settlement with an unsupported currency code is still denied (validSettlementCore floor)', async () => {
-    // Divergent AND invalid: XYZ is not in the allow-list, so validSettlementCore
-    // rejects it even after the group.currency equality is removed.
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/settlements/gsetXyz').set(
-      validGroupSettlement({ id: 'gsetXyz', currency: 'XYZ' }),
-    ));
-  });
-
-  test('#382 event settlement with a divergent supported currency is allowed', async () => {
-    // #382 PR-6: event settlement currency need only be a supported code, not
-    // equal to the owning group's currency (g1 is OMR; USD is allow-listed). The
-    // currencyMatchesGroup equality in validEventSettlementBase is deleted; the
-    // validSettlementCore floor is the sole currency gate.
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setUsd').set(
-      validSettlement({ id: 'setUsd', currency: 'USD' }),
-    ));
-  });
-
-  test('#382 event settlement with an unsupported currency code is still denied (validSettlementCore floor)', async () => {
-    // Divergent AND invalid: XYZ is not in the allow-list, so validSettlementCore
-    // rejects it even after the currencyMatchesGroup equality is removed.
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setXyzDiv').set(
-      validSettlement({ id: 'setXyzDiv', currency: 'XYZ' }),
-    ));
-  });
-
   // ===========================================================================
   // #194 — free text (note/description/categoryId/receiptUrl/subGroupId):
   // bounded (<=280) + control-char-free. Enforced in create wrappers
@@ -2977,43 +2678,22 @@ describe('Publish readiness Firestore rules', () => {
     ));
   });
 
-  test('#194 event settlement create with a control character in note is denied', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setNote').set(
-      validSettlement({ id: 'setNote', note: 'paid\nback' }),
-    ));
-  });
-
-  test('#194 event settlement create with a note over 280 chars is denied', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/events/e1/settlements/setNoteLong').set(
-      validSettlement({ id: 'setNoteLong', note: 'a'.repeat(281) }),
-    ));
-  });
-
-  test('#194 group settlement create with a control character in note is denied', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertFails(member.doc('groups/g1/settlements/gsetNote').set(
-      validGroupSettlement({ id: 'gsetNote', note: 'a\tb' }),
-    ));
-  });
-
   // ===========================================================================
   // #889 — correction marker foundation: deny-by-omission on
   // `correctionOfSettlementId` (no change to the hasOnly() key lists — pinning
   // the existing denial), and the tightened non-blank `groupSettleUpId` guard.
   // ===========================================================================
   describe('#889 correction marker foundation', () => {
-    test('unmarked event settlement create remains allowed (baseline, no regression)', async () => {
+    test('#1129 unmarked event settlement create is now ALSO denied (callable-only superseded the baseline)', async () => {
       const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setUnmarked').set(
+      await assertFails(member.doc('groups/g1/events/e1/settlements/setUnmarked').set(
         validSettlement({ id: 'setUnmarked' }),
       ));
     });
 
-    test('unmarked group settlement create remains allowed (baseline, no regression)', async () => {
+    test('#1129 unmarked group settlement create is now ALSO denied (callable-only superseded the baseline)', async () => {
       const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/settlements/gsetUnmarked').set(
+      await assertFails(member.doc('groups/g1/settlements/gsetUnmarked').set(
         validGroupSettlement({ id: 'gsetUnmarked' }),
       ));
     });
@@ -3032,33 +2712,9 @@ describe('Publish readiness Firestore rules', () => {
       ));
     });
 
-    test('blank groupSettleUpId is denied on an event settlement create', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertFails(member.doc('groups/g1/events/e1/settlements/setBlankLink').set(
-        validSettlement({ id: 'setBlankLink', groupSettleUpId: '' }),
-      ));
-    });
 
-    test('whitespace-only groupSettleUpId is denied on an event settlement create', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertFails(member.doc('groups/g1/events/e1/settlements/setWsLink').set(
-        validSettlement({ id: 'setWsLink', groupSettleUpId: '   ' }),
-      ));
-    });
 
-    test('blank groupSettleUpId is denied on a group settlement create', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertFails(member.doc('groups/g1/settlements/gsetBlankLink').set(
-        validGroupSettlement({ id: 'gsetBlankLink', groupSettleUpId: '' }),
-      ));
-    });
 
-    test('a non-empty groupSettleUpId stays allowed (no regression on #752)', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/setNonBlankLink').set(
-        validSettlement({ id: 'setNonBlankLink', groupSettleUpId: 'su-real' }),
-      ));
-    });
   });
 
   test('#194 expense update that changes description to a control-char value is denied', async () => {
@@ -3154,9 +2810,9 @@ describe('Publish readiness Firestore rules', () => {
     };
   }
 
-  test('#808/#831 each client-written group activity type is accepted (event_created/event_deleted/group_settlement/member_joined/event_settlement)', async () => {
+  test('#808/#1129 each client-written group activity type is accepted (event_created/event_deleted/member_joined — settlement types are server-only now)', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
-    for (const type of ['event_created', 'event_deleted', 'group_settlement', 'member_joined', 'event_settlement']) {
+    for (const type of ['event_created', 'event_deleted', 'member_joined']) {
       const id = `ga-ok-${type}`;
       await assertSucceeds(
         member.doc(`groups/g1/activity/${id}`).set(validGroupActivity({ id, type })),
@@ -3164,34 +2820,10 @@ describe('Publish readiness Firestore rules', () => {
     }
   });
 
-  // #831 — the event settle-up client write's exact metadata shape (direction
-  // keys typed by #814, eventId opaque by design).
-  test('#831 event_settlement accepts the direction+event metadata shape', async () => {
-    const member = testEnv.authenticatedContext('member').firestore();
-    await assertSucceeds(
-      member.doc('groups/g1/activity/ga-831-shape').set(
-        validGroupActivity({
-          id: 'ga-831-shape',
-          type: 'event_settlement',
-          description: 'settled OMR 10.500 with Owner',
-          metadata: {
-            amountFils: 10500,
-            currency: 'OMR',
-            fromUserId: 'member',
-            toUserId: 'owner',
-            fromName: 'Member',
-            toName: 'Owner',
-            eventId: 'e1',
-            eventName: 'Trip',
-          },
-        }),
-      ),
-    );
-  });
 
   test('#808 a client cannot forge server-only or unknown group activity types', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
-    for (const type of ['expense_added', 'expense_edited', 'expense_deleted', 'member_left', 'totally_made_up']) {
+    for (const type of ['expense_added', 'expense_edited', 'expense_deleted', 'member_left', 'event_settlement', 'group_settlement', 'totally_made_up']) {
       const id = `ga-forge-${type}`;
       await assertFails(
         member.doc(`groups/g1/activity/${id}`).set(validGroupActivity({ id, type })),
@@ -3225,7 +2857,7 @@ describe('Publish readiness Firestore rules', () => {
       const id = `ga-814-amountfils-${String(amountFils)}`;
       await assertFails(
         member.doc(`groups/g1/activity/${id}`).set(
-          validGroupActivity({ id, type: 'group_settlement', metadata: { amountFils } }),
+          validGroupActivity({ id, type: 'event_created', metadata: { amountFils } }),
         ),
       );
     }
@@ -3237,7 +2869,7 @@ describe('Publish readiness Firestore rules', () => {
       member.doc('groups/g1/activity/ga-814-currency').set(
         validGroupActivity({
           id: 'ga-814-currency',
-          type: 'group_settlement',
+          type: 'event_created',
           metadata: { amountFils: 10500, currency: 'ZZZ' },
         }),
       ),
@@ -3248,7 +2880,7 @@ describe('Publish readiness Firestore rules', () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(
       member.doc('groups/g1/activity/ga-814-amount').set(
-        validGroupActivity({ id: 'ga-814-amount', type: 'group_settlement', metadata: { amount: 42 } }),
+        validGroupActivity({ id: 'ga-814-amount', type: 'event_created', metadata: { amount: 42 } }),
       ),
     );
   });
@@ -3286,24 +2918,24 @@ describe('Publish readiness Firestore rules', () => {
     const member = testEnv.authenticatedContext('member').firestore();
     await assertFails(
       member.doc('groups/g1/activity/ga-818-forge-recipientid').set(
-        validGroupActivity({ id: 'ga-818-forge-recipientid', type: 'group_settlement', metadata: { recipientId: 42 } }),
+        validGroupActivity({ id: 'ga-818-forge-recipientid', type: 'event_created', metadata: { recipientId: 42 } }),
       ),
     );
     await assertFails(
       member.doc('groups/g1/activity/ga-818-forge-fromuserid').set(
-        validGroupActivity({ id: 'ga-818-forge-fromuserid', type: 'group_settlement', metadata: { fromUserId: 42 } }),
+        validGroupActivity({ id: 'ga-818-forge-fromuserid', type: 'event_created', metadata: { fromUserId: 42 } }),
       ),
     );
     await assertFails(
       member.doc('groups/g1/activity/ga-818-forge-touserid').set(
-        validGroupActivity({ id: 'ga-818-forge-touserid', type: 'group_settlement', metadata: { toUserId: 42 } }),
+        validGroupActivity({ id: 'ga-818-forge-touserid', type: 'event_created', metadata: { toUserId: 42 } }),
       ),
     );
     await assertFails(
       member.doc('groups/g1/activity/ga-818-forge-fromname').set(
         validGroupActivity({
           id: 'ga-818-forge-fromname',
-          type: 'group_settlement',
+          type: 'event_created',
           metadata: { fromUserId: 'member', toUserId: 'owner', fromName: 5, toName: 'Owner' },
         }),
       ),
@@ -3312,7 +2944,7 @@ describe('Publish readiness Firestore rules', () => {
       member.doc('groups/g1/activity/ga-818-forge-toname').set(
         validGroupActivity({
           id: 'ga-818-forge-toname',
-          type: 'group_settlement',
+          type: 'event_created',
           metadata: { fromUserId: 'member', toUserId: 'owner', fromName: 'Member', toName: 5 },
         }),
       ),
@@ -3327,18 +2959,21 @@ describe('Publish readiness Firestore rules', () => {
     }
     await assertFails(
       member.doc('groups/g1/activity/ga-814-toobig').set(
-        validGroupActivity({ id: 'ga-814-toobig', type: 'group_settlement', metadata }),
+        validGroupActivity({ id: 'ga-814-toobig', type: 'event_created', metadata }),
       ),
     );
   });
 
   test('#814 legitimate client metadata shapes still succeed', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
+    // #1129: settlement-typed rows are server-only now; the settlement
+    // metadata SHAPES stay client-floor-validated via a client-writable type
+    // (validActivityMetadata is type-agnostic), so the #814/#818 value floors
+    // keep their positive anchors without a settlement type.
     await assertSucceeds(
       member.doc('groups/g1/activity/ga-814-ok-settle').set(
         validGroupActivity({
           id: 'ga-814-ok-settle',
-          type: 'group_settlement',
           metadata: { amount: '12.500', recipientId: 'member', currency: 'OMR' },
         }),
       ),
@@ -3349,7 +2984,6 @@ describe('Publish readiness Firestore rules', () => {
       member.doc('groups/g1/activity/ga-818-ok-directional').set(
         validGroupActivity({
           id: 'ga-818-ok-directional',
-          type: 'group_settlement',
           metadata: {
             amount: '12.500',
             recipientId: 'member',
@@ -3519,27 +3153,7 @@ describe('Publish readiness Firestore rules', () => {
       await assertSucceeds(write());
     });
 
-    test('fence blocks event settlement CREATE; lifting restores it', async () => {
-      await engageDepartureFence();
-      const member = testEnv.authenticatedContext('member').firestore();
-      const write = () => member.doc('groups/g1/events/e1/settlements/setFence').set(
-        validSettlement({ id: 'setFence' }),
-      );
-      await assertFails(write());
-      await liftDepartureFence();
-      await assertSucceeds(write());
-    });
 
-    test('fence blocks group settlement CREATE; lifting restores it', async () => {
-      await engageDepartureFence();
-      const member = testEnv.authenticatedContext('member').firestore();
-      const write = () => member.doc('groups/g1/settlements/gsetFence').set(
-        validGroupSettlement({ id: 'gsetFence' }),
-      );
-      await assertFails(write());
-      await liftDepartureFence();
-      await assertSucceeds(write());
-    });
 
     test('fence blocks event light UPDATE; lifting restores it', async () => {
       await engageDepartureFence();
@@ -3717,13 +3331,6 @@ describe('Publish readiness Firestore rules', () => {
       }));
     });
 
-    test('9. event-settlement CREATE with departed party → denied', async () => {
-      await seedDepartedRosterEvent();
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertFails(member.doc('groups/g1/events/e2/settlements/s1').set(
-        validSettlement({ id: 's1', eventId: 'e2', recipientParticipantId: D }),
-      ));
-    });
 
     // --- allow: everything the policy must NOT break ---
 
@@ -3755,20 +3362,7 @@ describe('Publish readiness Firestore rules', () => {
       ));
     });
 
-    test('13. event settlement with ghost (tombstoned) recipient → allowed (debt-cleanup path)', async () => {
-      await seedGhostEvent();
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e3/settlements/s13').set(
-        validSettlement({ id: 's13', eventId: 'e3', recipientParticipantId: T }),
-      ));
-    });
 
-    test('14. event settlement between two live members → allowed', async () => {
-      const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e1/settlements/s14').set(
-        validSettlement({ id: 's14' }),
-      ));
-    });
 
     test('15. shadow uuid as payer and split key → allowed (shadows are current members)', async () => {
       await seedShadowEvent();
@@ -3999,10 +3593,16 @@ describe('Publish readiness Firestore rules', () => {
       ));
     });
 
-    test('R5-11. event settlement with the ghost as recipient → allowed (memberIds gate unchanged — debt cleanup)', async () => {
+    test('R5-11. event settlement with the ghost as recipient → DENIED like every client settlement create (#1129); ghost settleability lives in the callable', async () => {
+      // Pre-#1129 this pinned "ghosts stay settleable" at the RULES layer
+      // (memberIds gate — debt cleanup). Settlement creates are now
+      // callable-only, so the rules deny this for everyone; the ghost
+      // (tombstone) settleability property is pinned server-side by the
+      // recordSettlement emulator table ("tombstone ghost in both → allowed",
+      // functions/test/callables/recordSettlement.event.test.ts).
       await seedActivatedGhostGroup();
       const member = testEnv.authenticatedContext('member').firestore();
-      await assertSucceeds(member.doc('groups/g1/events/e5/settlements/rs11').set(
+      await assertFails(member.doc('groups/g1/events/e5/settlements/rs11').set(
         validSettlement({
           id: 'rs11', eventId: 'e5', createdBy: 'member',
           payerParticipantId: 'member', recipientParticipantId: T,

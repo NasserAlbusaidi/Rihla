@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +27,7 @@ import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/correct_settlement_result.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
+import 'package:safar/features/ledger/models/record_settlement_result.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
 import 'package:safar/features/ledger/providers/expense_provider.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
@@ -268,20 +269,26 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
   _RecordingGroupSettlementService({
     this.throwOnAdd = false,
     this.errorToThrow,
-    this.neverAck = false,
   }) : super.withFirestore(FakeFirebaseFirestore());
 
   final bool throwOnAdd;
 
-  /// #412: when true, [addGroupSettlement] records the call but its future
-  /// never completes — the real SDK's offline behavior (server ack only
-  /// arrives on reconnect), which FakeFirebaseFirestore cannot model.
-  final bool neverAck;
-
   /// When set, [addGroupSettlement] throws this exact error (e.g. a
-  /// [FirebaseException] with a specific code) so #360's error mapping can be
-  /// exercised per cause.
+  /// [FirebaseFunctionsException] with a specific code) so #360's error
+  /// mapping can be exercised per cause.
   final Object? errorToThrow;
+
+  /// The callable result handed back to the screen. Defaults to the server's
+  /// pure-group-write shape (`shouldBumpLedgerRevision: false` — group
+  /// settlements are live-watched, L6).
+  RecordSettlementResult result = const RecordSettlementResult(
+    alreadyRecorded: false,
+    eventScopeWrites: 0,
+    groupScopeWrites: 1,
+    shouldBumpLedgerRevision: false,
+    settledAt: '2026-04-01T00:00:00.000Z',
+  );
+
   final addCalls =
       <
         ({
@@ -289,41 +296,30 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
           String payerParticipantId,
           String recipientParticipantId,
           Decimal amount,
-          String createdBy,
           String currency,
+          int observedPairEpoch,
           String? note,
           String? payerName,
           String? recipientName,
-          // #1140: the group_settlement activity row is co-batched INTO
-          // addGroupSettlement — the screen passes it via these params instead
-          // of a separate GroupActivityService.logGroupEvent call. Capturing
-          // them here is how the screen tests now assert the activity content.
-          String? activityId,
-          String? activityActorId,
-          String? activityActorName,
-          String? activityDescription,
-          Map<String, dynamic>? activityMetadata,
         })
       >[];
 
+  /// Routing tripwire: `_balancesOwed` renders with an EMPTY events list, so
+  /// eventOrder is empty → decompose.perEvent is empty → these tests must hit
+  /// the mode-'group' fallback, never the decompose path.
+  final decomposedCalls = <Decimal>[];
+
   @override
-  Future<Settlement> addGroupSettlement({
-    required String id,
+  Future<RecordSettlementResult> addGroupSettlement({
     required String groupId,
     required String payerParticipantId,
     required String recipientParticipantId,
     required Decimal amount,
-    required String createdBy,
-    String currency = 'OMR',
+    required String currency,
+    required int observedPairEpoch,
     String? note,
     String? payerName,
     String? recipientName,
-    String? groupSettleUpId,
-    String? activityId,
-    String? activityActorId,
-    String? activityActorName,
-    String? activityDescription,
-    Map<String, dynamic>? activityMetadata,
   }) async {
     if (errorToThrow != null) {
       throw errorToThrow!;
@@ -336,32 +332,30 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
       payerParticipantId: payerParticipantId,
       recipientParticipantId: recipientParticipantId,
       amount: amount,
-      createdBy: createdBy,
       currency: currency,
+      observedPairEpoch: observedPairEpoch,
       note: note,
       payerName: payerName,
       recipientName: recipientName,
-      activityId: activityId,
-      activityActorId: activityActorId,
-      activityActorName: activityActorName,
-      activityDescription: activityDescription,
-      activityMetadata: activityMetadata,
     ));
-    if (neverAck) {
-      return Completer<Settlement>().future;
-    }
-    return Settlement(
-      id: 'recorded-${addCalls.length}',
-      tripId: groupId,
-      payerParticipantId: payerParticipantId,
-      recipientParticipantId: recipientParticipantId,
-      amount: amount,
-      settledAt: DateTime(2026, 4, 1),
-      payerName: payerName,
-      recipientName: recipientName,
-      scope: 'group',
-      groupId: groupId,
-    );
+    return result;
+  }
+
+  @override
+  Future<RecordSettlementResult> recordDecomposedSettleUp({
+    required String groupId,
+    required List<({String eventId, Decimal amount})> eventLegs,
+    required Decimal amount,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required String currency,
+    required int observedPairEpoch,
+    String? payerName,
+    String? recipientName,
+    String? note,
+  }) async {
+    decomposedCalls.add(amount);
+    return result;
   }
 }
 
@@ -882,7 +876,7 @@ void main() {
       expect(find.byKey(GroupKeys.notNowButton), findsNothing);
     });
 
-    testWidgets('recording a payment writes settlement and activity log', (
+    testWidgets('recording a payment sends ONE mode-group callable payload', (
       tester,
     ) async {
       SharedPreferences.setMockInitialValues({'settings_device_name': 'Bobby'});
@@ -909,7 +903,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Settlement recorded.'), findsOneWidget);
+      // #1129: ONE mode-'group' callable payload — money facts only. The doc
+      // shape, the audited author (auth uid), and the group_settlement
+      // activity row are server-authored, pinned by the emulator tables in
+      // functions/test/callables/recordSettlement.group.test.ts.
       expect(settlementService.addCalls, hasLength(1));
+      expect(settlementService.decomposedCalls, isEmpty);
       expect(settlementService.addCalls.single.groupId, _groupId);
       expect(settlementService.addCalls.single.payerParticipantId, 'uid-bob');
       expect(
@@ -917,23 +916,8 @@ void main() {
         'uid-alice',
       );
       expect(settlementService.addCalls.single.amount, Decimal.parse('7.750'));
-      expect(settlementService.addCalls.single.createdBy, 'uid-bob');
       expect(settlementService.addCalls.single.note, 'bank receipt');
-      // #1140: the group_settlement activity row is folded into
-      // addGroupSettlement's atomic batch (deterministic id `stl_<id>`), not a
-      // separate logGroupEvent — so a denied write persists no phantom row.
-      // Assert the co-batched activity params carry the same content.
-      expect(settlementService.addCalls.single.activityId, startsWith('stl_'));
-      expect(settlementService.addCalls.single.activityActorName, 'Bobby');
-      expect(settlementService.addCalls.single.activityMetadata, {
-        'amount': '7.75',
-        'recipientId': 'uid-alice',
-        'currency': 'OMR',
-        'fromUserId': 'uid-bob',
-        'toUserId': 'uid-alice',
-        'fromName': 'Bob',
-        'toName': 'Alice',
-      });
+      expect(settlementService.addCalls.single.observedPairEpoch, 0);
     });
 
     testWidgets(
@@ -1046,61 +1030,6 @@ void main() {
           settlementService.addCalls.single.amount,
           Decimal.parse('7.75'),
         );
-      },
-    );
-
-    testWidgets(
-      '#412: an offline group settlement whose write never acks still '
-      'confirms, logs activity, and does NOT bump the ledger revision',
-      (tester) async {
-        final settlementService = _RecordingGroupSettlementService(
-          neverAck: true,
-        );
-        final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
-          ..setOffline();
-
-        await tester.pumpWidget(
-          _wrap(
-            const GroupSettleUpScreen(groupId: _groupId),
-            balancesAsync: AsyncValue.data(_balancesOwed),
-            currentUid: 'uid-bob',
-            extraOverrides: [
-              connectivityProvider.overrideWith((ref) => connectivity),
-              groupSettlementServiceProvider.overrideWithValue(
-                settlementService,
-              ),
-            ],
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        final container = ProviderScope.containerOf(
-          tester.element(find.byType(GroupSettleUpScreen)),
-        );
-
-        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
-        await tester.pump();
-        // Past kWriteAckTimeout — fixed pumps only (never pumpAndSettle while
-        // a write future is deliberately left pending).
-        await tester.pump(const Duration(seconds: 6));
-        await tester.pump(const Duration(milliseconds: 500));
-
-        expect(
-          find.text('Settlement recorded — will sync when online.'),
-          findsOneWidget,
-        );
-        expect(connectivity.state, ConnectivityStatus.syncing);
-        // The settlement write was handed to the SDK queue…
-        expect(settlementService.addCalls, hasLength(1));
-        // …and the activity row was co-batched INTO that same queued write
-        // (#1140) — before it was a separate logGroupEvent that could diverge
-        // from the settlement; now it queues (and replays) atomically with it.
-        expect(settlementService.addCalls.single.activityId, startsWith('stl_'));
-        // Group settlements are live-watched (groupSettlementsProvider) — the
-        // one-shot home revision must NOT be bumped (CLAUDE.md invariant).
-        expect(container.read(ledgerRevisionProvider), 0);
       },
     );
 
@@ -1251,10 +1180,10 @@ void main() {
       tester,
     ) async {
       final settlementService = _RecordingGroupSettlementService(
-        errorToThrow: FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'permission-denied',
+        // The callable's denial shape (#1129) — FirebaseFunctionsException.
+        errorToThrow: FirebaseFunctionsException(
           message: 'Missing or insufficient permissions.',
+          code: 'permission-denied',
         ),
       );
 
@@ -1416,7 +1345,7 @@ void main() {
   group('#382 PR-5: stepped settle walk (group screen)', () {
     testWidgets(
       'happy walk: two addGroupSettlement (OMR then USD), revision stays 0, '
-      'two co-batched activity rows with per-bucket currency, one final snackbar',
+      'per-bucket currency, one final snackbar',
       (tester) async {
         SharedPreferences.setMockInitialValues({
           'settings_device_name': 'Bobby',
@@ -1461,31 +1390,10 @@ void main() {
         expect(settlementService.addCalls, hasLength(2));
         expect(settlementService.addCalls[0].currency, 'OMR');
         expect(settlementService.addCalls[1].currency, 'USD');
-        // L6: group settlements are live-watched — NO ledgerRevision bump.
+        // L6: group settlements are live-watched — NO ledgerRevision bump
+        // (the server returns shouldBumpLedgerRevision: false for pure group
+        // writes; the activity rows are server-authored since #1129).
         expect(container.read(ledgerRevisionProvider), 0);
-        // Each step co-batches a group_settlement row carrying its BUCKET
-        // currency INTO addGroupSettlement (#1140) — assert the activity params
-        // per step (addCalls length pinned at 2 above).
-        expect(settlementService.addCalls[0].activityId, startsWith('stl_'));
-        expect(settlementService.addCalls[0].activityActorName, 'Bobby');
-        expect(settlementService.addCalls[0].activityMetadata, {
-          'amount': '10',
-          'recipientId': 'uid-alice',
-          'currency': 'OMR',
-          'fromUserId': 'uid-bob',
-          'toUserId': 'uid-alice',
-          'fromName': 'Bob',
-          'toName': 'Alice',
-        });
-        expect(settlementService.addCalls[1].activityMetadata, {
-          'amount': '20',
-          'recipientId': 'uid-alice',
-          'currency': 'USD',
-          'fromUserId': 'uid-bob',
-          'toUserId': 'uid-alice',
-          'fromName': 'Bob',
-          'toName': 'Alice',
-        });
         // One final summary snackbar; no per-step "Settlement recorded.".
         expect(find.text('Settlement recorded.'), findsNothing);
         expect(find.text('Recorded 2 payments.'), findsOneWidget);
@@ -1493,16 +1401,14 @@ void main() {
     );
 
     testWidgets(
-      'offline walk: both writes queue, will-sync final snackbar, '
-      'connectivity goes syncing, revision stays 0',
+      '#1129 offline walk: the pre-flight stops the walk at step 1 — no '
+      'callable invocation, honest failure copy',
       (tester) async {
         SharedPreferences.setMockInitialValues({
           'settings_device_name': 'Bobby',
         });
         final prefs = await SharedPreferences.getInstance();
-        final settlementService = _RecordingGroupSettlementService(
-          neverAck: true,
-        );
+        final settlementService = _RecordingGroupSettlementService();
         final connectivity = ConnectivityNotifier(startPeriodicChecks: false)
           ..setOffline();
 
@@ -1522,44 +1428,29 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final container = ProviderScope.containerOf(
-          tester.element(find.byType(GroupSettleUpScreen)),
-        );
-
         final card = find.byKey(const ValueKey('settle-stepped-uid-alice'));
         await tester.ensureVisible(card);
         await tester.tap(card);
         await tester.pumpAndSettle();
 
-        // Step 1: confirm. The write never acks — fixed pumps only (never
-        // pumpAndSettle while the write future is deliberately pending).
+        // Step 1: confirm — the pre-flight refuses (no offline queue for
+        // callables) and the walk stops on the failed outcome (L3).
         expect(find.text('1 of 2'), findsOneWidget);
         await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
-        await tester.pump();
-        await tester.pump(const Duration(seconds: 6));
-        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
 
-        // Step 2: the next sheet is presented; confirm it too.
-        expect(find.text('2 of 2'), findsOneWidget);
-        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
-        await tester.pump();
-        await tester.pump(const Duration(seconds: 6));
-        await tester.pump(const Duration(milliseconds: 500));
-
-        // Both writes were handed to the SDK queue (noteQueuedWrite per step).
-        expect(settlementService.addCalls, hasLength(2));
-        expect(connectivity.state, ConnectivityStatus.syncing);
-        // Both activity rows were co-batched INTO their settlements' queued
-        // writes (#1140) — not lost behind the hung await, atomic with them.
-        expect(settlementService.addCalls[0].activityId, startsWith('stl_'));
-        expect(settlementService.addCalls[1].activityId, startsWith('stl_'));
-        // L6 holds offline too.
-        expect(container.read(ledgerRevisionProvider), 0);
-        // The final summary reports the queued (will-sync) outcome.
+        expect(settlementService.addCalls, isEmpty);
+        expect(settlementService.decomposedCalls, isEmpty);
         expect(
-          find.text('Recorded 2 payments — will sync when online.'),
+          find.text(
+            "Couldn't record settlement. Check your connection and try again.",
+          ),
           findsOneWidget,
         );
+        // No step 2 sheet — the walk stopped.
+        expect(find.text('2 of 2'), findsNothing);
+        // The state stays offline — no phantom queued-write signal.
+        expect(connectivity.state, ConnectivityStatus.offline);
       },
     );
   });
