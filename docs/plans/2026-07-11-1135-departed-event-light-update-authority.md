@@ -80,7 +80,7 @@ Choose. Emulator tests protect the actual deny behavior, a mutation check proves
 4. **Fields from the type:** `Event` carries `id`, `name`, `type`, `groupId`, `createdBy`, `participantIds`, `participantNames`, `modules`, `startDate`, `endDate`, `isDeleted`, `deletedAt`, `createdAt`, `updatedAt`, `description`, `isClosed`, `closedAt`, `closedBy`, and `spendingSnapshot`. This plan changes none.
 5. **Data contracts:** The metadata attack uses the exact `EventService.updateEvent()` partial-map shape: `name` plus `updatedAt`. The additive attack uses the rule's exact light allow-list shape: `participantIds`, `participantNames`, and `updatedAt`. The departure fixture changes group `memberIds` and deletes `groups/g1/members/member`, while event `e1` retains `member` in both participant fields.
 6. **Arithmetic decomposition:** N/A. Money algorithms and persisted monetary fields do not change. Keeping `participantIds` untouched preserves the existing balance-universe contract.
-7. **Orthogonal axes:** Identity: leave/remove state is reproduced exactly. Money: no participant pruning or oracle change in this branch; the distinct post-departure expense-party/write bug is tracked as #1144. Time: #723 close/reopen remains on its separate admin path and its existing departed-participant allow test stays green. Offline: a queued light update replayed after departure remains denied by replay-time state. Locale/derived surfaces: this branch changes no user-facing copy, export, notification, activity, or l10n behavior. Gate review found PRE-EXISTING stale-participant side effects outside this branch: a denied event delete can leave a phantom activity row (#1140), and membership-scoped pushes can target users after revocation (#1141). All are tracked separately rather than hidden or bundled here.
+7. **Orthogonal axes:** Identity: leave/remove state is reproduced exactly. Money: no participant pruning or oracle change in this branch; the distinct post-departure ledger-mutation and removal-serialization bug is tracked as #1144. Time: #723 close/reopen remains on its separate admin path and its existing departed-participant allow test stays green. Offline: a queued light update replayed after departure remains denied by replay-time state. Locale/derived surfaces: this branch changes no user-facing copy, export, notification, activity, or l10n behavior. Gate review found PRE-EXISTING stale-participant side effects outside this branch: a denied event delete can leave a phantom activity row (#1140), and membership-scoped pushes can target users after revocation (#1141). All are tracked separately rather than hidden or bundled here.
 
 ## Known Adjacent Behavior, Out of Scope
 
@@ -90,7 +90,7 @@ Two user-visible consequences discovered by the Gate are also real but independe
 
 - **#1140:** `EventDangerSection._executeDelete()` starts the fire-and-forget `event_deleted` activity write before the event soft-delete. When stale participants make the soft-delete fail, history can falsely say the event was deleted. The fix needs atomic delete+activity semantics, especially offline.
 - **#1141:** membership-scoped event, expense, event/group-settlement, and member-join senders use committed/pre-transaction recipient snapshots without a fresh delivery-time membership intersection. The follow-up requires a fail-closed current-membership lookup immediately before those sends, preserves intentionally cross-membership claim flows, and explicitly acknowledges the remaining leave-after-final-lookup race.
-- **#1144:** departure keeps historical event participants for balance conservation, but expense producers and rules also use that retained list for NEW payers/recipients and allocation-affecting edits of historical expenses. A member who leaves square can receive a fresh paid/owed position or later balance delta. The follow-up separates the historical balance universe from the eligible-party set for every balance-changing create/update, while preserving metadata-only edits and the existing soft-delete/correction path for stale documents.
+- **#1144:** departure keeps historical event participants for balance conservation, but expense and event-settlement writes can still give those UIDs fresh paid/owed deltas. Independently, `leaveGroup`/`removeMember` compute zero before their membership transaction, so any expense, event/group settlement, soft-delete, or correction can race into the gap and strand a non-zero departed party. The follow-up separates historical identities from current write-eligible parties, preserves safe metadata/correction capability, and serializes every balance-changing writer with removal through a recoverable lock or revision fence.
 
 All three predate this branch, remain behaviorally unchanged by it, and require their own focused specs/tests. Folding any of them into #1135 would violate the one-concern rule and turn a rules-refutation PR into unrelated client and Cloud Functions changes.
 
@@ -201,7 +201,7 @@ Add a close-toggle subsection with its exact allow-list (`isClosed`, `closedAt`,
 
 - [ ] **Step 5: Correct the event-create key contract**
 
-The existing “exact keys” list omits `isClosed`, `closedAt`, and `closedBy`. Add the close triple and state that each key is optional on create, but when present the only valid birth state is `isClosed: false`, `closedAt: null`, `closedBy: null`, matching `Event.toFirestoreMap()` and `validEventCreate()`.
+Replace the existing contradictory “must contain exactly these keys” wording with two explicit sets: the required event-create base keys, and the optional allowlisted close keys `isClosed`, `closedAt`, and `closedBy`. State that each close key is optional on create, but when present the only valid birth state is `isClosed: false`, `closedAt: null`, `closedBy: null`, matching `Event.toFirestoreMap()` and `validEventCreate()`.
 
 - [ ] **Step 6: Commit the documentation correction**
 
@@ -297,3 +297,9 @@ Round 4 (2026-07-11): rubric `0 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 0 P2 / 0 P3
 Round 5 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
 
 - Rubric P1 resolved: #1144 was expanded beyond new owed recipients to cover departed payers and every allocation-affecting create/update of a historical expense. Its acceptance contract now protects metadata-only edits and the existing soft-delete/correction path instead of revalidating unchanged historical party fields indiscriminately.
+
+Round 6 (2026-07-11): rubric `2 P1 / 1 P2 / 0 P3`; adversary `2 P1 / 0 P2 / 0 P3`.
+
+- Shared settlement P1 resolved: #1144 now covers event-settlement creates that name departed historical participants and requires an explicit server-authoritative correction route for legitimate former-party adjustments. Group settlements are already current-party-gated but are included in the departure race fence.
+- Shared serialization P1 resolved: #1144 now requires every balance-changing client/Admin writer to honor a recoverable membership-mutation lock or money-revision fence. Its tests cover both commit orderings, offline replay, both departure callables, and failure recovery.
+- Rubric P2 resolved: Task 2 must replace the event-create documentation's “exact keys” sentence with distinct required-base and optional-close allowlists, preventing the close triple from remaining self-contradictory.
