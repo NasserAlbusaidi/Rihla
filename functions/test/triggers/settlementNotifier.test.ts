@@ -60,8 +60,12 @@ async function seedToken(uid: string, locale = 'en'): Promise<void> {
     .set({ user_id: uid, token: `tok-${uid}`, locale, platform: 'android' });
 }
 
-async function seedGroup(gid: string, name: string): Promise<void> {
-  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name });
+async function seedGroup(
+  gid: string,
+  name: string,
+  memberIds: string[] = ['payer', 'recipient'],
+): Promise<void> {
+  await getFirestore().doc(`groups/${gid}`).set({ id: gid, name, memberIds });
 }
 
 async function clearAll(): Promise<void> {
@@ -243,6 +247,23 @@ describe('eventSettlementNotifier', () => {
 
     expect(sendEach).toHaveBeenCalledTimes(1);
   });
+
+  test('#1141: event settlement to a departed recipient sends no push', async () => {
+    await seedGroup('g1', 'Trip', ['payer']); // recipient has left the group
+    await seedToken('recipient'); // still holds a token, no longer a member
+    const sendEach = mockSendEach(0);
+
+    // payer is the actor (createdBy) → excluded as before; recipient is the only
+    // target and is fenced out because they are absent from fresh memberIds.
+    await wrapEvent(
+      eventSettlement(
+        { ...base, payerParticipantId: 'payer', recipientParticipantId: 'recipient', createdBy: 'payer' },
+        { gid: 'g1', eid: 'e1', settlementId: 's1' },
+      ),
+    );
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
 });
 
 describe('groupSettlementNotifier', () => {
@@ -291,6 +312,21 @@ describe('groupSettlementNotifier', () => {
           createdBy: 'payer',
           correctionOfSettlementId: 'orig1',
         },
+        { gid: 'g1', settlementId: 's1' },
+      ),
+    );
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('#1141: group settlement whose counterparty left after commit sends no push', async () => {
+    await seedGroup('g1', 'Trip', ['payer']); // recipient departed post-commit
+    await seedToken('recipient'); // present in the committed doc, absent from fresh memberIds
+    const sendEach = mockSendEach(0);
+
+    await wrapGroup(
+      groupSettlement(
+        { ...base, payerParticipantId: 'payer', recipientParticipantId: 'recipient', createdBy: 'payer' },
         { gid: 'g1', settlementId: 's1' },
       ),
     );
