@@ -263,8 +263,17 @@ describe('addShadowMember callable — creator adds placeholder members by name 
       wrapped({ data: { groupId: 'g2', displayName: 'Sara' }, auth: { uid: OWNER } } as any),
     ).rejects.toMatchObject({ code: 'not-found' });
 
+    // #1144: shadow fan-in writes event participantIds — refused under a
+    // departure lock like every other quiesce flag.
+    await seedGroup('g3', { departureInProgress: true });
+    await seedMember('g3', OWNER);
+    await expect(
+      wrapped({ data: { groupId: 'g3', displayName: 'Sara' }, auth: { uid: OWNER } } as any),
+    ).rejects.toMatchObject({ code: 'not-found' });
+
     expect(await memberDocCount('g1')).toBe(1);
     expect(await memberDocCount('g2')).toBe(1);
+    expect(await memberDocCount('g3')).toBe(1);
   });
 
   test('7. non-creator member caller → permission-denied; no write', async () => {

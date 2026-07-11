@@ -233,6 +233,9 @@ export const joinGroupByInviteCode = onCall<
           || groupData.deletingInProgress === true
           || groupData.claimingInProgress === true
           || groupData.accountDeletionInProgress === true
+          // #1144: join fan-in writes event participantIds (an oracle input) —
+          // it must not land inside a departure's recompute window.
+          || groupData.departureInProgress === true
         ) {
           throw new HttpsError('not-found', 'Group not found.');
         }

@@ -190,7 +190,13 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
     if (groupData.isDeleted === true || groupData.deletingInProgress === true) {
       throw new HttpsError('not-found', 'Group not found.');
     }
-    if (groupData.claimingInProgress === true || groupData.accountDeletionInProgress === true) {
+    if (
+      groupData.claimingInProgress === true
+      || groupData.accountDeletionInProgress === true
+      // #1144: the claim re-key rewrites oracle inputs — mutually exclusive
+      // with a departure's recompute window.
+      || groupData.departureInProgress === true
+    ) {
       throw new HttpsError('failed-precondition', 'Group is temporarily locked.');
     }
     // D1 trust anchor (removeMember.ts:90): only the CURRENT-member group creator
@@ -217,7 +223,11 @@ export const decideClaimRequest = onCall<DecideClaimRequestInput, Promise<Decide
       if (lockedGroupData.isDeleted === true || lockedGroupData.deletingInProgress === true) {
         throw new HttpsError('not-found', 'Group not found.');
       }
-      if (lockedGroupData.claimingInProgress === true || lockedGroupData.accountDeletionInProgress === true) {
+      if (
+        lockedGroupData.claimingInProgress === true
+        || lockedGroupData.accountDeletionInProgress === true
+        || lockedGroupData.departureInProgress === true // #1144
+      ) {
         throw new HttpsError('failed-precondition', 'Group is temporarily locked.');
       }
       // #1132: re-check membership in the tx too — a leave can commit between

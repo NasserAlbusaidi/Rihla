@@ -1070,6 +1070,51 @@ void main() {
     );
 
     testWidgets(
+      '#1144 lock-contention (aborted) shows the LOCALIZED generic failure, never the raw server string',
+      (tester) async {
+        // The departure fence throws `aborted` on lock contention with an
+        // English-only server message. The generic branch must route through
+        // friendlyMessageFor — interpolating e.message would show untranslated
+        // English to an Arabic user (and `failed-precondition` stays reserved
+        // for the settle-up snackbar, so this must NOT surface that either).
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrapMembersSection(
+            prefs: prefs,
+            groupServiceBuilder: (ref) => _RemovingGroupService(
+              ref,
+              onRemove: ({required groupId, required userId}) {
+                throw FirebaseFunctionsException(
+                  code: 'aborted',
+                  message: 'Another membership change is in progress. Try again.',
+                );
+              },
+            ),
+            activityService: activityService,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Failed to remove Bob: Something went wrong. Please try again.',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Another membership change'),
+          findsNothing,
+        );
+        expect(find.widgetWithText(SnackBarAction, 'Settle up'), findsNothing);
+        expect(activityService.logCalls, isEmpty);
+      },
+    );
+
+    testWidgets(
       'failed-precondition maps to settle-up snackbar with action routing to settle up (#318)',
       (tester) async {
         late _RemovingGroupService groupService;

@@ -97,6 +97,8 @@ export const correctLogicalSettleUp = onCall<
         || groupData.deletingInProgress === true
         || groupData.claimingInProgress === true
         || groupData.accountDeletionInProgress === true
+        // #1144: correction rows are balance-input writes.
+        || groupData.departureInProgress === true
       ) {
         throw new HttpsError('not-found', 'Group not found.');
       }

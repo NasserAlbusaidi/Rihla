@@ -3410,4 +3410,97 @@ describe('Publish readiness Firestore rules', () => {
       await assertSucceeds(ctx.firestore().doc('groups/g1/aggregates/balance').set(validAggregate()));
     });
   });
+
+  describe('#1144 departure fence quiesces client writes', () => {
+    // leaveGroup/removeMember recompute the departing member's net UNDER a
+    // departureInProgress group-doc lock (the fifth groupAllowsClientWrites
+    // flag); every client write must freeze for that window or a mid-departure
+    // balance-input write invalidates the zero-check basis (the #1144-B race).
+    // Each case asserts the SAME write is denied under the fence and allowed
+    // once it lifts — pinning the freeze to the flag, not to fixture noise.
+    async function engageDepartureFence(): Promise<void> {
+      await updateSeedGroup({
+        departureInProgress: true,
+        departureLockedAt: new Date(),
+        departureLockedBy: 'member',
+      });
+    }
+
+    async function liftDepartureFence(): Promise<void> {
+      await updateSeedGroup({
+        departureInProgress: false,
+        departureLockedAt: deleteSentinel(),
+        departureLockedBy: deleteSentinel(),
+      });
+    }
+
+    test('fence blocks expense CREATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1/expenses/expFence').set(
+        validExpense({ id: 'expFence', createdBy: 'member', payerParticipantId: 'member' }),
+      );
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks expense metadata UPDATE; lifting restores it', async () => {
+      await seedExpense();
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1/expenses/exp1').update({
+        note: 'fenced note',
+        lastEditedBy: 'member',
+      });
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks event settlement CREATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1/settlements/setFence').set(
+        validSettlement({ id: 'setFence' }),
+      );
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks group settlement CREATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/settlements/gsetFence').set(
+        validGroupSettlement({ id: 'gsetFence' }),
+      );
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks event light UPDATE; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/events/e1').update({
+        name: 'Fenced Rename',
+        updatedAt: new Date(),
+      });
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+
+    test('fence blocks member self-rename; lifting restores it', async () => {
+      await engageDepartureFence();
+      const member = testEnv.authenticatedContext('member').firestore();
+      const write = () => member.doc('groups/g1/members/member').update({
+        displayName: 'Fenced Name',
+      });
+      await assertFails(write());
+      await liftDepartureFence();
+      await assertSucceeds(write());
+    });
+  });
 });

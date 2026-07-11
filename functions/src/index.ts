@@ -39,3 +39,4 @@ export { deletionReaper } from './scheduled/deletionReaper';
 export { balanceReconciler } from './scheduled/balanceReconciler';
 export { deleteGroupLockReaper } from './scheduled/deleteGroupLockReaper';
 export { claimShadowLockReaper } from './scheduled/claimShadowLockReaper';
+export { departureLockReaper } from './scheduled/departureLockReaper';

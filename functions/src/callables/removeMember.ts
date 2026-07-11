@@ -4,6 +4,12 @@ import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https
 import '../admin';
 import { recomputeNet } from './groupNetBalance';
 import { isCurrentMember } from './shared/membership';
+import {
+  acquireDepartureLock,
+  assertDepartureLockHeld,
+  clearDepartureLockForFailure,
+  departureLockClearFields,
+} from './shared/departureLock';
 
 // #318: server-authoritative creator-remove. The client guard ("settle before
 // removing") was skipped whenever the balance had not loaded (offline / slow /
@@ -32,9 +38,12 @@ import { isCurrentMember } from './shared/membership';
 // universe is unchanged ⇒ other members' balances are preserved, and the net==0
 // gate (same oracle) only passes when the removal is balance-neutral.
 //
-// No separate mutation lock and no rate-limit (unlike deleteGroup): remove is a
-// single small atomic mutation. It still honors deleteGroup's quiesce marker
-// like every Admin-SDK membership writer, because Admin SDK writes bypass
+// #1144: the zero-check runs UNDER a departureInProgress lock (shared/
+// departureLock.ts) — same fence as leaveGroup; see that file's header for
+// the race, the error-code contract (`aborted` for contention/lost lock,
+// `failed-precondition` reserved for the unsettled-balance snackbar), and the
+// release discipline. Still honors deleteGroup's quiesce marker like every
+// Admin-SDK membership writer, because Admin SDK writes bypass
 // firestore.rules. enforceAppCheck is the per-actor control (#197).
 
 export interface RemoveMemberInput {
@@ -131,29 +140,10 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
       return { groupId, mode: 'removed', alreadyRemoved: true };
     }
 
-    // Balance gate: the TARGET must be square. recomputeNet is the SAME oracle
-    // the client ledger + deleteGroup + leaveGroup use; a missing entry means
-    // the target never had a financial position ⇒ owes nothing ⇒ allowed.
-    // isZero() is exact (the allocators close residuals, incl. the #223
-    // in-tolerance close-out).
-    const { net } = await recomputeNet(db, groupRef);
-    // #382 PR-2: net is per-currency buckets (currency -> uid -> net). The
-    // target may be removed only when they net exactly zero in EVERY currency
-    // bucket — no FX, so each currency must clear independently. (The old
-    // `currencies.size > 1` refusal is gone: a mixed group where the target is
-    // square per-currency is fine.) A missing entry ⇒ no position in that
-    // currency ⇒ zero. isZero() is exact (the allocators close residuals, incl.
-    // the #223 in-tolerance close-out).
-    const targetOutstanding = [...net.values()].some((bucket) => {
-      const v = bucket.get(targetUserId);
-      return v != null && !v.isZero();
-    });
-    if (targetOutstanding) {
-      throw new HttpsError(
-        'failed-precondition',
-        'This member has an unsettled balance and cannot be removed.',
-      );
-    }
+    // #1144: acquire the departure lock BEFORE the balance gate so the
+    // recompute basis cannot change under us. Everything after the acquire
+    // runs in a try whose catch releases OUR lock (own-invocation-only).
+    const lock = await acquireDepartureLock(db, groupRef, uid);
 
     const targetName =
       targetDocsSnap.docs
@@ -161,72 +151,107 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
         .find((name): name is string => typeof name === 'string' && name.length > 0)
       ?? 'Someone';
 
-    const mutation = await db.runTransaction(async (tx) => {
-      const freshGroupSnap = await tx.get(groupRef);
-      if (!freshGroupSnap.exists) {
-        throw new HttpsError('not-found', 'Group not found.');
-      }
-      const freshGroup = freshGroupSnap.data() ?? {};
-      if (
-        freshGroup.isDeleted === true
-        || freshGroup.deletingInProgress === true
-        || freshGroup.claimingInProgress === true
-        || freshGroup.accountDeletionInProgress === true
-      ) {
-        throw new HttpsError('not-found', 'Group not found.');
-      }
-      // #1132: re-check membership in the tx too — a leave can commit between
-      // the first check and here.
-      if (freshGroup.createdBy !== uid || !isCurrentMember(freshGroup, uid)) {
+    let mutation: { alreadyRemoved: boolean };
+    try {
+      // Balance gate: the TARGET must be square. recomputeNet is the SAME
+      // oracle the client ledger + deleteGroup + leaveGroup use; a missing
+      // entry means the target never had a financial position ⇒ owes nothing
+      // ⇒ allowed.
+      const { net } = await recomputeNet(db, groupRef);
+      // #382 PR-2: net is per-currency buckets (currency -> uid -> net). The
+      // target may be removed only when they net exactly zero in EVERY currency
+      // bucket — no FX, so each currency must clear independently. (The old
+      // `currencies.size > 1` refusal is gone: a mixed group where the target is
+      // square per-currency is fine.) A missing entry ⇒ no position in that
+      // currency ⇒ zero. isZero() is exact (the allocators close residuals, incl.
+      // the #223 in-tolerance close-out).
+      const targetOutstanding = [...net.values()].some((bucket) => {
+        const v = bucket.get(targetUserId);
+        return v != null && !v.isZero();
+      });
+      if (targetOutstanding) {
         throw new HttpsError(
-          'permission-denied',
-          'Only the group creator can remove a member.',
+          'failed-precondition',
+          'This member has an unsettled balance and cannot be removed.',
         );
       }
-      const freshMemberIds: string[] = Array.isArray(freshGroup.memberIds)
-        ? freshGroup.memberIds.filter((v): v is string => typeof v === 'string')
-        : [];
-      const freshTargetDocsSnap = await tx.get(
-        groupRef.collection('members').where('userId', '==', targetUserId),
-      );
-      const freshActorDocsSnap = await tx.get(
-        groupRef.collection('members').where('userId', '==', uid),
-      );
-      const freshTargetIsMember = freshMemberIds.includes(targetUserId);
-      if (!freshTargetIsMember && freshTargetDocsSnap.empty) {
-        return { alreadyRemoved: true };
-      }
-      const freshTargetName =
-        freshTargetDocsSnap.docs
-          .map((d) => d.data().displayName)
-          .find((name): name is string => typeof name === 'string' && name.length > 0)
-        ?? targetName;
-      const freshActorName =
-        freshActorDocsSnap.docs
-          .map((d) => d.data().displayName)
-          .find((name): name is string => typeof name === 'string' && name.length > 0)
-        ?? 'Someone';
 
-      const now = Timestamp.now();
-      tx.update(groupRef, {
-        memberIds: FieldValue.arrayRemove(targetUserId),
-        updatedAt: now,
+      mutation = await db.runTransaction(async (tx) => {
+        const freshGroupSnap = await tx.get(groupRef);
+        if (!freshGroupSnap.exists) {
+          throw new HttpsError('not-found', 'Group not found.');
+        }
+        const freshGroup = freshGroupSnap.data() ?? {};
+        if (
+          freshGroup.isDeleted === true
+          || freshGroup.deletingInProgress === true
+          || freshGroup.claimingInProgress === true
+          || freshGroup.accountDeletionInProgress === true
+        ) {
+          throw new HttpsError('not-found', 'Group not found.');
+        }
+        // #1144: the recompute basis is only trustworthy while the lock we
+        // acquired is still in place — a reaper reclaim mid-flight voids it.
+        assertDepartureLockHeld(freshGroup, lock);
+        // #1132: re-check membership in the tx too — a leave can commit between
+        // the first check and here.
+        if (freshGroup.createdBy !== uid || !isCurrentMember(freshGroup, uid)) {
+          throw new HttpsError(
+            'permission-denied',
+            'Only the group creator can remove a member.',
+          );
+        }
+        const freshMemberIds: string[] = Array.isArray(freshGroup.memberIds)
+          ? freshGroup.memberIds.filter((v): v is string => typeof v === 'string')
+          : [];
+        const freshTargetDocsSnap = await tx.get(
+          groupRef.collection('members').where('userId', '==', targetUserId),
+        );
+        const freshActorDocsSnap = await tx.get(
+          groupRef.collection('members').where('userId', '==', uid),
+        );
+        const freshTargetIsMember = freshMemberIds.includes(targetUserId);
+        if (!freshTargetIsMember && freshTargetDocsSnap.empty) {
+          tx.update(groupRef, departureLockClearFields());
+          return { alreadyRemoved: true };
+        }
+        const freshTargetName =
+          freshTargetDocsSnap.docs
+            .map((d) => d.data().displayName)
+            .find((name): name is string => typeof name === 'string' && name.length > 0)
+          ?? targetName;
+        const freshActorName =
+          freshActorDocsSnap.docs
+            .map((d) => d.data().displayName)
+            .find((name): name is string => typeof name === 'string' && name.length > 0)
+          ?? 'Someone';
+
+        const now = Timestamp.now();
+        tx.update(groupRef, {
+          memberIds: FieldValue.arrayRemove(targetUserId),
+          updatedAt: now,
+          // #1144: release the lock atomically with the mutation.
+          ...departureLockClearFields(),
+        });
+        for (const memberDoc of freshTargetDocsSnap.docs) {
+          tx.delete(memberDoc.ref);
+        }
+        const activityRef = groupRef.collection('activity').doc();
+        tx.set(activityRef, {
+          id: activityRef.id,
+          type: 'member_left',
+          actorId: uid,
+          actorName: freshActorName,
+          description: `${freshTargetName} was removed from the group`,
+          metadata: { memberAction: 'removed', memberName: freshTargetName },
+          timestamp: new Date().toISOString(),
+        });
+        return { alreadyRemoved: false };
       });
-      for (const memberDoc of freshTargetDocsSnap.docs) {
-        tx.delete(memberDoc.ref);
-      }
-      const activityRef = groupRef.collection('activity').doc();
-      tx.set(activityRef, {
-        id: activityRef.id,
-        type: 'member_left',
-        actorId: uid,
-        actorName: freshActorName,
-        description: `${freshTargetName} was removed from the group`,
-        metadata: { memberAction: 'removed', memberName: freshTargetName },
-        timestamp: new Date().toISOString(),
-      });
-      return { alreadyRemoved: false };
-    });
+    } catch (err) {
+      await clearDepartureLockForFailure(groupRef, lock);
+      throw err;
+    }
 
     if (mutation.alreadyRemoved) {
       return { groupId, mode: 'removed', alreadyRemoved: true };

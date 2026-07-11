@@ -146,7 +146,12 @@ service cloud.firestore {
         && (!groupData(groupId).keys().hasAny(['claimingInProgress'])
           || groupData(groupId).claimingInProgress == false)
         && (!groupData(groupId).keys().hasAny(['accountDeletionInProgress'])
-          || groupData(groupId).accountDeletionInProgress == false);
+          || groupData(groupId).accountDeletionInProgress == false)
+        // #1144: leaveGroup/removeMember recompute the departing member's net
+        // UNDER this lock; a client balance-input write landing mid-window
+        // would invalidate the zero-check basis (the departure race).
+        && (!groupData(groupId).keys().hasAny(['departureInProgress'])
+          || groupData(groupId).departureInProgress == false);
     }
 
     function isGroupMember(groupId) {

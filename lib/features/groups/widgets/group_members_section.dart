@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_avatar.dart';
@@ -270,12 +271,15 @@ class GroupMembersSection extends ConsumerWidget {
         );
         return;
       }
+      // #1144: never interpolate the raw server string — the departure-lock
+      // contention path throws `aborted` with an English-only message; an
+      // Arabic user losing the lock race must see the localized fallback.
       messenger.showSnackBar(
         SnackBar(
           content: Text(
             context.l10n.groupFailedRemoveMember(
               member.displayName,
-              e.message ?? e.code,
+              friendlyMessageFor(context, e),
             ),
           ),
         ),

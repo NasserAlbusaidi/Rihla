@@ -230,6 +230,16 @@ describe('refreshGroupBalanceAggregate (#366)', () => {
     await refreshGroupBalanceAggregate(db, GROUP, 2000);
 
     expect((await db.doc(AGG_PATH).get()).exists).toBe(false);
+
+    // #1144: same skip during a departure window (reconciler self-heals).
+    await db.doc(`groups/${GROUP}`).update({
+      accountDeletionInProgress: FieldValue.delete(),
+      departureInProgress: true,
+    });
+
+    await refreshGroupBalanceAggregate(db, GROUP, 3000);
+
+    expect((await db.doc(AGG_PATH).get()).exists).toBe(false);
   });
 
   it('skips a soft-deleted group', async () => {
