@@ -145,7 +145,7 @@ final _group = Group(
   name: 'Trip',
   inviteCode: 'ABC123',
   createdBy: 'uid-yasmin',
-  memberIds: const ['uid-yasmin'],
+  memberIds: const ['uid-yasmin', 'uid-layla'],
   currency: 'OMR',
   createdAt: DateTime(2026),
 );

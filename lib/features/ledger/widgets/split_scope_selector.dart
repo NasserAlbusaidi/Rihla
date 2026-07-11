@@ -21,17 +21,26 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 List<Participant> _eventParticipants(
   Event event, {
   Set<String> shadowUserIds = const {},
+  Set<String>? eligibleIds,
+  Set<String> retainedIds = const {},
 }) {
-  return event.participantIds.map((id) {
-    return Participant(
-      id: id,
-      tripId: event.id,
-      role: ParticipantRole.member,
-      joinedAt: event.createdAt,
-      displayName: event.participantNames[id],
-      isShadow: shadowUserIds.contains(id),
-    );
-  }).toList();
+  return [
+    for (final id in event.participantIds)
+      // #1149: candidates are limited to [eligibleIds] (active members) when
+      // known; [retainedIds] keeps an already-selected legacy party (e.g. a
+      // ghost) visible so a filter never strands form state. Null → fail open.
+      if (eligibleIds == null ||
+          eligibleIds.contains(id) ||
+          retainedIds.contains(id))
+        Participant(
+          id: id,
+          tripId: event.id,
+          role: ParticipantRole.member,
+          joinedAt: event.createdAt,
+          displayName: event.participantNames[id],
+          isShadow: shadowUserIds.contains(id),
+        ),
+  ];
 }
 
 /// Shadow `userId`s for [groupId] from the live member roster. Empty while the
@@ -56,11 +65,17 @@ class CustomParticipantSelector extends ConsumerWidget {
   final Set<String> customSplitParticipants;
   final ValueChanged<Set<String>> onCustomSplitChanged;
 
+  /// #1149: NEW-expense candidate allow-list (active, non-tombstone members).
+  /// Already-selected ids are always retained so an edit that legitimately
+  /// names a ghost keeps its selection visible. Null → no filtering.
+  final Set<String>? eligibleIds;
+
   const CustomParticipantSelector({
     super.key,
     required this.event,
     required this.customSplitParticipants,
     required this.onCustomSplitChanged,
+    this.eligibleIds,
   });
 
   @override
@@ -69,6 +84,8 @@ class CustomParticipantSelector extends ConsumerWidget {
     final participants = _eventParticipants(
       event,
       shadowUserIds: _shadowUserIds(ref, event.groupId),
+      eligibleIds: eligibleIds,
+      retainedIds: customSplitParticipants,
     );
     final participantsAsync = AsyncValue.data(participants);
     // #289: distinguish two same-named members exactly where money is split.
