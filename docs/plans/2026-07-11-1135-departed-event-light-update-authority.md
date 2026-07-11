@@ -20,7 +20,7 @@
 
 ## Investigation Result
 
-Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `302664682c813d672cf315019745957dc666a35f` disproves that claim:
+Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `cedc9d4b71074aa27bf3db054ce6523dd42f64e8` disproves that claim:
 
 - `security/firestore.rules:423-425`: `requesterIsParticipant()` requires the caller UID in the existing event `participantIds`.
 - `security/firestore.rules:579-605`: every light update ends in `validEventUpdateCommon()`.
@@ -261,7 +261,7 @@ npm run test:emulator -- firestore-rules-publish-readiness.test.ts 2>&1 \
   | awk '/maximum of 1000 expressions/{n++} /Test Suites:|Tests:|Script exited successfully/{print} END{print "expression_ceiling_artifacts=" n+0}'
 ```
 
-Gate round 1 and independent controller runs measured `expression_ceiling_artifacts=49` on the pre-test suite. Task 1 then isolated each new test and reproduced one additional artifact apiece under the full OR-chain, so verify `52` after implementation. A different delta requires investigation. Do not use the warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
+After rebasing onto current `origin/main` `cedc9d4b`, the pre-#1135 suite is 253/253 with `expression_ceiling_artifacts=78`; the branch suite is 256/256 with `expression_ceiling_artifacts=81`. Each new denial still contributes exactly one artifact under the full OR-chain. A different delta requires investigation. Do not use the warning count as a rules-equivalence claim; `git diff --exit-code origin/main -- security/firestore.rules` is the direct proof.
 
 - [ ] **Step 2: Run repository checks**
 
@@ -355,3 +355,5 @@ Round 11 (2026-07-11): rubric `0 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P
 - Hardened Gate passed on the same current commit. Both reviewers independently confirmed the composed subset/additivity proof, four-state mutation matrix, current-member admin contract, close-toggle exception, exact warning baseline, tests/docs-only scope, and draft-PR boundary.
 
 Post-Gate Task 1 evidence correction: the committed three-test suite passes 231/231, the four mutation states match exactly, and production rules remain byte-identical. Three repeated full runs measured `expression_ceiling_artifacts=52`; removing the entire new block restored 49, and running only the self-removal case measured one. The implementation expectation is therefore corrected from 51 to 52 without changing any authorization conclusion.
+
+Merge-time evidence refresh after #1144 landed on `main` (2026-07-11): the branch rebased onto `cedc9d4b`. Current `main` passes 253/253 with 78 ceiling artifacts; the branch passes 256/256 with 81. The four focused states were reproduced from the rebased head: production OR-chain `3/3` denied, light-only with both guards `3/3` denied with no ceiling artifact, light-only without the subset guard `2` expected fail-open / `1` denied, and light-only without additivity `1` expected fail-open / `2` denied. After restoration, `security/firestore.rules` and current `origin/main` share SHA-256 `629ba37135efdb78b6952ecb0f23f974158822be6186d08400e513002757b92a`.
