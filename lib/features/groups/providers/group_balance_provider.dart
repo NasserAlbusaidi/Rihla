@@ -252,6 +252,37 @@ final groupFailedEventIdsProvider = Provider.family<Set<String>, String>((
   return failed;
 });
 
+/// Event ids in [groupId] whose expense OR settlement stream has NOT delivered
+/// a FIRST snapshot yet (`isLoading && !hasValue`) — the loading-skip window of
+/// [groupBalancesProvider] (#1106). Mirrors [groupFailedEventIdsProvider]
+/// (which mirrors the error-skip) for the OTHER silent skip, and iterates the
+/// SAME events list and per-event family instances, so it adds no Firestore
+/// listeners and can never disagree with the events the balance omitted.
+///
+/// DISPLAY deliberately stays proceed-on-partial (#244 — do not wire this into
+/// the balance provider or its banner). The group settle-up RECORD path reads
+/// this set to refuse writing money from a still-converging basis: the #719
+/// fresh re-read cannot catch that window because it re-reads the SAME
+/// still-converging provider.
+final groupConvergingEventIdsProvider = Provider.family<Set<String>, String>((
+  ref,
+  groupId,
+) {
+  final events =
+      ref.watch(groupEventsProvider(groupId)).valueOrNull ?? const <Event>[];
+  final converging = <String>{};
+  for (final event in events) {
+    final eventRef = (groupId: groupId, eventId: event.id);
+    final expensesAsync = ref.watch(eventExpensesProvider(eventRef));
+    final settlementsAsync = ref.watch(eventSettlementsProvider(eventRef));
+    if ((expensesAsync.isLoading && !expensesAsync.hasValue) ||
+        (settlementsAsync.isLoading && !settlementsAsync.hasValue)) {
+      converging.add(event.id);
+    }
+  }
+  return converging;
+});
+
 /// All non-deleted EVENT settlements across [groupId] that belong to a
 /// decomposed group settle-up (#752 — `groupSettleUpId != null`). The group
 /// settle-up history UNIONS these with the group-settlement docs so a

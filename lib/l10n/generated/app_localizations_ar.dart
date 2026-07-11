@@ -994,6 +994,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get settleUpBalanceStillSyncing =>
+      'لا تزال الأرصدة قيد المزامنة — حاول مرة أخرى بعد لحظات.';
+
+  @override
   String get settleUpRecorded => 'تم تسجيل التسوية.';
 
   @override
