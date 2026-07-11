@@ -53,6 +53,7 @@ The rules file defines reusable predicates near the top of the
 | `groupPath(gid)` | Path to `/groups/{gid}` | Avoids string concatenation in every rule. |
 | `groupData(gid)` | `get(groupPath).data` | Current Firestore state. |
 | `groupAfterData(gid)` | `getAfter(groupPath).data` | State after the in-flight write commits — needed for cross-doc invariants. |
+| `groupAllowsClientWrites(gid)` | Group exists and every quiesce flag is absent-or-false | The client-write freeze. Five flags: `isDeleted`, `deletingInProgress` (deleteGroup), `claimingInProgress` (claim re-key), `accountDeletionInProgress` (deleteAccount), `departureInProgress` (#1144 — leaveGroup/removeMember recompute the departing member's net under this lock). Server callables honor the same flags in code — the Admin SDK bypasses rules. |
 | `isGroupMember(gid)` | Group exists and caller is in `memberIds` | The read gate on subcollections; since #1131 also a conjunct on expense writes. |
 | `isGroupCreator(gid)` | Group exists and caller is `createdBy` | Dead helper — zero callers (the group-scoped `isCreator`/`requesterIsGroupCreator` do this inline). Creator authority also requires current membership since #1132. |
 | `eventPath(gid, eid)` / `eventData(gid, eid)` | Path / data helpers for event docs | |
