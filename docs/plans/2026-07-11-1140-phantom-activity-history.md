@@ -83,7 +83,7 @@ Settlement corrections route through the `correctSettlement` callable and write 
 2. **Every concrete claim vs code:** callsite line numbers, `kMaxDecomposeLegsAtomic=9` (`group_settlement_service.dart:24`), `validGroupActivityCreate` allow-list (`firestore.rules:1161-1167`), `2N+1` budget (`group_settlement_service.dart:15-18`) — all re-grepped this session.
 3. **One read-path per write-path:** who reads the batched activity row? `GroupActivityService.watchRecentActivity`/`fetchActivityPage` → home RECENTLY + full feed via `activity_display.dart`. Who reads the settlement docs? `recomputeNet`/oracle (unchanged — the activity leg is oracle-invisible, like `groupSettleUpId`). Who reads home balance? `ledgerRevision` bump preserved after the batched settlement ack.
 4. **Fields from the type:** activity doc keys are exactly `[id, type, actorId, actorName, description, metadata, timestamp]` (rule `hasOnly`, L1141-1149) — `buildActivityDoc` emits exactly these, no more.
-5. **Data contracts spelled out:** `buildActivityDoc({required String id, required String type, required String actorId, required String actorName, required String description, required Map<String,dynamic> metadata, required DateTime timestampUtc}) → Map<String,dynamic>`. Each service method gains named activity params `{required String activityType, required String activityActorId, required String activityActorName, required String activityDescription, required Map<String,dynamic> activityMetadata}` and derives the id internally.
+5. **Data contracts spelled out:** `buildActivityDoc({required String id, required String type, required String actorId, required String actorName, required String description, required Map<String,dynamic> metadata, required DateTime timestampUtc}) → Map<String,dynamic>`. Each domain method gains **OPTIONAL** activity params `{String? activityId, String? activityActorId, String? activityActorName, String? activityDescription, Map<String,dynamic>? activityMetadata}` (null → legacy single-write, D3); the activity **type is hardcoded per method** (1:1 — `deleteEvent`→`'event_deleted'`, `stageEvent`→`'event_created'`, `addSettlement`→`'event_settlement'`, `addGroupSettlement`/`stageDecomposedSettleUp`→`'group_settlement'`); the **screen** passes the derived deterministic id as `activityId`. (The concrete Task snippets are authoritative; this line summarizes them.)
 6. **Arithmetic decomposition:** budget is additive across batch ops (no cross-op caching assumed) → `2N+1 + 1 = 2N+2`; N=8 → 18. Money amounts/serialization are untouched (`buildSettlementDoc`/`buildGroupSettlementDoc` reused byte-for-byte).
 7. **Adversarial orthogonal axis (identity/membership):** the axis-B worked example — a payer who **leaves the group while a settle-up sits queued offline** — proves the fix: the queued batch's settlement legs AND the co-batched activity leg both fail `isGroupMember` at replay → the whole commit is discarded → **no** phantom `group_settlement` row (today the separate row survives). The activity leg cannot *independently* cause this (D2 subset argument), so no legitimate settle-up is newly blocked.
 
@@ -162,35 +162,14 @@ static Map<String, dynamic> buildActivityDoc({
   'metadata': metadata,
   'timestamp': timestampUtc.toIso8601String(),
 };
-
-/// Stages a group-activity row onto [batch], atomic with the paired mutation
-/// (#1140). The caller derives a deterministic [id] from the mutation identity
-/// so a retry/replay collides and is denied by `allow update: if false`.
-void stageActivity(
-  WriteBatch batch, {
-  required String groupId,
-  required String id,
-  required String type,
-  required String actorId,
-  required String actorName,
-  required String description,
-  required Map<String, dynamic> metadata,
-  required DateTime timestampUtc,
-}) {
-  batch.set(
-    _activityRef(groupId).doc(id),
-    buildActivityDoc(
-      id: id, type: type, actorId: actorId, actorName: actorName,
-      description: description, metadata: metadata, timestampUtc: timestampUtc,
-    ),
-  );
-}
 ```
-Refactor `logGroupEvent`'s inline map to call `buildActivityDoc(...)` (random uuid + `DateTime.now().toUtc()` as today).
+Add `import '../services/member_name_resolver.dart';` (for `MemberNameResolver.formerSuffix`; Gate R4 P3, analyzer-caught otherwise). Refactor `logGroupEvent`'s inline map to call `buildActivityDoc(...)` (random uuid + `DateTime.now().toUtc()` as today).
+
+> No `stageActivity(batch, …)` helper is added (Gate R4 P3): each domain service stages the activity leg **longhand** — `batch.set(db.collection('groups').doc(gid).collection('activity').doc(id), GroupActivityService.buildActivityDoc(...))` — from its OWN `db`, because `_activityRef` is private to `GroupActivityService` and a cross-service helper would either leak it or duplicate the ref. The single shared piece is the static `buildActivityDoc`/`sanitizeActorName`.
 
 **Step 4 — Run, expect PASS.**
 
-**Step 5 — Commit:** `test(activity): pin buildActivityDoc + stageActivity shared boundary (#1140)`
+**Step 5 — Commit:** `test(activity): pin buildActivityDoc + sanitizeActorName shared boundary (#1140)`
 
 ---
 
