@@ -3,6 +3,12 @@ import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
 import { recomputeNet } from './groupNetBalance';
+import {
+  acquireDepartureLock,
+  assertDepartureLockHeld,
+  clearDepartureLockForFailure,
+  departureLockClearFields,
+} from './shared/departureLock';
 
 // #290: server-authoritative group self-leave. The client guard ("settle before
 // leaving") was skipped whenever the balance had not loaded (offline / slow /
@@ -22,12 +28,19 @@ import { recomputeNet } from './groupNetBalance';
 // non-participant split-recipient / #249 conservation edge is pre-existing and
 // out of scope; tombstoning would CHANGE balance semantics on that axis.)
 //
-// No separate mutation lock and no rate-limit (unlike deleteGroup): leave is a
-// single small atomic mutation touching only the leaver's own membership;
-// re-entry is bounded upstream by joinGroupByInviteCode's 5/hr throttle. It
-// still honors deleteGroup's quiesce marker like every Admin-SDK membership
-// writer, because Admin SDK writes bypass firestore.rules. enforceAppCheck is
-// the per-actor control (#197).
+// #1144: the zero-check runs UNDER a departureInProgress lock (shared/
+// departureLock.ts). Without it, any balance-input write committing between
+// recomputeNet and the membership transaction departed the leaver at
+// non-zero (the zero-check-to-removal race). The lock freezes client writes
+// via rules groupAllowsClientWrites and is honored by every oracle-input
+// Admin writer inside its own write transaction; the final transaction
+// verifies the lock is still OURS and releases it atomically with the
+// mutation. Lock contention / a reaped lock throw `aborted` — NEVER
+// `failed-precondition`, which the client reserves for the settle-up
+// snackbar. Still honors deleteGroup's quiesce marker like every Admin-SDK
+// membership writer, because Admin SDK writes bypass firestore.rules.
+// enforceAppCheck is the per-actor control (#197). No rate-limit: re-entry is
+// bounded upstream by joinGroupByInviteCode's 5/hr throttle.
 
 export interface LeaveGroupInput {
   groupId: string;
@@ -92,28 +105,10 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
       return { groupId, mode: 'left', alreadyLeft: true };
     }
 
-    // Balance gate: the leaver must be square. recomputeNet is the SAME oracle
-    // the client ledger + deleteGroup use; a missing entry means the leaver never
-    // had a financial position ⇒ owes nothing ⇒ allowed. isZero() is exact (the
-    // allocators close residuals, incl. the #223 in-tolerance close-out).
-    const { net } = await recomputeNet(db, groupRef);
-    // #382 PR-2: net is per-currency buckets (currency -> uid -> net). The
-    // leaver may leave only when they net exactly zero in EVERY currency bucket
-    // — no FX, so each currency must clear independently. (The old
-    // `currencies.size > 1` refusal is gone: a mixed group where the leaver is
-    // square per-currency is fine.) A missing entry ⇒ no position in that
-    // currency ⇒ zero. isZero() is exact (the allocators close residuals, incl.
-    // the #223 in-tolerance close-out).
-    const leaverOutstanding = [...net.values()].some((bucket) => {
-      const v = bucket.get(uid);
-      return v != null && !v.isZero();
-    });
-    if (leaverOutstanding) {
-      throw new HttpsError(
-        'failed-precondition',
-        'You have an unsettled balance and cannot leave the group.',
-      );
-    }
+    // #1144: acquire the departure lock BEFORE the balance gate so the
+    // recompute basis cannot change under us. Everything after the acquire
+    // runs in a try whose catch releases OUR lock (own-invocation-only).
+    const lock = await acquireDepartureLock(db, groupRef, uid);
 
     const actorName =
       memberDocsSnap.docs
@@ -121,56 +116,90 @@ export const leaveGroup = onCall<LeaveGroupInput, Promise<LeaveGroupOutput>>(
         .find((name): name is string => typeof name === 'string' && name.length > 0)
       ?? 'Someone';
 
-    const mutation = await db.runTransaction(async (tx) => {
-      const freshGroupSnap = await tx.get(groupRef);
-      if (!freshGroupSnap.exists) {
-        throw new HttpsError('not-found', 'Group not found.');
+    let mutation: { alreadyLeft: boolean };
+    try {
+      // Balance gate: the leaver must be square. recomputeNet is the SAME
+      // oracle the client ledger + deleteGroup use; a missing entry means the
+      // leaver never had a financial position ⇒ owes nothing ⇒ allowed.
+      const { net } = await recomputeNet(db, groupRef);
+      // #382 PR-2: net is per-currency buckets (currency -> uid -> net). The
+      // leaver may leave only when they net exactly zero in EVERY currency bucket
+      // — no FX, so each currency must clear independently. (The old
+      // `currencies.size > 1` refusal is gone: a mixed group where the leaver is
+      // square per-currency is fine.) A missing entry ⇒ no position in that
+      // currency ⇒ zero. isZero() is exact (the allocators close residuals, incl.
+      // the #223 in-tolerance close-out).
+      const leaverOutstanding = [...net.values()].some((bucket) => {
+        const v = bucket.get(uid);
+        return v != null && !v.isZero();
+      });
+      if (leaverOutstanding) {
+        throw new HttpsError(
+          'failed-precondition',
+          'You have an unsettled balance and cannot leave the group.',
+        );
       }
-      const freshGroup = freshGroupSnap.data() ?? {};
-      if (
-        freshGroup.isDeleted === true
-        || freshGroup.deletingInProgress === true
-        || freshGroup.claimingInProgress === true
-        || freshGroup.accountDeletionInProgress === true
-      ) {
-        throw new HttpsError('not-found', 'Group not found.');
-      }
-      const freshMemberIds: string[] = Array.isArray(freshGroup.memberIds)
-        ? freshGroup.memberIds.filter((v): v is string => typeof v === 'string')
-        : [];
-      const freshMemberDocsSnap = await tx.get(
-        groupRef.collection('members').where('userId', '==', uid),
-      );
-      const freshIsMember = freshMemberIds.includes(uid);
-      if (!freshIsMember && freshMemberDocsSnap.empty) {
-        return { alreadyLeft: true };
-      }
-      const freshActorName =
-        freshMemberDocsSnap.docs
-          .map((d) => d.data().displayName)
-          .find((name): name is string => typeof name === 'string' && name.length > 0)
-        ?? actorName;
 
-      const now = Timestamp.now();
-      tx.update(groupRef, {
-        memberIds: FieldValue.arrayRemove(uid),
-        updatedAt: now,
+      mutation = await db.runTransaction(async (tx) => {
+        const freshGroupSnap = await tx.get(groupRef);
+        if (!freshGroupSnap.exists) {
+          throw new HttpsError('not-found', 'Group not found.');
+        }
+        const freshGroup = freshGroupSnap.data() ?? {};
+        if (
+          freshGroup.isDeleted === true
+          || freshGroup.deletingInProgress === true
+          || freshGroup.claimingInProgress === true
+          || freshGroup.accountDeletionInProgress === true
+        ) {
+          throw new HttpsError('not-found', 'Group not found.');
+        }
+        // #1144: the recompute basis is only trustworthy while the lock we
+        // acquired is still in place — a reaper reclaim mid-flight voids it.
+        assertDepartureLockHeld(freshGroup, lock);
+        const freshMemberIds: string[] = Array.isArray(freshGroup.memberIds)
+          ? freshGroup.memberIds.filter((v): v is string => typeof v === 'string')
+          : [];
+        const freshMemberDocsSnap = await tx.get(
+          groupRef.collection('members').where('userId', '==', uid),
+        );
+        const freshIsMember = freshMemberIds.includes(uid);
+        if (!freshIsMember && freshMemberDocsSnap.empty) {
+          tx.update(groupRef, departureLockClearFields());
+          return { alreadyLeft: true };
+        }
+        const freshActorName =
+          freshMemberDocsSnap.docs
+            .map((d) => d.data().displayName)
+            .find((name): name is string => typeof name === 'string' && name.length > 0)
+          ?? actorName;
+
+        const now = Timestamp.now();
+        tx.update(groupRef, {
+          memberIds: FieldValue.arrayRemove(uid),
+          updatedAt: now,
+          // #1144: release the lock atomically with the mutation.
+          ...departureLockClearFields(),
+        });
+        for (const memberDoc of freshMemberDocsSnap.docs) {
+          tx.delete(memberDoc.ref);
+        }
+        const activityRef = groupRef.collection('activity').doc();
+        tx.set(activityRef, {
+          id: activityRef.id,
+          type: 'member_left',
+          actorId: uid,
+          actorName: freshActorName,
+          description: 'left the group',
+          metadata: {},
+          timestamp: new Date().toISOString(),
+        });
+        return { alreadyLeft: false };
       });
-      for (const memberDoc of freshMemberDocsSnap.docs) {
-        tx.delete(memberDoc.ref);
-      }
-      const activityRef = groupRef.collection('activity').doc();
-      tx.set(activityRef, {
-        id: activityRef.id,
-        type: 'member_left',
-        actorId: uid,
-        actorName: freshActorName,
-        description: 'left the group',
-        metadata: {},
-        timestamp: new Date().toISOString(),
-      });
-      return { alreadyLeft: false };
-    });
+    } catch (err) {
+      await clearDepartureLockForFailure(groupRef, lock);
+      throw err;
+    }
 
     if (mutation.alreadyLeft) {
       return { groupId, mode: 'left', alreadyLeft: true };
