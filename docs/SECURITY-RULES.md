@@ -27,7 +27,7 @@ explicitly allowed is refused.
 | `groups/{gid}/settlements/{sid}` (group-level) | members | members (creator must be self) | ❌ (B3 append-only) | ❌ (B3 append-only) |
 | `groups/{gid}/events/{eid}` | members | members | event participants (light) / current-member event-or-group creator (admin, #1132) | ❌ (soft-delete only) |
 | `groups/{gid}/events/{eid}/expenses/{xid}` | members | member + event participant (creator must be self, #1131) | member + event participant, allowed-fields, soft-delete one-way (#1131) | ❌ |
-| `groups/{gid}/events/{eid}/settlements/{sid}` | members | event participants (creator must be self) | ❌ (B3) | ❌ (B3) |
+| `groups/{gid}/events/{eid}/settlements/{sid}` | members | members (creator must be self; counterparties must be event participants, #752) | ❌ (B3) | ❌ (B3) |
 | `groups/{gid}/events/{eid}/activity_logs/{aid}` | members | ❌ (server audit trigger only) | ❌ | ❌ |
 
 "Member" means `request.auth.uid in groups/{gid}.memberIds`. "Creator"
@@ -473,7 +473,7 @@ Each branch enforces the module name plus its own schema.
 - Payer and recipient must both be participants AND different from each other
 - `payerName` / `recipientName` are nullable valid display names
 - `amountFils` positive int, `currency` passes the supported-code `validCurrency` allowlist
-- `createdBy == request.auth.uid` and caller `isEventParticipant`
+- `createdBy == request.auth.uid` and caller `isGroupMember`; the caller need not be an event participant (#752)
 
 **Activity logs**:
 
