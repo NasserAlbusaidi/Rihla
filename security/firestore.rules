@@ -777,7 +777,15 @@ service cloud.firestore {
           }
 
           function validExpenseCreate() {
+            // #1131: leave/remove never prune event participantIds (balance-
+            // universe preservation), so participation alone is NOT current
+            // membership — a departed member would retain write authority
+            // forever. Require live memberIds too. The counterparty universe
+            // (participants()) is deliberately untouched: current members must
+            // keep writing expenses that REFERENCE departed participants
+            // (#249 parity contract).
             return module == 'expenses'
+              && isGroupMember(groupId)
               && isEventParticipant(groupId, eventId)
               && eventAcceptsExpenseWrites(groupId, eventId)
               && validExpenseBase(request.resource.data, true)
@@ -834,6 +842,7 @@ service cloud.firestore {
             // and the lastEditedBy==auth.uid pin keeps the editor unforgeable so the
             // expenseAuditLogger trigger (live since PR2) attributes each change.
             return module == 'expenses'
+              && isGroupMember(groupId) // #1131 — see validExpenseCreate
               && isEventParticipant(groupId, eventId)
               && eventAcceptsExpenseWrites(groupId, eventId)
               && request.resource.data.createdBy == resource.data.createdBy

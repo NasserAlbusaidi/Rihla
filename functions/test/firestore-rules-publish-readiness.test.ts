@@ -2132,9 +2132,10 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
-  // The boundary that matters: the gate is isEventParticipant (participantIds),
-  // NOT isGroupMember (memberIds). A group member who is not on THIS event's
-  // participant list cannot edit its expenses.
+  // The gate is BOTH isGroupMember (memberIds, #1131) AND isEventParticipant
+  // (participantIds). This test pins the participation half: a group member who
+  // is not on THIS event's participant list cannot edit its expenses. The
+  // membership half is pinned by the '#1131 departed member' describe below.
   test('#248 PR4 group-member who is NOT an event participant cannot update expense', async () => {
     await seedEvent('e2', { participantIds: ['owner'] }); // member NOT a participant of e2
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
@@ -2152,6 +2153,80 @@ describe('Publish readiness Firestore rules', () => {
       amountFils: 12500,
       lastEditedBy: 'member',
     }));
+  });
+
+  describe('#1131 departed member loses expense write authority', () => {
+    // leaveGroup/removeMember drop the uid from memberIds + delete the member
+    // doc but NEVER prune event participantIds (balance-universe preservation),
+    // so participation alone must not grant writes: the gate requires CURRENT
+    // membership too. Read access was always membership-gated; these pin the
+    // write side to the same boundary.
+    async function departMember(): Promise<void> {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await db.doc('groups/g1').update({ memberIds: ['owner'], updatedAt: new Date() });
+        await db.doc('groups/g1/members/member').delete();
+      });
+    }
+
+    test('departed member (still in participantIds) cannot CREATE an expense', async () => {
+      await departMember();
+      const departed = testEnv.authenticatedContext('member').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1/expenses/expDeparted').set(
+        validExpense({ id: 'expDeparted', createdBy: 'member', payerParticipantId: 'member' }),
+      ));
+    });
+
+    test('departed member cannot UPDATE an expense', async () => {
+      await seedExpense(); // createdBy 'owner'
+      await departMember();
+      const departed = testEnv.authenticatedContext('member').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1/expenses/exp1').update({
+        amountFils: 12500,
+        lastEditedBy: 'member',
+      }));
+    });
+
+    test('departed member cannot SOFT-DELETE an expense', async () => {
+      await seedExpense();
+      await departMember();
+      const departed = testEnv.authenticatedContext('member').firestore();
+      await assertFails(departed.doc('groups/g1/events/e1/expenses/exp1').update({
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        lastEditedBy: 'member',
+      }));
+    });
+
+    // Over-blocking guard: the remaining member keeps full write authority —
+    // including on expenses whose splitDistribution still REFERENCES the
+    // departed participant (participants() untouched, #249 parity). The splits
+    // below must name 'member' explicitly: amountFils is allocation-affecting,
+    // so the edit re-runs splitDistribution.keys().hasOnly(participants())
+    // against a split containing the departed uid — a trivially-empty split
+    // would not exercise that axis.
+    test('remaining member still creates and edits normally after a departure', async () => {
+      await seedExpense({
+        splitMode: 'exact',
+        splitDistribution: { owner: 5250, member: 5250 }, // departed uid as counterparty
+      });
+      await departMember();
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/exp1').update({
+        amountFils: 12500,
+        splitDistribution: { owner: 6250, member: 6250 },
+        lastEditedBy: 'owner',
+      }));
+      await assertSucceeds(owner.doc('groups/g1/events/e1/expenses/expOwner').set(
+        validExpense({
+          id: 'expOwner',
+          createdBy: 'owner',
+          payerParticipantId: 'owner',
+          splitMode: 'exact',
+          splitDistribution: { owner: 5250, member: 5250 }, // create referencing departed uid
+        }),
+      ));
+    });
   });
 
   // B3 append-only guard. NOTE: stays green regardless of the validSoftDelete
