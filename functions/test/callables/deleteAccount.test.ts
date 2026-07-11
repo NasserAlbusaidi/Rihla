@@ -451,6 +451,143 @@ describe('deleteAccount', () => {
       .rejects.toMatchObject({ code: 'auth/user-not-found' });
   });
 
+  describe('#1133 closedBy + spendingSnapshot scrub', () => {
+    const DESC_PII = 'dinner-at-my-secret-address-42';
+
+    it('scrubs closedBy uid and spendingSnapshot uids/descriptions from the closed event', async () => {
+      await seedAuthUser();
+      await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
+      await seedMember('groupA', deletedUid);
+      await seedMember('groupA', otherUid);
+      await seedEvent('groupA', 'eventA', {
+        createdBy: otherUid,
+        isClosed: true,
+        closedAt: new Date('2026-01-06T00:00:00.000Z'),
+        closedBy: deletedUid,
+        spendingSnapshot: {
+          v: 1,
+          participantCount: 2,
+          expenseCount: 1,
+          totals: { OMR: 5000 },
+          biggest: { OMR: { id: 'e1', amt: 5000, desc: DESC_PII, cat: 'food', payer: deletedUid } },
+          payers: { OMR: [{ id: deletedUid, amt: 5000 }, { id: otherUid, amt: 0 }] },
+          categories: { OMR: [{ cat: 'food', amt: 5000 }] },
+          owed: { OMR: { [deletedUid]: 2500, [otherUid]: 2500 } },
+        },
+      });
+
+      await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+      const event = (await getFirestore().doc('groups/groupA/events/eventA').get()).data();
+      expectNoDeletedIdentity(event);
+      const t = tombstoneIdFor(deletedUid);
+      expect(event?.closedBy).toBe(t);
+      const snap = event?.spendingSnapshot;
+      expect(snap.biggest.OMR.payer).toBe(t);
+      expect(snap.biggest.OMR).not.toHaveProperty('desc');
+      expect(snap.payers.OMR.map((p: { id: string }) => p.id)).toContain(t);
+      expect(Object.keys(snap.owed.OMR)).toContain(t);
+      expect(JSON.stringify(snap)).not.toContain(DESC_PII);
+      expect(snap.owed.OMR[t]).toBe(2500); // amount preserved on re-key
+      expect(snap.owed.OMR[otherUid]).toBe(2500);
+    });
+
+    it('SUMS (never drops) owed on the #1099 tombstone-collision re-delete', async () => {
+      const t = tombstoneIdFor(deletedUid);
+      await seedAuthUser();
+      await seedGroup('groupC', [deletedUid, otherUid], { createdBy: otherUid });
+      await seedMember('groupC', deletedUid);
+      await seedMember('groupC', otherUid);
+      await seedEvent('groupC', 'eventC', {
+        createdBy: otherUid,
+        isClosed: true,
+        closedAt: new Date('2026-01-06T00:00:00.000Z'),
+        closedBy: otherUid,
+        // Collision: owed holds BOTH the prior tombstone T and the re-added uid U.
+        spendingSnapshot: {
+          v: 1,
+          participantCount: 2,
+          expenseCount: 1,
+          totals: { OMR: 3500 },
+          biggest: { OMR: { id: 'e1', amt: 3500, payer: otherUid } },
+          payers: { OMR: [{ id: deletedUid, amt: 3500 }] },
+          categories: { OMR: [{ cat: 'food', amt: 3500 }] },
+          owed: { OMR: { [t]: 1000, [deletedUid]: 2500 } },
+        },
+      });
+
+      await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+      const snap = (await getFirestore().doc('groups/groupC/events/eventC').get()).data()
+        ?.spendingSnapshot;
+      // MERGE-SUM, not last-write-wins drop (2500) and not overwrite: 1000 + 2500.
+      expect(snap.owed.OMR[t]).toBe(3500);
+      expect(snap.owed.OMR).not.toHaveProperty(deletedUid);
+    });
+
+    it('leaves an unrelated event snapshot (no deleted-user reference) byte-for-byte untouched', async () => {
+      await seedAuthUser();
+      await seedGroup('groupB', [deletedUid, otherUid], { createdBy: otherUid });
+      await seedMember('groupB', deletedUid);
+      await seedMember('groupB', otherUid);
+      const untouched = {
+        v: 1,
+        participantCount: 1,
+        expenseCount: 1,
+        totals: { OMR: 1000 },
+        biggest: { OMR: { id: 'x1', amt: 1000, desc: 'others-only-dinner', payer: otherUid } },
+        payers: { OMR: [{ id: otherUid, amt: 1000 }] },
+        categories: { OMR: [{ cat: 'food', amt: 1000 }] },
+        owed: { OMR: { [otherUid]: 1000 } },
+      };
+      await seedEvent('groupB', 'eventB', {
+        createdBy: otherUid,
+        participantIds: [otherUid],
+        participantNames: { [otherUid]: otherName },
+        isClosed: true,
+        closedAt: new Date('2026-01-06T00:00:00.000Z'),
+        closedBy: otherUid,
+        spendingSnapshot: untouched,
+      });
+
+      await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+      const event = (await getFirestore().doc('groups/groupB/events/eventB').get()).data();
+      expect(event?.spendingSnapshot).toEqual(untouched); // no collateral desc drop
+    });
+
+    it('converges on a forged partial-shape snapshot (gate trips, biggest/payers absent) without injecting undefined', async () => {
+      await seedAuthUser();
+      await seedGroup('groupD', [deletedUid, otherUid], { createdBy: otherUid });
+      await seedMember('groupD', deletedUid);
+      await seedMember('groupD', otherUid);
+      // Rules-legal but hand-rolled: spendingSnapshotBounded checks only
+      // `is map && size()<=16`, so a co-member can write a snapshot with the gate
+      // tripping via `owed` while `biggest`/`payers` are ABSENT. The scrub must NOT
+      // inject `spendingSnapshot.biggest: undefined` (Admin SDK rejects undefined →
+      // cascade throws → deletion permanently blocked).
+      await seedEvent('groupD', 'eventD', {
+        createdBy: otherUid,
+        isClosed: true,
+        closedAt: new Date('2026-01-06T00:00:00.000Z'),
+        closedBy: otherUid,
+        spendingSnapshot: { owed: { OMR: { [deletedUid]: 1000 } } },
+      });
+
+      const result = await wrapped({ data: {}, auth: { uid: deletedUid } } as any);
+
+      // Cascade CONVERGES: no cascadeFailed, auth user deleted.
+      expect(result.cascadeFailed).toEqual([]);
+      expect(result.authUserDeleted).toBe(true);
+      const snap = (await getFirestore().doc('groups/groupD/events/eventD').get()).data()
+        ?.spendingSnapshot;
+      const t = tombstoneIdFor(deletedUid);
+      expect(snap.owed.OMR[t]).toBe(1000); // re-keyed, value preserved
+      expect(snap).not.toHaveProperty('biggest'); // no undefined key injected
+      expect(snap).not.toHaveProperty('payers');
+    });
+  });
+
   test('second run is idempotent after the UID has been scrubbed', async () => {
     await seedAuthUser();
     await seedGroup('groupA', [deletedUid, otherUid], { createdBy: otherUid });
