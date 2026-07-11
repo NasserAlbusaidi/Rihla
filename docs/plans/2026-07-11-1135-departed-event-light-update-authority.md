@@ -20,7 +20,7 @@
 
 ## Investigation Result
 
-Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `b566cd62564ec330b99236922185b9545b61b1d0` disproves that claim:
+Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `6cc3e67959fd7dec48423e960ad0903a626b277d` disproves that claim:
 
 - `security/firestore.rules:423-425`: `requesterIsParticipant()` requires the caller UID in the existing event `participantIds`.
 - `security/firestore.rules:579-605`: every light update ends in `validEventUpdateCommon()`.
@@ -84,12 +84,12 @@ Choose. Emulator tests protect the actual deny behavior, a mutation check proves
 
 ## Known Adjacent Behavior, Out of Scope
 
-Because `validEventBase()` validates the whole post-write participant list, an event retaining any departed participant also blocks ordinary light metadata edits by remaining participants until a current admin removes the stale participant in the same update. `validEventCloseToggle()` deliberately bypasses `validEventBase()` so close/reopen still works with departed participants. This is the inverse of #1135's security claim and may deserve a separate product decision, but changing that coupling would require a new rule that admits existing departed IDs while constraining only newly-added IDs to current members. That is not a safe side effect for this PR.
+Because `validEventBase()` validates the whole post-write participant list, an event retaining any departed participant also blocks ordinary light metadata edits by remaining participants. The rules would admit a current-admin update that removes every stale participant, but the current `EventService` and event settings UI expose no participant-add/remove method. Practical in-app recovery is therefore limited to every stale real member rejoining (fan-in restores current membership); otherwise repair needs an out-of-band Admin SDK write or a future participant-management feature. `validEventCloseToggle()` deliberately bypasses `validEventBase()` so close/reopen still works with departed participants. This is the inverse of #1135's security claim and may deserve a separate product decision, but changing that coupling would require a new rule that admits existing departed IDs while constraining only newly-added IDs to current members. That is not a safe side effect for this PR.
 
 Two user-visible consequences discovered by the Gate are also real but independent of this tests/docs resolution:
 
 - **#1140:** `EventDangerSection._executeDelete()` starts the fire-and-forget `event_deleted` activity write before the event soft-delete. When stale participants make the soft-delete fail, history can falsely say the event was deleted. The fix needs atomic delete+activity semantics, especially offline.
-- **#1141:** `expenseNotifier` targets historical expense/event party UIDs without intersecting current `group.memberIds`, so departed members can receive expense details and an unreadable ledger deep link. The fix belongs at notification-recipient selection.
+- **#1141:** `expenseNotifier` and `eventSettlementNotifier` target historical expense/event party UIDs without intersecting current `group.memberIds`, so departed members can receive money details and an unreadable ledger deep link. The fix belongs at notification-recipient selection; group-settlement parties are already current-member-gated and are not the hole.
 
 Both predate this branch, remain behaviorally unchanged by it, and require their own focused specs/tests. Folding either into #1135 would violate the one-concern rule and turn a rules-refutation PR into unrelated client and Cloud Functions changes.
 
@@ -190,7 +190,7 @@ Change the section introduction from “two update paths” to **three**: light,
 
 - [ ] **Step 3: Document the stale-participant consequence without fixing it here**
 
-State that retaining a departed UID makes ordinary light metadata updates fail until an admin removes the stale participant, while close/reopen remains available through `validEventCloseToggle()`'s deliberate base-validation bypass. Label any redesign of this coupling as separate scope.
+State that retaining a departed UID makes ordinary light metadata updates fail. Clarify that the rules could admit a current-admin cleanup but no current client service/UI exposes participant removal; rejoin or out-of-band/future repair is required. Close/reopen remains available through `validEventCloseToggle()`'s deliberate base-validation bypass. Label any redesign of this coupling as separate scope.
 
 - [ ] **Step 4: Document the close-toggle path as a first-class third path**
 
@@ -258,5 +258,11 @@ Use a conventional commit and a draft PR. The PR body must include the live repr
 Round 1 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `2 P1 / 1 P2 / 0 P3`.
 
 - Rubric P1 resolved: the plan no longer claims raw expression-warning count is unchanged. Each added denied write contributes one existing ceiling artifact; expected delta is +2, while a byte-identical rules diff is the rules-equivalence proof.
-- Adversary P1s resolved without scope bundling: the phantom `event_deleted` side effect is tracked as #1140 and departed-recipient expense pushes as #1141. Both are explicitly pre-existing, behaviorally untouched, and assigned focused fixes.
+- Adversary P1s resolved without scope bundling: the phantom `event_deleted` side effect is tracked as #1140 and departed-recipient money pushes as #1141. Both are explicitly pre-existing, behaviorally untouched, and assigned focused fixes.
 - Adversary P2 resolved: Task 2 now corrects the documentation's “two update paths” statement and adds the close-toggle path as the third live path.
+
+Round 2 (2026-07-11): rubric `0 P1 / 0 P2 / 1 P3`; adversary `1 P1 / 1 P2 / 0 P3`.
+
+- Adversary P1 resolved: #1141 now covers both expense-created and event-settlement pushes to departed parties, with separate regression boxes for each; group settlements are explicitly excluded because their counterparties remain current-member-gated.
+- Adversary P2 resolved: the stale-participant section no longer implies a current UI/service recovery path. It distinguishes the rules-admissible admin repair from actual in-app recovery (rejoin) and out-of-band/future participant management.
+- Rubric P3 resolved: the branch rebased onto current `origin/main` `6cc3e679`, and the investigation baseline SHA above now matches it.
