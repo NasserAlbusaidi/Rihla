@@ -20,7 +20,7 @@
 
 ## Investigation Result
 
-Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `e49daf7deb6c59553fd517827ca19848d85d8e8c` disproves that claim:
+Issue #1135 claimed `requesterIsParticipant()` was the only membership-related gate on `validEventLightUpdate()`. Live code at `origin/main` `302664682c813d672cf315019745957dc666a35f` disproves that claim:
 
 - `security/firestore.rules:423-425`: `requesterIsParticipant()` requires the caller UID in the existing event `participantIds`.
 - `security/firestore.rules:579-605`: every light update ends in `validEventUpdateCommon()`.
@@ -212,19 +212,23 @@ Change the event update cell from `event participants (light)` to `current-membe
 
 Change the section introduction from “two update paths” to **three**: light, admin, and close-toggle. After “Any current event participant,” state that current group membership is enforced by composition: caller in existing `participantIds`, additive post-write list, and `validEventBase()` requiring the post-write list to contain only current `group.memberIds`. State that a separate `isGroupMember()` conjunct is intentionally omitted because it is redundant on the #723 near-ceiling OR-chain.
 
-- [ ] **Step 3: Document the stale-participant consequence without fixing it here**
+- [ ] **Step 3: Correct the admin-path authority and validation contract**
 
-State that retaining a departed UID makes ordinary light metadata updates fail. Clarify that the rules could admit a current-admin cleanup but no current client service/UI exposes participant removal; rejoin or out-of-band/future repair is required. Close/reopen remains available through `validEventCloseToggle()`'s deliberate base-validation bypass. Label any redesign of this coupling as separate scope.
+Replace the admin-path opening “Event creator OR group creator” with “A current group member who is the event creator OR group creator.” Explain that `requesterIsEventAdmin()` enforces current membership and that `validEventAdminUpdate()` still reaches `validEventBase()` through `validEventUpdateCommon()`. Therefore ordinary admin metadata updates and soft-delete also fail when the retained roster contains a departed UID; an admin update that removes every stale UID can satisfy the subset guard, but no current client service/UI exposes that cleanup.
 
-- [ ] **Step 4: Document the close-toggle path as a first-class third path**
+- [ ] **Step 4: Document the stale-participant consequence without fixing it here**
+
+State that retaining a departed UID makes ordinary light and admin metadata/soft-delete updates that preserve the roster fail. Clarify that the rules could admit a current-admin cleanup but no current client service/UI exposes participant removal; rejoin or out-of-band/future repair is required. Close/reopen remains available through `validEventCloseToggle()`'s deliberate base-validation bypass. Label any redesign of this coupling as separate scope.
+
+- [ ] **Step 5: Document the close-toggle path as a first-class third path**
 
 Add a close-toggle subsection with its exact allow-list (`isClosed`, `closedAt`, `closedBy`, `updatedAt`, optional bounded `spendingSnapshot`), current-member event/group creator authority, and explicit reason for bypassing `validEventBase()` when historical participants remain.
 
-- [ ] **Step 5: Correct the event-create key contract**
+- [ ] **Step 6: Correct the event-create key contract**
 
 Replace the existing contradictory “must contain exactly these keys” wording with two explicit sets: the required event-create base keys, and the optional allowlisted close keys `isClosed`, `closedAt`, and `closedBy`. State that each close key is optional on create, but when present the only valid birth state is `isClosed: false`, `closedAt: null`, `closedBy: null`, matching `Event.toFirestoreMap()` and `validEventCreate()`.
 
-- [ ] **Step 6: Commit the documentation correction**
+- [ ] **Step 7: Commit the documentation correction**
 
 ```bash
 git add docs/SECURITY-RULES.md
@@ -339,3 +343,9 @@ Round 8 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `1 P1 / 0 P2 / 0 P3
 Round 9 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
 
 - Rubric P1 resolved: Task 1 now pins the additivity premise with a departed-caller self-removal-plus-rename denial and a dedicated light-only mutation that removes only `hasAll(existing participantIds)`. The subset and additivity predicates are mutated independently; the new cheap denial does not change the expected +2 ceiling-artifact delta.
+
+Round 10 (2026-07-11): rubric `1 P1 / 0 P2 / 0 P3`; adversary `0 P1 / 0 P2 / 0 P3`.
+
+- Rubric P1 resolved: Task 2 now corrects the admin opening to require a current-member event/group creator, traces admin updates through `validEventUpdateCommon()` to the participant-subset check, and documents why ordinary admin edits/soft-delete share the stale-roster lockout while close-toggle is the explicit exception.
+
+Before round 11, `origin/main` advanced through #1142/#1145. The branch rebased onto `30266468`; those commits do not touch event rules, the target readiness suite, or `docs/SECURITY-RULES.md`. The unchanged baseline was rerun at 228/228 with `expression_ceiling_artifacts=49`.
