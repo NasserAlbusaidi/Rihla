@@ -15,6 +15,74 @@ void main() {
       service = SettlementService.withFirestore(fakeDb);
     });
 
+    group('addSettlement #1140 activity batching', () {
+      Future<List<Map<String, dynamic>>> activityDocs(String groupId) async {
+        final snap = await fakeDb
+            .collection('groups')
+            .doc(groupId)
+            .collection('activity')
+            .get();
+        return snap.docs.map((d) => d.data()).toList();
+      }
+
+      test(
+        'with activity params writes settlement + ONE stl_<id> activity row '
+        'atomically; a repeat (same id) stays ONE row (idempotent)',
+        () async {
+          Future<void> record() => service.addSettlement(
+                id: 'sd1abc',
+                groupId: 'g1',
+                eventId: 'e1',
+                payerParticipantId: 'bob',
+                recipientParticipantId: 'alice',
+                amount: Decimal.parse('10.000'),
+                createdBy: 'bob',
+                currency: 'OMR',
+                activityId: 'stl_sd1abc',
+                activityActorId: 'bob',
+                activityActorName: 'Bob',
+                activityDescription: 'settled OMR 10.000 with Alice',
+                activityMetadata: const {
+                  'amountFils': 10000,
+                  'currency': 'OMR',
+                  'fromUserId': 'bob',
+                  'toUserId': 'alice',
+                },
+              );
+          await record();
+          await record(); // retry / second device — same deterministic ids
+
+          final settlements = await fakeDb
+              .collection('groups')
+              .doc('g1')
+              .collection('events')
+              .doc('e1')
+              .collection('settlements')
+              .get();
+          expect(settlements.docs, hasLength(1));
+
+          final activity = await activityDocs('g1');
+          expect(activity, hasLength(1));
+          expect(activity.single['id'], equals('stl_sd1abc'));
+          expect(activity.single['type'], equals('event_settlement'));
+          expect(activity.single['actorId'], equals('bob'));
+        },
+      );
+
+      test('without activity params writes NO activity row (legacy)', () async {
+        await service.addSettlement(
+          id: 'sd1none',
+          groupId: 'g1',
+          eventId: 'e1',
+          payerParticipantId: 'bob',
+          recipientParticipantId: 'alice',
+          amount: Decimal.parse('5.000'),
+          createdBy: 'bob',
+        );
+        expect(await activityDocs('g1'), isEmpty);
+      });
+    });
+
     group('addSettlement', () {
       test(
         'writes settlement document to groups/{groupId}/events/{eventId}/settlements',

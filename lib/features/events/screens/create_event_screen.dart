@@ -153,6 +153,11 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       // it stays pending until reconnect. Stage the write (local cache + queued
       // replay) and race the ack, instead of awaiting it raw (which stranded the
       // "Creating…" spinner forever offline).
+      // #1140: the event_created activity row is folded into stageEvent's OWN
+      // atomic batch, so a create denied at replay (e.g. a participant left
+      // before sync) persists no phantom "created X" row. actorName is clamped
+      // by buildActivityDoc.
+      final deviceName = ref.read(settingsProvider).deviceName;
       final staged = ref
           .read(eventServiceProvider)
           .stageEvent(
@@ -166,6 +171,8 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             endDate: _endDate,
             // Pass Custom-type module overrides; null for preset types (D-14)
             modules: _selectedType == EventType.custom ? _modules : null,
+            activityActorId: uid,
+            activityActorName: deviceName.isNotEmpty ? deviceName : 'Someone',
           );
       final outcome = await awaitServerAck(
         staged.ack,
@@ -182,25 +189,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         connectivity.noteQueuedWrite(
           groupId: widget.groupId,
         ); // #412: queued — force "will sync"
-      }
-
-      // Log event_created activity (D-14) — fire-and-forget, no await
-      try {
-        final actorName = ref.read(settingsProvider).deviceName.isNotEmpty
-            ? ref.read(settingsProvider).deviceName
-            : 'Someone';
-        ref
-            .read(groupActivityServiceProvider)
-            .logGroupEvent(
-              groupId: widget.groupId,
-              type: 'event_created',
-              actorId: uid,
-              actorName: actorName,
-              description: 'created ${event.name}',
-              metadata: {'eventId': event.id, 'eventName': event.name},
-            );
-      } catch (_) {
-        // Activity logging failure must never crash the creation flow.
       }
 
       if (outcome == WriteAck.queued) {

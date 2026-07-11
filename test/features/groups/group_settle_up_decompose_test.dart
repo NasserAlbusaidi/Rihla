@@ -12,7 +12,6 @@ import 'package:safar/features/groups/providers/group_balance_provider.dart';
 import 'package:safar/features/groups/providers/group_provider.dart';
 import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
-import 'package:safar/features/groups/services/group_activity_service.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -133,22 +132,17 @@ Future<List<Settlement>> _groupSettlements(FakeFirebaseFirestore fake) async {
       .toList();
 }
 
-class _RecordingGroupActivityService extends GroupActivityService {
-  _RecordingGroupActivityService() : super.withFirestore(FakeFirebaseFirestore());
-
-  final logCalls = <({String type, Map<String, dynamic>? metadata})>[];
-
-  @override
-  void logGroupEvent({
-    required String groupId,
-    required String type,
-    required String actorId,
-    required String actorName,
-    required String description,
-    Map<String, dynamic>? metadata,
-  }) {
-    logCalls.add((type: type, metadata: metadata));
-  }
+// #1140: activity rows are now persisted docs folded INTO the settle-up's
+// atomic batch (a rejected money leg discards them too), NOT separate
+// GroupActivityService.logGroupEvent calls — so the tests read them back from
+// the group's `activity` subcollection through the same shared fake.
+Future<List<Map<String, dynamic>>> _activityDocs(FakeFirebaseFirestore fake) async {
+  final snap = await fake
+      .collection('groups')
+      .doc(_groupId)
+      .collection('activity')
+      .get();
+  return snap.docs.map((d) => d.data()).toList();
 }
 
 Widget _wrap({
@@ -200,7 +194,6 @@ void main() {
         final fake = FakeFirebaseFirestore();
         final eventService = SettlementService.withFirestore(fake);
         final groupService = GroupSettlementService.withFirestore(fake);
-        final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(_wrap(
           balances: _balancesSingleEvent(),
@@ -209,7 +202,6 @@ void main() {
           overrides: [
             settlementServiceProvider.overrideWithValue(eventService),
             groupSettlementServiceProvider.overrideWithValue(groupService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ));
         await tester.pumpAndSettle();
@@ -235,22 +227,26 @@ void main() {
         // residual == 0 → NO group settlement doc.
         expect(await _groupSettlements(fake), isEmpty);
 
-        // Activity logged ONCE for the whole logical settle-up, amount = A.
-        // #831: the decomposed event-settlement SLICES must emit no
-        // event_settlement rows — they bypass settle_up_screen.dart's record
-        // path structurally (written via addSettlement here), and the one
-        // aggregate group_settlement row already represents the settle-up.
-        expect(activityService.logCalls, hasLength(1));
-        expect(activityService.logCalls.single.type, 'group_settlement');
+        // Activity persisted ONCE for the whole logical settle-up, amount = A.
+        // #1140: the row is folded into the SAME atomic batch (id
+        // `gstl_<groupSettleUpId>`), so it is a doc in the group's activity
+        // subcollection — a rejected money leg would discard it too.
+        // #831: the decomposed event-settlement SLICES emit NO event_settlement
+        // rows — they are staged as bare settlement docs in the batch, so the
+        // activity collection holds exactly the one aggregate group_settlement.
+        final activityDocs = await _activityDocs(fake);
+        expect(activityDocs, hasLength(1));
+        expect(activityDocs.single['type'], 'group_settlement');
+        expect(activityDocs.single['id'], startsWith('gstl_'));
         expect(
-          activityService.logCalls.where((c) => c.type == 'event_settlement'),
+          activityDocs.where((d) => d['type'] == 'event_settlement'),
           isEmpty,
         );
-        expect(activityService.logCalls.single.metadata?['amount'], '7.75');
 
         // #818 Wave 3.1: direction keys stamped alongside the legacy shape —
         // cardinality stays exactly 1 (this spec only widens the metadata map).
-        final metadata = activityService.logCalls.single.metadata!;
+        final metadata = activityDocs.single['metadata'] as Map<String, dynamic>;
+        expect(metadata['amount'], '7.75');
         expect(metadata['fromUserId'], 'uid-bob');
         expect(metadata['toUserId'], 'uid-alice');
         expect(metadata['fromName'], isA<String>());
@@ -313,7 +309,6 @@ void main() {
         final fake = FakeFirebaseFirestore();
         final eventService = SettlementService.withFirestore(fake);
         final groupService = GroupSettlementService.withFirestore(fake);
-        final activityService = _RecordingGroupActivityService();
 
         await tester.pumpWidget(_wrap(
           balances: balances,
@@ -323,7 +318,6 @@ void main() {
           overrides: [
             settlementServiceProvider.overrideWithValue(eventService),
             groupSettlementServiceProvider.overrideWithValue(groupService),
-            groupActivityServiceProvider.overrideWithValue(activityService),
           ],
         ));
         await tester.pumpAndSettle();

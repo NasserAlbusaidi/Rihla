@@ -105,6 +105,11 @@ class _RecordingEventSettlementService extends SettlementService {
     String? recipientName,
     String? note,
     String? groupSettleUpId,
+    String? activityId,
+    String? activityActorId,
+    String? activityActorName,
+    String? activityDescription,
+    Map<String, dynamic>? activityMetadata,
   }) async {
     addCalls++;
     return Settlement(
