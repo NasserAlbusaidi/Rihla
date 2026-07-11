@@ -21,11 +21,11 @@ explicitly allowed is refused.
 | `joinAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAttempts/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
 | `deletionAudit/{userId}` | ❌ (admin only) | ❌ | ❌ | ❌ |
-| `groups/{gid}` | members | self, valid initial doc | creator metadata / member-list refresh | ❌ (server soft-delete only) |
-| `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | after server-authoritative memberIds removal |
+| `groups/{gid}` | members | self, valid initial doc | current-member creator metadata (#1132) / member-list refresh | ❌ (server soft-delete only) |
+| `groups/{gid}/members/{mid}` | members | members (with self-rules) | self displayName only | self, or current-member creator for a non-member (shadow) doc (#1132); after server-authoritative memberIds removal |
 | `groups/{gid}/activity/{aid}` | members | members (actor must be self) | ❌ | ❌ |
 | `groups/{gid}/settlements/{sid}` (group-level) | members | members (creator must be self) | ❌ (B3 append-only) | ❌ (B3 append-only) |
-| `groups/{gid}/events/{eid}` | members | members | event participants (light) / event-or-group creator (admin) | ❌ (soft-delete only) |
+| `groups/{gid}/events/{eid}` | members | members | event participants (light) / current-member event-or-group creator (admin, #1132) | ❌ (soft-delete only) |
 | `groups/{gid}/events/{eid}/expenses/{xid}` | members | member + event participant (creator must be self, #1131) | member + event participant, allowed-fields, soft-delete one-way (#1131) | ❌ |
 | `groups/{gid}/events/{eid}/settlements/{sid}` | members | event participants (creator must be self) | ❌ (B3) | ❌ (B3) |
 | `groups/{gid}/events/{eid}/activity_logs/{aid}` | members | ❌ (server audit trigger only) | ❌ | ❌ |
@@ -54,7 +54,7 @@ The rules file defines reusable predicates near the top of the
 | `groupData(gid)` | `get(groupPath).data` | Current Firestore state. |
 | `groupAfterData(gid)` | `getAfter(groupPath).data` | State after the in-flight write commits — needed for cross-doc invariants. |
 | `isGroupMember(gid)` | Group exists and caller is in `memberIds` | The read gate on subcollections; since #1131 also a conjunct on expense writes. |
-| `isGroupCreator(gid)` | Group exists and caller is `createdBy` | Used for elevated operations. |
+| `isGroupCreator(gid)` | Group exists and caller is `createdBy` | Dead helper — zero callers (the group-scoped `isCreator`/`requesterIsGroupCreator` do this inline). Creator authority also requires current membership since #1132. |
 | `eventPath(gid, eid)` / `eventData(gid, eid)` | Path / data helpers for event docs | |
 | `isEventParticipant(gid, eid)` | Event exists and caller is in `participantIds` | One half of the expense write gate — paired with `isGroupMember` since #1131 (`participantIds` is never pruned on departure, so participation alone is not current membership). |
 | `requesterIsRecordCreator()` | `resource.data.createdBy == request.auth.uid` | Retained settlement-corrections scaffold; live settlement updates are hard-denied and live expense updates no longer call it. |

@@ -13,14 +13,14 @@ App Check; `deleteAccount` runs with App Check in verify-if-present (soft) mode.
 |----------|------|---------|
 | `joinGroupByInviteCode` | `functions/src/callables/joinGroupByInviteCode.ts` | Validate a 6-char invite code and atomically add the caller to the group + active events. |
 | `deleteAccount` | `functions/src/callables/deleteAccount.ts` | Server-side account-deletion cascade: revoke refresh tokens, scrub PII, replace UID with a per-group tombstone, delete FCM/joinAttempts/Auth user. On an incomplete cascade it writes a `deletionAudit/{uid}` marker (#76) for the reaper backstop. |
-| `deleteGroup` | `functions/src/callables/deleteGroup.ts` | Server-authoritative group delete + cascade; gated on a zero net balance via the shared `recomputeNet` oracle (#190). |
+| `deleteGroup` | `functions/src/callables/deleteGroup.ts` | Server-authoritative group delete + cascade; gated on the caller being the **current-member** group creator (#1132) + a zero net balance via the shared `recomputeNet` oracle (#190). |
 | `leaveGroup` | `functions/src/callables/leaveGroup.ts` | Member self-leave; gated on the leaver's net == 0 via `recomputeNet` (hard-delete, not tombstone — leave doesn't touch `participantIds`) (#290). |
-| `removeMember` | `functions/src/callables/removeMember.ts` | Creator removes another member; gates the TARGET's net == 0 via `recomputeNet`; self-removal rejected (#318). |
-| `addShadowMember` | `functions/src/callables/addShadowMember.ts` | Creator adds an unclaimed placeholder ("shadow") member by name (uuid-keyed; `doc.id===userId===randomUUID()`) — the only path that mints a member doc by name (#278). |
+| `removeMember` | `functions/src/callables/removeMember.ts` | Current-member creator (#1132) removes another member; gates the TARGET's net == 0 via `recomputeNet`; self-removal rejected (#318). |
+| `addShadowMember` | `functions/src/callables/addShadowMember.ts` | Current-member creator (#1132) adds an unclaimed placeholder ("shadow") member by name (uuid-keyed; `doc.id===userId===randomUUID()`) — the only path that mints a member doc by name (#278). |
 | `requestClaimShadow` | `functions/src/callables/requestClaimShadow.ts` | A joiner requests to claim an unclaimed shadow's identity + balance (#278). |
-| `decideClaimRequest` | `functions/src/callables/decideClaimRequest.ts` | Creator approves/denies a claim; on approve runs the uuid→uid re-key engine `claimShadowEngine` (de-exported — reachable only via this callable) (#278). |
+| `decideClaimRequest` | `functions/src/callables/decideClaimRequest.ts` | Current-member creator (#1132) approves/denies a claim; on approve runs the uuid→uid re-key engine `claimShadowEngine` (de-exported — reachable only via this callable) (#278). |
 | `listMyClaimRequests` | `functions/src/callables/listMyClaimRequests.ts` | Lists the caller's pending/decided claim requests (#278). |
-| `listGroupClaimRequests` | `functions/src/callables/listGroupClaimRequests.ts` | Creator-side list of pending claim requests for a group (#278). |
+| `listGroupClaimRequests` | `functions/src/callables/listGroupClaimRequests.ts` | Current-member creator-side (#1132) list of pending claim requests for a group (#278). |
 | `listUnclaimedShadows` | `functions/src/callables/listUnclaimedShadows.ts` | Lists a group's unclaimed shadows so a joiner can offer to claim one (#278). |
 
 Functions live in `functions/` (Node 22 / TypeScript). They use the
