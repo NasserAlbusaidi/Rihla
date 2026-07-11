@@ -125,6 +125,23 @@ deleteAccount tombstone ids (`deleteAccount.ts` SWAPS uid→tombstoneId into
 settleable/correctable, while leave/remove-departed identities — which
 passed the exact-zero departure gate — are blocked from ANY new exposure.
 
+**R1 is closed at the departure chokepoint (#1144 PR-A), not in rules.**
+A departed *universe-only* actor (payer or settlement party in an event
+that no longer rosters them) is invisible to `participants()`-based rules
+— but the state is now unreachable through `leaveGroup`/`removeMember`:
+both callables run `universeOnlyEventIds` over the same balance snapshot
+as the zero-gate, UNDER the #1147 departure lock, and refuse with
+`failed-precondition`. Rationale: payers/settlement parties are the
+fold's NON-member-gated universe inputs — they fold in the instant the
+member docs are hard-deleted, minting a non-zero departed balance with no
+post-departure write. Split keys are member-gated and DROP instead (a
+split-key-only leaver departs freely; pinned by
+`universeOnlyDepartureGuard.test.ts`). The refused state is reachable
+only via a forged write or a D9 roster removal of a current payer; Admin
+roster repair (re-add to `participantIds`) is the remedy. Admin-SDK
+writes can still manufacture departed universe-only actors — documented,
+out of rules scope.
+
 Deliberate residuals (test-pinned): **R5** — rules cannot iterate
 `splitDistribution` keys to exclude ghosts, so a new expense CAN name a
 deleteAccount tombstone (client pickers filter; durable fix would be an
