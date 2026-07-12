@@ -524,6 +524,7 @@
   "activitySettlementPaid": "دفعة إلى {toName}",
   "activitySettlementReceived": "استلام دفعة من {fromName}",
   "activitySettlementBetween": "تسوية من {fromName} إلى {toName}",
+  "activityGroupCreated": "إنشاء المجموعة",
   "activityGroupEventCreatedGeneric": "إنشاء فعالية",
   "activityGroupEventCreated": "إنشاء {eventName}",
   "activityGroupEventDeletedGeneric": "حذف فعالية",
