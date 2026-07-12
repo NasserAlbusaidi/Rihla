@@ -37,8 +37,10 @@
   --d-brass:#D9A845; --d-brass-dark:#B8862B; --d-on-brass:#1B1F1E;
   --d-sage:#4FBE8F; --d-sage-text:#7FD6AE;
 
-  /* Spacing */
+  /* Spacing (app scale) + web-layout extensions (marketing bands need larger
+     steps than the app's 4–32 scale; still ×8 multiples) */
   --s4:4px; --s8:8px; --s12:12px; --s16:16px; --s20:20px; --s24:24px; --s32:32px;
+  --s48:48px; --s56:56px; --s72:72px; --s96:96px;
 
   /* Radius */
   --r-sm:8px; --r-input:14px; --r-card:20px; --r-sheet:28px; --r-pill:9999px;
@@ -65,8 +67,8 @@ body{
   font-family:var(--font-sans);
   color:var(--ink);
   background-color:var(--paper);
-  background-image:radial-gradient(rgba(27,31,30,.05) 1px, transparent 1.4px);
-  background-size:22px 22px;
+  /* No grain/texture on light surfaces (DESIGN.md § texture) — the dot field
+     lives only on dark/brass surfaces (.quote::before, .cta::before). */
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
@@ -83,8 +85,8 @@ img{max-width:100%;display:block;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 
 /* ---------- layout helpers ---------- */
-.wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:24px;}
-.band{padding-block:96px;}
+.wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:var(--s24);}
+.band{padding-block:var(--s96);}
 .eyebrow{
   font-family:var(--font-mono);font-size:12px;font-weight:500;letter-spacing:.12em;
   text-transform:uppercase;color:var(--primary-dark);
@@ -111,6 +113,7 @@ img{max-width:100%;display:block;}
   padding:8px 14px;border-radius:var(--r-pill);
   border:1px solid var(--rule-2);background:var(--card);
   font-size:13px;font-weight:500;color:var(--ink-3);text-decoration:none;
+  min-height:44px; /* DESIGN.md touch-target floor */
 }
 .pill:hover{border-color:var(--primary);color:var(--ink);}
 
@@ -122,7 +125,7 @@ img{max-width:100%;display:block;}
   display:inline-flex;flex-direction:column;line-height:1;}
 .wordmark .fork{width:2.3em;height:.31em;margin-top:.14em;display:block;color:var(--primary);overflow:visible;}
 .wordmark.sm{font-size:20px;} .wordmark.lg{font-size:38px;}
-.brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);}
+.brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);padding-block:5px;}
 .brand .wordmark{font-size:24px;}
 
 /* ---------- header ---------- */
@@ -133,7 +136,7 @@ header.site-head{position:sticky;top:0;z-index:50;
 .nav-actions{display:flex;align-items:center;gap:12px;}
 
 /* ---------- hero ---------- */
-section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;padding-block:72px 88px;}
+section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:var(--s56);align-items:center;padding-block:72px 88px;}
 .hero h1{font-size:clamp(42px,5.6vw,68px);letter-spacing:-1px;}
 .hero h1 .it{color:var(--primary);}
 .hl{position:relative;white-space:nowrap;}
@@ -149,7 +152,9 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .invite input{flex:1;min-width:0;font-family:var(--font-mono);font-weight:500;font-size:16px;letter-spacing:.22em;
   text-transform:uppercase;padding:12px 16px;border-radius:var(--r-pill);
   border:1px solid var(--rule-2);background:var(--card-soft);color:var(--ink);text-align:start;}
-.invite input::placeholder{letter-spacing:.22em;color:var(--ink-4);}
+/* ink-3, not ink-4: placeholder must clear 4.5:1 on card-soft (ink-4 ≈ 2.9:1;
+   DESIGN.md marks ink-4 decorative-only). */
+.invite input::placeholder{letter-spacing:.22em;color:var(--ink-3);}
 .invite input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px var(--saffron-soft);}
 .invite .btn{padding-inline:20px;white-space:nowrap;}
 .invite-error{margin:11px 2px 0;font-size:13px;color:var(--rust-text);font-weight:700;min-height:1.1em;display:none;}
@@ -201,15 +206,14 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 
 /* avatars */
 .avatar{width:40px;height:40px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;
-  font-family:var(--font-sans);font-weight:700;font-size:14px;color:#fff;}
+  font-family:var(--font-sans);font-weight:700;font-size:14px;color:var(--on-primary);}
 .avatar.sm{width:30px;height:30px;font-size:12px;}
 .av-1{background:var(--av1);} .av-2{background:var(--av2);} .av-3{background:var(--av3);}
 .av-4{background:var(--av4);} .av-5{background:var(--av5);} .av-6{background:var(--av6);}
 .avatar-stack{display:inline-flex;}
-.avatar-stack .avatar{margin-left:-10px;border:2px solid var(--d-card);}
-.avatar-stack .avatar:first-child{margin-left:0;}
-[dir="rtl"] .avatar-stack .avatar{margin-left:0;margin-right:-10px;}
-[dir="rtl"] .avatar-stack .avatar:first-child{margin-right:0;}
+/* Logical margin auto-mirrors under RTL — no [dir] override needed. */
+.avatar-stack .avatar{margin-inline-start:-10px;border:2px solid var(--d-card);}
+.avatar-stack .avatar:first-child{margin-inline-start:0;}
 
 /* perforated journey ticket */
 .ticket{background:var(--d-card);border-radius:var(--r-card);overflow:hidden;position:relative;}
@@ -219,20 +223,36 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .ticket .perf::before,.ticket .perf::after{content:'';position:absolute;top:-9px;width:18px;height:18px;border-radius:var(--r-pill);background:var(--d-paper);}
 .ticket .perf::before{left:-25px;} .ticket .perf::after{right:-25px;}
 
+/* SVG token overrides — CSS wins over the inline hex presentation attrs,
+   which remain only as a no-stylesheet fallback (token purity per :root note). */
+.route-deco path:first-of-type{stroke:var(--rule-2);}
+.route-deco circle{fill:var(--primary);}
+.route-deco path:last-of-type{fill:var(--primary);}
+.btn-primary svg path:first-child{fill:var(--on-primary);}
+.btn-primary svg path:last-child{fill:var(--saffron-soft);}
+.btn-white svg path:first-child{fill:var(--ink);}
+.btn-white svg path:last-child{fill:var(--primary);}
+.invite-label svg path{stroke:var(--primary);}
+.app-bar .icon-btn svg{stroke:var(--d-ink);}
+.ticket .cover-sage{background:linear-gradient(120deg,var(--d-sage-text),var(--d-sage) 60%,var(--sage));}
+
 /* ---------- use-cases ---------- */
 .alt{background:var(--paper-deep);border-block:1px solid var(--rule-2);}
 .sec-head{max-width:36rem;}
 .sec-head h2{font-size:clamp(30px,3.6vw,46px);margin-top:14px;}
-.cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:48px;}
+.cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:var(--s48);}
 .ucard{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);
   padding:28px;box-shadow:var(--shadow-raised);display:flex;flex-direction:column;gap:14px;
   min-height:230px;transition:transform .18s ease, box-shadow .18s ease;}
-.ucard:hover{transform:translateY(-3px);box-shadow:var(--shadow-floating);}
+/* Hover lift ONLY on anchor cards — a lifted card promises a click
+   (split-bills-oman keeps plain <article> cards; they stay flat). */
+a.ucard:hover{transform:translateY(-3px);box-shadow:var(--shadow-floating);}
 .ucard .ic{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:var(--saffron-tint);color:var(--primary-dark);}
 .ucard h3{font-size:23px;}
 .ucard p{color:var(--ink-3);font-size:15px;flex:1;}
 .ucard .lnk{font-weight:700;font-size:14px;color:var(--primary-dark);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
-.ucard .lnk:hover{gap:9px;}
+a.ucard:hover .lnk{gap:9px;}
+[dir="rtl"] .ucard .lnk svg{transform:scaleX(-1);}
 .ucard .lnk svg{width:16px;height:16px;}
 
 /* ---------- why rihla ---------- */
@@ -261,7 +281,8 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .cta .wrap{position:relative;}
 .cta h2{font-size:clamp(34px,4.6vw,54px);max-width:18ch;margin-inline:auto;}
 .cta h2 em{color:var(--saffron-tint);}
-.cta p{margin-top:16px;color:color-mix(in srgb, var(--on-primary) 82%, transparent);font-size:17px;}
+/* 92% (not 82%): white-on-brass at 82% measured ~4.47:1, a hair under AA. */
+.cta p{margin-top:16px;color:color-mix(in srgb, var(--on-primary) 92%, transparent);font-size:17px;}
 .cta .btn{margin-top:30px;}
 
 /* ---------- footer (dark surface — lantern brass for accents) ---------- */
@@ -273,7 +294,8 @@ footer.site-foot .wrap{padding-block:56px;}
 .site-foot .wordmark .fork{color:var(--d-brass);}
 .foot-brand p{margin-top:14px;color:color-mix(in srgb, var(--paper) 60%, transparent);font-size:14px;}
 .foot-links{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;list-style:none;padding:0;margin:0;}
-.foot-links a{color:color-mix(in srgb, var(--paper) 78%, transparent);text-decoration:none;font-size:14px;font-weight:500;}
+.foot-links a{color:color-mix(in srgb, var(--paper) 78%, transparent);text-decoration:none;font-size:14px;font-weight:500;
+  display:inline-block;padding-block:11px;} /* ≥44px touch target */
 .foot-links a:hover{color:var(--d-brass);}
 .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:40px;padding-top:22px;border-top:1px solid color-mix(in srgb, var(--paper) 16%, transparent);color:color-mix(in srgb, var(--paper) 55%, transparent);font-size:13px;}
 
@@ -310,19 +332,27 @@ footer.site-foot .wrap{padding-block:56px;}
 [dir="rtl"] .ucard h3,[dir="rtl"] .nrow h3,[dir="rtl"] .doc h2,
 [dir="rtl"] .quote blockquote{font-family:var(--font-arabic);font-weight:700;letter-spacing:normal;}
 [dir="rtl"] .hero h1{letter-spacing:normal;}
+/* Arabic caption recipe is Zain w700 (DESIGN.md §type table) — the Latin
+   captions' w500 would silently collapse to Zain 400 (no 500 cut). */
 [dir="rtl"] .eyebrow,[dir="rtl"] .uppercase-label,[dir="rtl"] .section-header .label,
 [dir="rtl"] .quote blockquote em,
-[dir="rtl"] .nrow .num{font-family:var(--font-arabic);letter-spacing:normal;}
+[dir="rtl"] .nrow .num{font-family:var(--font-arabic);letter-spacing:normal;font-weight:700;}
 [dir="rtl"] .eyebrow::before{margin-left:0;}
+/* Arabic wordmark is رحلة in Reem Kufi (DESIGN.md § brand — not Latin, not
+   Zain); the fork underline stays. */
+[dir="rtl"] .wordmark{font-family:'Reem Kufi',var(--font-arabic);font-weight:700;letter-spacing:normal;}
 /* The falaj fork enters from the reading-direction start — mirror it. */
 [dir="rtl"] .wordmark .fork{transform:scaleX(-1);}
 
 /* ---------- responsive ---------- */
 @media (max-width:900px){
-  .band{padding-block:72px;}
-  section.hero{grid-template-columns:1fr;gap:40px;padding-block:40px 56px;}
-  .hero-text{order:2;}
-  .phone-stage{order:1;min-height:540px;}
+  .band{padding-block:var(--s72);}
+  /* minmax(0,…): the fixed 360px .phone must not set the track's min width
+     (transforms scale visuals, not layout) — else ≤396px viewports h-scroll. */
+  section.hero{grid-template-columns:minmax(0,1fr);gap:40px;padding-block:40px 56px;}
+  /* Value prop first on small screens — the mock is support, not the pitch.
+     (DOM order: text, then stage; no order override.) */
+  .phone-stage{min-height:480px;}
   .phone-tilt{transform:rotate(0deg) scale(.8);}
   .why{grid-template-columns:1fr;gap:40px;}
   .quote{position:static;}
@@ -330,7 +360,16 @@ footer.site-foot .wrap{padding-block:56px;}
 }
 @media (max-width:560px){
   .wrap{padding-inline:18px;}
-  .nav .desktop-only{display:none;}
+  /* Highlighted phrases must wrap on narrow phones (the absolute ::after band
+     can't span wrapped lines — swap it for a per-line background band). */
+  .hl{white-space:normal;
+    background-image:linear-gradient(transparent 62%, var(--saffron-soft) 62%, var(--saffron-soft) 94%, transparent 94%);
+    -webkit-box-decoration-break:clone;box-decoration-break:clone;border-radius:3px;}
+  .hl::after{display:none;}
+  /* Bilingual-first: the language switch stays in the header on phones —
+     compact pill, never display:none (Arabic users arrive on mobile). */
+  .nav .pill{padding-inline:11px;font-size:12.5px;}
+  .nav .btn{padding:11px 16px;font-size:14px;}
   .invite{padding:22px;}
   .invite-row{flex-direction:column;gap:12px;}
   .invite-row .btn{width:100%;padding-block:15px;}
@@ -339,6 +378,24 @@ footer.site-foot .wrap{padding-block:56px;}
   .foot-bottom{flex-direction:column;}
   .phone-tilt{transform:scale(.72);margin-block:-70px;}
 }
+/* ---------- motion (entrance + scroll reveal) ----------
+   Ease-out entrances only; transform/opacity only. .reveal is applied by
+   motion.js (never in markup) so no-JS renders everything visible, and
+   motion.js strips the classes after the transition so component-level
+   transitions (e.g. a.ucard hover lift) regain control. */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.hero-text>*{animation:rise .55s cubic-bezier(.2,.7,.3,1) backwards;}
+.hero-text>*:nth-child(2){animation-delay:.07s;}
+.hero-text>*:nth-child(3){animation-delay:.14s;}
+.hero-text>*:nth-child(4){animation-delay:.21s;}
+.hero-text>*:nth-child(5){animation-delay:.28s;}
+.hero-text>*:nth-child(6){animation-delay:.35s;}
+.phone-stage{animation:fade .7s ease-out .2s backwards;}
+.reveal{opacity:0;transform:translateY(16px);
+  transition:opacity .5s cubic-bezier(.2,.7,.3,1), transform .5s cubic-bezier(.2,.7,.3,1);}
+.reveal.in{opacity:1;transform:none;}
+
 @media (prefers-reduced-motion:reduce){
-  *{scroll-behavior:auto;transition:none;}
+  *{scroll-behavior:auto;transition:none;animation:none;}
 }
