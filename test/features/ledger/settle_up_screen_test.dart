@@ -11,6 +11,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
+import 'package:safar/core/providers/balance_aggregate_freshness_provider.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/firebase_functions_service.dart';
@@ -1006,6 +1007,137 @@ void main() {
           .collection('settlements')
           .get();
       expect(settlements.docs, isEmpty);
+    },
+  );
+
+  // Wires the connectivity notifier to the REAL freshness notifier, mirroring
+  // the production factory (connectivity_provider.dart:30-38). The bare
+  // ConnectivityNotifier(startPeriodicChecks: false) override used elsewhere in
+  // this file leaves markBalanceAggregateMayBeStale null, so noteLocalWrite is a
+  // silent no-op and any freshness assertion would stay red forever (spec
+  // harness trap).
+  Override freshnessWiredConnectivity() =>
+      connectivityProvider.overrideWith(
+        (ref) => ConnectivityNotifier(
+          startPeriodicChecks: false,
+          markBalanceAggregateMayBeStale: ref
+              .read(balanceAggregateFreshnessProvider.notifier)
+              .markGroupDirty,
+        ),
+      );
+
+  Settlement recordedEventPayment() => Settlement(
+    id: 'settlement-1',
+    tripId: eventId,
+    payerParticipantId: 'bob',
+    recipientParticipantId: 'alice',
+    payerName: 'Bob',
+    recipientName: 'Alice',
+    amount: Decimal.parse('10.000'),
+    currency: 'OMR',
+    createdBy: 'bob',
+    settledAt: DateTime(2026, 5, 17),
+  );
+
+  testWidgets(
+    '#1213: a successful event-scope correction marks the group balance '
+    'aggregate dirty — UNCONDITIONALLY (shouldBumpLedgerRevision: false), so '
+    'the online home facade drops off the pre-correction aggregate doc',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final functionsService = _MockFunctionsService();
+      when(
+        () => functionsService.correctSettlement(
+          groupId: any(named: 'groupId'),
+          scope: any(named: 'scope'),
+          eventId: any(named: 'eventId'),
+          settlementId: any(named: 'settlementId'),
+          correctionNote: any(named: 'correctionNote'),
+        ),
+      ).thenAnswer(
+        // shouldBumpLedgerRevision:false pins that noteLocalWrite is
+        // UNCONDITIONAL on success — not gated on the ledger-revision bump.
+        (_) async => const CorrectSettlementResult(
+          eventScopeWrites: 1,
+          groupScopeWrites: 0,
+          repaired: false,
+          noop: false,
+          shouldBumpLedgerRevision: false,
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'bob',
+          settlementsStream: Stream.value([recordedEventPayment()]),
+          extraOverrides: [
+            firebaseFunctionsServiceProvider.overrideWithValue(
+              functionsService,
+            ),
+            freshnessWiredConnectivity(),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SettleUpScreen)),
+      );
+
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record correction'));
+      await tester.pumpAndSettle();
+
+      expect(
+        container.read(balanceAggregateFreshnessProvider),
+        contains(groupId),
+      );
+    },
+  );
+
+  testWidgets(
+    '#1213 guard: a THROWN event-scope correction leaves the aggregate '
+    'freshness set unchanged (a failed callable wrote nothing — not stale)',
+    (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final functionsService = _MockFunctionsService();
+      when(
+        () => functionsService.correctSettlement(
+          groupId: any(named: 'groupId'),
+          scope: any(named: 'scope'),
+          eventId: any(named: 'eventId'),
+          settlementId: any(named: 'settlementId'),
+          correctionNote: any(named: 'correctionNote'),
+        ),
+      ).thenThrow(Exception('offline'));
+
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          currentUid: 'bob',
+          settlementsStream: Stream.value([recordedEventPayment()]),
+          extraOverrides: [
+            firebaseFunctionsServiceProvider.overrideWithValue(
+              functionsService,
+            ),
+            freshnessWiredConnectivity(),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SettleUpScreen)),
+      );
+
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record correction'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(balanceAggregateFreshnessProvider), isEmpty);
     },
   );
 

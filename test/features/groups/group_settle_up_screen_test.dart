@@ -12,6 +12,7 @@ import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/shared/widgets/skeleton_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:safar/core/providers/balance_aggregate_freshness_provider.dart';
 import 'package:safar/core/providers/connectivity_provider.dart';
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/firebase_functions_service.dart';
@@ -403,6 +404,20 @@ Widget _wrapWithGroupStream(Stream<Group?> groupStream) {
   );
 }
 
+/// Wires the connectivity notifier to the REAL freshness notifier, mirroring
+/// the production factory (connectivity_provider.dart:30-38). A bare
+/// ConnectivityNotifier(startPeriodicChecks: false) override leaves
+/// markBalanceAggregateMayBeStale null, so noteLocalWrite is a silent no-op and
+/// any freshness assertion stays red forever (the #1213 spec harness trap).
+Override _freshnessWiredConnectivity() => connectivityProvider.overrideWith(
+  (ref) => ConnectivityNotifier(
+    startPeriodicChecks: false,
+    markBalanceAggregateMayBeStale: ref
+        .read(balanceAggregateFreshnessProvider.notifier)
+        .markGroupDirty,
+  ),
+);
+
 void main() {
   group('GroupSettleUpScreen', () {
     testWidgets('shows loading indicator while group is loading', (
@@ -722,6 +737,166 @@ void main() {
         // Standalone group-only correction never bumps — group settlements
         // are live-watched (groupSettlementsProvider).
         expect(container.read(ledgerRevisionProvider), 0);
+      },
+    );
+
+    testWidgets(
+      '#1213: a successful standalone group-scope correction marks the balance '
+      'aggregate dirty (the online home facade never consults the once-path)',
+      (tester) async {
+        final settlementService = _RecordingGroupSettlementService();
+        final functionsService = _MockFunctionsService();
+        when(
+          () => functionsService.correctSettlement(
+            groupId: any(named: 'groupId'),
+            scope: any(named: 'scope'),
+            eventId: any(named: 'eventId'),
+            settlementId: any(named: 'settlementId'),
+            correctionNote: any(named: 'correctionNote'),
+          ),
+        ).thenAnswer(
+          (_) async => const CorrectSettlementResult(
+            eventScopeWrites: 0,
+            groupScopeWrites: 1,
+            repaired: false,
+            noop: false,
+            shouldBumpLedgerRevision: false,
+          ),
+        );
+
+        // A standalone (untagged) group settlement → renders a solo history row
+        // whose one-tap correct routes through _correctSettlement(scope:'group').
+        final original = Settlement(
+          id: 'gs1',
+          tripId: _groupId,
+          payerParticipantId: 'uid-bob',
+          recipientParticipantId: 'uid-alice',
+          amount: Decimal.parse('7.750'),
+          settledAt: DateTime(2026, 4, 1),
+          payerName: 'Bob',
+          recipientName: 'Alice',
+          scope: 'group',
+          groupId: _groupId,
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            settlements: [original],
+            currentUid: 'uid-alice',
+            extraOverrides: [
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              firebaseFunctionsServiceProvider.overrideWithValue(
+                functionsService,
+              ),
+              _freshnessWiredConnectivity(),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(GroupSettleUpScreen)),
+        );
+
+        final correctButton = find.byKey(GroupKeys.settleUpCorrectButton);
+        await tester.ensureVisible(correctButton);
+        await tester.tap(correctButton);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Record correction'));
+        await tester.pumpAndSettle();
+
+        expect(
+          container.read(balanceAggregateFreshnessProvider),
+          contains(_groupId),
+        );
+      },
+    );
+
+    testWidgets(
+      '#1213: a successful LOGICAL settle-up correction marks the balance '
+      'aggregate dirty',
+      (tester) async {
+        final settlementService = _RecordingGroupSettlementService();
+        final functionsService = _MockFunctionsService();
+        when(
+          () => functionsService.correctLogicalSettleUp(
+            groupId: any(named: 'groupId'),
+            groupSettleUpId: any(named: 'groupSettleUpId'),
+            correctionNote: any(named: 'correctionNote'),
+          ),
+        ).thenAnswer(
+          (_) async => const CorrectSettlementResult(
+            eventScopeWrites: 1,
+            groupScopeWrites: 1,
+            repaired: false,
+            noop: false,
+            shouldBumpLedgerRevision: true,
+          ),
+        );
+
+        // A groupSettleUpId-tagged group-residual doc regroups into a
+        // LogicalHistoryRow whose affordance is NOT-yet-corrected (no reverse in
+        // the set), so the correct button routes through _correctLogicalSettleUp
+        // instead of the single-doc path.
+        final tagged = Settlement(
+          id: 'gsu-leg-1',
+          tripId: _groupId,
+          payerParticipantId: 'uid-bob',
+          recipientParticipantId: 'uid-alice',
+          amount: Decimal.parse('7.750'),
+          settledAt: DateTime(2026, 4, 1),
+          payerName: 'Bob',
+          recipientName: 'Alice',
+          scope: 'group',
+          groupId: _groupId,
+          groupSettleUpId: 'gsu-1',
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            const GroupSettleUpScreen(groupId: _groupId),
+            balancesAsync: AsyncValue.data(_balancesOwed),
+            settlements: [tagged],
+            currentUid: 'uid-alice',
+            extraOverrides: [
+              groupSettlementServiceProvider.overrideWithValue(
+                settlementService,
+              ),
+              firebaseFunctionsServiceProvider.overrideWithValue(
+                functionsService,
+              ),
+              _freshnessWiredConnectivity(),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(GroupSettleUpScreen)),
+        );
+
+        final correctButton = find.byKey(GroupKeys.settleUpCorrectButton);
+        await tester.ensureVisible(correctButton);
+        await tester.tap(correctButton);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Record correction'));
+        await tester.pumpAndSettle();
+
+        // Reachability: the logical callable actually fired (past the tagged /
+        // in-flight early-return gates).
+        verify(
+          () => functionsService.correctLogicalSettleUp(
+            groupId: _groupId,
+            groupSettleUpId: 'gsu-1',
+            correctionNote: any(named: 'correctionNote'),
+          ),
+        ).called(1);
+        expect(
+          container.read(balanceAggregateFreshnessProvider),
+          contains(_groupId),
+        );
       },
     );
 
