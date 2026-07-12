@@ -714,15 +714,8 @@ describe("removeMember retires a removed shadow's pending claim requests (#1210)
     const req = await claimReqDoc('g', rid);
     expect(req?.status).toBe('declined');
     expect(req?.autoDeclineReason).toBe('shadow-removed');
-
-    // The IN-TRANSACTION idempotent early-return branch (removeMember.ts,
-    // `!freshTargetIsMember && freshTargetDocsSnap.empty`) is NOT deterministically
-    // reachable in a single-threaded emulator — it needs a concurrent removal to
-    // land between the pre-tx read and the tx re-read. It is covered by code
-    // inspection: the claimRequests query read sits in the tx READS phase ABOVE
-    // that branch (reads-before-writes), and the branch declines the swept rows
-    // before its own `tx.update(groupRef, departureLockClearFields())`. A flaky
-    // concurrency test is deliberately not written.
+    // The IN-TRANSACTION early-return branch is covered separately by test 5
+    // (a deterministic concurrent-removal race).
   });
 
   test('4. real-member removal with no claim requests: sweep is a no-op, removal behavior unchanged', async () => {
@@ -741,5 +734,55 @@ describe("removeMember retires a removed shadow's pending claim requests (#1210)
     const snap = await getFirestore().collection('groups/g/claimRequests').get();
     expect(snap.size).toBe(0);
     expect(await activityDocs('g')).toHaveLength(1);
+  });
+
+  test('5. in-tx early-return heal (deterministic concurrent-removal race): a target that vanishes between the pre-tx read and the tx re-read still gets its pending request declined', async () => {
+    // The IN-TRANSACTION idempotent early-return (`!freshTargetIsMember &&
+    // freshTargetDocsSnap.empty`) fires only when the target is present at the
+    // pre-tx read but gone by the tx re-read — a concurrent removal. Force it
+    // deterministically (NOT flakily): spy on the Firestore singleton's
+    // runTransaction and, on the SECOND call (the main mutation tx — the first is
+    // acquireDepartureLock; loadGroupBalanceSnapshot uses no transaction), delete
+    // the shadow's member doc + drop it from memberIds just before the real tx
+    // re-reads. The claimRequests read sits in the tx READS phase above the branch
+    // (reads-before-writes), so the sweep must STILL decline the pending request on
+    // that exit path. Instance-method spy pattern per deleteAccount.test.ts.
+    await seedGroup('g', { memberIds: [OWNER, SHADOW] });
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    const rid = await seedClaimRequest('g', REQUESTER, SHADOW);
+
+    const db = getFirestore();
+    const realRunTx = db.runTransaction.bind(db);
+    let txCall = 0;
+    const spy = jest.spyOn(db, 'runTransaction').mockImplementation((async (
+      updateFn: unknown,
+      opts?: unknown,
+    ) => {
+      txCall += 1;
+      if (txCall === 2) {
+        // Concurrent removal lands here. A merge-update preserves the departure
+        // lock fields acquired by the first (lock) transaction.
+        await db.doc(`groups/g/members/${SHADOW}`).delete();
+        await db.doc('groups/g').update({ memberIds: [OWNER] });
+      }
+      return realRunTx(updateFn as never, opts as never);
+    }) as never);
+
+    try {
+      const res = await wrapped({
+        data: { groupId: 'g', targetUserId: SHADOW },
+        auth: { uid: OWNER },
+      } as any);
+      expect(res).toMatchObject({ mode: 'removed', alreadyRemoved: true });
+    } finally {
+      spy.mockRestore();
+    }
+
+    const req = await claimReqDoc('g', rid);
+    expect(req?.status).toBe('declined');
+    expect(req?.autoDeclineReason).toBe('shadow-removed');
+    expect(req?.decidedBy).toBe(OWNER);
+    expect((await groupData('g')).memberIds).toEqual([OWNER]);
   });
 });
