@@ -109,14 +109,25 @@ class ProfileDisplaySection extends ConsumerWidget {
                 ),
               ),
             ),
+            // #1194: keep the Flexible so a very long value ellipsizes
+            // instead of overflowing, but Align the (short) value to the
+            // trailing edge — a bare loose Flexible sizes to the text and
+            // parks it at the row's centre, which also pulls the non-flex
+            // trailing chevron inward (RenderFlex positions siblings off the
+            // Flexible's actual, not allocated, extent). AlignmentDirectional
+            // mirrors for Arabic RTL. Mirrors the #1184 fix in
+            // profile_screen.dart's `_PrefRow`.
             Flexible(
-              child: Text(
-                trailingLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.sans(
-                  fontSize: 14,
-                  color: context.colors.textSecondary,
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Text(
+                  trailingLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.sans(
+                    fontSize: 14,
+                    color: context.colors.textSecondary,
+                  ),
                 ),
               ),
             ),
