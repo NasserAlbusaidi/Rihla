@@ -9,6 +9,7 @@ import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 import 'package:safar/shared/widgets/directional_icon.dart';
 import 'package:safar/shared/widgets/falaj_fork.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
 import 'package:safar/shared/widgets/r_avatar.dart';
 
 Future<void> _pumpTile(
@@ -372,6 +373,76 @@ void main() {
           _nameCenterX(tester, captionFinder, 'أحمد'),
           lessThan(_nameCenterX(tester, captionFinder, 'ليلى')),
         );
+      },
+    );
+  });
+
+  group('#1201 — settle-up money renders through RAmount', () {
+    testWidgets(
+      'amount chip renders through RAmount (mono contract, #1201)',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: GroupSettlementTile(
+                fromName: 'Alice',
+                toName: 'Bob',
+                amount: Decimal.parse('10.000'),
+                currency: 'OMR',
+                breakdown: const {},
+                isYourAction: true,
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          find.descendant(
+            of: find.byType(GroupSettlementTile),
+            matching: find.byType(RAmount),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'expanded per-event breakdown rows render RAmount muted (#1201)',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: GroupSettlementTile(
+                fromName: 'Alice',
+                toName: 'Bob',
+                amount: Decimal.parse('10.000'),
+                currency: 'OMR',
+                breakdown: {
+                  'Camping Weekend': Decimal.parse('6.000'),
+                  'Dinner': Decimal.parse('4.000'),
+                },
+                isYourAction: true,
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // Tap the tile to expand the collapsible per-event breakdown (#1201's
+        // second RAmount site).
+        await tester.tap(find.byType(GroupSettlementTile));
+        await tester.pumpAndSettle();
+
+        final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
+        expect(amounts.length, greaterThan(1)); // chip + breakdown rows
+        expect(amounts.where((a) => a.tone == AmountTone.muted), isNotEmpty);
       },
     );
   });
