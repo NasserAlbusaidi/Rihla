@@ -1588,14 +1588,21 @@ class _PrefRow extends StatelessWidget {
     final trailingWidget =
         trailing ??
         (trailingText != null
+            // #1184: keep the Flexible so a very long value ellipsizes instead
+            // of overflowing, but Align the (short) value to the trailing edge —
+            // a bare loose Flexible sizes to the text and parks it at the row's
+            // centre. AlignmentDirectional mirrors for Arabic RTL.
             ? Flexible(
-                child: Text(
-                  trailingText!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.sans(
-                    fontSize: 13,
-                    color: colors.textSecondary,
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Text(
+                    trailingText!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.sans(
+                      fontSize: 13,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ),
               )
