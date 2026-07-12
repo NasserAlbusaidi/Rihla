@@ -1189,10 +1189,80 @@ service cloud.firestore {
               'member_joined'
             ]
             && isValidDisplayName(request.resource.data.actorName)
+            // #1218: cap description length. 280 UTF-16 units mirrors
+            // validFreeText's cap rather than inventing a new bound — legit
+            // client descriptions are short verb phrases (#808), ~50 chars max
+            // (an l10n phrase + a 32-cap event name), so 280 is generous
+            // headroom kept for consistency with the established mirror.
+            // Size-only, deliberately NOT mirroring validFreeText's control-char
+            // rejection: descriptions are composed from l10n phrases + event
+            // names, and a control-char false-deny would atomically fail the
+            // co-batched event create/delete (#1140); the display read path is
+            // already type-guarded + #928 malformed-skip.
             && request.resource.data.description is string
+            && request.resource.data.description.size() <= 280
             && request.resource.data.metadata is map
             && validActivityMetadata(request.resource.data.metadata)
-            && request.resource.data.timestamp is string;
+            // #1218: the feed sort key IS this client string — every reader
+            // orders by it newest-first (GroupActivityService.watchRecentActivity
+            // / fetchActivityPage descending; activityUnreadProvider reduces to
+            // MAX) and decodeDocsSkippingMalformed (#928) runs only AFTER the
+            // limited window is chosen. `timestamp is string` alone let any
+            // member forge `timestamp: "zzzzz"` (DoS: 5 junk rows fill the home
+            // RECENTLY window; malformed-skip then blanks it) or a far-future
+            // ISO (hijack: pins forged rows above all real activity forever).
+            // Anchor a strict UTC ISO-8601 shape, then bound it to the near
+            // future.
+            //
+            // matches() is a SUBSTRING match, so the ^...$ anchors are load-
+            // bearing: unanchored, "zzz<year>-...Z" contains a matching
+            // substring, passes, and still sorts as "zzz..." above every real
+            // row — the exact DoS this closes. Every other positive matches()
+            // in this file anchors the same way. Component ranges (month 01-12,
+            // day 01-31, hh 00-23, mm/ss 00-59) close the "<year+1>-99-99T..."
+            // lexicographic out-pin and cost no false-deny: Dart only ever
+            // emits valid components. Shape source of truth is the sole client
+            // writer GroupActivityService.buildActivityDoc —
+            // timestampUtc.toIso8601String(): UTC ISO with milliseconds ALWAYS
+            // present (.mmm) and microseconds appended only when non-zero
+            // (.mmmuuu), trailing Z.
+            //
+            // FUTURE-ONLY bound (no lower/past bound — deliberate). Both attacks
+            // require a timestamp that sorts to the TOP; a past-dated forgery
+            // sorts to the bottom and is harmless. A lower bound would be the
+            // ONLY source of a false-deny for a slow-clock device (Firebase auth
+            // validates tokens against SERVER time, so a >1yr-slow clock still
+            // authenticates) — and a denied activity row atomically fails the
+            // co-batched event create/delete (#1140). Past = unbounded on
+            // purpose. The upper bound is a lexicographic compare on the leading
+            // 4-digit year: `< string(year+2)` allows years <= now+1
+            // ("2027-..." < "2028" true; "2028-..." < "2028" false); now+1
+            // absorbs fast-clock skew, the New-Year boundary, and
+            // offline-queued-batch commit lag (request.time is COMMIT time).
+            //
+            // Accepted residual: a forger can still pin a row at up to
+            // <year+1>-12-31T23:59:59.999999Z (~1-2 years out) — it top-pins the
+            // feed AND falsely lights the home unread dot (activityUnreadProvider
+            // reduces to MAX timestamp); both un-pin/clear when real time catches
+            // up. Bounded and self-healing vs today's forever-pin.
+            //
+            // New hard-failure direction: a device clock >1 year FAST now has
+            // its activity rows denied -> event create/delete fails atomically
+            // (the #1140 co-batch). member_joined via fire-and-forget
+            // logGroupEvent merely loses a cosmetic row (errors swallowed). Tiny
+            // population (NTP); converts a cosmetic mis-sort into a hard failure
+            // for event create/delete — stated, not hidden.
+            //
+            // NON-goal, no actorName pin to the caller's member doc: (i) a member
+            // freely updates their own member-doc displayName
+            // (propagateDisplayName), so a pin buys ~nothing against a deliberate
+            // forger; (ii) member-doc keying is MIXED (legacy uuid-keyed docs)
+            // and this row is co-batched with event create/delete, so a false
+            // deny atomically fails the whole batch. isValidDisplayName(actorName)
+            // stays as-is above.
+            && request.resource.data.timestamp.matches(
+                 '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{3}([0-9]{3})?Z$')
+            && request.resource.data.timestamp < string(request.time.year() + 2);
         }
 
         allow read: if isGroupMember(groupId);
