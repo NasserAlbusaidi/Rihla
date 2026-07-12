@@ -63,8 +63,11 @@ jobs:
       - name: ARB completeness check
         run: dart run tool/check_arb_completeness.dart
 
-      - name: Firebase emulator rules and Functions tests
-        run: npm --prefix functions run test:emulator
+      - name: Firebase emulator rules and Functions tests (with coverage)
+        # --coverage activates the jest coverageThreshold ratchet floors in
+        # functions/jest.config.js (dormant without it) and writes
+        # functions/coverage/lcov.info for the Functions diff floor below.
+        run: npm --prefix functions run test:emulator -- --coverage
 
       - name: Flutter tests with coverage
         run: |
@@ -110,5 +113,27 @@ jobs:
           python3 -m venv "${RUNNER_TEMP:-/tmp}/diffcover-venv"
           "${RUNNER_TEMP:-/tmp}/diffcover-venv/bin/pip" install --quiet diff-cover
           "${RUNNER_TEMP:-/tmp}/diffcover-venv/bin/diff-cover" coverage/lcov.info \
+            --compare-branch=origin/main \
+            --fail-under=90
+
+      - name: Check Functions diff coverage floor (new/changed src lines)
+        run: |
+          # Same 90% changed-lines bar as lib/, applied to the money-critical
+          # TS backend (the aggregate jest floors above protect the average;
+          # this stops an under-tested new callable riding in on it). jest
+          # writes lcov SF: paths relative to functions/, so prefix them for
+          # a repo-root diff comparison. PRs touching no measurable
+          # functions/src lines pass vacuously, mirroring the lib/ step.
+          # Self-sufficient on purpose (own fetch + venv reuse-or-create) so
+          # reordering or removing the lib/ diff step can't silently break it.
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          VENV="${RUNNER_TEMP:-/tmp}/diffcover-venv"
+          if [ ! -x "${VENV}/bin/diff-cover" ]; then
+            python3 -m venv "${VENV}"
+            "${VENV}/bin/pip" install --quiet diff-cover
+          fi
+          sed 's|^SF:|SF:functions/|' functions/coverage/lcov.info \
+            > "${RUNNER_TEMP:-/tmp}/functions-lcov.info"
+          "${VENV}/bin/diff-cover" "${RUNNER_TEMP:-/tmp}/functions-lcov.info" \
             --compare-branch=origin/main \
             --fail-under=90
