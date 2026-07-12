@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Falaj fork brand device on brass — mirrors the wordmark underscore -->
+  <rect width="64" height="64" rx="14" fill="#8A5D0D"/>
+  <g transform="translate(7 32) scale(0.834)" fill="none" stroke="#F6F7F5" stroke-width="4.4" stroke-linecap="round">
+    <path d="M0 0H37.5M37.5 0L60 -13M37.5 0H60M37.5 0L60 13"/>
+  </g>
+</svg>
