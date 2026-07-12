@@ -15,12 +15,20 @@ String addExpensePathFor(AddExpenseTarget target) {
   return '/group/${target.groupId}/event/${target.eventId}/ledger/add';
 }
 
-/// Fixed action lane the Groups-tab dashboard reserves BELOW its scroll
-/// viewport so [AddExpenseFab] never occludes list content at any scroll
-/// offset (#1078). A trailing spacer can't protect a row pinned by the
-/// content above it — the last group row's trailing balance sat under the
-/// FAB at the rest position with no useful scroll escape. 88 = the FAB's
-/// 56px footprint + its 16px Scaffold bottom margin + 16px breathing room.
+/// Bottom clearance the Groups-tab dashboard reserves so [AddExpenseFab]
+/// never occludes list content once scrolled fully into view (#1078). 88 =
+/// the FAB's 56px footprint + its 16px Scaffold bottom margin + 16px
+/// breathing room.
+///
+/// #1166: this now lives on a TRAILING in-scroll spacer sliver, not an outer
+/// `Padding` wrapping the whole scroll viewport — the outer-Padding shape
+/// shrank the `Viewport` itself, and a `Viewport` clips its children to its
+/// own bounds, so the reserved band became a permanent clip line 88px above
+/// the true screen edge (invisible at rest, an opaque occluding bar while
+/// scrolling). A trailing spacer still guarantees the #1078 outcome once the
+/// list is scrolled to its end; the accepted trade-off is a list SHORTER than
+/// the viewport, where the FAB may rest over the last row — ordinary
+/// floating-FAB-over-content behaviour, not the #1166 occluding-shelf bug.
 const double kHomeFabLaneClearance = 88;
 
 /// Persistent add-expense FAB for the tab shell (#364).

@@ -148,7 +148,12 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColorTokens.light.primary,
         foregroundColor: AppColorTokens.light.textOnPrimary,
-        elevation: 4,
+        // #1166: 4→2 — a lighter shadow reads as "floating" rather than
+        // amplifying the illusion of a filled panel behind the FAB. Not a
+        // docs/DESIGN.md-pinned contract value (the shadow contract there is
+        // the `floating` AppShadowTokens spec, not this Material elevation
+        // int; this number alone has flip-flopped 4↔8 across prior passes).
+        elevation: 2,
         shape: const CircleBorder(),
       ),
       snackBarTheme: SnackBarThemeData(
@@ -346,7 +351,8 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColorTokens.dark.primary,
         foregroundColor: AppColorTokens.dark.textOnPrimary,
-        elevation: 4,
+        // #1166: mirrors the light-theme drop (4→2) — see that comment.
+        elevation: 2,
         shape: const CircleBorder(),
       ),
       chipTheme: ChipThemeData(
