@@ -15,7 +15,11 @@ import '../../core/utils/formatters.dart';
 /// (`colors.successText` / `colors.errorText`) — reach for them when the
 /// amount renders as small text over a success/error-tinted fill, where the
 /// surface tones fall below AA contrast (e.g. the roster balance chip).
-enum AmountTone { auto, sage, rust, ink, sageText, rustText }
+///
+/// `muted` renders in `colors.textSecondary` — for de-emphasized amounts on
+/// secondary rows (per-event breakdowns, zero balances) where ink would
+/// over-weight the row (#1201).
+enum AmountTone { auto, sage, rust, ink, sageText, rustText, muted }
 
 /// Money amount rendered in Spline Sans Mono with the wireframe's tiered sizing.
 ///
@@ -214,6 +218,7 @@ class RAmount extends StatelessWidget {
       AmountTone.ink => colors.textPrimary,
       AmountTone.sageText => colors.successText,
       AmountTone.rustText => colors.errorText,
+      AmountTone.muted => colors.textSecondary,
       AmountTone.auto when sign && isPositive => colors.success,
       AmountTone.auto when sign && isNegative => colors.error,
       AmountTone.auto => colors.textPrimary,

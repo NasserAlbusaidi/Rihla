@@ -219,6 +219,23 @@ void main() {
       await tester.pumpWidget(_wrap(RAmount(value: Decimal.zero, sign: true)));
       expect(wholeColor(tester), const Color(0xFF1B1F1E));
     });
+
+    testWidgets(
+      'tone:muted → textSecondary, for de-emphasized rows (#1201)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            RAmount(
+              value: Decimal.parse('10'),
+              sign: true,
+              tone: AmountTone.muted,
+            ),
+          ),
+        );
+        // textSecondary (light theme, Ink-3) = #5C6462
+        expect(wholeColor(tester), const Color(0xFF5C6462));
+      },
+    );
   });
 
   group('RAmount — decimal dimming', () {
