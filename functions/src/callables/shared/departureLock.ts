@@ -44,6 +44,38 @@ export interface DepartureLock {
   lockedBy: string;
 }
 
+// #1209/#1211: the shared terminal-vs-transient quiesce classifier. leaveGroup /
+// removeMember (pre-check AND in-tx re-check) and acquireDepartureLock below all
+// make the SAME not-found/aborted decision — this puts it in ONE place instead
+// of triplicating it, and makes the (single-threaded-emulator-unreachable) in-tx
+// re-check a thin `if (freeze) throw freeze` dispatch over a unit-tested helper.
+// Returns the HttpsError to throw, or null when the group is writable on this
+// axis. Deliberately does NOT classify `departureInProgress`: that flag is the
+// departure-lock CONTENTION signal (its own message, thrown separately in
+// acquireDepartureLock) and is folded into deleteGroup's own transient check —
+// both evaluated AFTER this classifier.
+//   - isDeleted / deletingInProgress → TERMINAL (group gone / ending gone) →
+//     not-found (client goes home).
+//   - claimingInProgress / accountDeletionInProgress → TRANSIENT (bounded op,
+//     group survives, caller still a member) → aborted (client retry copy).
+export function quiesceFreezeError(
+  group: Record<string, unknown>,
+): HttpsError | null {
+  if (group.isDeleted === true || group.deletingInProgress === true) {
+    return new HttpsError('not-found', 'Group not found.');
+  }
+  if (
+    group.claimingInProgress === true
+    || group.accountDeletionInProgress === true
+  ) {
+    return new HttpsError(
+      'aborted',
+      'Another operation is in progress. Try again.',
+    );
+  }
+  return null;
+}
+
 export async function acquireDepartureLock(
   db: Firestore,
   groupRef: DocumentReference,
@@ -55,26 +87,12 @@ export async function acquireDepartureLock(
       throw new HttpsError('not-found', 'Group not found.');
     }
     const group = groupSnap.data() ?? {};
-    // #1211: same terminal-vs-transient split as the callers' pre-checks (Admin
-    // SDK bypasses rules, so this honors the same write-lock as
-    // firestore.rules). TERMINAL — the group is gone or a delete is in flight
-    // (ends in gone) — stays not-found. This path is normally shielded by the
-    // callers' pre-checks; the split is kept here so the shared lock enforces
-    // the contract on any future caller.
-    if (group.isDeleted === true || group.deletingInProgress === true) {
-      throw new HttpsError('not-found', 'Group not found.');
-    }
-    // TRANSIENT — a bounded concurrent claim / account-deletion after which the
-    // group survives — throws `aborted` (client retry copy), never not-found.
-    if (
-      group.claimingInProgress === true
-      || group.accountDeletionInProgress === true
-    ) {
-      throw new HttpsError(
-        'aborted',
-        'Another operation is in progress. Try again.',
-      );
-    }
+    // #1211: terminal (not-found) vs transient (aborted) freeze via the shared
+    // classifier (Admin SDK bypasses rules, so this honors the same write-lock
+    // as firestore.rules). Normally shielded by the callers' pre-checks; kept
+    // here so the shared lock enforces the contract on any future caller.
+    const freeze = quiesceFreezeError(group);
+    if (freeze) throw freeze;
     if (group.departureInProgress === true) {
       throw new HttpsError(
         'aborted',
