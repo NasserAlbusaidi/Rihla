@@ -2703,6 +2703,12 @@ abstract class AppLocalizations {
   /// **'Profile'**
   String get homeBottomNavProfile;
 
+  /// Snackbar shown on the first system-back press at the home shell — a double-back-to-exit guard (#1188). A second back within 2s closes the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Press back again to exit'**
+  String get backAgainToExit;
+
   /// Header of the cross-group History tab screen
   ///
   /// In en, this message translates to:

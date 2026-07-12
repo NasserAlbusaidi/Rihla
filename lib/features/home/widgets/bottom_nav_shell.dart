@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'package:haptic_feedback/haptic_feedback.dart';
 
@@ -45,6 +49,66 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   int _currentIndex = 0;
   final Set<int> _visited = {0};
 
+  /// #1188: double-back-to-exit guard. A system back reaching the root shell
+  /// (accidental double-press, spurious extra pop event, whatever the cause)
+  /// becomes a visible, recoverable snackbar instead of silent app death; a
+  /// second back within [_backResetWindow] performs the real exit.
+  static const _backResetWindow = Duration(seconds: 2);
+  bool _awaitingSecondBack = false;
+  Timer? _backResetTimer;
+
+  @override
+  void dispose() {
+    _backResetTimer?.cancel();
+    super.dispose();
+  }
+
+  /// The single root-back decision, invoked by BOTH back channels: the
+  /// [BackButtonListener] (engine `popRoute` channel — the one production
+  /// actually exercises, since go_router 13.2.5's `popRoute()` never consults a
+  /// sole route's [PopScope]) AND [PopScope.onPopInvokedWithResult] (the
+  /// `maybePop`/predictive channel). Returns `true` = handled here (the back
+  /// never falls through to a silent exit unless the second-press branch
+  /// explicitly calls [SystemNavigator.pop]). Synchronous — no awaits precede
+  /// the `context` reads (no `use_build_context_synchronously` hazard).
+  bool _handleRootBack() {
+    // #1188 Part B: breadcrumb the root back event so the next real-world
+    // occurrence self-documents (rides along on any later Sentry event; no
+    // event spam — no-op when Sentry is uninitialized). Single site: both
+    // channels route through here, so exactly one breadcrumb per press.
+    Sentry.addBreadcrumb(
+      Breadcrumb(
+        category: 'nav.back',
+        message: 'root back',
+        data: {'awaitingSecondBack': _awaitingSecondBack},
+        level: SentryLevel.info,
+      ),
+    );
+    if (_awaitingSecondBack) {
+      SystemNavigator.pop();
+      return true;
+    }
+    _awaitingSecondBack = true;
+    _backResetTimer?.cancel();
+    _backResetTimer = Timer(_backResetWindow, () {
+      if (mounted) setState(() => _awaitingSecondBack = false);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.backAgainToExit),
+        // No action → no #411 persist trap; auto-dismiss with the window.
+        duration: _backResetWindow,
+      ),
+    );
+    return true;
+  }
+
+  /// [PopScope] adapter for [_handleRootBack] (the maybePop/predictive channel).
+  void _handleRootPop(bool didPop, Object? result) {
+    if (didPop) return;
+    _handleRootBack();
+  }
+
   /// Centralizes both tab-switch side effects — the #808 PR2 seen-stamp (tab
   /// 1 only) and the #113 lazy-build visited set — so a programmatic select
   /// (via [BottomNavTabScope]) behaves identically to a direct nav-bar tap.
@@ -69,17 +133,44 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
     // safety gate (see outgoingShellProvablyEmpty for the real pattern).
     final groups = ref.watch(userGroupsProvider).valueOrNull;
     final hasNoGroups = groups != null && groups.isEmpty;
-    return BottomNavTabScope(
-      selectTab: _selectTab,
-      child: Scaffold(
-        key: widget.scaffoldKey,
-        backgroundColor: context.colors.scaffoldBackground,
-        body: _buildBody(context),
-        // #364: money CTA on Groups/Activity only — Profile is settings.
-        floatingActionButton: _currentIndex == 2 || hasNoGroups
-            ? null
-            : const AddExpenseFab(),
-        bottomNavigationBar: _buildNavBar(context),
+    // #1188: dual-channel root back-exit guard. The engine dispatches system
+    // back on TWO channels and go_router 13.2.5 splits them:
+    //  - popRoute channel (what production exercises — no predictive-back
+    //    manifest opt-in): `RootBackButtonDispatcher` → `BackButtonListener`
+    //    runs BEFORE go_router's `delegate.popRoute`, which on a SOLE `/home`
+    //    route returns false without ever consulting the PopScope below. The
+    //    `BackButtonListener` (OUTERMOST) is therefore the layer that actually
+    //    catches the sole-route back.
+    //  - maybePop/predictive channel: `PopScope(canPop: false)` — it keeps
+    //    `canHandlePop` reported and owns predictive-back. Accepted trade-off:
+    //    suppresses the shrink-to-launcher preview from home; exit protection
+    //    outranks it.
+    // Both channels route through the ONE `_handleRootBack()` decision.
+    return BackButtonListener(
+      onBackButtonPressed: () async {
+        // `BackButtonListener` is dispatcher-global while mounted, NOT
+        // route-scoped: without this gate it would hijack back for routes
+        // pushed ON TOP of `/home`. Non-current → return false = defer to the
+        // normal pop (the pushed route's own back).
+        if (!(ModalRoute.of(context)?.isCurrent ?? true)) return false;
+        return _handleRootBack();
+      },
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: _handleRootPop,
+        child: BottomNavTabScope(
+          selectTab: _selectTab,
+          child: Scaffold(
+            key: widget.scaffoldKey,
+            backgroundColor: context.colors.scaffoldBackground,
+            body: _buildBody(context),
+            // #364: money CTA on Groups/Activity only — Profile is settings.
+            floatingActionButton: _currentIndex == 2 || hasNoGroups
+                ? null
+                : const AddExpenseFab(),
+            bottomNavigationBar: _buildNavBar(context),
+          ),
+        ),
       ),
     );
   }
