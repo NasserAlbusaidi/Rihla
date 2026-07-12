@@ -64,13 +64,15 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   }
 
   /// The single root-back decision, invoked by BOTH back channels: the
-  /// [BackButtonListener] (engine `popRoute` channel — the one production
-  /// actually exercises, since go_router 13.2.5's `popRoute()` never consults a
-  /// sole route's [PopScope]) AND [PopScope.onPopInvokedWithResult] (the
-  /// `maybePop`/predictive channel). Returns `true` = handled here (the back
-  /// never falls through to a silent exit unless the second-press branch
-  /// explicitly calls [SystemNavigator.pop]). Synchronous — no awaits precede
-  /// the `context` reads (no `use_build_context_synchronously` hazard).
+  /// [BackButtonListener] (engine `popRoute` channel — production's only
+  /// channel while predictive back stays un-opted-in; it runs at dispatcher
+  /// priority, BEFORE go_router's delegate, on every go_router version) AND
+  /// [PopScope.onPopInvokedWithResult] (the `maybePop`/predictive channel;
+  /// also reached via `popRoute` on go_router ≥14.6.1 — #1192 — whenever the
+  /// listener declines). Returns `true` = handled here (the back never falls
+  /// through to a silent exit unless the second-press branch explicitly calls
+  /// [SystemNavigator.pop]). Synchronous — no awaits precede the `context`
+  /// reads (no `use_build_context_synchronously` hazard).
   bool _handleRootBack() {
     // #1188 Part B: breadcrumb the root back event so the next real-world
     // occurrence self-documents (rides along on any later Sentry event; no
@@ -134,13 +136,16 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
     final groups = ref.watch(userGroupsProvider).valueOrNull;
     final hasNoGroups = groups != null && groups.isEmpty;
     // #1188: dual-channel root back-exit guard. The engine dispatches system
-    // back on TWO channels and go_router 13.2.5 splits them:
+    // back on TWO channels:
     //  - popRoute channel (what production exercises — no predictive-back
     //    manifest opt-in): `RootBackButtonDispatcher` → `BackButtonListener`
-    //    runs BEFORE go_router's `delegate.popRoute`, which on a SOLE `/home`
-    //    route returns false without ever consulting the PopScope below. The
-    //    `BackButtonListener` (OUTERMOST) is therefore the layer that actually
-    //    catches the sole-route back.
+    //    runs at dispatcher priority, BEFORE go_router's `delegate.popRoute`,
+    //    so it catches the sole-route back first on ANY go_router version.
+    //    (Historical: on go_router 13.x it was the ONLY functioning layer —
+    //    13.x `popRoute()` never consulted a sole route's PopScope. Since
+    //    14.8.1 (#1192) the delegate falls through to `maybePop()` → the
+    //    PopScope below, so the guard holds even without this listener; the
+    //    listener stays as the first-in-line, version-independent layer.)
     //  - maybePop/predictive channel: `PopScope(canPop: false)` — it keeps
     //    `canHandlePop` reported and owns predictive-back. Accepted trade-off:
     //    suppresses the shrink-to-launcher preview from home; exit protection
