@@ -211,10 +211,9 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:var(--s56);alig
 .av-1{background:var(--av1);} .av-2{background:var(--av2);} .av-3{background:var(--av3);}
 .av-4{background:var(--av4);} .av-5{background:var(--av5);} .av-6{background:var(--av6);}
 .avatar-stack{display:inline-flex;}
-.avatar-stack .avatar{margin-left:-10px;border:2px solid var(--d-card);}
-.avatar-stack .avatar:first-child{margin-left:0;}
-[dir="rtl"] .avatar-stack .avatar{margin-left:0;margin-right:-10px;}
-[dir="rtl"] .avatar-stack .avatar:first-child{margin-right:0;}
+/* Logical margin auto-mirrors under RTL — no [dir] override needed. */
+.avatar-stack .avatar{margin-inline-start:-10px;border:2px solid var(--d-card);}
+.avatar-stack .avatar:first-child{margin-inline-start:0;}
 
 /* perforated journey ticket */
 .ticket{background:var(--d-card);border-radius:var(--r-card);overflow:hidden;position:relative;}
