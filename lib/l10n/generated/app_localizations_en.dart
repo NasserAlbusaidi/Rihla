@@ -1614,6 +1614,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeBottomNavProfile => 'Profile';
 
   @override
+  String get backAgainToExit => 'Press back again to exit';
+
+  @override
   String get historyTabTitle => 'History';
 
   @override

@@ -67,7 +67,18 @@ class GroupDetailScreen extends ConsumerWidget {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         final router = GoRouter.of(context);
-        if (router.canPop()) {
+        final routerCanPop = router.canPop();
+        // #1188 Part B: breadcrumb the back event so a later Sentry event
+        // carries the back-navigation context (no-op when uninitialized).
+        Sentry.addBreadcrumb(
+          Breadcrumb(
+            category: 'nav.back',
+            message: 'group-detail back',
+            data: {'routerCanPop': routerCanPop},
+            level: SentryLevel.info,
+          ),
+        );
+        if (routerCanPop) {
           router.pop();
         } else {
           router.go('/home');

@@ -1351,6 +1351,10 @@
   "homeBottomNavGroups": "Groups",
   "homeBottomNavActivity": "History",
   "homeBottomNavProfile": "Profile",
+  "backAgainToExit": "Press back again to exit",
+  "@backAgainToExit": {
+    "description": "Snackbar shown on the first system-back press at the home shell — a double-back-to-exit guard (#1188). A second back within 2s closes the app."
+  },
   "historyTabTitle": "History",
   "@historyTabTitle": {
     "description": "Header of the cross-group History tab screen"
