@@ -24,6 +24,7 @@ import 'package:safar/features/groups/screens/group_settle_up_screen.dart';
 import 'package:safar/features/groups/keys/group_keys.dart';
 import 'package:safar/features/groups/services/group_settlement_service.dart';
 import 'package:safar/features/groups/widgets/group_settlement_tile.dart';
+import 'package:safar/shared/widgets/r_amount.dart';
 import 'package:safar/features/ledger/keys/ledger_keys.dart';
 import 'package:safar/features/ledger/models/correct_settlement_result.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
@@ -734,6 +735,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('7.750'), findsWidgets);
+    });
+
+    testWidgets('net-balance rows render through RAmount (#1201)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GroupSettleUpScreen(groupId: _groupId),
+          balancesAsync: AsyncValue.data(_balancesOwed),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RAmount), findsWidgets);
     });
 
     testWidgets('inline history shows past settlements', (tester) async {

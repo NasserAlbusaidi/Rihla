@@ -139,7 +139,7 @@ RAmount(
   value: Decimal.parse('10.500'),
   currency: 'OMR',
   size: 24,
-  tone: AmountTone.auto, // auto | sage | rust | ink
+  tone: AmountTone.auto, // auto | sage | rust | ink | muted
   sign: true,
 )
 ```

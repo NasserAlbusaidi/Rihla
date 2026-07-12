@@ -116,9 +116,13 @@ void main() {
     await tester.pumpAndSettle();
 
     // Regrouped: one row at the total (3+4), NOT the per-event slices.
-    expect(find.text('OMR 7.000'), findsOneWidget);
-    expect(find.text('OMR 3.000'), findsNothing);
-    expect(find.text('OMR 4.000'), findsNothing);
+    // #1201: the history row's amount is RAmount (fragmented RichText spans),
+    // so exact/substring text finders must traverse RichText — including the
+    // absence assertions, or a regression rendering these values via RichText
+    // would silently pass the plain finder.
+    expect(find.textContaining('OMR 7.000', findRichText: true), findsOneWidget);
+    expect(find.textContaining('OMR 3.000', findRichText: true), findsNothing);
+    expect(find.textContaining('OMR 4.000', findRichText: true), findsNothing);
 
     final button = find.byKey(GroupKeys.settleUpCorrectButton);
     expect(button, findsOneWidget);
@@ -126,7 +130,10 @@ void main() {
     await tester.tap(button);
     await tester.pumpAndSettle();
     // Confirm dialog shows the logical total.
-    expect(find.textContaining('OMR 7.000'), findsWidgets);
+    expect(
+      find.textContaining('OMR 7.000', findRichText: true),
+      findsWidgets,
+    );
     await tester.tap(find.text('Record correction'));
     await tester.pumpAndSettle();
 
@@ -157,8 +164,11 @@ void main() {
     expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing,
         reason: 'idempotency: a corrected logical row hides the affordance');
     expect(find.text('Correction'), findsOneWidget);
-    expect(find.text('OMR 5.000'), findsOneWidget,
-        reason: 'one regrouped row at the original total');
+    expect(
+      find.textContaining('OMR 5.000', findRichText: true),
+      findsOneWidget,
+      reason: 'one regrouped row at the original total',
+    );
   });
 
   testWidgets('event-screen path (no onCorrectLogical) does NOT regroup',
@@ -178,9 +188,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('OMR 3.000'), findsOneWidget);
-    expect(find.text('OMR 2.000'), findsOneWidget);
-    expect(find.text('OMR 6.000'), findsNothing, reason: 'no regroup');
+    expect(find.textContaining('OMR 3.000', findRichText: true), findsOneWidget);
+    expect(find.textContaining('OMR 2.000', findRichText: true), findsOneWidget);
+    expect(
+      find.textContaining('OMR 6.000', findRichText: true),
+      findsNothing,
+      reason: 'no regroup',
+    );
     expect(find.byKey(GroupKeys.settleUpCorrectButton), findsNothing,
         reason: 'tagged docs keep the PR1 single-doc hide-guard');
   });
