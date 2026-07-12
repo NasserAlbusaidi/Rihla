@@ -1881,6 +1881,9 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get activityGroupCreated => 'إنشاء المجموعة';
+
+  @override
   String get activityGroupEventCreatedGeneric => 'إنشاء فعالية';
 
   @override
