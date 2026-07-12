@@ -278,7 +278,7 @@ describe('buildEventReverseData / buildGroupReverseData — exact reverse map sh
     expect(data.groupSettleUpId).toBe('su-1');
   });
 
-  test('group reverse map carries groupId/eventId=groupId/scope=group', () => {
+  test('group reverse map carries groupId/scope=group and NO eventId (#71)', () => {
     const data = buildGroupReverseData('g1', {
       newId: 'correction_def',
       originalId: 'orig2',
@@ -287,10 +287,12 @@ describe('buildEventReverseData / buildGroupReverseData — exact reverse map sh
       callerUid: 'caller',
       nowIso: '2026-07-04T00:00:00.000Z',
     });
+    // #71: explicit absence — toMatchObject is a subset matcher, so deleting
+    // eventId from the expectation alone would false-green pre-fix.
+    expect(data).not.toHaveProperty('eventId');
     expect(data).toMatchObject({
       id: 'correction_def',
       groupId: 'g1',
-      eventId: 'g1',
       scope: 'group',
       payerParticipantId: 'recipient',
       recipientParticipantId: 'payer',

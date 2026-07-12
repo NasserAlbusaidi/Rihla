@@ -167,7 +167,7 @@ describe('recordSettlement — group mode', () => {
     testEnv.cleanup();
   });
 
-  test('group solo happy: aggregate cap, sentinel doc shape, group_settlement activity with STRING amount metadata', async () => {
+  test('group solo happy: aggregate cap, no-eventId doc shape (#71), group_settlement activity with STRING amount metadata', async () => {
     const result = (await call(input())) as Record<string, unknown>;
 
     expect(result).toMatchObject({
@@ -183,14 +183,16 @@ describe('recordSettlement — group mode', () => {
     const doc = docs.get(id)!;
     expect(doc).toBeDefined();
     expect(Object.keys(doc).sort()).toEqual([
-      'amountFils', 'createdBy', 'currency', 'deletedAt', 'eventId', 'groupId',
+      'amountFils', 'createdBy', 'currency', 'deletedAt', 'groupId',
       'id', 'isDeleted', 'note', 'payerName', 'recipientName',
       'payerParticipantId', 'recipientParticipantId', 'scope', 'settledAt',
     ].sort());
+    // #71: the eventId==groupId sentinel is gone — group docs carry groupId +
+    // scope only. Explicit absence check (toMatchObject is a subset matcher).
+    expect(doc).not.toHaveProperty('eventId');
     expect(doc).toMatchObject({
       id,
       groupId: GROUP,
-      eventId: GROUP, // sentinel — group settlements have no event
       scope: 'group',
       payerParticipantId: MEMBER,
       recipientParticipantId: OWNER,
@@ -328,10 +330,11 @@ describe('recordSettlement — groupSettleUp mode', () => {
     const groupDocs = await docsIn(`groups/${GROUP}/settlements`);
     expect(groupDocs.size).toBe(1);
     const residual = groupDocs.get(residualId)!;
+    // #71: residual is a group doc — no eventId sentinel.
+    expect(residual).not.toHaveProperty('eventId');
     expect(residual).toMatchObject({
       id: residualId,
       scope: 'group',
-      eventId: GROUP,
       amountFils: 2000,
       groupSettleUpId: parent,
     });

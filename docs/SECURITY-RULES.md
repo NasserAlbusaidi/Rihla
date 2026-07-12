@@ -731,10 +731,11 @@ allow update: if false;  // B3
 allow delete: if false;  // B3
 ```
 
-The doc shape (`eventId == groupId` sentinel, `scope: 'group'`, the
-exact key set, ISO-string `settledAt`) is authored by the
-`recordSettlement` callable and pinned by the emulator tables in
-`functions/test/callables/recordSettlement.group.test.ts`.
+The doc shape (`groupId` + `scope: 'group'`, NO `eventId` — the
+eventId==groupId sentinel was retired in #71; legacy docs still carry it
+and stay read-tolerated — the exact key set, ISO-string `settledAt`) is
+authored by the `recordSettlement` callable and pinned by the emulator
+tables in `functions/test/callables/recordSettlement.group.test.ts`.
 
 ---
 

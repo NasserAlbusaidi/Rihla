@@ -43,5 +43,6 @@ the **former-member / offline fallback**, not the display source.
   acceptable, since live resolution is no longer possible for them.
 - The one widget that read the raw snapshot (`RecordedSettlementsSection`) was
   dead and is already removed.
-- Shared validator already extracted (`validSettlementCore`, #72); removal of the
-  `eventId == groupId` group-scope sentinel is tracked separately in #71.
+- Shared validator already extracted (`validSettlementCore`, #72 — later deleted
+  by #1129's callable-only migration); the `eventId == groupId` group-scope
+  sentinel was removed in #71 (legacy docs remain read-tolerated).

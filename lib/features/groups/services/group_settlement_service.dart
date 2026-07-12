@@ -82,7 +82,8 @@ class GroupSettlementService extends FirestoreRepository {
   /// Records a GROUP-scope settlement via the `recordSettlement` callable
   /// (#1129, mode `'group'`) — the aggregate cross-event settle (the
   /// empty-decompose fallback and the departed-party path). The server writes
-  /// the doc with the `eventId: groupId` sentinel + `scope: 'group'` (D-10),
+  /// the doc with `groupId` + `scope: 'group'` and NO `eventId` (#71 — the
+  /// eventId==groupId sentinel is retired; legacy docs still carry it),
   /// caps the amount at the pair's full-group outstanding, and authors the
   /// `group_settlement` activity row atomically.
   ///

@@ -214,7 +214,7 @@ export function buildGroupReverseData(groupId: string, input: ReverseSettlementI
   return {
     id: newId,
     groupId,
-    eventId: groupId,
+    // #71: no eventId sentinel on group docs (path + groupId/scope identify them).
     scope: 'group',
     payerParticipantId: originalData.recipientParticipantId,
     recipientParticipantId: originalData.payerParticipantId,

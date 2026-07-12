@@ -241,10 +241,15 @@ describe('correctLogicalSettleUp — happy paths + concurrency', () => {
     expect(e2Reverse).toMatchObject({ correctionOfSettlementId: 's2', groupSettleUpId: SU });
 
     const gReverse = await getDoc(`groups/g/settlements/${revG}`);
+    // #71 legacy-original/new-reverse cross: the seeded original (gsResidual,
+    // seedGroupSettlement) is legacy sentinel-shaped (eventId == groupId); the
+    // server-written reverse carries NO eventId. Swapped parties + equal
+    // amountFils net the pair to zero. Explicit absence — toMatchObject is a
+    // subset matcher.
+    expect(gReverse).not.toHaveProperty('eventId');
     expect(gReverse).toMatchObject({
       id: revG,
       groupId: 'g',
-      eventId: 'g',
       scope: 'group',
       payerParticipantId: OWNER,
       recipientParticipantId: MEMBER,

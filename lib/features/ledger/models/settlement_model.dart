@@ -144,8 +144,11 @@ class Settlement {
     final scope = data['scope'] is String ? data['scope'] as String : 'event';
     final groupId = data['groupId'] is String ? data['groupId'] as String : null;
 
-    // For group settlements, eventId may not be set — fall back to groupId as
-    // sentinel (per RESEARCH.md Pitfall 3). Event settlements always have eventId.
+    // #71: group settlements carry NO eventId (identified by collection path
+    // + groupId/scope; the eventId==groupId sentinel is retired). This
+    // fallback is PERMANENT legacy tolerance — pre-#71 group docs still carry
+    // the sentinel and must decode identically. Event settlements always have
+    // a real eventId. Do not remove.
     final tripId =
         data['eventId'] is String ? data['eventId'] as String : (groupId ?? '');
 

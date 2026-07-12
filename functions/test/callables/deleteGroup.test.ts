@@ -154,7 +154,7 @@ async function seedGroupSettlement(
   await getFirestore().doc(`groups/${groupId}/settlements/${docId}`).set({
     id: docId,
     groupId,
-    eventId: groupId, // group-scope sentinel (firestore.rules:712)
+    eventId: groupId, // LEGACY pre-#71 sentinel shape — kept as legacy-doc fold coverage
     scope: 'group',
     createdBy: MEMBER,
     payerParticipantId: MEMBER,

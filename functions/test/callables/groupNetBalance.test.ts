@@ -169,6 +169,37 @@ describe('recomputeNet drill-down extension (#366)', () => {
     expect(result.perEventNet.size).toBe(1);
   });
 
+  it('folds a mixed legacy-sentinel + no-eventId group-settlement aggregate identically (#71)', async () => {
+    const db = getFirestore();
+    // #71 post-migration shape: NO eventId key. Coexists with the fixture's
+    // legacy sentinel-shaped gs1 in the same collection — the fold is
+    // path-based and reads neither eventId nor scope.
+    await db.doc(`groups/${GROUP}/settlements/gs2`).set({
+      id: 'gs2',
+      groupId: GROUP,
+      scope: 'group',
+      payerParticipantId: ALICE,
+      recipientParticipantId: BOB,
+      payerName: 'Alice',
+      recipientName: 'Bob',
+      amountFils: 500,
+      currency: 'OMR',
+      note: null,
+      isDeleted: false,
+      deletedAt: null,
+      settledAt: '2026-01-06T00:00:00.000Z',
+      createdBy: ALICE,
+    });
+
+    const result = await recomputeNet(db, db.doc(`groups/${GROUP}`));
+    const omr = result.net.get('OMR')!;
+    // Base net (alice −4.000, bob −2.000, carol +6.000) shifted by the new
+    // 0.500 alice→bob payment: alice +0.500, bob −0.500. Conservation holds.
+    expect(omr.get(ALICE)!.toFixed(3)).toBe('-3.500');
+    expect(omr.get(BOB)!.toFixed(3)).toBe('-2.500');
+    expect(omr.get(CAROL)!.toFixed(3)).toBe('6.000');
+  });
+
   it('emits eventCount = live events and omits empty-participant events from the drill-down', async () => {
     const db = getFirestore();
     // A second live event with NO participants: counted in eventCount (the
