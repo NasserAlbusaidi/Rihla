@@ -60,14 +60,17 @@ class InfoRow extends StatelessWidget {
             trailing!
           else if (trailingText != null)
             Flexible(
-              child: Text(
-                trailingText!,
-                textAlign: TextAlign.end,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  color: context.colors.textSecondary,
-                  fontWeight: FontWeight.w600,
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Text(
+                  trailingText!,
+                  textAlign: TextAlign.end,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.sans(
+                    fontSize: 13,
+                    color: context.colors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
