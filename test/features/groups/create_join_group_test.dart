@@ -547,6 +547,73 @@ void main() {
         reason: 'Create button hit target height ${button.height}dp',
       );
     });
+
+    // #1182: the #1109 hit-target wrapper (SizedBox+Center) made the inner
+    // Center expand to the full bar width under bounded loose constraints, so
+    // the outer AlignmentDirectional.centerEnd had no slack and the Create pill
+    // rendered horizontally CENTERED over the "New Group" title. The #1109
+    // tests only asserted the button exists / meets the 44dp floor, never its
+    // position, so they stayed green through the regression. Pin the position.
+    testWidgets('Create button hugs the top-bar trailing edge (#1182)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(await buildCreateScreen());
+      await tester.pump();
+
+      // Nearest Stack ancestor is the top bar; its right edge is the bar's
+      // trailing edge in LTR.
+      final barRect = tester.getRect(
+        find
+            .ancestor(
+              of: find.byKey(GroupKeys.createGroupButton),
+              matching: find.byType(Stack),
+            )
+            .first,
+      );
+      final button = tester.getRect(find.byKey(GroupKeys.createGroupButton));
+
+      expect(
+        button.right,
+        closeTo(barRect.right, 1.0),
+        reason:
+            'Create button right ${button.right} must hug the bar trailing '
+            'edge ${barRect.right}; it renders centered when the inner Center '
+            'expands to full width',
+      );
+      // The #1109 44dp hit-target height must survive the fix.
+      expect(button.height, greaterThanOrEqualTo(44));
+    });
+
+    testWidgets(
+      'Create button hugs the top-bar trailing edge under RTL (#1182)',
+      (tester) async {
+        await tester.pumpWidget(
+          await buildCreateScreen(locale: const Locale('ar')),
+        );
+        await tester.pump();
+
+        final barRect = tester.getRect(
+          find
+              .ancestor(
+                of: find.byKey(GroupKeys.createGroupButton),
+                matching: find.byType(Stack),
+              )
+              .first,
+        );
+        final button = tester.getRect(find.byKey(GroupKeys.createGroupButton));
+
+        // Under RTL, AlignmentDirectional.centerEnd mirrors to the visual LEFT
+        // edge — that is where the trailing action must sit.
+        expect(
+          button.left,
+          closeTo(barRect.left, 1.0),
+          reason:
+              'Create button left ${button.left} must hug the bar trailing '
+              '(left) edge ${barRect.left} under RTL',
+        );
+        expect(button.height, greaterThanOrEqualTo(44));
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
