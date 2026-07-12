@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
@@ -273,7 +276,8 @@ class GroupMembersSection extends ConsumerWidget {
       }
       // #1144/#1149: departure-lock contention is transient by design —
       // retry-inviting copy, never the settle-up snackbar (and never the raw
-      // English-only server string).
+      // English-only server string) — and never Sentry (expected contention,
+      // not a defect).
       if (e.code == 'aborted') {
         messenger.showSnackBar(
           SnackBar(
@@ -282,6 +286,9 @@ class GroupMembersSection extends ConsumerWidget {
         );
         return;
       }
+      // #1160: an unexpected server failure is worth reporting, and the user
+      // sees the friendly (translated) cause — never the raw error string.
+      unawaited(Sentry.captureException(e));
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -292,14 +299,18 @@ class GroupMembersSection extends ConsumerWidget {
           ),
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
       if (!context.mounted) return;
+      // #1160: mirror the leave handler — capture the unexpected error and
+      // route the user-facing cause through friendlyMessageFor (never a raw,
+      // untranslated e.toString()).
+      unawaited(Sentry.captureException(e, stackTrace: st));
       messenger.showSnackBar(
         SnackBar(
           content: Text(
             context.l10n.groupFailedRemoveMember(
               member.displayName,
-              e.toString(),
+              friendlyMessageFor(context, e),
             ),
           ),
         ),
