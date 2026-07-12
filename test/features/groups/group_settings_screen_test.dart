@@ -1036,8 +1036,13 @@ void main() {
     );
 
     testWidgets(
-      'member removal failure shows snackbar, no client activity log (#318)',
+      'unexpected removal failure shows the friendly (translated) message, '
+      'never the raw error string, no client activity log (#318/#1160)',
       (tester) async {
+        // #1160: a non-FirebaseFunctionsException (here a StateError) hits the
+        // outer generic catch. It must be routed through friendlyMessageFor —
+        // NOT interpolated raw via e.toString() — so an Arabic user never sees
+        // an untranslated English "Bad state: …". Mirrors the leave handler.
         late _RemovingGroupService groupService;
         final activityService = _RecordingGroupActivityService();
 
@@ -1058,10 +1063,17 @@ void main() {
         await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
         await tester.pumpAndSettle();
 
+        // friendlyMessageFor classifies a StateError as `unexpected` →
+        // l10n.errorUnexpected, slotted into the groupFailedRemoveMember
+        // template.
         expect(
-          find.text('Failed to remove Bob: Bad state: write failed'),
+          find.text(
+            'Failed to remove Bob: Something went wrong. Please try again.',
+          ),
           findsOneWidget,
         );
+        // The raw Dart error string must never reach the user.
+        expect(find.textContaining('Bad state'), findsNothing);
         expect(groupService.removeCalls, [
           (groupId: 'group-1', userId: 'uid-member'),
         ]);
