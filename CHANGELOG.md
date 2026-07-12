@@ -4,6 +4,105 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] — 2026-07-12
+
+Rihla 1.9.0 is a correctness-and-integrity release. It hardens what happens when people leave a group — balances, permissions, notifications, and history all stay consistent — makes recording settlements safer with a single transactional, deduplicated server path, and scrubs every trace of a deleted account from a group's history. It also lands a broad accessibility pass and RTL/visual polish.
+
+### Added
+
+- Group creation now appears as the first entry in every group's activity/history feed; for groups created offline the entry is added on reconnect, correctly stamped with the original creation time (#1018).
+- The add-expense screen shows a one-line "Adding to {event} · change" banner under the top bar, so it's always clear which event a new expense will land in (#1088).
+
+### Changed
+
+- Rewrote 20 English UI labels from Title Case to sentence case across home, events, groups, and expenses for a more natural, consistent look (#1046).
+- Before adding a shadow (name-only) member, the add-person sheet now warns that this will re-split existing events' costs — including already-closed events — so you know what changes before confirming (#1059).
+- Simplified the event-screen header into a cleaner single column, dropping redundant labels and making the balance amount the focal point (#1057).
+- Money amounts now render consistently across the expense success screen, pre-settlement review, and ledger balance chips (#1041).
+- Recap and picker-sheet loading states now show a layout-matched skeleton instead of a bare spinner (#1041).
+- Unified section headers and adopted the shared header-fade motion token across group settings, and added the offline banner to the activity screen (#1047).
+- Removed a redundant repeated "settled" message and made relative timestamps (e.g. "2 hours ago") lowercase for cleaner activity copy (#1068, #1069).
+
+### Fixed
+
+Departure & membership integrity
+
+- Leaving or removing a member now locks the group during the departure check, so a race between two simultaneous departures can no longer both pass a stale zero-balance check (#1144).
+- Leaving a group is now refused if it would strand shared history that only that person's balance ties together, preventing a departure from silently corrupting group balances (#1144).
+- Expenses and settlements can no longer be created against someone who has already left the group (#1144).
+- Removed or departed "ghost" members can no longer be newly added to expenses, events, or the group roster (#1144).
+- Only current group members can add or edit expenses in that group's ledgers — someone who has left or been removed can no longer write to a ledger they no longer belong to (#1131).
+- A group creator who has since left can no longer rename the group, change its stamp, delete it, remove members, or approve name-claim requests — creator powers now require current membership (#1132).
+- If the person who created a group leaves, another current member automatically becomes the admin (#1138).
+- People who leave a group (or are removed) stop receiving that group's push notifications (#1141).
+- Activity-history entries are now written together with the underlying change, so a blocked or denied edit no longer leaves a phantom history entry (#1140).
+- Member pickers, settle-up pairing, and history views now consistently exclude departed/ghost members, matching the new server-side rules (#1149).
+- Creating a new event no longer auto-selects deleted-account placeholder members as participants, avoiding a submit error (#1159).
+
+Settlement correctness
+
+- Recording a settlement now goes through a single server-side transactional callable that caps the amount at what's actually still outstanding between the two people, closing a window where a client-side race could over-record or double-record (#1129).
+- Settlement records now get deterministic, content-derived IDs (scope, parties, currency, amount, time-window) instead of random ones, so the same settlement can't accidentally be written twice (#1130, #1093).
+- The Settle Up screen now blocks recording a payment while your balances are still loading or converging, preventing you from settling against a stale number (#1106).
+- Pre-settle-up warnings no longer reappear for amounts you've already settled past — the review screen remembers what you've seen and only flags genuinely new changes (#1058).
+
+Privacy & account deletion
+
+- Deleting your account now scrubs your user ID from every event's "closed by" record and from frozen spending-summary data, so no personally identifying trace of you lingers in a group's history (#1133).
+- Account deletion now re-checks group memberships right before finishing, catching a group you joined or were added to mid-deletion so it gets scrubbed too (#1099).
+- If you rejoin a group after deleting your account (or a claim is approved during deletion), your prior and new balances are now correctly combined instead of one silently overwriting the other (#1099).
+
+Ledger & expenses
+
+- Entering a zero or invalid amount when adding an expense or recording a payment now shows a clear error on the amount field, moves focus there, and announces it for screen readers (#1080).
+- Editing one field of an expense (like category or description) no longer silently reverts other fields you'd already changed and saved (#1092).
+- Group balance labels now clearly state who owes whom for each event instead of an ambiguous number (#1107).
+- The event-deletion warning now shows your group's real current balances instead of stale or incorrect figures (#1101).
+- You can now clear an event's description after it's been set (#1103).
+- Fixed timeline dates that could be mislabeled "Yesterday" for something added earlier today, depending on your timezone (#1097).
+- Event start/end dates no longer shift by a day depending on your device's timezone (#1098).
+- Fixed a crash that could occur when closing the "add adjustment" sheet in the itemized split editor with a blank amount (#1053).
+- Fixed a mis-tap hazard where the add-expense button could overlap the settle-up controls, and a home-screen balance row that was partly hidden behind the floating action button (#1086).
+
+Auth & session
+
+- If your account is deleted mid-session (e.g. from another device), the app now recognizes the deletion after restart and cleanly resets you to a fresh anonymous session instead of getting stuck (#1100).
+- Restoring or switching accounts on a reinstalled or empty-cache device no longer risks silently deleting the account you're switching away from — the app double-checks with the server that it's truly empty first (#1091).
+- Signing out now waits for and confirms any unsaved changes have synced (letting you discard them if they can't), and deregisters that device's push notifications before switching accounts (#1094, #1095).
+- A display name changed while offline now reliably syncs to your groups once you're back online (#1102).
+- Fixed a race where rapidly toggling push notifications off could leave a stale token registered; opting out now also clears notifications already delivered to the device (#1096, #1104).
+
+Accessibility
+
+- Tap targets across the app (category and split-mode chips, group settlement rows, custom split editors, group detail actions, Create Group's top-bar button, and more) are now at least 44dp (#1120, #1114, #1085, #1048).
+- Screen-reader users get correct semantics and labels on chip/tab selections and navigation back buttons, and navigation elements now meet color-contrast requirements (#1067, #1075).
+- Text no longer overlaps, wraps oddly, or gets cut off at larger text sizes — app text scaling is capped at 1.5x, and Home/Profile screens were hardened to stay readable (#1064, #1074, #1083).
+- Error and destructive buttons (like deleting a group or expense) now use a dedicated high-contrast text color in dark mode (#1042).
+
+RTL & visual polish
+
+- Fixed the back button on eight screens showing a mismatched glyph for Arabic users — it now mirrors as a single consistent icon in both languages (#1167, #1171).
+- Fixed Arabic payer/payee names in settlement captions merging together and reversing order, in both RTL and LTR locales (#1073, #1066, #1113).
+- Fixed padding around two expense-editor elements that stayed physically left/right instead of mirroring in Arabic (#1041).
+- Restored consistent typography on the event settings title and a ledger empty-state caption (#1050, #1041).
+- Fixed iOS status-bar icons staying the wrong color when the system switches between light and dark mode live (#1052, #1051).
+- Fixed the payer→payee flow arrow in the expense audit detail so it also mirrors for Arabic, matching the back-button fix (#1173).
+- Removed a decorative em-dash on the ledger's "You" roster anchor that could be mistaken for an empty-state placeholder (#1169).
+
+Avatars, activity, search & home
+
+- A person's avatar color is now stable and no longer changes when their display name is edited or the app switches between English and Arabic (#1168).
+- Search no longer flashes a false "No matches" message while results are still loading (#1108).
+- Pull-to-refresh works again on the History screen when it's showing an empty state (#1063).
+- On the home screen, the bottom of your list no longer gets clipped while scrolling, and the floating add button now reads as lighter and more "floating" (#1166).
+- Dismissing the invite share-sheet after creating a group now takes you straight into the new group instead of stranding you on the creation form, where tapping Create again could make a duplicate group (#1087).
+- The "add person by name" sheet now shows an inline error instead of silently doing nothing when the entered name is invalid (#1065).
+
+### Internal
+
+- iOS platform bring-up: expense and settlement push notifications can now wake the app in the background and show a proper banner and sound when they arrive while the app is open (#1055, #941). Hardened the account-deletion cascade against a maliciously malformed group snapshot that could otherwise have permanently blocked a deletion request (#1133).
+- Retired the legacy `eventId==groupId` sentinel on group-settlement documents (server-side only; documents are now identified by collection path + groupId/scope, old docs still decode via the retained fallback — no behavior change) (#71).
+
 ## [1.8.2] — 2026-07-07
 
 Patch release for the 1.8 line. It collects the post-1.8.1 home, History,
