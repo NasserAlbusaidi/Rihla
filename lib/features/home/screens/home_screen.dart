@@ -111,7 +111,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     final journeysAsync = ref.watch(activeJourneysProvider);
     final targetsAsync = ref.watch(addExpenseTargetsProvider);
 
-    final dashboard = RefreshIndicator(
+    return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(userGroupsProvider);
         // #104/#410: refresh the one-shot FALLBACK path (offline / missing
@@ -281,19 +281,26 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               ),
             ),
           ),
-          // #364→#1078: the FAB lane below owns clearance now — this is just
-          // a scroll gutter.
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          // #1166: the FAB-lane clearance lives HERE now — a trailing
+          // in-scroll spacer — not on an outer Padding around the viewport.
+          // #1078's outer Padding shrank the CustomScrollView itself, and a
+          // Viewport clips its children to its own bounds: that made the
+          // reserved 88px a permanent clip line 88px above the true screen
+          // edge. Invisible at rest (bottomNavBackground == scaffoldBackground)
+          // but reading as an opaque bar swallowing content while scrolling —
+          // and amplifying the "FAB looks attached to the nav" illusion this
+          // lane was supposed to prevent. A trailing spacer still delivers
+          // #1078's guarantee once the list is scrolled fully into view (the
+          // last row then sits kHomeFabLaneClearance above the true bottom
+          // edge, clear of the FAB); the one accepted trade-off is a SHORT
+          // list (shorter than the viewport) where the FAB may rest over the
+          // last row — ordinary floating-FAB-over-content behaviour, not the
+          // reported occluding-shelf bug.
+          const SliverToBoxAdapter(
+            child: SizedBox(height: kHomeFabLaneClearance),
+          ),
         ],
       ),
-    );
-    // #1078: fixed action lane — the scroll viewport ends above the shell's
-    // add-expense FAB, so no row (in particular the last group row's trailing
-    // balance) can ever rest under it. A trailing sliver spacer cannot do
-    // this: it never moves a row pinned by the content above it.
-    return Padding(
-      padding: const EdgeInsets.only(bottom: kHomeFabLaneClearance),
-      child: dashboard,
     );
   }
 
