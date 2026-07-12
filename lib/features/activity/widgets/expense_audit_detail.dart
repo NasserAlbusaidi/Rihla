@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../utils/expense_audit_diff.dart';
 
@@ -156,11 +157,10 @@ class ExpenseAuditDetail extends StatelessWidget {
   }
 
   Widget _arrow(BuildContext context) {
-    final rtl = Directionality.of(context) == TextDirection.rtl;
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(horizontal: 6),
-      child: Icon(
-        rtl ? Iconsax.arrow_left : Iconsax.arrow_right,
+      child: DirectionalIcon(
+        Iconsax.arrow_right,
         size: 12,
         color: context.colors.textSecondary,
       ),
