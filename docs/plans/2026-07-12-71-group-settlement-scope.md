@@ -57,6 +57,8 @@ scope: 'group',
 
 **No other writer exists.** Clients write no settlement docs: `lib/features/groups/services/group_settlement_service.dart:101-112` (`addGroupSettlement`) and `:141-160` (`recordDecomposedSettleUp`) only invoke the `recordSettlement` callable and return its `RecordSettlementResult` — no local doc echo is constructed. Verified: `rg buildGroupSettlementDoc lib/` → 0 hits; `rg "'eventId':" lib/` on settlement paths → 0 write sites.
 
+**Partial updaters (Admin SDK) verified no-eventId** (Gate R2 P3): the two other functions that UPDATE group-settlement docs never touch the field — they neither preserve nor strip the sentinel and are out of scope. `functions/src/callables/claimShadow.ts:287-307` (`settlementRekey` — swaps only `payerParticipantId`/`recipientParticipantId`/`createdBy` on a uuid→uid claim; partial field map, D7 keeps names) and `functions/src/callables/deleteAccount.ts:356-382` (`settlementUpdates` — rewrites only `createdBy`/`payerParticipantId`+`payerName`/`recipientParticipantId`+`recipientName`/`note` on account-deletion scrub). Recorded so future readers don't re-derive the identity-axis worry.
+
 ### 1.2 Read path: NOTHING reads the sentinel; scope is carried by collection path
 
 Verified reader-by-reader:
@@ -85,6 +87,10 @@ Derivation lives in `functions/src/callables/shared/settlementIds.ts` (the Dart 
 - `decomposeLegSettlementId(groupSettleUpId, eventId)` (`:52-54`) uses the **leg's** real event id from the request; `decomposeResidualSettlementId(groupSettleUpId)` (`:56-58`) uses none.
 
 **Consequence:** removing the wire sentinel changes **zero** ids — identical logical settlements derive identical ids before and after, so the `tx.create`-fails-on-exists dedup and the `alreadyRecorded: true` idempotent-retry contract are unaffected.
+
+### 1.4b Checked negative (Gate R2 P3): no index or query references settlement `eventId`
+
+`firestore.indexes.json` has exactly one `settlements` composite index — `isDeleted ASC + settledAt DESC` (matching the two watch/get queries) — and no `fieldOverrides` on `eventId`. `rg "where\('eventId'|orderBy\('eventId'" lib/ functions/src` → 0 hits. No query would break or change plan when the field disappears from new docs.
 
 ### 1.5 Rules: nothing to change, on purpose
 
@@ -182,13 +188,13 @@ Command discipline: bare `npm test`/jest **fails fast by design** (#1157 guard i
   - `'gsu happy: leg + residual + ONE activity row, …'` (`:301`) pins the residual leg's shape the same way.
   - **RED:** flip both — key list without `'eventId'`, `toMatchObject` without it, plus an explicit `expect(doc.eventId).toBeUndefined()` on the solo doc AND the residual doc. These FAIL before the `:503` deletion (field present), PASS after. Paste the failing-before output in the PR (#329 RED-evidence rule).
   - `recordSettlement.event.test.ts` must stay green **unchanged** — proves the event builder wasn't touched.
-- **`functions/test/callables/shared/settlementCorrection.test.ts:290-298`** — unit-asserts `buildGroupReverseData` output with `eventId: 'g1'`. **RED:** assert no `eventId` key. Fails before the `:217` deletion.
-- **`functions/test/callables/correctSettlement.test.ts:479-490`** — end-to-end asserts the written group reverse doc with `eventId: 'g'`. **RED:** same flip + `toBeUndefined()`. The `buildEventReverseData` assertions stay green unchanged.
+- **`functions/test/callables/shared/settlementCorrection.test.ts:290-298`** — unit-asserts `buildGroupReverseData` output with `eventId: 'g1'`. **Matcher trap (Gate R2 P3): this is `toMatchObject` — a SUBSET matcher — so merely deleting `eventId` from the expectation passes before AND after the fix (false-green, not RED).** The RED assertion must be explicit: `expect(data).not.toHaveProperty('eventId')` (or `expect(data.eventId).toBeUndefined()`). Fails before the `:217` deletion, for the right reason.
+- **`functions/test/callables/correctSettlement.test.ts:479-490`** — end-to-end asserts the written group reverse doc with `eventId: 'g'`, also via `toMatchObject` — same subset-matcher trap, same fix: explicit `not.toHaveProperty('eventId')`/`toBeUndefined()`, never deletion-from-expectation alone. The `buildEventReverseData` assertions stay green unchanged. (The `recordSettlement.group.test.ts` key-list pin above is `Object.keys(doc).sort()` `toEqual` — exhaustive, so removing `'eventId'` from that list IS genuinely RED; the explicit `toBeUndefined()` there is belt-and-suspenders.)
 - **Dedup invariance:** in `recordSettlement.group.test.ts` the doc id asserted via `groupScopeId(…)` (`:180`) must be **unchanged** by the migration — the existing assertion doubles as proof the ids never ingested the sentinel (§1.4). `settlementIds.test.ts` golden vectors stay green untouched.
 
 ### 6.2 Legacy-tolerance fixtures — deliberately KEEP sentinel seeds + add absent-eventId siblings
 
-These suites **seed** group docs with the sentinel (fixture data, not shape assertions): `groupNetBalance.test.ts:107`, `balanceAggregator.test.ts:115`, `deleteGroup.test.ts:157`, `deleteGroupLockReaper.test.ts:95`, `correctLogicalSettleUp.test.ts:247`, plus the rules suites `settlementIdempotency.rules.test.ts:133` / `settlementCreateDenied.rules.test.ts:131` (which assert client create DENIAL — doc shape there is incidental). **Do not blanket-strip these seeds:** sentinel-shaped seeds are now the standing coverage that legacy prod docs keep folding/correcting/reaping correctly. Required additions:
+These suites **seed** group docs with the sentinel (fixture data, not shape assertions): `groupNetBalance.test.ts:107`, `balanceAggregator.test.ts:115`, `deleteGroup.test.ts:157`, `deleteGroupLockReaper.test.ts:95`, `correctLogicalSettleUp.test.ts:247`, `deleteAccount.test.ts:276-292` (sentinel-shaped group-settlement seed exercising the `settlementUpdates` scrub — Gate R2 P3; checked: `claimShadow.test.ts` seeds NO group settlement, sentinel or otherwise), plus the rules suites `settlementIdempotency.rules.test.ts:133` / `settlementCreateDenied.rules.test.ts:131` (which assert client create DENIAL — doc shape there is incidental). **Do not blanket-strip these seeds:** sentinel-shaped seeds are now the standing coverage that legacy prod docs keep folding/correcting/reaping correctly. Required additions:
 - `groupNetBalance.test.ts`: one **mixed** case — a sentinel-shaped group settlement AND an absent-`eventId` group settlement in the same group — asserting the net equals the two-payment fold (§8, executable).
 - `correctLogicalSettleUp.test.ts`: correcting a **legacy** (sentinel) original writes a **new-shape** (no `eventId`) reverse and the pair nets to zero.
 
