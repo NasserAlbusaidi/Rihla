@@ -259,6 +259,7 @@ class _Body extends ConsumerWidget {
             others: roster,
             currency: currency,
             currentUserDisplayName: myDisplayName ?? context.l10n.ledgerYou,
+            currentUserId: currentPid,
             onPersonTap: (p) => GoRouter.of(context).push(
               '/group/$groupId/event/$eventId/ledger/'
               'settle-up?memberId=${Uri.encodeComponent(p.participantId)}',

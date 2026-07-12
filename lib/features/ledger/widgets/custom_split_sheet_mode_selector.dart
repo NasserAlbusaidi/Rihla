@@ -254,7 +254,7 @@ class _ParticipantRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          RAvatar(name: participant.name, size: 32),
+          RAvatar(name: participant.name, size: 32, colorKey: participant.id),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Column(

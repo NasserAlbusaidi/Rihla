@@ -229,6 +229,7 @@ class _ItemizedBody extends StatelessWidget {
               for (var i = 0; i < participants.length; i++)
                 _OwesRow(
                   name: participants[i].name,
+                  colorKey: participants[i].id,
                   role: participants[i].role,
                   owed: preview[participants[i].id] ?? Decimal.zero,
                   currency: currency,
@@ -504,8 +505,7 @@ class _AssigneeSummary extends StatelessWidget {
       },
       child: Row(
         children: [
-          if (selected.isNotEmpty)
-            _MiniAvatarStack(names: [for (final p in selected) p.name]),
+          if (selected.isNotEmpty) _MiniAvatarStack(participants: selected),
           if (selected.isNotEmpty) SizedBox(width: context.spacing.space8),
           Flexible(
             child: Text(
@@ -528,14 +528,14 @@ class _AssigneeSummary extends StatelessWidget {
 }
 
 class _MiniAvatarStack extends StatelessWidget {
-  const _MiniAvatarStack({required this.names});
+  const _MiniAvatarStack({required this.participants});
 
-  final List<String> names;
+  final List<SplitParticipant> participants;
 
   @override
   Widget build(BuildContext context) {
     const max = 4;
-    final shown = names.take(max).toList();
+    final shown = participants.take(max).toList();
     return SizedBox(
       height: 20,
       width: 20.0 + (shown.length - 1) * 13,
@@ -552,7 +552,12 @@ class _MiniAvatarStack extends StatelessWidget {
                     width: 1.5,
                   ),
                 ),
-                child: RAvatar(name: shown[i], size: 18),
+                // #1168: colorKey = participant.id (== member userId).
+                child: RAvatar(
+                  name: shown[i].name,
+                  size: 18,
+                  colorKey: shown[i].id,
+                ),
               ),
             ),
         ],
@@ -564,6 +569,7 @@ class _MiniAvatarStack extends StatelessWidget {
 class _OwesRow extends StatelessWidget {
   const _OwesRow({
     required this.name,
+    this.colorKey,
     required this.role,
     required this.owed,
     required this.currency,
@@ -571,6 +577,11 @@ class _OwesRow extends StatelessWidget {
   });
 
   final String name;
+
+  /// Participant id (== member userId, #1168) — keys the avatar's palette
+  /// slot on stable identity instead of the display name.
+  final String? colorKey;
+
   final String? role;
   final Decimal owed;
   final String currency;
@@ -591,7 +602,7 @@ class _OwesRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          RAvatar(name: name, size: 28),
+          RAvatar(name: name, size: 28, colorKey: colorKey),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Row(
@@ -748,7 +759,7 @@ class _AssignSheetState extends State<_AssignSheet> {
                             size: 22,
                           ),
                           SizedBox(width: spacing.space12),
-                          RAvatar(name: p.name, size: 32),
+                          RAvatar(name: p.name, size: 32, colorKey: p.id),
                           SizedBox(width: spacing.space12),
                           Expanded(
                             child: Text(

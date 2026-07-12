@@ -320,7 +320,7 @@ class RecapShareCard extends StatelessWidget {
             _microLabel(context, context.l10n.recapCardTopSpender, size: 9),
             const SizedBox(height: 5),
             Row(children: [
-              RAvatar(name: name, size: 20),
+              RAvatar(name: name, size: 20, colorKey: top.participantId),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(

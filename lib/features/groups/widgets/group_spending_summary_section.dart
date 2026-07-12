@@ -141,6 +141,7 @@ class _CurrencyInsightsCard extends StatelessWidget {
                 name: memberNames[topPayer.participantId] ??
                     topPayer.participantId,
                 size: 30,
+                colorKey: topPayer.participantId,
               ),
               label: l10n.insightsTopPayer,
               name: memberNames[topPayer.participantId] ??
@@ -154,6 +155,7 @@ class _CurrencyInsightsCard extends StatelessWidget {
                 name: memberNames[topConsumer.participantId] ??
                     topConsumer.participantId,
                 size: 30,
+                colorKey: topConsumer.participantId,
               ),
               label: l10n.insightsTopConsumer,
               name: memberNames[topConsumer.participantId] ??

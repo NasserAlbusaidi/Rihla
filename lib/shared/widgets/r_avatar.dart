@@ -51,13 +51,25 @@ String _extractInitials(String name) {
 
 /// Person avatar — initials stamp with a deterministic journal palette.
 ///
-/// Colors are picked from [_palette] by hashing [name], so the same person
-/// renders the same color across screens and sessions. Pass [hue] to force
-/// a specific palette index (0–7).
+/// Colors are picked from [_palette] by hashing [colorKey] (falling back to
+/// [name] when absent), so the same person renders the same color across
+/// screens, locales, and renames. **Pass a stable identity — the member
+/// `userId` field, never a Firestore doc id (#1168: doc keying is mixed
+/// uid-keyed vs uuid-keyed; `userId` is stable for real members and
+/// uuid-shadows alike)** — whenever the callsite has one; the raw display
+/// name is localized/mutable, so hashing it directly reshuffles a person's
+/// color per-locale and on rename. Pass [hue] to force a specific palette
+/// index (0–7).
 ///
 /// Sizing: font size scales at 0.40× of the diameter to match the wireframe.
 class RAvatar extends StatelessWidget {
-  const RAvatar({super.key, required this.name, this.size = 32, this.hue});
+  const RAvatar({
+    super.key,
+    required this.name,
+    this.size = 32,
+    this.hue,
+    this.colorKey,
+  });
 
   /// Display name; first letters of first and last words become initials.
   final String name;
@@ -65,12 +77,19 @@ class RAvatar extends StatelessWidget {
   /// Diameter in logical pixels.
   final double size;
 
-  /// Force a specific palette slot (0–7). When null, [name] hash picks.
+  /// Force a specific palette slot (0–7). When null, [colorKey] (or [name]
+  /// as fallback) hash picks.
   final int? hue;
+
+  /// Stable identity to hash for the palette slot — pass the member
+  /// `userId` field when known. Falls back to [name] when null (callsites
+  /// with no id available keep the legacy name-hash behavior).
+  final String? colorKey;
 
   @override
   Widget build(BuildContext context) {
-    final pair = _palette[(hue ?? _stableHash(name)) % _palette.length];
+    final pair =
+        _palette[(hue ?? _stableHash(colorKey ?? name)) % _palette.length];
     final initials = _extractInitials(name);
 
     return Container(
@@ -101,12 +120,18 @@ class RAvatarStack extends StatelessWidget {
   const RAvatarStack({
     super.key,
     required this.names,
+    this.colorKeys,
     this.size = 28,
     this.max = 4,
   });
 
   /// Names to render, in display order.
   final List<String> names;
+
+  /// Stable identity per entry, same order as [names] — pass each person's
+  /// member `userId` when known (#1168). When null, or shorter than
+  /// [names], the missing entries fall back to hashing that entry's name.
+  final List<String>? colorKeys;
 
   /// Diameter of each avatar.
   final double size;
@@ -125,13 +150,18 @@ class RAvatarStack extends StatelessWidget {
     final ringColor = colors.scaffoldBackground;
     final slots = visible.length + (extra > 0 ? 1 : 0);
     final stackWidth = step * (slots - 1) + size;
+    final keys = colorKeys;
 
-    Widget ringedAvatar(String name) => Container(
+    Widget ringedAvatar(int index) => Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: ringColor, width: 2),
       ),
-      child: RAvatar(name: name, size: size),
+      child: RAvatar(
+        name: visible[index],
+        size: size,
+        colorKey: keys != null && index < keys.length ? keys[index] : null,
+      ),
     );
 
     Widget overflowChip() => Container(
@@ -163,7 +193,7 @@ class RAvatarStack extends StatelessWidget {
           for (var i = 0; i < visible.length; i++)
             PositionedDirectional(
               start: step * i,
-              child: ringedAvatar(visible[i]),
+              child: ringedAvatar(i),
             ),
           if (extra > 0)
             PositionedDirectional(

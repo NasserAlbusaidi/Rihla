@@ -8,6 +8,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/localized_name_validators.dart';
 import '../../../core/utils/name_validators.dart';
 import '../../../shared/widgets/r_avatar.dart';
+import '../../groups/providers/group_balance_provider.dart';
 import '../keys/profile_keys.dart';
 
 /// Bottom sheet for editing the user's display name.
@@ -97,6 +98,11 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
     final colors = context.colors;
     final spacing = context.spacing;
     final l10n = context.l10n;
+    // #1168: the preview renders the live avatar derivation for the name
+    // about to be saved for the CURRENT user — key its color on their stable
+    // uid (not the still-being-typed text) so the preview matches exactly
+    // what every other screen will render once saved.
+    final currentUserId = ref.watch(currentUserIdProvider);
 
     return SafeArea(
       child: Padding(
@@ -184,7 +190,11 @@ class _EditNameBottomSheetState extends ConsumerState<EditNameBottomSheet> {
                     ),
                     child: Row(
                       children: [
-                        RAvatar(name: trimmed, size: 44),
+                        RAvatar(
+                          name: trimmed,
+                          size: 44,
+                          colorKey: currentUserId,
+                        ),
                         SizedBox(width: spacing.space12),
                         Expanded(
                           child: Text(

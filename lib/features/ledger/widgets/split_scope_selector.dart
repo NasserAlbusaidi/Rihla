@@ -198,7 +198,7 @@ class _ParticipantTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.space8),
-      leading: RAvatar(name: displayName, size: 36),
+      leading: RAvatar(name: displayName, size: 36, colorKey: participant.id),
       title: Text(
         displayName,
         style: AppTypography.sans(

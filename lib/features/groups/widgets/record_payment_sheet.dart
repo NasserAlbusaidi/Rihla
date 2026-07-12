@@ -40,6 +40,10 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
   required String currency,
   required String fromName,
   required String toName,
+  // #1168: payer userId — keys the payee card's avatar on stable identity
+  // instead of the display name. Optional so existing/unwired callers still
+  // fall back to hashing fromName.
+  String? fromUserId,
   required Decimal suggestedAmount,
   // #282/#595: framing only — the write is identical (fromName=payer →
   // toName=recipient); only the copy reframes per the writer's relationship to
@@ -60,6 +64,7 @@ Future<RecordPaymentResult?> showRecordPaymentSheet(
       currency: currency,
       fromName: fromName,
       toName: toName,
+      fromUserId: fromUserId,
       suggestedAmount: suggestedAmount,
       perspective: perspective,
       stepLabel: stepLabel,
@@ -72,6 +77,7 @@ class _MarkPaidSheet extends StatefulWidget {
     required this.currency,
     required this.fromName,
     required this.toName,
+    this.fromUserId,
     required this.suggestedAmount,
     this.perspective = RecordPaymentPerspective.paying,
     this.stepLabel,
@@ -80,6 +86,7 @@ class _MarkPaidSheet extends StatefulWidget {
   final String currency;
   final String fromName;
   final String toName;
+  final String? fromUserId;
   final Decimal suggestedAmount;
   final RecordPaymentPerspective perspective;
   final String? stepLabel;
@@ -337,6 +344,7 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                   currency: widget.currency,
                   fromName: widget.fromName,
                   toName: widget.toName,
+                  fromUserId: widget.fromUserId,
                   suggestedAmount: widget.suggestedAmount,
                   showEditor: _showAmountEditor,
                   amountController: _amountController,
@@ -540,6 +548,7 @@ class _PayeeCard extends StatelessWidget {
     required this.currency,
     required this.fromName,
     required this.toName,
+    this.fromUserId,
     required this.suggestedAmount,
     required this.showEditor,
     required this.amountController,
@@ -551,6 +560,10 @@ class _PayeeCard extends StatelessWidget {
   final String currency;
   final String fromName;
   final String toName;
+
+  /// Payer userId (#1168) — keys the avatar's palette slot on stable
+  /// identity instead of the display name.
+  final String? fromUserId;
   final Decimal suggestedAmount;
   final bool showEditor;
   final TextEditingController amountController;
@@ -572,7 +585,7 @@ class _PayeeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              RAvatar(name: fromName, size: 42),
+              RAvatar(name: fromName, size: 42, colorKey: fromUserId),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

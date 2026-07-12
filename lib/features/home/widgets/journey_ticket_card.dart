@@ -131,6 +131,7 @@ class JourneyTicketCard extends StatelessWidget {
                                 ? const SizedBox.shrink()
                                 : RAvatarStack(
                                     names: entry.memberNames,
+                                    colorKeys: entry.memberIds,
                                     size: 20,
                                     max: 3,
                                   ),

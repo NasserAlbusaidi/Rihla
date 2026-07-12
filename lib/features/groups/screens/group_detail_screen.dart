@@ -215,6 +215,8 @@ class _ContentState extends ConsumerState<_Content> {
                     balancesAsync.hasError && !balancesAsync.hasValue,
                 memberNames:
                     balances?.memberNames.values.toList() ?? const <String>[],
+                memberIds:
+                    balances?.memberNames.keys.toList() ?? const <String>[],
                 onAddPrimary: () {
                   HapticService.lightClick();
                   GoRouter.of(context).push('/group/${group.id}/create-event');
@@ -614,6 +616,7 @@ class _BalanceCard extends StatelessWidget {
     required this.group,
     required this.lines,
     required this.memberNames,
+    this.memberIds = const [],
     required this.onAddPrimary,
     required this.onSettleUp,
     this.balancesUnavailable = false,
@@ -622,6 +625,10 @@ class _BalanceCard extends StatelessWidget {
   final Group group;
   final List<({String currency, Decimal net})> lines;
   final List<String> memberNames;
+
+  /// Member userIds paired 1:1 with [memberNames] (#1168) — keys the avatar
+  /// stack's palette slot on stable identity instead of the display name.
+  final List<String> memberIds;
   final VoidCallback onAddPrimary;
   final VoidCallback onSettleUp;
 
@@ -701,7 +708,12 @@ class _BalanceCard extends StatelessWidget {
                         context,
                       ).push('/group/${group.id}/settings');
                     },
-                    child: RAvatarStack(names: memberNames, size: 22, max: 4),
+                    child: RAvatarStack(
+                      names: memberNames,
+                      colorKeys: memberIds,
+                      size: 22,
+                      max: 4,
+                    ),
                   ),
                 ),
             ],
@@ -1169,6 +1181,7 @@ class _MembersCard extends StatelessWidget {
           for (var i = 0; i < others.length; i++)
             _MemberRow(
               name: others[i].value,
+              userId: others[i].key,
               role: _roleFor(
                 context: context,
                 participantId: others[i].key,
@@ -1188,6 +1201,7 @@ class _MembersCard extends StatelessWidget {
             _MemberRow(
               key: GroupKeys.selfMemberRow,
               name: self.value,
+              userId: self.key,
               role: context.l10n.groupRoleYou,
               lines: const [],
               groupCurrency: group.currency,
@@ -1218,6 +1232,7 @@ class _MemberRow extends StatelessWidget {
   const _MemberRow({
     super.key,
     required this.name,
+    this.userId,
     required this.role,
     required this.lines,
     required this.groupCurrency,
@@ -1227,6 +1242,11 @@ class _MemberRow extends StatelessWidget {
   });
 
   final String name;
+
+  /// Member userId (#1168) — keys the avatar's palette slot on stable
+  /// identity instead of the display name.
+  final String? userId;
+
   final String? role;
   final List<({String currency, Decimal net})> lines;
   final String groupCurrency;
@@ -1249,7 +1269,7 @@ class _MemberRow extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
             child: Row(
               children: [
-                RAvatar(name: name, size: 32),
+                RAvatar(name: name, size: 32, colorKey: userId),
                 SizedBox(width: context.spacing.space12),
                 Expanded(
                   child: Row(

@@ -96,6 +96,9 @@ class _ShadowTile extends StatelessWidget {
           padding: EdgeInsets.all(context.spacing.space16),
           child: Row(
             children: [
+              // #1168: unclaimed shadows have no stable userId yet — only
+              // shadowMemberId, a Firestore member-doc id (mixed-keying,
+              // never a colorKey candidate). Name fallback is correct here.
               RAvatar(size: 36, name: shadow.displayName),
               SizedBox(width: context.spacing.space12),
               Expanded(
