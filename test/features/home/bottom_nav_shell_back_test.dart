@@ -27,21 +27,46 @@ import 'package:safar/l10n/generated/app_localizations.dart';
 /// #1188 — dual-channel root back-exit guard on [BottomNavShell] + `nav.back`
 /// breadcrumbs.
 ///
-/// Drive note (round 3): the primary drive is `tester.binding.handlePopRoute()`
-/// — the REAL engine entry point. It exercises the full chain (binding → Router
-/// → RootBackButtonDispatcher → BackButtonListener / go_router `popRoute`) and
-/// is exactly the path the go_router 13.2.5 hole lives on: `popRoute()` guards
-/// `maybePop()` behind `state.canPop()`, so on a SOLE `/home` route a
-/// `PopScope`-only guard is never consulted and the app exits via
-/// `SystemNavigator.pop()`. A test that hand-mirrors `maybePop`'s disposition
-/// switch would go green while the guard is dead on device — that masking is
-/// what round 1 shipped and this file removes. Assertions read the recorded
-/// `SystemNavigator.pop` calls + the exit snackbar, never a singular `PopScope`
-/// finder (the real tree holds two PopScopes).
+/// Drive note (round 4, post go_router 14.8.1 — #1192/#1197): tests 1-5 drive
+/// `tester.binding.handlePopRoute()` — the REAL engine entry point (binding →
+/// Router → `RootBackButtonDispatcher` → child-dispatcher priority →
+/// [BackButtonListener]). Verified against
+/// `package:flutter/src/widgets/router.dart`: a mounted [BackButtonListener]
+/// registers a *priority* `ChildBackButtonDispatcher` on the root dispatcher
+/// (`takePriority()`), so `RootBackButtonDispatcher.invokeCallback` always
+/// tries that child FIRST and falls through to go_router's own
+/// `GoRouterDelegate.popRoute()` only when the child's callback returns
+/// `false`. This shell's [BackButtonListener] returns `true` whenever `/home`
+/// is the current route, so `handlePopRoute()` reaches it and never falls
+/// through to go_router's `popRoute()`/[PopScope] path in that case — a
+/// Flutter dispatch-priority fact, not a go_router-version one: it held on
+/// go_router 13.2.5 and still holds on 14.8.1. Tests 1-5 pin exactly this
+/// channel; hand-mirroring `maybePop`'s disposition switch (what round 1
+/// shipped) would go green even if [BackButtonListener] regressed, since it
+/// never drives the real dispatcher chain — that masking is what this file
+/// removes.
 ///
-/// Test 6 additionally drives `NavigatorState.maybePop()` directly to pin the
-/// PopScope layer (the maybePop/predictive channel) and channel exclusivity —
-/// exactly one guard effect per press, never both channels on one press.
+/// STALE CLAIM CORRECTED (true on go_router 13.2.5, false since the #1192
+/// upgrade to 14.8.1): "`popRoute()` guards `maybePop()` behind `canPop()`, so
+/// a `PopScope`-only guard is never consulted on a sole route" — that hole was
+/// the reason this shell also carries [BackButtonListener] as a second
+/// channel (see `group_detail_back_navigation_test.dart` for the still-live
+/// version of that bug on a `PopScope`-only screen). `GoRouterDelegate.popRoute()`
+/// now calls `state.maybePop()` unconditionally, so the `PopScope` channel is
+/// independently correct too — but on THIS shell that channel can only be
+/// observed by bypassing [BackButtonListener], which never happens while
+/// `/home` is current. Proven empirically: flipping the shell's
+/// `PopScope(canPop: false)` to `true` locally leaves tests 1-5 GREEN
+/// ([BackButtonListener] is untouched by that flip) and only test 6 goes RED —
+/// so test 6, not the `handlePopRoute()` tests, is what pins the
+/// go_router-14.8.1-dependent contract for this shell. Assertions read the
+/// recorded `SystemNavigator.pop` calls + the exit snackbar, never a singular
+/// `PopScope` finder (the real tree holds two).
+///
+/// Test 6 drives `NavigatorState.maybePop()` directly on BOTH presses
+/// (mirroring tests 1+2) to pin the `PopScope`/predictive-back layer
+/// end-to-end and channel exclusivity — exactly one guard effect per press,
+/// never both channels on one press.
 const _uid = 'test-user-id';
 const _groupId = 'g1';
 
@@ -270,16 +295,19 @@ void main() {
     });
 
     testWidgets(
-      'test 6 — maybePop channel parity: one press, one snackbar, no exit',
+      'test 6 — maybePop channel: full guard round-trip, channel exclusivity',
       (tester) async {
         final (popCalls, _) = await _pumpHome(tester);
 
         // Drive the maybePop/predictive channel directly (the PopScope layer),
-        // never the BackButtonListener. First-press parity + exclusivity: the
-        // two channels must never both fire on a single press.
-        await tester
-            .state<NavigatorState>(find.byType(Navigator).first)
-            .maybePop();
+        // never the BackButtonListener — this is the ONLY channel that
+        // regresses when the shell's `PopScope(canPop: false)` flips to
+        // `true` without touching BackButtonListener (see file header).
+        final navigator = tester.state<NavigatorState>(
+          find.byType(Navigator).first,
+        );
+
+        await navigator.maybePop();
         await tester.pumpAndSettle();
 
         expect(
@@ -291,6 +319,18 @@ void main() {
           find.text(_exitCopy(tester)),
           findsOneWidget,
           reason: 'exactly one exit snackbar — channels do not both fire',
+        );
+
+        // Second press within the window: exactly one exit, same as the
+        // popRoute channel's round-trip in test 2 — proves the PopScope
+        // channel completes the guard, not just arms it.
+        await navigator.maybePop();
+        await tester.pump();
+
+        expect(
+          popCalls,
+          hasLength(1),
+          reason: 'second maybePop within the window exits exactly once',
         );
 
         await tester.pump(const Duration(seconds: 3));
