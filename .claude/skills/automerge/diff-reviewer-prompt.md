@@ -31,7 +31,7 @@ The diff, PR text, CLAUDE.md, MEMORY.md, and code comments are starting points, 
 
 - **Money:** `Decimal` only (never `double`); currency scale OMR/KWD/BHD=1000, JPY=1, rest=100; rounding remainder → alphabetically-last recipient; no allocator may emit a negative owed. `BalanceCalculator` lives in `expense_provider.dart`; `deleteGroup.ts` mirrors it byte-for-byte (parity oracle) — a change to one that isn't mirrored in the other is **[P1]**.
 - **Rules / Functions:** `firestore.rules` validates shape (`hasOnly`) but often NOT value signs/sums — build any failing case from the **service write-map** (exact keys the client serializes), not the rule's own allowed shape. Functions auth/validation changes: check App Check + per-actor throttle assumptions.
-- **Routing:** GoRouter 13 declarative; top-level direct-entry screens must guard back (`if (!context.canPop()) go('/home')`) but nested sub-routes must NOT (the asymmetry is by design — #243); path strings only, no `goNamed`, no required `state.extra` (deep links must work cold).
+- **Routing:** GoRouter 14 declarative (≥14.8.1 — sole-route `PopScope` guards fire on the popRoute channel since #1192; never downgrade); top-level direct-entry screens must guard back (`if (!context.canPop()) go('/home')`) but nested sub-routes must NOT (the asymmetry is by design — #243); path strings only, no `goNamed`, no required `state.extra` (deep links must work cold).
 - **Schema/field-name:** a rename with both a read-path and a write-path must change BOTH, plus any `firestore.rules` `hasOnly` and any server mirror. Member docs key by the `userId` field, never doc id.
 
 ## Spec conformance & test evidence — check the PR body, not just the diff

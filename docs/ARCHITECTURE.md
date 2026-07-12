@@ -185,7 +185,7 @@ Firestore's offline persistence (`persistenceEnabled: true`, `cacheSizeBytes: CA
 
 ## 5. Navigation
 
-Routing is handled entirely by **GoRouter 13.x** with declarative routes. No `Navigator.push` anywhere in production code.
+Routing is handled entirely by **GoRouter 14.x** (≥14.8.1 since #1192 — sole-route `PopScope` back guards fire on the device popRoute channel) with declarative routes. No `Navigator.push` anywhere in production code.
 
 ### Route Tree
 
