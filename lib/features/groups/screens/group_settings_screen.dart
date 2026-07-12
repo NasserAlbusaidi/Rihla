@@ -134,9 +134,8 @@ class _SettingsTopBar extends StatelessWidget {
               child: RIconButton(
                 variant: RIconButtonVariant.ghost,
                 key: GroupKeys.settingsBackButton,
-                icon: Directionality.of(context) == TextDirection.rtl
-                    ? Iconsax.arrow_right
-                    : Iconsax.arrow_left,
+                icon: Iconsax.arrow_left,
+                matchTextDirection: true,
                 onTap: () {
                   final router = GoRouter.of(context);
                   if (router.canPop()) {

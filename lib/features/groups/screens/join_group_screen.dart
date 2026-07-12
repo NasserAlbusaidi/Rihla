@@ -465,9 +465,8 @@ class _JoinGroupTopBar extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: RIconButton(
                 variant: RIconButtonVariant.ghost,
-                icon: Directionality.of(context) == TextDirection.rtl
-                    ? Iconsax.arrow_right
-                    : Iconsax.arrow_left,
+                icon: Iconsax.arrow_left,
+                matchTextDirection: true,
                 tooltip: context.l10n.commonBack,
                 onTap: onClose,
               ),

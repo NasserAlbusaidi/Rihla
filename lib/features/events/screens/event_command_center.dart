@@ -438,9 +438,8 @@ class _EventHeader extends StatelessWidget {
           child: Row(
             children: [
               RIconButton(
-                icon: Directionality.of(context) == TextDirection.rtl
-                    ? Iconsax.arrow_right
-                    : Iconsax.arrow_left,
+                icon: Iconsax.arrow_left,
+                matchTextDirection: true,
                 semanticLabel: context.l10n.commonBack,
                 onTap: onBack,
               ),
