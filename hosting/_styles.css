@@ -322,6 +322,9 @@ footer.site-foot .wrap{padding-block:56px;}
 [dir="rtl"] .quote blockquote em,
 [dir="rtl"] .nrow .num{font-family:var(--font-arabic);letter-spacing:normal;}
 [dir="rtl"] .eyebrow::before{margin-left:0;}
+/* Arabic wordmark is رحلة in Reem Kufi (DESIGN.md § brand — not Latin, not
+   Zain); the fork underline stays. */
+[dir="rtl"] .wordmark{font-family:'Reem Kufi',var(--font-arabic);font-weight:700;letter-spacing:normal;}
 /* The falaj fork enters from the reading-direction start — mirror it. */
 [dir="rtl"] .wordmark .fork{transform:scaleX(-1);}
 
