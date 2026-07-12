@@ -81,12 +81,15 @@ String? appRouteRedirect(String matchedLocation) {
 /// `…/ledger` lands on the hub's Expenses tab instead of the full-chrome
 /// route (kept, but unrouted).
 ///
-/// The null-for-children guard is LOAD-BEARING: go_router 13.2.5 runs
-/// ancestor route-level redirects for descendant matches too
-/// (`_getRouteLevelRedirect` walks the full matched chain from index 0), and
-/// `state.uri` is always the FULL matched location (`buildState` passes
-/// `matches.uri`) — so without the `endsWith` guard this would also hijack
-/// `…/ledger/add`, `…/ledger/edit/:expId`, and `…/ledger/settle-up`.
+/// The null-for-children guard is LOAD-BEARING: go_router runs ancestor
+/// route-level redirects for descendant matches too (`_getRouteLevelRedirect`
+/// walks the full matched chain from index 0), and `state.uri` is always the
+/// FULL matched location (`buildState` passes `matches.uri`) — so without the
+/// `endsWith` guard this would also hijack `…/ledger/add`,
+/// `…/ledger/edit/:expId`, and `…/ledger/settle-up`. Verified on go_router
+/// 14.8.1 (was 13.2.5, #1192) — `_getRouteLevelRedirect` still walks
+/// identically; 14.8.1 only pre-filters to redirect-bearing routes first
+/// (equivalent).
 @visibleForTesting
 String? eventLedgerModuleRedirect(GoRouterState state) {
   final loc = state.uri.path;
