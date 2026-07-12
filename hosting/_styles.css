@@ -230,12 +230,15 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .ucard{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);
   padding:28px;box-shadow:var(--shadow-raised);display:flex;flex-direction:column;gap:14px;
   min-height:230px;transition:transform .18s ease, box-shadow .18s ease;}
-.ucard:hover{transform:translateY(-3px);box-shadow:var(--shadow-floating);}
+/* Hover lift ONLY on anchor cards — a lifted card promises a click
+   (split-bills-oman keeps plain <article> cards; they stay flat). */
+a.ucard:hover{transform:translateY(-3px);box-shadow:var(--shadow-floating);}
 .ucard .ic{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:var(--saffron-tint);color:var(--primary-dark);}
 .ucard h3{font-size:23px;}
 .ucard p{color:var(--ink-3);font-size:15px;flex:1;}
 .ucard .lnk{font-weight:700;font-size:14px;color:var(--primary-dark);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
-.ucard .lnk:hover{gap:9px;}
+a.ucard:hover .lnk{gap:9px;}
+[dir="rtl"] .ucard .lnk svg{transform:scaleX(-1);}
 .ucard .lnk svg{width:16px;height:16px;}
 
 /* ---------- why rihla ---------- */
