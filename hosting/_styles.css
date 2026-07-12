@@ -263,7 +263,8 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .cta .wrap{position:relative;}
 .cta h2{font-size:clamp(34px,4.6vw,54px);max-width:18ch;margin-inline:auto;}
 .cta h2 em{color:var(--saffron-tint);}
-.cta p{margin-top:16px;color:color-mix(in srgb, var(--on-primary) 82%, transparent);font-size:17px;}
+/* 92% (not 82%): white-on-brass at 82% measured ~4.47:1, a hair under AA. */
+.cta p{margin-top:16px;color:color-mix(in srgb, var(--on-primary) 92%, transparent);font-size:17px;}
 .cta .btn{margin-top:30px;}
 
 /* ---------- footer (dark surface — lantern brass for accents) ---------- */
