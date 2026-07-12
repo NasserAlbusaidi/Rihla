@@ -115,3 +115,6 @@ fastlane/screenshots
 
 # App Store review contact PII (not committed)
 fastlane/metadata/ios/review_information/
+
+# gstack browse-tool logs (local QA artifacts, not source)
+.gstack/
