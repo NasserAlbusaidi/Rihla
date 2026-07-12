@@ -3086,6 +3086,165 @@ describe('Publish readiness Firestore rules', () => {
     });
   });
 
+  // #1218 — harden the activity feed sort key (`timestamp`) and cap
+  // `description` in validGroupActivityCreate. Every feed reader orders by this
+  // client string newest-first (watchRecentActivity/fetchActivityPage
+  // descending, activityUnreadProvider reduces to MAX), and
+  // decodeDocsSkippingMalformed runs only AFTER the limited window is chosen —
+  // so `timestamp is string` alone let any member forge a row that DoS-fills or
+  // top-pins the home feed. All year literals below are derived from the wall
+  // clock: the emulator's request.time is real time, so hardcoded years
+  // time-rot.
+  describe('#1218 activity timestamp + description bounds', () => {
+    function ga(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+      return validGroupActivity({ type: 'event_created', ...overrides });
+    }
+
+    // ---- RED: forgeries that pass `is string` today, denied after the fix ----
+
+    test('#1218 RED-1 forged non-ISO timestamp "zzzzz" is DENIED (DoS: sorts above every real row)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(
+        member.doc('groups/g1/activity/ga-1218-zzz').set(
+          ga({ id: 'ga-1218-zzz', timestamp: 'zzzzz' }),
+        ),
+      );
+    });
+
+    test('#1218 RED-2 a far-future ISO is DENIED (hijack: pins forged rows above all activity)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      await assertFails(
+        member.doc('groups/g1/activity/ga-1218-future').set(
+          ga({ id: 'ga-1218-future', timestamp: `${yr + 5}-12-31T23:59:59.999Z` }),
+        ),
+      );
+    });
+
+    test('#1218 RED-3 a Z-less local ISO is DENIED (must be UTC with trailing Z)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      await assertFails(
+        member.doc('groups/g1/activity/ga-1218-zless').set(
+          ga({ id: 'ga-1218-zless', timestamp: `${yr}-01-01T00:00:00.000` }),
+        ),
+      );
+    });
+
+    test('#1218 RED-4 a 281-char description is DENIED (> 280 UTF-16 cap)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(
+        member.doc('groups/g1/activity/ga-1218-desc281').set(
+          ga({ id: 'ga-1218-desc281', description: 'a'.repeat(281) }),
+        ),
+      );
+    });
+
+    // The true attack vector: matches() is a SUBSTRING match, so a junk-wrapped
+    // but substring-valid ISO must still be DENIED. These two distinguish the
+    // anchored fix from a broken (unanchored) regex — an unanchored pattern
+    // would find the valid ISO as a substring and ALLOW the forgery, which
+    // still sorts to the top.
+    test('#1218 RED-5a a junk-PREFIXED valid ISO is DENIED (^ anchor)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      await assertFails(
+        member.doc('groups/g1/activity/ga-1218-prefix').set(
+          ga({ id: 'ga-1218-prefix', timestamp: `zzz${yr}-01-01T00:00:00.000Z` }),
+        ),
+      );
+    });
+
+    test('#1218 RED-5b a junk-SUFFIXED valid ISO is DENIED ($ anchor)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      // year passes the future bound, so the DENY isolates the trailing anchor.
+      await assertFails(
+        member.doc('groups/g1/activity/ga-1218-suffix').set(
+          ga({ id: 'ga-1218-suffix', timestamp: `${yr}-01-01T00:00:00.000Zzz` }),
+        ),
+      );
+    });
+
+    test('#1218 RED-6 out-of-range components are DENIED (lexicographic out-pin)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      // year+1 passes the future bound, so the DENY is attributable to the
+      // component ranges (month 99 / day 99 / 99:99:99), not the upper bound.
+      await assertFails(
+        member.doc('groups/g1/activity/ga-1218-badcomp').set(
+          ga({ id: 'ga-1218-badcomp', timestamp: `${yr + 1}-99-99T99:99:99.999Z` }),
+        ),
+      );
+    });
+
+    // ---- GREEN: must pass BEFORE and AFTER the fix (the no-false-deny guard) ----
+
+    test('#1218 GREEN-7 a legit 3-digit-fraction UTC ISO of "now" is ALLOWED', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(
+        member.doc('groups/g1/activity/ga-1218-now').set(
+          ga({ id: 'ga-1218-now', timestamp: new Date().toISOString() }),
+        ),
+      );
+    });
+
+    test('#1218 GREEN-8 a 6-digit-fraction UTC ISO is ALLOWED (Dart appends micros when non-zero)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      // JS toISOString() only emits 3 fraction digits, so hand-craft the
+      // .mmmuuu shape Dart emits when microseconds are non-zero.
+      await assertSucceeds(
+        member.doc('groups/g1/activity/ga-1218-micros').set(
+          ga({ id: 'ga-1218-micros', timestamp: `${yr}-01-01T00:00:00.123456Z` }),
+        ),
+      );
+    });
+
+    test('#1218 GREEN-9 a now.year+1 dated row is ALLOWED (future boundary)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      await assertSucceeds(
+        member.doc('groups/g1/activity/ga-1218-nextyear').set(
+          ga({ id: 'ga-1218-nextyear', timestamp: `${yr + 1}-01-01T00:00:00.000Z` }),
+        ),
+      );
+    });
+
+    test('#1218 GREEN-10 a far-PAST row is ALLOWED (no lower bound — slow clocks must never kill the batch)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const yr = new Date().getFullYear();
+      await assertSucceeds(
+        member.doc('groups/g1/activity/ga-1218-past').set(
+          ga({ id: 'ga-1218-past', timestamp: `${yr - 6}-01-01T00:00:00.000Z` }),
+        ),
+      );
+    });
+
+    test('#1218 GREEN-11 the real #1140 co-batch (event-create + its activity row) is ALLOWED', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      const batch = member.batch();
+      batch.set(
+        member.doc('groups/g1/events/e-1218-batch'),
+        validEvent({ createdBy: 'member' }),
+      );
+      batch.set(
+        member.doc('groups/g1/activity/ga-1218-batch'),
+        ga({ id: 'ga-1218-batch', timestamp: new Date().toISOString() }),
+      );
+      await assertSucceeds(batch.commit());
+    });
+
+    test('#1218 GREEN-12 a 280-char description is ALLOWED (== cap)', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertSucceeds(
+        member.doc('groups/g1/activity/ga-1218-desc280').set(
+          ga({ id: 'ga-1218-desc280', description: 'a'.repeat(280) }),
+        ),
+      );
+    });
+  });
+
   // #366 — balance aggregate: server-only write, member read.
   function validAggregate(): Record<string, unknown> {
     return {
