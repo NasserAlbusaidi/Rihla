@@ -1654,6 +1654,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeBottomNavProfile => 'الملف';
 
   @override
+  String get backAgainToExit => 'اضغط رجوعًا مرة أخرى للخروج';
+
+  @override
   String get historyTabTitle => 'السجل';
 
   @override
