@@ -143,16 +143,6 @@ class _YouAnchor extends StatelessWidget {
             height: 1.2,
           ),
         ),
-        SizedBox(height: context.spacing.space4),
-        Text(
-          '—',
-          style: AppTypography.mono(
-            fontSize: 10,
-            // textMuted-decorative-justified: anchor em-dash is a structural placeholder under "You", not a functional label.
-            color: colors.textMuted,
-            height: 1.2,
-          ),
-        ),
       ],
     );
   }
