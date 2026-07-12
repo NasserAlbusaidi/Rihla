@@ -462,6 +462,8 @@ class SettleUpPageBody extends StatelessWidget {
     return GroupSettlementTile(
           fromName: fromName,
           toName: toName,
+          fromUserId: fromUserId,
+          toUserId: toUserId,
           amount: amount,
           currency: currency,
           breakdown: breakdown,
@@ -709,7 +711,7 @@ class _NetBalanceRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          RAvatar(name: name, size: 28),
+          RAvatar(name: name, size: 28, colorKey: balance.participantId),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Text(

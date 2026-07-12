@@ -206,6 +206,7 @@ class _SplitCardState extends State<SplitCard> {
             const SizedBox(height: 8),
             _PayerInlineRow(
               name: payerName,
+              colorKey: payerId,
               onChange: widget.onChangePayer,
             ),
 
@@ -301,6 +302,7 @@ class _SplitCardState extends State<SplitCard> {
     final share = _owed![id] ?? Decimal.zero;
     return _SplitPersonRow(
       name: name,
+      colorKey: id,
       // #289: compact disambiguated label — first name, keeping the `(#…)`
       // discriminator only when two members collide (matches the old tile).
       label: MemberNameResolver.compactDisambiguated(name),
@@ -380,9 +382,18 @@ class _FieldLabel extends StatelessWidget {
 }
 
 class _PayerInlineRow extends StatelessWidget {
-  const _PayerInlineRow({required this.name, required this.onChange});
+  const _PayerInlineRow({
+    required this.name,
+    this.colorKey,
+    required this.onChange,
+  });
 
   final String name;
+
+  /// Payer participant id (== userId, #1168) — keys the avatar's palette
+  /// slot on stable identity instead of the display name.
+  final String? colorKey;
+
   final VoidCallback onChange;
 
   @override
@@ -393,7 +404,7 @@ class _PayerInlineRow extends StatelessWidget {
       onTap: onChange,
       child: Row(
         children: [
-          RAvatar(name: name, size: 30),
+          RAvatar(name: name, size: 30, colorKey: colorKey),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Text(
@@ -717,6 +728,7 @@ class _Segmented<T> extends StatelessWidget {
 class _SplitPersonRow extends StatelessWidget {
   const _SplitPersonRow({
     required this.name,
+    this.colorKey,
     required this.label,
     required this.share,
     required this.currency,
@@ -724,8 +736,12 @@ class _SplitPersonRow extends StatelessWidget {
     required this.isSelf,
   });
 
-  /// Full disambiguated name — drives the stable avatar hue.
+  /// Full disambiguated name — used for initials.
   final String name;
+
+  /// Participant id (== member userId, #1168) — keys the avatar's palette
+  /// slot on stable identity instead of the display name.
+  final String? colorKey;
 
   /// Compact display label (first name + `(#…)` only on collision).
   final String label;
@@ -748,7 +764,7 @@ class _SplitPersonRow extends StatelessWidget {
           : null,
       child: Row(
         children: [
-          RAvatar(name: name, size: 30),
+          RAvatar(name: name, size: 30, colorKey: colorKey),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Column(

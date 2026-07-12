@@ -19,6 +19,12 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 class GroupSettlementTile extends StatefulWidget {
   final String fromName;
   final String toName;
+
+  /// Payer/recipient userIds (#1168) — key each avatar's palette slot on
+  /// stable identity instead of the display name.
+  final String? fromUserId;
+  final String? toUserId;
+
   final Decimal amount;
   final String currency;
   final Map<String, Decimal> breakdown;
@@ -37,6 +43,8 @@ class GroupSettlementTile extends StatefulWidget {
     super.key,
     required this.fromName,
     required this.toName,
+    this.fromUserId,
+    this.toUserId,
     required this.amount,
     required this.currency,
     required this.breakdown,
@@ -114,7 +122,11 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
               children: [
                 Row(
                   children: [
-                    RAvatar(name: widget.fromName, size: 36),
+                    RAvatar(
+                      name: widget.fromName,
+                      size: 36,
+                      colorKey: widget.fromUserId,
+                    ),
                     SizedBox(width: spacing.space12),
                     Expanded(
                       child: SizedBox(
@@ -171,7 +183,11 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                       ),
                     ),
                     SizedBox(width: spacing.space12),
-                    RAvatar(name: widget.toName, size: 36),
+                    RAvatar(
+                      name: widget.toName,
+                      size: 36,
+                      colorKey: widget.toUserId,
+                    ),
                   ],
                 ),
                 SizedBox(height: spacing.space12),

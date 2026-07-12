@@ -39,6 +39,7 @@ import '../../auth/widgets/durable_credential_sheet.dart';
 import '../../auth/widgets/durable_shell_delete_dialog.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
+import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/profile_keys.dart';
 import '../providers/profile_stats_provider.dart';
@@ -366,6 +367,10 @@ class _IdentityCard extends ConsumerWidget {
     final colors = context.colors;
     final l10n = context.l10n;
     final isDurable = ref.watch(isDurableUserProvider);
+    // #1168: key the avatar's palette slot on the stable uid, not the
+    // localized/mutable name, so it matches this same person's color
+    // everywhere else they're rendered (group member lists, ledger rosters).
+    final currentUserId = ref.watch(currentUserIdProvider);
     final hasName = name.trim().isNotEmpty;
     final displayName = hasName ? name : l10n.profileSetYourName;
     // When no name is set there is no real @handle to share. A literal
@@ -406,6 +411,7 @@ class _IdentityCard extends ConsumerWidget {
                     key: ProfileKeys.initialsCircle,
                     name: name,
                     size: 84,
+                    colorKey: currentUserId,
                   ),
                   const SizedBox(height: 14),
                   GestureDetector(

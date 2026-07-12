@@ -185,6 +185,8 @@ class _ShadowChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // #1168: pre-join placeholder — no userId exists until this name
+          // is claimed by a real member, so name fallback is correct here.
           RAvatar(name: name, size: 22),
           const SizedBox(width: 8),
           Flexible(
