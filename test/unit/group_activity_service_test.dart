@@ -420,5 +420,26 @@ void main() {
       expect(doc['timestamp'], equals(ts.toIso8601String()));
       expect(doc['metadata'], containsPair('amountFils', 5000));
     });
+
+    test(
+        '#1218 normalizes a LOCAL timestamp to UTC (trailing Z) so the rules '
+        'regex never rejects a batch-folded row', () {
+      // A non-UTC DateTime would serialize Z-less (e.g. "...+04:00" or no
+      // suffix) and be denied by the #1218 timestamp regex — which, for a
+      // co-batched event create/delete row, would atomically fail the mutation.
+      final local = DateTime(2026, 7, 11, 8, 30); // local, NOT .utc
+      final doc = GroupActivityService.buildActivityDoc(
+        id: 'evt_created_local',
+        type: 'event_created',
+        actorId: 'uid1',
+        actorName: 'Carol',
+        description: 'created Trip',
+        metadata: const {},
+        timestampUtc: local,
+      );
+      final ts = doc['timestamp'] as String;
+      expect(ts.endsWith('Z'), isTrue);
+      expect(ts, equals(local.toUtc().toIso8601String()));
+    });
   });
 }

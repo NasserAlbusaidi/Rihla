@@ -145,7 +145,12 @@ class GroupActivityService extends FirestoreRepository {
   /// fire-and-forget [logGroupEvent] and the batch-folded mutation paths
   /// (event create/delete, settlements) build their activity row here, so the
   /// shape stays in lockstep. [actorName] is sanitized via [sanitizeActorName]
-  /// so the doc always passes `validGroupActivityCreate`.
+  /// and [timestampUtc] is normalized to UTC (`.toUtc()`) so a caller passing a
+  /// LOCAL DateTime can never emit a Z-less string that the #1218 rules regex
+  /// rejects. The doc passes `validGroupActivityCreate` — provided the device
+  /// clock is less than ~1 year fast (the #1218 rules future-bound; a >1yr-fast
+  /// clock's rows are denied, which for the batch-folded event create/delete
+  /// paths atomically fails the whole mutation).
   static Map<String, dynamic> buildActivityDoc({
     required String id,
     required String type,
@@ -162,7 +167,10 @@ class GroupActivityService extends FirestoreRepository {
       'actorName': sanitizeActorName(actorName),
       'description': description,
       'metadata': metadata,
-      'timestamp': timestampUtc.toIso8601String(),
+      // #1218: normalize to UTC defensively — a local DateTime would emit a
+      // Z-less ISO string the rules regex rejects (which for a batch-folded row
+      // atomically fails the co-batched event create/delete).
+      'timestamp': timestampUtc.toUtc().toIso8601String(),
     };
   }
 
