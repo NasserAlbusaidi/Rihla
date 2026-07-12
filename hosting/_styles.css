@@ -320,7 +320,9 @@ footer.site-foot .wrap{padding-block:56px;}
 /* ---------- responsive ---------- */
 @media (max-width:900px){
   .band{padding-block:72px;}
-  section.hero{grid-template-columns:1fr;gap:40px;padding-block:40px 56px;}
+  /* minmax(0,…): the fixed 360px .phone must not set the track's min width
+     (transforms scale visuals, not layout) — else ≤396px viewports h-scroll. */
+  section.hero{grid-template-columns:minmax(0,1fr);gap:40px;padding-block:40px 56px;}
   .hero-text{order:2;}
   .phone-stage{order:1;min-height:540px;}
   .phone-tilt{transform:rotate(0deg) scale(.8);}
@@ -330,6 +332,12 @@ footer.site-foot .wrap{padding-block:56px;}
 }
 @media (max-width:560px){
   .wrap{padding-inline:18px;}
+  /* Highlighted phrases must wrap on narrow phones (the absolute ::after band
+     can't span wrapped lines — swap it for a per-line background band). */
+  .hl{white-space:normal;
+    background-image:linear-gradient(transparent 62%, var(--saffron-soft) 62%, var(--saffron-soft) 94%, transparent 94%);
+    -webkit-box-decoration-break:clone;box-decoration-break:clone;border-radius:3px;}
+  .hl::after{display:none;}
   .nav .desktop-only{display:none;}
   .invite{padding:22px;}
   .invite-row{flex-direction:column;gap:12px;}
