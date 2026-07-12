@@ -25,7 +25,7 @@ You will be given the path to a spec file. **Read it. Then verify it against the
 - Money: `Decimal` only (never `double`); currency scale OMR/KWD/BHD=1000, JPY=1, rest=100; rounding remainder → alphabetically-last recipient; no allocator may emit a negative owed.
 - `firestore.rules` validates shape (`hasOnly`) but often NOT value signs/sums — build any failing test from the **service write-map** (exact keys the client serializes), not the rule's own allowed shape.
 - Settlements are append-only (corrections = new offsetting row); soft-delete is `isDeleted`+`deletedAt`.
-- Routing: GoRouter 13 declarative; direct-entry screens must guard back (`if (!context.canPop()) go('/home')`); path strings only, no `goNamed`, no required `state.extra`.
+- Routing: GoRouter 14 declarative (≥14.8.1 — sole-route `PopScope` guards fire on the popRoute channel since #1192; never downgrade); direct-entry screens must guard back (`if (!context.canPop()) go('/home')`); path strings only, no `goNamed`, no required `state.extra`.
 
 ## Severity
 
