@@ -140,9 +140,8 @@ class EventRecapScreen extends ConsumerWidget {
     return RIconButton(
       key: EventKeys.recapBackButton,
       variant: RIconButtonVariant.ghost,
-      icon: Directionality.of(context) == TextDirection.rtl
-          ? Iconsax.arrow_right
-          : Iconsax.arrow_left,
+      icon: Iconsax.arrow_left,
+      matchTextDirection: true,
       semanticLabel: context.l10n.commonBack,
       // Nested route → canPop() is always true; bare pop reaches the hub
       // (#243 nested back-guard convention).

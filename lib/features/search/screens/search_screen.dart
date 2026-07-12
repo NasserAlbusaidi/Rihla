@@ -135,9 +135,8 @@ class _SearchHeader extends StatelessWidget {
         children: [
           RIconButton(
             variant: RIconButtonVariant.ghost,
-            icon: Directionality.of(context) == TextDirection.rtl
-                ? Iconsax.arrow_right
-                : Iconsax.arrow_left,
+            icon: Iconsax.arrow_left,
+            matchTextDirection: true,
             tooltip: context.l10n.commonBack,
             onTap: () {
               HapticService.lightClick();

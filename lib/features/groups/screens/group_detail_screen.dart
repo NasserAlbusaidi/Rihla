@@ -443,9 +443,8 @@ class _CoverHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 RIconButton(
-                  icon: Directionality.of(context) == TextDirection.rtl
-                      ? Iconsax.arrow_right
-                      : Iconsax.arrow_left,
+                  icon: Iconsax.arrow_left,
+                  matchTextDirection: true,
                   semanticLabel: context.l10n.commonBack,
                   onTap: () {
                     HapticService.lightClick();

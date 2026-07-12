@@ -463,6 +463,11 @@ void main() {
         // hub's back arrow mirrors under RTL (#126). The button has no Key and
         // Iconsax.arrow_right also appears in forward chevrons, so scope the
         // check via its commonBack semantics label.
+        //
+        // #1167: arrow_left/arrow_right are NOT a mirrored pair (bare line vs
+        // boxed chevron), so the back button no longer swaps glyphs under
+        // RTL — it keeps the single arrow_left glyph and mirrors it via
+        // DirectionalIcon's Transform.scale(scaleX: -1).
         final l10n = AppLocalizations.of(
           tester.element(find.byType(EventCommandCenter)),
         );
@@ -471,9 +476,24 @@ void main() {
         expect(
           find.descendant(
             of: backButton,
-            matching: find.byIcon(Iconsax.arrow_right),
+            matching: find.byIcon(Iconsax.arrow_left),
           ),
           findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: backButton,
+            matching: find.byIcon(Iconsax.arrow_right),
+          ),
+          findsNothing,
+        );
+        final flipTransform = tester.widget<Transform>(
+          find.descendant(of: backButton, matching: find.byType(Transform)),
+        );
+        expect(
+          flipTransform.transform.getColumn(0)[0],
+          -1,
+          reason: 'RTL back arrow must be horizontally mirrored (#1167)',
         );
       });
     },
