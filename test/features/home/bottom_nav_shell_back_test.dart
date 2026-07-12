@@ -24,20 +24,24 @@ import 'package:safar/features/home/widgets/bottom_nav_shell.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
-/// #1188 — double-back-to-exit guard on the root [BottomNavShell] + `nav.back`
+/// #1188 — dual-channel root back-exit guard on [BottomNavShell] + `nav.back`
 /// breadcrumbs.
 ///
-/// Drive note: a system back is dispatched by mirroring the framework's own
-/// [NavigatorState.maybePop] `popDisposition` switch — `doNotPop` routes the
-/// back to the current route's `onPopInvokedWithResult` (which fans out to a
-/// registered [PopScope]); `bubble` finishes the activity via
-/// `SystemNavigator.pop` (the real exit). This is device-faithful: modern
-/// Android predictive-back consults `popDisposition` exactly this way. We do
-/// NOT use `tester.binding.handlePopRoute()` — go_router's legacy `popRoute()`
-/// returns `handled: false` for a *first/root* route even when its
-/// `popDisposition` is `doNotPop` (proven), so that path can't exercise a
-/// root-shell guard. Assertions are on the recorded `SystemNavigator.pop`
-/// calls + the exit snackbar, never a singular `PopScope` finder.
+/// Drive note (round 3): the primary drive is `tester.binding.handlePopRoute()`
+/// — the REAL engine entry point. It exercises the full chain (binding → Router
+/// → RootBackButtonDispatcher → BackButtonListener / go_router `popRoute`) and
+/// is exactly the path the go_router 13.2.5 hole lives on: `popRoute()` guards
+/// `maybePop()` behind `state.canPop()`, so on a SOLE `/home` route a
+/// `PopScope`-only guard is never consulted and the app exits via
+/// `SystemNavigator.pop()`. A test that hand-mirrors `maybePop`'s disposition
+/// switch would go green while the guard is dead on device — that masking is
+/// what round 1 shipped and this file removes. Assertions read the recorded
+/// `SystemNavigator.pop` calls + the exit snackbar, never a singular `PopScope`
+/// finder (the real tree holds two PopScopes).
+///
+/// Test 6 additionally drives `NavigatorState.maybePop()` directly to pin the
+/// PopScope layer (the maybePop/predictive channel) and channel exclusivity —
+/// exactly one guard effect per press, never both channels on one press.
 const _uid = 'test-user-id';
 const _groupId = 'g1';
 
@@ -155,64 +159,40 @@ String _exitCopy(WidgetTester tester) => AppLocalizations.of(
   tester.element(find.byType(HomeScreen)),
 ).backAgainToExit;
 
-/// The `popDisposition` the framework reads for the current top route
-/// (anchored on a widget that lives in that route's subtree). `doNotPop` means
-/// a guard will intercept the system back on device.
-RoutePopDisposition _disposition(WidgetTester tester, Finder inCurrentRoute) =>
-    ModalRoute.of(inCurrentRoute.evaluate().first)!.popDisposition;
-
-/// Dispatch a system back exactly as [NavigatorState.maybePop] does: the
-/// current route's `popDisposition` decides whether a guard intercepts
-/// (`doNotPop`), the navigator pops (`pop`), or the OS finishes the activity
-/// (`bubble` → `SystemNavigator.pop`). [inCurrentRoute] anchors the top route;
-/// defaults to the home shell.
-Future<void> _systemBack(
-  WidgetTester tester, {
-  Finder? inCurrentRoute,
-}) async {
-  final anchor = (inCurrentRoute ?? find.byType(BottomNavTabScope))
-      .evaluate()
-      .first;
-  final route = ModalRoute.of(anchor)!;
-  switch (route.popDisposition) {
-    case RoutePopDisposition.doNotPop:
-      route.onPopInvokedWithResult(false, null);
-    case RoutePopDisposition.pop:
-      route.navigator!.pop();
-    case RoutePopDisposition.bubble:
-      await SystemNavigator.pop();
-  }
+/// Drive a system back through the REAL engine entry point — the exact chain
+/// (binding → Router → RootBackButtonDispatcher → BackButtonListener /
+/// go_router `popRoute`) the go_router 13.2.5 hole lives on. NOT a hand-mirrored
+/// disposition switch (that masks a guard dead on device).
+Future<void> _handlePopRoute(WidgetTester tester) async {
+  await tester.binding.handlePopRoute();
   await tester.pumpAndSettle();
 }
 
 void main() {
-  group('#1188 double-back-to-exit guard', () {
-    testWidgets('first back on shell shows the exit hint and does not exit', (
+  group('#1188 dual-channel root back-exit guard', () {
+    testWidgets(
+      'test 1 — first back (popRoute channel): no exit, exit hint shown',
+      (tester) async {
+        final (popCalls, _) = await _pumpHome(tester);
+
+        await _handlePopRoute(tester);
+
+        expect(popCalls, isEmpty, reason: 'first back must NOT exit the app');
+        expect(find.text(_exitCopy(tester)), findsOneWidget);
+
+        // Drain the 2s snackbar + reset timers before teardown.
+        await tester.pump(const Duration(seconds: 3));
+      },
+    );
+
+    testWidgets('test 2 — second back within the window exits exactly once', (
       tester,
     ) async {
       final (popCalls, _) = await _pumpHome(tester);
 
-      await _systemBack(tester);
-
-      expect(popCalls, isEmpty, reason: 'first back must NOT exit the app');
-      expect(find.text(_exitCopy(tester)), findsOneWidget);
-      // Device-faithful pin: the framework routes the system back into the
-      // guard (route reports doNotPop) rather than finishing the activity.
-      expect(
-        _disposition(tester, find.byType(BottomNavTabScope)),
-        RoutePopDisposition.doNotPop,
-      );
-
-      // Drain the 2s snackbar + reset timers before teardown.
-      await tester.pump(const Duration(seconds: 3));
-    });
-
-    testWidgets('second back within the window exits the app', (tester) async {
-      final (popCalls, _) = await _pumpHome(tester);
-
-      await _systemBack(tester);
+      await _handlePopRoute(tester);
       expect(popCalls, isEmpty);
-      await _systemBack(tester);
+      await _handlePopRoute(tester);
 
       expect(
         popCalls,
@@ -223,17 +203,17 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
     });
 
-    testWidgets('window expiry resets the guard', (tester) async {
+    testWidgets('test 3 — window expiry resets the guard', (tester) async {
       final (popCalls, _) = await _pumpHome(tester);
 
-      await _systemBack(tester);
+      await _handlePopRoute(tester);
       expect(popCalls, isEmpty);
       expect(find.text(_exitCopy(tester)), findsOneWidget);
 
-      // Let the 2s window (and its snackbar) expire.
+      // Let the 2s window (and its snackbar) expire — the reset Timer fires.
       await tester.pump(const Duration(seconds: 3));
 
-      await _systemBack(tester);
+      await _handlePopRoute(tester);
       expect(
         popCalls,
         isEmpty,
@@ -244,29 +224,42 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
     });
 
-    testWidgets('pushed route keeps its own back (no shell interference)', (
-      tester,
-    ) async {
-      final (popCalls, router) = await _pumpHome(tester);
+    testWidgets(
+      'test 4 — pushed route keeps its own back (no shell interference)',
+      (tester) async {
+        final (popCalls, router) = await _pumpHome(tester);
 
-      unawaited(router.push('/group/$_groupId'));
-      await tester.pumpAndSettle();
-      expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
+        unawaited(router.push('/group/$_groupId'));
+        await tester.pumpAndSettle();
+        expect(find.byKey(GroupKeys.detailScreen), findsOneWidget);
 
-      // System back on the pushed group-detail follows ITS OWN PopScope
-      // (pop back to home), never the shell's exit guard.
-      await _systemBack(tester, inCurrentRoute: find.byKey(GroupKeys.detailScreen));
+        // System back on the pushed group-detail: the shell's BackButtonListener
+        // defers (its `/home` route is not current), so go_router pops the
+        // pushed route back to home — never the shell's exit guard.
+        await _handlePopRoute(tester);
 
-      expect(popCalls, isEmpty, reason: 'pushed-route back must not exit');
-      expect(find.byKey(GroupKeys.detailScreen), findsNothing);
-      expect(find.byType(HomeScreen), findsOneWidget);
-      expect(find.text(_exitCopy(tester)), findsNothing);
-    });
+        expect(popCalls, isEmpty, reason: 'pushed-route back must not exit');
+        expect(find.byKey(GroupKeys.detailScreen), findsNothing);
+        expect(find.byType(HomeScreen), findsOneWidget);
+        expect(
+          find.text(_exitCopy(tester)),
+          findsNothing,
+          reason: 'shell guard must not fire while a route is on top',
+        );
 
-    testWidgets('RTL smoke — Arabic exit hint renders', (tester) async {
+        // Back on home again re-arms the shell guard (guard active again).
+        await _handlePopRoute(tester);
+        expect(popCalls, isEmpty);
+        expect(find.text(_exitCopy(tester)), findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 3));
+      },
+    );
+
+    testWidgets('test 5 — RTL smoke: Arabic exit hint renders', (tester) async {
       final (popCalls, _) = await _pumpHome(tester, locale: const Locale('ar'));
 
-      await _systemBack(tester);
+      await _handlePopRoute(tester);
 
       expect(popCalls, isEmpty);
       final arCopy = _exitCopy(tester);
@@ -275,5 +268,33 @@ void main() {
 
       await tester.pump(const Duration(seconds: 3));
     });
+
+    testWidgets(
+      'test 6 — maybePop channel parity: one press, one snackbar, no exit',
+      (tester) async {
+        final (popCalls, _) = await _pumpHome(tester);
+
+        // Drive the maybePop/predictive channel directly (the PopScope layer),
+        // never the BackButtonListener. First-press parity + exclusivity: the
+        // two channels must never both fire on a single press.
+        await tester
+            .state<NavigatorState>(find.byType(Navigator).first)
+            .maybePop();
+        await tester.pumpAndSettle();
+
+        expect(
+          popCalls,
+          isEmpty,
+          reason: 'maybePop first press must not exit',
+        );
+        expect(
+          find.text(_exitCopy(tester)),
+          findsOneWidget,
+          reason: 'exactly one exit snackbar — channels do not both fire',
+        );
+
+        await tester.pump(const Duration(seconds: 3));
+      },
+    );
   });
 }

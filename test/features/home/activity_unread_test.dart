@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
@@ -90,6 +91,20 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
+      // #1188: BottomNavShell now mounts a BackButtonListener, which requires a
+      // Router ancestor — mount via MaterialApp.router (was classic
+      // MaterialApp(home:)). Migration only; every assertion below is unchanged.
+      final router = GoRouter(
+        initialLocation: '/home',
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (_, _) => const BottomNavShell(child: Text('Groups tab')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -101,11 +116,11 @@ void main() {
               (ref) => AsyncValue.data([_entry('a', DateTime.utc(2026, 3, 1))]),
             ),
           ],
-          child: MaterialApp(
+          child: MaterialApp.router(
             theme: AppTheme.lightTheme,
+            routerConfig: router,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const BottomNavShell(child: Text('Groups tab')),
           ),
         ),
       );
@@ -138,6 +153,28 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
 
+        // #1188: BackButtonListener needs a Router ancestor — mount via
+        // MaterialApp.router (was classic MaterialApp(home:)). Migration only;
+        // every assertion below is unchanged.
+        final router = GoRouter(
+          initialLocation: '/home',
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (_, _) => BottomNavShell(
+                child: Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () =>
+                        BottomNavTabScope.maybeOf(context)?.selectTab(1),
+                    child: const Text('select tab 1'),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
@@ -150,19 +187,11 @@ void main() {
                     AsyncValue.data([_entry('a', DateTime.utc(2026, 3, 1))]),
               ),
             ],
-            child: MaterialApp(
+            child: MaterialApp.router(
               theme: AppTheme.lightTheme,
+              routerConfig: router,
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: BottomNavShell(
-                child: Builder(
-                  builder: (context) => TextButton(
-                    onPressed: () =>
-                        BottomNavTabScope.maybeOf(context)?.selectTab(1),
-                    child: const Text('select tab 1'),
-                  ),
-                ),
-              ),
             ),
           ),
         );

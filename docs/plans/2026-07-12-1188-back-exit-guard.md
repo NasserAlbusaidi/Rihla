@@ -2,7 +2,12 @@
 
 **Issue:** #1188 (QA-BUG-03) — Back from group-detail exited the app, once per device (Pixel 9 Pro XL / Android 16 AND SM-G770F), 3-button back, entry via home group-row tap, v1.9.0 build 36.
 
-**Root-cause status — be honest:** every inspectable layer verifies CORRECT (see #1188 for the full citation trail: `group_detail_screen.dart:65-75` guard unconditional; `home_screen.dart:218-221` imperative pushes; Flutter 3.41.5 `navigator.dart:3730-3734` reports `canHandlePop` for a `PopScope(canPop:false)` sole route; `MainActivity : FlutterActivity`). The leading hypothesis is an accidental rapid double-press (pop group→home mid-transition, second press exits from Home = normal Android behavior perceived as a bug); an engine/timing race cannot be excluded. **This spec does NOT claim to fix a diagnosed race.** It ships the two changes that are correct under EVERY hypothesis:
+**Root-cause status (UPDATED after round-1 implementation):** a NAMED, code-cited hole was found while building this. **go_router 13.2.5 (the locked version) `popRoute()` guards `maybePop()` behind `state.canPop()`** (`~/.pub-cache/hosted/pub.dev/go_router-13.2.5/lib/src/delegate.dart`, `Future<bool> popRoute()`): with a SOLE route on the root navigator, `canPop()` is false → `state = null` → `maybePop()` is never called → `popDisposition` (i.e. every `PopScope(canPop:false)`) is **never consulted** → `popRoute` returns `false` → `WidgetsBinding.handlePopRoute` falls through to `SystemNavigator.pop()` → the app exits with no guard fired. go_router ≥14.8.1 fixes this upstream (its `popRoute` calls `state.maybePop()` unconditionally). Consequences:
+
+- A `PopScope`-only guard on the sole `/home` route is DEAD on the `popRoute` back channel — Part A therefore needs BOTH layers (see A2).
+- The same hole affects every EXISTING sole-route cold-entry guard on main (#243 class: deep-linked `GroupDetailScreen` etc.) — that is a separate pre-existing bug, filed separately, out of this spec's scope. The original #1188 sighting (stack `[shell, group]`, `canPop()` true) is NOT directly this hole; the accidental-double-press hypothesis stands for it, but the hole fully explains the symptom class for any sole-route state.
+
+This spec ships the changes that are correct under EVERY hypothesis:
 
 1. **Part A — double-back-to-exit guard at the root shell.** Any pop reaching the root — accidental second press, spurious extra pop event, whatever the cause — becomes a visible, recoverable state ("Press back again to exit") instead of silent app death.
 2. **Part B — back-event Sentry breadcrumbs** at the two back chokepoints, so the next real-world occurrence self-documents (breadcrumbs ride along on any later Sentry event; no event spam).
@@ -55,6 +60,29 @@ return PopScope(
 );
 ```
 
+### A2 — the second layer: `BackButtonListener` (the popRoute channel)
+
+The `PopScope` above covers the `maybePop`/predictive channel and keeps `canHandlePop` reported. It does NOT cover the engine's `popRoute` channel on a sole route (the go_router 13.2.5 hole above). Add a `BackButtonListener` around the same subtree (inside the `PopScope`):
+
+```dart
+BackButtonListener(
+  onBackButtonPressed: () async {
+    // BackButtonListener is dispatcher-global while mounted, NOT route-scoped:
+    // without this gate it would hijack back for routes pushed ON TOP of /home.
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return false; // defer → normal pop
+    return _handleRootBack(); // the shared double-back decision; returns true = handled
+  },
+  child: <the PopScope subtree>,
+)
+```
+
+- go_router 13.2.5 installs a `RootBackButtonDispatcher` (`router.dart:186` in the package), and `BackButtonListener` child callbacks run BEFORE the delegate's `popRoute` — verified against the installed framework (`widgets/router.dart`, `ChildBackButtonDispatcher`/`BackButtonListener`).
+- **Shared state, one decision function:** extract `bool _handleRootBack()` (breadcrumb → if `_awaitingSecondBack` exit → else arm flag + timer + snackbar). The `PopScope.onPopInvokedWithResult` and the `BackButtonListener` callback BOTH call it — the two channels must be behaviorally identical and idempotent.
+- With both layers mounted, the listener wins on the popRoute channel (dispatcher children take priority), and the PopScope covers `maybePop`-driven pops and predictive-back reporting. Do not "simplify" either layer away. Channel exclusivity (verified round 2): a popRoute-channel press short-circuits at the listener before `maybePop`, and the predictive channel drives only the PopScope — exactly ONE `_handleRootBack()` per press; test 6 (now MANDATORY) pins this.
+- **Nesting (authoritative):** `BackButtonListener` is the OUTERMOST wrapper; the `PopScope` sits inside it; the `BottomNavTabScope(child: Scaffold(...))` subtree inside that. (They register with independent mechanisms — dispatcher vs ModalRoute — so order doesn't affect dispatch; this is fixed for consistency only.) The Part A snippet's inline arm/timer/snackbar/exit block MUST be extracted as `_handleRootBack()` and called from BOTH handlers — never two copies.
+- **[Round-2 P1] `BackButtonListener` requires a `Router` ancestor** (`Router.of(context)` in its state, framework `router.dart:1203` — throws without one). `test/features/home/activity_unread_test.dart:104-108` and `:153-157` mount `BottomNavShell` under a classic `MaterialApp(home:)` — the ONLY classic-only mounts in the tree (siblings `widgets_test.dart:74`, `add_expense_fab_navigation_test.dart:124,443`, `add_expense_target_sheet_test.dart:117` already use `MaterialApp.router`). **This spec therefore ALSO migrates `activity_unread_test.dart`'s two mounts to a minimal `MaterialApp.router` harness** (mirror the sibling files' pattern); the file joins the allowed-files list. Production is always `MaterialApp.router` — no runtime hazard.
+- **Part B blind-spot (named, accepted):** the group-detail breadcrumb lives in `onPopInvokedWithResult`, which the go_router 13.2.5 hole bypasses on the sole-route path — so it cannot self-document that exact class; #1192 owns that fix. Its diff-coverage owner is the EXISTING nav tests that drive the handler (`home_group_row_navigation_test.dart:484`, `group_detail_navigation_test.dart:261,281`), not the new test file.
+
 Constraints the implementation must honor:
 - The handler is **synchronous** — no awaits before the `context` uses (no `use_build_context_synchronously` hazard).
 - No `behavior: floating` per-call override — `snackBarTheme` already sets it (#419/#437).
@@ -81,17 +109,22 @@ Breadcrumbs only — never `captureMessage`/`captureException` here (no telemetr
 New `test/features/home/bottom_nav_shell_back_test.dart`. Intercept exit via
 `tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, ...)` recording `SystemNavigator.pop` method calls; drive system back via `tester.binding.handlePopRoute()`.
 
-1. **First back on shell → no exit, snackbar shown.** Assert zero `SystemNavigator.pop` calls AND `backAgainToExit` text visible. *(RED against current code: the recorded pop call count is 1 — this is the regression test for the symptom class.)*
+**The primary drive is `tester.binding.handlePopRoute()` — the REAL engine entry point.** This is non-negotiable: it exercises the full chain (binding → Router → dispatcher → BackButtonListener / go_router popRoute) and is exactly the path the go_router 13.2.5 hole lives on. A test that hand-mirrors `maybePop`'s disposition switch instead would go green while the guard is dead on device — that masking is what round 1 shipped and this round removes.
+
+1. **First back on shell → no exit, snackbar shown.** `handlePopRoute()` once → assert zero `SystemNavigator.pop` calls AND `backAgainToExit` text visible. *(RED against pre-guard code AND against a PopScope-only guard — the recorded pop call count is 1 both ways; this is the regression test for the symptom class and for the go_router hole.)*
 2. **Second back within window → exits.** Two `handlePopRoute()` in quick succession → exactly one `SystemNavigator.pop` call.
 3. **Window expiry resets.** Back once → `tester.pump(const Duration(seconds: 3))` (Timer fires, snackbar auto-dismisses) → back again → still zero pops, snackbar re-shown.
-4. **Pushed route unaffected.** With a route pushed on top of `/home` (reuse the `group_detail_navigation_test.dart` harness conventions), system back pops to home, zero `SystemNavigator.pop` calls, no exit snackbar. Guards the #243/#666 non-interference claim.
+4. **Pushed route unaffected.** Mount the REAL shell at `/home`, push a route on top, `handlePopRoute()` → the pushed route pops back to home (the listener's `isCurrent` gate defers), zero `SystemNavigator.pop` calls, no exit snackbar. Then one more `handlePopRoute()` on home → snackbar (guard active again). Guards the #243/#666 non-interference claim through the real channel.
 5. **RTL smoke:** test 1 under `Locale('ar')` — the AR string renders (pins the ARB pair exists).
+6. **(MANDATORY) maybePop channel parity:** drive the root navigator's `maybePop()` directly once → same first-press behavior (no exit, snackbar, exactly one `_handleRootBack` effect) — pins the PopScope layer and channel exclusivity so a future change can't make both channels fire on one press (first-press exit regression).
+7. **Migrated harness stays meaningful:** `activity_unread_test.dart`'s two migrated mounts stay green under `MaterialApp.router` with their original assertions intact (no assertion deletions — migration only).
 
 Test-harness traps (from CLAUDE.md, binding on the fixer): override `sharedPreferencesProvider` in every app-booting test; never `pumpAndSettle` after `pumpRihlaApp`; pump past the 2s reset Timer before teardown or cancel-in-dispose covers it (test 3's pump does); existing shell tests live under `test/features/home/` — follow their boot helper.
 
 Existing suites that must stay green: `test/features/home/`, `test/features/groups/group_detail_navigation_test.dart`, `test/unit/app_router_test.dart`.
 
 ## Acceptance
+- [ ] Both channels guarded: `handlePopRoute()`-driven tests green (popRoute channel via BackButtonListener) AND the PopScope layer present for maybePop/predictive reporting — one shared `_handleRootBack()` decision.
 - [ ] First system back on `/home` (any tab) shows "Press back again to exit" and does not exit; second within 2s exits; window resets after 2s.
 - [ ] Back on pushed routes (group-detail and deeper) behaves exactly as today (tests 4 + existing nav suites green).
 - [ ] `nav.back` breadcrumbs emitted at both chokepoints; app runs with Sentry uninitialized (tests) without error.
@@ -108,7 +141,13 @@ Existing suites that must stay green: `test/features/home/`, `test/features/grou
 6. **Arithmetic decomposition:** N/A.
 7. **Orthogonal adversarial axes:** time (Timer window expiry — test 3), locale/RTL (test 5), navigation depth (test 4: guard must not leak into pushed routes), and the named UX trade-off (predictive-back preview loss) surfaced for the Gate reviewers to challenge rather than buried.
 
-## Gate outcome (round 1 — PASSED)
+## Gate outcome (round 1 — PASSED on the PopScope-only design, SUPERSEDED)
+
+Round 1 approved the PopScope-only design; implementation then surfaced the go_router 13.2.5 `popRoute` hole above, which materially changed the design (A2 added, test drive changed to `handlePopRoute`).
+
+**Round 2 (dual-channel design): rubric 0 P1 / 0 P2 / 4 P3 — clean; adversary 1 P1 / 0 P2 / 2 P3.** The P1 (BackButtonListener throws under `activity_unread_test.dart`'s classic `MaterialApp(home:)` mounts — verified against `router.dart:1203` and the test file) is resolved in A2 above (harness migration joins the scope). Adversary P3s folded in: test 6 mandatory, Part B blind-spot named. Rubric P3s folded in: nesting order fixed, `_handleRootBack()` extraction made explicit, breadcrumb coverage owner named.
+
+**Round 3 (this version): rubric 0 P1 / 0 P2 / 4 P3; adversary 0 P1 / 0 P2 / 4 P3 — BOTH CLEAN, GATE PASSED.** Key confirmations: migration scope is complete (`activity_unread_test.dart` is the only classic mount); production has NO `enableOnBackInvokedCallback` manifest opt-in, so the legacy popRoute channel — and therefore the `BackButtonListener` layer — is what production actually exercises. Round-3 P3 clarifications, binding on the implementer: (a) test 6 obtains the navigator via `tester.state<NavigatorState>(find.byType(Navigator).first)`; (b) the shell breadcrumb lives ONLY inside `_handleRootBack()` (single site — the Part A snippet's inline mention is superseded); (c) exit snackbar rides the global messenger and can queue behind another snackbar — cosmetic, accepted; (d) add a one-line comment near `pumpRihlaApp` is NOT in scope (latent trap noted for the future, no current caller mounts the shell).
 
 Two fresh-context Opus reviewers (rubric + orthogonal-axis adversary), 2026-07-12: **0 P1 union** (rubric 0 P1/1 P2/3 P3; adversary 0 P1/1 P2/3 P3). Non-blocking findings folded in as binding implementation guidance:
 
