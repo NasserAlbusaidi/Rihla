@@ -1,4 +1,10 @@
-import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
+import {
+  FieldValue,
+  Timestamp,
+  getFirestore,
+  type DocumentReference,
+  type Firestore,
+} from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import '../admin';
@@ -50,6 +56,57 @@ import {
 // release discipline. Still honors deleteGroup's quiesce marker like every
 // Admin-SDK membership writer, because Admin SDK writes bypass
 // firestore.rules. enforceAppCheck is the per-actor control (#197).
+
+// #1210: a removed shadow's pending claim requests must be retired ATOMICALLY
+// with the removal. Otherwise a stale request survives as a live Approve in the
+// creator's list, and approving it drives the claim engine's #558 Hole-2
+// torn-cascade: no member doc + a participantIds residue → a false
+// 'prior cascade torn' P0 log + HttpsError('internal'), which decideClaimRequest
+// re-pends (its catch resets the reservation), so re-approve loops forever — only
+// Decline clears it. Declining at the source makes that state unreachable: the
+// row vanishes the moment the shadow is removed, and a stale-UI Approve hits the
+// clean already-decided short-circuit.
+//
+// The written shape mirrors decideClaimRequest's decline path
+// (status/decidedBy/decidedAt) plus `autoDeclineReason: 'shadow-removed'` — the
+// marker claimRequestNotifier Branch B keys on to SUPPRESS the "your claim was
+// declined" push (a member REMOVAL is not a creator rejection, and its deep-link
+// dead-ends). `decidedBy` is the REMOVER's uid even though no human decided this
+// one: harmless — declined rows never surface in the pending-only creator list,
+// and the notifier skip keys on autoDeclineReason, not decidedBy.
+function shadowRemovedDeclineFields(removerUid: string): Record<string, unknown> {
+  return {
+    status: 'declined',
+    decidedBy: removerUid,
+    decidedAt: FieldValue.serverTimestamp(),
+    autoDeclineReason: 'shadow-removed',
+  };
+}
+
+// Standalone (non-transactional) sweep for the PRE-TX idempotent short-circuit,
+// where the target shadow is already fully absent yet a legacy/orphan pending
+// request may linger. No departure lock is needed: claimRequests are NOT balance
+// (oracle) inputs, so retiring them cannot change the recompute basis. The two
+// equality filters need no composite index (Firestore serves equality-only
+// queries from single-field indexes).
+async function declinePendingClaimRequestsStandalone(
+  db: Firestore,
+  groupRef: DocumentReference,
+  targetUserId: string,
+  removerUid: string,
+): Promise<void> {
+  const pendingSnap = await groupRef
+    .collection('claimRequests')
+    .where('shadowMemberId', '==', targetUserId)
+    .where('status', '==', 'pending')
+    .get();
+  if (pendingSnap.empty) return;
+  const batch = db.batch();
+  for (const doc of pendingSnap.docs) {
+    batch.update(doc.ref, shadowRemovedDeclineFields(removerUid));
+  }
+  await batch.commit();
+}
 
 export interface RemoveMemberInput {
   groupId: string;
@@ -142,6 +199,11 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
     // re-assert both writes (a partial prior remove self-heals: arrayRemove of
     // an absent uid is a no-op, delete of an absent doc is skipped).
     if (!targetIsMember && targetDocsSnap.empty) {
+      // #1210: even when the shadow is already gone, a legacy/orphan pending
+      // claim request may linger — retire it so a retry self-heals the #1210
+      // state (a dead Approve on the creator's list). Standalone: no lock, no
+      // oracle input touched.
+      await declinePendingClaimRequestsStandalone(db, groupRef, targetUserId, uid);
       return { groupId, mode: 'removed', alreadyRemoved: true };
     }
 
@@ -232,8 +294,23 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
         const freshActorDocsSnap = await tx.get(
           groupRef.collection('members').where('userId', '==', uid),
         );
+        // #1210: read the target shadow's pending claim requests in the tx READS
+        // phase — ABOVE the idempotent early-return below (which already WRITES
+        // departureLockClearFields) so BOTH that branch and the main mutation can
+        // decline them without violating Firestore reads-before-writes.
+        const pendingClaimRequestsSnap = await tx.get(
+          groupRef
+            .collection('claimRequests')
+            .where('shadowMemberId', '==', targetUserId)
+            .where('status', '==', 'pending'),
+        );
         const freshTargetIsMember = freshMemberIds.includes(targetUserId);
         if (!freshTargetIsMember && freshTargetDocsSnap.empty) {
+          // #1210: retire any pending claim requests before returning (self-heals
+          // a row raced in between the pre-tx read and this tx re-read).
+          for (const reqDoc of pendingClaimRequestsSnap.docs) {
+            tx.update(reqDoc.ref, shadowRemovedDeclineFields(uid));
+          }
           tx.update(groupRef, departureLockClearFields());
           return { alreadyRemoved: true };
         }
@@ -275,6 +352,11 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
           metadata: { memberAction: 'removed', memberName: freshTargetName },
           timestamp: new Date().toISOString(),
         });
+        // #1210: retire the removed shadow's pending claim requests in the SAME
+        // transaction as the removal (the read is in the reads phase above).
+        for (const reqDoc of pendingClaimRequestsSnap.docs) {
+          tx.update(reqDoc.ref, shadowRemovedDeclineFields(uid));
+        }
         return { alreadyRemoved: false };
       });
     } catch (err) {

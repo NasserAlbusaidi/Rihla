@@ -330,4 +330,39 @@ describe('claimRequestNotifier', () => {
 
     expect(sendEach).not.toHaveBeenCalled();
   });
+
+  test('#1210 Branch B skip: a shadow-removed auto-decline (autoDeclineReason) does NOT push', async () => {
+    // removeMember's #1210 sweep declines a removed shadow's pending request with
+    // autoDeclineReason:'shadow-removed'. Branch B suppresses the push — a member
+    // REMOVAL is not a creator's explicit rejection, and "Your claim was declined."
+    // would deep-link into a claim flow that dead-ends. This is a content-based
+    // skip on the after-state, NOT a membership fence (#1141 stays intact).
+    await seedGroup('g1', 'Trip', 'creator', 'ABC123', ['creator', 'R']);
+    await seedToken('R');
+    const sendEach = mockSendEach(0);
+
+    await fire(
+      snap(pending()),
+      snap(pending({ status: 'declined', autoDeclineReason: 'shadow-removed' })),
+    );
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('#1210 regression: a NORMAL creator decline (no autoDeclineReason) STILL pushes', async () => {
+    // Scoping tripwire for the skip: only autoDeclineReason==='shadow-removed' is
+    // suppressed. A creator-tapped decline carries no reason field and must push
+    // exactly as before — if the skip ever broadens, this delivery vanishes.
+    await seedGroup('g1', 'Trip', 'creator', 'ABC123', ['creator', 'R']);
+    await seedToken('R');
+    const sendEach = mockSendEach(1);
+
+    await fire(snap(pending()), snap(pending({ status: 'declined' })));
+
+    expect(sendEach).toHaveBeenCalledTimes(1);
+    expect(sendEach.mock.calls[0][0][0].data).toMatchObject({
+      type: 'claim_decided',
+      decision: 'declined',
+    });
+  });
 });
