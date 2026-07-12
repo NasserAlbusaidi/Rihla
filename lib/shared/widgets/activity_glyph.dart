@@ -16,6 +16,7 @@ enum ActivityGlyph {
   eventDeleted,
   memberJoined,
   memberLeft,
+  groupCreated,
   generic,
 }
 
@@ -64,6 +65,17 @@ class ActivityCategoryIcon extends StatelessWidget {
         colors.cardSoft,
         colors.textSecondary,
         Iconsax.user_minus,
+        true,
+      ),
+      // Genesis marker (#1018) — a flag reads as "the journey started" (matches
+      // the Rihla trip framing) and is visually distinct from eventCreated
+      // (calendar) / memberJoined (user), which are about the group's CONTENTS,
+      // not the group itself. Shares the "created"-family palette with
+      // eventCreated/expenseAdded so creation actions read as one visual set.
+      ActivityGlyph.groupCreated => (
+        colors.saffronSoft,
+        colors.primaryDark,
+        Iconsax.flag,
         true,
       ),
       // Receipt family — a money glyph, not a navigation chevron; parallels

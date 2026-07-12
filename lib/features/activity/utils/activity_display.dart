@@ -12,6 +12,7 @@ import '../models/activity_log_model.dart';
 ActivityGlyph glyphForGroupActivityType(String type) => switch (type) {
   'group_settlement' => ActivityGlyph.settlement,
   'event_settlement' => ActivityGlyph.settlement,
+  'group_created' => ActivityGlyph.groupCreated,
   'event_created' => ActivityGlyph.eventCreated,
   'event_deleted' => ActivityGlyph.eventDeleted,
   'member_joined' => ActivityGlyph.memberJoined,
@@ -88,6 +89,11 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
     // the money moved between people either way; the event context is one tap
     // away via activityRowTarget.
     'group_settlement' || 'event_settlement' => _settlementText(l10n, log),
+    // #1018: server-fan-in genesis row (groupCreatedLogger.ts). metadata is
+    // ALWAYS {} by design — the group name is already shown by the screen
+    // chrome (group detail) or joined from userGroupsProvider (cross-group
+    // History), so this is a single static phrase, no eventName-style variant.
+    'group_created' => l10n.activityGroupCreated,
     'event_created' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupEventCreatedGeneric

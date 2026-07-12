@@ -2846,6 +2846,40 @@ describe('Publish readiness Firestore rules', () => {
     });
   });
 
+  // #1018 — group_created (the groupCreatedLogger trigger's fan-in type) is
+  // SERVER-ONLY, same as expense_*/member_left: it is deliberately absent from
+  // validGroupActivityCreate's allow-list, so a member cannot forge a genesis
+  // row for a group they didn't create.
+  test('#1018 a client cannot forge a group_created activity entry', async () => {
+    const member = testEnv.authenticatedContext('member').firestore();
+    await assertFails(
+      member.doc('groups/g1/activity/ga-1018-forge').set(
+        validGroupActivity({
+          id: 'ga-1018-forge',
+          type: 'group_created',
+          description: 'created the group',
+        }),
+      ),
+    );
+  });
+
+  test('#1018 the server (Admin SDK / rules-disabled) CAN write a group_created activity entry', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await assertSucceeds(
+        ctx.firestore().doc('groups/g1/activity/ga-1018-srv').set(
+          validGroupActivity({
+            id: 'ga-1018-srv',
+            type: 'group_created',
+            actorId: 'owner',
+            actorName: 'Owner',
+            description: 'created the group',
+            metadata: {},
+          }),
+        ),
+      );
+    });
+  });
+
   // #814 — value-domain floor for client-forgeable group-activity metadata.
   // Before this, `metadata is map` accepted any shape: a member could forge
   // `amountFils: NaN`/negative fils, unsupported currencies, or non-string

@@ -1836,6 +1836,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get activityGroupCreated => 'created the group';
+
+  @override
   String get activityGroupEventCreatedGeneric => 'created an event';
 
   @override

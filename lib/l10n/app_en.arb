@@ -1488,6 +1488,7 @@
       "toName": {}
     }
   },
+  "activityGroupCreated": "created the group",
   "activityGroupEventCreatedGeneric": "created an event",
   "activityGroupEventCreated": "created {eventName}",
   "@activityGroupEventCreated": {

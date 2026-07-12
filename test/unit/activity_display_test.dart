@@ -193,6 +193,22 @@ void main() {
       expect(localizedGroupActivityText(ar, log), 'إزالة Bob من المجموعة');
     });
 
+    test('localizes group_created as a static phrase, ignoring metadata '
+        '(#1018 — the row always writes metadata: {})', () {
+      final en = AppLocalizationsEn();
+      final ar = AppLocalizationsAr();
+      final log = _groupLog(
+        type: 'group_created',
+        // A forged/unexpected key must not change the outcome — this type
+        // never reads metadata, unlike event_created/expense_*.
+        metadata: const {'eventName': 'Should Be Ignored'},
+      );
+
+      expect(localizedGroupActivityText(en, log), en.activityGroupCreated);
+      expect(localizedGroupActivityText(en, log), 'created the group');
+      expect(localizedGroupActivityText(ar, log), 'إنشاء المجموعة');
+    });
+
     test('preserves legacy group fallback text for unknown rows', () {
       final ar = AppLocalizationsAr();
       final log = _groupLog(
@@ -382,6 +398,26 @@ void main() {
       expect(
         glyphForGroupActivityType('event_settlement'),
         ActivityGlyph.settlement,
+      );
+    });
+
+    test('uses the groupCreated glyph, distinct from eventCreated/generic '
+        '(#1018)', () {
+      expect(
+        glyphForGroupActivityType('group_created'),
+        ActivityGlyph.groupCreated,
+      );
+      expect(
+        glyphForGroupActivityType('group_created'),
+        isNot(ActivityGlyph.generic),
+      );
+    });
+
+    test('unknown types still fall back to the generic glyph (regression '
+        'pin — group_created must not swallow the wildcard branch)', () {
+      expect(
+        glyphForGroupActivityType('some_future_type'),
+        ActivityGlyph.generic,
       );
     });
 
