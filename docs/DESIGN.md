@@ -331,6 +331,13 @@ Full rules: [LOCALIZATION.md § RTL](./LOCALIZATION.md).
   1.0× · decimals 0.55×.
 - `tone: AmountTone.auto` colors by sign (palm-emerald + / pomegranate − /
   ink 0). Override to `ink` for neutral totals where positive ≠ "good".
+- `tone: AmountTone.muted` (textSecondary) for de-emphasized amounts on
+  secondary rows (per-event breakdowns, zero balances).
+- **Carve-out:** an amount *embedded inside* a composed l10n sentence (dialog
+  bodies, snackbars, chip labels) or a plain-text share/receipt string keeps
+  `AppFormatters.formatCurrency` — splitting localized sentences to restyle
+  the number is an l10n hazard, and share strings carry no styling. RAmount /
+  the mono role govern every *standalone displayed* amount (#1201).
 - **`polarityCaret` (new, #900 PR-3):** an opt-in leading ▲ (positive) / ▼
   (negative) glyph that encodes owed/owe by **shape**, not color alone
   (colorblind-safe). **Hero surfaces only — leave false on dense rows.**

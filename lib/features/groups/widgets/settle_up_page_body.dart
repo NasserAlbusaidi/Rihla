@@ -1055,6 +1055,8 @@ class _HistoryTile extends StatelessWidget {
     String recipientName,
   ) async {
     final l10n = context.l10n;
+    // #1201: amount embedded in a composed l10n sentence — stays formatCurrency;
+    // RAmount governs standalone displayed amounts (DESIGN.md §8).
     final amountStr = AppFormatters.formatCurrency(
       overrideAmount ?? settlement.amount,
       settlement.currency,

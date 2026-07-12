@@ -692,6 +692,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
+            // #1201: amount embedded in a composed l10n sentence — stays
+            // formatCurrency; RAmount governs standalone displayed amounts
+            // (DESIGN.md §8).
             context.l10n.settleUpAmountExceedsOutstanding(
               AppFormatters.formatCurrency(suggestedAmount, currency),
             ),
@@ -720,6 +723,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
+              // #1201: amount embedded in a composed l10n sentence — stays
+              // formatCurrency; RAmount governs standalone displayed amounts
+              // (DESIGN.md §8).
               context.l10n.settleUpBalanceChangedReviewAgain(
                 AppFormatters.formatCurrency(freshOutstanding, currency),
               ),
@@ -784,6 +790,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     String? eventName,
     required String groupName,
   }) async {
+    // #1201: amount embedded in a WhatsApp share string — stays formatCurrency;
+    // RAmount governs standalone displayed amounts (DESIGN.md §8).
     final message = settleNotifyMessage(
       l10n: context.l10n,
       recipientName: recipientName,
@@ -922,6 +930,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         // #1129: an over-outstanding rejection carries the LIVE server-side
         // outstanding — surface it with the #773 balance-changed copy so the
         // user re-reviews against the real number instead of a generic error.
+        // #1201: amount embedded in a composed l10n sentence — stays
+        // formatCurrency; RAmount governs standalone displayed amounts
+        // (DESIGN.md §8).
         final overFils = overOutstandingFils(e);
         final message = overFils != null
             ? context.l10n.settleUpBalanceChangedReviewAgain(

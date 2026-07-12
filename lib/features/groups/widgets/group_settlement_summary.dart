@@ -31,6 +31,9 @@ class GroupSettlementSummaryCard extends StatelessWidget {
       children: [
         _SettlementChip(
           key: GroupKeys.settleUpGroupTotalLabel,
+          // #1201: amount embedded in a composed l10n chip label — stays
+          // formatCurrency; RAmount governs standalone displayed amounts
+          // (DESIGN.md §8).
           label: context.l10n.settleUpSummaryTotal(
             AppFormatters.formatCurrency(totalPending, currency),
           ),
