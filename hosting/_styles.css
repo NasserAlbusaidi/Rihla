@@ -333,9 +333,11 @@ footer.site-foot .wrap{padding-block:56px;}
 [dir="rtl"] .ucard h3,[dir="rtl"] .nrow h3,[dir="rtl"] .doc h2,
 [dir="rtl"] .quote blockquote{font-family:var(--font-arabic);font-weight:700;letter-spacing:normal;}
 [dir="rtl"] .hero h1{letter-spacing:normal;}
+/* Arabic caption recipe is Zain w700 (DESIGN.md §type table) — the Latin
+   captions' w500 would silently collapse to Zain 400 (no 500 cut). */
 [dir="rtl"] .eyebrow,[dir="rtl"] .uppercase-label,[dir="rtl"] .section-header .label,
 [dir="rtl"] .quote blockquote em,
-[dir="rtl"] .nrow .num{font-family:var(--font-arabic);letter-spacing:normal;}
+[dir="rtl"] .nrow .num{font-family:var(--font-arabic);letter-spacing:normal;font-weight:700;}
 [dir="rtl"] .eyebrow::before{margin-left:0;}
 /* Arabic wordmark is رحلة in Reem Kufi (DESIGN.md § brand — not Latin, not
    Zain); the fork underline stays. */
