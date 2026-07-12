@@ -244,8 +244,7 @@ export const joinGroupByInviteCode = onCall<
         const memberRef = groupRef.collection('members').doc(uid);
         const membersQuery = groupRef.collection('members');
         const eventsQuery = groupRef.collection('events');
-        const [memberSnap, membersSnap, eventsSnap] = await Promise.all([
-          tx.get(memberRef),
+        const [membersSnap, eventsSnap] = await Promise.all([
           tx.get(membersQuery),
           tx.get(eventsQuery),
         ]);
@@ -257,23 +256,41 @@ export const joinGroupByInviteCode = onCall<
         }
         const memberIds = getMemberIds(groupData);
 
+        // #1212: match the caller's member doc by the `userId` FIELD, not by the
+        // doc id. Member-doc keying is MIXED (client docs key by {uid}; legacy
+        // pre-#524 creator docs and server-minted shadows are uuid-keyed), so a
+        // `doc(uid)` point-get MISSES a legacy uuid-keyed member and a bare
+        // `!doc(uid).exists` create gate would mint a SECOND roster row for the
+        // same userId. The whole-collection `membersSnap` above already loads
+        // every member doc, so field-matching is free. Mirrors the `userId`-field
+        // matching in leaveGroup/deleteAccount and the #279 collision check below.
+        const hasMemberDocForUid = membersSnap.docs.some(
+          (doc) => doc.get('userId') === uid,
+        );
+
         // #53 G1: notify only on a BRAND-NEW member — BOTH the member-doc create
-        // (!memberSnap.exists) AND the memberIds arrayUnion (!includes) must
-        // fire. Requiring both means a heal-path re-join (uid already in
-        // memberIds but member-doc missing) does NOT re-announce, and neither
-        // does the inverse. The member-array snapshot is captured PRE-arrayUnion
-        // so the joiner is never in `existingMemberIds`.
-        didJoin = !memberSnap.exists && !memberIds.includes(uid);
+        // (no field-matched doc anywhere) AND the memberIds arrayUnion
+        // (!includes) must fire. Requiring both means a heal-path re-join (uid
+        // already in memberIds but member-doc missing) does NOT re-announce, and
+        // neither does the inverse. #1212: gating on `hasMemberDocForUid` (field
+        // match) rather than the doc-id point-get means a legacy uuid-keyed
+        // member re-entering their own link is an idempotent no-op — no announce,
+        // no #279 self-reject, existing doc kept — and the field-matched-doc-but-
+        // uid-not-in-memberIds heal state announces NO longer (memberIds is still
+        // healed silently by the arrayUnion below). The member-array snapshot is
+        // captured PRE-arrayUnion so the joiner is never in `existingMemberIds`.
+        didJoin = !hasMemberDocForUid && !memberIds.includes(uid);
         existingMemberIds = memberIds;
         groupName = typeof groupData.name === 'string' ? groupData.name : '';
 
         // #279: reject a brand-new join whose display name collides
         // (case-insensitive, trimmed) with an existing member — duplicate names
         // make roster + settle-up attribution ambiguous. Gated on `didJoin`
-        // (== `!memberSnap.exists && !memberIds.includes(uid)`) so ONLY a
-        // genuinely new member is uniqueness-checked: an idempotent re-join AND
-        // the #53 heal path (uid already in memberIds, member-doc missing) both
-        // restore their existing name without being self-rejected. Normalization
+        // (== `!hasMemberDocForUid && !memberIds.includes(uid)`) so ONLY a
+        // genuinely new member is uniqueness-checked: an idempotent re-join
+        // (including a legacy uuid-keyed one, #1212) AND the #53 heal path (uid
+        // already in memberIds, member-doc missing) both restore their existing
+        // name without being self-rejected. Normalization
         // matches MemberNameResolver.disambiguate's collision key
         // (`trim().toLowerCase()`) so prevention and the display disambiguator
         // (#196/#289) agree. Compared across ALL member docs by the
@@ -314,7 +331,15 @@ export const joinGroupByInviteCode = onCall<
           });
         }
 
-        if (!memberSnap.exists) {
+        // #1212: create a member doc only when NO field-matched doc exists (any
+        // keying). A legacy uuid-keyed member keeps their existing doc (id, role,
+        // displayName all unchanged) — the new doc, when created, stays uid-keyed
+        // at `memberRef` per the post-#524 client convention. NOTE: the
+        // unconditional event fan-in below still refreshes event-level
+        // participantNames with the free-typed join name for every idempotent
+        // rejoin (pre-existing behavior, unchanged) — only the MEMBER doc is a
+        // no-op.
+        if (!hasMemberDocForUid) {
           tx.set(memberRef, {
             id: uid,
             userId: uid,

@@ -624,6 +624,107 @@ describe('joinGroupByInviteCode — display-name collision guard (#279)', () => 
   });
 });
 
+describe('joinGroupByInviteCode — legacy uuid-keyed member re-join (#1212)', () => {
+  // Member-doc keying is MIXED: post-#524 client docs key by {uid}, but legacy
+  // pre-#524 creator docs (and server-minted shadows) are keyed by a random uuid
+  // with `userId` as a FIELD. seedInviteGroup() keys owner by {uid}; re-shape the
+  // relevant member into the legacy uuid-keyed form to prove the member-create
+  // gate matches by the userId FIELD, not the doc id.
+  function mockSendEach(): jest.Mock {
+    const sendEach = jest.fn().mockResolvedValue({
+      successCount: 1,
+      failureCount: 0,
+      responses: [{ success: true, messageId: 'm' }],
+    });
+    jest
+      .spyOn(messaging, 'getMessaging')
+      .mockReturnValue({ sendEach } as unknown as messaging.Messaging);
+    return sendEach;
+  }
+
+  test('re-join by a uuid-keyed member (uid in memberIds) does NOT mint a second member doc', async () => {
+    const db = getFirestore();
+    // Re-shape the CREATOR into the legacy uuid-keyed form. owner stays in
+    // memberIds (['owner']); doc(owner) no longer exists.
+    await db.doc('groups/g1/members/owner').delete();
+    await db.doc('groups/g1/members/2f1c0000-uuid').set({
+      id: '2f1c0000-uuid', userId: 'owner', displayName: 'Owner',
+      role: 'CREATOR', joinedAt: new Date(), isShadow: false,
+    });
+
+    // owner taps their own invite link and free-types a DIFFERENT name.
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Owner Renamed' },
+      auth: { uid: 'owner' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const members = await db.collection('groups/g1/members').get();
+    const ownerDocs = members.docs.filter((d) => d.get('userId') === 'owner');
+    // RED on main: TWO docs share userId 'owner' — the uuid CREATOR plus a new
+    // uid-keyed MEMBER doc minted by the doc-id create gate.
+    expect(ownerDocs).toHaveLength(1);
+    const doc = ownerDocs[0];
+    expect(doc.id).toBe('2f1c0000-uuid');        // doc id unchanged (uuid-keyed)
+    expect(doc.get('role')).toBe('CREATOR');     // role unchanged
+    expect(doc.get('displayName')).toBe('Owner'); // MEMBER-DOC name unchanged
+    // No uid-keyed duplicate was created.
+    expect((await db.doc('groups/g1/members/owner').get()).exists).toBe(false);
+  });
+
+  test('re-join by a uuid-keyed member sends NO member_join notification (G1 gate)', async () => {
+    const db = getFirestore();
+    // legacy uuid-keyed MEMBER 'alice', already in memberIds.
+    await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+    await db.doc('groups/g1/members/uuid-alice').set({
+      id: 'uuid-alice', userId: 'alice', displayName: 'Alice',
+      role: 'MEMBER', joinedAt: new Date(), isShadow: false,
+    });
+    await db
+      .doc('fcm_tokens/owner')
+      .set({ user_id: 'owner', token: 'tok-owner', locale: 'en', platform: 'android' });
+    const sendEach = mockSendEach();
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Alice' },
+      auth: { uid: 'alice' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+
+  test('field-matched doc present but uid NOT in memberIds heals memberIds silently — no duplicate, no announce', async () => {
+    const db = getFirestore();
+    // A uuid-keyed doc for 'ghost' exists, but memberIds lost 'ghost' (array
+    // desync). Today this computes didJoin=true (announces + collision-checks a
+    // member who was already there); #1212 makes it a silent memberIds heal.
+    await db.doc('groups/g1/members/uuid-ghost').set({
+      id: 'uuid-ghost', userId: 'ghost', displayName: 'Ghost',
+      role: 'MEMBER', joinedAt: new Date(), isShadow: false,
+    });
+    // memberIds stays ['owner'] (ghost missing).
+    await db
+      .doc('fcm_tokens/owner')
+      .set({ user_id: 'owner', token: 'tok-owner', locale: 'en', platform: 'android' });
+    const sendEach = mockSendEach();
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Ghost' },
+      auth: { uid: 'ghost' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    // memberIds healed by the arrayUnion.
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toContain('ghost');
+    // Exactly one doc for userId 'ghost', still uuid-keyed; no uid-keyed duplicate.
+    const members = await db.collection('groups/g1/members').get();
+    const ghostDocs = members.docs.filter((d) => d.get('userId') === 'ghost');
+    expect(ghostDocs).toHaveLength(1);
+    expect(ghostDocs[0].id).toBe('uuid-ghost');
+    expect((await db.doc('groups/g1/members/ghost').get()).exists).toBe(false);
+    // didJoin=false now → no announce (behavior change from today's didJoin=true).
+    expect(sendEach).not.toHaveBeenCalled();
+  });
+});
+
 describe('joinGroupByInviteCode — member-join notification (#53)', () => {
   function mockSendEach(): jest.Mock {
     const sendEach = jest.fn().mockResolvedValue({
