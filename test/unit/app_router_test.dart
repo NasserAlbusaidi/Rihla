@@ -59,7 +59,9 @@ void main() {
     addTearDown(harness.router.dispose);
     addTearDown(harness.container.dispose);
 
-    final match = harness.router.configuration.findMatch('/onboarding');
+    final match = harness.router.configuration.findMatch(
+      Uri.parse('/onboarding'),
+    );
 
     expect(match.isError, isTrue);
   });
@@ -71,7 +73,9 @@ void main() {
     addTearDown(harness.router.dispose);
     addTearDown(harness.container.dispose);
 
-    final match = harness.router.configuration.findMatch('/join/ABC123');
+    final match = harness.router.configuration.findMatch(
+      Uri.parse('/join/ABC123'),
+    );
 
     expect(match.isError, isFalse);
     expect(match.uri.path, '/join/ABC123');
@@ -114,7 +118,7 @@ void main() {
 
       for (final path in paths) {
         expect(
-          harness.router.configuration.findMatch(path).isError,
+          harness.router.configuration.findMatch(Uri.parse(path)).isError,
           isFalse,
           reason: path,
         );
@@ -137,7 +141,7 @@ void main() {
 
     for (final path in removedPaths) {
       expect(
-        harness.router.configuration.findMatch(path).isError,
+        harness.router.configuration.findMatch(Uri.parse(path)).isError,
         isTrue,
         reason: path,
       );

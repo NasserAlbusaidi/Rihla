@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -217,7 +219,11 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        router.push('/group/$groupId');
+        // #1192 trap: GoRouter.push()'s returned Future resolves only when
+        // the pushed route is later POPPED, not when the push transition
+        // completes — awaiting it here would block forever (established
+        // idiom: group_detail_navigation_test.dart:276,296).
+        unawaited(router.push('/group/$groupId'));
         await tester.pumpAndSettle();
 
         await tester.binding.handlePopRoute();
