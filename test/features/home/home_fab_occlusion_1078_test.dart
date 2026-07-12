@@ -19,17 +19,31 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// #1078 — the shell's add-expense FAB occluded the last group row's trailing
 /// balance/status at the REST scroll position (evidence: FAB [330,696][386,752]
-/// vs row [20,706][382,768] at ordinary scale; reproduced here at 1.5x). A
-/// trailing spacer can't protect a row pinned by the content above it, so the
-/// dashboard reserves a fixed action lane below its scroll viewport instead:
-/// the FAB floats entirely outside the list, and no row content can ever sit
-/// under it, at any scroll offset, scale, or text direction.
+/// vs row [20,706][382,768] at ordinary scale). The original fix reserved a
+/// fixed action lane BELOW the scroll viewport (an outer `Padding` shrinking
+/// the `Viewport` itself) so the FAB floated entirely outside the list.
 ///
-/// Accepted trade-off of the lane: at large text scales short content can
-/// rest below the fold (normal scrollable behavior, proven reachable below)
-/// instead of resting occluded under the FAB — the delivered invariant is
-/// "an interactive row can never REST under the FAB", not "every row is
-/// visible at rest".
+/// #1166 replaced that outer Padding with a trailing in-scroll spacer: the
+/// outer-Padding shape made the reserved lane a permanent CLIP line 88px
+/// above the true screen edge — invisible at rest (`bottomNavBackground ==
+/// scaffoldBackground`) but reading as an opaque bar swallowing content while
+/// scrolling. See `home_fab_lane_clipping_1166_test.dart` for that
+/// regression's own coverage.
+///
+/// This file now pins what #1166 DELIBERATELY preserves vs DELIBERATELY
+/// trades away from the original #1078 guarantee:
+///  - PRESERVED: once scrolled fully into view, the last group row's trailing
+///    balance still clears the FAB (a trailing spacer sliver — sized to
+///    [kHomeFabLaneClearance] — guarantees this: at max scroll extent the row
+///    sits exactly that far above the true bottom edge).
+///  - TRADED AWAY: the old "FAB can never geometrically overlap the scroll
+///    viewport" invariant, and the at-rest occlusion guard for a list
+///    SHORTER than the viewport — a trailing spacer cannot move a row pinned
+///    by the content above it (the reason #1078 didn't use one), so a short
+///    list may still rest with its last row under the FAB. This is ordinary
+///    floating-FAB-over-content behaviour, not the #1166 occluding-shelf bug
+///    (which corrupted SCROLLING, not just resting, content) — and #1166's
+///    proposed fix explicitly accepted this trade-off.
 void main() {
   late SharedPreferences prefs;
 
@@ -38,14 +52,21 @@ void main() {
     prefs = await SharedPreferences.getInstance();
   });
 
-  Group makeGroup() => Group(
-    id: 'g1',
-    name: 'QA Smoke Group',
-    inviteCode: 'ABC123',
-    createdBy: 'user1',
-    memberIds: const ['uid0', 'uid1'],
-    currency: 'OMR',
-    createdAt: DateTime(2026, 1, 1),
+  // #1166: multiple groups (not #1078's original single group) so the list
+  // is genuinely taller than the viewport at every scale/locale combo below —
+  // otherwise "scroll to the end" would be a no-op and the preserved
+  // clear-the-FAB guarantee would go untested.
+  List<Group> makeGroups() => List.generate(
+    5,
+    (i) => Group(
+      id: 'g$i',
+      name: 'QA Smoke Group $i',
+      inviteCode: 'ABC12$i',
+      createdBy: 'user1',
+      memberIds: const ['uid0', 'uid1'],
+      currency: 'OMR',
+      createdAt: DateTime(2026, 1, 1),
+    ),
   );
 
   Future<void> pumpDashboard(
@@ -70,13 +91,13 @@ void main() {
           linkedEmailProvider.overrideWithValue('secured@example.com'),
           isDurableUserProvider.overrideWithValue(true),
           userGroupsProvider.overrideWith(
-            (ref) => Stream.value([makeGroup()]),
+            (ref) => Stream.value(makeGroups()),
           ),
           crossGroupHomeBalanceProvider.overrideWith(
             (ref) => const AsyncValue.data((
               balance: (
                 byCurrency: <CurrencyBalance>[],
-                groupCount: 1,
+                groupCount: 5,
                 isLoading: false,
               ),
               partial: false,
@@ -124,7 +145,10 @@ void main() {
     return (clipped.width <= 0 || clipped.height <= 0) ? null : clipped;
   }
 
-  Future<void> expectNoRestOcclusion(
+  /// The #1078 guarantee #1166 preserves: once the dashboard is scrolled all
+  /// the way to its end, the last group row's trailing balance must be fully
+  /// visible and clear of the FAB — at every scale and text direction.
+  Future<void> expectScrollClearance(
     WidgetTester tester, {
     required double scale,
     required Locale locale,
@@ -134,12 +158,10 @@ void main() {
     final fabRect = tester.getRect(find.byKey(HomeKeys.addExpenseFab));
     final viewportRect = tester.getRect(find.byType(CustomScrollView));
 
-    // Offstage-inclusive: with the fix the row can sit below the shrunken
-    // viewport at rest (clipped, not occluded) — visiblePart handles it.
     Rect trailingRect() {
       final row = find
           .ancestor(
-            of: find.text('QA Smoke Group', skipOffstage: false),
+            of: find.text('QA Smoke Group 4', skipOffstage: false),
             matching: find.byType(InkWell, skipOffstage: false),
           )
           .first;
@@ -153,49 +175,12 @@ void main() {
       );
     }
 
-    // The issue's literal shape: at rest, the visible part of the last group
-    // row's trailing balance/status must not intersect the FAB footprint.
-    // No silent skip: when the trailing is NOT visible at rest, that is only
-    // legal because the lane clipped it below the viewport (the accepted
-    // trade-off: below-the-fold-and-scrollable beats a mis-tap trap) — any
-    // other reason for invisibility is a failure, so the 1.5x cases assert
-    // something real on both branches.
-    final restTrailing = trailingRect();
-    final visibleTrailing = visiblePart(restTrailing, viewportRect);
-    if (visibleTrailing != null) {
-      expect(
-        visibleTrailing.overlaps(fabRect),
-        isFalse,
-        reason:
-            'last group row trailing $visibleTrailing must not sit under the '
-            'FAB $fabRect at rest (scale=$scale, locale=$locale)',
-      );
-    } else {
-      expect(
-        restTrailing.top >= viewportRect.bottom,
-        isTrue,
-        reason:
-            'last group row trailing $restTrailing is hidden at rest but not '
-            'clipped below the lane viewport $viewportRect — it must only '
-            'ever be hidden by the bottom clip (scale=$scale, '
-            'locale=$locale)',
-      );
+    // Small drag steps: a paginated/estimated-height list's maxScrollExtent
+    // can shrink as off-screen rows are disposed/re-estimated.
+    for (var i = 0; i < 20; i++) {
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      await tester.pump();
     }
-
-    // Lane contract: the FAB floats entirely below the list viewport, so it
-    // cannot occlude ANY scroll content at ANY offset.
-    expect(
-      fabRect.overlaps(viewportRect),
-      isFalse,
-      reason:
-          'FAB $fabRect must sit outside the dashboard scroll viewport '
-          '$viewportRect (scale=$scale, locale=$locale)',
-    );
-
-    // Scroll escape: at full scroll the trailing must be fully visible and
-    // still clear of the FAB.
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
-    await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
     final settledTrailing = visiblePart(trailingRect(), viewportRect);
@@ -215,43 +200,47 @@ void main() {
     );
   }
 
-  testWidgets('1.0x LTR: FAB never occludes the last group row at rest', (
-    tester,
-  ) async {
-    await expectNoRestOcclusion(
-      tester,
-      scale: 1.0,
-      locale: const Locale('en'),
-    );
-  });
+  testWidgets(
+    '1.0x LTR: last group row clears the FAB once scrolled fully into view',
+    (tester) async {
+      await expectScrollClearance(
+        tester,
+        scale: 1.0,
+        locale: const Locale('en'),
+      );
+    },
+  );
 
-  testWidgets('1.5x LTR: FAB never occludes the last group row at rest', (
-    tester,
-  ) async {
-    await expectNoRestOcclusion(
-      tester,
-      scale: 1.5,
-      locale: const Locale('en'),
-    );
-  });
+  testWidgets(
+    '1.5x LTR: last group row clears the FAB once scrolled fully into view',
+    (tester) async {
+      await expectScrollClearance(
+        tester,
+        scale: 1.5,
+        locale: const Locale('en'),
+      );
+    },
+  );
 
-  testWidgets('1.0x RTL: FAB never occludes the last group row at rest', (
-    tester,
-  ) async {
-    await expectNoRestOcclusion(
-      tester,
-      scale: 1.0,
-      locale: const Locale('ar'),
-    );
-  });
+  testWidgets(
+    '1.0x RTL: last group row clears the FAB once scrolled fully into view',
+    (tester) async {
+      await expectScrollClearance(
+        tester,
+        scale: 1.0,
+        locale: const Locale('ar'),
+      );
+    },
+  );
 
-  testWidgets('1.5x RTL: FAB never occludes the last group row at rest', (
-    tester,
-  ) async {
-    await expectNoRestOcclusion(
-      tester,
-      scale: 1.5,
-      locale: const Locale('ar'),
-    );
-  });
+  testWidgets(
+    '1.5x RTL: last group row clears the FAB once scrolled fully into view',
+    (tester) async {
+      await expectScrollClearance(
+        tester,
+        scale: 1.5,
+        locale: const Locale('ar'),
+      );
+    },
+  );
 }
