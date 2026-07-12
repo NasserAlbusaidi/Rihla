@@ -18,6 +18,7 @@ class ActiveJourneyEntry {
     required this.title,
     required this.type,
     required this.memberNames,
+    this.memberIds = const [],
     required this.startDate,
     required this.endDate,
     required this.createdAt,
@@ -60,6 +61,11 @@ class ActiveJourneyEntry {
 
   /// Names of the event participants, in stable order.
   final List<String> memberNames;
+
+  /// Member userIds paired 1:1 with [memberNames] (#1168) — lets the avatar
+  /// stack key its palette slot on stable identity rather than the localized/
+  /// mutable name. Same length/order as [memberNames].
+  final List<String> memberIds;
 
   /// Event start date — may be null for events without one.
   final DateTime? startDate;
@@ -405,15 +411,21 @@ final activeJourneysProvider =
           : nonZeroNetsGccFirst(
               userEventBalances[event.id] ?? const <String, Decimal>{},
             );
+      // #1168: pair each name with its participantId (== member userId) in
+      // one pass so memberNames/memberIds stay index-aligned after the
+      // empty-name filter.
+      final namedParticipants = [
+        for (final id in event.participantIds)
+          if ((event.participantNames[id] ?? '').isNotEmpty)
+            (id: id, name: event.participantNames[id]!),
+      ];
       entries.add(ActiveJourneyEntry(
         eventId: event.id,
         groupId: group.id,
         title: event.name,
         type: event.type,
-        memberNames: event.participantIds
-            .map((id) => event.participantNames[id] ?? '')
-            .where((name) => name.isNotEmpty)
-            .toList(growable: false),
+        memberNames: [for (final p in namedParticipants) p.name],
+        memberIds: [for (final p in namedParticipants) p.id],
         startDate: event.startDate,
         endDate: event.endDate,
         createdAt: event.createdAt,

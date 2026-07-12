@@ -127,9 +127,8 @@ class EventSettingsScreen extends ConsumerWidget {
       child: RIconButton(
         key: EventKeys.settingsBackButton,
         variant: RIconButtonVariant.ghost,
-        icon: Directionality.of(context) == TextDirection.rtl
-            ? Iconsax.arrow_right
-            : Iconsax.arrow_left,
+        icon: Iconsax.arrow_left,
+        matchTextDirection: true,
         onTap: () => GoRouter.of(context).pop(),
       ),
     );

@@ -86,6 +86,7 @@ class PayerPickerSheet extends StatelessWidget {
                             displayNames[id] ??
                             event.participantNames[id] ??
                             context.l10n.editorUnknownParticipant,
+                        colorKey: id,
                         selected: id == selectedPayerId,
                         onTap: () => Navigator.of(context).pop(id),
                       ),
@@ -102,11 +103,17 @@ class PayerPickerSheet extends StatelessWidget {
 class _PayerOption extends StatelessWidget {
   const _PayerOption({
     required this.name,
+    this.colorKey,
     required this.selected,
     required this.onTap,
   });
 
   final String name;
+
+  /// Participant id (== member userId, #1168) — keys the avatar's palette
+  /// slot on stable identity instead of the display name.
+  final String? colorKey;
+
   final bool selected;
   final VoidCallback onTap;
 
@@ -118,7 +125,7 @@ class _PayerOption extends StatelessWidget {
       contentPadding: EdgeInsetsDirectional.symmetric(
         horizontal: context.spacing.space12,
       ),
-      leading: RAvatar(name: name, size: 36),
+      leading: RAvatar(name: name, size: 36, colorKey: colorKey),
       title: Text(
         name,
         style: AppTypography.sans(

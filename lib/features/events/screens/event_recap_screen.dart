@@ -140,9 +140,8 @@ class EventRecapScreen extends ConsumerWidget {
     return RIconButton(
       key: EventKeys.recapBackButton,
       variant: RIconButtonVariant.ghost,
-      icon: Directionality.of(context) == TextDirection.rtl
-          ? Iconsax.arrow_right
-          : Iconsax.arrow_left,
+      icon: Iconsax.arrow_left,
+      matchTextDirection: true,
       semanticLabel: context.l10n.commonBack,
       // Nested route → canPop() is always true; bare pop reaches the hub
       // (#243 nested back-guard convention).
@@ -522,7 +521,7 @@ class EventRecapScreen extends ConsumerWidget {
             label: context.l10n.recapTopPayer,
             body: Row(
               children: [
-                RAvatar(name: name, size: 22),
+                RAvatar(name: name, size: 22, colorKey: top.participantId),
                 SizedBox(width: context.spacing.space8),
                 Flexible(
                   child: Text(
@@ -673,7 +672,11 @@ class EventRecapScreen extends ConsumerWidget {
             if (i > 0) SizedBox(height: context.spacing.space12),
             Row(
               children: [
-                RAvatar(name: roster[payers[i].participantId] ?? '?', size: 22),
+                RAvatar(
+                  name: roster[payers[i].participantId] ?? '?',
+                  size: 22,
+                  colorKey: payers[i].participantId,
+                ),
                 SizedBox(width: context.spacing.space8),
                 Expanded(
                   child: _personName(
@@ -738,7 +741,7 @@ class EventRecapScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          RAvatar(name: name, size: 28),
+          RAvatar(name: name, size: 28, colorKey: n.participantId),
           SizedBox(width: context.spacing.space12),
           Expanded(child: _personName(context, n.participantId, roster, uid)),
           if (isZero)

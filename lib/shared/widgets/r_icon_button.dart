@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens/domain_aliases.dart';
+import 'directional_icon.dart';
 
 /// Visual treatment for [RIconButton].
 enum RIconButtonVariant {
@@ -32,11 +33,18 @@ class RIconButton extends StatelessWidget {
     this.tooltip,
     this.semanticLabel,
     this.iconSize,
+    this.matchTextDirection = false,
   });
 
   final IconData icon;
   final VoidCallback onTap;
   final RIconButtonVariant variant;
+
+  /// #1167: flips [icon] horizontally under RTL via [DirectionalIcon] —
+  /// Iconsax glyphs aren't authored with their own `matchTextDirection`, so
+  /// asymmetric glyphs (arrows, chevrons) need this instead of a hand-rolled
+  /// `rtl ? iconA : iconB` pair at the call site.
+  final bool matchTextDirection;
 
   /// Hover/long-press tooltip (was carried by the paper variant call sites).
   final String? tooltip;
@@ -52,11 +60,10 @@ class RIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isPaper = variant == RIconButtonVariant.paper;
-    final glyph = Icon(
-      icon,
-      size: iconSize ?? (isPaper ? 18 : 20),
-      color: colors.textPrimary,
-    );
+    final double glyphSize = iconSize ?? (isPaper ? 18 : 20);
+    final glyph = matchTextDirection
+        ? DirectionalIcon(icon, size: glyphSize, color: colors.textPrimary)
+        : Icon(icon, size: glyphSize, color: colors.textPrimary);
 
     // The visible chip: a paper-filled circle (elevated) for headers over
     // content, or a bare glyph on a plain background.

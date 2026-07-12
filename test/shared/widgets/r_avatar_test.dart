@@ -79,6 +79,40 @@ void main() {
       // Slot 0 background is #DCE6EC (harbor-blue) per the journal palette.
       expect(bgColor(tester), const Color(0xFFDCE6EC));
     });
+
+    // #1168: color must key off a stable identity, not the localized/mutable
+    // display name — same person shows the same color in every locale.
+    testWidgets(
+      'same colorKey + different display-name strings renders identical '
+      'color (EN vs AR name for the same person)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(const RAvatar(name: 'Khalid', colorKey: 'member-uid-42')),
+        );
+        final enColor = bgColor(tester);
+
+        await tester.pumpWidget(
+          _wrap(const RAvatar(name: 'خالد', colorKey: 'member-uid-42')),
+        );
+        expect(bgColor(tester), enColor);
+      },
+    );
+
+    testWidgets(
+      'renaming a person (same colorKey, new name) keeps their color '
+      'unchanged',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(const RAvatar(name: 'Layla', colorKey: 'member-uid-7')),
+        );
+        final before = bgColor(tester);
+
+        await tester.pumpWidget(
+          _wrap(const RAvatar(name: 'Layla Hassan', colorKey: 'member-uid-7')),
+        );
+        expect(bgColor(tester), before);
+      },
+    );
   });
 
   group('RAvatarStack', () {

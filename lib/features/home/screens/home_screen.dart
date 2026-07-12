@@ -545,6 +545,9 @@ class _TopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final deviceName = ref.watch(settingsProvider.select((s) => s.deviceName));
+    // #1168: key the avatar's palette slot on the stable uid so this same
+    // person's color matches everywhere else they're rendered.
+    final currentUserId = ref.watch(currentUserIdProvider);
     // #818 Wave 4.1: the "?" avatar is otherwise a dead end — nothing cues
     // that tapping it lets you set a name. Self-hides the instant a name is
     // saved; no dismissal flag, no SharedPreferences key.
@@ -605,7 +608,11 @@ class _TopBar extends ConsumerWidget {
                           height: avatarHitSize,
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
-                            child: RAvatar(name: deviceName, size: avatarSize),
+                            child: RAvatar(
+                              name: deviceName,
+                              size: avatarSize,
+                              colorKey: currentUserId,
+                            ),
                           ),
                         ),
                       ),

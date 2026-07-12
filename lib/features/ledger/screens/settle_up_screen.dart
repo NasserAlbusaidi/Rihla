@@ -657,6 +657,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       currency: currency,
       fromName: fromDisplayName,
       toName: toDisplayName,
+      fromUserId: fromUserId,
       suggestedAmount: suggestedAmount,
       perspective: perspective,
       stepLabel: stepLabel,
