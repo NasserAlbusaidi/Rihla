@@ -323,8 +323,9 @@ footer.site-foot .wrap{padding-block:56px;}
   /* minmax(0,…): the fixed 360px .phone must not set the track's min width
      (transforms scale visuals, not layout) — else ≤396px viewports h-scroll. */
   section.hero{grid-template-columns:minmax(0,1fr);gap:40px;padding-block:40px 56px;}
-  .hero-text{order:2;}
-  .phone-stage{order:1;min-height:540px;}
+  /* Value prop first on small screens — the mock is support, not the pitch.
+     (DOM order: text, then stage; no order override.) */
+  .phone-stage{min-height:480px;}
   .phone-tilt{transform:rotate(0deg) scale(.8);}
   .why{grid-template-columns:1fr;gap:40px;}
   .quote{position:static;}
