@@ -65,8 +65,8 @@ body{
   font-family:var(--font-sans);
   color:var(--ink);
   background-color:var(--paper);
-  background-image:radial-gradient(rgba(27,31,30,.05) 1px, transparent 1.4px);
-  background-size:22px 22px;
+  /* No grain/texture on light surfaces (DESIGN.md § texture) — the dot field
+     lives only on dark/brass surfaces (.quote::before, .cta::before). */
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
