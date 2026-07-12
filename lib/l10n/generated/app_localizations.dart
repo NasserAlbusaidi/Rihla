@@ -3069,6 +3069,12 @@ abstract class AppLocalizations {
   /// **'recorded a settlement from {fromName} to {toName}'**
   String activitySettlementBetween(Object fromName, Object toName);
 
+  /// No description provided for @activityGroupCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'created the group'**
+  String get activityGroupCreated;
+
   /// No description provided for @activityGroupEventCreatedGeneric.
   ///
   /// In en, this message translates to:
