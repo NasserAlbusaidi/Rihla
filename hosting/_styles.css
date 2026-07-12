@@ -338,7 +338,10 @@ footer.site-foot .wrap{padding-block:56px;}
     background-image:linear-gradient(transparent 62%, var(--saffron-soft) 62%, var(--saffron-soft) 94%, transparent 94%);
     -webkit-box-decoration-break:clone;box-decoration-break:clone;border-radius:3px;}
   .hl::after{display:none;}
-  .nav .desktop-only{display:none;}
+  /* Bilingual-first: the language switch stays in the header on phones —
+     compact pill, never display:none (Arabic users arrive on mobile). */
+  .nav .pill{padding-inline:11px;font-size:12.5px;}
+  .nav .btn{padding:11px 16px;font-size:14px;}
   .invite{padding:22px;}
   .invite-row{flex-direction:column;gap:12px;}
   .invite-row .btn{width:100%;padding-block:15px;}
