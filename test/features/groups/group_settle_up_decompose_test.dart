@@ -346,8 +346,13 @@ void main() {
         expect(find.textContaining('Camping Weekend'), findsOneWidget);
         expect(find.textContaining('Road Trip'), findsNothing);
         expect(find.text('Across events'), findsNothing);
-        // The raw E1 overlap (10) must NOT be displayed anywhere.
-        expect(find.textContaining('10.000'), findsNothing);
+        // The raw E1 overlap (10) must NOT be displayed anywhere. The
+        // breakdown rows render via RAmount (Text.rich) since #1202, so the
+        // absence probe needs findRichText or it goes vacuous.
+        expect(
+          find.textContaining('10.000', findRichText: true),
+          findsNothing,
+        );
       },
     );
 
