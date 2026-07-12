@@ -87,7 +87,7 @@ log(`Triaging ${issues.length} issue(s): ${issues.map((i) => '#' + i.number).joi
 phase('Investigate')
 const investigations = await parallel(
   issues.map((iss) => () =>
-    agent(investigatePrompt(iss), { label: `triage:#${iss.number}`, phase: 'Investigate', schema: INVESTIGATE_SCHEMA, agentType: 'Explore' })
+    agent(investigatePrompt(iss), { label: `triage:#${iss.number}`, phase: 'Investigate', schema: INVESTIGATE_SCHEMA, agentType: 'Explore', model: 'sonnet' })
   )
 )
 const assessed = investigations.filter(Boolean)
@@ -110,7 +110,7 @@ CLAIMED rationale: ${a.rationale}
 Try to break it. For close-already-done: \`gh issue view ${a.number}\`, enumerate its acceptance criteria, check EACH against code — find one unmet box and it is refuted. For close-obsolete: find one place the premise still holds in live code. For close-wontfix: show the premise is actually code-true (the issue is real) or unverifiable (should be needs-spec, not closed). Verify any SHA. Report refuted=false ONLY if you actively confirmed the close holds with your own commands.`
 
 const refutations = await parallel(
-  closeTargets.map((a) => () => agent(refutePrompt(a), { label: `refute:#${a.number}`, phase: 'Refute', schema: REFUTE_SCHEMA }))
+  closeTargets.map((a) => () => agent(refutePrompt(a), { label: `refute:#${a.number}`, phase: 'Refute', schema: REFUTE_SCHEMA, model: 'opus' }))
 )
 
 const closeCleared = []

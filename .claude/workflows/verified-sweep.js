@@ -69,7 +69,7 @@ evidence MUST be concrete (paths:lines, SHAs, grep hits). Return strict schema.`
 phase('Investigate')
 const clusterResults = await parallel(
   args.clusters.map((c) => () =>
-    agent(`${VERIFY_MANDATE}\n\n${c.prompt}`, { label: c.label || 'cluster', phase: 'Investigate', schema: ASSESS_SCHEMA, agentType: 'Explore' })
+    agent(`${VERIFY_MANDATE}\n\n${c.prompt}`, { label: c.label || 'cluster', phase: 'Investigate', schema: ASSESS_SCHEMA, agentType: 'Explore', model: 'sonnet' })
   )
 )
 const candidates = clusterResults
@@ -93,7 +93,7 @@ CLAIMED evidence: ${c.evidence}
 Try to break it. For "already-done": open the linked issue, enumerate its acceptance criteria, and check EACH against code — find one unmet box and it is refuted. For "drop"/"safe-to-delete": find one commit unique to the branch that is NOT on main. Verify any SHA. Report refuted=false ONLY if you actively confirmed the verdict holds with your own commands.`
 
 const refutations = await parallel(
-  refuteTargets.map((c) => () => agent(refutePrompt(c), { label: `refute:${c.id}`, phase: 'Refute', schema: REFUTE_SCHEMA }))
+  refuteTargets.map((c) => () => agent(refutePrompt(c), { label: `refute:${c.id}`, phase: 'Refute', schema: REFUTE_SCHEMA, model: 'opus' }))
 )
 
 const cleared = []
