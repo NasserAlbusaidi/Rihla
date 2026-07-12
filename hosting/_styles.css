@@ -149,7 +149,9 @@ section.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-item
 .invite input{flex:1;min-width:0;font-family:var(--font-mono);font-weight:500;font-size:16px;letter-spacing:.22em;
   text-transform:uppercase;padding:12px 16px;border-radius:var(--r-pill);
   border:1px solid var(--rule-2);background:var(--card-soft);color:var(--ink);text-align:start;}
-.invite input::placeholder{letter-spacing:.22em;color:var(--ink-4);}
+/* ink-3, not ink-4: placeholder must clear 4.5:1 on card-soft (ink-4 ≈ 2.9:1;
+   DESIGN.md marks ink-4 decorative-only). */
+.invite input::placeholder{letter-spacing:.22em;color:var(--ink-3);}
 .invite input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px var(--saffron-soft);}
 .invite .btn{padding-inline:20px;white-space:nowrap;}
 .invite-error{margin:11px 2px 0;font-size:13px;color:var(--rust-text);font-weight:700;min-height:1.1em;display:none;}
