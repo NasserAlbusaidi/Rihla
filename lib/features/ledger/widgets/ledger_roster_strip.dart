@@ -45,6 +45,7 @@ class LedgerRosterStrip extends StatelessWidget {
     required this.others,
     required this.currency,
     required this.currentUserDisplayName,
+    this.currentUserId,
     this.onPersonTap,
   });
 
@@ -52,6 +53,11 @@ class LedgerRosterStrip extends StatelessWidget {
   final List<LedgerRosterPerson> others;
   final String currency;
   final String currentUserDisplayName;
+
+  /// Current user's participant id (== userId, #1168) — keys the "You"
+  /// anchor's palette slot on stable identity instead of the display name.
+  final String? currentUserId;
+
   final ValueChanged<LedgerRosterPerson>? onPersonTap;
 
   @override
@@ -62,7 +68,10 @@ class LedgerRosterStrip extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
         children: [
-          _YouAnchor(displayName: currentUserDisplayName),
+          _YouAnchor(
+            displayName: currentUserDisplayName,
+            colorKey: currentUserId,
+          ),
           for (final p in others) ...[
             const SizedBox(width: 18),
             _RosterTile(
@@ -79,8 +88,9 @@ class LedgerRosterStrip extends StatelessWidget {
 }
 
 class _YouAnchor extends StatelessWidget {
-  const _YouAnchor({required this.displayName});
+  const _YouAnchor({required this.displayName, this.colorKey});
   final String displayName;
+  final String? colorKey;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +104,7 @@ class _YouAnchor extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              RAvatar(name: displayName, size: 44),
+              RAvatar(name: displayName, size: 44, colorKey: colorKey),
               Positioned(
                 right: -2,
                 bottom: -2,
@@ -177,7 +187,11 @@ class _RosterTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              RAvatar(name: person.displayName, size: 44),
+              RAvatar(
+                name: person.displayName,
+                size: 44,
+                colorKey: person.participantId,
+              ),
               const SizedBox(height: 6),
               Text(
                 _shortName(person.displayName),

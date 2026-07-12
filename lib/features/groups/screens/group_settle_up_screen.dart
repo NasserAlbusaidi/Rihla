@@ -581,6 +581,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       currency: currency,
       fromName: fromDisplayName,
       toName: toDisplayName,
+      fromUserId: fromUserId,
       suggestedAmount: suggestedAmount,
       perspective: perspective,
       stepLabel: stepLabel,

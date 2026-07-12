@@ -119,7 +119,7 @@ class GroupMembersSection extends ConsumerWidget {
       padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
       child: Row(
         children: [
-          RAvatar(size: 30, name: member.displayName),
+          RAvatar(size: 30, name: member.displayName, colorKey: member.userId),
           SizedBox(width: context.spacing.space12),
           Expanded(
             child: Text(

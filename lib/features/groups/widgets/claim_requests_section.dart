@@ -161,7 +161,11 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
           // Identity-merge visual: the joiner takes over the placeholder's spot.
           Row(
             children: [
-              RAvatar(size: 34, name: req.requesterDisplayName),
+              RAvatar(
+                size: 34,
+                name: req.requesterDisplayName,
+                colorKey: req.requesterUid,
+              ),
               SizedBox(width: spacing.space8),
               DirectionalIcon(
                 Iconsax.arrow_right_3,
@@ -169,6 +173,10 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
                 color: colors.textSecondary,
               ),
               SizedBox(width: spacing.space8),
+              // #1168: the shadow side has no stable userId yet — only
+              // shadowMemberId, a Firestore member-doc id (mixed-keying,
+              // never a colorKey candidate) — until this claim is approved.
+              // Name fallback here is correct, not an oversight.
               RAvatar(size: 34, name: req.shadowDisplayName),
               const Spacer(),
               _PendingBadge(label: context.l10n.groupClaimPendingBadge),
