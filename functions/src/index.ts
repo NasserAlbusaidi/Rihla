@@ -26,6 +26,7 @@ export {
   groupSettlementNotifier,
 } from './triggers/settlementNotifier';
 export { expenseAuditLogger } from './triggers/expenseAuditLogger';
+export { groupCreatedLogger } from './triggers/groupCreatedLogger';
 export { expenseNotifier } from './triggers/expenseNotifier';
 export { eventNotifier } from './triggers/eventNotifier';
 export { claimRequestNotifier } from './triggers/claimRequestNotifier';

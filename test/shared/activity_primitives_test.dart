@@ -115,6 +115,7 @@ void main() {
         ActivityGlyph.eventDeleted: Iconsax.calendar_remove,
         ActivityGlyph.memberJoined: Iconsax.user_add,
         ActivityGlyph.memberLeft: Iconsax.user_minus,
+        ActivityGlyph.groupCreated: Iconsax.flag,
         ActivityGlyph.generic: Iconsax.activity,
       };
       for (final entry in expected.entries) {
