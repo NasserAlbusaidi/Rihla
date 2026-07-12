@@ -1103,6 +1103,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // #104/#412: capture before the await so the effect survives a disposal
     // during the (now bounded) wait.
     final ledgerRevisionNotifier = ref.read(ledgerRevisionProvider.notifier);
+    final connectivityNotifier = ref.read(connectivityProvider.notifier);
     try {
       // #889: the callable validates the FULL logical set server-side (a
       // large settle-up can exceed what rules-side get() validation on a
@@ -1119,6 +1120,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       if (result.shouldBumpLedgerRevision) {
         ledgerRevisionNotifier.state++; // home one-shot reads event slices
       }
+      // #1213: the correction rewrote event-scope slices (and the residual),
+      // so the home aggregate doc lags until the async balanceAggregator
+      // trigger catches up. Mark it dirty UNCONDITIONALLY on success so the
+      // online home facade stays on the once-path.
+      connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
       // No activity log — a reversal must not surface as a fresh feed payment.
       if (context.mounted) {
         messenger.showSnackBar(
@@ -1159,9 +1165,14 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   /// server-authoritative `correctSettlement` callable (`scope: 'group'`).
   /// Replaces the old client-direct reverse write. Group-only corrections do
   /// NOT bump `ledgerRevisionProvider` — group settlements are live-watched
-  /// (`groupSettlementsProvider`), unlike the event/logical paths. Corrections
-  /// are ONLINE-ONLY: offline/failure surfaces the existing settlement
-  /// write-error copy and writes nothing — never the queued/"will sync" copy.
+  /// (`groupSettlementsProvider`), unlike the event/logical paths. BUT the home
+  /// aggregate doc must still be marked dirty (#1213): the once-path's live
+  /// watch is irrelevant to the online facade branch, which serves the
+  /// `groups/{gid}/aggregates/balance` doc directly (`group_balance_provider`
+  /// facade) and would show the pre-correction balance until the async
+  /// balanceAggregator trigger rewrites it. Corrections are ONLINE-ONLY:
+  /// offline/failure surfaces the existing settlement write-error copy and
+  /// writes nothing — never the queued/"will sync" copy.
   Future<void> _correctSettlement(
     BuildContext context, {
     required Settlement original,
@@ -1170,6 +1181,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final successColor = context.colors.success;
     final errorColor = context.colors.error;
+    // #104/#412/#1213: capture before the await so the effect survives a
+    // disposal during the wait (no ledgerRevision bump here — see doc above).
+    final connectivityNotifier = ref.read(connectivityProvider.notifier);
     try {
       await ref
           .read(firebaseFunctionsServiceProvider)
@@ -1179,6 +1193,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
             settlementId: original.id,
             correctionNote: l10n.settleUpCorrectionNote,
           );
+      // #1213: mark the home aggregate dirty on success (see doc above).
+      connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
       if (context.mounted) {
         messenger.showSnackBar(
           SnackBar(

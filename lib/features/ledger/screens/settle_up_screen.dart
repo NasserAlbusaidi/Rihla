@@ -980,6 +980,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     // #104/#412: capture before the await so the effect survives a disposal
     // during the (now bounded) wait.
     final ledgerRevisionNotifier = ref.read(ledgerRevisionProvider.notifier);
+    final connectivityNotifier = ref.read(connectivityProvider.notifier);
     try {
       final result = await ref
           .read(firebaseFunctionsServiceProvider)
@@ -993,6 +994,12 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       if (result.shouldBumpLedgerRevision) {
         ledgerRevisionNotifier.state++; // #104: refresh home balance
       }
+      // #1213: a correction rewrote event-scope docs, so the home aggregate
+      // doc lags until the async balanceAggregator trigger catches up. Mark it
+      // dirty UNCONDITIONALLY on success (independent of the bump above) so the
+      // online home facade stays on the once-path instead of serving the
+      // pre-correction aggregate. Mirrors the record path (#357).
+      connectivityNotifier.noteLocalWrite(groupId: widget.groupId);
       if (context.mounted) {
         messenger.showSnackBar(
           SnackBar(
