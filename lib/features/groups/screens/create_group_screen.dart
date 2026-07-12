@@ -437,7 +437,13 @@ class _CreateGroupTopBar extends StatelessWidget {
                 excludeSemantics: true,
                 child: SizedBox(
                   height: 44,
-                  child: Center(
+                  // #1182: the 44dp hit-target SizedBox expands to the full bar
+                  // width, so this inner alignment (not the outer Align) is what
+                  // decides horizontal placement. It must be centerEnd — a bare
+                  // Center painted the pill over the "New Group" title (#1109
+                  // regression).
+                  child: Align(
+                    alignment: AlignmentDirectional.centerEnd,
                     child: ElevatedButton(
                       key: GroupKeys.createGroupButton,
                       onPressed: isLoading ? null : onCreate,
