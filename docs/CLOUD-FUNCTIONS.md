@@ -1,9 +1,9 @@
 # Cloud Functions
 
 Reference for the Firebase Cloud Functions Rihla ships: 14 HTTPS callables
-(`firebase-functions/v2/https`), 12 Firestore document triggers
+(`firebase-functions/v2/https`), 13 Firestore document triggers
 (`firebase-functions/v2/firestore`), and 5 scheduled backstops
-(`firebase-functions/v2/scheduler`) — 31 functions total (count from
+(`firebase-functions/v2/scheduler`) — 32 functions total (count from
 `tool/list_expected_functions.sh`, the deploy-drift SSOT), all deployed to
 `us-central1`. The deploy-drift check reads the expected set from
 `tool/list_expected_functions.sh` (add new functions as `export { … } from`
@@ -61,6 +61,8 @@ export { decideClaimRequest } from './callables/decideClaimRequest';
 export { listMyClaimRequests } from './callables/listMyClaimRequests';
 export { listGroupClaimRequests } from './callables/listGroupClaimRequests';
 export { listUnclaimedShadows } from './callables/listUnclaimedShadows';
+export { correctSettlement } from './callables/correctSettlement';
+export { correctLogicalSettleUp } from './callables/correctLogicalSettleUp';
 export { recordSettlement } from './callables/recordSettlement';
 export {
   eventWriteRateMonitor,
@@ -71,6 +73,7 @@ export {
   groupSettlementNotifier,
 } from './triggers/settlementNotifier';
 export { expenseAuditLogger } from './triggers/expenseAuditLogger';
+export { groupCreatedLogger } from './triggers/groupCreatedLogger';
 export { expenseNotifier } from './triggers/expenseNotifier';
 export { eventNotifier } from './triggers/eventNotifier';
 export { claimRequestNotifier } from './triggers/claimRequestNotifier';
@@ -83,6 +86,8 @@ export {
 export { deletionReaper } from './scheduled/deletionReaper';
 export { balanceReconciler } from './scheduled/balanceReconciler';
 export { deleteGroupLockReaper } from './scheduled/deleteGroupLockReaper';
+export { claimShadowLockReaper } from './scheduled/claimShadowLockReaper';
+export { departureLockReaper } from './scheduled/departureLockReaper';
 ```
 
 The Flutter client wraps the callables in
@@ -245,6 +250,7 @@ triggers fire server-side after commit:
 | Trigger | Type / path | Purpose |
 |---------|-------------|---------|
 | `expenseAuditLogger` | `onDocumentWritten` `groups/{gid}/events/{eid}/expenses/{expenseId}` | Server-authored, tamper-proof audit of every expense create/edit/soft-delete; attributes the actor from the rules-pinned `lastEditedBy` (B1 / #248). |
+| `groupCreatedLogger` | `onDocumentCreated` `groups/{gid}` | Fans a `group_created` genesis row into `groups/{gid}/activity/{event.id}` (#1018) — Admin-SDK-only (type absent from `validGroupActivityCreate`'s client allow-list, so unforgeable), `metadata` deliberately `{}`, timestamp = `group.createdAt` ISO, doc id = `event.id` (retry-idempotent). Exactly one per group: the #874 founding batch is the only group-doc create site; soft-delete/restore are updates and never re-fire it. |
 | `expenseNotifier` | `onDocumentCreated` `groups/{gid}/events/{eid}/expenses/{expenseId}` | Push to event participants on a new expense (#179). |
 | `eventNotifier` | `onDocumentCreated` `groups/{gid}/events/{eid}` | Push to group members on a new event (#179). |
 | `claimRequestNotifier` | `onDocumentWritten` `groups/{gid}/claimRequests/{requestId}` | Push to the group creator when a claim request arrives (re-open-safe status guard) (#560); **Branch A is membership-fenced** (#1141), Branch B (the decision push to the requester) is intentionally not. |
@@ -552,7 +558,7 @@ matches the current commit, and the App Check repo variables agree.
 
 | File | Lines | Notes |
 |------|-------|-------|
-| `functions/src/index.ts` | 42 | Region + 31 re-exports (13 callables, 13 triggers, 5 scheduled) |
+| `functions/src/index.ts` | 43 | Region + 32 re-exports (14 callables, 13 triggers, 5 scheduled) |
 | `functions/src/admin.ts` | 5 | `initializeApp()` side-effect |
 | `functions/src/callables/joinGroupByInviteCode.ts` | 327 | Invite-code redemption + event fan-out |
 | `functions/src/callables/deleteAccount.ts` | 746 | Account deletion cascade + tombstones |
