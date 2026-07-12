@@ -111,6 +111,7 @@ img{max-width:100%;display:block;}
   padding:8px 14px;border-radius:var(--r-pill);
   border:1px solid var(--rule-2);background:var(--card);
   font-size:13px;font-weight:500;color:var(--ink-3);text-decoration:none;
+  min-height:44px; /* DESIGN.md touch-target floor */
 }
 .pill:hover{border-color:var(--primary);color:var(--ink);}
 
@@ -122,7 +123,7 @@ img{max-width:100%;display:block;}
   display:inline-flex;flex-direction:column;line-height:1;}
 .wordmark .fork{width:2.3em;height:.31em;margin-top:.14em;display:block;color:var(--primary);overflow:visible;}
 .wordmark.sm{font-size:20px;} .wordmark.lg{font-size:38px;}
-.brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);}
+.brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);padding-block:5px;}
 .brand .wordmark{font-size:24px;}
 
 /* ---------- header ---------- */
@@ -276,7 +277,8 @@ footer.site-foot .wrap{padding-block:56px;}
 .site-foot .wordmark .fork{color:var(--d-brass);}
 .foot-brand p{margin-top:14px;color:color-mix(in srgb, var(--paper) 60%, transparent);font-size:14px;}
 .foot-links{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;list-style:none;padding:0;margin:0;}
-.foot-links a{color:color-mix(in srgb, var(--paper) 78%, transparent);text-decoration:none;font-size:14px;font-weight:500;}
+.foot-links a{color:color-mix(in srgb, var(--paper) 78%, transparent);text-decoration:none;font-size:14px;font-weight:500;
+  display:inline-block;padding-block:11px;} /* ≥44px touch target */
 .foot-links a:hover{color:var(--d-brass);}
 .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:40px;padding-top:22px;border-top:1px solid color-mix(in srgb, var(--paper) 16%, transparent);color:color-mix(in srgb, var(--paper) 55%, transparent);font-size:13px;}
 
