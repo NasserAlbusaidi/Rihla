@@ -1036,8 +1036,13 @@ void main() {
     );
 
     testWidgets(
-      'member removal failure shows snackbar, no client activity log (#318)',
+      'unexpected removal failure shows the friendly (translated) message, '
+      'never the raw error string, no client activity log (#318/#1160)',
       (tester) async {
+        // #1160: a non-FirebaseFunctionsException (here a StateError) hits the
+        // outer generic catch. It must be routed through friendlyMessageFor —
+        // NOT interpolated raw via e.toString() — so an Arabic user never sees
+        // an untranslated English "Bad state: …". Mirrors the leave handler.
         late _RemovingGroupService groupService;
         final activityService = _RecordingGroupActivityService();
 
@@ -1058,10 +1063,17 @@ void main() {
         await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
         await tester.pumpAndSettle();
 
+        // friendlyMessageFor classifies a StateError as `unexpected` →
+        // l10n.errorUnexpected, slotted into the groupFailedRemoveMember
+        // template.
         expect(
-          find.text('Failed to remove Bob: Bad state: write failed'),
+          find.text(
+            'Failed to remove Bob: Something went wrong. Please try again.',
+          ),
           findsOneWidget,
         );
+        // The raw Dart error string must never reach the user.
+        expect(find.textContaining('Bad state'), findsNothing);
         expect(groupService.removeCalls, [
           (groupId: 'group-1', userId: 'uid-member'),
         ]);
@@ -1187,5 +1199,67 @@ void main() {
       ]);
       expect(activityService.logCalls, isEmpty);
     });
+
+    testWidgets(
+      'generic FirebaseFunctionsException (e.g. internal) reports to Sentry '
+      'and shows the friendly (translated) cause, never the raw server string '
+      '(#1160)',
+      (tester) async {
+        // #1160: an FFE whose code is NOT one of the handled trio
+        // (not-found / failed-precondition / aborted) falls through to the
+        // generic branch — it is captured to Sentry and the user sees the
+        // friendly translated cause via friendlyMessageFor, NOT the raw
+        // English-only server message. This exercises the Sentry-capture line
+        // that the StateError (outer-catch) case does not reach.
+        late _RemovingGroupService groupService;
+        final activityService = _RecordingGroupActivityService();
+
+        await tester.pumpWidget(
+          _wrapMembersSection(
+            prefs: prefs,
+            groupServiceBuilder: (ref) => groupService = _RemovingGroupService(
+              ref,
+              onRemove: ({required groupId, required userId}) {
+                throw FirebaseFunctionsException(
+                  code: 'internal',
+                  message: 'INTERNAL: unexpected server fault.',
+                );
+              },
+            ),
+            activityService: activityService,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(GroupKeys.removeMemberButton('mem-2')));
+        await tester.pumpAndSettle();
+
+        // classifyError maps an unknown FFE code to `unexpected` →
+        // l10n.errorUnexpected, slotted into the groupFailedRemoveMember
+        // template.
+        expect(
+          find.text(
+            'Failed to remove Bob: Something went wrong. Please try again.',
+          ),
+          findsOneWidget,
+        );
+        // The raw English-only server string must never reach the user, and
+        // this must NOT surface the aborted retry copy nor the settle-up copy.
+        expect(find.textContaining('INTERNAL'), findsNothing);
+        expect(
+          find.textContaining('Another membership change'),
+          findsNothing,
+        );
+        expect(
+          find.textContaining('Settle up with Bob before removing them.'),
+          findsNothing,
+        );
+        expect(find.widgetWithText(SnackBarAction, 'Settle up'), findsNothing);
+        expect(groupService.removeCalls, [
+          (groupId: 'group-1', userId: 'uid-member'),
+        ]);
+        expect(activityService.logCalls, isEmpty);
+      },
+    );
   });
 }
