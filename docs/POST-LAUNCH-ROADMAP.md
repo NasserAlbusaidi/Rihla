@@ -99,7 +99,7 @@ The trust boundary and the recovery machinery are where being silently-wrong cos
 | Issue | Milestone | Note |
 |---|---|---|
 | #219 | Post-launch hardening | Node 20→22. **PR #268 open** — merge. |
-| #71 | Backlog | Replace `eventId==groupId` sentinel on group settlements with explicit representation (schema migration). **Gate.** |
+| #71 | **Shipped** | Sentinel removed (Gate-approved spec `docs/plans/2026-07-12-71-group-settlement-scope.md`): group docs carry `groupId`+`scope` only; legacy sentinel docs read-tolerated permanently. |
 | #246 | Post-launch hardening | `modules.ledger` is a phantom toggle — no read path filters by it. Prefer **delete** `EventModules` (Phase-39 reality) unless a near-term feature needs it. |
 
 ### Not clustered (covered by existing labels / standalone)

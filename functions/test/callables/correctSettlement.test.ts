@@ -476,10 +476,12 @@ describe('correctSettlement — scope: group', () => {
 
     const reverseId = directReverseId('groups/g/settlements/gs1');
     const reverse = await getDoc(`groups/g/settlements/${reverseId}`);
+    // #71: group reverse carries NO eventId sentinel. Explicit absence check —
+    // toMatchObject is a subset matcher and would false-green on omission alone.
+    expect(reverse).not.toHaveProperty('eventId');
     expect(reverse).toMatchObject({
       id: reverseId,
       groupId: 'g',
-      eventId: 'g',
       scope: 'group',
       payerParticipantId: OWNER,
       recipientParticipantId: MEMBER,

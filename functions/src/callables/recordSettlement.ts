@@ -500,7 +500,9 @@ export const recordSettlement = onCall<
         const data: DocumentData = {
           id,
           groupId,
-          eventId: groupId, // sentinel — group settlements have no event
+          // #71: no eventId — group settlements are identified by collection
+          // path + groupId/scope; the eventId==groupId sentinel is retired
+          // (legacy docs still carry it; Settlement.fromFirestore tolerates both).
           scope: 'group',
           amountFils: fils,
           ...settlementBase,

@@ -98,4 +98,42 @@ void main() {
       expect(s.currency, 'OMR');
     });
   });
+
+  // #71: group settlements no longer carry `eventId` on the wire (the
+  // eventId==groupId sentinel is retired) — the model's groupId fallback is
+  // PERMANENT legacy tolerance and both shapes must decode identically. These
+  // pins guard the fallback against future "cleanup".
+  group('Settlement.fromFirestore group-scope eventId tolerance (#71)', () {
+    Map<String, dynamic> groupDoc({bool legacySentinel = false}) {
+      final m = <String, dynamic>{
+        'id': 'gs1',
+        'groupId': 'group-1',
+        'scope': 'group',
+        'payerParticipantId': 'p1',
+        'recipientParticipantId': 'p2',
+        'amountFils': 5000,
+        'currency': 'OMR',
+        'settledAt': DateTime(2026).toIso8601String(),
+        'createdBy': 'uid-1',
+      };
+      if (legacySentinel) m['eventId'] = 'group-1';
+      return m;
+    }
+
+    test('post-#71 shape (no eventId) decodes tripId == groupId', () {
+      final s = Settlement.fromFirestore(groupDoc());
+      expect(s.tripId, 'group-1');
+      expect(s.groupId, 'group-1');
+      expect(s.scope, 'group');
+    });
+
+    test('legacy sentinel shape (eventId == groupId) decodes identically', () {
+      final legacy = Settlement.fromFirestore(groupDoc(legacySentinel: true));
+      final modern = Settlement.fromFirestore(groupDoc());
+      expect(legacy.tripId, modern.tripId);
+      expect(legacy.groupId, modern.groupId);
+      expect(legacy.scope, modern.scope);
+      expect(legacy.amount, modern.amount);
+    });
+  });
 }
