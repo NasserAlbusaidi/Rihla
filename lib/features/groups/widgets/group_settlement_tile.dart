@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/utils/formatters.dart';
 import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/falaj_fork.dart';
+import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
@@ -62,10 +62,10 @@ class GroupSettlementTile extends StatefulWidget {
 class _GroupSettlementTileState extends State<GroupSettlementTile> {
   bool _isExpanded = false;
 
-  Color get _amountColor {
-    if (widget.isYourAction) return context.colors.errorText;
-    if (widget.isCreditor) return context.colors.successText;
-    return context.colors.textPrimary;
+  AmountTone get _amountTone {
+    if (widget.isYourAction) return AmountTone.rustText;
+    if (widget.isCreditor) return AmountTone.sageText;
+    return AmountTone.ink;
   }
 
   String get _subLabel {
@@ -166,16 +166,12 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                   spacing.radiusSmall,
                                 ),
                               ),
-                              child: Text(
-                                AppFormatters.formatCurrency(
-                                  widget.amount,
-                                  widget.currency,
-                                ),
-                                style: AppTypography.sans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: _amountColor,
-                                ),
+                              child: RAmount(
+                                value: widget.amount,
+                                currency: widget.currency,
+                                size: 16,
+                                weight: FontWeight.w700,
+                                tone: _amountTone,
                               ),
                             ),
                           ],
@@ -320,16 +316,11 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      Text(
-                                        AppFormatters.formatCurrency(
-                                          e.value,
-                                          widget.currency,
-                                        ),
-                                        style: AppTypography.sans(
-                                          fontSize: 12,
-                                          color: context.colors.textSecondary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                      RAmount(
+                                        value: e.value,
+                                        currency: widget.currency,
+                                        size: 12,
+                                        tone: AmountTone.muted,
                                       ),
                                     ],
                                   ),

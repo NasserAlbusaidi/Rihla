@@ -11,6 +11,7 @@ import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/share_helper.dart';
 import '../../../shared/widgets/directional_icon.dart';
+import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
@@ -576,8 +577,6 @@ class _SteppedSettleCard extends StatelessWidget {
     final amounts = steps
         .map((s) => AppFormatters.formatCurrency(s.suggestedAmount, s.currency))
         .join(' · ');
-    final caption =
-        '${context.l10n.settleUpSettleAllWithCount(steps.length)} · $amounts';
 
     return Padding(
       padding: const EdgeInsets.only(top: 18),
@@ -614,12 +613,26 @@ class _SteppedSettleCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        caption,
-                        style: AppTypography.sans(
-                          color: context.colors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text:
+                                  '${context.l10n.settleUpSettleAllWithCount(steps.length)} · ',
+                              style: AppTypography.sans(
+                                color: context.colors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            TextSpan(
+                              text: amounts,
+                              style: AppTypography.mono(
+                                fontSize: 12,
+                                color: context.colors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -691,11 +704,6 @@ class _NetBalanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = balance.displayName ?? context.l10n.settleUpUnknown;
-    final amountColor = balance.netBalance > Decimal.zero
-        ? context.colors.successText
-        : balance.netBalance < Decimal.zero
-        ? context.colors.errorText
-        : context.colors.textSecondary;
 
     return Container(
       decoration: BoxDecoration(
@@ -724,13 +732,17 @@ class _NetBalanceRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(
-            AppFormatters.formatCurrency(balance.netBalance, currency),
-            style: AppTypography.sans(
-              color: amountColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
+          RAmount(
+            value: balance.netBalance,
+            currency: currency,
+            size: 14,
+            sign: true,
+            weight: FontWeight.w700, // Spline ships 400/500/700 — w800 would synthesize
+            tone: balance.netBalance > Decimal.zero
+                ? AmountTone.sageText
+                : balance.netBalance < Decimal.zero
+                ? AmountTone.rustText
+                : AmountTone.muted,
           ),
         ],
       ),
@@ -1213,16 +1225,12 @@ class _HistoryTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                AppFormatters.formatCurrency(
-                  overrideAmount ?? settlement.amount,
-                  settlement.currency,
-                ),
-                style: AppTypography.sans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: context.colors.textPrimary,
-                ),
+              RAmount(
+                value: overrideAmount ?? settlement.amount,
+                currency: settlement.currency,
+                size: 14,
+                weight: FontWeight.w700,
+                tone: AmountTone.ink,
               ),
             ],
           ),
