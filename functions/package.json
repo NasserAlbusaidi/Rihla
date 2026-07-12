@@ -15,7 +15,7 @@
     "logs": "firebase functions:log",
     "test": "jest --runInBand",
     "test:emulator": "bash ../tool/run_firebase_emulator_tests.sh",
-    "test:coverage": "jest --coverage --runInBand"
+    "test:coverage": "bash ../tool/run_firebase_emulator_tests.sh --coverage"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",
