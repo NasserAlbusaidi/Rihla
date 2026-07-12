@@ -102,16 +102,23 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
       throw new HttpsError('not-found', 'Group not found.');
     }
     const group = groupSnap.data() ?? {};
-    // Honor the same write-lock as firestore.rules (Admin SDK bypasses rules),
-    // mirroring joinGroupByInviteCode/addShadowMember: soft-deleted or
-    // delete-quiesced groups are indistinguishable from missing groups.
+    // #1211: split the quiesce flags by outcome (Admin SDK bypasses rules, so
+    // this honors the same write-lock as firestore.rules). TERMINAL — the group
+    // is gone or a delete is in flight (ends in gone) — stays not-found so the
+    // client goes home.
+    if (group.isDeleted === true || group.deletingInProgress === true) {
+      throw new HttpsError('not-found', 'Group not found.');
+    }
+    // TRANSIENT — a bounded concurrent claim / account-deletion after which the
+    // group survives — throws `aborted` (client retry copy), never not-found.
     if (
-      group.isDeleted === true
-      || group.deletingInProgress === true
-      || group.claimingInProgress === true
+      group.claimingInProgress === true
       || group.accountDeletionInProgress === true
     ) {
-      throw new HttpsError('not-found', 'Group not found.');
+      throw new HttpsError(
+        'aborted',
+        'Another operation is in progress. Try again.',
+      );
     }
 
     // Only the CURRENT-member group creator may remove another member
@@ -204,13 +211,19 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
           throw new HttpsError('not-found', 'Group not found.');
         }
         const freshGroup = freshGroupSnap.data() ?? {};
+        // #1211: same terminal-vs-transient split as the pre-check above (a
+        // flag can flip between the two reads).
+        if (freshGroup.isDeleted === true || freshGroup.deletingInProgress === true) {
+          throw new HttpsError('not-found', 'Group not found.');
+        }
         if (
-          freshGroup.isDeleted === true
-          || freshGroup.deletingInProgress === true
-          || freshGroup.claimingInProgress === true
+          freshGroup.claimingInProgress === true
           || freshGroup.accountDeletionInProgress === true
         ) {
-          throw new HttpsError('not-found', 'Group not found.');
+          throw new HttpsError(
+            'aborted',
+            'Another operation is in progress. Try again.',
+          );
         }
         // #1144: the recompute basis is only trustworthy while the lock we
         // acquired is still in place — a reaper reclaim mid-flight voids it.
