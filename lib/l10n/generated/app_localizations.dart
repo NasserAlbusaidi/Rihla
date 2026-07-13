@@ -2006,6 +2006,18 @@ abstract class AppLocalizations {
   /// **'Optimized to reduce the number of payments across {subjectName}.'**
   String settleUpOptimizedPayments(Object subjectName);
 
+  /// #363 — settle-up intro subtitle when the group's simplify-debts toggle is OFF and there are suggested transfers: the direct pro-rata fan-out mode (more, smaller transfers). Both modes are balance-based; never claim this shows who actually paid whom.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone pays their share to each person they owe across {subjectName}.'**
+  String settleUpDirectPayments(Object subjectName);
+
+  /// #363 — settle-up intro subtitle when the group's simplify-debts toggle is OFF and no transfers are suggested (all settled). The OFF zero-state counterpart of settleUpNoOptimizedPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'No payments are needed across {subjectName}.'**
+  String settleUpNoDirectPayments(Object subjectName);
+
   /// No description provided for @settleUpSummaryTotal.
   ///
   /// In en, this message translates to:
@@ -2071,6 +2083,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'We never invent exchange rates, so one currency can\'t cancel out another. You\'ll record one payment per currency.'**
   String get currencyExplainerBody;
+
+  /// #363 — OFF-mode variant of currencyExplainerBody: under the direct fan-out a pair can owe several payments per currency, so 'one payment per currency' would be false.
+  ///
+  /// In en, this message translates to:
+  /// **'We never invent exchange rates, so one currency can\'t cancel out another. You\'ll record each payment per currency.'**
+  String get currencyExplainerBodyDirect;
 
   /// Dismiss button on the one-time settle-up currencies-don't-net explainer (#382 PR-5); tapping it hides the card for good.
   ///
@@ -4172,6 +4190,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Currency is set when the group is created and can\'t be changed.'**
   String get groupCurrencyLockedNote;
+
+  /// #363 — title of the creator-only group-settings switch that picks the settle-up suggestion mode (optimizer vs direct pro-rata fan-out).
+  ///
+  /// In en, this message translates to:
+  /// **'Simplify debts'**
+  String get groupSimplifyDebtsTitle;
+
+  /// #363 — subtitle under the simplify-debts switch while ON (the min-transfers optimizer). Balance-honest: both modes derive from net balances.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewest transfers: balances may be settled through any member.'**
+  String get groupSimplifyDebtsOnSubtitle;
+
+  /// #363 — subtitle under the simplify-debts switch while OFF (direct pro-rata fan-out). Balance-honest: never claim OFF shows who actually paid whom.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone pays each person they owe a share of the balance.'**
+  String get groupSimplifyDebtsOffSubtitle;
 
   /// #807 — caption under the members card for non-creators, explaining why the add/remove affordances are absent (mirrors the locked-currency-note pattern).
   ///

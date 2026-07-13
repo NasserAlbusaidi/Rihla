@@ -41,7 +41,8 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 /// Event-scoped Settle Up screen.
 ///
 /// Mirrors the Group Settle-Up wireframe (Hi_GroupSettle): italic intro,
-/// summary chips, optimized transfer cards, "Each person's net", and a
+/// summary chips, suggested transfer cards (optimized or direct per the
+/// group's #363 `simplifyDebts` mode), "Each person's net", and a
 /// payment-history footer. Routed at `/group/:gid/event/:eid/ledger/settle-up`.
 class SettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
@@ -339,20 +340,27 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
             );
           }
 
-          // #382 PR-1: one section per currency bucket, the optimizer
-          // run per bucket (no cross-currency netting, ever). No money
-          // yet → one empty group-currency bucket (zero summary card).
+          // #382 PR-1: one section per currency bucket, the suggestion
+          // allocator run per bucket (no cross-currency netting, ever). No
+          // money yet → one empty group-currency bucket (zero summary card).
           // The recorded settlement carries the BUCKET currency.
+          // #363: the group's simplifyDebts mode picks the allocator —
+          // optimizer (default) vs direct pro-rata fan-out.
           final buckets = <SettleBucket>[
             for (final c in sortedGccFirst(bucketed.keys))
               (
                 currency: c,
                 balances: bucketed[c]!,
-                optimalSettlements:
-                    BalanceCalculator.calculateOptimalSettlements(
-                      balances: bucketed[c]!,
-                      userNames: userDisplayNames,
-                    ),
+                optimalSettlements: group.simplifyDebts
+                    ? BalanceCalculator.calculateOptimalSettlements(
+                        balances: bucketed[c]!,
+                        userNames: userDisplayNames,
+                      )
+                    : BalanceCalculator.calculateDirectSettlements(
+                        balances: bucketed[c]!,
+                        currency: c,
+                        userNames: userDisplayNames,
+                      ),
               ),
             if (bucketed.isEmpty)
               (
@@ -376,6 +384,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           return SettleUpPageBody(
             scope: SettleScope.event,
             subjectName: event.name,
+            // #363: must match the allocator that produced the buckets above.
+            simplifyDebts: group.simplifyDebts,
             buckets: buckets,
             rawNames: userRawNames,
             settlementsAsync: settlementsAsync,

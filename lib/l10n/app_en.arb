@@ -945,6 +945,20 @@
       "subjectName": {}
     }
   },
+  "settleUpDirectPayments": "Everyone pays their share to each person they owe across {subjectName}.",
+  "@settleUpDirectPayments": {
+    "description": "#363 — settle-up intro subtitle when the group's simplify-debts toggle is OFF and there are suggested transfers: the direct pro-rata fan-out mode (more, smaller transfers). Both modes are balance-based; never claim this shows who actually paid whom.",
+    "placeholders": {
+      "subjectName": {}
+    }
+  },
+  "settleUpNoDirectPayments": "No payments are needed across {subjectName}.",
+  "@settleUpNoDirectPayments": {
+    "description": "#363 — settle-up intro subtitle when the group's simplify-debts toggle is OFF and no transfers are suggested (all settled). The OFF zero-state counterpart of settleUpNoOptimizedPayments.",
+    "placeholders": {
+      "subjectName": {}
+    }
+  },
   "settleUpSummaryTotal": "{amount} total",
   "@settleUpSummaryTotal": {
     "placeholders": {
@@ -1029,6 +1043,10 @@
   "currencyExplainerBody": "We never invent exchange rates, so one currency can't cancel out another. You'll record one payment per currency.",
   "@currencyExplainerBody": {
     "description": "Body of the one-time settle-up currencies-don't-net explainer (#382 PR-5): Rihla does not invent exchange rates, currencies never net against each other, and users record one payment per currency."
+  },
+  "currencyExplainerBodyDirect": "We never invent exchange rates, so one currency can't cancel out another. You'll record each payment per currency.",
+  "@currencyExplainerBodyDirect": {
+    "description": "#363 — OFF-mode variant of currencyExplainerBody: under the direct fan-out a pair can owe several payments per currency, so 'one payment per currency' would be false."
   },
   "currencyExplainerGotIt": "Got it",
   "@currencyExplainerGotIt": {
@@ -1792,6 +1810,18 @@
   "groupDefaults": "Defaults",
   "groupCurrency": "Currency",
   "groupCurrencyLockedNote": "Currency is set when the group is created and can't be changed.",
+  "groupSimplifyDebtsTitle": "Simplify debts",
+  "@groupSimplifyDebtsTitle": {
+    "description": "#363 — title of the creator-only group-settings switch that picks the settle-up suggestion mode (optimizer vs direct pro-rata fan-out)."
+  },
+  "groupSimplifyDebtsOnSubtitle": "Fewest transfers: balances may be settled through any member.",
+  "@groupSimplifyDebtsOnSubtitle": {
+    "description": "#363 — subtitle under the simplify-debts switch while ON (the min-transfers optimizer). Balance-honest: both modes derive from net balances."
+  },
+  "groupSimplifyDebtsOffSubtitle": "Everyone pays each person they owe a share of the balance.",
+  "@groupSimplifyDebtsOffSubtitle": {
+    "description": "#363 — subtitle under the simplify-debts switch while OFF (direct pro-rata fan-out). Balance-honest: never claim OFF shows who actually paid whom."
+  },
   "groupMembersCreatorOnlyNote": "Only the group creator can add or remove members.",
   "@groupMembersCreatorOnlyNote": {
     "description": "#807 — caption under the members card for non-creators, explaining why the add/remove affordances are absent (mirrors the locked-currency-note pattern)."

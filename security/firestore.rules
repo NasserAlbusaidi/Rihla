@@ -357,16 +357,22 @@ service cloud.firestore {
         // affected key (present→absent), so both must sit in `hasOnly([...])` or
         // the clear-update would be denied; the guards below stay STRICT
         // (absent-or-valid), so an explicit-null write is still rejected.
+        // #363 simplifyDebts: creator-only per-group settle-up mode bool.
+        // Absent ⇒ true (optimized); never settable at create
+        // (validGroupCreate's hasOnly excludes it); STRICT absent-or-bool,
+        // explicit null rejected (the glyph idiom).
         return isCreator()
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['name', 'updatedAt', 'glyph', 'inkIndex'])
+            .hasOnly(['name', 'updatedAt', 'glyph', 'inkIndex', 'simplifyDebts'])
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['name'])
             || isValidDisplayName(request.resource.data.name))
           && request.resource.data.updatedAt is timestamp
           && (!('glyph' in request.resource.data)
             || validGlyph(request.resource.data.glyph))
           && (!('inkIndex' in request.resource.data)
-            || validInkIndex(request.resource.data.inkIndex));
+            || validInkIndex(request.resource.data.inkIndex))
+          && (!('simplifyDebts' in request.resource.data)
+            || request.resource.data.simplifyDebts is bool);
       }
 
       // #290 + #318: membership removal is server-authoritative. The `leaveGroup`

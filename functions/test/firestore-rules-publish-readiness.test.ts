@@ -782,6 +782,81 @@ describe('Publish readiness Firestore rules', () => {
     });
   });
 
+  // #363: per-group simplify-debts toggle — a creator-only metadata bool on
+  // the group doc. Absent ⇒ true (optimized); the ONLY write path is the
+  // creator toggling it in group settings ({simplifyDebts, updatedAt}).
+  // Guard is STRICT absent-or-bool matching glyph: explicit null is rejected.
+  // The create path is untouched — validGroupCreate's hasOnly still excludes
+  // the key, so a group is always born with the field absent (default true).
+  describe('#363 simplifyDebts toggle (creator metadata update)', () => {
+    test('creator can set simplifyDebts to false', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1').update({
+        simplifyDebts: false,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('creator can set simplifyDebts back to true', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1').update({
+        simplifyDebts: true,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('a non-creator cannot set simplifyDebts', async () => {
+      const member = testEnv.authenticatedContext('member').firestore();
+      await assertFails(member.doc('groups/g1').update({
+        simplifyDebts: false,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('rejects a string simplifyDebts', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1').update({
+        simplifyDebts: 'yes',
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('rejects an int simplifyDebts', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1').update({
+        simplifyDebts: 1,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('rejects an explicit null simplifyDebts', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g1').update({
+        simplifyDebts: null,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('combined name + simplifyDebts metadata update is allowed', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertSucceeds(owner.doc('groups/g1').update({
+        name: 'Desert Crew II',
+        simplifyDebts: false,
+        updatedAt: new Date(),
+      }));
+    });
+
+    test('create path stays untouched — simplifyDebts at create is denied', async () => {
+      const owner = testEnv.authenticatedContext('owner').firestore();
+      await assertFails(owner.doc('groups/g-simplify-create').set(
+        validGroup('g-simplify-create', {
+          inviteCode: 'SMPLF1',
+          simplifyDebts: false,
+        }),
+      ));
+    });
+  });
+
   test('invite codes cannot be read, listed, forged, or deleted by arbitrary users', async () => {
     const eve = testEnv.authenticatedContext('eve').firestore();
     await assertFails(eve.doc('inviteCodes/ABC123').get());

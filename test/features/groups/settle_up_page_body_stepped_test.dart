@@ -206,6 +206,7 @@ void main() {
           SettleUpPageBody(
             scope: SettleScope.group,
             subjectName: 'Test Crew',
+            simplifyDebts: true,
             buckets: _twoBucketFixture(),
             rawNames: _rawNames,
             settlementsAsync: const AsyncValue.data(<Settlement>[]),
@@ -250,6 +251,7 @@ void main() {
           SettleUpPageBody(
             scope: SettleScope.group,
             subjectName: 'Test Crew',
+            simplifyDebts: true,
             buckets: _twoBucketFixture(),
             rawNames: _rawNames,
             settlementsAsync: const AsyncValue.data(<Settlement>[]),

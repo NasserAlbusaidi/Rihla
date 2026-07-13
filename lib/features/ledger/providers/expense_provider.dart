@@ -960,6 +960,117 @@ class BalanceCalculator {
     return settlements;
   }
 
+  /// #363 OFF-mode allocator: direct pro-rata fan-out over the same net
+  /// balances the optimizer consumes — each debtor pays EVERY creditor a
+  /// proportional share instead of the fewest-transfers concentration. Still
+  /// BALANCE-based, never expense-graph-based: the deployed recordSettlement
+  /// cap (`min(|fromNet|, toNet)` on full fresh nets) makes transaction-graph
+  /// pairwise legs unrecordable, so every leg here is `<=` that cap BY
+  /// CONSTRUCTION. Same map shape as [calculateOptimalSettlements] (exact keys
+  /// fromUserId/toUserId/fromUserName/toUserName/amount) so every downstream
+  /// consumer is shape-unchanged. [currency] is the bucket's — unlike the
+  /// min-only optimizer this allocator DIVIDES, so it needs the subunit scale.
+  ///
+  /// All arithmetic is plain-int subunits ([MoneySerializer.toSubunits]/
+  /// [fromSubunits]); pro-rata shares floor via integer division — no Decimal
+  /// division anywhere, so the #596 sub-subunit quantization trap cannot arise
+  /// in integer space. Deterministic: both sides sort alphabetically by
+  /// participantId (house-style tiebreak) and a repeat run is deep-equal.
+  static List<Map<String, dynamic>> calculateDirectSettlements({
+    required List<UserBalance> balances,
+    required String currency,
+    Map<String, String>? userNames,
+  }) {
+    // Same fence as [decomposeGroupSettlement]: keep the MoneySerializer
+    // calls from throwing on an untrusted bucket key.
+    final cur = MoneySerializer.isSupported(currency) ? currency : 'OMR';
+
+    final debtors = balances.where((b) => b.netBalance < Decimal.zero).toList()
+      ..sort((a, b) => a.participantId.compareTo(b.participantId));
+    final creditors = balances
+        .where((b) => b.netBalance > Decimal.zero)
+        .toList()
+      ..sort((a, b) => a.participantId.compareTo(b.participantId));
+
+    // Guard ORDER matters: this runs BEFORE any division, so the `~/ totalCap`
+    // below can never divide by zero on whole-subunit production nets (a
+    // nonempty creditor side has totalCap >= 1).
+    if (debtors.isEmpty || creditors.isEmpty) return const [];
+
+    final origCap = [
+      for (final c in creditors) MoneySerializer.toSubunits(c.netBalance, cur),
+    ];
+    final capRemaining = [...origCap];
+    var totalCap = 0;
+    for (final cap in origCap) {
+      totalCap += cap;
+    }
+    // Forged/legacy sub-subunit nets can truncate every cap to 0; treat that
+    // like the empty-creditor guard above (still before any division).
+    if (totalCap <= 0) return const [];
+
+    final legs = <Map<String, dynamic>>[];
+    for (final d in debtors) {
+      final rowTotal = MoneySerializer.toSubunits(d.netBalance.abs(), cur);
+      var remainingRow = rowTotal;
+      // Per-directed-pair accumulation (creditor index → subunits): pass 2 may
+      // top up a creditor pass 1 already touched, and TWO same-pair legs would
+      // collide on the deterministic sd1 settlement ids downstream
+      // (recordSettlement's idempotency probe records one and silently DROPS
+      // the other) — so legs are emitted ONCE per pair, after both passes.
+      final pairSubunits = <int, int>{};
+
+      // Pass 1: pro-rata by ORIGINAL creditor capacity, floored (integer
+      // division), bounded by the creditor's remaining capacity and the row.
+      for (var j = 0; j < creditors.length && remainingRow > 0; j++) {
+        var take = (rowTotal * origCap[j]) ~/ totalCap;
+        if (take > capRemaining[j]) take = capRemaining[j];
+        if (take > remainingRow) take = remainingRow;
+        if (take <= 0) continue;
+        pairSubunits[j] = (pairSubunits[j] ?? 0) + take;
+        capRemaining[j] -= take;
+        remainingRow -= take;
+      }
+
+      // Pass 2 (row residual close-out): ONE BOUNDED sweep over the same
+      // fixed creditor list — never a `while (remainingRow > 0)` loop, which
+      // would spin when a non-conserving bucket exhausts capacity. Leftover
+      // remainingRow after the sweep is DROPPED, mirroring how the two-pointer
+      // optimizer leaves surplus unpaired when the other side exhausts.
+      // NOTE: alpha-FIRST close-out is a DELIBERATE deviation from the house
+      // "remainder → alphabetically-last" rule of the split allocators — here
+      // the binding constraint is per-leg cap compliance (each pair total must
+      // stay within the creditor's capacity draw-down), not share-remainder
+      // placement.
+      for (var j = 0; j < creditors.length && remainingRow > 0; j++) {
+        final take = remainingRow < capRemaining[j]
+            ? remainingRow
+            : capRemaining[j];
+        if (take <= 0) continue;
+        pairSubunits[j] = (pairSubunits[j] ?? 0) + take;
+        capRemaining[j] -= take;
+        remainingRow -= take;
+      }
+
+      // Emit exactly ONE leg per directed pair, creditors in alpha order.
+      for (var j = 0; j < creditors.length; j++) {
+        final subunits = pairSubunits[j];
+        if (subunits == null || subunits <= 0) continue;
+        legs.add({
+          'fromUserId': d.participantId,
+          'toUserId': creditors[j].participantId,
+          'fromUserName': userNames?[d.participantId] ?? d.displayName,
+          'toUserName':
+              userNames?[creditors[j].participantId] ??
+              creditors[j].displayName,
+          'amount': MoneySerializer.fromSubunits(subunits, cur),
+        });
+      }
+    }
+
+    return legs;
+  }
+
   /// #719: the current directed-pair outstanding in one currency [bucket] — how
   /// much [fromUserId] can pay [toUserId] without overpaying either side =
   /// `min(|fromNet|, toNet)`, clamped to `>= 0`. Conservative mirror of the

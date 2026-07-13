@@ -42,8 +42,9 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 /// Cross-event settlement screen — single-page layout per the Hi_GroupSettle
 /// wireframe (Wireframes/Rihla/hifi/screens-group.jsx).
 ///
-/// Renders an italic headline, two summary chips, optimized transfer cards,
-/// each person's net balances, and inline payment history.
+/// Renders an italic headline, two summary chips, suggested transfer cards
+/// (optimized or direct per the group's #363 `simplifyDebts` mode), each
+/// person's net balances, and inline payment history.
 class GroupSettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
 
@@ -187,20 +188,28 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                   // from the data branch so the sheet never covers a skeleton.
                   _maybeShowReviewSheet(context, preSettleReview);
 
-                  // #382 PR-1: one section per currency bucket, the optimizer
-                  // run per bucket (no cross-currency netting, ever). No money
-                  // yet → one empty group-currency bucket (zero summary card).
-                  // The recorded settlement carries the BUCKET currency.
+                  // #382 PR-1: one section per currency bucket, the suggestion
+                  // allocator run per bucket (no cross-currency netting,
+                  // ever). No money yet → one empty group-currency bucket
+                  // (zero summary card). The recorded settlement carries the
+                  // BUCKET currency.
+                  // #363: the group's simplifyDebts mode picks the allocator —
+                  // optimizer (default) vs direct pro-rata fan-out.
                   final buckets = <SettleBucket>[
                     for (final c in sortedGccFirst(balancesData.balances.keys))
                       (
                         currency: c,
                         balances: balancesData.balances[c]!,
-                        optimalSettlements:
-                            BalanceCalculator.calculateOptimalSettlements(
-                              balances: balancesData.balances[c]!,
-                              userNames: balancesData.memberNames,
-                            ),
+                        optimalSettlements: group.simplifyDebts
+                            ? BalanceCalculator.calculateOptimalSettlements(
+                                balances: balancesData.balances[c]!,
+                                userNames: balancesData.memberNames,
+                              )
+                            : BalanceCalculator.calculateDirectSettlements(
+                                balances: balancesData.balances[c]!,
+                                currency: c,
+                                userNames: balancesData.memberNames,
+                              ),
                       ),
                     if (balancesData.balances.isEmpty)
                       (
@@ -213,6 +222,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                   final body = SettleUpPageBody(
                     scope: SettleScope.group,
                     subjectName: group.name,
+                    // #363: must match the allocator that produced the
+                    // buckets above.
+                    simplifyDebts: group.simplifyDebts,
                     buckets: buckets,
                     rawNames: balancesData.memberRawNames,
                     settlementsAsync: settlementsAsync,

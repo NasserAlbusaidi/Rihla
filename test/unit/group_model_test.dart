@@ -241,6 +241,53 @@ void main() {
       });
     });
 
+    group('simplifyDebts (#363)', () {
+      Future<Group> fromDocWith(Map<String, Object?> extra) async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.doc('groups/g-363');
+        await ref.set({
+          'name': 'Mode Crew',
+          'inviteCode': 'MODE01',
+          'createdBy': 'uid-001',
+          'memberIds': const ['uid-001'],
+          'currency': 'OMR',
+          'createdAt': Timestamp.fromDate(DateTime(2026, 3, 1, 12, 0, 0)),
+          ...extra,
+        });
+        return Group.fromDoc(await ref.get());
+      }
+
+      test('fromDoc reads an explicit false', () async {
+        final g = await fromDocWith({'simplifyDebts': false});
+        expect(g.simplifyDebts, isFalse);
+      });
+
+      test('fromDoc reads an explicit true', () async {
+        final g = await fromDocWith({'simplifyDebts': true});
+        expect(g.simplifyDebts, isTrue);
+      });
+
+      test('fromDoc with the field absent (legacy group) defaults to true',
+          () async {
+        final g = await fromDocWith({});
+        expect(g.simplifyDebts, isTrue);
+      });
+
+      test('fromDoc salvages a wrong-typed value to true (total-parse)',
+          () async {
+        final g = await fromDocWith({'simplifyDebts': 'yes'});
+        expect(g.simplifyDebts, isTrue);
+      });
+
+      test('copyWith flips simplifyDebts; default stays true', () {
+        expect(baseGroup.simplifyDebts, isTrue);
+        final off = baseGroup.copyWith(simplifyDebts: false);
+        expect(off.simplifyDebts, isFalse);
+        // Id-only equality is unchanged by the flag (spec: never widen ==).
+        expect(off, equals(baseGroup));
+      });
+    });
+
     test('equality is id-based', () {
       final copy = baseGroup.copyWith(name: 'Different Name');
       expect(copy, equals(baseGroup));

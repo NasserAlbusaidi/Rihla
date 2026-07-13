@@ -53,6 +53,10 @@ abstract final class GroupKeys {
   static const settingsGroupNameTile = Key('group_settings_group_name_tile');
   static const settingsCurrencyTile = Key('group_settings_currency_tile');
   static const settingsInviteCodeTile = Key('group_settings_invite_code_tile');
+  // #363: creator-only settle-up mode switch (Defaults card).
+  static const settingsSimplifyDebtsSwitch = Key(
+    'group_settings_simplify_debts_switch',
+  );
 
   // Stats grid keys (Phase 20 redesign — D-08)
   static const statsGrid = Key('group_stats_grid');

@@ -36,6 +36,7 @@ SettleUpPageBody _bodyWithHistory() {
   return SettleUpPageBody(
     scope: SettleScope.group,
     subjectName: 'Beach House',
+    simplifyDebts: true,
     buckets: [
       (
         currency: 'OMR',

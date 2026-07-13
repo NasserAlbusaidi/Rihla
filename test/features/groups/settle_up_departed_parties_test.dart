@@ -73,6 +73,7 @@ void main() {
   }) => SettleUpPageBody(
     scope: SettleScope.group,
     subjectName: 'Camp',
+    simplifyDebts: true,
     buckets: [
       (
         currency: 'OMR',
