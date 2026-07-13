@@ -30,6 +30,7 @@ import 'core/services/install_referrer_service.dart';
 import 'core/utils/sentry_pii_scrubber.dart';
 import 'features/auth/providers/cache_isolation_controller_provider.dart';
 import 'features/auth/services/auth_email_link_recognizer.dart';
+import 'l10n/app_localizations_delegates.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Compile-time toggle: point all Firebase SDKs at the local emulator suite.
@@ -173,7 +174,7 @@ class _AuthGateState extends State<_AuthGate> {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: const SplashScreen(),
           );
@@ -189,7 +190,7 @@ class _AuthGateState extends State<_AuthGate> {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: SplashScreen(
               hasError: true,
@@ -282,7 +283,7 @@ class _SafarAppState extends ConsumerState<SafarApp> {
         restorationScopeId: 'rihla',
         scaffoldMessengerKey: appMessengerKey,
         locale: ref.watch(localeProvider),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
@@ -350,7 +351,7 @@ class _CacheIsolationAppState extends ConsumerState<_CacheIsolationApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: iosManualRestart
           ? const SplashScreen(
