@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:safar/core/utils/name_validators.dart';
 import 'package:safar/features/groups/models/group_activity_log_model.dart';
 import 'package:safar/features/groups/services/group_activity_service.dart';
 
@@ -388,6 +389,67 @@ void main() {
 
     test('an already-valid name is returned unchanged', () {
       expect(GroupActivityService.sanitizeActorName('Alice'), equals('Alice'));
+    });
+
+    // #1216: sanitizeActorName must also strip bidi/zero-width format chars and
+    // floor invisible-only residue, so its co-batched activity row keeps passing
+    // the TIGHTENED isValidDisplayName (the #1140 batch-veto contract).
+    test('#1216 strips embedded format chars (RLO/ZWSP/BOM)', () {
+      expect(GroupActivityService.sanitizeActorName('Ali\u202eBob'),
+          equals('AliBob'));
+      expect(GroupActivityService.sanitizeActorName('Ali\u200bx'),
+          equals('Alix'));
+      expect(GroupActivityService.sanitizeActorName('Bob\ufeff'),
+          equals('Bob'));
+    });
+
+    test('#1216 joiner/space-only name floors to "Someone"', () {
+      expect(GroupActivityService.sanitizeActorName('\u200d\u200c'),
+          equals('Someone'));
+      expect(GroupActivityService.sanitizeActorName('\u200d \u200c'),
+          equals('Someone'));
+    });
+
+    test('#1216 keeps ZWNJ/ZWJ inside an otherwise-visible name', () {
+      // Persian ZWNJ + emoji ZWJ survive (they are ALLOWED joiners), and the
+      // result is a rule-valid non-empty name.
+      final persian = GroupActivityService.sanitizeActorName('می\u200cخواهم');
+      expect(displayNameValidationError(persian), isNull);
+      expect(persian.contains('\u200c'), isTrue);
+    });
+
+    // Totality (Dart oracle): every V1-V16 + full-K input → output passes the
+    // NEW displayNameValidationError. (The RULES oracle leg lives in the
+    // firestore-rules suite — Gate r3.)
+    test('#1216 totality vs NEW displayNameValidationError (V1-V16 + full-K)', () {
+      final inputs = <String>[
+        'Ali',
+        'Ali\u202e',
+        '\u202dhack',
+        'a\u2066b\u2069',
+        '\u200b\u200b',
+        'Ali\u200bx',
+        'می\u200cخواهم',
+        '\u{1F468}\u200d\u{1F469}\u200d\u{1F467}',
+        '\u200d\u200c',
+        '\u200d \u200c',
+        'Bob\ufeff',
+        'x\u00ady',
+        '\u200eltr',
+        'عمر',
+        'Ali\u2060',
+        '\u00a0',
+        for (final cp in kDisallowedFormatChars.runes) 'Ali${String.fromCharCode(cp)}',
+      ];
+      for (final input in inputs) {
+        final out = GroupActivityService.sanitizeActorName(input);
+        expect(
+          displayNameValidationError(out),
+          isNull,
+          reason: 'sanitized output must be rule-valid for input '
+              '${input.runes.map((r) => 'U+${r.toRadixString(16)}').join(' ')} -> "$out"',
+        );
+      }
     });
   });
 

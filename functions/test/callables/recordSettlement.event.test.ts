@@ -400,6 +400,8 @@ describe('recordSettlement — event mode', () => {
       ['unsupported currency', { currency: 'XXX' }],
       ['non-canonical currency case', { currency: 'omr' }],
       ['over-long name', { payerName: 'x'.repeat(33) }],
+      ['#1216 bidi (RLO) in payerName', { payerName: 'Ali\u202e' }],
+      ['#1216 zero-width (ZWSP) in recipientName', { recipientName: 'Bob\u200bx' }],
       ['over-long note', { note: 'x'.repeat(281) }],
       ['control chars in note', { note: 'a\u0000b' }],
       ['negative epoch', { observedPairEpoch: -1 }],
@@ -413,6 +415,16 @@ describe('recordSettlement — event mode', () => {
         code: 'invalid-argument',
       });
     });
+  });
+
+  test('#1216 note path UNCHANGED: a ZWSP-bearing settlement note is ACCEPTED', async () => {
+    // The name validators tightened (#1216); nullableFreeText (the NOTE validator,
+    // mirroring validFreeText) is deliberately untouched — a zero-width space in a
+    // note must still record verbatim, proving the tightening did not leak across.
+    const note = 'Dinner\u200bnote';
+    await call(input({ note }));
+    const settlements = await docsIn(`groups/${GROUP}/events/${EVENT}/settlements`);
+    expect([...settlements.values()][0].note).toBe(note);
   });
 
   test('per-currency isolation: OMR debt never funds a JPY settle', async () => {
