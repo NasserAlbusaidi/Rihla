@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/firestore_repository.dart';
+import '../../../core/utils/name_validators.dart';
 import '../../../core/utils/safe_deserialize.dart';
 import '../models/group_activity_log_model.dart';
 import 'member_name_resolver.dart';
@@ -114,15 +115,26 @@ class GroupActivityService extends FirestoreRepository {
     return query.limit(limit).get();
   }
 
+  /// Control chars (C0/DEL) PLUS the #1216 bidi-control / zero-width format
+  /// reject-set K (shared [kDisallowedFormatChars] — ONE source of truth with
+  /// the client validator + rules). Stripped from an actor label AND re-checked
+  /// by the totality guard so the sanitized output always passes the TIGHTENED
+  /// `isValidDisplayName`. ZWNJ/ZWJ are NOT in K, so an emoji/Persian name keeps
+  /// its joiners.
+  static final RegExp _actorNameStripChars =
+      RegExp('[\\x00-\\x1f\\x7f$kDisallowedFormatChars]');
+
   /// Coerces any actor label into a value that always passes the security
   /// rules' `isValidDisplayName` (#1140 D7), so an activity row folded into the
   /// SAME [WriteBatch] as its money/lifecycle mutation can never veto that
-  /// mutation on a name-shape check. Control-strip runs FIRST so a crafted
-  /// `'Bob (former member)\x01'` can't hide the suffix; the suffix strip loops
-  /// so a doubled ` (former member)` can't survive; a final totality guard
-  /// floors any residue to a guaranteed-valid constant.
+  /// mutation on a name-shape check. Control/format-strip runs FIRST so a
+  /// crafted `'Bob (former member)\x01'` can't hide the suffix and a bidi
+  /// control can't smuggle past (#1216); the suffix strip loops so a doubled
+  /// ` (former member)` can't survive; a final totality guard — including the
+  /// #1216 invisible-only floor — floors any residue to a guaranteed-valid
+  /// constant.
   static String sanitizeActorName(String raw) {
-    var s = raw.replaceAll(RegExp(r'[\x00-\x1f\x7f]'), '').trim();
+    var s = raw.replaceAll(_actorNameStripChars, '').trim();
     while (s.endsWith(MemberNameResolver.formerSuffix)) {
       s = s
           .substring(0, s.length - MemberNameResolver.formerSuffix.length)
@@ -130,11 +142,13 @@ class GroupActivityService extends FirestoreRepository {
     }
     if (s.length > 32) s = s.substring(0, 32).trim();
     // Totality guard: after every transform, if anything still violates
-    // isValidDisplayName (empty, re-exposed suffix, residual control char, or
-    // over-length), floor to the constant. Makes "every input → rule-valid".
+    // isValidDisplayName (empty, re-exposed suffix, residual control/format
+    // char, #1216 invisible-only joiner residue, or over-length), floor to the
+    // constant. Makes "every input → rule-valid".
     if (s.isEmpty ||
         s.endsWith(MemberNameResolver.formerSuffix) ||
-        RegExp(r'[\x00-\x1f\x7f]').hasMatch(s) ||
+        _actorNameStripChars.hasMatch(s) ||
+        isInvisibleOnlyName(s) ||
         s.length > 32) {
       return 'Someone';
     }
