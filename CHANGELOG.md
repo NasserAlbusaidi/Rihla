@@ -4,6 +4,53 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] — 2026-07-13
+
+Rihla 1.9.1 adds clearer settle-up choices and more flexible itemized
+discounts, while tightening navigation, money calculations, Arabic dates, and
+membership integrity.
+
+### Added
+
+- Group creators can choose whether to simplify debts for each group. Keep it
+  on for the fewest suggested transfers, or turn it off to show direct
+  debtor-to-creditor payments (#363).
+- Itemized discounts can now be assigned to selected people instead of always
+  being shared proportionally across the full group (#605).
+
+### Changed
+
+- Android now asks for a second Back press before exiting from Home, while
+  direct links and deeper routes return through the app correctly after the
+  navigation upgrade (#1188, #1192).
+- Settle-up amounts use the shared money typography, and trailing controls in
+  group creation, Preferences, Theme, and expense details align consistently
+  in both English and Arabic (#1182, #1184, #1193, #1194, #1201).
+- The public website received a mobile, RTL, accessibility, and motion polish
+  pass.
+
+### Fixed
+
+- Arabic dates keep localized month names while displaying Western digits
+  consistently throughout the app (#1215).
+- Correcting a settlement now refreshes cached group balances immediately,
+  and proportional itemized adjustments no longer risk integer overflow on
+  large values (#1213, #1206).
+- Rejoining, leaving, deleting, and removing members now handle legacy member
+  records, temporary membership locks, and pending name claims consistently;
+  unexpected removal failures also show translated copy and reach Sentry
+  (#1160, #1209, #1210, #1211, #1212).
+- Group activity writes now reject malformed or unbounded timestamps and
+  descriptions, and the server balance calculation ignores an empty payer ID
+  instead of creating a phantom participant (#1218, #1205).
+
+### Internal
+
+- Cloud Functions CI now enforces coverage thresholds and 90% diff coverage
+  for changed backend lines (#1189).
+- The iOS TestFlight lane uploads Dart symbols and dSYMs to Sentry after a
+  successful upload, improving production crash symbolication (#950).
+
 ## [1.9.0] — 2026-07-12
 
 Rihla 1.9.0 is a correctness-and-integrity release. It hardens what happens when people leave a group — balances, permissions, notifications, and history all stay consistent — makes recording settlements safer with a single transactional, deduplicated server path, and scrubs every trace of a deleted account from a group's history. It also lands a broad accessibility pass and RTL/visual polish.
