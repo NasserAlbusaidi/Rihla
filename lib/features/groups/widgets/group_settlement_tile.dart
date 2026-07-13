@@ -29,6 +29,11 @@ class GroupSettlementTile extends StatefulWidget {
   final String currency;
   final Map<String, Decimal> breakdown;
 
+  /// #1204: resolves a [breakdown] key to its display label at render time.
+  /// Null means the key IS the label (backward-compatible default) — keeps
+  /// this widget usable standalone with a plain label-keyed map.
+  final String Function(String key)? breakdownLabel;
+
   /// When true the tile belongs to the "You Owe" tab — amount shown in errorText.
   final bool isYourAction;
 
@@ -48,6 +53,7 @@ class GroupSettlementTile extends StatefulWidget {
     required this.amount,
     required this.currency,
     required this.breakdown,
+    this.breakdownLabel,
     required this.isYourAction,
     this.isCreditor = false,
     this.isHighlighted = false,
@@ -307,7 +313,14 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          e.key,
+                                          // #1204: resolved from the (possibly
+                                          // opaque, e.g. a raw eventId) key at
+                                          // render time — never baked into
+                                          // the map's key, so two entries
+                                          // sharing a label still render as
+                                          // two distinct rows.
+                                          widget.breakdownLabel?.call(e.key) ??
+                                              e.key,
                                           style: AppTypography.sans(
                                             fontSize: 12,
                                             color: context.colors.textSecondary,

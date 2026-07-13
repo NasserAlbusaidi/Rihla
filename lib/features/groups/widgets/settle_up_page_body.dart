@@ -226,6 +226,12 @@ class SettleUpPageBody extends StatelessWidget {
   /// suggested transfer [amount] (#752 — so the displayed rows equal what the
   /// settle-up would WRITE; the allocator caps at this amount).
   /// Return an empty map (or pass null) to hide the expand affordance.
+  ///
+  /// #1204: the map's keys are caller-defined identifiers (e.g. a raw
+  /// eventId), NOT necessarily the display text — two entries may share a
+  /// display label without colliding, since the label is resolved separately
+  /// via [breakdownLabel]. Callers with no distinct identifier can key by
+  /// their display label directly (the default resolver is identity).
   final Map<String, Decimal> Function(
     String fromUserId,
     String toUserId,
@@ -233,6 +239,13 @@ class SettleUpPageBody extends StatelessWidget {
     Decimal amount,
   )?
   buildBreakdown;
+
+  /// Optional resolver from a [buildBreakdown] key to its display label,
+  /// called AT RENDER TIME by [GroupSettlementTile] (#1204) — never baked
+  /// into the breakdown map's key, so distinct keys sharing a label render
+  /// as distinct rows instead of colliding. Null means the key IS the label
+  /// (backward-compatible default).
+  final String Function(String key)? breakdownLabel;
 
   /// Optional one-gesture "settle all with X" driver (#382 PR-5 D2). When
   /// non-null, every counterparty owing across ≥2 currency buckets gets a
@@ -288,6 +301,7 @@ class SettleUpPageBody extends StatelessWidget {
     required this.onRecord,
     this.canRecord = true,
     this.buildBreakdown,
+    this.breakdownLabel,
     this.preSelectedMemberId,
     this.onRecordStepped,
     this.onCorrect,
@@ -483,6 +497,7 @@ class SettleUpPageBody extends StatelessWidget {
           amount: amount,
           currency: currency,
           breakdown: breakdown,
+          breakdownLabel: breakdownLabel,
           isYourAction: isYourAction,
           isCreditor: isCreditor,
           isHighlighted: isHighlighted,
@@ -763,7 +778,8 @@ class _NetBalanceRow extends StatelessWidget {
             currency: currency,
             size: 14,
             sign: true,
-            weight: FontWeight.w700, // Spline ships 400/500/700 — w800 would synthesize
+            weight: FontWeight
+                .w700, // Spline ships 400/500/700 — w800 would synthesize
             tone: balance.netBalance > Decimal.zero
                 ? AmountTone.sageText
                 : balance.netBalance < Decimal.zero
@@ -1163,11 +1179,9 @@ class _HistoryTile extends StatelessWidget {
     // generated `ar` DateSymbols carry ZERODIGIT: '٠', which intl adopts by
     // default per-locale, so without this the digits render Arabic-Indic
     // (#1215).
-    final dateStr =
-        (DateFormat.MMMd(
-              Localizations.localeOf(context).toLanguageTag(),
-            )..useNativeDigits = false)
-            .format(settlement.settledAt);
+    final dateStr = (DateFormat.MMMd(
+      Localizations.localeOf(context).toLanguageTag(),
+    )..useNativeDigits = false).format(settlement.settledAt);
     // #567: a reversing correction must read as a correction, not as another
     // payment. Mark it with a reversal icon + label instead of the green tick.
     // #753: a corrected LOGICAL row reads the same way (its representative is an
