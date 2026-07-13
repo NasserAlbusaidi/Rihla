@@ -469,4 +469,81 @@ void main() {
       expect(owed, dist); // b (zero-item, tax-bearer) survives the read-back
     });
   });
+
+  // #1206 — _spreadProportional int-multiply overflow guard. The private helper
+  // is exercised through the PUBLIC Phase-3 discount reallocation. Pre-fix, the
+  // native `amount * weight` overflows int64 (~9.22e18) whenever both factors are
+  // ~3.1e9 subunits, silently wrapping to a grossly mis-proportioned share; the
+  // remainder line still forces conservation and the values stay non-negative, so
+  // ONLY the exact per-key-share assertion catches the wrap (the load-bearing RED).
+  group('_spreadProportional int64 overflow (#1206)', () {
+    // Each row: description, items, discount fils, expected per-key OMR shares.
+    // 'A' < 'B', so the alphabetically-last key ('B') absorbs the +1 remainder.
+    final cases = <({
+      String name,
+      List<SplitItem> items,
+      int discountFils,
+      Map<String, String> expected,
+    })>[
+      // OVERFLOW: remaining = 6_199_999_999, weight = 3_100_000_000 →
+      // remaining * weight ≈ 1.92e19 wraps int64 pre-fix. Correct floor shares:
+      // A = 3_099_999_999 fils, B = 3_100_000_000 fils (B absorbs the +1 residual).
+      (
+        name: 'two ~3.1e9-fils items + 1-fil discount wraps int64 pre-fix',
+        items: const [
+          SplitItem(
+              label: 'BigA', amountFils: 3100000000, participantIds: ['A']),
+          SplitItem(
+              label: 'BigB', amountFils: 3100000000, participantIds: ['B']),
+        ],
+        discountFils: 1,
+        expected: {'A': '3099999.999', 'B': '3100000.000'},
+      ),
+      // BOUNDARY (non-overflow): remaining = 2_000_000_000, max weight
+      // 2_000_000_000 → product 4e18 < 2^63, so pre-fix and post-fix are
+      // byte-identical. Pins that the BigInt widening leaves safe inputs unchanged.
+      (
+        name: 'large-but-safe product (4e18 < 2^63) is unchanged',
+        items: const [
+          SplitItem(
+              label: 'A', amountFils: 2000000000, participantIds: ['A']),
+          SplitItem(
+              label: 'B', amountFils: 1000000000, participantIds: ['B']),
+        ],
+        discountFils: 1000000000,
+        expected: {'A': '1333333.333', 'B': '666666.667'},
+      ),
+    ];
+
+    for (final c in cases) {
+      test(c.name, () {
+        final dist = BalanceCalculator.allocateItemizedDistribution(
+          items: c.items,
+          currency: 'OMR',
+          adjustments: [
+            SplitAdjustment(type: 'discount', amountFils: c.discountFils),
+          ],
+          participantIds: const ['A', 'B'],
+        );
+
+        // Load-bearing: exact per-key shares. The wrapped pre-fix output still
+        // conserves and is non-negative, so these are the ONLY assertions that go
+        // red before the fix.
+        for (final entry in c.expected.entries) {
+          expect(dist[entry.key], _d(entry.value),
+              reason: 'share for ${entry.key} in "${c.name}"');
+        }
+
+        // Conservation and non-negativity (green pre- AND post-fix; sanity only).
+        final sum = dist.values.fold(Decimal.zero, (s, v) => s + v);
+        final expectedSum = c.expected.values.fold(
+            Decimal.zero, (s, v) => s + _d(v));
+        expect(sum, expectedSum, reason: 'conservation for "${c.name}"');
+        for (final v in dist.values) {
+          expect(v >= Decimal.zero, isTrue,
+              reason: 'non-negative for "${c.name}"');
+        }
+      });
+    }
+  });
 }
