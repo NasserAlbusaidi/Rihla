@@ -1,5 +1,5 @@
 import functionsTest from 'firebase-functions-test';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { clearFirestore } from '../fixtures';
 
@@ -21,13 +21,17 @@ import { clearFirestore } from '../fixtures';
 // runCommand: `cd functions && npm run test:emulator -- removeMember.test.ts`
 
 import { removeMember } from '../../src/callables/removeMember';
+import { decideClaimRequest } from '../../src/callables/decideClaimRequest';
 
 const testEnv = functionsTest({ projectId: 'rihla-safar-test' });
 const wrapped = testEnv.wrap(removeMember);
+const wrappedDecide = testEnv.wrap(decideClaimRequest);
 
 const OWNER = 'owner';
 const MEMBER = 'member';
 const THIRD = 'third';
+const SHADOW = 'shadow-1210uuid';
+const REQUESTER = 'requester';
 
 async function seedGroup(
   groupId: string,
@@ -155,6 +159,46 @@ async function activityDocs(
   const snap = await getFirestore().collection(`groups/${groupId}/activity`).get();
   return snap.docs.map((d) => d.data());
 }
+
+// #1210 helpers: a placeholder shadow + a pending claim request against it.
+async function seedShadow(
+  groupId: string,
+  shadowId: string,
+  displayName = 'Ali',
+): Promise<void> {
+  await getFirestore().doc(`groups/${groupId}/members/${shadowId}`).set({
+    id: shadowId,
+    userId: shadowId,
+    displayName,
+    role: 'MEMBER',
+    joinedAt: new Date('2026-01-03T00:00:00.000Z'),
+    isShadow: true,
+    isTombstone: false,
+  });
+}
+
+async function seedClaimRequest(
+  groupId: string,
+  requester: string,
+  shadowId: string,
+  status = 'pending',
+): Promise<string> {
+  const rid = `${requester}__${shadowId}`;
+  await getFirestore().doc(`groups/${groupId}/claimRequests/${rid}`).set({
+    requesterUid: requester,
+    requesterDisplayName: 'Khalid',
+    shadowMemberId: shadowId,
+    shadowDisplayName: 'Ali',
+    status,
+    createdAt: FieldValue.serverTimestamp(),
+    decidedBy: null,
+    decidedAt: null,
+  });
+  return rid;
+}
+
+const claimReqDoc = async (groupId: string, rid: string) =>
+  (await getFirestore().doc(`groups/${groupId}/claimRequests/${rid}`).get()).data();
 
 beforeEach(async () => {
   await clearFirestore();
@@ -588,5 +632,157 @@ describe('removeMember callable — server-authoritative creator-remove + balanc
     expect(res).toMatchObject({ mode: 'removed', alreadyRemoved: false });
     expect((await groupData('g')).memberIds).toEqual([OWNER]);
     expect(await docExists('groups/g/members/member')).toBe(false);
+  });
+});
+
+describe("removeMember retires a removed shadow's pending claim requests (#1210)", () => {
+  test('1. RED→GREEN: removing a shadow declines its pending claim request atomically with the removal', async () => {
+    await seedGroup('g', { memberIds: [OWNER, SHADOW] });
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    const rid = await seedClaimRequest('g', REQUESTER, SHADOW);
+
+    // Pre-state: the request is pending — this is what SURVIVES the removal on
+    // UNFIXED code (the source of #1210: an Approve then hits the engine's
+    // torn-cascade P0 instead of a clean short-circuit).
+    expect((await claimReqDoc('g', rid))?.status).toBe('pending');
+
+    const res = await wrapped({
+      data: { groupId: 'g', targetUserId: SHADOW },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'removed', alreadyRemoved: false });
+    expect((await groupData('g')).memberIds).toEqual([OWNER]);
+    expect(await docExists(`groups/g/members/${SHADOW}`)).toBe(false);
+
+    // The pending request was declined in the SAME commit as the removal, tagged
+    // with the notifier-skip marker. On UNFIXED code this is still 'pending' → RED.
+    const req = await claimReqDoc('g', rid);
+    expect(req?.status).toBe('declined');
+    expect(req?.autoDeclineReason).toBe('shadow-removed');
+    expect(req?.decidedBy).toBe(OWNER);
+  });
+
+  test('2. E2E UX pin: an Approve on the swept request short-circuits (already-decided), never the engine torn-cascade internal + P0 log', async () => {
+    await seedGroup('g', { memberIds: [OWNER, SHADOW] });
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    const rid = await seedClaimRequest('g', REQUESTER, SHADOW);
+
+    await wrapped({
+      data: { groupId: 'g', targetUserId: SHADOW },
+      auth: { uid: OWNER },
+    } as any);
+    expect((await claimReqDoc('g', rid))?.status).toBe('declined');
+
+    // A creator with a stale Group Settings list taps Approve on the now-declined
+    // request. The clean already-decided short-circuit fires — NOT the engine's
+    // torn-cascade `internal` error.
+    await expect(
+      wrappedDecide({
+        data: { groupId: 'g', requestId: rid, approve: true },
+        auth: { uid: OWNER },
+      } as any),
+    ).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: 'This claim request has already been decided.',
+    });
+
+    // …and the #558 Hole-2 torn-cascade P0 never fired (the engine was never reached).
+    expect(logger.error).not.toHaveBeenCalledWith(
+      expect.stringContaining('prior cascade torn'),
+      expect.anything(),
+    );
+  });
+
+  test('3. pre-tx heal: a pending request for an ALREADY-absent shadow is declined on the idempotent short-circuit (retry self-heals legacy/orphan rows)', async () => {
+    // Shadow already fully gone (absent from memberIds, no member doc) but a
+    // pending request lingers — a legacy row predating this fix, or a raced
+    // orphan. removeMember hits the PRE-TX idempotent short-circuit and still
+    // sweeps the row before returning alreadyRemoved.
+    await seedGroup('g', { memberIds: [OWNER] });
+    await seedMember('g', OWNER);
+    const rid = await seedClaimRequest('g', REQUESTER, SHADOW);
+
+    const res = await wrapped({
+      data: { groupId: 'g', targetUserId: SHADOW },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'removed', alreadyRemoved: true });
+    const req = await claimReqDoc('g', rid);
+    expect(req?.status).toBe('declined');
+    expect(req?.autoDeclineReason).toBe('shadow-removed');
+    // The IN-TRANSACTION early-return branch is covered separately by test 5
+    // (a deterministic concurrent-removal race).
+  });
+
+  test('4. real-member removal with no claim requests: sweep is a no-op, removal behavior unchanged', async () => {
+    await seedGroup('g'); // memberIds [OWNER, MEMBER]
+    await seedMember('g', OWNER);
+    await seedMember('g', MEMBER);
+
+    const res = await wrapped({
+      data: { groupId: 'g', targetUserId: MEMBER },
+      auth: { uid: OWNER },
+    } as any);
+
+    expect(res).toMatchObject({ mode: 'removed', alreadyRemoved: false });
+    expect((await groupData('g')).memberIds).toEqual([OWNER]);
+    expect(await docExists('groups/g/members/member')).toBe(false);
+    const snap = await getFirestore().collection('groups/g/claimRequests').get();
+    expect(snap.size).toBe(0);
+    expect(await activityDocs('g')).toHaveLength(1);
+  });
+
+  test('5. in-tx early-return heal (deterministic concurrent-removal race): a target that vanishes between the pre-tx read and the tx re-read still gets its pending request declined', async () => {
+    // The IN-TRANSACTION idempotent early-return (`!freshTargetIsMember &&
+    // freshTargetDocsSnap.empty`) fires only when the target is present at the
+    // pre-tx read but gone by the tx re-read — a concurrent removal. Force it
+    // deterministically (NOT flakily): spy on the Firestore singleton's
+    // runTransaction and, on the SECOND call (the main mutation tx — the first is
+    // acquireDepartureLock; loadGroupBalanceSnapshot uses no transaction), delete
+    // the shadow's member doc + drop it from memberIds just before the real tx
+    // re-reads. The claimRequests read sits in the tx READS phase above the branch
+    // (reads-before-writes), so the sweep must STILL decline the pending request on
+    // that exit path. Instance-method spy pattern per deleteAccount.test.ts.
+    await seedGroup('g', { memberIds: [OWNER, SHADOW] });
+    await seedMember('g', OWNER);
+    await seedShadow('g', SHADOW, 'Ali');
+    const rid = await seedClaimRequest('g', REQUESTER, SHADOW);
+
+    const db = getFirestore();
+    const realRunTx = db.runTransaction.bind(db);
+    let txCall = 0;
+    const spy = jest.spyOn(db, 'runTransaction').mockImplementation((async (
+      updateFn: unknown,
+      opts?: unknown,
+    ) => {
+      txCall += 1;
+      if (txCall === 2) {
+        // Concurrent removal lands here. A merge-update preserves the departure
+        // lock fields acquired by the first (lock) transaction.
+        await db.doc(`groups/g/members/${SHADOW}`).delete();
+        await db.doc('groups/g').update({ memberIds: [OWNER] });
+      }
+      return realRunTx(updateFn as never, opts as never);
+    }) as never);
+
+    try {
+      const res = await wrapped({
+        data: { groupId: 'g', targetUserId: SHADOW },
+        auth: { uid: OWNER },
+      } as any);
+      expect(res).toMatchObject({ mode: 'removed', alreadyRemoved: true });
+    } finally {
+      spy.mockRestore();
+    }
+
+    const req = await claimReqDoc('g', rid);
+    expect(req?.status).toBe('declined');
+    expect(req?.autoDeclineReason).toBe('shadow-removed');
+    expect(req?.decidedBy).toBe(OWNER);
+    expect((await groupData('g')).memberIds).toEqual([OWNER]);
   });
 });

@@ -339,6 +339,36 @@ describe('requestClaimShadow (#278 PR8)', () => {
       claimMutationStartedAt: mutationStartedAt,
     });
   });
+
+  test('#1210 R9. reopen-guard: a REMOVED shadow cannot be (re)claimed — the claimable check precedes BOTH fresh-open and declined→reopen', async () => {
+    // After removeMember, the shadow is gone from memberIds AND its member doc is
+    // hard-deleted. requestClaimShadow runs the claimable predicate
+    // (requestClaimShadow.ts:105-115, throws "That member can't be claimed.")
+    // BEFORE the existing-request lookup (:122), so that ONE shared check guards
+    // both the fresh-open path and the declined→reopen block (:132-142). A removed
+    // shadow can therefore never re-pend a request — no local guard is missing.
+    await seedGroup('g', [OWNER]); // SHADOW absent from memberIds
+    await seedMember('g', OWNER);
+    await seedInviteCode(CODE, 'g');
+    // No shadow member doc — it was hard-deleted on removal.
+
+    // (a) fresh open → refused.
+    await expect(reqClaim({ inviteCode: CODE, shadowMemberId: SHADOW })).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: "That member can't be claimed.",
+    });
+    expect(await reqCount('g')).toBe(0);
+
+    // (b) a declined request that predates the removal → a re-request is STILL
+    // refused; the reopen block never runs (the claimable throw fires first), so
+    // the row is NOT flipped back to pending.
+    const rid = await seedPendingRequest('g', CLAIMER, SHADOW, 'Ali', 'declined');
+    await expect(reqClaim({ inviteCode: CODE, shadowMemberId: SHADOW })).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: "That member can't be claimed.",
+    });
+    expect((await reqDoc('g', rid))?.status).toBe('declined'); // NOT re-opened to pending
+  });
 });
 
 describe('decideClaimRequest (#278 PR8)', () => {

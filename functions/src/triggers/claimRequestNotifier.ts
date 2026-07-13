@@ -119,6 +119,15 @@ export const claimRequestNotifier = onDocumentWritten(
       (beforeWasPending || beforeWasClaiming)
       && (afterStatus === 'claimed' || afterStatus === 'declined')
     ) {
+      // #1210: a removeMember sweep auto-declines the removed shadow's pending
+      // claim requests with autoDeclineReason:'shadow-removed'. Suppress the push
+      // for those — a member REMOVAL is not a creator's explicit rejection, and
+      // "Your claim was declined." deep-links into a claim flow that dead-ends. A
+      // content-based skip on the after-state, NOT a membership fence (#1141's
+      // "Branch B never fenced" rule is about membership — untouched). Every
+      // normal creator-tapped decline (no reason field) keeps pushing as today.
+      if (asString(after?.autoDeclineReason) === 'shadow-removed') return;
+
       const requesterUid = asString(after?.requesterUid);
       if (requesterUid.length === 0) return;
 
