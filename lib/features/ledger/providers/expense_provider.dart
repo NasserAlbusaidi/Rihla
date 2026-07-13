@@ -116,11 +116,14 @@ Set<String> eventBalanceUniverse({
 }) {
   final payersAndSettlers = <String>{
     // #928: the total-parse factory salvages a non-string expense payer to ''.
-    // The oracle gates the payer with `typeof === 'string'` before the universe
-    // fold (groupNetBalance.ts:651), so guard the '' sentinel out here too — an
-    // ungated '' would seed a phantom row and inflate the equal-split divisor,
-    // diverging from the server. Settlement parties are nullable (salvaged to
-    // null) and already null-gated below, matching the oracle's typeof gates.
+    // #1205: the oracle's expense-payer universe fold EXCLUDES '' explicitly
+    // (`typeof === 'string' && !== ''`, groupNetBalance.ts) — `typeof '' ===
+    // 'string'` is true, so the bare typeof gate would NOT drop it. This
+    // `isNotEmpty` guard mirrors that exclusion: an ungated '' would seed a
+    // phantom row and inflate the equal-split divisor, diverging from the server.
+    // Settlement parties are nullable (salvaged to null) and already null-gated
+    // below; the oracle's settlement fold is typeof-only and passes '' — so a ''
+    // settlement party is admitted on BOTH sides (deliberate parity, unchanged).
     for (final e in expenses)
       if (e.payerParticipantId.isNotEmpty) e.payerParticipantId,
     for (final s in settlements) ...[
