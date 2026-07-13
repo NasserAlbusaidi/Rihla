@@ -72,10 +72,20 @@ class SplitAdjustment {
   final int amountFils;
   final String allocation;
 
+  /// Who bears an `'assigned'` discount (#605). Null/empty for every other
+  /// type/allocation (the key is omitted on write). Display-only, like every
+  /// field here — the balance truth is the folded `splitDistribution`. Lenient
+  /// [fromMap] tolerates anything; the producer
+  /// `BalanceCalculator.allocateItemizedDistribution` is the STRICT side (it
+  /// requires a non-empty subset ⊆ the participant table for an assigned
+  /// discount, else `ArgumentError`).
+  final List<String>? participantIds;
+
   const SplitAdjustment({
     required this.type,
     required this.amountFils,
     this.allocation = 'equal',
+    this.participantIds,
   });
 
   factory SplitAdjustment.fromMap(Map<String, dynamic> map) {
@@ -83,6 +93,8 @@ class SplitAdjustment {
       type: map['type'] as String? ?? 'service',
       amountFils: (map['amountFils'] as num?)?.toInt() ?? 0,
       allocation: map['allocation'] as String? ?? 'equal',
+      participantIds:
+          (map['participantIds'] as List?)?.map((e) => e.toString()).toList(),
     );
   }
 
@@ -90,6 +102,8 @@ class SplitAdjustment {
     'type': type,
     'amountFils': amountFils,
     'allocation': allocation,
+    if (participantIds != null && participantIds!.isNotEmpty)
+      'participantIds': participantIds,
   };
 }
 

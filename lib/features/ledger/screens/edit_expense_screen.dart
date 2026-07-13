@@ -277,16 +277,26 @@ class EditExpenseScreen extends ConsumerWidget {
       }
     }
     // #605: adjustments also gate the metadata rewrite so an adjustment-only
-    // edit persists (the folded splitDistribution rides splitChanged
-    // independently). SplitAdjustment has no value ==; hand-compare fields,
+    // edit persists. SplitAdjustment has no value ==; hand-compare fields,
     // order-sensitive (display order is meaningful). null and [] are equal.
+    // participantIds is compared as an ORDER-INDEPENDENT SET — this gate drives
+    // the explanationDirty flag that gates the splitExplanation WRITE (NOT just
+    // dirty detection), so re-targeting an assigned discount ({A,B}→{A,C}, same
+    // type/amount/allocation) MUST rewrite the metadata; without this compare
+    // the reopened editor reconstructs the STALE subset and the next save
+    // silently reverts the money (the `!mapEquals`-on-distribution belt is not
+    // enough — it never triggers the explanation write).
     final aAdj = a.adjustments ?? const <SplitAdjustment>[];
     final bAdj = b.adjustments ?? const <SplitAdjustment>[];
     if (aAdj.length != bAdj.length) return false;
     for (var i = 0; i < aAdj.length; i++) {
       if (aAdj[i].type != bAdj[i].type ||
           aAdj[i].amountFils != bAdj[i].amountFils ||
-          aAdj[i].allocation != bAdj[i].allocation) {
+          aAdj[i].allocation != bAdj[i].allocation ||
+          !setEquals(
+            aAdj[i].participantIds?.toSet() ?? const {},
+            bAdj[i].participantIds?.toSet() ?? const {},
+          )) {
         return false;
       }
     }

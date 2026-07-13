@@ -958,9 +958,12 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
   /// `_isDirty` uses): reopening the itemized editor with no change mints a
   /// fresh instance with identical values; `identical` would false-dirty and
   /// re-open the money revert `explanationDirty` exists to prevent. Compares
-  /// items AND adjustments (an adjustment change also folds into
-  /// `_splitDistribution`, caught by `!mapEquals` — this compare is
-  /// belt-and-braces). participantIds is order-independent (a SET).
+  /// items AND adjustments. item/adjustment participantIds are compared as
+  /// ORDER-INDEPENDENT SETs. The adjustment `participantIds` compare is NOT
+  /// belt-and-braces (#605): a re-targeted assigned discount ({A,B}→{A,C}) has
+  /// the SAME type/amount/allocation, so without it `explanationDirty` stays
+  /// false and the rewritten subset is never persisted — reopen then shows the
+  /// stale subset and the next save reverts the money.
   bool _explanationValueEquals(SplitExplanation? a, SplitExplanation? b) {
     if (a == null && b == null) return true;
     if (a == null || b == null) return false;
@@ -981,7 +984,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     for (var i = 0; i < aAdj.length; i++) {
       if (aAdj[i].type != bAdj[i].type ||
           aAdj[i].amountFils != bAdj[i].amountFils ||
-          aAdj[i].allocation != bAdj[i].allocation) {
+          aAdj[i].allocation != bAdj[i].allocation ||
+          !setEquals(
+            aAdj[i].participantIds?.toSet() ?? const {},
+            bAdj[i].participantIds?.toSet() ?? const {},
+          )) {
         return false;
       }
     }
