@@ -10,6 +10,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/draft_navigation_guard.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/money_serializer.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -338,6 +339,11 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
         ? null
         : Map.of(_splitDistribution!);
     _pristineSplitExplanation = _splitExplanation;
+
+    // #1208: register while mounted so a runtime deep-link/notification
+    // navigation confirms discard before replacing the stack; unregistered
+    // in dispose below.
+    DraftNavigationGuard.instance.register(_draftNavigationGuard);
   }
 
   void _onNoteChanged() => setState(() {});
@@ -358,6 +364,7 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
 
   @override
   void dispose() {
+    DraftNavigationGuard.instance.unregister(_draftNavigationGuard);
     _amountFocusNode.removeListener(_selectDefaultZeroOnFocus);
     _amountFocusNode.dispose();
     _noteController.removeListener(_onNoteChanged);
@@ -625,38 +632,72 @@ class _ExpenseEditorBodyState extends ConsumerState<ExpenseEditorBody> {
     }
   }
 
+  /// #1208 Gate r1 adversary [P2]: tracks whether [_showDiscardConfirmDialog]
+  /// currently has a dialog on screen — the single chokepoint both X/back
+  /// (via [_confirmDiscard]) and a runtime deep-link/notification consult
+  /// ([_draftNavigationGuard]) share. Without this, a deep link arriving
+  /// mid-dialog would stack an identical twin, and confirming the top one
+  /// would orphan the other over the new screen.
+  bool _discardDialogVisible = false;
+
   /// Shared dialog behind both [_confirmDiscard] (X / system back) and
   /// [_handleChangeDestination] (#900 — the editor's "change destination"
   /// tap): same copy, same stakes (the user is abandoning the current
   /// draft), different post-confirm action.
-  Future<bool?> _showDiscardConfirmDialog() {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-        ),
-        title: Text(
-          _isEdit
-              ? context.l10n.editorDiscardEditTitle
-              : context.l10n.editorDiscardAddTitle,
-        ),
-        content: Text(context.l10n.editorDiscardBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.editorDiscardKeepEditing),
+  Future<bool?> _showDiscardConfirmDialog() async {
+    _discardDialogVisible = true;
+    try {
+      return await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(context.spacing.radiusCard),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              context.l10n.editorDiscardConfirm,
-              style: TextStyle(color: context.colors.error),
+          title: Text(
+            _isEdit
+                ? context.l10n.editorDiscardEditTitle
+                : context.l10n.editorDiscardAddTitle,
+          ),
+          content: Text(context.l10n.editorDiscardBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(context.l10n.editorDiscardKeepEditing),
             ),
-          ),
-        ],
-      ),
-    );
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                context.l10n.editorDiscardConfirm,
+                style: TextStyle(color: context.colors.error),
+              ),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _discardDialogVisible = false;
+    }
+  }
+
+  /// #1208: registered with `DraftNavigationGuard` while mounted so a
+  /// runtime deep-link/notification navigation confirms discard before
+  /// silently replacing the stack over a dirty draft — `PopScope` only
+  /// intercepts the pop channel, never a declarative `router.go()` rebuild.
+  /// A plain instance method (not a field-bound closure) — Dart canonicalizes
+  /// instance-method tear-offs of the SAME instance as `==`-equal, so
+  /// `register`/`unregister` still target the exact same guard.
+  Future<bool> _draftNavigationGuard() async {
+    // mounted FIRST (Gate r1): `_isDirty` reads controllers that throw after
+    // dispose; unregister-on-dispose makes this unreachable in practice, but
+    // the ordering removes the latent footgun for free.
+    if (!mounted) return true;
+    if (!_isDirty) return true;
+    // Gate r1 adversary [P2]: refuse before stacking a second discard
+    // dialog over one already showing (X/back and this guard share the
+    // same _showDiscardConfirmDialog chokepoint).
+    if (_discardDialogVisible) return false;
+    final confirmed = await _showDiscardConfirmDialog();
+    return confirmed == true;
   }
 
   /// #818 Wave 3.2: shown when a dirty editor is about to be dismissed (X or
