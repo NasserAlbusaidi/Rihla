@@ -74,14 +74,17 @@ class _ItemDraft {
 
 /// Mutable editor state for one bill-level adjustment (#605). Owns its amount
 /// controller (disposed by the sheet state). [type] ∈ [kAdjustmentTypes];
-/// [allocation] is 'equal' or 'proportional' (a discount is always folded
-/// proportionally, so its stored allocation is normalized on build).
+/// [allocation] is 'equal' or 'proportional' for an additive; a discount is
+/// 'proportional' (default) or 'assigned' — an assigned discount is borne by
+/// the [participantIds] subset. [toAdjustment] is the OUTBOUND normalization
+/// point (empty/invalid assigned selection degrades to 'proportional').
 class _AdjustmentDraft {
   _AdjustmentDraft({
     required this.amount,
     this.type = 'service',
     this.allocation = 'equal',
-  });
+    List<String> participantIds = const [],
+  }) : participantIds = [...participantIds];
 
   factory _AdjustmentDraft.empty() =>
       _AdjustmentDraft(amount: TextEditingController());
@@ -94,6 +97,8 @@ class _AdjustmentDraft {
       amount: TextEditingController(text: _ItemDraft._trimDecimal(amount)),
       type: a.type,
       allocation: a.allocation,
+      // Reopen touch-point (#605): an assigned discount reconstructs its subset.
+      participantIds: a.participantIds ?? const [],
     );
   }
 
@@ -101,17 +106,37 @@ class _AdjustmentDraft {
   String type;
   String allocation;
 
+  /// Who bears an 'assigned' discount (mutable; edited by the member picker).
+  final List<String> participantIds;
+
   /// Build a [SplitAdjustment]. Caller MUST have checked the amount parses > 0.
   /// Mirrors [_ItemDraft.toItem]'s subunit conversion byte-for-byte (incl. the
-  /// unsupported-currency truncation) so preview == persisted. A discount's
-  /// allocation is normalized to 'proportional' (it is always folded that way).
-  SplitAdjustment toAdjustment(String currency) => SplitAdjustment(
+  /// unsupported-currency truncation) so preview == persisted. This is the
+  /// single OUTBOUND normalization point:
+  ///  - a non-discount emits no `participantIds` (always additive);
+  ///  - a discount is 'proportional' (default) OR 'assigned' — but an
+  ///    'assigned' selection with NO chosen members degrades to 'proportional'
+  ///    HERE so an empty-subset draft can never reach the allocator (which
+  ///    throws on an empty assigned subset).
+  SplitAdjustment toAdjustment(String currency) {
+    final amountFils = MoneySerializer.isSupported(currency)
+        ? MoneySerializer.toSubunits(Decimal.parse(amount.text), currency)
+        : Decimal.parse(amount.text).toBigInt().toInt();
+    if (type != 'discount') {
+      return SplitAdjustment(
         type: type,
-        amountFils: MoneySerializer.isSupported(currency)
-            ? MoneySerializer.toSubunits(Decimal.parse(amount.text), currency)
-            : Decimal.parse(amount.text).toBigInt().toInt(),
-        allocation: type == 'discount' ? 'proportional' : allocation,
+        amountFils: amountFils,
+        allocation: allocation,
       );
+    }
+    final assigned = allocation == 'assigned' && participantIds.isNotEmpty;
+    return SplitAdjustment(
+      type: 'discount',
+      amountFils: amountFils,
+      allocation: assigned ? 'assigned' : 'proportional',
+      participantIds: assigned ? [...participantIds] : null,
+    );
+  }
 
   void dispose() => amount.dispose();
 }
@@ -140,6 +165,7 @@ class _ItemizedBody extends StatelessWidget {
     required this.participants,
     required this.currency,
     required this.preview,
+    required this.assignedDiscountError,
     required this.draftValid,
     required this.onChanged,
     required this.onAddItem,
@@ -155,8 +181,14 @@ class _ItemizedBody extends StatelessWidget {
   final String currency;
 
   /// Live per-person owed from the currently-valid drafts (computed by the
-  /// sheet state; excludes rows missing an amount/assignee).
+  /// sheet state; excludes rows missing an amount/assignee). On an assigned-
+  /// discount overshoot this is the LAST VALID fold (never zeroed).
   final Map<String, Decimal> preview;
+
+  /// True when an assigned discount overshoots its subset (#605) — the sheet
+  /// shows an inline error and Apply is disabled; the [preview] still renders
+  /// the last valid distribution so no misleading zeros flash mid-edit.
+  final bool assignedDiscountError;
   final bool Function(_ItemDraft draft) draftValid;
   final VoidCallback onChanged;
   final VoidCallback onAddItem;
@@ -209,11 +241,32 @@ class _ItemizedBody extends StatelessWidget {
         SizedBox(height: spacing.space16),
         _AdjustmentsSection(
           adjDrafts: adjDrafts,
+          participants: participants,
           currency: currency,
           onAdd: onAddAdjustment,
           onEdit: onEditAdjustment,
           onRemove: onRemoveAdjustment,
         ),
+        if (assignedDiscountError) ...[
+          SizedBox(height: spacing.space12),
+          Row(
+            children: [
+              Icon(Icons.error_outline, size: 16, color: colors.error),
+              SizedBox(width: spacing.space8),
+              Expanded(
+                child: Text(
+                  key: const Key('assigned_discount_error'),
+                  l10n.adjustmentDiscountExceedsSubset,
+                  style: AppTypography.sans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: colors.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         SizedBox(height: spacing.space16),
         _ItemizedSectionHeader(label: l10n.itemizedEachOwes),
         SizedBox(height: spacing.space8),
@@ -825,6 +878,7 @@ class _AssignSheetState extends State<_AssignSheet> {
 class _AdjustmentsSection extends StatelessWidget {
   const _AdjustmentsSection({
     required this.adjDrafts,
+    required this.participants,
     required this.currency,
     required this.onAdd,
     required this.onEdit,
@@ -832,6 +886,7 @@ class _AdjustmentsSection extends StatelessWidget {
   });
 
   final List<_AdjustmentDraft> adjDrafts;
+  final List<SplitParticipant> participants;
   final String currency;
   final VoidCallback onAdd;
   final ValueChanged<_AdjustmentDraft> onEdit;
@@ -866,6 +921,7 @@ class _AdjustmentsSection extends StatelessWidget {
                   _AdjustmentRow(
                     index: i,
                     draft: adjDrafts[i],
+                    participants: participants,
                     currency: currency,
                     showDivider: i < adjDrafts.length - 1,
                     onEdit: () => onEdit(adjDrafts[i]),
@@ -884,6 +940,7 @@ class _AdjustmentRow extends StatelessWidget {
   const _AdjustmentRow({
     required this.index,
     required this.draft,
+    required this.participants,
     required this.currency,
     required this.showDivider,
     required this.onEdit,
@@ -892,6 +949,7 @@ class _AdjustmentRow extends StatelessWidget {
 
   final int index;
   final _AdjustmentDraft draft;
+  final List<SplitParticipant> participants;
   final String currency;
   final bool showDivider;
   final VoidCallback onEdit;
@@ -903,9 +961,23 @@ class _AdjustmentRow extends StatelessWidget {
     final spacing = context.spacing;
     final isDiscount = draft.type == 'discount';
     final parsed = Decimal.tryParse(draft.amount.text) ?? Decimal.zero;
-    final allocLabel = isDiscount || draft.allocation == 'proportional'
-        ? context.l10n.adjustmentAllocProportional
-        : context.l10n.adjustmentAllocEqual;
+    final isAssigned =
+        isDiscount && draft.allocation == 'assigned' && draft.participantIds.isNotEmpty;
+    // Assigned discounts show a "who bears it" caption (subset names, same
+    // style as item-assignee captions #605) instead of the spread label.
+    final String subLabel;
+    if (isAssigned) {
+      final nameOf = {for (final p in participants) p.id: p.name};
+      final names = [
+        for (final id in draft.participantIds)
+          if (nameOf[id] != null) nameOf[id]!,
+      ].join(', ');
+      subLabel = context.l10n.adjustmentDiscountBorneBy(names);
+    } else if (isDiscount || draft.allocation == 'proportional') {
+      subLabel = context.l10n.adjustmentAllocProportional;
+    } else {
+      subLabel = context.l10n.adjustmentAllocEqual;
+    }
 
     return InkWell(
       key: Key('itemized_adjustment_$index'),
@@ -936,7 +1008,7 @@ class _AdjustmentRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    allocLabel,
+                    subLabel,
                     style: AppTypography.sans(
                       fontSize: 12,
                       color: colors.textSecondary,
@@ -978,12 +1050,19 @@ class _AdjustmentRow extends StatelessWidget {
 }
 
 /// Modal editor for one adjustment: type chips, fixed-amount field, and the
-/// allocation choice (hidden for a discount — always proportional). Mutates the
-/// passed [_AdjustmentDraft] in place; the sheet state prunes it if left blank.
+/// allocation choice. An additive picks equal / by-item-share; a discount picks
+/// proportional (default) or 'assigned' — which reveals a member multi-select
+/// (#605). Mutates the passed [_AdjustmentDraft] in place; the sheet state
+/// prunes it if left blank.
 class _AddAdjustmentSheet extends StatefulWidget {
-  const _AddAdjustmentSheet({required this.draft, required this.currency});
+  const _AddAdjustmentSheet({
+    required this.draft,
+    required this.participants,
+    required this.currency,
+  });
 
   final _AdjustmentDraft draft;
+  final List<SplitParticipant> participants;
   final String currency;
 
   @override
@@ -1129,20 +1208,80 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
                   setState(() => draft.allocation = 'proportional');
                 },
               ),
-            ] else
+            ] else ...[
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: spacing.space24),
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
-                    l10n.adjustmentDiscountNote,
-                    style: AppTypography.sans(
-                      fontSize: 12.5,
+                    l10n.adjustmentSpreadHeader,
+                    style: AppTypography.caption(
+                      context,
+                      fontSize: 10,
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w700,
                       color: colors.textSecondary,
                     ),
                   ),
                 ),
               ),
+              SizedBox(height: spacing.space8),
+              // Proportional (default) — shared by what each person owes.
+              _AllocationOption(
+                optionKey: const Key('adjustment_alloc_proportional'),
+                label: l10n.adjustmentAllocProportional,
+                selected: draft.allocation != 'assigned',
+                onTap: () {
+                  HapticService.selection();
+                  setState(() => draft.allocation = 'proportional');
+                },
+              ),
+              // Assigned — borne only by a chosen subset (#605).
+              _AllocationOption(
+                optionKey: const Key('adjustment_alloc_assigned'),
+                label: l10n.adjustmentDiscountAssignedLabel,
+                selected: draft.allocation == 'assigned',
+                onTap: () {
+                  HapticService.selection();
+                  setState(() => draft.allocation = 'assigned');
+                },
+              ),
+              if (draft.allocation == 'assigned') ...[
+                SizedBox(height: spacing.space12),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: spacing.space24),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      l10n.adjustmentDiscountWhoBears,
+                      style: AppTypography.caption(
+                        context,
+                        fontSize: 10,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: spacing.space4),
+                for (final p in widget.participants)
+                  _AdjustmentAssigneeTile(
+                    participant: p,
+                    selected: draft.participantIds.contains(p.id),
+                    onTap: () {
+                      HapticService.selection();
+                      setState(() {
+                        if (draft.participantIds.contains(p.id)) {
+                          draft.participantIds.remove(p.id);
+                        } else {
+                          draft.participantIds.add(p.id);
+                        }
+                      });
+                    },
+                  ),
+              ],
+            ],
             SizedBox(height: spacing.space20),
             Padding(
               padding: EdgeInsets.fromLTRB(
@@ -1225,6 +1364,59 @@ class _AdjustmentTypeChip extends StatelessWidget {
               color: selected ? colors.primaryDark : colors.textSecondary,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One member row in the assigned-discount picker (#605): checkbox + avatar +
+/// name, mirroring the item-assignee tile pattern. Toggles the draft subset.
+class _AdjustmentAssigneeTile extends StatelessWidget {
+  const _AdjustmentAssigneeTile({
+    required this.participant,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final SplitParticipant participant;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final spacing = context.spacing;
+    return InkWell(
+      key: Key('adjustment_assign_tile_${participant.id}'),
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: spacing.space24,
+          vertical: spacing.space8,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.check_box : Icons.check_box_outline_blank,
+              color: selected ? colors.primary : colors.textSecondary,
+              size: 22,
+            ),
+            SizedBox(width: spacing.space12),
+            RAvatar(name: participant.name, size: 32, colorKey: participant.id),
+            SizedBox(width: spacing.space12),
+            Expanded(
+              child: Text(
+                participant.name,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.sans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

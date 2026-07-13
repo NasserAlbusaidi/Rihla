@@ -100,6 +100,18 @@ Future<SplitResult?> showCustomSplitSheet(
   );
 }
 
+/// Sealed outcome of an itemized fold attempt (#605): the per-person
+/// distribution plus whether an assigned discount overshot its subset. Emitted
+/// by `_computeItemizedFold` and consumed by preview / Apply-gate / build.
+class _ItemizedFold {
+  const _ItemizedFold(this.distribution, {this.assignedOvershoot = false});
+
+  final Map<String, Decimal> distribution;
+  final bool assignedOvershoot;
+
+  bool get ok => !assignedOvershoot;
+}
+
 class SplitParticipant {
   const SplitParticipant({
     required this.id,
@@ -261,7 +273,11 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _AddAdjustmentSheet(draft: draft, currency: widget.currency),
+      builder: (_) => _AddAdjustmentSheet(
+        draft: draft,
+        participants: widget.participants,
+        currency: widget.currency,
+      ),
     );
     if (!mounted) return;
     setState(() {
@@ -464,33 +480,69 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
 
   List<String> get _participantIds => [for (final p in widget.participants) p.id];
 
-  /// Per-person owed from the currently-valid drafts + adjustments. Invalid item
-  /// drafts (no assignee / blank amount) and invalid adjustment drafts are
-  /// excluded so the allocator never throws on a mid-edit row. Discounts are
-  /// dropped from the transient preview whenever they would overshoot
-  /// (`Σdiscount > Σitems + Σadditive` ⇒ Phase-3 `remaining < 0`), keeping the
-  /// INBOUND display safe while a discount is being typed; the strict throw
-  /// stays on the OUTBOUND build path (which Apply has already reconciled).
-  Map<String, Decimal> get _itemizedPreview {
+  /// Single chokepoint (#605) that attempts the full itemized fold for the
+  /// current drafts and returns a sealed [_ItemizedFold] — the distribution
+  /// PLUS whether an assigned discount overshot its subset. `_itemizedPreview`,
+  /// `_itemizedCanApply`, and `_buildItemizedResult` ALL read this, so build
+  /// never throws, Apply disables coherently, and the preview never flashes
+  /// misleading zeros. The allocator's throw is the authoritative subset check
+  /// (the sequential fold makes per-subset owed state-dependent) — the subset
+  /// math is NEVER duplicated here.
+  ///
+  /// Two overshoot regimes, deliberately different (spec-pinned):
+  ///  - ASSIGNED-subset overshoot → error state (Apply disabled, inline error);
+  ///    the preview degrades to the pre-assigned-discount fold (items +
+  ///    additive), never zeroed.
+  ///  - POOLED whole-bill overshoot → graceful DEGRADE (drop the pooled
+  ///    discounts, keep items rendering while a discount is typed) — the
+  ///    pre-existing #605 behavior, no error state.
+  _ItemizedFold _computeItemizedFold() {
     final items = [
       for (final d in _drafts)
         if (_draftValid(d)) d.toItem(widget.currency),
     ];
     final validAdj = [for (final d in _adjDrafts) if (_adjValid(d)) d];
-    if (items.isEmpty && validAdj.isEmpty) return const {};
+    if (items.isEmpty && validAdj.isEmpty) return const _ItemizedFold({});
 
-    final additive = [
-      for (final d in validAdj)
-        if (d.type != 'discount') d.toAdjustment(widget.currency),
+    // Normalize once (the OUTBOUND point): an 'assigned' discount with no
+    // chosen members has already degraded to 'proportional' in toAdjustment.
+    final normalized = [for (final d in validAdj) d.toAdjustment(widget.currency)];
+    final additive = [for (final a in normalized) if (a.type != 'discount') a];
+    final assigned = [
+      for (final a in normalized)
+        if (a.type == 'discount' && a.allocation == 'assigned') a,
     ];
-    final discounts = [
-      for (final d in validAdj)
-        if (d.type == 'discount') d.toAdjustment(widget.currency),
+    final pooled = [
+      for (final a in normalized)
+        if (a.type == 'discount' && a.allocation != 'assigned') a,
     ];
-    final keepDiscounts =
-        (_itemizedSum + _adjAdditiveSum - _adjDiscountSum) >= Decimal.zero;
-    final adjustments = keepDiscounts ? [...additive, ...discounts] : additive;
 
+    // Step 1 — items + additive + assigned discounts.
+    Map<String, Decimal> base;
+    try {
+      base = _foldOrEmpty(items, [...additive, ...assigned]);
+    } on ArgumentError {
+      // Assigned-subset overshoot → error; preview the pre-assigned fold.
+      return _ItemizedFold(_foldOrEmpty(items, additive), assignedOvershoot: true);
+    }
+
+    // Step 2 — pooled discounts, proportional to the post-assigned state.
+    if (pooled.isEmpty) return _ItemizedFold(base);
+    try {
+      return _ItemizedFold(_foldOrEmpty(items, [...additive, ...assigned, ...pooled]));
+    } on ArgumentError {
+      // Pooled whole-bill overshoot → degrade (keep items rendering).
+      return _ItemizedFold(base);
+    }
+  }
+
+  /// Fold helper: empty in / empty out (the allocator requires a non-empty
+  /// participant table only when adjustments are present).
+  Map<String, Decimal> _foldOrEmpty(
+    List<SplitItem> items,
+    List<SplitAdjustment> adjustments,
+  ) {
+    if (items.isEmpty && adjustments.isEmpty) return const {};
     return BalanceCalculator.allocateItemizedDistribution(
       items: items,
       currency: widget.currency,
@@ -504,6 +556,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     if (_drafts.isEmpty) return false;
     if (!_drafts.every(_draftValid)) return false;
     if (!_adjDrafts.every(_adjValid)) return false;
+    // An assigned-discount subset overshoot blocks Apply even if the bill-level
+    // remainder reconciles (the fold is the authoritative subset check).
+    if (!_computeItemizedFold().ok) return false;
     return _itemizedRemainder.abs() <= _tolerance;
   }
 
@@ -566,23 +621,19 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
     }
   }
 
-  /// Build the itemized result (#203 S2): every draft is valid here (Apply is
-  /// gated on [_itemizedCanApply]), so the allocator never throws. Itemized
-  /// persists AS [SplitMode.exact]; the items ride along as display metadata.
+  /// Build the itemized result (#203 S2 / #605): every draft is valid here
+  /// (Apply is gated on [_itemizedCanApply], which requires a clean fold), so
+  /// the distribution comes from the same [_computeItemizedFold] chokepoint —
+  /// never a second, drifting allocator call. Itemized persists AS
+  /// [SplitMode.exact]; items + adjustments ride along as display metadata.
   SplitResult _buildItemizedResult() {
     final items = [for (final d in _drafts) d.toItem(widget.currency)];
     final adjustments = [
       for (final d in _adjDrafts) d.toAdjustment(widget.currency),
     ];
-    final dist = BalanceCalculator.allocateItemizedDistribution(
-      items: items,
-      currency: widget.currency,
-      adjustments: adjustments,
-      participantIds: _participantIds,
-    );
     return SplitResult(
       mode: SplitMode.exact,
-      distribution: dist,
+      distribution: _computeItemizedFold().distribution,
       items: items,
       adjustments: adjustments,
     );
@@ -594,6 +645,9 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final spacing = context.spacing;
+    // Compute the itemized fold ONCE per build (#605) — preview + error flag
+    // read the same sealed result.
+    final itemizedFold = _itemized ? _computeItemizedFold() : null;
 
     return SafeArea(
       top: false,
@@ -656,7 +710,8 @@ class _CustomSplitSheetState extends State<CustomSplitSheet> {
                         adjDrafts: _adjDrafts,
                         participants: widget.participants,
                         currency: widget.currency,
-                        preview: _itemizedPreview,
+                        preview: itemizedFold!.distribution,
+                        assignedDiscountError: itemizedFold.assignedOvershoot,
                         draftValid: _draftValid,
                         onChanged: () => setState(() {}),
                         onAddItem: _addDraft,

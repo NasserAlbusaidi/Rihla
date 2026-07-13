@@ -1760,6 +1760,30 @@ abstract class AppLocalizations {
   /// **'A discount is shared in proportion to what each person owes.'**
   String get adjustmentDiscountNote;
 
+  /// No description provided for @adjustmentDiscountAssignedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Only certain people'**
+  String get adjustmentDiscountAssignedLabel;
+
+  /// No description provided for @adjustmentDiscountWhoBears.
+  ///
+  /// In en, this message translates to:
+  /// **'Who gets this discount?'**
+  String get adjustmentDiscountWhoBears;
+
+  /// No description provided for @adjustmentDiscountExceedsSubset.
+  ///
+  /// In en, this message translates to:
+  /// **'This discount is more than the selected people owe.'**
+  String get adjustmentDiscountExceedsSubset;
+
+  /// No description provided for @adjustmentDiscountBorneBy.
+  ///
+  /// In en, this message translates to:
+  /// **'for {names}'**
+  String adjustmentDiscountBorneBy(Object names);
+
   /// No description provided for @adjustmentDone.
   ///
   /// In en, this message translates to:

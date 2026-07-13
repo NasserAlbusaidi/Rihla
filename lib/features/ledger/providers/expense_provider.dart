@@ -543,18 +543,57 @@ class BalanceCalculator {
       shares.forEach((k, v) => owedSubunits[k] = (owedSubunits[k] ?? 0) + v);
     }
 
-    // ── Phase 3 — discounts: SUBTRACT by re-allocating the REMAINING bill
-    // proportional to each person's pre-discount owed. A discount's own
-    // `allocation` is intentionally ignored — proportional-to-pre-discount is
-    // what provably keeps every owed ≥ 0. It does NOT bound owed at
-    // pre-discount: `_spreadProportional` truncates each non-last share and
-    // dumps the lost subunits (up to n-1) onto the alphabetically-last
-    // positive-weight key, which can land up to n-1 subunits ABOVE its
-    // pre-discount owed (#1203). Accepted — a bounded, conservation-safe
-    // consequence of the remainder contract, not a bug. ──
+    // ── Phase 3 — discounts SUBTRACT. Two kinds, in THIS order (#605):
+    //   (a) ASSIGNED (type=='discount' && allocation=='assigned'): borne by a
+    //       chosen subset. Applied FIRST and SEQUENTIALLY in list order,
+    //       each against the CURRENT owed state — the subset's remaining owed
+    //       is re-allocated proportional to its pre-discount owed.
+    //   (b) POOLED (every other discount): summed and folded in ONE
+    //       proportional-to-pre-discount reallocation over the whole table.
+    // Assigned-first is deliberate: each subset fold reads the live owed state,
+    // so a later pooled discount thins the already-discounted balances.
+    // Non-negativity is the same argument as the whole-table discount — a
+    // non-negative `remaining` spread proportionally within its base can never
+    // go negative (the #1203 last-key overshoot ≤ n-1 subunits carries over
+    // identically and is accepted, not fixed). ──
+
+    // (a) assigned discounts — sequential, subset-scoped.
+    for (final adj in adjustments) {
+      if (adj.type != 'discount' || adj.allocation != 'assigned') continue;
+      _validateAssignedAdjustment(adj, equalBase);
+      final subset = adj.participantIds!.toSet().toList()..sort();
+      final subsetPre = <String, int>{
+        for (final k in subset) k: owedSubunits[k] ?? 0,
+      };
+      final subsetTotal = subsetPre.values.fold(0, (s, v) => s + v);
+      final remaining = subsetTotal - adj.amountFils;
+      if (remaining < 0) {
+        throw ArgumentError.value(
+          adj.amountFils,
+          'discount',
+          'assigned discount ${adj.amountFils} exceeds subset owed $subsetTotal',
+        );
+      }
+      // `_spreadProportional` returns POSITIVE-weight keys only, so a subset
+      // member with ZERO pre-discount owed is DROPPED from the replaced entries
+      // rather than kept at 0 — harmless (absent ≡ owes 0) and consistent with
+      // the pooled-discount fold. `remaining == 0` with all-zero weights falls
+      // back to an equal spread of 0 over the subset (also harmless); the
+      // `remaining < 0` throw above fires before any fallback can misfire.
+      final reallocated = _spreadProportional(remaining, subsetPre, subset);
+      for (final k in subset) {
+        owedSubunits.remove(k);
+      }
+      owedSubunits.addAll(reallocated);
+    }
+
+    // (b) pooled discounts — proportional to the POST-assigned owed state.
     var totalDiscount = 0;
     for (final adj in adjustments) {
       if (adj.type != 'discount') continue;
+      // An assigned discount is applied above; NEVER also summed here (else it
+      // would be double-counted).
+      if (adj.allocation == 'assigned') continue;
       _validateAdjustment(adj);
       totalDiscount += adj.amountFils;
     }
@@ -594,6 +633,37 @@ class BalanceCalculator {
         'amountFils',
         'adjustment "${adj.type}" is negative',
       );
+    }
+  }
+
+  /// Strict validation for an ASSIGNED discount (#605): the base
+  /// [_validateAdjustment] guards PLUS a non-empty [SplitAdjustment.participantIds]
+  /// subset, every id of which is in the full participant table [equalBase].
+  /// The membership check needs [equalBase] threaded in (the base validator only
+  /// sees the adjustment). Lenient `fromMap` still DISPLAYS anything; this
+  /// producer refuses to fold a forged/legacy assigned discount.
+  static void _validateAssignedAdjustment(
+    SplitAdjustment adj,
+    List<String> equalBase,
+  ) {
+    _validateAdjustment(adj);
+    final subset = adj.participantIds?.toSet() ?? const <String>{};
+    if (subset.isEmpty) {
+      throw ArgumentError.value(
+        adj.participantIds,
+        'participantIds',
+        'assigned discount has no participants',
+      );
+    }
+    final base = equalBase.toSet();
+    for (final id in subset) {
+      if (!base.contains(id)) {
+        throw ArgumentError.value(
+          id,
+          'participantIds',
+          'assigned discount names a non-participant',
+        );
+      }
     }
   }
 

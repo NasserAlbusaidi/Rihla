@@ -148,6 +148,34 @@ void main() {
     });
   });
 
+  group('#605 assigned-discount localization surface', () {
+    test('English assigned-discount strings are reachable', () {
+      final l10n = AppLocalizationsEn();
+      expect(l10n.adjustmentDiscountAssignedLabel, isNotEmpty);
+      expect(l10n.adjustmentDiscountWhoBears, isNotEmpty);
+      expect(l10n.adjustmentDiscountExceedsSubset, isNotEmpty);
+      expect(l10n.adjustmentDiscountBorneBy('Nasser'), contains('Nasser'));
+    });
+
+    test('Arabic assigned-discount strings are translated (differ from EN)', () {
+      final en = AppLocalizationsEn();
+      final ar = AppLocalizationsAr();
+      expect(ar.adjustmentDiscountAssignedLabel, isNotEmpty);
+      expect(
+        ar.adjustmentDiscountAssignedLabel,
+        isNot(en.adjustmentDiscountAssignedLabel),
+      );
+      expect(ar.adjustmentDiscountWhoBears, isNotEmpty);
+      expect(ar.adjustmentDiscountWhoBears, isNot(en.adjustmentDiscountWhoBears));
+      expect(ar.adjustmentDiscountExceedsSubset, isNotEmpty);
+      expect(
+        ar.adjustmentDiscountExceedsSubset,
+        isNot(en.adjustmentDiscountExceedsSubset),
+      );
+      expect(ar.adjustmentDiscountBorneBy('Nasser'), contains('Nasser'));
+    });
+  });
+
   group('#363 simplify-debts localization surface', () {
     test('English OFF-mode strings are reachable and substitute the subject',
         () {
