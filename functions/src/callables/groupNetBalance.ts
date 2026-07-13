@@ -646,9 +646,23 @@ export function computeNetFromSnapshot(snapshot: GroupBalanceSnapshot): Recomput
     //
     // Payers + settlement parties: folded whenever no longer live (NOT
     // member-gated — established behavior).
+    //
+    // #1205: the EXPENSE-payer fold ALSO excludes the LITERAL empty string.
+    // `typeof '' === 'string'` is true, so a persisted '' payer (forged / Admin /
+    // legacy — rules block it on create) would otherwise enter the universe, seed
+    // a phantom '' row that receives the paid credit, and inflate the equal-split
+    // divisor (n+1). The Dart client drops it (`payerParticipantId.isNotEmpty`,
+    // expense_provider.dart eventBalanceUniverse) so this keeps the oracle in
+    // parity: no valid payer ⇒ paid credit dropped, matching the #928 non-string
+    // salvage semantics. The SETTLEMENT-party folds are DELIBERATELY typeof-only
+    // (no '' exclusion) — the client settlement fold null-gates only and passes
+    // '', so admitting a '' settlement party to the universe is the parity-correct
+    // behavior; do not add a '' guard to the settlement lines.
     const financial = new Set<string>();
     for (const e of expenses) {
-      if (typeof e.payerParticipantId === 'string') financial.add(e.payerParticipantId);
+      if (typeof e.payerParticipantId === 'string' && e.payerParticipantId !== '') {
+        financial.add(e.payerParticipantId);
+      }
     }
     for (const s of settlements) {
       if (typeof s.payerParticipantId === 'string') financial.add(s.payerParticipantId);
