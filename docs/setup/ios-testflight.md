@@ -66,12 +66,55 @@ bundle exec fastlane ios beta
 ```
 
 The lane runs `flutter build ipa` (obfuscated, `--dart-define-from-file=config.json`,
-`--export-options-plist=ios/ExportOptions.plist`) then `upload_to_testflight` via the API key.
+`--export-options-plist=ios/ExportOptions.plist`) then `upload_to_testflight` via the API key,
+and finally uploads debug symbols to Sentry (see below — optional, warn-not-block).
 
 **Build numbers must strictly increase per upload.** The IPA's `CFBundleVersion` comes from the
 pubspec build number (`x.y.z+N`). Bump `N` before re-running if you upload again for the same version.
 Do not hand-bump for a real release — `tool/release.sh` owns version bumps at tag time (Android); for
 iOS-only TestFlight iterations, bumping just the `+N` build number is fine.
+
+## Sentry symbol upload (optional — crash symbolication)
+
+The build is obfuscated, so without debug symbols Sentry shows unreadable, stripped crash
+frames. After `upload_to_testflight`, the `beta` lane runs `dart run sentry_dart_plugin`
+(the same plugin the Android release CI uses, configured under `sentry:` in `pubspec.yaml`)
+to upload both symbol kinds for the build it just shipped:
+
+- the **native iOS dSYMs** from `build/ios/archive/Runner.xcarchive/dSYMs/` (symbolicates
+  the Swift/ObjC/engine frames), and
+- the **Dart split-debug-info symbols** from `build/ios/symbols/` (from `--split-debug-info`;
+  symbolicates the obfuscated Flutter/Dart frames).
+
+The plugin reads `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` from the environment.
+The lane resolves those three, **environment variables first**, then falling back to a
+gitignored **`secrets/sentry.env`** (simple `KEY=VALUE` lines, parsed in Ruby — never
+shell-sourced, so the token stays out of shell history and the fastlane command log):
+
+```bash
+# secrets/sentry.env  (gitignored via the secrets/ rule)
+SENTRY_ORG=<your-sentry-org-slug>
+SENTRY_PROJECT=<your-sentry-project-slug>
+SENTRY_AUTH_TOKEN=<sntrys_… token>
+```
+
+- **Org / project slugs:** Sentry → Settings → the org slug is in the URL / General Settings;
+  the project slug is on the project's settings page.
+- **Auth token:** Sentry → Settings → Auth Tokens (or an org internal-integration token) with
+  the **`project:releases`** + **`project:write`** scopes. Nothing else needs those scopes.
+
+**Warn-not-block, end to end.** The step runs *after* the TestFlight upload, so it can never
+block a release. If any of the three values is unresolved, the lane logs a warning ("symbols
+will NOT be uploaded, crash frames stay unsymbolicated") and continues; if the upload itself
+fails, it logs an error and continues. A green TestFlight upload never depends on Sentry.
+
+### Manual QA still open (not closeable from CI)
+
+Symbolication can only be proven with a real crash from a real TestFlight build. After a
+`beta` upload with the three values set: install the TestFlight build on a device, trigger a
+test crash, and confirm in Sentry that **both** the native (Swift/ObjC/engine) **and** the
+obfuscated Dart frames resolve to readable symbols. This device-dependent step is why #950
+stays open after this change.
 
 ## No iOS CI yet
 

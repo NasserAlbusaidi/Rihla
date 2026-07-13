@@ -124,6 +124,77 @@ def asc_api_key(root)
   )
 end
 
+# Resolve the three Sentry symbol-upload vars. ENV wins; a gitignored
+# secrets/sentry.env (simple `KEY=VALUE` lines) is the local fallback. Parsed in
+# Ruby — never shell-sourced — so the auth token never lands in shell history or
+# a command log. Returns a hash keyed by var name; a value is nil when unresolved.
+def sentry_upload_env(root)
+  wanted = %w[SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_PROJECT]
+  resolved = {}
+  wanted.each { |k| resolved[k] = ENV[k] unless ENV[k].to_s.strip.empty? }
+
+  env_file = File.join(root, "secrets", "sentry.env")
+  if File.exist?(env_file)
+    File.foreach(env_file) do |line|
+      line = line.strip
+      next if line.empty? || line.start_with?("#")
+      key, sep, value = line.partition("=")
+      next if sep.empty?
+      key = key.strip
+      next unless wanted.include?(key)
+      value = value.strip
+      # Strip one pair of surrounding quotes if the user wrote KEY="value".
+      if value.length >= 2 &&
+         ((value.start_with?('"') && value.end_with?('"')) ||
+          (value.start_with?("'") && value.end_with?("'")))
+        value = value[1..-2]
+      end
+      resolved[key] ||= value unless value.empty?  # ENV already set wins.
+    end
+  end
+  resolved
+end
+
+# Upload iOS debug symbols (native xcarchive dSYMs + Dart split-debug-info
+# symbols) to Sentry via `dart run sentry_dart_plugin`, using the pubspec
+# `sentry:` config. Warn-not-block end to end: called AFTER upload_to_testflight
+# so a Sentry failure can never block the release, and every failure path only
+# warns. The three vars are passed through the child-process ENV, NEVER
+# interpolated into the command string (that would echo the token into
+# fastlane's command log). Mirrors the Android CI step in release_android.yml.
+def upload_ios_symbols_to_sentry(root)
+  env = sentry_upload_env(root)
+  missing = %w[SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_PROJECT].select { |k| env[k].to_s.empty? }
+  unless missing.empty?
+    UI.important(
+      "Sentry symbol upload skipped — #{missing.join(', ')} unresolved " \
+      "(checked ENV, then secrets/sentry.env). iOS dSYMs and Dart debug " \
+      "symbols will NOT be uploaded, so prod crash frames stay unsymbolicated. " \
+      "Set SENTRY_AUTH_TOKEN, SENTRY_ORG and SENTRY_PROJECT in the environment " \
+      "or in secrets/sentry.env (see #950/#933)."
+    )
+    return
+  end
+
+  begin
+    # with_unbundled_env snapshots ENV on entry and fully restores it on exit,
+    # so the vars we set here are inherited by the `dart run` child yet never
+    # leak past this block. The command string carries no secret.
+    Bundler.with_unbundled_env do
+      ENV["SENTRY_AUTH_TOKEN"] = env["SENTRY_AUTH_TOKEN"]
+      ENV["SENTRY_ORG"]        = env["SENTRY_ORG"]
+      ENV["SENTRY_PROJECT"]    = env["SENTRY_PROJECT"]
+      sh("cd #{root.shellescape} && dart run sentry_dart_plugin")
+    end
+    UI.success("Uploaded iOS symbols to Sentry.")
+  rescue => e
+    UI.error(
+      "Sentry symbol upload failed (non-blocking; the TestFlight upload " \
+      "already succeeded): #{e.message}"
+    )
+  end
+end
+
 platform :ios do
   desc "Build an obfuscated release IPA and upload it to TestFlight (ASC API-key auth)."
   lane :beta do |options|
@@ -155,6 +226,11 @@ platform :ios do
       skip_waiting_for_build_processing:  true,
       skip_submission:                    true,
     )
+
+    # Upload symbols LAST — after the TestFlight upload — so a Sentry failure can
+    # never block the release. Warn-not-block; sweeps the xcarchive dSYMs and the
+    # --split-debug-info Dart symbols. See upload_ios_symbols_to_sentry.
+    upload_ios_symbols_to_sentry(root)
   end
 
   # Push the App Store listing text (name, subtitle, description, keywords,
