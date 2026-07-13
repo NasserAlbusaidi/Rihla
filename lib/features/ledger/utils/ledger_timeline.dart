@@ -56,11 +56,15 @@ List<LedgerDayGroup> groupTimelineByDay(
   final dateByLabel = <String, DateTime>{};
   final order = <String>[];
   // MMMd yields the locale's natural day/month order (e.g. en "May 19",
-  // ar "19 مايو") with Western digits — matching Activity (#154). The old
-  // MMM + manual " ${ts.day}" concat forced month-day everywhere.
+  // ar "19 مايو") — matching Activity (#154). The old MMM + manual
+  // " ${ts.day}" concat forced month-day everywhere. `useNativeDigits =
+  // false` enforces Western digits (DEC-5/#145): flutter_localizations'
+  // generated `ar` DateSymbols carry ZERODIGIT: '٠', which intl adopts by
+  // default per-locale, so without this every ar digit renders Arabic-Indic
+  // (#1215).
   final monthDayFormat = _monthDayFormatByLocale.putIfAbsent(
     l10n.localeName,
-    () => DateFormat.MMMd(l10n.localeName),
+    () => DateFormat.MMMd(l10n.localeName)..useNativeDigits = false,
   );
   for (final item in items) {
     final ts = item.date.toLocal();

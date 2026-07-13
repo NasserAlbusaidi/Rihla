@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:safar/core/models/split_mode.dart';
 import 'package:safar/features/ledger/models/expense_model.dart';
 import 'package:safar/features/ledger/models/settlement_model.dart';
@@ -23,8 +24,15 @@ bool _sameCalendarDate(DateTime a, DateTime b) {
 /// produced. Digits stay Western per #145.
 void main() {
   setUpAll(() async {
-    await initializeDateFormatting('ar');
-    await initializeDateFormatting('en');
+    // Load date symbols via the REAL app localization path (#1215), not
+    // intl's own `initializeDateFormatting`: flutter_localizations' generated
+    // `ar` DateSymbols carry ZERODIGIT: '٠', which intl's own `ar.json` does
+    // not — a pin test loading intl's bare data renders Western digits and
+    // passes even when the app renders Arabic-Indic ones. Don't mix this with
+    // `initializeDateFormatting` — the two loaders race for the same intl
+    // global symbol map, making the winner order-dependent.
+    await GlobalMaterialLocalizations.delegate.load(const Locale('ar'));
+    await GlobalMaterialLocalizations.delegate.load(const Locale('en'));
   });
 
   Expense expense(String id, DateTime createdAt) {
@@ -66,7 +74,8 @@ void main() {
     final label = groups.single.label;
     expect(label, contains('19 مايو')); // day-month
     expect(label, isNot(contains('مايو 19'))); // not month-day
-    expect(label, contains('19')); // Western digit, not ١٩
+    expect(label, contains('19')); // Western digit
+    expect(label, isNot(contains('١٩'))); // never Arabic-Indic (#1215)
   });
 
   test('groupTimelineByDay labels today and yesterday and preserves order', () {

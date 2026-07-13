@@ -46,8 +46,12 @@ class AppFormatters {
   ///
   /// Used in GroupSettleUpScreen per-event breakdown labels (D-04).
   /// Day is not zero-padded: June 3 renders as "Jun 3", not "Jun 03".
+  /// `useNativeDigits = false` enforces Western digits (DEC-5/#145): the
+  /// generated `ar` DateSymbols carry ZERODIGIT: '٠', which intl adopts by
+  /// default per-locale, so without this the digits render Arabic-Indic
+  /// (#1215).
   static String formatShortMonthDay(DateTime date, String localeTag) {
-    return DateFormat.MMMd(localeTag).format(date);
+    return (DateFormat.MMMd(localeTag)..useNativeDigits = false).format(date);
   }
 
   /// Format date for display (Relative formatting)
