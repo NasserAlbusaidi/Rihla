@@ -546,7 +546,12 @@ class BalanceCalculator {
     // ── Phase 3 — discounts: SUBTRACT by re-allocating the REMAINING bill
     // proportional to each person's pre-discount owed. A discount's own
     // `allocation` is intentionally ignored — proportional-to-pre-discount is
-    // what provably keeps every owed ≥ 0 (it can never exceed pre-discount). ──
+    // what provably keeps every owed ≥ 0. It does NOT bound owed at
+    // pre-discount: `_spreadProportional` truncates each non-last share and
+    // dumps the lost subunits (up to n-1) onto the alphabetically-last
+    // positive-weight key, which can land up to n-1 subunits ABOVE its
+    // pre-discount owed (#1203). Accepted — a bounded, conservation-safe
+    // consequence of the remainder contract, not a bug. ──
     var totalDiscount = 0;
     for (final adj in adjustments) {
       if (adj.type != 'discount') continue;
