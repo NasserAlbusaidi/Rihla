@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/theme/app_theme.dart';
+import 'package:safar/l10n/app_localizations_delegates.dart';
 import 'package:safar/l10n/generated/app_localizations.dart';
 
 /// Pumps [child] inside a minimal Rihla app shell:
@@ -45,7 +46,7 @@ Future<void> pumpRihlaApp(
       ],
       child: MaterialApp(
         locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         home: child,

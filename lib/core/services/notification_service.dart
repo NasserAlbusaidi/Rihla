@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/firebase_config.dart';
 import '../providers/settings_provider.dart';
 import '../router/app_router.dart';
+import 'draft_navigation_guard.dart';
 import 'local_notifier.dart';
 
 enum NotificationStatus { off, enabled, permissionDenied, error }
@@ -361,6 +362,15 @@ class NotificationService with WidgetsBindingObserver {
       override(location);
       return;
     }
+    unawaited(_guardedGo(location));
+  }
+
+  /// #1208: the real navigate path consults `DraftNavigationGuard` before
+  /// routing a notification tap over a possibly-dirty editor. Kept separate
+  /// from the (synchronous, unguarded) test-override seam above — existing
+  /// tests drive that seam directly.
+  Future<void> _guardedGo(String location) async {
+    if (!await DraftNavigationGuard.instance.mayNavigate()) return;
     try {
       _ref.read(routerProvider).go(location);
     } catch (e) {

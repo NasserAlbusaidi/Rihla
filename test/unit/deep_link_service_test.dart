@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/deep_link_service.dart';
+import 'package:safar/core/services/draft_navigation_guard.dart';
 
 class _MockAppLinks extends Mock implements AppLinks {}
 
@@ -276,5 +277,61 @@ void main() {
       expect(errors.single.exception, isA<StateError>());
       expect(errors.single.library, 'deep_link_service');
     });
+  });
+
+  // #1208: a runtime join link over a dirty-capable editor must confirm
+  // before navigating. No-guard behavior (sync `router.go`) is already
+  // proven by every test above — this group covers only the guarded branch.
+  group('DeepLinkService.openJoinLink draft guard consult (#1208)', () {
+    late _MockGoRouter router;
+    late DeepLinkService service;
+
+    setUp(() {
+      router = _MockGoRouter();
+      when(() => router.go(any())).thenReturn(null);
+      service = DeepLinkService.instance;
+      DraftNavigationGuard.instance.reset();
+    });
+
+    tearDown(DraftNavigationGuard.instance.reset);
+
+    test(
+      'a guard that declines the discard leaves the link undelivered, but '
+      'openJoinLink still reports it as handled (cold-start bookkeeping '
+      'only — no editor can be mounted during that window)',
+      () async {
+        DraftNavigationGuard.instance.register(() async => false);
+
+        final routed = service.openJoinLink(
+          router,
+          Uri.parse('rihla://join/abc123'),
+        );
+
+        expect(routed, isTrue);
+        verifyNever(() => router.go(any()));
+
+        await pumpEventQueue();
+        verifyNever(() => router.go(any()));
+      },
+    );
+
+    test(
+      'a guard that confirms the discard navigates asynchronously to the '
+      'join route',
+      () async {
+        DraftNavigationGuard.instance.register(() async => true);
+
+        final routed = service.openJoinLink(
+          router,
+          Uri.parse('rihla://join/abc123'),
+        );
+
+        expect(routed, isTrue);
+        verifyNever(() => router.go(any()));
+
+        await pumpEventQueue();
+        verify(() => router.go('/join/ABC123')).called(1);
+      },
+    );
   });
 }
