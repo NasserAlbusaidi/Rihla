@@ -276,6 +276,11 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                               balancesData,
                               eventNameMap,
                             ),
+                    // #1204: resolves a _buildPerEventBreakdown key (eventId
+                    // or the residual sentinel) into its display label at
+                    // render time — see _resolveBreakdownLabel.
+                    breakdownLabel: (key) =>
+                        _resolveBreakdownLabel(key, eventNameMap),
                     onRecordStepped: (steps) => _runSteppedSettle(
                       context,
                       group: group,
@@ -288,10 +293,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
                     // (scope: 'group') — the reverse carries the un-forgeable
                     // correctionOfSettlementId marker and never surfaces as a
                     // fresh feed payment (no client activity write).
-                    onCorrect: (s) => _correctSettlement(
-                      context,
-                      original: s,
-                    ),
+                    onCorrect: (s) => _correctSettlement(context, original: s),
                     // #753: correct a DECOMPOSED settle-up — reverse all its
                     // tagged docs atomically. Wiring this also switches the
                     // history regroup on (the event screen leaves it null).
@@ -389,6 +391,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     );
   }
 
+  /// Sentinel breakdown key for the cross-event residual row (#752/#1204) —
+  /// never a real event id (Firestore/test event ids never equal this
+  /// literal), so it can't collide with an [eventOrder] member. Resolved to
+  /// the localized "Across events" label by [_resolveBreakdownLabel] —
+  /// never displayed raw.
+  static const _kAcrossEventsBreakdownKey = '__group_settle_up_across_events__';
+
   /// Per-event attribution for the [currency] bucket whose tile invoked it
   /// (#382 PR-3): the breakdown is per-currency, so the decomposition below is
   /// per-bucket by construction — no cross-currency netting, ever.
@@ -399,6 +408,16 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   /// [suggestedAmount], fixing the old over-display (offsetting cross-event nets
   /// once showed the raw per-event overlap, exceeding the actual transfer). The
   /// cross-event remainder surfaces as one "Across events" residual row.
+  ///
+  /// #1204: keyed by the RAW eventId (or the [_kAcrossEventsBreakdownKey]
+  /// sentinel for the residual) — NOT the display label. Two distinct events
+  /// sharing a display label (same name, same day) would collide on a
+  /// label-keyed map and silently overwrite each other's slice, desyncing
+  /// the displayed sum from the settlement amount. `decomposition.perEvent`
+  /// is itself eventId-keyed, so this map is collision-free by construction;
+  /// the display label is resolved separately, at render time, by
+  /// [_resolveBreakdownLabel] (wired through [SettleUpPageBody.breakdownLabel]
+  /// / [GroupSettlementTile.breakdownLabel]).
   Map<String, Decimal> _buildPerEventBreakdown(
     String fromUserId,
     String toUserId,
@@ -424,14 +443,28 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     for (final eventId in eventOrder) {
       final slice = decomposition.perEvent[eventId];
       if (slice != null && slice > Decimal.zero) {
-        result[_buildEventLabel(eventId, eventNameMap)] = slice;
+        result[eventId] = slice;
       }
     }
     if (decomposition.residual > Decimal.zero) {
-      result[context.l10n.groupSettleUpAcrossEventsLabel] =
-          decomposition.residual;
+      result[_kAcrossEventsBreakdownKey] = decomposition.residual;
     }
     return result;
+  }
+
+  /// #1204: resolves a [_buildPerEventBreakdown] key (a raw eventId, or the
+  /// [_kAcrossEventsBreakdownKey] residual sentinel) into its display label
+  /// AT RENDER TIME, in [GroupSettlementTile] — keeping the breakdown map
+  /// itself collision-free regardless of how many events share a display
+  /// label.
+  String _resolveBreakdownLabel(
+    String key,
+    Map<String, ({String name, EventType type, DateTime date})> eventNameMap,
+  ) {
+    if (key == _kAcrossEventsBreakdownKey) {
+      return context.l10n.groupSettleUpAcrossEventsLabel;
+    }
+    return _buildEventLabel(key, eventNameMap);
   }
 
   String _buildEventLabel(
@@ -451,8 +484,18 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ? entry.name
         : EventTypeConfig.forType(entry.type).label;
 
-    final name = rawName.length > 30
-        ? '${rawName.substring(0, 27)}...'
+    // #1217: truncate on GRAPHEME boundaries (`package:characters`), never
+    // raw UTF-16 code units. `String.length`/`substring` count UTF-16 units,
+    // so a name whose 30th-ish visible character is an astral emoji (a
+    // 2-unit surrogate pair) could get cut BETWEEN the pair's high and low
+    // surrogate, leaving an unpaired surrogate that Flutter's text layer
+    // throws on ("string is not well-formed UTF-16"). "Roughly 30 visible
+    // characters, ellipsis when longer" is preserved; the count now measures
+    // graphemes instead of UTF-16 units, so a name with astral characters
+    // may show fewer than 30 raw code units before truncating.
+    final rawNameCharacters = rawName.characters;
+    final name = rawNameCharacters.length > 30
+        ? '${rawNameCharacters.take(27)}...'
         : rawName;
 
     final date = AppFormatters.formatShortMonthDay(
