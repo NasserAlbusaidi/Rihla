@@ -157,6 +157,89 @@ class EditExpenseScreen extends ConsumerWidget {
       original.splitExplanation,
     );
 
+    // #1092: every arg below is gated on its dirty flag so an untouched field
+    // is never re-written to the stale form value (reverting a concurrent
+    // edit). Captured as named locals FIRST (rather than inlined at the call
+    // site) so `hasChanges` below can inspect them without re-deriving the
+    // conditions.
+    final amountArg = payload.moneyDirty && payload.amount != original.amount
+        ? payload.amount
+        : null;
+    final descriptionArg =
+        payload.descriptionDirty &&
+            payload.description != original.description
+        ? payload.description ?? ''
+        : null;
+    final scopeArg = payload.moneyDirty && payload.scope != original.scope
+        ? payload.scope
+        : null;
+    final customSplitParticipantsArg =
+        payload.moneyDirty && payload.scope == ExpenseScope.custom
+        ? payload.customSplitParticipants
+        : null;
+    final splitModeArg = splitChanged && !goingEqual
+        ? payload.splitMode
+        : null;
+    final splitDistributionArg = splitChanged && !goingEqual
+        ? payload.splitDistribution
+        : null;
+    // #203 S2 / #1092: gated on explanationDirty (its OWN flag, NOT
+    // moneyDirty — display-only, no arithmetic coupling). Set the new
+    // metadata when it changed and is present; orphan-delete it when it
+    // changed to absent (no longer itemized). Untouched otherwise.
+    final splitExplanationArg =
+        payload.explanationDirty &&
+            explanationChanged &&
+            payload.splitExplanation != null
+        ? payload.splitExplanation
+        : null;
+    final clearExplanationArg =
+        payload.explanationDirty &&
+        explanationChanged &&
+        payload.splitExplanation == null;
+    final categoryIdArg =
+        payload.categoryDirty && payload.categoryId != original.categoryId
+        ? payload.categoryId
+        : null;
+    final payerParticipantIdArg =
+        payload.payerDirty &&
+            payload.payerParticipantId != original.payerParticipantId
+        ? payload.payerParticipantId
+        : null;
+
+    // #1214: `moneyDirty` is a STRING compare in the editor
+    // (expense_editor_body.dart), so retyping a value-equal amount ("12.5" ->
+    // "12.50") sets `moneyDirty` even though every arg above — computed via a
+    // DECIMAL compare against `original` — resolves to null/false. `hasChanges`
+    // mirrors `ExpenseService.updateExpense`'s own `updates.isEmpty` check
+    // byte-for-byte (lastEditedBy alone never counts there either), so a
+    // genuine no-op never reaches the write/connectivity side effects below —
+    // it would otherwise call `noteQueuedWrite` unconditionally (skipWait is
+    // driven by connectivity status alone) and falsely flip a genuinely-offline
+    // device toward "syncing"/"online".
+    final hasChanges =
+        amountArg != null ||
+        descriptionArg != null ||
+        scopeArg != null ||
+        customSplitParticipantsArg != null ||
+        splitModeArg != null ||
+        splitDistributionArg != null ||
+        goingEqual ||
+        splitExplanationArg != null ||
+        clearExplanationArg ||
+        categoryIdArg != null ||
+        payerParticipantIdArg != null;
+    if (!hasChanges) {
+      final ctx = ref.context;
+      if (ctx.mounted) {
+        ref.invalidate(
+          eventExpensesProvider((groupId: groupId, eventId: eventId)),
+        );
+        ctx.pop();
+      }
+      return;
+    }
+
     // #104/#412: capture before the await so post-write effects survive a
     // disposal during the (now bounded) wait.
     final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
@@ -171,56 +254,20 @@ class EditExpenseScreen extends ConsumerWidget {
           groupId: groupId,
           eventId: eventId,
           expenseId: original.id,
-          // #1092: every field below is gated on its dirty flag so an untouched
-          // field is never re-written to the stale form value (reverting a
-          // concurrent edit). The inner `!= original` ternaries are unchanged.
-          amount: payload.moneyDirty && payload.amount != original.amount
-              ? payload.amount
-              : null,
+          amount: amountArg,
           // #261: preserve the expense's own currency on every edit — never let
           // updateExpense default it to OMR (which would re-scale amountFils).
           currency: original.currency,
-          description:
-              payload.descriptionDirty &&
-                  payload.description != original.description
-              ? payload.description ?? ''
-              : null,
-          scope: payload.moneyDirty && payload.scope != original.scope
-              ? payload.scope
-              : null,
-          customSplitParticipants:
-              payload.moneyDirty && payload.scope == ExpenseScope.custom
-              ? payload.customSplitParticipants
-              : null,
-          splitMode: splitChanged && !goingEqual ? payload.splitMode : null,
-          splitDistribution: splitChanged && !goingEqual
-              ? payload.splitDistribution
-              : null,
+          description: descriptionArg,
+          scope: scopeArg,
+          customSplitParticipants: customSplitParticipantsArg,
+          splitMode: splitModeArg,
+          splitDistribution: splitDistributionArg,
           clearSplit: goingEqual,
-          // #203 S2 / #1092: gated on explanationDirty (its OWN flag, NOT
-          // moneyDirty — display-only, no arithmetic coupling). Set the new
-          // metadata when it changed and is present; orphan-delete it when it
-          // changed to absent (no longer itemized). Untouched otherwise.
-          splitExplanation:
-              payload.explanationDirty &&
-                  explanationChanged &&
-                  payload.splitExplanation != null
-              ? payload.splitExplanation
-              : null,
-          clearExplanation:
-              payload.explanationDirty &&
-              explanationChanged &&
-              payload.splitExplanation == null,
-          categoryId:
-              payload.categoryDirty &&
-                  payload.categoryId != original.categoryId
-              ? payload.categoryId
-              : null,
-          payerParticipantId:
-              payload.payerDirty &&
-                  payload.payerParticipantId != original.payerParticipantId
-              ? payload.payerParticipantId
-              : null,
+          splitExplanation: splitExplanationArg,
+          clearExplanation: clearExplanationArg,
+          categoryId: categoryIdArg,
+          payerParticipantId: payerParticipantIdArg,
           lastEditedBy: ref.read(currentUserIdProvider), // #248
         );
     final outcome = await awaitServerAck(
