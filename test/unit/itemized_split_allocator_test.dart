@@ -269,6 +269,43 @@ void main() {
       }
     });
 
+    test(
+      'discount remainder can exceed pre-discount owed (#1203, pins the '
+      'exceeds case — the JPY negative-edge test above only covers the '
+      'EQUALS case)',
+      () {
+        final dist = BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'x', amountFils: 10, participantIds: ['A']),
+            SplitItem(label: 'y', amountFils: 10, participantIds: ['B']),
+            SplitItem(label: 'z', amountFils: 1, participantIds: ['Z']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(
+              type: 'discount',
+              amountFils: 1,
+              allocation: 'proportional',
+            ),
+          ],
+          participantIds: const ['A', 'B', 'Z'],
+        );
+        // preDiscount {A:0.010, B:0.010, Z:0.001}; discount 0.001; remaining
+        // 0.020 truncates A/B to 0.009 each and drops the 2-fil remainder on
+        // Z (alphabetically-last positive-weight) — Z's owed rises from
+        // 0.001 to 0.002, ABOVE its pre-discount owed. Non-negativity and
+        // conservation still hold; only the false "never exceeds
+        // pre-discount" comment is wrong.
+        expect(dist['A'], _d('0.009'));
+        expect(dist['B'], _d('0.009'));
+        expect(dist['Z'], _d('0.002'));
+        expect(sum(dist), _d('0.020'));
+        for (final v in dist.values) {
+          expect(v >= Decimal.zero, isTrue);
+        }
+      },
+    );
+
     test('equal additive on a zero-item person, THEN discount (conserves, ≥0)', () {
       final dist = BalanceCalculator.allocateItemizedDistribution(
         items: const [
