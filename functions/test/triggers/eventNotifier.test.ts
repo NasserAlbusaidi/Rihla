@@ -215,8 +215,12 @@ describe('eventNotifier', () => {
 
     const body = sendEach.mock.calls[0][0][0].notification.body;
     expect(body).toContain('Ahmed');
+    // KEEP-GREEN invariant (#1216b): the empty event NAME still drops the
+    // trailing separator — the bidi wrap is on the post-fallback actor label,
+    // not the raw param, so `label.length === 0` still gates the tail.
     expect(body).not.toContain('·');
-    expect(body.trim()).toBe('Ahmed created a new event.');
+    // #1216b: the non-empty actor is FSI/PDI-isolated at the interpolation.
+    expect(body.trim()).toBe('\u2068Ahmed\u2069 created a new event.');
   });
 
   test('retrying the same Eventarc create event sends only once', async () => {
