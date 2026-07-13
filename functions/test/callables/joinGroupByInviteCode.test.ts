@@ -125,6 +125,46 @@ describe('joinGroupByInviteCode', () => {
       .toBe(true);
   });
 
+  // #1216: the join copy of the name validator (a SEPARATE regex from
+  // shared/displayName.ts) rejects the reject-set K + enforces the visible-char
+  // floor. displayName is validated at line 191 — BEFORE assertJoinNotLocked —
+  // so a bad name never consumes a rate-limit attempt.
+  describe('#1216 display-name format-char rejection (join validator)', () => {
+    const K_CODE_POINTS = [
+      0x00ad, 0x200b, 0x200e, 0x200f,
+      0x202a, 0x202b, 0x202c, 0x202d, 0x202e,
+      0x2060, 0x2061, 0x2062, 0x2063, 0x2064,
+      0x2066, 0x2067, 0x2068, 0x2069,
+      0xfeff,
+    ];
+
+    test('reject vectors + full-K → invalid-argument, no rate-limit consumed', async () => {
+      const rejects = [
+        'Ali\u202e', '\u202dhack', 'a\u2066b\u2069', '\u200b\u200b', 'Ali\u200bx',
+        '\u200d\u200c', '\u200d \u200c', 'Bob\ufeff', 'x\u00ady', '\u200eltr', 'Ali\u2060', ' ',
+        ...K_CODE_POINTS.map((cp) => `Ali${String.fromCodePoint(cp)}`),
+      ];
+      for (const displayName of rejects) {
+        await expect(
+          wrapped({ data: { inviteCode: 'ABC123', displayName }, auth: { uid: 'eve' } } as any),
+        ).rejects.toMatchObject({ code: 'invalid-argument' });
+      }
+      // Rejection precedes assertJoinNotLocked, so no attempt counter was written.
+      expect((await getFirestore().doc('joinAttempts/eve').get()).exists).toBe(false);
+    });
+
+    test('ZWNJ/ZWJ names join successfully (allowed joiners)', async () => {
+      const res = await wrapped({
+        data: { inviteCode: 'ABC123', displayName: 'می\u200cخواهم' },
+        auth: { uid: 'persian' },
+      } as any);
+      expect(res).toEqual({ groupId: 'g1' });
+      expect(
+        (await getFirestore().doc('groups/g1/members/persian').get()).data()?.displayName,
+      ).toBe('می\u200cخواهم');
+    });
+  });
+
   test('join adds uid to group and creates member document', async () => {
     const res = await wrapped({
       data: { inviteCode: 'abc123', displayName: 'Alice' },

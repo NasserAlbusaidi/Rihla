@@ -63,11 +63,17 @@ const JOIN_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
 const JOIN_ATTEMPT_LOCK_MS = 60 * 60 * 1000;
 const JOIN_ATTEMPT_LIMIT = 5;
 const DISPLAY_NAME_MAX_LENGTH = 32;
-// Intentionally matches control characters to REJECT them in display names —
-// the server-side counterpart to isValidDisplayName, kept aligned with
-// firestore.rules. The control chars are the validation target, not a mistake.
+// Intentionally matches control characters AND the #1216 bidi-control /
+// zero-width format reject-set K (U+00AD, U+200B, U+200E, U+200F, U+202A-202E,
+// U+2060-2064, U+2066-2069, U+FEFF) to REJECT them in display names — the
+// server-side counterpart to isValidDisplayName, kept aligned with
+// firestore.rules. ZWNJ/ZWJ (U+200C/U+200D) stay allowed (Persian/Kurdish +
+// emoji ZWJ). The chars are the validation target, not a mistake.
 // eslint-disable-next-line no-control-regex
-const CONTROL_CHARACTER_PATTERN = /[\x00-\x1F\x7F]/u;
+const CONTROL_CHARACTER_PATTERN = /[\x00-\x1F\x7F\u00ad\u200b\u200e\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/u;
+// #1216 visible-char floor: at least one char that is not whitespace and not a
+// ZWNJ/ZWJ joiner (escapes, never raw joiners in source).
+const VISIBLE_CHAR_PATTERN = /[^\s\u200c\u200d]/u;
 
 function normalizeDisplayName(displayName: unknown): string {
   if (displayName == null) return 'Anonymous';
@@ -82,7 +88,12 @@ function normalizeDisplayName(displayName: unknown): string {
       `displayName must be between 1 and ${DISPLAY_NAME_MAX_LENGTH} characters.`,
     );
   }
+  // #1216: reject on the RAW value (JS trim() strips U+FEFF).
   if (CONTROL_CHARACTER_PATTERN.test(displayName)) {
+    throw new HttpsError('invalid-argument', 'displayName contains invalid characters.');
+  }
+  // #1216 visible-char floor: reject a name that is only whitespace + joiners.
+  if (!VISIBLE_CHAR_PATTERN.test(trimmed)) {
     throw new HttpsError('invalid-argument', 'displayName contains invalid characters.');
   }
   return trimmed;

@@ -2,9 +2,13 @@
 ///
 /// Mirrors the server-side rules check `isValidDisplayName` in
 /// `security/firestore.rules`: 1–32 characters after trim, no control
-/// characters (U+0000–U+001F or U+007F). Validating client-side gives the
-/// user a friendly inline error instead of an opaque `permission-denied`
-/// when the rules reject the write.
+/// characters (U+0000–U+001F or U+007F), no bidi-control / zero-width format
+/// characters ([kDisallowedFormatChars], #1216), and at least one visible
+/// character (the invisible-name floor, [isInvisibleOnlyName]). Validating
+/// client-side gives the user a friendly inline error instead of an opaque
+/// `permission-denied` when the rules reject the write. The FREE-TEXT
+/// validators below are deliberately NOT tightened — only names gain the
+/// format-char + floor checks.
 ///
 /// Length is counted in UTF-16 code units on BOTH sides: Dart `String.length`
 /// here, and Firestore rules `string.size()` — which is UTF-16-based, NOT
@@ -20,16 +24,49 @@ const String _reservedFormerMemberSuffix =
     ' (former '
     'member)';
 
+/// Bidi-control and zero-width format characters disallowed in display names
+/// (the reject-set "K", #1216). RANGE-EXPANDED, one code point per `\u` escape
+/// (never a `-` range) so the SAME constant can be enumerated code-point-by-
+/// code-point by the full-K iteration test — a dropped char there is a failing
+/// test. U+200C (ZWNJ) and U+200D (ZWJ) are DELIBERATELY ABSENT: they are
+/// orthographically required in Persian/Kurdish and inside emoji ZWJ sequences
+/// (joiners, not bidi controls; emoji/astral names are legal). Mirrored
+/// byte-for-byte by `isValidDisplayName` in `security/firestore.rules` and by
+/// the two Functions name validators (`shared/displayName.ts`,
+/// `joinGroupByInviteCode.ts`). Free text is deliberately NOT tightened.
+const String kDisallowedFormatChars =
+    '\u00ad' // SOFT HYPHEN
+    '\u200b' // ZERO WIDTH SPACE
+    '\u200e' // LEFT-TO-RIGHT MARK
+    '\u200f' // RIGHT-TO-LEFT MARK
+    '\u202a\u202b\u202c\u202d\u202e' // LRE RLE PDF LRO RLO
+    '\u2060\u2061\u2062\u2063\u2064' // WORD JOINER, invisible ops
+    '\u2066\u2067\u2068\u2069' // LRI RLI FSI PDI
+    '\ufeff'; // ZERO WIDTH NO-BREAK SPACE (BOM)
+
+final RegExp _disallowedFormatChar = RegExp('[$kDisallowedFormatChars]');
+
 /// True if [s] contains any C0 control character (U+0000–U+001F) or DEL
 /// (U+007F). Allowing these in display names lets attackers smuggle
 /// newlines into UI rendering and confuses downstream tooling
-/// (logs, push notification bodies). Every printable Unicode code point
-/// including non-Latin scripts is accepted.
+/// (logs, push notification bodies). Printable code points across non-Latin
+/// scripts stay accepted; bidi/zero-width format chars are rejected separately
+/// via [kDisallowedFormatChars] (#1216).
 bool _hasControlChar(String s) {
   for (final cu in s.codeUnits) {
     if (cu < 0x20 || cu == 0x7F) return true;
   }
   return false;
+}
+
+/// True when [s] has NO visible character — every character is whitespace or a
+/// ZWNJ/ZWJ joiner. The display-name "visible-char floor" (#1216): a name that
+/// survives the [kDisallowedFormatChars] reject-set but still renders as nothing
+/// (e.g. joiners plus spaces) must be rejected. ZWNJ (U+200C) and ZWJ (U+200D)
+/// are stripped first (escapes, never raw joiners in source), then [String.trim]
+/// removes whitespace; an empty remainder means the name is invisible-only.
+bool isInvisibleOnlyName(String s) {
+  return s.replaceAll(RegExp('[\u200c\u200d]'), '').trim().isEmpty;
 }
 
 enum DisplayNameValidationError {
@@ -52,6 +89,20 @@ DisplayNameValidationError? displayNameValidationError(String? input) {
     return DisplayNameValidationError.tooLong;
   }
   if (_hasControlChar(raw)) {
+    return DisplayNameValidationError.controlCharacter;
+  }
+  // #1216: reject bidi-control / zero-width format chars. Runs on `raw`, NOT
+  // `trimmed` — Dart `trim()` strips U+FEFF (it is Unicode White_Space + the
+  // BOM Dart special-cases), so a trailing-BOM name would false-ACCEPT here
+  // while the rules (gating the raw string) reject it — the exact
+  // PERMISSION_DENIED this guards against. `_hasControlChar(raw)` above is the
+  // same raw-not-trimmed precedent.
+  if (_disallowedFormatChar.hasMatch(raw)) {
+    return DisplayNameValidationError.controlCharacter;
+  }
+  // #1216 visible-char floor: reject a name that is only whitespace plus
+  // ZWNJ/ZWJ joiners (whitespace-only already returned `empty` above).
+  if (isInvisibleOnlyName(raw)) {
     return DisplayNameValidationError.controlCharacter;
   }
   if (trimmed.endsWith(_reservedFormerMemberSuffix)) {

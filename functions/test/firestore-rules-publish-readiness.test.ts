@@ -1152,6 +1152,125 @@ describe('Publish readiness Firestore rules', () => {
     }));
   });
 
+  // #1216a: isValidDisplayName + displayNameMapValuesAreValid reject the
+  // bidi-control / zero-width format-char reject-set K, with a visible-char
+  // floor. ZWNJ/ZWJ (U+200C/U+200D) stay allowed. Escaped notation ONLY —
+  // never raw invisibles in source. Two oracles: a member self-rename
+  // (isValidDisplayName) and an event participantNames map (the map validator).
+  describe('#1216a display-name format-char rejection', () => {
+    // The reject-set K, one code point per entry (range-EXPANDED).
+    const K_CODE_POINTS = [
+      0x00ad, 0x200b, 0x200e, 0x200f,
+      0x202a, 0x202b, 0x202c, 0x202d, 0x202e,
+      0x2060, 0x2061, 0x2062, 0x2063, 0x2064,
+      0x2066, 0x2067, 0x2068, 0x2069,
+      0xfeff,
+    ];
+
+    // Golden vectors V1-V15 (verdicts identical across the single-name and
+    // map-value paths; V16 diverges and is pinned separately).
+    const VECTORS: Array<{ label: string; input: string; accept: boolean }> = [
+      { label: 'V1 Ali', input: 'Ali', accept: true },
+      { label: 'V2 RLO', input: 'Ali\u202e', accept: false },
+      { label: 'V3 LRO', input: '\u202dhack', accept: false },
+      { label: 'V4 isolate controls', input: 'a\u2066b\u2069', accept: false },
+      { label: 'V5 ZWSP-only', input: '\u200b\u200b', accept: false },
+      { label: 'V6 embedded ZWSP', input: 'Ali\u200bx', accept: false },
+      { label: 'V7 Persian ZWNJ', input: 'می\u200cخواهم', accept: true },
+      {
+        label: 'V8 emoji ZWJ sequence',
+        input: '\u{1F468}\u200d\u{1F469}\u200d\u{1F467}',
+        accept: true,
+      },
+      { label: 'V9 joiner-only fails floor', input: '\u200d\u200c', accept: false },
+      { label: 'V10 joiners+ASCII space', input: '\u200d \u200c', accept: false },
+      { label: 'V11 BOM', input: 'Bob\ufeff', accept: false },
+      { label: 'V12 soft hyphen', input: 'x\u00ady', accept: false },
+      { label: 'V13 LRM', input: '\u200eltr', accept: false },
+      { label: 'V14 plain Arabic', input: 'عمر', accept: true },
+      { label: 'V15 word joiner', input: 'Ali\u2060', accept: false },
+    ];
+
+    describe('member self-rename (isValidDisplayName)', () => {
+      for (const v of VECTORS) {
+        test(`${v.label} => ${v.accept ? 'ACCEPT' : 'REJECT'}`, async () => {
+          const member = testEnv.authenticatedContext('member').firestore();
+          const op = member
+            .doc('groups/g1/members/member')
+            .update({ displayName: v.input });
+          if (v.accept) {
+            await assertSucceeds(op);
+          } else {
+            await assertFails(op);
+          }
+        });
+      }
+
+      test('V16 NBSP-only => records the ACTUAL emulator verdict (safe-direction)', async () => {
+        // The client REJECTS NBSP-only (empty after Dart trim). OBSERVED emulator
+        // verdict: rules ACCEPT it — rules `.trim()` does NOT strip NBSP (so
+        // trim().size() >= 1 holds) and RE2 `\s` excludes NBSP (the floor treats
+        // NBSP as a visible char). Client-stricter = safe-direction: a
+        // client-validated write never hits PERMISSION_DENIED; a NBSP-only name
+        // can only arrive via a crafted non-client write.
+        const member = testEnv.authenticatedContext('member').firestore();
+        await assertSucceeds(
+          member.doc('groups/g1/members/member').update({ displayName: '\u00a0' }),
+        );
+      });
+
+      test('full-K iteration: every K code point rejects a member rename', async () => {
+        for (const cp of K_CODE_POINTS) {
+          const member = testEnv.authenticatedContext('member').firestore();
+          await assertFails(
+            member.doc('groups/g1/members/member').update({
+              displayName: `Ali${String.fromCodePoint(cp)}`,
+            }),
+          );
+        }
+      });
+    });
+
+    describe('event participantNames map (displayNameMapValuesAreValid)', () => {
+      for (const v of VECTORS) {
+        test(`${v.label} => ${v.accept ? 'ACCEPT' : 'REJECT'}`, async () => {
+          const owner = testEnv.authenticatedContext('owner').firestore();
+          const op = owner.doc('groups/g1/events/e-1216').set(
+            validEvent({
+              name: 'Valid Name',
+              createdBy: 'owner',
+              participantIds: ['owner'],
+              participantNames: { owner: v.input },
+            }),
+          );
+          if (v.accept) {
+            await assertSucceeds(op);
+          } else {
+            await assertFails(op);
+          }
+        });
+      }
+
+      test('V16 NBSP-only map value => ACCEPT (RE2 \\s excludes NBSP; safe-direction)', async () => {
+        // The map floor `[^\n \x{200c}\x{200d}]` treats NBSP as a visible char,
+        // so a NBSP-only participantNames value is ACCEPTED — the documented
+        // whitespace divergence from the client (which rejects it). Names are
+        // client-validated before they land in participantNames, so this is safe.
+        const owner = testEnv.authenticatedContext('owner').firestore();
+        await assertSucceeds(
+          owner.doc('groups/g1/events/e-1216-nbsp').set(
+            validEvent({
+              name: 'Valid Name',
+              createdBy: 'owner',
+              participantIds: ['owner'],
+              participantNames: { owner: '\u00a0' },
+            }),
+          ),
+        );
+      });
+    });
+  });
+
   test('#205 deleteGroup quiesce marker rejects writes before final isDeleted', async () => {
     await updateSeedGroup({
       isDeleted: false,
