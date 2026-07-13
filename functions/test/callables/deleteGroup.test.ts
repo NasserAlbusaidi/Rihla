@@ -1173,9 +1173,12 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
       amountFils: 1000,
     });
 
+    // #1209: the malformed-lock path is a TRANSIENT state (owner clears +
+    // retries) and now throws `aborted`, not `failed-precondition` (which the
+    // client renders as the settle-up snackbar).
     await expect(
       wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
-    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    ).rejects.toMatchObject({ code: 'aborted' });
 
     const group = (await groupSnap('g')).data();
     expect(group?.isDeleted).toBe(false);
@@ -1203,9 +1206,12 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
       amountFils: 1000,
     });
 
+    // #1209: the malformed-lock path is a TRANSIENT state (owner clears +
+    // retries) and now throws `aborted`, not `failed-precondition` (which the
+    // client renders as the settle-up snackbar).
     await expect(
       wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
-    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    ).rejects.toMatchObject({ code: 'aborted' });
 
     const group = (await groupSnap('g')).data();
     expect(group?.isDeleted).toBe(false);
@@ -1335,9 +1341,11 @@ describe('deleteGroup callable — soft-delete + balance gate (#190 §8.1)', () 
     await seedMember('g', OWNER);
     await seedMember('g', MEMBER);
 
+    // #1209: a held departure lock is a TRANSIENT freeze (a peer leave/remove
+    // is in flight) → `aborted`, not `failed-precondition`.
     await expect(
       wrapped({ data: { groupId: 'g' }, auth: { uid: OWNER } } as any),
-    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    ).rejects.toMatchObject({ code: 'aborted' });
 
     const group = (await groupSnap('g')).data();
     expect(group?.deletingInProgress ?? false).toBe(false);

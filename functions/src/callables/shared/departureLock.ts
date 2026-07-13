@@ -21,15 +21,59 @@ function lockedAtMillis(value: unknown): number | null {
 // writer honors the flag inside its own write transaction) → mutate and clear
 // in ONE final transaction that first verifies the lock is still ours.
 //
-// Error-code contract: lock contention and a lost/reaped lock throw
-// `aborted`, NEVER `failed-precondition` — the client maps any
-// failed-precondition from these callables to the "settle up before leaving"
-// snackbar (group_danger_section.dart / group_members_section.dart), so a
-// square user losing a lock race would be told they owe money.
+// Error-code contract (#1144 + #1209/#1211) — leaveGroup / removeMember /
+// deleteGroup surface a freeze under exactly three codes, and the client maps
+// each to a distinct outcome (group_danger_section.dart /
+// group_members_section.dart):
+//   - not-found → the group is GONE (isDeleted, or a delete in flight that ends
+//     in gone) → client goes home ("nothing to do").
+//   - aborted → a TRANSIENT freeze: departure-lock contention, a lost/reaped
+//     lock, OR a bounded concurrent claim / account-deletion after which the
+//     group survives and the caller stays a member → client shows the retry
+//     copy (groupMembershipChangeInProgress), no Sentry.
+//   - failed-precondition → a REAL precondition (unsettled balance, #1144 R1
+//     universe-only) → client shows the "settle up before leaving/deleting"
+//     snackbar.
+// NEVER throw failed-precondition for a transient freeze or a lock race: a
+// square user would be told they owe money. NEVER throw not-found for a
+// transient claim/account-deletion freeze: the leaver would be told they left
+// while they are still a member (#1211).
 
 export interface DepartureLock {
   lockedAtMs: number;
   lockedBy: string;
+}
+
+// #1209/#1211: the shared terminal-vs-transient quiesce classifier. leaveGroup /
+// removeMember (pre-check AND in-tx re-check) and acquireDepartureLock below all
+// make the SAME not-found/aborted decision — this puts it in ONE place instead
+// of triplicating it, and makes the (single-threaded-emulator-unreachable) in-tx
+// re-check a thin `if (freeze) throw freeze` dispatch over a unit-tested helper.
+// Returns the HttpsError to throw, or null when the group is writable on this
+// axis. Deliberately does NOT classify `departureInProgress`: that flag is the
+// departure-lock CONTENTION signal (its own message, thrown separately in
+// acquireDepartureLock) and is folded into deleteGroup's own transient check —
+// both evaluated AFTER this classifier.
+//   - isDeleted / deletingInProgress → TERMINAL (group gone / ending gone) →
+//     not-found (client goes home).
+//   - claimingInProgress / accountDeletionInProgress → TRANSIENT (bounded op,
+//     group survives, caller still a member) → aborted (client retry copy).
+export function quiesceFreezeError(
+  group: Record<string, unknown>,
+): HttpsError | null {
+  if (group.isDeleted === true || group.deletingInProgress === true) {
+    return new HttpsError('not-found', 'Group not found.');
+  }
+  if (
+    group.claimingInProgress === true
+    || group.accountDeletionInProgress === true
+  ) {
+    return new HttpsError(
+      'aborted',
+      'Another operation is in progress. Try again.',
+    );
+  }
+  return null;
 }
 
 export async function acquireDepartureLock(
@@ -43,17 +87,12 @@ export async function acquireDepartureLock(
       throw new HttpsError('not-found', 'Group not found.');
     }
     const group = groupSnap.data() ?? {};
-    // Same four-flag quiesce honor as the callers' pre-checks (Admin SDK
-    // bypasses rules): soft-deleted or otherwise-locked groups are
-    // indistinguishable from missing groups on this path.
-    if (
-      group.isDeleted === true
-      || group.deletingInProgress === true
-      || group.claimingInProgress === true
-      || group.accountDeletionInProgress === true
-    ) {
-      throw new HttpsError('not-found', 'Group not found.');
-    }
+    // #1211: terminal (not-found) vs transient (aborted) freeze via the shared
+    // classifier (Admin SDK bypasses rules, so this honors the same write-lock
+    // as firestore.rules). Normally shielded by the callers' pre-checks; kept
+    // here so the shared lock enforces the contract on any future caller.
+    const freeze = quiesceFreezeError(group);
+    if (freeze) throw freeze;
     if (group.departureInProgress === true) {
       throw new HttpsError(
         'aborted',

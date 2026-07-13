@@ -787,6 +787,46 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // #1209 — aborted (transient freeze: claim / account-deletion / peer
+  // departure) maps to the retry-inviting copy, NOT the settle-up snackbar
+  // (the group may be fully settled) and NOT a navigation home. Mirrors the
+  // leave-aborted case above.
+  // -------------------------------------------------------------------------
+  testWidgets(
+    '#1209 delete aborted (transient freeze) shows retry copy, '
+    'no settle-up copy, no navigation',
+    (tester) async {
+      final groupService = _MockGroupService();
+      when(() => groupService.deleteGroup(groupId: any(named: 'groupId'))).thenThrow(
+        FirebaseFunctionsException(
+          message: 'Another operation is in progress. Try again.',
+          code: 'aborted',
+        ),
+      );
+
+      await tester.pumpWidget(
+        buildApp(
+          buildOverrides(
+            groupService: groupService,
+            eventExpenses: Stream.value(const <Expense>[]),
+            eventSettlements: Stream.value(const <Settlement>[]),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await confirmDelete(tester);
+
+      verify(() => groupService.deleteGroup(groupId: 'g1')).called(1);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.groupMembershipChangeInProgress), findsOneWidget);
+      expect(find.text(l10n.groupSettleBeforeDeleting), findsNothing);
+      expect(find.textContaining('Failed to delete group'), findsNothing);
+      expect(find.text('Home'), findsNothing);
+    },
+  );
+
+  // -------------------------------------------------------------------------
   // §8.3 case 3 — generic code (internal) → groupFailedDelete.
   // -------------------------------------------------------------------------
   testWidgets("case 3: generic 'internal' error shows groupFailedDelete", (

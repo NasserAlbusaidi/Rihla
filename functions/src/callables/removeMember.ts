@@ -20,6 +20,7 @@ import {
   assertDepartureLockHeld,
   clearDepartureLockForFailure,
   departureLockClearFields,
+  quiesceFreezeError,
 } from './shared/departureLock';
 
 // #318: server-authoritative creator-remove. The client guard ("settle before
@@ -159,17 +160,11 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
       throw new HttpsError('not-found', 'Group not found.');
     }
     const group = groupSnap.data() ?? {};
-    // Honor the same write-lock as firestore.rules (Admin SDK bypasses rules),
-    // mirroring joinGroupByInviteCode/addShadowMember: soft-deleted or
-    // delete-quiesced groups are indistinguishable from missing groups.
-    if (
-      group.isDeleted === true
-      || group.deletingInProgress === true
-      || group.claimingInProgress === true
-      || group.accountDeletionInProgress === true
-    ) {
-      throw new HttpsError('not-found', 'Group not found.');
-    }
+    // #1211: terminal (not-found: group gone) vs transient (aborted: bounded
+    // claim / account-deletion) freeze via the shared classifier. Admin SDK
+    // bypasses rules, so this honors the same write-lock as firestore.rules.
+    const freeze = quiesceFreezeError(group);
+    if (freeze) throw freeze;
 
     // Only the CURRENT-member group creator may remove another member
     // (deleteGroup.ts:145). #1132: createdBy alone is membership-blind — a
@@ -266,14 +261,10 @@ export const removeMember = onCall<RemoveMemberInput, Promise<RemoveMemberOutput
           throw new HttpsError('not-found', 'Group not found.');
         }
         const freshGroup = freshGroupSnap.data() ?? {};
-        if (
-          freshGroup.isDeleted === true
-          || freshGroup.deletingInProgress === true
-          || freshGroup.claimingInProgress === true
-          || freshGroup.accountDeletionInProgress === true
-        ) {
-          throw new HttpsError('not-found', 'Group not found.');
-        }
+        // #1211: same terminal-vs-transient classifier as the pre-check (a flag
+        // can flip between the two reads).
+        const freshFreeze = quiesceFreezeError(freshGroup);
+        if (freshFreeze) throw freshFreeze;
         // #1144: the recompute basis is only trustworthy while the lock we
         // acquired is still in place — a reaper reclaim mid-flight voids it.
         assertDepartureLockHeld(freshGroup, lock);
