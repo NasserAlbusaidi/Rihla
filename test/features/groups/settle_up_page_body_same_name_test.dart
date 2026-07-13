@@ -42,6 +42,7 @@ void main() {
           SettleUpPageBody(
             scope: SettleScope.group,
             subjectName: 'Test Crew',
+            simplifyDebts: true,
             buckets: [
               (
                 currency: 'OMR',
@@ -124,6 +125,7 @@ void main() {
           SettleUpPageBody(
             scope: SettleScope.group,
             subjectName: 'Test Crew',
+            simplifyDebts: true,
             buckets: [
               (
                 currency: 'OMR',

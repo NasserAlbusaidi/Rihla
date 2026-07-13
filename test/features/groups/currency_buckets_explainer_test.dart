@@ -15,6 +15,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required SharedPreferences prefs,
   required int bucketCount,
+  bool simplifyDebts = true,
   Locale? locale,
 }) async {
   await tester.pumpWidget(
@@ -29,7 +30,10 @@ Future<void> _pump(
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SingleChildScrollView(
-            child: CurrencyBucketsExplainer(bucketCount: bucketCount),
+            child: CurrencyBucketsExplainer(
+              bucketCount: bucketCount,
+              simplifyDebts: simplifyDebts,
+            ),
           ),
         ),
       ),
@@ -64,6 +68,24 @@ void main() {
 
     expect(find.byKey(GroupKeys.currencyExplainerCard), findsOneWidget);
     expect(find.byKey(GroupKeys.currencyExplainerGotIt), findsOneWidget);
+  });
+
+  // #363: mode-honest body — ON keeps the "one payment per currency" line;
+  // OFF (direct fan-out ⇒ several payments per currency) swaps in the
+  // currencyExplainerBodyDirect variant.
+  testWidgets('body copy follows the simplifyDebts mode', (tester) async {
+    await _pump(tester, prefs: prefs, bucketCount: 2);
+    expect(
+      find.text(AppLocalizationsEn().currencyExplainerBody),
+      findsOneWidget,
+    );
+
+    await _pump(tester, prefs: prefs, bucketCount: 2, simplifyDebts: false);
+    expect(
+      find.text(AppLocalizationsEn().currencyExplainerBodyDirect),
+      findsOneWidget,
+    );
+    expect(find.text(AppLocalizationsEn().currencyExplainerBody), findsNothing);
   });
 
   testWidgets('absent when there is only 1 bucket', (tester) async {

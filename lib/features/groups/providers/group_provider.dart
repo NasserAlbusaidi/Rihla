@@ -478,6 +478,23 @@ class GroupService extends FirestoreRepository {
     });
   }
 
+  /// #363: flip the per-group settle-up mode (`true` = min-transfers
+  /// optimizer, `false` = direct pro-rata fan-out). DELIBERATELY SEPARATE from
+  /// [updateGroupIdentity]: that method writes name/glyph/inkIndex atomically
+  /// and `FieldValue.delete()`s glyph/inkIndex when null, so bundling the
+  /// toggle there could silently WIPE the group's trip stamp. Writes exactly
+  /// the 2-key map `validCreatorMetadataUpdate` admits; creator-only is
+  /// enforced by the rule (isCreator()), not here.
+  Future<void> setSimplifyDebts({
+    required String groupId,
+    required bool value,
+  }) async {
+    await db.collection('groups').doc(groupId).update({
+      'simplifyDebts': value,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   /// Update a member's display name in the group (D-07).
   Future<void> updateMemberDisplayName({
     required String groupId,

@@ -41,6 +41,15 @@ class Group {
   /// derive a stable ink from the name hash. INBOUND only; never persisted as a fallback.
   final int? inkIndex;
 
+  /// #363: per-group settle-up mode. `true` (and ABSENT — the shipped default,
+  /// zero migration) → the min-transfers optimizer; `false` → direct pro-rata
+  /// fan-out (`BalanceCalculator.calculateDirectSettlements`). Written only by
+  /// the creator toggle (`GroupService.setSimplifyDebts`); read by the two
+  /// settle-up screens' suggestion generation. NOT read by the oracle,
+  /// balanceAggregator, the #366 aggregate doc, or recordSettlement — the
+  /// recording caps are mode-independent.
+  final bool simplifyDebts;
+
   const Group({
     required this.id,
     required this.name,
@@ -55,6 +64,7 @@ class Group {
     this.deletedAt,
     this.glyph,
     this.inkIndex,
+    this.simplifyDebts = true,
   });
 
   /// Create Group from a Firestore document snapshot.
@@ -87,12 +97,16 @@ class Group {
       deletedAt: dateOrNull(data['deletedAt']),
       glyph: data['glyph'] is String ? data['glyph'] as String : null,
       inkIndex: data['inkIndex'] is int ? data['inkIndex'] as int : null,
+      simplifyDebts: data['simplifyDebts'] is bool
+          ? data['simplifyDebts'] as bool
+          : true,
     );
   }
 
   /// Create Group from a SQLite row map.
-  /// trip-stamps glyph/inkIndex intentionally omitted: dead SQLite path (#50);
-  /// groups (de)serialize via fromDoc + the inline create map.
+  /// trip-stamps glyph/inkIndex and #363 simplifyDebts intentionally omitted:
+  /// dead SQLite path (#50); groups (de)serialize via fromDoc + the inline
+  /// create map.
   factory Group.fromMap(Map<String, dynamic> map) {
     return Group(
       id: map['id'] as String,
@@ -114,8 +128,9 @@ class Group {
   }
 
   /// Convert Group to a SQLite row map for insert/replace.
-  /// trip-stamps glyph/inkIndex intentionally omitted: dead SQLite path (#50);
-  /// groups (de)serialize via fromDoc + the inline create map.
+  /// trip-stamps glyph/inkIndex and #363 simplifyDebts intentionally omitted:
+  /// dead SQLite path (#50); groups (de)serialize via fromDoc + the inline
+  /// create map.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -152,6 +167,7 @@ class Group {
     DateTime? deletedAt,
     String? glyph,
     int? inkIndex,
+    bool? simplifyDebts,
   }) {
     return Group(
       id: id ?? this.id,
@@ -167,6 +183,7 @@ class Group {
       deletedAt: deletedAt ?? this.deletedAt,
       glyph: glyph ?? this.glyph,
       inkIndex: inkIndex ?? this.inkIndex,
+      simplifyDebts: simplifyDebts ?? this.simplifyDebts,
     );
   }
 

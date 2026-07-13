@@ -5,12 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/error_message_translator.dart';
 import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
+import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
 import '../providers/group_provider.dart';
 import '../widgets/claim_requests_section.dart';
@@ -77,7 +80,8 @@ class GroupSettingsScreen extends ConsumerWidget {
                           isCreator: isCreator,
                         ),
                         _DefaultsSection(
-                          currency: group.currency,
+                          group: group,
+                          isCreator: isCreator,
                         ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08),
                         SizedBox(height: context.spacing.space12),
                         GroupDangerSection(
@@ -163,9 +167,10 @@ class _SettingsTopBar extends StatelessWidget {
 }
 
 class _DefaultsSection extends StatelessWidget {
-  const _DefaultsSection({required this.currency});
+  const _DefaultsSection({required this.group, required this.isCreator});
 
-  final String currency;
+  final Group group;
+  final bool isCreator;
 
   @override
   Widget build(BuildContext context) {
@@ -191,10 +196,13 @@ class _DefaultsSection extends StatelessWidget {
               _DefaultsRow(
                 key: GroupKeys.settingsCurrencyTile,
                 title: context.l10n.groupCurrency,
-                value: currency,
+                value: group.currency,
                 locked: true,
-                divider: false,
+                divider: isCreator,
               ),
+              // #363: settle-up mode is creator-only metadata (rules
+              // isCreator()) — non-creators get no affordance at all.
+              if (isCreator) _SimplifyDebtsRow(group: group),
             ],
           ),
         ),
@@ -210,6 +218,84 @@ class _DefaultsSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// #363: the per-group "Simplify debts" switch. ON (default; field absent on
+/// legacy groups ⇒ true) keeps the min-transfers optimizer; OFF switches both
+/// settle-up screens to the direct pro-rata fan-out. The write is a plain
+/// 2-key Firestore update through [GroupService.setSimplifyDebts] — the SDK
+/// queues it offline and the group stream echoes the local write immediately,
+/// so nothing gates on the raw future (#412); awaiting only surfaces a rules
+/// rejection as a snackbar (mirrors the rename/glyph error handling).
+class _SimplifyDebtsRow extends ConsumerWidget {
+  const _SimplifyDebtsRow({required this.group});
+
+  final Group group;
+
+  Future<void> _setValue(
+    BuildContext context,
+    WidgetRef ref,
+    bool value,
+  ) async {
+    HapticService.lightClick();
+    try {
+      await ref
+          .read(groupServiceProvider)
+          .setSimplifyDebts(groupId: group.id, value: value);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(friendlyMessageFor(context, e)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.spacing.space8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.groupSimplifyDebtsTitle,
+                  style: AppTypography.sans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: context.spacing.space4),
+                Text(
+                  group.simplifyDebts
+                      ? l10n.groupSimplifyDebtsOnSubtitle
+                      : l10n.groupSimplifyDebtsOffSubtitle,
+                  style: AppTypography.sans(
+                    fontSize: 12,
+                    color: context.colors.textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: context.spacing.space12),
+          Switch(
+            key: GroupKeys.settingsSimplifyDebtsSwitch,
+            value: group.simplifyDebts,
+            onChanged: (value) => _setValue(context, ref, value),
+          ),
+        ],
+      ),
     );
   }
 }

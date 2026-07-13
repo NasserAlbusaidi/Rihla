@@ -1150,6 +1150,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String settleUpDirectPayments(Object subjectName) {
+    return 'Everyone pays their share to each person they owe across $subjectName.';
+  }
+
+  @override
+  String settleUpNoDirectPayments(Object subjectName) {
+    return 'No payments are needed across $subjectName.';
+  }
+
+  @override
   String settleUpSummaryTotal(Object amount) {
     return '$amount total';
   }
@@ -1216,6 +1226,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get currencyExplainerBody =>
       'We never invent exchange rates, so one currency can\'t cancel out another. You\'ll record one payment per currency.';
+
+  @override
+  String get currencyExplainerBodyDirect =>
+      'We never invent exchange rates, so one currency can\'t cancel out another. You\'ll record each payment per currency.';
 
   @override
   String get currencyExplainerGotIt => 'Got it';
@@ -2452,6 +2466,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get groupCurrencyLockedNote =>
       'Currency is set when the group is created and can\'t be changed.';
+
+  @override
+  String get groupSimplifyDebtsTitle => 'Simplify debts';
+
+  @override
+  String get groupSimplifyDebtsOnSubtitle =>
+      'Fewest transfers: balances may be settled through any member.';
+
+  @override
+  String get groupSimplifyDebtsOffSubtitle =>
+      'Everyone pays each person they owe a share of the balance.';
 
   @override
   String get groupMembersCreatorOnlyNote =>

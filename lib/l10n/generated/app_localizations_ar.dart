@@ -1168,6 +1168,16 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String settleUpDirectPayments(Object subjectName) {
+    return 'يدفع كل شخص حصته لكل من يدين له ضمن $subjectName.';
+  }
+
+  @override
+  String settleUpNoDirectPayments(Object subjectName) {
+    return 'لا توجد دفعات مطلوبة ضمن $subjectName.';
+  }
+
+  @override
   String settleUpSummaryTotal(Object amount) {
     return 'إجمالي $amount';
   }
@@ -1246,6 +1256,10 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get currencyExplainerBody =>
       'لا نخترع أسعار صرف، لذا لا يمكن لعملة أن تلغي عملة أخرى. ستسجّل دفعة واحدة لكل عملة.';
+
+  @override
+  String get currencyExplainerBodyDirect =>
+      'لا نخترع أسعار صرف، لذا لا يمكن لعملة أن تلغي عملة أخرى. ستسجّل كل دفعة بعملتها.';
 
   @override
   String get currencyExplainerGotIt => 'فهمت';
@@ -2499,6 +2513,17 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get groupCurrencyLockedNote =>
       'تُحدَّد العملة عند إنشاء المجموعة ولا يمكن تغييرها.';
+
+  @override
+  String get groupSimplifyDebtsTitle => 'تبسيط الديون';
+
+  @override
+  String get groupSimplifyDebtsOnSubtitle =>
+      'أقل عدد من التحويلات: قد تُسوّى الأرصدة عبر أي عضو.';
+
+  @override
+  String get groupSimplifyDebtsOffSubtitle =>
+      'يدفع كل شخص حصة من الرصيد لكل من يدين له.';
 
   @override
   String get groupMembersCreatorOnlyNote =>

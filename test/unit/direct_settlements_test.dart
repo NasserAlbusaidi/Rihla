@@ -197,8 +197,6 @@ List<Map<String, dynamic>> _run(_Case c) =>
       currency: c.currency,
     );
 
-Decimal _netOf(_Case c, String id) => Decimal.parse(c.nets[id]!);
-
 void main() {
   group('calculateDirectSettlements — table cases (exact legs)', () {
     for (final c in _cases) {

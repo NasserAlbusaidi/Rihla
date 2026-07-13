@@ -22,11 +22,20 @@ import '../keys/group_keys.dart';
 /// tree always renders. The seen flag is burned ONLY on an explicit "Got it"
 /// tap, so closing the screen never silently consumes the one-time card.
 class CurrencyBucketsExplainer extends ConsumerWidget {
-  const CurrencyBucketsExplainer({super.key, required this.bucketCount});
+  const CurrencyBucketsExplainer({
+    super.key,
+    required this.bucketCount,
+    required this.simplifyDebts,
+  });
 
   /// Number of currency buckets in the current settle-up view. The card shows
   /// only when this is ≥2 (a single-currency group never sees it).
   final int bucketCount;
+
+  /// #363: the group's settle-up mode. Selects the mode-honest body — the ON
+  /// copy ends "one payment per currency", which is false under the OFF
+  /// fan-out (several payments per currency).
+  final bool simplifyDebts;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -83,7 +92,9 @@ class CurrencyBucketsExplainer extends ConsumerWidget {
                       ),
                       SizedBox(height: spacing.space4),
                       Text(
-                        context.l10n.currencyExplainerBody,
+                        simplifyDebts
+                            ? context.l10n.currencyExplainerBody
+                            : context.l10n.currencyExplainerBodyDirect,
                         style: AppTypography.sans(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,

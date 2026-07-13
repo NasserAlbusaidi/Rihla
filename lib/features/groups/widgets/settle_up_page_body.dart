@@ -150,7 +150,8 @@ steppedSettlePairs({
 /// Single-page body for the Settle-Up screens (group + event).
 ///
 /// Wireframe (Hi_GroupSettle, screens-group.jsx) renders one scrollable view:
-/// display headline, two summary chips, optimized transfer cards, then
+/// display headline, two summary chips, the suggested transfer cards
+/// (optimized or direct per the group's #363 [simplifyDebts] mode), then
 /// "Each person's net" and a small recorded-payment history.
 ///
 /// Renders one section (summary card, transfer tiles, net rows) per currency
@@ -162,9 +163,18 @@ class SettleUpPageBody extends StatelessWidget {
   /// = `group` (whole-group balance; event ledgers stay as they are).
   final SettleScope scope;
 
-  /// Label shown after "Optimized to minimise the number of payments across …"
-  /// — group name on the group screen, event name on the event screen.
+  /// Label folded into the intro subtitle ("Optimized to reduce the number of
+  /// payments across …" / "Everyone pays their share … across …" per
+  /// [simplifyDebts]) — group name on the group screen, event name on the
+  /// event screen.
   final String subjectName;
+
+  /// #363: the group's settle-up mode — `true` = min-transfers optimizer
+  /// suggestions, `false` = direct pro-rata fan-out. Callers pass
+  /// `group.simplifyDebts` (absent field ⇒ true); it MUST match the allocator
+  /// that produced [buckets] — the intro copy and the multi-currency explainer
+  /// select their mode-honest variants by it.
+  final bool simplifyDebts;
 
   /// Per-currency sections, pre-sorted by the caller (GCC-first). Callers
   /// pass one empty bucket carrying the group currency when there is no
@@ -268,6 +278,7 @@ class SettleUpPageBody extends StatelessWidget {
     super.key,
     required this.scope,
     required this.subjectName,
+    required this.simplifyDebts,
     required this.buckets,
     required this.rawNames,
     required this.settlementsAsync,
@@ -396,6 +407,7 @@ class SettleUpPageBody extends StatelessWidget {
           _SettlementIntro(
             transferCount: totalTransfers,
             subjectName: subjectName,
+            simplifyDebts: simplifyDebts,
           ),
           // #717: persistent scope note — what a recorded payment here covers
           // (this event only vs the whole-group balance). Display-only.
@@ -403,7 +415,10 @@ class SettleUpPageBody extends StatelessWidget {
           // #382 PR-5 L9: one-time "each currency settles separately" card,
           // shown only with ≥2 buckets. The widget self-gates on the seen flag.
           if (buckets.length >= 2)
-            CurrencyBucketsExplainer(bucketCount: buckets.length),
+            CurrencyBucketsExplainer(
+              bucketCount: buckets.length,
+              simplifyDebts: simplifyDebts,
+            ),
           for (final pair in steppedPairs)
             _SteppedSettleCard(
               key: ValueKey('settle-stepped-${pair.otherUid}'),
@@ -517,13 +532,26 @@ class _SettlementIntro extends StatelessWidget {
   const _SettlementIntro({
     required this.transferCount,
     required this.subjectName,
+    required this.simplifyDebts,
   });
 
   final int transferCount;
   final String subjectName;
 
+  /// #363: selects the mode-honest subtitle. Under OFF, "Optimized to reduce
+  /// the number of payments" would be factually FALSE over a deliberately
+  /// expanded fan-out — a FOUR-way branch across {mode × zero/nonzero}.
+  final bool simplifyDebts;
+
   @override
   Widget build(BuildContext context) {
+    final subtitle = transferCount == 0
+        ? (simplifyDebts
+              ? context.l10n.settleUpNoOptimizedPayments(subjectName)
+              : context.l10n.settleUpNoDirectPayments(subjectName))
+        : (simplifyDebts
+              ? context.l10n.settleUpOptimizedPayments(subjectName)
+              : context.l10n.settleUpDirectPayments(subjectName));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -540,9 +568,7 @@ class _SettlementIntro extends StatelessWidget {
           const SizedBox(height: 10),
         ],
         Text(
-          transferCount == 0
-              ? context.l10n.settleUpNoOptimizedPayments(subjectName)
-              : context.l10n.settleUpOptimizedPayments(subjectName),
+          subtitle,
           style: AppTypography.sans(
             color: context.colors.textSecondary,
             fontSize: 13,
