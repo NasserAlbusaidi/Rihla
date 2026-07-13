@@ -4,6 +4,8 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
+import 'draft_navigation_guard.dart';
+
 class DeepLinkInitialDecision {
   const DeepLinkInitialDecision({
     required this.joinRouted,
@@ -131,8 +133,23 @@ class DeepLinkService {
     final target = joinUri.toString();
     if (dedupeKeys != null && !dedupeKeys.add(target)) return false;
 
+    if (DraftNavigationGuard.instance.hasGuards) {
+      // #1208: a runtime link over a dirty-capable editor — confirm then go.
+      // Return true ("this was a join link and it was handled") — the
+      // return value only feeds cold-start bookkeeping, and no editor can be
+      // mounted during the cold-start window (guards register from screen
+      // initState, long after DeepLinkService.init runs in bootstrap).
+      unawaited(_confirmThenGo(router, target));
+      return true;
+    }
     router.go(target);
     return true;
+  }
+
+  Future<void> _confirmThenGo(GoRouter router, String target) async {
+    if (await DraftNavigationGuard.instance.mayNavigate()) {
+      router.go(target);
+    }
   }
 
   String? _customSchemeInviteCode(Uri uri) {
