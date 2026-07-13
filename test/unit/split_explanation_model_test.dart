@@ -46,6 +46,41 @@ void main() {
       expect(restored.allocation, 'proportional');
     });
 
+    test('participantIds round-trips for an assigned discount; omitted otherwise (#605)', () {
+      const assigned = SplitAdjustment(
+        type: 'discount',
+        amountFils: 500,
+        allocation: 'assigned',
+        participantIds: ['p2', 'p1'],
+      );
+      final map = assigned.toMap();
+      expect(map['participantIds'], ['p2', 'p1']); // order preserved on write
+      final restored = SplitAdjustment.fromMap(map);
+      expect(restored.allocation, 'assigned');
+      expect(restored.participantIds, ['p2', 'p1']);
+
+      // A non-assigned adjustment omits the key entirely (byte-identical to the
+      // reserved v1 shape — no schema bump for legacy docs).
+      const additive = SplitAdjustment(type: 'service', amountFils: 250);
+      expect(additive.toMap().containsKey('participantIds'), isFalse);
+      // Explicit empty list is also omitted (treated like null).
+      const emptyAssigned = SplitAdjustment(
+        type: 'discount',
+        amountFils: 100,
+        allocation: 'assigned',
+        participantIds: [],
+      );
+      expect(emptyAssigned.toMap().containsKey('participantIds'), isFalse);
+
+      // Legacy doc without the key ⇒ null participantIds (unchanged).
+      final legacy = SplitAdjustment.fromMap({
+        'type': 'discount',
+        'amountFils': 300,
+        'allocation': 'proportional',
+      });
+      expect(legacy.participantIds, isNull);
+    });
+
     test('fromMap is lenient — missing keys default, unknown type does not throw', () {
       final a = SplitAdjustment.fromMap({});
       expect(a.type, 'service');

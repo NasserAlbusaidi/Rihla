@@ -958,6 +958,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adjustmentDiscountNote => 'يُوزَّع الخصم بنسبة ما يخص كل شخص.';
 
   @override
+  String get adjustmentDiscountAssignedLabel => 'أشخاص محددون';
+
+  @override
+  String get adjustmentDiscountWhoBears => 'من يحصل على هذا الخصم؟';
+
+  @override
+  String get adjustmentDiscountExceedsSubset =>
+      'الخصم أكبر مما يخص الأشخاص المحددين.';
+
+  @override
+  String adjustmentDiscountBorneBy(Object names) {
+    return 'لـ $names';
+  }
+
+  @override
   String get adjustmentDone => 'تم';
 
   @override

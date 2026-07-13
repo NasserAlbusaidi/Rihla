@@ -304,6 +304,10 @@
   "adjustmentAllocEqual": "بالتساوي",
   "adjustmentAllocProportional": "حسب الأصناف",
   "adjustmentDiscountNote": "يُوزَّع الخصم بنسبة ما يخص كل شخص.",
+  "adjustmentDiscountAssignedLabel": "أشخاص محددون",
+  "adjustmentDiscountWhoBears": "من يحصل على هذا الخصم؟",
+  "adjustmentDiscountExceedsSubset": "الخصم أكبر مما يخص الأشخاص المحددين.",
+  "adjustmentDiscountBorneBy": "لـ {names}",
   "adjustmentDone": "تم",
 
   "settleUpTitle": "تسوية الحساب",

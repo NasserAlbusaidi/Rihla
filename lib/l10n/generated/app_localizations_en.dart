@@ -949,6 +949,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'A discount is shared in proportion to what each person owes.';
 
   @override
+  String get adjustmentDiscountAssignedLabel => 'Only certain people';
+
+  @override
+  String get adjustmentDiscountWhoBears => 'Who gets this discount?';
+
+  @override
+  String get adjustmentDiscountExceedsSubset =>
+      'This discount is more than the selected people owe.';
+
+  @override
+  String adjustmentDiscountBorneBy(Object names) {
+    return 'for $names';
+  }
+
+  @override
   String get adjustmentDone => 'Done';
 
   @override

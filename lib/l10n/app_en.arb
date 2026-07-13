@@ -807,6 +807,15 @@
   "adjustmentAllocEqual": "Split equally",
   "adjustmentAllocProportional": "By item share",
   "adjustmentDiscountNote": "A discount is shared in proportion to what each person owes.",
+  "adjustmentDiscountAssignedLabel": "Only certain people",
+  "adjustmentDiscountWhoBears": "Who gets this discount?",
+  "adjustmentDiscountExceedsSubset": "This discount is more than the selected people owe.",
+  "adjustmentDiscountBorneBy": "for {names}",
+  "@adjustmentDiscountBorneBy": {
+    "placeholders": {
+      "names": {}
+    }
+  },
   "adjustmentDone": "Done",
 
   "settleUpTitle": "Settle up",

@@ -97,8 +97,48 @@ Expense _itemizedExpenseWithAdjustment() => Expense(
       ),
     );
 
+/// #605 — an itemized expense with an ASSIGNED discount borne by {h}.
+/// 4 solo items of 2.000 (h,k,n,s) = 8.000, discount 1.000 on {h} → bill 7.000,
+/// h owes 1.000, everyone else 2.000. Reconciles out of the box.
+Expense _itemizedExpenseWithAssignedDiscount() => Expense(
+      id: 'expense-3',
+      tripId: 'event-1',
+      payerParticipantId: 'n',
+      amount: Decimal.parse('7.000'),
+      scope: ExpenseScope.global,
+      createdAt: DateTime(2026, 5, 30),
+      createdBy: 'n',
+      splitMode: SplitMode.exact,
+      splitDistribution: {
+        'h': Decimal.parse('1.000'),
+        'k': Decimal.parse('2.000'),
+        'n': Decimal.parse('2.000'),
+        's': Decimal.parse('2.000'),
+      },
+      splitExplanation: const SplitExplanation(
+        items: [
+          SplitItem(label: 'H food', amountFils: 2000, participantIds: ['h']),
+          SplitItem(label: 'K food', amountFils: 2000, participantIds: ['k']),
+          SplitItem(label: 'N food', amountFils: 2000, participantIds: ['n']),
+          SplitItem(label: 'S food', amountFils: 2000, participantIds: ['s']),
+        ],
+        adjustments: [
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 1000,
+            allocation: 'assigned',
+            participantIds: ['h'],
+          ),
+        ],
+      ),
+    );
+
 void main() {
-  Future<void> pumpEditor(WidgetTester tester, Expense initial) async {
+  Future<void> pumpEditor(
+    WidgetTester tester,
+    Expense initial, {
+    Future<void> Function(ExpenseEditorPayload payload)? onSubmit,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     tester.view.physicalSize = const Size(1000, 2400);
@@ -130,7 +170,7 @@ void main() {
               mode: ExpenseEditorMode.edit,
               currency: 'OMR',
               initial: initial,
-              onSubmit: (_) async {},
+              onSubmit: onSubmit ?? (_) async {},
             ),
           ),
         ),
@@ -249,5 +289,48 @@ void main() {
     expect(find.byKey(const Key('itemized_adjustment_0')), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets(
+      're-targeting an assigned discount ({h}→{k}) marks explanationDirty and '
+      'persists the new subset (#605 equality-gate regression)', (tester) async {
+    ExpenseEditorPayload? captured;
+    await pumpEditor(
+      tester,
+      _itemizedExpenseWithAssignedDiscount(),
+      onSubmit: (p) async => captured = p,
+    );
+
+    await openHow(tester);
+    // Open the seeded assigned-discount row's editor.
+    await tester.tap(find.byKey(const Key('itemized_adjustment_0')));
+    await tester.pumpAndSettle();
+    // Re-target: untick h, tick k (same type/amount/allocation — ONLY the
+    // subset changes; without the participantIds set-compare in the equality
+    // gates, explanationDirty would stay false and this rewrite would be lost).
+    await tester.tap(find.byKey(const Key('adjustment_assign_tile_h')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('adjustment_assign_tile_k')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('adjustment_done')));
+    await tester.pumpAndSettle();
+
+    // Bill still reconciles (7.000) → Apply enabled; apply back into the editor.
+    await tester.tap(find.byKey(const Key('split_sheet_apply')));
+    await tester.pumpAndSettle();
+
+    // Save → capture the payload.
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(captured, isNotNull);
+    expect(captured!.explanationDirty, isTrue,
+        reason: 'a re-targeted subset must rewrite splitExplanation');
+    final adj = captured!.splitExplanation!.adjustments!.single;
+    expect(adj.allocation, 'assigned');
+    expect(adj.participantIds, ['k']); // the new subset persisted
+    // The money moved with it: k now bears the discount, h is back to 2.000.
+    expect(captured!.splitDistribution!['k'], Decimal.parse('1.000'));
+    expect(captured!.splitDistribution!['h'], Decimal.parse('2.000'));
   });
 }

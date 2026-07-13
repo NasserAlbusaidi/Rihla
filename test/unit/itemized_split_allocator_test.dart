@@ -546,4 +546,213 @@ void main() {
       });
     }
   });
+
+  group('allocateItemizedDistribution + assigned discounts (#605)', () {
+    Decimal sum(Map<String, Decimal> m) =>
+        m.values.fold(Decimal.zero, (s, v) => s + v);
+
+    void assertConservesNonNegative(
+      Map<String, Decimal> dist,
+      Decimal expectedTotal,
+    ) {
+      expect(sum(dist), expectedTotal);
+      for (final v in dist.values) {
+        expect(v >= Decimal.zero, isTrue, reason: 'owed must never be negative');
+      }
+    }
+
+    test('clean: subset of 2 bears the discount, third member untouched', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+          SplitItem(label: 'B', amountFils: 10000, participantIds: ['b']),
+          SplitItem(label: 'C', amountFils: 10000, participantIds: ['c']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 6000,
+            allocation: 'assigned',
+            participantIds: ['a', 'b'],
+          ),
+        ],
+        participantIds: const ['a', 'b', 'c'],
+      );
+      expect(dist['a'], _d('7.000')); // 10 − 3 (half of 6)
+      expect(dist['b'], _d('7.000'));
+      expect(dist['c'], _d('10.000')); // outside the subset → untouched
+      assertConservesNonNegative(dist, _d('24.000')); // 30 − 6
+    });
+
+    test('edge: zero-item subset member is DROPPED (positive-weight filter)', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+          SplitItem(label: 'C', amountFils: 5000, participantIds: ['c']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          // b owes nothing pre-discount → weight 0 → dropped; discount lands on a.
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 4000,
+            allocation: 'assigned',
+            participantIds: ['a', 'b'],
+          ),
+        ],
+        participantIds: const ['a', 'b', 'c'],
+      );
+      expect(dist['a'], _d('6.000')); // 10 − 4
+      expect(dist.containsKey('b'), isFalse); // zero-weight → dropped (≡ owes 0)
+      expect(dist['c'], _d('5.000'));
+      assertConservesNonNegative(dist, _d('11.000')); // 15 − 4
+    });
+
+    test('edge: discount == subset owed exactly ⇒ subset goes to 0', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+          SplitItem(label: 'B', amountFils: 10000, participantIds: ['b']),
+          SplitItem(label: 'C', amountFils: 5000, participantIds: ['c']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 20000,
+            allocation: 'assigned',
+            participantIds: ['a', 'b'],
+          ),
+        ],
+        participantIds: const ['a', 'b', 'c'],
+      );
+      expect(dist['a'], _d('0.000')); // positive pre-weight → kept at 0
+      expect(dist['b'], _d('0.000'));
+      expect(dist['c'], _d('5.000'));
+      assertConservesNonNegative(dist, _d('5.000')); // 25 − 20
+    });
+
+    test('edge: assigned THEN pooled proportional (ordering pinned)', () {
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+          SplitItem(label: 'B', amountFils: 10000, participantIds: ['b']),
+          SplitItem(label: 'C', amountFils: 10000, participantIds: ['c']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 6000,
+            allocation: 'assigned',
+            participantIds: ['a', 'b'],
+          ),
+          SplitAdjustment(
+            type: 'discount',
+            amountFils: 3000,
+            allocation: 'proportional',
+          ),
+        ],
+        participantIds: const ['a', 'b', 'c'],
+      );
+      // Assigned first: a,b → 7.000 each, c 10.000 (total 24.000).
+      // Then pooled 3.000 proportional to {7,7,10}: a,b −0.875, c −1.250.
+      expect(dist['a'], _d('6.125'));
+      expect(dist['b'], _d('6.125'));
+      expect(dist['c'], _d('8.750'));
+      assertConservesNonNegative(dist, _d('21.000')); // 30 − 6 − 3
+    });
+
+    test('error: assigned discount exceeds the subset owed (subset-specific)', () {
+      // Whole bill 30 − 25 = 5 ≥ 0 (a pooled check would PASS); the subset
+      // {a,b} owes only 20, so the assigned fold must still throw.
+      expect(
+        () => BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+            SplitItem(label: 'B', amountFils: 10000, participantIds: ['b']),
+            SplitItem(label: 'C', amountFils: 10000, participantIds: ['c']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(
+              type: 'discount',
+              amountFils: 25000,
+              allocation: 'assigned',
+              participantIds: ['a', 'b'],
+            ),
+          ],
+          participantIds: const ['a', 'b', 'c'],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('error: assigned discount with empty participantIds', () {
+      expect(
+        () => BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(
+              type: 'discount',
+              amountFils: 1000,
+              allocation: 'assigned',
+              participantIds: [],
+            ),
+          ],
+          participantIds: const ['a', 'b'],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('error: assigned discount with an unknown participant id', () {
+      expect(
+        () => BalanceCalculator.allocateItemizedDistribution(
+          items: const [
+            SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+          ],
+          currency: 'OMR',
+          adjustments: const [
+            SplitAdjustment(
+              type: 'discount',
+              amountFils: 1000,
+              allocation: 'assigned',
+              participantIds: ['z'], // not in the participant table
+            ),
+          ],
+          participantIds: const ['a', 'b'],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('forged ADDITIVE carrying allocation:assigned stays an equal additive', () {
+      // A non-discount type must NEVER route into the subtract-style subset
+      // fold — it stays in Phase 2 on its equal-spread branch.
+      final dist = BalanceCalculator.allocateItemizedDistribution(
+        items: const [
+          SplitItem(label: 'A', amountFils: 10000, participantIds: ['a']),
+        ],
+        currency: 'OMR',
+        adjustments: const [
+          SplitAdjustment(
+            type: 'service',
+            amountFils: 1000,
+            allocation: 'assigned',
+            participantIds: ['a'],
+          ),
+        ],
+        participantIds: const ['a', 'b'],
+      );
+      // Service 1.000 spread equally over the whole table {a,b} → +0.500 each.
+      expect(dist['a'], _d('10.500'));
+      expect(dist['b'], _d('0.500'));
+      assertConservesNonNegative(dist, _d('11.000')); // 10 + 1
+    });
+  });
 }

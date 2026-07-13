@@ -136,6 +136,32 @@ Future<void> _addAdjustment(
   await tester.pumpAndSettle();
 }
 
+/// Opens the add-adjustment sheet, picks discount, enters [amount], selects the
+/// 'assigned' mode, ticks each id in [memberIds], and closes (#605).
+Future<void> _addAssignedDiscount(
+  WidgetTester tester, {
+  required String amount,
+  required List<String> memberIds,
+}) async {
+  final add = find.byKey(const Key('itemized_add_adjustment'));
+  await tester.ensureVisible(add);
+  await tester.pumpAndSettle();
+  await tester.tap(add);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('adjustment_type_discount')));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const Key('adjustment_amount')), amount);
+  await tester.pump();
+  await tester.tap(find.byKey(const Key('adjustment_alloc_assigned')));
+  await tester.pumpAndSettle();
+  for (final id in memberIds) {
+    await tester.tap(find.byKey(Key('adjustment_assign_tile_$id')));
+    await tester.pump();
+  }
+  await tester.tap(find.byKey(const Key('adjustment_done')));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   // 4 people, alphabetical ids matching the coffee-run scenario.
   const four = [
@@ -533,6 +559,167 @@ void main() {
             await t.tap(find.text('Cancel'));
           },
         );
+      },
+    );
+
+    testWidgets(
+      'assigned discount folds onto its subset only + result carries the subset',
+      (tester) async {
+        final result = await _runSheet(
+          tester,
+          total: Decimal.parse('1.600'),
+          participants: two,
+          interactions: (t) async {
+            await t.tap(find.text('Itemized'));
+            await t.pumpAndSettle();
+            // a's item 1.000 → a; b's item 1.000 → b.
+            await t.enterText(find.byKey(const Key('itemized_label_0')), 'A food');
+            await t.enterText(find.byKey(const Key('itemized_amount_0')), '1.000');
+            await _assignOne(t, 0, 'a');
+            await _addItem(t);
+            await t.enterText(find.byKey(const Key('itemized_label_1')), 'B food');
+            await t.enterText(find.byKey(const Key('itemized_amount_1')), '1.000');
+            await _assignOne(t, 1, 'b');
+            // 0.400 discount borne by {a} only → bill 2.000 − 0.400 = 1.600.
+            await _addAssignedDiscount(t, amount: '0.400', memberIds: ['a']);
+            expect(t.takeException(), isNull);
+            expect(_applyEnabled(t), isTrue);
+            await t.tap(find.byKey(const Key('split_sheet_apply')));
+          },
+        );
+        expect(result, isNotNull);
+        expect(result!.adjustments!.single.type, 'discount');
+        expect(result.adjustments!.single.allocation, 'assigned');
+        expect(result.adjustments!.single.participantIds, ['a']);
+        // a bore the whole 0.400; b untouched.
+        expect(result.distribution!['a'], Decimal.parse('0.600'));
+        expect(result.distribution!['b'], Decimal.parse('1.000'));
+        // The folded distribution matches the allocator exactly.
+        final expected = BalanceCalculator.allocateItemizedDistribution(
+          items: result.items!,
+          currency: 'OMR',
+          adjustments: result.adjustments!,
+          participantIds: const ['a', 'b'],
+        );
+        expect(result.distribution, expected);
+      },
+    );
+
+    testWidgets(
+      'assigned discount over its subset: no crash, Apply disabled, inline error, '
+      'preview not zeroed',
+      (tester) async {
+        await _runSheet(
+          tester,
+          total: Decimal.parse('2.000'),
+          participants: two,
+          interactions: (t) async {
+            await t.tap(find.text('Itemized'));
+            await t.pumpAndSettle();
+            await t.enterText(find.byKey(const Key('itemized_label_0')), 'A food');
+            await t.enterText(find.byKey(const Key('itemized_amount_0')), '1.000');
+            await _assignOne(t, 0, 'a');
+            await _addItem(t);
+            await t.enterText(find.byKey(const Key('itemized_label_1')), 'B food');
+            await t.enterText(find.byKey(const Key('itemized_amount_1')), '1.000');
+            await _assignOne(t, 1, 'b');
+            // 1.500 discount on {a}, whose subset owes only 1.000 → overshoot.
+            await _addAssignedDiscount(t, amount: '1.500', memberIds: ['a']);
+            expect(t.takeException(), isNull);
+            // Inline error shown, Apply disabled.
+            expect(
+              find.byKey(const Key('assigned_discount_error')),
+              findsOneWidget,
+            );
+            expect(_applyEnabled(t), isFalse);
+            // Preview is NOT zeroed — the pre-assigned fold (1.000 each) renders.
+            expect(
+              find.textContaining('1.000', findRichText: true),
+              findsWidgets,
+            );
+            await t.tap(find.text('Cancel'));
+          },
+        );
+      },
+    );
+
+    testWidgets(
+      'reopen seeds an assigned discount subset + caption; apply retains it',
+      (tester) async {
+        final result = await _runSheet(
+          tester,
+          total: Decimal.parse('1.600'),
+          participants: two,
+          initialItemized: true,
+          initialItems: const [
+            SplitItem(label: 'A food', amountFils: 1000, participantIds: ['a']),
+            SplitItem(label: 'B food', amountFils: 1000, participantIds: ['b']),
+          ],
+          initialAdjustments: const [
+            SplitAdjustment(
+              type: 'discount',
+              amountFils: 400,
+              allocation: 'assigned',
+              participantIds: ['a'],
+            ),
+          ],
+          interactions: (t) async {
+            expect(find.byKey(const Key('itemized_adjustment_0')), findsOneWidget);
+            // The collapsed row shows the "borne by" caption naming Aki.
+            expect(find.textContaining('Aki'), findsWidgets);
+            expect(_applyEnabled(t), isTrue);
+            await t.tap(find.byKey(const Key('split_sheet_apply')));
+          },
+        );
+        expect(result!.adjustments!.single.allocation, 'assigned');
+        expect(result.adjustments!.single.participantIds, ['a']);
+        expect(result.distribution!['a'], Decimal.parse('0.600'));
+        expect(result.distribution!['b'], Decimal.parse('1.000'));
+      },
+    );
+
+    testWidgets(
+      'assigned with no members selected degrades to proportional (no throw)',
+      (tester) async {
+        final result = await _runSheet(
+          tester,
+          total: Decimal.parse('1.600'),
+          participants: two,
+          interactions: (t) async {
+            await t.tap(find.text('Itemized'));
+            await t.pumpAndSettle();
+            await t.enterText(find.byKey(const Key('itemized_label_0')), 'A food');
+            await t.enterText(find.byKey(const Key('itemized_amount_0')), '1.000');
+            await _assignOne(t, 0, 'a');
+            await _addItem(t);
+            await t.enterText(find.byKey(const Key('itemized_label_1')), 'B food');
+            await t.enterText(find.byKey(const Key('itemized_amount_1')), '1.000');
+            await _assignOne(t, 1, 'b');
+            // Pick 'assigned' but select NO members → toAdjustment degrades it.
+            final add = find.byKey(const Key('itemized_add_adjustment'));
+            await t.ensureVisible(add);
+            await t.pumpAndSettle();
+            await t.tap(add);
+            await t.pumpAndSettle();
+            await t.tap(find.byKey(const Key('adjustment_type_discount')));
+            await t.pumpAndSettle();
+            await t.enterText(
+              find.byKey(const Key('adjustment_amount')),
+              '0.400',
+            );
+            await t.pump();
+            await t.tap(find.byKey(const Key('adjustment_alloc_assigned')));
+            await t.pumpAndSettle();
+            await t.tap(find.byKey(const Key('adjustment_done')));
+            await t.pumpAndSettle();
+            expect(t.takeException(), isNull);
+            expect(_applyEnabled(t), isTrue);
+            await t.tap(find.byKey(const Key('split_sheet_apply')));
+          },
+        );
+        // Empty subset ⇒ normalized to pooled proportional; no participantIds.
+        expect(result!.adjustments!.single.allocation, 'proportional');
+        expect(result.adjustments!.single.participantIds, isNull);
       },
     );
 
