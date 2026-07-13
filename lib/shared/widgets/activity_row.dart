@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens/domain_aliases.dart';
 import '../../core/theme/tokens/typography_tokens.dart';
+import '../../core/utils/bidi.dart';
 import '../../core/utils/localized_dates.dart';
 import 'activity_glyph.dart';
 
@@ -76,7 +77,9 @@ class ActivityRow extends StatelessWidget {
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: actorName,
+                            // #1216b: isolate the actor name — it sits directly
+                            // before the localized verb phrase in one paragraph.
+                            text: bidiIsolate(actorName),
                             style: AppTypography.sans(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,

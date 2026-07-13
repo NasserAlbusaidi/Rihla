@@ -57,5 +57,26 @@ void main() {
 
       expect(msg, contains('JPY 1,200'));
     });
+
+    // #1216b negative test (b): the WhatsApp share string is a SHARE boundary —
+    // it must NEVER carry bidi isolate chars even when the name has an RLO.
+    test('never injects bidi isolate chars (share boundary stays raw)', () {
+      final msg = settleNotifyMessage(
+        l10n: l10n,
+        recipientName: 'Ali\u{202E}', // unterminated RLO in the name
+        amountDisplay: 'OMR 5.000',
+        eventName: 'Trip',
+        groupName: 'Crew',
+      );
+
+      // No FSI/LRI/RLI/PDI (U+2066–U+2069) anywhere in the shared text.
+      expect(
+        msg.codeUnits.any((c) => c >= 0x2066 && c <= 0x2069),
+        isFalse,
+        reason: msg,
+      );
+      // The raw name (RLO included) passes through verbatim.
+      expect(msg, contains('Ali\u{202E}'));
+    });
   });
 }

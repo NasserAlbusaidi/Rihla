@@ -8,6 +8,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/utils/bidi.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
 import '../../../core/utils/settle_notify.dart';
@@ -502,7 +503,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       entry.date,
       Localizations.localeOf(context).toLanguageTag(),
     );
-    return '$name — $date';
+    // #1216b: isolate the POST-truncation event name (never rawName — the
+    // #1217 grapheme-truncate would drop a closing PDI and leak an unterminated
+    // FSI into "— $date"). The name sits directly before the date descriptor.
+    return '${bidiIsolate(name)} — $date';
   }
 
   /// Walks a stepped multi-currency settlement (#382 PR-5 D2): one record sheet

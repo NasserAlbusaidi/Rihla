@@ -292,7 +292,7 @@ void main() {
 
     await pumpRow(tester, custom, viewerId: 'orphan');
 
-    expect(find.textContaining('You paid · split 2 ways'), findsOneWidget);
+    expect(find.textContaining('\u{2068}You\u{2069} paid · split 2 ways'), findsOneWidget);
     expect(find.byType(RAmount), findsNWidgets(2));
   });
 
@@ -301,7 +301,7 @@ void main() {
   ) async {
     await pumpRow(tester, globalEqualFromFirestore(), viewerId: 'orphan');
 
-    expect(find.textContaining('You paid · split 3 ways'), findsOneWidget);
+    expect(find.textContaining('\u{2068}You\u{2069} paid · split 3 ways'), findsOneWidget);
     expect(find.byType(RAmount), findsNWidgets(2));
   });
 
@@ -352,7 +352,7 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('Someone paid someone'), findsOneWidget);
+    expect(find.text('\u{2068}Someone\u{2069} paid \u{2068}someone\u{2069}'), findsOneWidget);
     expect(find.text('SETTLEMENT'), findsOneWidget);
   });
 
@@ -399,7 +399,7 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('Resolved Payer paid Resolved Recipient'), findsOneWidget);
+    expect(find.text('\u{2068}Resolved Payer\u{2069} paid \u{2068}Resolved Recipient\u{2069}'), findsOneWidget);
     expect(
       find.textContaining('Cash at dinner', findRichText: true),
       findsOneWidget,

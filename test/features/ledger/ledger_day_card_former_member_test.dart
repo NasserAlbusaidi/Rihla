@@ -42,6 +42,9 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('Aisha (former member) paid'), findsOneWidget);
+    expect(
+      find.textContaining('\u{2068}Aisha (former member)\u{2069} paid'),
+      findsOneWidget,
+    );
   });
 }

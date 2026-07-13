@@ -577,7 +577,7 @@ void main() {
 
       // Both settlement flavors visible (#831), events hidden
       expect(_richTextContaining('recorded a settlement'), findsOneWidget);
-      expect(_richTextContaining('paid Yara'), findsOneWidget);
+      expect(_richTextContaining('paid \u{2068}Yara\u{2069}'), findsOneWidget);
       expect(_richTextContaining('created an event'), findsNothing);
     });
 
@@ -805,7 +805,7 @@ void main() {
 
       // All activities visible with default 'All' filter
       expect(_richTextContaining('recorded a settlement'), findsOneWidget);
-      expect(_richTextContaining('created Weekend Hike'), findsOneWidget);
+      expect(_richTextContaining('created \u{2068}Weekend Hike\u{2069}'), findsOneWidget);
       expect(_richTextContaining('joined the group'), findsOneWidget);
     });
 
@@ -986,7 +986,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(_richTextContaining('added an expense in Beach Trip'), findsOneWidget);
+      expect(_richTextContaining('added an expense in \u{2068}Beach Trip\u{2069}'), findsOneWidget);
       // The embedded English label from the fan-in description is NOT surfaced.
       expect(_richTextContaining('Dinner'), findsNothing);
       expect(find.byIcon(Iconsax.receipt_add), findsOneWidget);
@@ -1022,7 +1022,7 @@ void main() {
       await tester.tap(find.byKey(GroupKeys.activityFilterExpenses));
       await tester.pumpAndSettle();
 
-      expect(_richTextContaining('added an expense in Beach Trip'), findsOneWidget);
+      expect(_richTextContaining('added an expense in \u{2068}Beach Trip\u{2069}'), findsOneWidget);
       expect(_richTextContaining('recorded a settlement'), findsNothing);
     });
   });
@@ -1075,7 +1075,7 @@ void main() {
         ),
       );
 
-      await tester.tap(_richTextContaining('added an expense in Beach Trip'));
+      await tester.tap(_richTextContaining('added an expense in \u{2068}Beach Trip\u{2069}'));
       await tester.pumpAndSettle();
 
       expect(find.text('EventLedger:grp-1/ev1'), findsOneWidget);
@@ -1107,7 +1107,7 @@ void main() {
         ),
       );
 
-      await tester.tap(_richTextContaining('created Beach Trip'));
+      await tester.tap(_richTextContaining('created \u{2068}Beach Trip\u{2069}'));
       await tester.pumpAndSettle();
 
       expect(find.text('EventHub:grp-1/ev1'), findsOneWidget);
@@ -1149,7 +1149,7 @@ void main() {
         );
 
         await tester.tap(
-          _richTextContaining('added an expense in Beach Trip'),
+          _richTextContaining('added an expense in \u{2068}Beach Trip\u{2069}'),
           warnIfMissed: false,
         );
         await tester.pumpAndSettle();

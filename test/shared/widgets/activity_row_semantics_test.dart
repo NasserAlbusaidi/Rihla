@@ -42,6 +42,21 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('#1216b: the actor name span is FSI/PDI isolated', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(_row()));
+
+    // The actor name renders as the first inline span, directly before the
+    // localized verb phrase — isolate it so an RLO can't reorder the row.
+    final richText = tester.widget<Text>(
+      find.byWidgetPredicate((w) => w is Text && w.textSpan != null),
+    );
+    final root = richText.textSpan! as TextSpan;
+    final actorSpan = root.children!.first as TextSpan;
+    expect(actorSpan.text, '\u{2068}Layla\u{2069}');
+  });
+
   testWidgets('an inert (onTap-less) row exposes no button node', (
     tester,
   ) async {

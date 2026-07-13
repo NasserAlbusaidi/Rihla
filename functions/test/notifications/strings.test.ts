@@ -4,11 +4,19 @@ import {
   settlementBody,
   memberJoinTitle,
   memberJoinBody,
+  expenseBody,
+  eventBody,
   claimRequestTitle,
   claimRequestBody,
   claimDecideTitle,
   claimDecideBody,
 } from '../../src/notifications/strings';
+
+// FSI (U+2068) … PDI (U+2069) and an unterminated RLO (U+202E). Escapes only —
+// a co-stripped raw invisible would make these assertions pass vacuously.
+const FSI = '\u2068';
+const PDI = '\u2069';
+const RLO = '\u202E';
 
 describe('normalizeLocale', () => {
   test.each([
@@ -131,5 +139,51 @@ describe('notification copy', () => {
     expect(memberJoinBody('en', '')).toContain('Someone');
     expect(memberJoinBody('ar', '   ')).toContain('شخص ما');
     expect(memberJoinBody('ar', '')).not.toContain('Someone');
+  });
+
+  // #1216b (a): a name/description carrying an unterminated RLO is FSI/PDI
+  // isolated at the interpolation in every body builder, both locales.
+  test('#1216b: RLO-bearing actor and free text are FSI/PDI isolated', () => {
+    expect(settlementBody('en', `Ali${RLO}`, '10.500')).toContain(
+      `${FSI}Ali${RLO}${PDI}`,
+    );
+    expect(memberJoinBody('ar', `Ali${RLO}`)).toContain(`${FSI}Ali${RLO}${PDI}`);
+
+    const expense = expenseBody('en', `Ali${RLO}`, '10.500', `Dinner${RLO}`);
+    expect(expense).toContain(`${FSI}Ali${RLO}${PDI}`);
+    expect(expense).toContain(`${FSI}Dinner${RLO}${PDI}`); // the free-text too
+
+    const event = eventBody('ar', `Ali${RLO}`, `Trip${RLO}`);
+    expect(event).toContain(`${FSI}Ali${RLO}${PDI}`);
+    expect(event).toContain(`${FSI}Trip${RLO}${PDI}`);
+
+    expect(claimRequestBody('en', `Sam${RLO}`, `Dad${RLO}`)).toContain(
+      `${FSI}Dad${RLO}${PDI}`,
+    );
+    expect(claimDecideBody('en', 'claimed', `Dad${RLO}`)).toContain(
+      `${FSI}Dad${RLO}${PDI}`,
+    );
+  });
+
+  // #1216b (b): the wrap is on the POST-fallback local, so an empty name still
+  // fires the localized fallback (never a bare `\u2068\u2069` that would defeat
+  // the empty checks / dangle a separator).
+  test('#1216b: an empty name still fires the fallback, never a bare isolate '
+      + 'pair', () => {
+    const settle = settlementBody('en', '   ', '10.500');
+    expect(settle).toContain('Someone');
+    expect(settle).not.toContain(`${FSI}${PDI}`);
+
+    // Empty description → the tail (and its separator) is still dropped.
+    const expense = expenseBody('en', '', '10.500', '   ');
+    expect(expense).toContain('Someone');
+    expect(expense).not.toContain(`${FSI}${PDI}`);
+    expect(expense).not.toContain(' · ');
+
+    // Empty event name → tail dropped; empty actor → localized fallback fires.
+    const event = eventBody('ar', '   ', '');
+    expect(event).toContain('شخص ما');
+    expect(event).not.toContain(`${FSI}${PDI}`);
+    expect(event).not.toContain(' · ');
   });
 });

@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/firebase_functions_service.dart';
+import '../../../core/utils/bidi.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/directional_icon.dart';
@@ -115,8 +116,8 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
           content: Text(
             result.status == 'claimed'
                 ? l10n.groupClaimApproved(
-                    req.requesterDisplayName,
-                    req.shadowDisplayName,
+                    bidiIsolate(req.requesterDisplayName),
+                    bidiIsolate(req.shadowDisplayName),
                   )
                 : l10n.groupClaimRequestDeclined,
           ),
@@ -185,8 +186,8 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
           SizedBox(height: spacing.space12),
           Text(
             context.l10n.groupClaimRequestRow(
-              req.requesterDisplayName,
-              req.shadowDisplayName,
+              bidiIsolate(req.requesterDisplayName),
+              bidiIsolate(req.shadowDisplayName),
             ),
             style: AppTypography.sans(
               fontSize: 15,
@@ -209,8 +210,8 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
             ),
             child: Text(
               context.l10n.groupClaimMergeConsequence(
-                req.shadowDisplayName,
-                req.requesterDisplayName,
+                bidiIsolate(req.shadowDisplayName),
+                bidiIsolate(req.requesterDisplayName),
               ),
               style: AppTypography.sans(
                 fontSize: 12.5,

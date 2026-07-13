@@ -286,7 +286,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Mona paid · split 2 ways'), findsOneWidget);
+      expect(find.text('\u{2068}Mona\u{2069} paid · split 2 ways'), findsOneWidget);
     });
   });
 

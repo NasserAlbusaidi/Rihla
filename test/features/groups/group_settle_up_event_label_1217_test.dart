@@ -221,12 +221,16 @@ void main() {
       // The grapheme-safe cut keeps the WHOLE emoji (as the 27th grapheme)
       // and appends "..." right after it — the name portion is exactly the
       // 26-ASCII-plus-emoji prefix, never a partial/corrupted emoji.
+      // #1216b: the event name is FSI/PDI-isolated, so the label starts with
+      // the FSI (U+2068) then the grapheme-safe truncated name.
       final labelFinder = find.byWidgetPredicate(
-        (w) => w is Text && (w.data ?? '').startsWith('$_asciiPrefix$_emoji'),
+        (w) =>
+            w is Text &&
+            (w.data ?? '').startsWith('\u{2068}$_asciiPrefix$_emoji'),
       );
       expect(labelFinder, findsOneWidget);
       final labelText = tester.widget<Text>(labelFinder).data!;
-      expect(labelText, startsWith('$_asciiPrefix$_emoji...'));
+      expect(labelText, startsWith('\u{2068}$_asciiPrefix$_emoji...'));
       // Must NEVER contain the Unicode replacement character (U+FFFD) that a
       // split surrogate pair renders as.
       expect(labelText.contains('�'), isFalse);

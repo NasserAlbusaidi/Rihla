@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/utils/bidi.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/activity_glyph.dart';
 import '../../groups/models/group_activity_log_model.dart';
@@ -36,7 +37,9 @@ String localizedEventActivityText(AppLocalizations l10n, ActivityLog log) {
     ('DOCS', 'CREATE') => l10n.activityEventDocsCreated,
     ('DOCS', 'UPDATE') => l10n.activityEventDocsUpdated,
     ('DOCS', 'DELETE') => l10n.activityEventDocsDeleted,
-    _ => log.logText,
+    // #1216b: legacy logText bakes in "$actorDisplayName paid" — isolate it so
+    // an unterminated RLO in the baked-in name can't reorder the row.
+    _ => bidiIsolate(log.logText),
   };
 }
 
@@ -75,9 +78,18 @@ String _settlementText(AppLocalizations l10n, GroupActivityLog log) {
       toUserId.isEmpty) {
     return l10n.activityGroupSettlementDescription; // legacy/forged fallback
   }
-  if (log.actorId == fromUserId) return l10n.activitySettlementPaid(toName);
-  if (log.actorId == toUserId) return l10n.activitySettlementReceived(fromName);
-  return l10n.activitySettlementBetween(fromName, toName); // #595 third-party recorder
+  // #1216b: isolate each name at the l10n arg (never the source local — the
+  // locals also gate the actorId comparisons above and must stay raw).
+  if (log.actorId == fromUserId) {
+    return l10n.activitySettlementPaid(bidiIsolate(toName));
+  }
+  if (log.actorId == toUserId) {
+    return l10n.activitySettlementReceived(bidiIsolate(fromName));
+  }
+  return l10n.activitySettlementBetween(
+    bidiIsolate(fromName),
+    bidiIsolate(toName),
+  ); // #595 third-party recorder
 }
 
 String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
@@ -97,17 +109,17 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
     'event_created' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupEventCreatedGeneric
-          : l10n.activityGroupEventCreated(eventName),
+          : l10n.activityGroupEventCreated(bidiIsolate(eventName)),
     'event_deleted' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupEventDeletedGeneric
-          : l10n.activityGroupEventDeleted(eventName),
+          : l10n.activityGroupEventDeleted(bidiIsolate(eventName)),
     'member_joined' => l10n.activityGroupMemberJoined,
     'member_left' =>
       memberAction == 'removed'
           ? (memberName == null || memberName.isEmpty
-                ? log.description
-                : l10n.activityGroupMemberRemoved(memberName))
+                ? bidiIsolate(log.description)
+                : l10n.activityGroupMemberRemoved(bidiIsolate(memberName)))
           : l10n.activityGroupMemberLeft,
     // #808 PR2: server-fan-in expense entries. GENERIC by design (D-PR2-1) —
     // metadata carries no expense label, so we localize by type + eventName and
@@ -116,16 +128,16 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
     'expense_added' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupExpenseAddedGeneric
-          : l10n.activityGroupExpenseAdded(eventName),
+          : l10n.activityGroupExpenseAdded(bidiIsolate(eventName)),
     'expense_edited' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupExpenseEditedGeneric
-          : l10n.activityGroupExpenseEdited(eventName),
+          : l10n.activityGroupExpenseEdited(bidiIsolate(eventName)),
     'expense_deleted' =>
       eventName == null || eventName.isEmpty
           ? l10n.activityGroupExpenseDeletedGeneric
-          : l10n.activityGroupExpenseDeleted(eventName),
-    _ => log.description,
+          : l10n.activityGroupExpenseDeleted(bidiIsolate(eventName)),
+    _ => bidiIsolate(log.description),
   };
 }
 /// Currency for an amount-bearing group-activity row (#382 PR-4).

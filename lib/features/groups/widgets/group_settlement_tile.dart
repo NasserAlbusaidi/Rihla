@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/utils/bidi.dart';
 import '../keys/group_keys.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
@@ -75,9 +76,19 @@ class _GroupSettlementTileState extends State<GroupSettlementTile> {
   }
 
   String get _subLabel {
-    if (widget.isYourAction) return context.l10n.settleUpYouOwe(widget.toName);
-    if (widget.isCreditor) return context.l10n.settleUpOwesYou(widget.fromName);
-    return context.l10n.settleUpOwes(widget.fromName, widget.toName);
+    // #1216b: isolate names at the l10n arg (never the source prop). Renders as
+    // a Semantics label only, so the wrap is harmless there but keeps the
+    // 13-key contract uniform.
+    if (widget.isYourAction) {
+      return context.l10n.settleUpYouOwe(bidiIsolate(widget.toName));
+    }
+    if (widget.isCreditor) {
+      return context.l10n.settleUpOwesYou(bidiIsolate(widget.fromName));
+    }
+    return context.l10n.settleUpOwes(
+      bidiIsolate(widget.fromName),
+      bidiIsolate(widget.toName),
+    );
   }
 
   /// #282/#595: the debtor records a payment *made* ("Mark paid"), the creditor

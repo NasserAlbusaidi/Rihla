@@ -5,6 +5,15 @@
 
 export type Locale = 'en' | 'ar';
 
+// #1216b — TS twin of the client `bidiIsolate`: wrap a user-controlled
+// interpolant in FSI (U+2068) … PDI (U+2069) so an unterminated RLO/LRO in a
+// name/description cannot visually reorder the notification sentence around it.
+// ESCAPES ONLY (raw invisibles are Prettier-strippable). Applied to the
+// POST-FALLBACK local at the interpolation, never the raw param — the empty
+// checks (`actorLabel`, `.trim().length`) must run first, or a wrapped empty
+// string ('\u2068\u2069', length 2) defeats every fallback.
+const bidiIsolate = (s: string): string => '\u2068' + s + '\u2069';
+
 /**
  * Coerces an arbitrary stored `locale` value to a supported [Locale]. Anything
  * starting with `ar` (case-insensitive) -> 'ar'; everything else (incl. null /
@@ -43,8 +52,8 @@ export function settlementBody(
 ): string {
   const actor = actorLabel(locale, actorName);
   return locale === 'ar'
-    ? `سجّل ${actor} تسوية بقيمة ${amountText}.`
-    : `${actor} recorded a ${amountText} settlement.`;
+    ? `سجّل ${bidiIsolate(actor)} تسوية بقيمة ${amountText}.`
+    : `${bidiIsolate(actor)} recorded a ${amountText} settlement.`;
 }
 
 export function memberJoinTitle(locale: Locale, groupName: string): string {
@@ -54,8 +63,8 @@ export function memberJoinTitle(locale: Locale, groupName: string): string {
 export function memberJoinBody(locale: Locale, joinerName: string): string {
   const joiner = actorLabel(locale, joinerName);
   return locale === 'ar'
-    ? `انضم ${joiner} إلى المجموعة.`
-    : `${joiner} joined the group.`;
+    ? `انضم ${bidiIsolate(joiner)} إلى المجموعة.`
+    : `${bidiIsolate(joiner)} joined the group.`;
 }
 
 export function expenseTitle(locale: Locale, groupName: string): string {
@@ -74,10 +83,12 @@ export function expenseBody(
 ): string {
   const actor = actorLabel(locale, actorName);
   const label = description.trim();
-  const tail = label.length > 0 ? ` · ${label}` : '';
+  // Empty-check on the RAW trimmed label BEFORE wrapping (a wrapped empty
+  // string has length 2 and would splice a dangling ` · \u2068\u2069` separator).
+  const tail = label.length > 0 ? ` · ${bidiIsolate(label)}` : '';
   return locale === 'ar'
-    ? `أضاف ${actor} مصروفًا${tail} بقيمة ${amountText}.`
-    : `${actor} added an expense${tail} (${amountText}).`;
+    ? `أضاف ${bidiIsolate(actor)} مصروفًا${tail} بقيمة ${amountText}.`
+    : `${bidiIsolate(actor)} added an expense${tail} (${amountText}).`;
 }
 
 export function eventTitle(locale: Locale, groupName: string): string {
@@ -96,10 +107,11 @@ export function eventBody(
 ): string {
   const actor = actorLabel(locale, actorName);
   const label = eventName.trim();
-  const tail = label.length > 0 ? ` · ${label}` : '';
+  // Empty-check on the RAW trimmed label BEFORE wrapping (see expenseBody).
+  const tail = label.length > 0 ? ` · ${bidiIsolate(label)}` : '';
   return locale === 'ar'
-    ? `أنشأ ${actor} حدثًا جديدًا${tail}.`
-    : `${actor} created a new event${tail}.`;
+    ? `أنشأ ${bidiIsolate(actor)} حدثًا جديدًا${tail}.`
+    : `${bidiIsolate(actor)} created a new event${tail}.`;
 }
 
 export function claimRequestTitle(locale: Locale, groupName: string): string {
@@ -121,12 +133,12 @@ export function claimRequestBody(
   const shadow = shadowName.trim();
   if (shadow.length === 0) {
     return locale === 'ar'
-      ? `يريد ${requester} أخذ مكان أحد الأعضاء.`
-      : `${requester} wants to claim a member's spot.`;
+      ? `يريد ${bidiIsolate(requester)} أخذ مكان أحد الأعضاء.`
+      : `${bidiIsolate(requester)} wants to claim a member's spot.`;
   }
   return locale === 'ar'
-    ? `يريد ${requester} أخذ مكان ${shadow}.`
-    : `${requester} wants to claim ${shadow}'s spot.`;
+    ? `يريد ${bidiIsolate(requester)} أخذ مكان ${bidiIsolate(shadow)}.`
+    : `${bidiIsolate(requester)} wants to claim ${bidiIsolate(shadow)}'s spot.`;
 }
 
 export type ClaimDecision = 'claimed' | 'declined';
@@ -152,8 +164,8 @@ export function claimDecideBody(
         : 'Your member claim was approved.';
     }
     return locale === 'ar'
-      ? `تمت الموافقة على طلبك لأخذ مكان ${shadow}.`
-      : `Your claim for ${shadow}'s spot was approved.`;
+      ? `تمت الموافقة على طلبك لأخذ مكان ${bidiIsolate(shadow)}.`
+      : `Your claim for ${bidiIsolate(shadow)}'s spot was approved.`;
   }
   if (shadow.length === 0) {
     return locale === 'ar'
@@ -161,6 +173,6 @@ export function claimDecideBody(
       : 'Your member claim was declined.';
   }
   return locale === 'ar'
-    ? `تم رفض طلبك لأخذ مكان ${shadow}.`
-    : `Your claim for ${shadow}'s spot was declined.`;
+    ? `تم رفض طلبك لأخذ مكان ${bidiIsolate(shadow)}.`
+    : `Your claim for ${bidiIsolate(shadow)}'s spot was declined.`;
 }

@@ -40,6 +40,13 @@ GroupActivityLog _groupLog({
 _entry(GroupActivityLog log, {String groupName = 'Trip A', String currency = 'OMR'}) =>
     (log: log, groupName: groupName, groupId: 'g1', currency: currency);
 
+// FSI (U+2068) … PDI (U+2069). Independent of the source helper on purpose —
+// escapes, so a co-stripped source wrap can't make this pass vacuously (#1216b).
+String _fsi(String s) => '\u{2068}$s\u{2069}';
+
+// An unterminated RLO carried inside a name — the attack the isolate defends.
+const _rlo = '\u{202E}';
+
 void main() {
   group('activity display helpers', () {
     test('localizes known event activity types in English and Arabic', () {
@@ -119,7 +126,10 @@ void main() {
         logText: 'custom persisted activity',
       );
 
-      expect(localizedEventActivityText(en, log), 'custom persisted activity');
+      expect(
+        localizedEventActivityText(en, log),
+        _fsi('custom persisted activity'),
+      );
     });
 
     test('localizes known group activity types with metadata', () {
@@ -130,8 +140,8 @@ void main() {
         metadata: const {'eventName': 'Beach Trip'},
       );
 
-      expect(localizedGroupActivityText(en, log), 'created Beach Trip');
-      expect(localizedGroupActivityText(ar, log), 'إنشاء Beach Trip');
+      expect(localizedGroupActivityText(en, log), 'created ${_fsi('Beach Trip')}');
+      expect(localizedGroupActivityText(ar, log), 'إنشاء ${_fsi('Beach Trip')}');
     });
 
     test('localizes group activity generic and settlement branches', () {
@@ -153,7 +163,7 @@ void main() {
             metadata: const {'eventName': 'Old Plan'},
           ),
         ),
-        en.activityGroupEventDeleted('Old Plan'),
+        en.activityGroupEventDeleted(_fsi('Old Plan')),
       );
       expect(
         localizedGroupActivityText(en, _groupLog(type: 'event_deleted')),
@@ -176,7 +186,7 @@ void main() {
             metadata: const {'memberAction': 'removed'},
           ),
         ),
-        'legacy removal text',
+        _fsi('legacy removal text'),
       );
     });
 
@@ -189,8 +199,14 @@ void main() {
         metadata: const {'memberAction': 'removed', 'memberName': 'Bob'},
       );
 
-      expect(localizedGroupActivityText(en, log), 'removed Bob from the group');
-      expect(localizedGroupActivityText(ar, log), 'إزالة Bob من المجموعة');
+      expect(
+        localizedGroupActivityText(en, log),
+        'removed ${_fsi('Bob')} from the group',
+      );
+      expect(
+        localizedGroupActivityText(ar, log),
+        'إزالة ${_fsi('Bob')} من المجموعة',
+      );
     });
 
     test('localizes group_created as a static phrase, ignoring metadata '
@@ -218,7 +234,7 @@ void main() {
 
       expect(
         localizedGroupActivityText(ar, log),
-        'legacy persisted group text',
+        _fsi('legacy persisted group text'),
       );
     });
 
@@ -271,7 +287,7 @@ void main() {
             },
           ),
         ),
-        'legacy removal text',
+        _fsi('legacy removal text'),
       );
 
       // memberAction: int → treated absent → plain "left the group".
@@ -309,19 +325,19 @@ void main() {
 
       expect(
         localizedGroupActivityText(en, added),
-        en.activityGroupExpenseAdded('Beach Trip'),
+        en.activityGroupExpenseAdded(_fsi('Beach Trip')),
       );
       expect(
         localizedGroupActivityText(en, edited),
-        en.activityGroupExpenseEdited('Beach Trip'),
+        en.activityGroupExpenseEdited(_fsi('Beach Trip')),
       );
       expect(
         localizedGroupActivityText(en, deleted),
-        en.activityGroupExpenseDeleted('Beach Trip'),
+        en.activityGroupExpenseDeleted(_fsi('Beach Trip')),
       );
       expect(
         localizedGroupActivityText(ar, added),
-        ar.activityGroupExpenseAdded('Beach Trip'),
+        ar.activityGroupExpenseAdded(_fsi('Beach Trip')),
       );
     });
 
@@ -366,21 +382,21 @@ void main() {
           en,
           _groupLog(type: 'event_settlement', actorId: 'uid-payer', metadata: base),
         ),
-        en.activitySettlementPaid('Sarah'),
+        en.activitySettlementPaid(_fsi('Sarah')),
       );
       expect(
         localizedGroupActivityText(
           en,
           _groupLog(type: 'event_settlement', actorId: 'uid-payee', metadata: base),
         ),
-        en.activitySettlementReceived('Ali'),
+        en.activitySettlementReceived(_fsi('Ali')),
       );
       expect(
         localizedGroupActivityText(
           en,
           _groupLog(type: 'event_settlement', actorId: 'uid-third', metadata: base),
         ),
-        en.activitySettlementBetween('Ali', 'Sarah'),
+        en.activitySettlementBetween(_fsi('Ali'), _fsi('Sarah')),
       );
     });
 
@@ -451,7 +467,7 @@ void main() {
       );
       expect(
         localizedGroupActivityText(en, log),
-        en.activitySettlementPaid('Sarah'),
+        en.activitySettlementPaid(_fsi('Sarah')),
       );
     });
 
@@ -469,7 +485,7 @@ void main() {
       );
       expect(
         localizedGroupActivityText(en, log),
-        en.activitySettlementReceived('Ali'),
+        en.activitySettlementReceived(_fsi('Ali')),
       );
     });
 
@@ -487,7 +503,7 @@ void main() {
       );
       expect(
         localizedGroupActivityText(en, log),
-        en.activitySettlementBetween('Ali', 'Sarah'),
+        en.activitySettlementBetween(_fsi('Ali'), _fsi('Sarah')),
       );
     });
 
@@ -941,6 +957,124 @@ void main() {
       // Other fields stay searchable (actorName is 'Alice').
       expect(activityMatchesQuery(entry, 'ali', en), isTrue);
       expect(activityMatchesQuery(entry, 'zzzzz', en), isFalse);
+    });
+  });
+
+  // #1216b — a name/eventName carrying an unterminated RLO must be FSI/PDI
+  // isolated at the l10n arg so it can't reorder the sentence around it.
+  group('bidi isolation (#1216b)', () {
+    final en = AppLocalizationsEn();
+
+    test('settlement "paid {toName}" isolates the toName', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-payer',
+        metadata: {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': 'Ali',
+          'toName': 'Sarah$_rlo',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activitySettlementPaid(_fsi('Sarah$_rlo')),
+      );
+    });
+
+    test('settlement "received from {fromName}" isolates the fromName', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-payee',
+        metadata: {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': 'Ali$_rlo',
+          'toName': 'Sarah',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activitySettlementReceived(_fsi('Ali$_rlo')),
+      );
+    });
+
+    test('third-party settlement isolates BOTH names', () {
+      final log = _groupLog(
+        type: 'group_settlement',
+        actorId: 'uid-third',
+        metadata: {
+          'fromUserId': 'uid-payer',
+          'toUserId': 'uid-payee',
+          'fromName': 'Ali$_rlo',
+          'toName': 'Sarah$_rlo',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activitySettlementBetween(_fsi('Ali$_rlo'), _fsi('Sarah$_rlo')),
+      );
+    });
+
+    test('event_created isolates the eventName', () {
+      final log = _groupLog(
+        type: 'event_created',
+        metadata: {'eventName': 'Beach$_rlo'},
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupEventCreated(_fsi('Beach$_rlo')),
+      );
+    });
+
+    test('member removal isolates the memberName', () {
+      final log = _groupLog(
+        type: 'member_left',
+        description: 'Bob was removed',
+        metadata: {'memberAction': 'removed', 'memberName': 'Bob$_rlo'},
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupMemberRemoved(_fsi('Bob$_rlo')),
+      );
+    });
+
+    test('expense_added isolates the eventName', () {
+      final log = _groupLog(
+        type: 'expense_added',
+        metadata: {'eventName': 'Dinner$_rlo'},
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupExpenseAdded(_fsi('Dinner$_rlo')),
+      );
+    });
+
+    test('unknown group type isolates the raw description fallback', () {
+      final log = _groupLog(
+        type: 'legacy_type',
+        description: 'legacy$_rlo text',
+      );
+      expect(localizedGroupActivityText(en, log), _fsi('legacy$_rlo text'));
+    });
+
+    test('member removal with empty memberName isolates the description '
+        'fallback', () {
+      final log = _groupLog(
+        type: 'member_left',
+        description: 'Bob$_rlo was removed',
+        metadata: const {'memberAction': 'removed'},
+      );
+      expect(localizedGroupActivityText(en, log), _fsi('Bob$_rlo was removed'));
+    });
+
+    test('unknown event type isolates the legacy logText fallback', () {
+      final log = _eventLog(
+        category: 'LEGACY',
+        eventType: 'ODD',
+        logText: 'custom$_rlo activity',
+      );
+      expect(localizedEventActivityText(en, log), _fsi('custom$_rlo activity'));
     });
   });
 }

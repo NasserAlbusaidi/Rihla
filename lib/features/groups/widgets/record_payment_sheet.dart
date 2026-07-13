@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/utils/a11y_announce.dart';
+import '../../../core/utils/bidi.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -205,14 +206,18 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
   String _bannerText(BuildContext context) {
     switch (widget.perspective) {
       case RecordPaymentPerspective.receiving:
-        return context.l10n.settleUpRecordsReceivedImmediately(widget.fromName);
+        return context.l10n.settleUpRecordsReceivedImmediately(
+          bidiIsolate(widget.fromName),
+        );
       case RecordPaymentPerspective.recording:
         return context.l10n.settleUpRecordsForOthersImmediately(
-          widget.fromName,
-          widget.toName,
+          bidiIsolate(widget.fromName),
+          bidiIsolate(widget.toName),
         );
       case RecordPaymentPerspective.paying:
-        return context.l10n.settleUpRecordsImmediately(widget.toName);
+        return context.l10n.settleUpRecordsImmediately(
+          bidiIsolate(widget.toName),
+        );
     }
   }
 
@@ -320,12 +325,12 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     Text(
                       isPartial
                           ? context.l10n.settleUpRecordPartialBody(
-                              widget.fromName,
-                              widget.toName,
+                              bidiIsolate(widget.fromName),
+                              bidiIsolate(widget.toName),
                             )
                           : context.l10n.settleUpMarkThisPaidBody(
-                              widget.fromName,
-                              widget.toName,
+                              bidiIsolate(widget.fromName),
+                              bidiIsolate(widget.toName),
                             ),
                       textAlign: TextAlign.center,
                       style: AppTypography.sans(
@@ -365,8 +370,8 @@ class _MarkPaidSheetState extends State<_MarkPaidSheet> {
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(
                       context.l10n.settleUpRemainingAfter(
-                        widget.fromName,
-                        widget.toName,
+                        bidiIsolate(widget.fromName),
+                        bidiIsolate(widget.toName),
                         AppFormatters.formatCurrency(
                           remaining,
                           widget.currency,
@@ -592,7 +597,10 @@ class _PayeeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      context.l10n.settleUpPays(fromName, toName),
+                      context.l10n.settleUpPays(
+                        bidiIsolate(fromName),
+                        bidiIsolate(toName),
+                      ),
                       style: AppTypography.sans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
