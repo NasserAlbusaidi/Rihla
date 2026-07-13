@@ -615,6 +615,11 @@ class BalanceCalculator {
   /// with, the whole-table-last contract — never a zero-weight key). When NO key
   /// has positive weight, fall back to an equal spread over [fallbackBase] (the
   /// whole table) so the amount is never silently dropped (conservation).
+  ///
+  /// The per-key `amount * weight` product is computed via a [BigInt] intermediate
+  /// (#1206): both factors can reach ~3.1e9 subunits, whose native int64 product
+  /// (~1.9e19) overflows and silently wraps to a mis-proportioned share; `weight ≤
+  /// total` keeps the quotient `≤ amount < 2^63`, so `.toInt()` is exact.
   static Map<String, int> _spreadProportional(
     int amount,
     Map<String, int> weights,
@@ -630,7 +635,9 @@ class BalanceCalculator {
     final out = <String, int>{};
     var used = 0;
     for (final k in keys) {
-      final share = (amount * weights[k]!) ~/ total;
+      final share =
+          ((BigInt.from(amount) * BigInt.from(weights[k]!)) ~/ BigInt.from(total))
+              .toInt();
       out[k] = share;
       used += share;
     }
