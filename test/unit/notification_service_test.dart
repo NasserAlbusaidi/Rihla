@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:safar/core/services/draft_navigation_guard.dart';
 import 'package:safar/core/services/local_notifier.dart';
 import 'package:safar/core/services/notification_service.dart';
 
@@ -1496,6 +1497,92 @@ void main() {
           'token-1',
           reason: 'resume recovery must actually save a token',
         );
+      },
+    );
+  });
+
+  // #1208: the REAL `_navigate` path (no `onNavigate` override) must consult
+  // `DraftNavigationGuard` before routing a notification tap, so a runtime
+  // tap over a dirty editor confirms first instead of silently destroying
+  // the draft. `_ref.read(routerProvider).go(...)` has no widget tree to
+  // attach to here, so its throw is swallowed by `_navigate`'s own
+  // try/catch — assert via the registry (was it consulted?), not by
+  // spying the real GoRouter (Gate r1).
+  group('draft navigation guard consult on the real navigate path (#1208)', () {
+    setUp(DraftNavigationGuard.instance.reset);
+    tearDown(DraftNavigationGuard.instance.reset);
+
+    Future<void> bootReal({required Stream<RemoteMessage> opened}) async {
+      final messaging = _MockFirebaseMessaging();
+      final tokenRefresh = StreamController<String>.broadcast();
+      final provider = _serviceProvider(
+        messaging: messaging,
+        firestore: FakeFirebaseFirestore(),
+        currentUserId: () => 'uid-1',
+        tokenRefresh: tokenRefresh.stream,
+        openedMessages: opened,
+        // No `onNavigate` override — exercises the real `_guardedGo` path.
+      );
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      addTearDown(tokenRefresh.close);
+      when(
+        () => messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        ),
+      ).thenAnswer((_) async => _settings(AuthorizationStatus.authorized));
+      when(messaging.getToken).thenAnswer((_) async => 'token-1');
+      final service = container.read(provider);
+      await service.initialize();
+    }
+
+    test(
+      'a guard that declines the discard is consulted before the tap '
+      'would route',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        var consulted = false;
+        DraftNavigationGuard.instance.register(() async {
+          consulted = true;
+          return false;
+        });
+
+        await bootReal(opened: opened.stream);
+        opened.add(
+          const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g9'}),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          consulted,
+          isTrue,
+          reason: 'a registered guard must be consulted before navigating',
+        );
+      },
+    );
+
+    test(
+      'a guard that confirms the discard is consulted and no exception '
+      'escapes the tap handler',
+      () async {
+        final opened = StreamController<RemoteMessage>.broadcast();
+        addTearDown(opened.close);
+        var consulted = false;
+        DraftNavigationGuard.instance.register(() async {
+          consulted = true;
+          return true;
+        });
+
+        await bootReal(opened: opened.stream);
+        opened.add(
+          const RemoteMessage(data: {'type': 'member_join', 'groupId': 'g9'}),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(consulted, isTrue);
       },
     );
   });
