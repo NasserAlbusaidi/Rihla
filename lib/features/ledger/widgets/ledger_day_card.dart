@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
+import '../../../core/utils/bidi.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/r_amount.dart';
@@ -259,7 +260,9 @@ class _ExpenseRow extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '$payerName ${l10n.ledgerPaidConnector} · '
+                            // #1216b: isolate the payer name so an RLO can't
+                            // garble the trailing "paid · N ways" descriptor.
+                            '${bidiIsolate(payerName)} ${l10n.ledgerPaidConnector} · '
                             '${l10n.ledgerSplitWays(splitCount)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -445,8 +448,10 @@ class LedgerSettleRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '$payerName ${context.l10n.ledgerPaidConnector} '
-                    '$recipientName',
+                    // #1216b: isolate each name — an RLO in the payer would
+                    // otherwise invert who-paid-whom in this settlement row.
+                    '${bidiIsolate(payerName)} ${context.l10n.ledgerPaidConnector} '
+                    '${bidiIsolate(recipientName)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     // #900 Falaj w500 mitigation: Zain collapses w500->w400,

@@ -536,7 +536,9 @@ void main() {
     );
 
     expect(
-      find.text('Added by Yasmin Khan · edited by Layla Hassan'),
+      find.text(
+        'Added by \u{2068}Yasmin Khan\u{2069} · edited by \u{2068}Layla Hassan\u{2069}',
+      ),
       findsOneWidget,
     );
   });

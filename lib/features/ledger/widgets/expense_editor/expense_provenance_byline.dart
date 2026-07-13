@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/extensions/build_context_l10n.dart';
+import '../../../../core/utils/bidi.dart';
 import '../../../../core/theme/tokens/domain_aliases.dart';
 import '../../../../core/theme/tokens/typography_tokens.dart';
 import '../../../events/models/event_model.dart';
@@ -42,8 +43,9 @@ class ExpenseProvenanceByline extends StatelessWidget {
     final text = provenance.editorName == null
         ? context.l10n.editorProvenanceAdded(provenance.creatorName)
         : context.l10n.editorProvenanceAddedEdited(
-            provenance.creatorName,
-            provenance.editorName!,
+            // #1216b: two names in one byline — isolate each at the l10n arg.
+            bidiIsolate(provenance.creatorName),
+            bidiIsolate(provenance.editorName!),
           );
 
     return Padding(

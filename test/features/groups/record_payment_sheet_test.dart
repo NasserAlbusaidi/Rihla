@@ -454,7 +454,7 @@ void main() {
     expect(find.text('Mark paid'), findsNothing);
     // Banner names the payer (Bob), not "your payment", and stays immediate.
     expect(
-      find.text("This records Bob's payment to you immediately."),
+      find.text("This records \u{2068}Bob\u{2069}'s payment to you immediately."),
       findsOneWidget,
     );
   });
@@ -502,7 +502,7 @@ void main() {
       expect(find.text('Mark this received?'), findsNothing);
       // Banner names BOTH parties — no first/second-person ("your"/"you").
       expect(
-        find.text("This records Bob's payment to Alice immediately."),
+        find.text("This records \u{2068}Bob\u{2069}'s payment to \u{2068}Alice\u{2069} immediately."),
         findsOneWidget,
       );
     },
@@ -526,7 +526,7 @@ void main() {
       expect(find.textContaining('close out'), findsNothing);
       // Remaining-after: 100 − 40 = 60, correct currency + decimals.
       expect(
-        find.text('Bob will still owe Alice OMR 60.000 after this.'),
+        find.text('\u{2068}Bob\u{2069} will still owe \u{2068}Alice\u{2069} OMR 60.000 after this.'),
         findsOneWidget,
       );
     },
@@ -561,7 +561,7 @@ void main() {
 
       // 1000 − 400 = 600, no spurious decimal tail.
       expect(
-        find.text('Bob will still owe Alice JPY 600 after this.'),
+        find.text('\u{2068}Bob\u{2069} will still owe \u{2068}Alice\u{2069} JPY 600 after this.'),
         findsOneWidget,
       );
     },
@@ -585,7 +585,7 @@ void main() {
       expect(find.text('Mark this received?'), findsNothing);
       // The perspective-aware banner is untouched — it still carries who-paid.
       expect(
-        find.text("This records Bob's payment to you immediately."),
+        find.text("This records \u{2068}Bob\u{2069}'s payment to you immediately."),
         findsOneWidget,
       );
     },

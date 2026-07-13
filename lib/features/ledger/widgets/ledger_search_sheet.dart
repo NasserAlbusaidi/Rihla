@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/utils/bidi.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -484,7 +485,9 @@ final class _SettlementHit extends _SearchHit {
   String title(AppLocalizations l10n) {
     final payer = payerDisplay ?? l10n.ledgerSomeone;
     final recipient = recipientDisplay ?? l10n.ledgerSomeone;
-    return '$payer → $recipient';
+    // #1216b: two names + a directional arrow — isolate each so an RLO can't
+    // flip who-paid-whom. Display-only (search matches raw fields, not title()).
+    return '${bidiIsolate(payer)} → ${bidiIsolate(recipient)}';
   }
 
   @override

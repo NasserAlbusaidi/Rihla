@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/utils/bidi.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/spacing_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -645,7 +646,9 @@ class _SteppedSettleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        context.l10n.settleUpSettleAllWith(otherName),
+                        context.l10n.settleUpSettleAllWith(
+                          bidiIsolate(otherName),
+                        ),
                         style: AppTypography.sans(
                           color: context.colors.textPrimary,
                           fontSize: 15,
@@ -1108,7 +1111,13 @@ class _HistoryTile extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.settleUpCorrectTitle),
         content: Text(
-          l10n.settleUpCorrectBody(amountStr, recipientName, payerName),
+          // #1216b: isolate the names at the dialog arg — never the
+          // payerName/recipientName locals (they also feed the shared receipt).
+          l10n.settleUpCorrectBody(
+            amountStr,
+            bidiIsolate(recipientName),
+            bidiIsolate(payerName),
+          ),
         ),
         actions: [
           TextButton(
@@ -1248,14 +1257,16 @@ class _HistoryTile extends StatelessWidget {
                         ),
                         children: [
                           TextSpan(
-                            text: payerName,
+                            // #1216b: isolate the span (not the local — it feeds
+                            // the shared receipt too).
+                            text: bidiIsolate(payerName),
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                           TextSpan(
                             text: ' ${context.l10n.settleUpPaidConnector} ',
                           ),
                           TextSpan(
-                            text: recipientName,
+                            text: bidiIsolate(recipientName),
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ],

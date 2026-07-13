@@ -89,6 +89,38 @@ GroupBalances _balancesTwoEventsWithResidual() => (
       memberRawNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob'},
     );
 
+/// #1216b: the debtor's raw name carries an unterminated RLO. The callable
+/// payload must receive it RAW (no FSI/PDI) — display isolation never reaches
+/// the wire.
+GroupBalances _balancesRloDebtorName() => (
+      balances: <String, List<UserBalance>>{
+        'OMR': [
+          _bal('uid-alice', 'Alice', '10.000'),
+          _bal('uid-bob', 'Bob\u{202E}', '-10.000'),
+        ],
+      },
+      totalSpent: <String, Decimal>{'OMR': Decimal.parse('20.000')},
+      eventCount: 2,
+      perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{
+        'uid-alice': {
+          'event-1': {'OMR': Decimal.parse('3.000')},
+          'event-2': {'OMR': Decimal.parse('3.000')},
+        },
+        'uid-bob': {
+          'event-1': {'OMR': Decimal.parse('-3.000')},
+          'event-2': {'OMR': Decimal.parse('-3.000')},
+        },
+      },
+      memberNames: <String, String>{
+        'uid-alice': 'Alice',
+        'uid-bob': 'Bob\u{202E}',
+      },
+      memberRawNames: <String, String>{
+        'uid-alice': 'Alice',
+        'uid-bob': 'Bob\u{202E}',
+      },
+    );
+
 /// Bob owes Alice 8.000 with NO per-event attribution (pure cross-event pair)
 /// → decompose.perEvent is empty → the screen routes to mode 'group'.
 GroupBalances _balancesCrossEventOnly() => (
@@ -112,6 +144,8 @@ typedef _DecomposedCall = ({
   String recipient,
   String currency,
   int observedPairEpoch,
+  String? payerName,
+  String? recipientName,
 });
 
 typedef _GroupCall = ({
@@ -120,6 +154,8 @@ typedef _GroupCall = ({
   String recipient,
   String currency,
   int observedPairEpoch,
+  String? payerName,
+  String? recipientName,
 });
 
 /// Records what the screen sends to the callable seam; the Firestore half is
@@ -158,6 +194,8 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
       recipient: recipientParticipantId,
       currency: currency,
       observedPairEpoch: observedPairEpoch,
+      payerName: payerName,
+      recipientName: recipientName,
     ));
     final e = error;
     if (e != null) throw e;
@@ -184,6 +222,8 @@ class _RecordingGroupSettlementService extends GroupSettlementService {
       recipient: recipientParticipantId,
       currency: currency,
       observedPairEpoch: observedPairEpoch,
+      payerName: payerName,
+      recipientName: recipientName,
     ));
     final e = error;
     if (e != null) throw e;
@@ -272,6 +312,41 @@ void main() {
       // ONE server-gated bump for the whole logical settle-up.
       expect(container.read(ledgerRevisionProvider), 1);
       expect(find.text('Settlement recorded.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#1216b negative (a): the callable payload carries RAW names — display '
+    'bidi-isolation never reaches the recordSettlement wire',
+    (tester) async {
+      final service = _RecordingGroupSettlementService();
+
+      await tester.pumpWidget(_wrap(
+        balances: _balancesRloDebtorName(),
+        events: [_event1, _event2],
+        group: _group(),
+        connectivity: ConnectivityNotifier(startPeriodicChecks: false),
+        overrides: [
+          groupSettlementServiceProvider.overrideWithValue(service),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      await _recordFullAmount(tester);
+
+      expect(service.decomposedCalls, hasLength(1));
+      final call = service.decomposedCalls.single;
+      // The debtor's raw name (RLO included) reaches the callable verbatim…
+      expect(call.payerName, 'Bob\u{202E}');
+      expect(call.recipientName, 'Alice');
+      // …with NO FSI/LRI/RLI/PDI (U+2066–U+2069) anywhere.
+      for (final n in [call.payerName, call.recipientName]) {
+        expect(
+          n!.codeUnits.any((c) => c >= 0x2066 && c <= 0x2069),
+          isFalse,
+          reason: n,
+        );
+      }
     },
   );
 

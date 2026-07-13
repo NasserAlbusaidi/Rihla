@@ -32,7 +32,10 @@ Widget _host(Widget body, {Locale? locale}) {
   );
 }
 
-SettleUpPageBody _bodyWithHistory() {
+SettleUpPageBody _bodyWithHistory({
+  String payerName = 'Ahmed',
+  String recipientName = 'Sara',
+}) {
   return SettleUpPageBody(
     scope: SettleScope.group,
     subjectName: 'Beach House',
@@ -44,14 +47,14 @@ SettleUpPageBody _bodyWithHistory() {
         balances: [
           UserBalance(
             participantId: 'uid-ahmed',
-            displayName: 'Ahmed',
+            displayName: payerName,
             totalPaid: Decimal.parse('5.000'),
             totalOwed: Decimal.zero,
             netBalance: Decimal.parse('5.000'),
           ),
           UserBalance(
             participantId: 'uid-sara',
-            displayName: 'Sara',
+            displayName: recipientName,
             totalPaid: Decimal.zero,
             totalOwed: Decimal.parse('5.000'),
             netBalance: Decimal.parse('-5.000'),
@@ -59,7 +62,7 @@ SettleUpPageBody _bodyWithHistory() {
         ],
       ),
     ],
-    rawNames: const {'uid-ahmed': 'Ahmed', 'uid-sara': 'Sara'},
+    rawNames: {'uid-ahmed': payerName, 'uid-sara': recipientName},
     settlementsAsync: AsyncValue.data([
       Settlement(
         id: 's1',
@@ -68,8 +71,8 @@ SettleUpPageBody _bodyWithHistory() {
         recipientParticipantId: 'uid-sara',
         amount: Decimal.parse('5.000'),
         settledAt: DateTime(2026, 6, 7),
-        payerName: 'Ahmed',
-        recipientName: 'Sara',
+        payerName: payerName,
+        recipientName: recipientName,
       ),
     ]),
     currentUid: 'uid-ahmed',
@@ -140,6 +143,51 @@ void main() {
       expect(lines.last, contains('recorded in Rihla'));
     },
   );
+
+  // #1216b negative test (c): the shared receipt is composed from
+  // _HistoryTile's payer/recipient locals. Even when a name carries an RLO,
+  // the SHARED plaintext must never carry bidi isolate chars — wrapping the
+  // locals (the tempting DRY move) would splice FSI/PDI into the receipt.
+  testWidgets('shared receipt stays raw — no bidi isolate chars even with an '
+      'RLO in the name', (tester) async {
+    Map<Object?, Object?>? args;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      shareChannel,
+      (call) async {
+        if (call.method == 'share') {
+          args = call.arguments as Map<Object?, Object?>;
+        }
+        return '';
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        shareChannel,
+        null,
+      ),
+    );
+
+    await tester.pumpWidget(
+      _host(_bodyWithHistory(payerName: 'Ahmed\u{202E}')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(GroupKeys.settleUpShareReceiptButton),
+    );
+    await tester.tap(find.byKey(GroupKeys.settleUpShareReceiptButton));
+    await tester.pumpAndSettle();
+
+    final text = args!['text'] as String;
+    // No FSI/LRI/RLI/PDI (U+2066–U+2069) anywhere in the shared string.
+    expect(
+      text.codeUnits.any((c) => c >= 0x2066 && c <= 0x2069),
+      isFalse,
+      reason: text,
+    );
+    // The raw name (with its RLO) survives verbatim in the receipt.
+    expect(text, contains('Ahmed\u{202E}'));
+  });
 
   testWidgets('receipt is composed in Arabic under the ar locale', (
     tester,

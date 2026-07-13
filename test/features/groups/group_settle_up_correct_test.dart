@@ -134,16 +134,36 @@ CorrectSettlementResult _result({bool shouldBumpLedgerRevision = true}) =>
       shouldBumpLedgerRevision: shouldBumpLedgerRevision,
     );
 
+// Same settled group, but Bob's display name carries an unterminated RLO —
+// #1216b: the correction dialog must FSI/PDI-isolate it.
+final _settledRloBob = (
+  balances: <String, List<UserBalance>>{
+    'OMR': [
+      _bal('uid-alice', 'Alice', '0'),
+      _bal('uid-bob', 'Bob\u{202E}', '0'),
+    ],
+  },
+  totalSpent: <String, Decimal>{'OMR': Decimal.zero},
+  eventCount: 1,
+  perEventBreakdown: <String, Map<String, Map<String, Decimal>>>{},
+  memberNames: <String, String>{'uid-alice': 'Alice', 'uid-bob': 'Bob\u{202E}'},
+  memberRawNames: <String, String>{
+    'uid-alice': 'Alice',
+    'uid-bob': 'Bob\u{202E}',
+  },
+);
+
 Widget _wrap({
   required List<Settlement> tagged,
   required FirebaseFunctionsService functionsService,
   String currentUid = 'uid-alice',
+  GroupBalances? balances,
 }) {
   return ProviderScope(
     overrides: [
       groupDetailProvider(_groupId).overrideWith((_) => Stream.value(_group())),
       groupBalancesProvider(_groupId)
-          .overrideWith((_) => AsyncValue.data(_settled)),
+          .overrideWith((_) => AsyncValue.data(balances ?? _settled)),
       groupSettlementsProvider(_groupId)
           .overrideWith((_) => Stream.value(const <Settlement>[])),
       groupEventsProvider(_groupId).overrideWith((_) => Stream.value([_event1])),
@@ -207,6 +227,44 @@ void main() {
       // must refresh.
       expect(container.read(ledgerRevisionProvider), 1);
       expect(find.text('Settlement recorded.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '#1216b: the correction dialog FSI/PDI-isolates the names (r1 worked '
+    'example)',
+    (tester) async {
+      final functionsService = _MockFunctionsService();
+
+      await tester.pumpWidget(
+        _wrap(
+          tagged: [_taggedOriginal()],
+          functionsService: functionsService,
+          balances: _settledRloBob,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.tap(find.byKey(GroupKeys.settleUpCorrectButton));
+      await tester.pumpAndSettle();
+
+      // The dialog body ("… from {recipient} back to {payer}") isolates the
+      // RLO-bearing payer name at the l10n arg. Assert the wrapped run is
+      // present in a rendered Text — the correctLogicalSettleUp mock is never
+      // invoked (we don't confirm).
+      final wrapped = '\u{2068}Bob\u{202E}\u{2069}';
+      final found = tester
+          .widgetList<Text>(find.byType(Text))
+          .any((t) => t.data?.contains(wrapped) ?? false);
+      expect(found, isTrue, reason: 'correction dialog must isolate the name');
+      verifyNever(
+        () => functionsService.correctLogicalSettleUp(
+          groupId: any(named: 'groupId'),
+          groupSettleUpId: any(named: 'groupSettleUpId'),
+          correctionNote: any(named: 'correctionNote'),
+        ),
+      );
     },
   );
 
