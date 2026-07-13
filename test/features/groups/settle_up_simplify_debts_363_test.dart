@@ -162,6 +162,24 @@ Widget _wrapSettleUp({
   );
 }
 
+/// #363: forces the settings-switch write path into its catch branch — the
+/// rules layer would reject a non-creator/forged write in production.
+class _ThrowingGroupService extends GroupService {
+  _ThrowingGroupService(Ref ref)
+      : super.withFirestore(ref, FakeFirebaseFirestore());
+
+  @override
+  Future<void> setSimplifyDebts({
+    required String groupId,
+    required bool value,
+  }) async {
+    throw FirebaseException(
+      plugin: 'cloud_firestore',
+      code: 'permission-denied',
+    );
+  }
+}
+
 void main() {
   final en = AppLocalizationsEn();
 
@@ -438,6 +456,8 @@ void main() {
       required String viewerUid,
       required FakeFirebaseFirestore fakeDb,
       required SharedPreferences prefs,
+      Group? group,
+      GroupService Function(Ref ref)? service,
     }) {
       return ProviderScope(
         overrides: [
@@ -445,7 +465,7 @@ void main() {
           currentUserIdProvider.overrideWithValue(viewerUid),
           groupDetailProvider(
             _groupId,
-          ).overrideWith((_) => Stream.value(_group())),
+          ).overrideWith((_) => Stream.value(group ?? _group())),
           groupMembersProvider(
             _groupId,
           ).overrideWith((_) => Stream.value(members)),
@@ -453,7 +473,7 @@ void main() {
             _groupId,
           ).overrideWith((_) => AsyncValue.data(_settledBalances)),
           groupServiceProvider.overrideWith(
-            (ref) => GroupService.withFirestore(ref, fakeDb),
+            service ?? (ref) => GroupService.withFirestore(ref, fakeDb),
           ),
         ],
         child: MaterialApp(
@@ -503,6 +523,69 @@ void main() {
           'simplifyDebts',
           'updatedAt',
         });
+      },
+    );
+
+    testWidgets(
+      'OFF group renders the OFF subtitle and toggling back writes true',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+        await fakeDb.doc('groups/$_groupId').set({
+          'name': 'Test Crew',
+          'createdBy': 'uid-alice',
+          'simplifyDebts': false,
+        });
+
+        await tester.pumpWidget(
+          wrapSettings(
+            viewerUid: 'uid-alice',
+            fakeDb: fakeDb,
+            prefs: prefs,
+            group: _group(simplifyDebts: false),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final switchFinder = find.byKey(GroupKeys.settingsSimplifyDebtsSwitch);
+        await tester.ensureVisible(switchFinder);
+        expect(tester.widget<Switch>(switchFinder).value, isFalse);
+        expect(find.text(en.groupSimplifyDebtsOffSubtitle), findsOneWidget);
+        expect(find.text(en.groupSimplifyDebtsOnSubtitle), findsNothing);
+
+        await tester.tap(switchFinder);
+        await tester.pumpAndSettle();
+
+        final doc = await fakeDb.doc('groups/$_groupId').get();
+        expect(doc.data()!['simplifyDebts'], isTrue);
+      },
+    );
+
+    testWidgets(
+      'a rejected toggle write surfaces the friendly error snackbar',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+
+        await tester.pumpWidget(
+          wrapSettings(
+            viewerUid: 'uid-alice',
+            fakeDb: FakeFirebaseFirestore(),
+            prefs: prefs,
+            service: _ThrowingGroupService.new,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final switchFinder = find.byKey(GroupKeys.settingsSimplifyDebtsSwitch);
+        await tester.ensureVisible(switchFinder);
+        await tester.tap(switchFinder);
+        await tester.pumpAndSettle();
+
+        // permission-denied → the localized friendly cause, never the raw
+        // Firebase error string.
+        expect(find.text(en.errorPermissionDenied), findsOneWidget);
       },
     );
 

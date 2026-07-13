@@ -147,7 +147,40 @@ void main() {
       expect(ar, isNot(AppLocalizationsEn().settleUpAlreadyRecorded));
     });
   });
+
+  group('#363 simplify-debts localization surface', () {
+    test('English OFF-mode strings are reachable and substitute the subject',
+        () {
+      final l10n = AppLocalizationsEn();
+      for (final call in _simplifyDebtsCalls) {
+        expect(call(l10n), isNotEmpty);
+      }
+      expect(l10n.settleUpDirectPayments('Nasser'), contains('Nasser'));
+      expect(l10n.settleUpNoDirectPayments('Nasser'), contains('Nasser'));
+    });
+
+    test('Arabic OFF-mode strings are translated and substitute the subject',
+        () {
+      final en = AppLocalizationsEn();
+      final ar = AppLocalizationsAr();
+      for (final call in _simplifyDebtsCalls) {
+        expect(call(ar), isNotEmpty);
+        expect(call(ar), isNot(call(en)));
+      }
+      expect(ar.settleUpDirectPayments('Nasser'), contains('Nasser'));
+      expect(ar.settleUpNoDirectPayments('Nasser'), contains('Nasser'));
+    });
+  });
 }
+
+final _simplifyDebtsCalls = <_L10nString>[
+  (l10n) => l10n.settleUpDirectPayments('Nasser'),
+  (l10n) => l10n.settleUpNoDirectPayments('Nasser'),
+  (l10n) => l10n.currencyExplainerBodyDirect,
+  (l10n) => l10n.groupSimplifyDebtsTitle,
+  (l10n) => l10n.groupSimplifyDebtsOnSubtitle,
+  (l10n) => l10n.groupSimplifyDebtsOffSubtitle,
+];
 
 final _pr2bCalls = <_L10nString>[
   (l10n) => l10n.commonCancel,
