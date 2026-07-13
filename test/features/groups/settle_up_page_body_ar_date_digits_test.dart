@@ -30,6 +30,7 @@ void main() {
                 body: SettleUpPageBody(
                   scope: SettleScope.group,
                   subjectName: 'Camp',
+                  simplifyDebts: true,
                   buckets: const [],
                   rawNames: const {},
                   settlementsAsync: AsyncValue.data([
