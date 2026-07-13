@@ -253,7 +253,7 @@ void main() {
       // RLO-bearing payer name at the l10n arg. Assert the wrapped run is
       // present in a rendered Text — the correctLogicalSettleUp mock is never
       // invoked (we don't confirm).
-      final wrapped = '\u{2068}Bob\u{202E}\u{2069}';
+      const wrapped = '\u{2068}Bob\u{202E}\u{2069}';
       final found = tester
           .widgetList<Text>(find.byType(Text))
           .any((t) => t.data?.contains(wrapped) ?? false);
