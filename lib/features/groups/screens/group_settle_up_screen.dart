@@ -451,8 +451,18 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ? entry.name
         : EventTypeConfig.forType(entry.type).label;
 
-    final name = rawName.length > 30
-        ? '${rawName.substring(0, 27)}...'
+    // #1217: truncate on GRAPHEME boundaries (`package:characters`), never
+    // raw UTF-16 code units. `String.length`/`substring` count UTF-16 units,
+    // so a name whose 30th-ish visible character is an astral emoji (a
+    // 2-unit surrogate pair) could get cut BETWEEN the pair's high and low
+    // surrogate, leaving an unpaired surrogate that Flutter's text layer
+    // throws on ("string is not well-formed UTF-16"). "Roughly 30 visible
+    // characters, ellipsis when longer" is preserved; the count now measures
+    // graphemes instead of UTF-16 units, so a name with astral characters
+    // may show fewer than 30 raw code units before truncating.
+    final rawNameCharacters = rawName.characters;
+    final name = rawNameCharacters.length > 30
+        ? '${rawNameCharacters.take(27)}...'
         : rawName;
 
     final date = AppFormatters.formatShortMonthDay(
