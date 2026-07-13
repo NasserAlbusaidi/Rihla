@@ -1,13 +1,18 @@
 import 'package:decimal/decimal.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:safar/core/services/money_serializer.dart';
 import 'package:safar/core/utils/formatters.dart';
 
 void main() {
   setUpAll(() async {
-    await initializeDateFormatting('en');
-    await initializeDateFormatting('ar');
+    // Load date symbols via the REAL app localization path (#1215):
+    // flutter_localizations' generated `ar` DateSymbols carry ZERODIGIT,
+    // which intl's own `initializeDateFormatting` data does not — the old
+    // loader made the Arabic-Indic digit assertions below false-green.
+    await GlobalMaterialLocalizations.delegate.load(const Locale('en'));
+    await GlobalMaterialLocalizations.delegate.load(const Locale('ar'));
   });
 
   group('AppFormatters Tests', () {
@@ -187,6 +192,16 @@ void main() {
 
       expect(arabic, isNotEmpty);
       expect(arabic, isNot(english));
+    });
+
+    test('renders Western digits under ar (#1215, DEC-5/#145)', () {
+      final arabic = AppFormatters.formatShortMonthDay(
+        DateTime(2026, 5, 19),
+        'ar',
+      );
+
+      expect(arabic, contains('19'));
+      expect(arabic, isNot(contains('١٩')));
     });
   });
 }

@@ -1133,9 +1133,15 @@ class _HistoryTile extends StatelessWidget {
         (recipientId == null ? null : displayNames[recipientId]) ??
         settlement.recipientName ??
         context.l10n.settleUpUnknown;
-    final dateStr = DateFormat.MMMd(
-      Localizations.localeOf(context).toLanguageTag(),
-    ).format(settlement.settledAt);
+    // `useNativeDigits = false` enforces Western digits (DEC-5/#145): the
+    // generated `ar` DateSymbols carry ZERODIGIT: '٠', which intl adopts by
+    // default per-locale, so without this the digits render Arabic-Indic
+    // (#1215).
+    final dateStr =
+        (DateFormat.MMMd(
+              Localizations.localeOf(context).toLanguageTag(),
+            )..useNativeDigits = false)
+            .format(settlement.settledAt);
     // #567: a reversing correction must read as a correction, not as another
     // payment. Mark it with a reversal icon + label instead of the green tick.
     // #753: a corrected LOGICAL row reads the same way (its representative is an
