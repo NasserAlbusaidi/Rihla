@@ -349,10 +349,12 @@ describe('#872 weighted remainder vs 0-share key sorting last', () => {
 // test/unit/malformed_doc_fencing_test.dart test 4: identical inputs, identical
 // hand-computed nets. A non-string expense payer is a total-parse-salvage case
 // on BOTH sides — the Dart factory salvages it to '' then guards it out of the
-// eventBalanceUniverse; the oracle already gates it with `typeof === 'string'`
-// before the paid credit AND the universe fold (groupNetBalance.ts:406/651). So
-// NEITHER counts the payer and NEITHER seeds a phantom row. No oracle change:
-// this fixture pins that the server stays put while the client is brought into
+// eventBalanceUniverse; the oracle drops it via `typeof payerId === 'string'` at
+// the paid-credit gate AND the universe fold (a NON-string 42 fails typeof). So
+// NEITHER counts the payer and NEITHER seeds a phantom row. The LITERAL '' case
+// (which PASSES typeof) is #1205's separate concern, pinned in its own describe
+// below (post-#1205 the universe fold also excludes ''). This fixture pins that
+// the server stays put on the non-string case while the client is brought into
 // line — the shared contract (kind: functions-jest, Firestore emulator, Java 21;
 // run: `cd functions && npm run test:emulator -- callables/groupNetBalance.test.ts`).
 describe('recomputeNet — non-string payer parity (#928)', () => {
@@ -433,5 +435,136 @@ describe('recomputeNet — non-string payer parity (#928)', () => {
     expect([...omr.keys()].sort()).toEqual([ALICE928, BOB928]);
     expect(omr.get(ALICE928)!.toFixed(3)).toBe('-5.000');
     expect(omr.get(BOB928)!.toFixed(3)).toBe('-5.000');
+  });
+});
+
+// #1205 — client↔oracle parity on an EMPTY-STRING payer. Distinct from #928: the
+// #928 fixture uses a NON-string payer (42), dropped by `typeof === 'string'`.
+// A LITERAL '' passes typeof, so pre-fix the oracle folds '' into the universe
+// (groupNetBalance.ts financial fold), seeds a phantom '' row that receives the
+// paid credit AND inflates the equal-split divisor (n+1). The Dart client
+// EXCLUDES '' (`payerParticipantId.isNotEmpty`, expense_provider.dart) and is
+// pinned by test/unit/malformed_doc_fencing_test.dart test 4. This fixture pins
+// the server to that same behavior: '' contributes no paid credit and no divisor
+// slot. Settlement '' parties are DELIBERATELY unchanged on both sides — the
+// second test guards that the settlement fold still admits '' to the universe,
+// so a future "strip the sentinel everywhere" edit that over-removes would fail.
+// kind: functions-jest, Firestore emulator, Java 21; run:
+// `cd functions && npm run test:emulator -- callables/groupNetBalance.test.ts`
+describe('recomputeNet — empty-string payer parity (#1205)', () => {
+  const GROUP1205 = 'g-oracle-1205';
+  const ALICE1205 = 'alice';
+  const BOB1205 = 'bob';
+
+  async function seedGroup1205(): Promise<void> {
+    const db = getFirestore();
+    await db.doc(`groups/${GROUP1205}`).set({
+      id: GROUP1205,
+      name: GROUP1205,
+      inviteCode: 'ABC1205',
+      createdBy: ALICE1205,
+      memberIds: [ALICE1205, BOB1205],
+      currency: 'OMR',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      isDeleted: false,
+      deletedAt: null,
+    });
+    for (const uid of [ALICE1205, BOB1205]) {
+      await db.doc(`groups/${GROUP1205}/members/${uid}`).set({
+        id: uid,
+        userId: uid,
+        displayName: uid,
+        role: uid === ALICE1205 ? 'CREATOR' : 'MEMBER',
+        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+        isShadow: false,
+        isTombstone: false,
+      });
+    }
+    await db.doc(`groups/${GROUP1205}/events/e1`).set({
+      id: 'e1',
+      groupId: GROUP1205,
+      name: 'e1',
+      type: 'trip',
+      createdBy: ALICE1205,
+      participantIds: [ALICE1205, BOB1205],
+      participantNames: { [ALICE1205]: 'Alice', [BOB1205]: 'Bob' },
+      modules: { ledger: true },
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+  }
+
+  beforeEach(async () => {
+    await clearFirestore();
+  });
+
+  afterAll(async () => {
+    await clearFirestore();
+  });
+
+  it('empty-string EXPENSE payer is not credited and seeds no phantom row: alice/bob -5.000 each (divisor n, not n+1)', async () => {
+    await seedGroup1205();
+    const db = getFirestore();
+    // One global OMR 10.000 expense whose payerParticipantId is the LITERAL empty
+    // string (a forged/legacy/Admin doc; rules block it on create). Equal split →
+    // no splitMode/splitDistribution keys.
+    await db.doc(`groups/${GROUP1205}/events/e1/expenses/x1`).set({
+      id: 'x1',
+      eventId: 'e1',
+      description: 'Dinner',
+      amountFils: 10000,
+      currency: 'OMR',
+      payerParticipantId: '',
+      scope: 'global',
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: '2026-01-03T00:00:00.000Z',
+      createdBy: ALICE1205,
+      lastEditedBy: ALICE1205,
+    });
+
+    const result = await recomputeNet(db, db.doc(`groups/${GROUP1205}`));
+    const omr = result.net.get('OMR')!;
+    // (a) No '' key in the nets. (b) Divisor is n=2 (10.000 / 2 = 5.000 owed
+    // each), NOT n+1=3 — matching the Dart client after its isNotEmpty guard.
+    expect([...omr.keys()].sort()).toEqual([ALICE1205, BOB1205]);
+    expect(omr.has('')).toBe(false);
+    expect(omr.get(ALICE1205)!.toFixed(3)).toBe('-5.000');
+    expect(omr.get(BOB1205)!.toFixed(3)).toBe('-5.000');
+  });
+
+  it('empty-string SETTLEMENT party STILL enters the universe (fold deliberately unchanged; guards future over-removal)', async () => {
+    await seedGroup1205();
+    const db = getFirestore();
+    // A live event settlement whose PAYER is the literal '' paying alice 3.000.
+    // The settlement universe fold (groupNetBalance.ts, typeof-only, intentionally
+    // NOT '' -excluded) must admit '' so it appears in net — exactly the Dart
+    // client, whose settlement fold null-gates only and passes ''.
+    await db.doc(`groups/${GROUP1205}/events/e1/settlements/s1`).set({
+      id: 's1',
+      eventId: 'e1',
+      payerParticipantId: '',
+      recipientParticipantId: ALICE1205,
+      payerName: '',
+      recipientName: 'Alice',
+      amountFils: 3000,
+      currency: 'OMR',
+      note: null,
+      isDeleted: false,
+      deletedAt: null,
+      settledAt: '2026-01-04T00:00:00.000Z',
+      createdBy: ALICE1205,
+    });
+
+    const result = await recomputeNet(db, db.doc(`groups/${GROUP1205}`));
+    const omr = result.net.get('OMR')!;
+    // '' is in the universe via the settlement fold: it "paid" 3.000 (net +3.000),
+    // alice received it (net -3.000), bob square.
+    expect(omr.has('')).toBe(true);
+    expect(omr.get('')!.toFixed(3)).toBe('3.000');
+    expect(omr.get(ALICE1205)!.toFixed(3)).toBe('-3.000');
+    expect(omr.get(BOB1205)!.toFixed(3)).toBe('0.000');
   });
 });
