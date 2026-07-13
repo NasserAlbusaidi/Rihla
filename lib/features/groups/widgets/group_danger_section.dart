@@ -330,7 +330,18 @@ class GroupDangerSection extends ConsumerWidget {
         return;
       }
       if (context.mounted) {
-        if (e.code == 'failed-precondition') {
+        // #1144/#1209: a transient freeze (departure-lock contention, a
+        // concurrent claim / account-deletion) surfaces as `aborted` — show the
+        // retry-inviting copy, never the settle-up snackbar (the group may be
+        // fully settled), and never Sentry (expected contention, not a defect).
+        // Mirrors _executeLeave's aborted branch.
+        if (e.code == 'aborted') {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(context.l10n.groupMembershipChangeInProgress),
+            ),
+          );
+        } else if (e.code == 'failed-precondition') {
           messenger.showSnackBar(
             SnackBar(content: Text(context.l10n.groupSettleBeforeDeleting)),
           );

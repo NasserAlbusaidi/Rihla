@@ -163,7 +163,13 @@ async function acquireDeleteGroupLock(
       || groupData.accountDeletionInProgress === true
       || groupData.departureInProgress === true // #1144
     ) {
-      throw new HttpsError('failed-precondition', 'Group is temporarily locked.');
+      // #1209: all three are TRANSIENT — a bounded concurrent operation after
+      // which the group survives and the creator stays a member ⇒ `aborted`
+      // (client retry copy), never `failed-precondition` (the settle-up
+      // snackbar on a possibly-settled group). Mirrors the sibling
+      // finalizeGroupDeletion throw below. isDeleted/deletingInProgress are the
+      // #519/#529 success/observer branches ABOVE and stay untouched.
+      throw new HttpsError('aborted', 'Group is temporarily locked.');
     }
 
     const now = Timestamp.now();
@@ -350,8 +356,12 @@ export const deleteGroup = onCall<DeleteGroupInput, Promise<DeleteGroupOutput>>(
       if (await clearMalformedObservedDeleteGroupLock(groupRef, lock.lockedBy)) {
         logger.warn('deleteGroup malformed lock cleared', { uid, groupId });
       }
+      // #1209: a malformed lock is a TRANSIENT state the owner clears and
+      // retries ⇒ `aborted` (the client renders the retry copy), never
+      // `failed-precondition` (which it renders as the settle-up snackbar on a
+      // possibly-settled group). Message unchanged.
       throw new HttpsError(
-        'failed-precondition',
+        'aborted',
         'Malformed delete lock was cleared. Retry group deletion.',
       );
     }
