@@ -453,7 +453,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(_richContaining('added an expense in Beach Trip'), findsOneWidget);
+      expect(_richContaining('added an expense in \u{2068}Beach Trip\u{2069}'), findsOneWidget);
       expect(find.byIcon(Iconsax.receipt_add), findsOneWidget);
       final amounts = tester.widgetList<RAmount>(find.byType(RAmount)).toList();
       expect(amounts.single.value, Decimal.parse('10.5'));
@@ -556,7 +556,7 @@ void main() {
       await tester.tap(find.text('Expenses'));
       await tester.pumpAndSettle();
 
-      expect(_richContaining('added an expense in Beach Trip'), findsOneWidget);
+      expect(_richContaining('added an expense in \u{2068}Beach Trip\u{2069}'), findsOneWidget);
       expect(_richContaining('recorded a settlement'), findsNothing);
     });
 
@@ -866,7 +866,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(_richContaining('created Beach Trip'));
+        await tester.tap(_richContaining('created \u{2068}Beach Trip\u{2069}'));
         await tester.pumpAndSettle();
         expect(find.text('EventHub:g1/ev1'), findsOneWidget);
         expect(find.text('GroupDetail:g1'), findsNothing);
@@ -1013,7 +1013,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(_richContaining('added an expense in Beach Trip'));
+      await tester.tap(_richContaining('added an expense in \u{2068}Beach Trip\u{2069}'));
       await tester.pumpAndSettle();
 
       expect(find.text('EventLedger:g1/ev1'), findsOneWidget);
@@ -1044,7 +1044,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(_richContaining('edited an expense in Beach Trip'));
+      await tester.tap(_richContaining('edited an expense in \u{2068}Beach Trip\u{2069}'));
       await tester.pumpAndSettle();
 
       expect(find.text('EventLedger:g1/ev1'), findsOneWidget);
@@ -1073,7 +1073,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(_richContaining('deleted an expense in Beach Trip'));
+        await tester.tap(_richContaining('deleted an expense in \u{2068}Beach Trip\u{2069}'));
         await tester.pumpAndSettle();
 
         expect(find.text('EventActivity:g1/ev1'), findsOneWidget);
@@ -1102,7 +1102,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(_richContaining('deleted Beach Trip'));
+        await tester.tap(_richContaining('deleted \u{2068}Beach Trip\u{2069}'));
         await tester.pumpAndSettle();
 
         expect(find.text('GroupDetail:g1'), findsOneWidget);
@@ -1256,7 +1256,7 @@ void main() {
             await tester.pumpAndSettle();
 
             await tester.tap(
-              _richContaining('added an expense in Beach Trip'),
+              _richContaining('added an expense in \u{2068}Beach Trip\u{2069}'),
             );
             await tester.pumpAndSettle();
 
@@ -1292,7 +1292,7 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          await tester.tap(_richContaining('added an expense in Beach Trip'));
+          await tester.tap(_richContaining('added an expense in \u{2068}Beach Trip\u{2069}'));
           await tester.pumpAndSettle();
 
           expect(find.byType(ErrorWidget), findsNothing);
