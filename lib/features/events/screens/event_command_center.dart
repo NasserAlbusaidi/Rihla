@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,8 +11,10 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/firestore_error_utils.dart';
 import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/no_access_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_icon_button.dart';
@@ -86,9 +87,9 @@ class EventCommandCenter extends ConsumerWidget {
           // #1207 / #358: a removed member's event listen is permission-denied
           // forever — retrying just re-denies. Terminal no-access state with a
           // Home CTA; raw error goes to Sentry, not the UI.
-          if (_isPermissionDenied(error)) {
+          if (isPermissionDenied(error)) {
             unawaited(Sentry.captureException(error, stackTrace: stackTrace));
-            return const _NoAccessState();
+            return const NoAccessView();
           }
           return _ErrorState(
             onRetry: () => ref.invalidate(
@@ -1107,29 +1108,3 @@ class _NotFoundState extends StatelessWidget {
   }
 }
 
-class _NoAccessState extends StatelessWidget {
-  const _NoAccessState();
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(context.spacing.space24),
-          child: EmptyStateView(
-            icon: Iconsax.lock,
-            title: context.l10n.groupNoAccessTitle,
-            message: context.l10n.groupNoAccessMessage,
-            actionLabel: context.l10n.groupBackHome,
-            onAction: () => GoRouter.of(context).go('/home'),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// True when a stream error is a Firestore `permission-denied` — the caller
-/// lost access (removed from group / group deleted). Duplicate of the private
-/// helper in group_detail_screen.dart (2 call sites; extract at the 3rd).
-bool _isPermissionDenied(Object error) =>
-    error is FirebaseException && error.code == 'permission-denied';

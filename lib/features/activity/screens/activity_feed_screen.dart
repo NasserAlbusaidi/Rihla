@@ -1,17 +1,22 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/day_grouping.dart';
+import '../../../core/utils/firestore_error_utils.dart';
 import '../../../core/utils/safe_deserialize.dart';
 import '../../../shared/widgets/activity_day_section.dart';
 import '../../../shared/widgets/activity_glyph.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/no_access_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/providers/event_provider.dart';
@@ -121,9 +126,19 @@ class _ActivityFeedScreenState extends ConsumerState<ActivityFeedScreen> {
     final eventAsync = ref.watch(eventDetailProvider(eventRef));
     return eventAsync.when(
       loading: () => const _LoadingShimmer(),
-      error: (_, _) => _ErrorView(
-        onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
-      ),
+      error: (error, stackTrace) {
+        // #1237 / #358: a removed member's event listen is permission-denied
+        // forever — retry just re-denies. Terminal no-access state; raw error
+        // to Sentry, not the UI. (The hub shadows this panel; kept for
+        // consistency + any future direct route.)
+        if (isPermissionDenied(error)) {
+          unawaited(Sentry.captureException(error, stackTrace: stackTrace));
+          return const NoAccessView();
+        }
+        return _ErrorView(
+          onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
+        );
+      },
       data: (event) {
         if (event == null) return const _NotFoundView();
         return _buildActivityBody(context, event.participantNames);

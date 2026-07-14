@@ -1,15 +1,20 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/constants/supported_currencies.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
+import '../../../core/utils/firestore_error_utils.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/no_access_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/r_icon_button.dart';
@@ -57,7 +62,16 @@ class EventRecapScreen extends ConsumerWidget {
 
     final body = eventAsync.when(
       loading: () => _loadingSkeleton(context),
-      error: (_, _) => _notFound(context),
+      error: (error, stackTrace) {
+        // #1237 / #358: on the standalone recap route a removed member's event
+        // listen is permission-denied — show the terminal no-access state, not
+        // the misleading "Event not found". Raw error to Sentry, not the UI.
+        if (isPermissionDenied(error)) {
+          unawaited(Sentry.captureException(error, stackTrace: stackTrace));
+          return const NoAccessView();
+        }
+        return _notFound(context);
+      },
       data: (event) {
         if (event == null) return _notFound(context);
         // #1030: recap + its share/export CTAs render ledgerViewProvider
