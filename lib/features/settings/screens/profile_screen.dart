@@ -37,7 +37,6 @@ import '../../auth/widgets/sign_out_confirm_dialog.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
 import '../keys/profile_keys.dart';
-import '../providers/profile_stats_provider.dart';
 import '../widgets/default_split_picker_sheet.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
@@ -47,10 +46,9 @@ import '../widgets/profile/backup_status_chip.dart';
 import '../widgets/profile/ghost_icon.dart';
 import '../widgets/profile/identity_chip.dart';
 import '../widgets/profile/pending_recovery_banner.dart';
-import '../widgets/profile/spent_value.dart';
-import '../widgets/profile/stat_card.dart';
-import '../widgets/profile/stats_error_card.dart';
-import '../widgets/profile/stats_grid_skeleton.dart';
+import '../widgets/profile/rows_card.dart';
+import '../widgets/profile/section_label.dart';
+import '../widgets/profile/stats_grid.dart';
 import '../widgets/profile_display_section.dart';
 
 /// Profile tab — saffron travel-journal direction.
@@ -106,12 +104,12 @@ class ProfileScreen extends ConsumerWidget {
                   const BackupAccountCard(),
                 ],
                 const SizedBox(height: 14),
-                const _StatsGrid()
+                const StatsGrid()
                     .animate()
                     .fadeIn(delay: 160.ms, duration: 400.ms)
                     .slideY(begin: 0.08),
                 const SizedBox(height: 18),
-                _SectionLabel(label: l10n.profileSectionPreferences),
+                SectionLabel(label: l10n.profileSectionPreferences),
                 SizedBox(height: context.spacing.space8),
                 const _PreferencesCard().animate().fadeIn(
                   delay: 260.ms,
@@ -126,21 +124,21 @@ class ProfileScreen extends ConsumerWidget {
                   child: const ProfileDisplaySection(),
                 ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                 const SizedBox(height: 18),
-                _SectionLabel(label: l10n.profileSectionAccount),
+                SectionLabel(label: l10n.profileSectionAccount),
                 SizedBox(height: context.spacing.space8),
                 const _AccountCard().animate().fadeIn(
                   delay: 320.ms,
                   duration: 400.ms,
                 ),
                 const SizedBox(height: 18),
-                _SectionLabel(label: l10n.profileSectionDanger),
+                SectionLabel(label: l10n.profileSectionDanger),
                 SizedBox(height: context.spacing.space8),
                 const _DangerZoneCard().animate().fadeIn(
                   delay: 340.ms,
                   duration: 400.ms,
                 ),
                 const SizedBox(height: 18),
-                _SectionLabel(label: l10n.profileSectionAbout),
+                SectionLabel(label: l10n.profileSectionAbout),
                 SizedBox(height: context.spacing.space8),
                 const _AboutCard().animate().fadeIn(
                   delay: 380.ms,
@@ -375,89 +373,6 @@ class _IdentityCard extends ConsumerWidget {
   }
 }
 
-// ──────────────────────────── Stats grid
-
-class _StatsGrid extends ConsumerWidget {
-  const _StatsGrid();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    // #488: explicit loading skeleton + error state — never an ambiguous "—"
-    // that reads as zero / no-data when the stats actually failed or are still
-    // loading.
-    return ref
-        .watch(profileStatsProvider)
-        .when(
-          loading: () => const StatsGridSkeleton(),
-          error: (_, _) => const StatsErrorCard(),
-          data: (stats) => Padding(
-            key: ProfileKeys.statsSection,
-            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    statKey: ProfileKeys.statEvents,
-                    keyLabel: l10n.profileStatsJourneysLabel,
-                    value: '${stats.eventCount}',
-                    sub: l10n.profileStatsAllTime,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatCard(
-                    statKey: ProfileKeys.statGroups,
-                    keyLabel: l10n.profileStatsGroupsLabel,
-                    value: '${stats.groupCount}',
-                    sub: l10n.profileStatsActive,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatCard(
-                    statKey: ProfileKeys.statSpent,
-                    keyLabel: l10n.profileStatsSpentLabel,
-                    valueWidget: SpentValue(spent: stats.spentByCurrency),
-                    sub: l10n.profileStatsLifetime,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-  }
-}
-
-// ──────────────────────────── Section label (uppercase mono)
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: AppTypography.caption(
-              context,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: colors.textSecondary,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ──────────────────────────── Preferences card
 
 class _PreferencesCard extends ConsumerWidget {
@@ -478,7 +393,7 @@ class _PreferencesCard extends ConsumerWidget {
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: _RowsCard(
+      child: RowsCard(
         rows: [
           _NotificationPrefRow(
             leading: _PrefIcon(
@@ -545,7 +460,7 @@ class _AboutCard extends ConsumerWidget {
     final colors = context.colors;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: _RowsCard(
+      child: RowsCard(
         rows: [
           _PrefRow(
             label: context.l10n.profileAboutHelpCenter,
@@ -667,7 +582,7 @@ class _AccountCard extends ConsumerWidget {
     // hairline is stripped because the last visible row varies by account state.
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: _RowsCard(
+      child: RowsCard(
         rows: _stripLastDivider([
           if (googleAccount != null)
             _PrefRow(
@@ -855,7 +770,7 @@ class _DangerZoneCard extends ConsumerWidget {
     final colors = context.colors;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: _RowsCard(
+      child: RowsCard(
         key: ProfileKeys.dangerZoneCard,
         rows: [
           _PrefRow(
@@ -910,25 +825,6 @@ class _VersionStamp extends ConsumerWidget {
 }
 
 // ──────────────────────────── Rows + supporting
-
-class _RowsCard extends StatelessWidget {
-  const _RowsCard({required this.rows, super.key});
-  final List<Widget> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-        boxShadow: context.shadows.raised,
-      ),
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space16),
-      child: Column(children: rows),
-    );
-  }
-}
 
 /// Returns [rows] with the last row's bottom divider removed, so an account
 /// card never ends on a stray hairline no matter which conditional row is last
