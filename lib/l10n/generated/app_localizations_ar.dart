@@ -1943,6 +1943,44 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String activityGroupResplitAdded(Object memberName, Object eventName) {
+    return 'إضافة $memberName إلى $eventName — أُعيد احتساب التقسيمات المتساوية';
+  }
+
+  @override
+  String activityGroupResplitAddedMulti(Object memberName, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count فعالية',
+      many: '$count فعاليةً',
+      few: '$count فعاليات',
+      two: 'فعاليتين',
+      one: 'فعالية واحدة',
+    );
+    return 'إضافة $memberName إلى $_temp0 — أُعيد احتساب التقسيمات المتساوية';
+  }
+
+  @override
+  String activityGroupResplitJoined(Object eventName) {
+    return 'انضمام إلى $eventName — أُعيد احتساب التقسيمات المتساوية';
+  }
+
+  @override
+  String activityGroupResplitJoinedMulti(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count فعالية',
+      many: '$count فعاليةً',
+      few: '$count فعاليات',
+      two: 'فعاليتين',
+      one: 'فعالية واحدة',
+    );
+    return 'انضمام إلى $_temp0 — أُعيد احتساب التقسيمات المتساوية';
+  }
+
+  @override
   String activityGroupExpenseAdded(Object eventName) {
     return 'إضافة مصروف في $eventName';
   }

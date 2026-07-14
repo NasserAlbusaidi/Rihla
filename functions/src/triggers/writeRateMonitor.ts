@@ -137,12 +137,17 @@ export const eventWriteRateMonitor = onDocumentCreated(
 
 // T3 — group-level activity. Skipped types are the SERVER-authored rows:
 // expense_* (expenseAuditLogger fan-in of an expense T1 already counted, #808
-// PR1) and event_settlement/group_settlement (recordSettlement's co-written
-// row, #1129 — also no longer in validGroupActivityCreate's client allow-list).
-// Keying the skip on `type` is safe ONLY because that allow-list makes these
-// types un-forgeable by clients (same rationale as the #526 activity_logs
-// filter) — extend BOTH together.
-const SKIPPED_ACTIVITY_TYPES = new Set(['event_settlement', 'group_settlement']);
+// PR1), event_settlement/group_settlement (recordSettlement's co-written
+// row, #1129 — also no longer in validGroupActivityCreate's client allow-list),
+// and member_resplit (#1059 — the join/addShadowMember post-commit disclosure,
+// never client-writable). Keying the skip on `type` is safe ONLY because that
+// allow-list makes these types un-forgeable by clients (same rationale as the
+// #526 activity_logs filter) — extend BOTH together.
+const SKIPPED_ACTIVITY_TYPES = new Set([
+  'event_settlement',
+  'group_settlement',
+  'member_resplit',
+]);
 
 export const groupActivityWriteRateMonitor = onDocumentCreated(
   'groups/{gid}/activity/{activityId}',

@@ -679,7 +679,10 @@ bool _matchesFilter(String type, _Filter f) {
     _Filter.settlements =>
       type == 'group_settlement' || type == 'event_settlement',
     _Filter.events => type == 'event_created' || type == 'event_deleted',
-    _Filter.members => type == 'member_joined' || type == 'member_left',
+    _Filter.members =>
+      type == 'member_joined' ||
+      type == 'member_left' ||
+      type == 'member_resplit',
     _Filter.expenses => type.startsWith('expense_'),
   };
 }

@@ -287,6 +287,56 @@ function allocatePercent(
 }
 
 // ---------------------------------------------------------------------------
+// Split routing classification (#1059 stage 2)
+// ---------------------------------------------------------------------------
+
+// The SINGLE source of truth for how an expense's owed side is routed:
+// foldEventNet allocates through it, and the resplit-disclosure detection
+// (shared/resplitDisclosure.ts) asks it "does this expense re-split when the
+// participant universe grows?" — one classification, so detection can never
+// drift from the oracle.
+//
+// CURRENCY-FREE BY CONTRACT (Gate r2): the routing decision depends only on
+// mode + key COUNT (decodeDistribution's null-vs-nonempty is key-count driven;
+// decodeSplitValue changes values, never size), so the dummy 'OMR' decode here
+// is safe. The variants deliberately carry NO decoded distribution values —
+// foldEventNet re-derives the distribution itself with the real per-doc
+// currency for the stored-mode allocators. `mode` is a kind-level string, not
+// a decoded amount.
+export type SplitRouting =
+  | { kind: 'stored'; mode: 'shares' | 'exact' | 'percent' }
+  | { kind: 'fixed'; recipients: string[] }
+  | { kind: 'universe' };
+
+export function classifyExpenseSplit(e: DocumentData): SplitRouting {
+  const mode = decodeSplitMode(e.splitMode);
+  const distribution = decodeDistribution(e.splitDistribution, mode, 'OMR');
+  if (mode != null && mode !== 'equally' && distribution != null && distribution.size > 0) {
+    return { kind: 'stored', mode };
+  }
+  // Equal-split branch by scope (expense_provider.dart:433-453). The
+  // global / sub_group / custom-empty recipient set is the FULL universe.
+  const scope = typeof e.scope === 'string' ? e.scope : 'global';
+  if (scope === 'personal') {
+    const payerId = e.payerParticipantId;
+    return { kind: 'fixed', recipients: typeof payerId === 'string' ? [payerId] : [] };
+  }
+  if (scope === 'custom') {
+    const custom = stringArray(e.customSplitParticipants);
+    if (custom.length > 0) {
+      return { kind: 'fixed', recipients: custom };
+    }
+  }
+  return { kind: 'universe' };
+}
+
+// #1059: an expense whose owed side re-divides when event.participantIds grows
+// (the silent re-split the disclosure row announces).
+export function expenseSplitsOverUniverse(e: DocumentData): boolean {
+  return classifyExpenseSplit(e).kind === 'universe';
+}
+
+// ---------------------------------------------------------------------------
 // Balance recompute (mirror group_balance_provider.dart + BalanceCalculator)
 // ---------------------------------------------------------------------------
 
@@ -407,31 +457,32 @@ function foldEventNet(
       paidBucket.set(payerId, paidBucket.get(payerId)!.plus(amount));
     }
 
-    const mode = decodeSplitMode(e.splitMode);
-    const distribution = decodeDistribution(e.splitDistribution, mode, currency);
-
+    // #1059: routing lives in classifyExpenseSplit — the SAME classification
+    // the resplit-disclosure detection reads, so the two can never drift. The
+    // stored-mode distribution is re-derived HERE with the real per-doc
+    // currency (classification is deliberately currency-free, values unused).
+    const routing = classifyExpenseSplit(e);
     let allocations: Map<string, Decimal>;
-    if (mode != null && mode !== 'equally' && distribution != null && distribution.size > 0) {
-      allocations =
-        mode === 'shares'
-          ? allocateShares(amount, distribution, currency)
-          : mode === 'exact'
-            ? allocateExact(amount, distribution, currency)
-            : allocatePercent(amount, distribution, currency);
+    if (routing.kind === 'stored') {
+      const distribution = decodeDistribution(e.splitDistribution, routing.mode, currency);
+      if (distribution == null || distribution.size === 0) {
+        // Unreachable by construction: classifyExpenseSplit returned 'stored'
+        // from the SAME pure decode of the SAME fields (size is
+        // currency-invariant). Kept total so the oracle can never throw.
+        allocations = allocateEqual(amount, [...universe], currency);
+      } else {
+        allocations =
+          routing.mode === 'shares'
+            ? allocateShares(amount, distribution, currency)
+            : routing.mode === 'exact'
+              ? allocateExact(amount, distribution, currency)
+              : allocatePercent(amount, distribution, currency);
+      }
     } else {
       // Equal-split branch by scope (expense_provider.dart:186-216). The
       // global / sub_group / custom-empty universe is the FULL universe,
       // NOT participantIds alone (Gate R1 finding #2).
-      const scope = typeof e.scope === 'string' ? e.scope : 'global';
-      let recipients: string[];
-      if (scope === 'personal') {
-        recipients = typeof payerId === 'string' ? [payerId] : [];
-      } else if (scope === 'custom') {
-        const custom = stringArray(e.customSplitParticipants);
-        recipients = custom.length > 0 ? custom : [...universe];
-      } else {
-        recipients = [...universe];
-      }
+      const recipients = routing.kind === 'fixed' ? routing.recipients : [...universe];
       allocations = allocateEqual(amount, recipients, currency);
     }
 

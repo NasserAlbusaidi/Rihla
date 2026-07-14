@@ -1898,6 +1898,38 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String activityGroupResplitAdded(Object memberName, Object eventName) {
+    return 'added $memberName to $eventName — equal splits recalculated';
+  }
+
+  @override
+  String activityGroupResplitAddedMulti(Object memberName, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return 'added $memberName to $_temp0 — equal splits recalculated';
+  }
+
+  @override
+  String activityGroupResplitJoined(Object eventName) {
+    return 'joined $eventName — equal splits recalculated';
+  }
+
+  @override
+  String activityGroupResplitJoinedMulti(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return 'joined $_temp0 — equal splits recalculated';
+  }
+
+  @override
   String activityGroupExpenseAdded(Object eventName) {
     return 'added an expense in $eventName';
   }

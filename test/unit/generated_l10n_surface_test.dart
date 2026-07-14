@@ -28,6 +28,39 @@ void main() {
     });
   });
 
+  group('generated #1059 member_resplit localization surface', () {
+    test('English resplit predicates are reachable with args threaded', () {
+      final l10n = AppLocalizationsEn();
+      expect(l10n.activityGroupResplitAdded('Bob', 'Trip'), contains('Bob'));
+      expect(l10n.activityGroupResplitAdded('Bob', 'Trip'), contains('Trip'));
+      expect(l10n.activityGroupResplitAddedMulti('Bob', 1), contains('1 event'));
+      expect(l10n.activityGroupResplitAddedMulti('Bob', 3), contains('3 events'));
+      expect(l10n.activityGroupResplitJoined('Trip'), contains('Trip'));
+      // The join predicate must NOT carry a member-name slot — the row chrome
+      // prepends the actor, so a name here would render doubled.
+      expect(l10n.activityGroupResplitJoined('Trip'), isNot(contains('Bob')));
+      expect(l10n.activityGroupResplitJoinedMulti(2), contains('2 events'));
+    });
+
+    test('Arabic resplit predicates are reachable and differ from EN', () {
+      final l10n = AppLocalizationsAr();
+      final en = AppLocalizationsEn();
+      expect(l10n.activityGroupResplitAdded('Bob', 'Trip'), contains('Bob'));
+      expect(
+        l10n.activityGroupResplitAdded('Bob', 'Trip'),
+        isNot(equals(en.activityGroupResplitAdded('Bob', 'Trip'))),
+      );
+      expect(l10n.activityGroupResplitAddedMulti('Bob', 3), isNotEmpty);
+      expect(l10n.activityGroupResplitJoined('Trip'), contains('Trip'));
+      expect(l10n.activityGroupResplitJoinedMulti(2), isNotEmpty);
+      // Arabic plural categories actually resolve (dual vs plural forms).
+      expect(
+        l10n.activityGroupResplitJoinedMulti(2),
+        isNot(equals(l10n.activityGroupResplitJoinedMulti(5))),
+      );
+    });
+  });
+
   group('generated PR3 localization surface', () {
     test('English auth/router/group-settle residuals are reachable', () {
       final l10n = AppLocalizationsEn();

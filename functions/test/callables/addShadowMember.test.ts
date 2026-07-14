@@ -489,4 +489,114 @@ describe('addShadowMember callable — creator adds placeholder members by name 
     ).rejects.toMatchObject({ code: 'failed-precondition' });
     expect((await groupData('g')).memberIds).toContain(sara);
   });
+
+  // #1059 stage 2: fanning a shadow into events with live universe-splitting
+  // expenses silently re-divides them — the callable must disclose it with ONE
+  // server-authored member_resplit activity row (post-commit, best-effort).
+  const activityRows = async (groupId: string) =>
+    (await getFirestore().collection(`groups/${groupId}/activity`).get()).docs;
+
+  test('16a. RESPLIT: shadow fanned into a re-splitting event → one member_resplit row (added variant)', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+    await seedExpense('groups/g/events/e1/expenses/x1');
+
+    await wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any);
+
+    const rows = await activityRows('g');
+    expect(rows).toHaveLength(1);
+    const doc = rows[0].data();
+    expect(doc.type).toBe('member_resplit');
+    expect(doc.actorId).toBe(OWNER);
+    // Creator's member-doc displayName, matched by the userId FIELD.
+    expect(doc.actorName).toBe('Owner');
+    // PREDICATE — the client row chrome prepends actorName.
+    expect(doc.description).toBe('added Sara to e1 — equal splits recalculated');
+    expect(doc.metadata).toEqual({
+      memberAction: 'added',
+      memberName: 'Sara',
+      affectedEventCount: 1,
+      eventId: 'e1',
+      eventName: 'e1',
+    });
+    expect(typeof doc.timestamp).toBe('string');
+  });
+
+  test('16b. RESPLIT: no expenses anywhere → no disclosure row', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+
+    await wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any);
+
+    expect(await activityRows('g')).toHaveLength(0);
+  });
+
+  test('16c. RESPLIT: stored-distribution-only event → no disclosure row', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+    await seedExpense('groups/g/events/e1/expenses/x1', {
+      splitMode: 'exact',
+      splitDistribution: { [OWNER]: 12000 },
+    });
+
+    await wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any);
+
+    expect(await activityRows('g')).toHaveLength(0);
+  });
+
+  test('16d. RESPLIT: CLOSED event with a live equal expense still discloses', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'closed', [OWNER], { [OWNER]: 'Owner' }, {
+      isClosed: true,
+      closedAt: new Date('2026-01-05T00:00:00.000Z'),
+      closedBy: OWNER,
+    });
+    await seedExpense('groups/g/events/closed/expenses/x1');
+
+    await wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any);
+
+    const rows = await activityRows('g');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].data().metadata.eventId).toBe('closed');
+  });
+
+  test('16f. RESPLIT: creator member doc with an invalid displayName → actorName "Someone"', async () => {
+    await seedGroup('g');
+    // Admin/legacy docs bypass rules — a control char fails
+    // normalizeRequiredDisplayName, so the actor falls back to 'Someone'.
+    await seedMember('g', OWNER, { displayName: 'Bad\u0000Name' });
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+    await seedExpense('groups/g/events/e1/expenses/x1');
+
+    await wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any);
+
+    const rows = await activityRows('g');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].data().actorName).toBe('Someone');
+  });
+
+  test('16e. RESPLIT: two affected events → count copy, no eventId/eventName', async () => {
+    await seedGroup('g');
+    await seedMember('g', OWNER);
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+    await seedEvent('g', 'e2', [OWNER], { [OWNER]: 'Owner' });
+    await seedExpense('groups/g/events/e1/expenses/x1');
+    await seedExpense('groups/g/events/e2/expenses/x1');
+
+    await wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any);
+
+    const rows = await activityRows('g');
+    expect(rows).toHaveLength(1);
+    const doc = rows[0].data();
+    expect(doc.description).toBe('added Sara to 2 events — equal splits recalculated');
+    expect(doc.metadata).toEqual({
+      memberAction: 'added',
+      memberName: 'Sara',
+      affectedEventCount: 2,
+    });
+  });
 });

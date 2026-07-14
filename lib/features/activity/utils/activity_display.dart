@@ -18,6 +18,8 @@ ActivityGlyph glyphForGroupActivityType(String type) => switch (type) {
   'event_deleted' => ActivityGlyph.eventDeleted,
   'member_joined' => ActivityGlyph.memberJoined,
   'member_left' => ActivityGlyph.memberLeft,
+  // #1059: roster-change re-split disclosure — roster-change family glyph.
+  'member_resplit' => ActivityGlyph.memberJoined,
   'expense_added' => ActivityGlyph.expenseAdded,
   'expense_edited' => ActivityGlyph.expenseEdited,
   'expense_deleted' => ActivityGlyph.expenseDeleted,
@@ -52,6 +54,48 @@ String localizedEventActivityText(AppLocalizations l10n, ActivityLog log) {
 String? _metadataString(GroupActivityLog log, String key) {
   final value = log.metadata[key];
   return value is String ? value : null;
+}
+
+/// Guarded int read — same forgeability rationale as [_metadataString].
+/// `is num` (not `is int`): Firestore number deserialization can yield a Dart
+/// double; non-finite values read as absent (the amountFils precedent).
+int? _metadataInt(GroupActivityLog log, String key) {
+  final value = log.metadata[key];
+  return value is num && value.isFinite ? value.toInt() : null;
+}
+
+/// #1059 — roster-change re-split disclosure predicate.
+///
+/// PREDICATE only: the row chrome prepends the isolated actorName, so the
+/// 'joined' variant deliberately omits the member name (actor IS the member —
+/// including it would render "Bob Bob joined…"). Every read is type-guarded;
+/// anything missing/forged degrades to the server-written description.
+String _resplitText(AppLocalizations l10n, GroupActivityLog log) {
+  final memberAction = _metadataString(log, 'memberAction');
+  final eventName = _metadataString(log, 'eventName');
+  final count = _metadataInt(log, 'affectedEventCount');
+  if (memberAction == 'joined') {
+    if (eventName != null && eventName.isNotEmpty) {
+      return l10n.activityGroupResplitJoined(bidiIsolate(eventName));
+    }
+    if (count != null && count >= 1) {
+      return l10n.activityGroupResplitJoinedMulti(count);
+    }
+    return bidiIsolate(log.description);
+  }
+  final memberName = _metadataString(log, 'memberName');
+  if (memberAction == 'added' && memberName != null && memberName.isNotEmpty) {
+    if (eventName != null && eventName.isNotEmpty) {
+      return l10n.activityGroupResplitAdded(
+        bidiIsolate(memberName),
+        bidiIsolate(eventName),
+      );
+    }
+    if (count != null && count >= 1) {
+      return l10n.activityGroupResplitAddedMulti(bidiIsolate(memberName), count);
+    }
+  }
+  return bidiIsolate(log.description);
 }
 
 /// #818 Wave 3.1 — directional settlement phrase.
@@ -115,6 +159,7 @@ String localizedGroupActivityText(AppLocalizations l10n, GroupActivityLog log) {
           ? l10n.activityGroupEventDeletedGeneric
           : l10n.activityGroupEventDeleted(bidiIsolate(eventName)),
     'member_joined' => l10n.activityGroupMemberJoined,
+    'member_resplit' => _resplitText(l10n, log),
     'member_left' =>
       memberAction == 'removed'
           ? (memberName == null || memberName.isEmpty
