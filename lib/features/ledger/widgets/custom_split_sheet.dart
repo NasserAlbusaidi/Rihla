@@ -15,6 +15,11 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../models/expense_model.dart' show ExpenseScope;
 import '../models/split_explanation.dart';
 import '../providers/expense_provider.dart' show BalanceCalculator;
+import 'custom_split_sheet_itemized/adjustment_assignee_tile.dart';
+import 'custom_split_sheet_itemized/allocation_option.dart';
+import 'custom_split_sheet_itemized/itemized_section_header.dart';
+import 'custom_split_sheet_itemized/mini_avatar_stack.dart';
+import 'custom_split_sheet_itemized/owes_row.dart';
 
 export '../../../core/models/split_mode.dart' show SplitMode;
 
