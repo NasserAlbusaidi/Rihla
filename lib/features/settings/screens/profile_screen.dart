@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -22,7 +21,6 @@ import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/split_mode_display_name.dart';
 import '../../../shared/widgets/directional_icon.dart';
-import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/scroll_under_header.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -49,6 +47,9 @@ import '../widgets/profile/backup_status_chip.dart';
 import '../widgets/profile/ghost_icon.dart';
 import '../widgets/profile/identity_chip.dart';
 import '../widgets/profile/pending_recovery_banner.dart';
+import '../widgets/profile/spent_value.dart';
+import '../widgets/profile/stat_card.dart';
+import '../widgets/profile/stats_error_card.dart';
 import '../widgets/profile/stats_grid_skeleton.dart';
 import '../widgets/profile_display_section.dart';
 
@@ -389,14 +390,14 @@ class _StatsGrid extends ConsumerWidget {
         .watch(profileStatsProvider)
         .when(
           loading: () => const StatsGridSkeleton(),
-          error: (_, _) => const _StatsErrorCard(),
+          error: (_, _) => const StatsErrorCard(),
           data: (stats) => Padding(
             key: ProfileKeys.statsSection,
             padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
             child: Row(
               children: [
                 Expanded(
-                  child: _StatCard(
+                  child: StatCard(
                     statKey: ProfileKeys.statEvents,
                     keyLabel: l10n.profileStatsJourneysLabel,
                     value: '${stats.eventCount}',
@@ -405,7 +406,7 @@ class _StatsGrid extends ConsumerWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _StatCard(
+                  child: StatCard(
                     statKey: ProfileKeys.statGroups,
                     keyLabel: l10n.profileStatsGroupsLabel,
                     value: '${stats.groupCount}',
@@ -414,10 +415,10 @@ class _StatsGrid extends ConsumerWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _StatCard(
+                  child: StatCard(
                     statKey: ProfileKeys.statSpent,
                     keyLabel: l10n.profileStatsSpentLabel,
-                    valueWidget: _SpentValue(spent: stats.spentByCurrency),
+                    valueWidget: SpentValue(spent: stats.spentByCurrency),
                     sub: l10n.profileStatsLifetime,
                   ),
                 ),
@@ -425,187 +426,6 @@ class _StatsGrid extends ConsumerWidget {
             ),
           ),
         );
-  }
-}
-
-/// Compact, explicit error state for the stats grid with a retry (#488).
-class _StatsErrorCard extends ConsumerWidget {
-  const _StatsErrorCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: Container(
-        key: ProfileKeys.statsErrorCard,
-        padding: EdgeInsets.all(context.spacing.space16),
-        decoration: BoxDecoration(
-          color: colors.cardSurface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: context.shadows.raised,
-        ),
-        child: Row(
-          children: [
-            Icon(Iconsax.warning_2, size: 18, color: colors.textSecondary),
-            SizedBox(width: context.spacing.space12),
-            Expanded(
-              child: Text(
-                context.l10n.profileStatsLoadFailed,
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => ref.invalidate(profileStatsProvider),
-              child: Text(context.l10n.commonRetry),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The Spent stat value: per-currency lifetime spend (#378). No FX, so when a
-/// user's groups span >1 currency we show one line per currency (hero-style)
-/// rather than a nonsense cross-currency sum. Capped at 2 lines + a "+N"
-/// overflow to keep the compact stat cell from growing unbounded.
-class _SpentValue extends StatelessWidget {
-  const _SpentValue({required this.spent});
-  final List<CurrencySpend> spent;
-
-  static const int _maxLines = 2;
-
-  @override
-  Widget build(BuildContext context) {
-    // No spend yet (or no groups): preserve the original compact zero look —
-    // there is no currency context, so render an OMR-precision zero.
-    if (spent.isEmpty) {
-      return RAmount(
-        value: Decimal.zero,
-        currency: 'OMR',
-        showCurrency: false,
-        size: 24,
-      );
-    }
-
-    // Single currency is unambiguous → keep the large, code-less look.
-    if (spent.length == 1) {
-      final only = spent.first;
-      return RAmount(
-        value: only.amount,
-        currency: only.currency,
-        showCurrency: false,
-        size: 24,
-      );
-    }
-
-    // ≥2 currencies: stacked per-currency lines (code shown to disambiguate),
-    // capped, with a "+N" overflow indicator for the rest.
-    final colors = context.colors;
-    final shown = spent.take(_maxLines).toList();
-    final overflow = spent.length - shown.length;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final s in shown)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: RAmount(value: s.amount, currency: s.currency, size: 15),
-          ),
-        if (overflow > 0)
-          Text(
-            context.l10n.profileStatsSpentMore(overflow),
-            style: AppTypography.sans(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: colors.textSecondary,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.statKey,
-    required this.keyLabel,
-    required this.sub,
-    this.value,
-    this.valueWidget,
-  }) : assert(
-         value != null || valueWidget != null,
-         'Provide either value or valueWidget',
-       );
-
-  final Key statKey;
-  final String keyLabel;
-  final String sub;
-  final String? value;
-  final Widget? valueWidget;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      key: statKey,
-      padding: EdgeInsets.fromLTRB(14, 14, context.spacing.space12, 14),
-      // #807: flat card + hairline, not raised — these are static stats with
-      // no onTap; the raised treatment is the app's actionable-surface cue
-      // (docs/DESIGN.md flat-vs-raised split).
-      decoration: BoxDecoration(
-        color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.rule2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            keyLabel,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.caption(
-              context,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              color: colors.textSecondary,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: valueWidget != null
-                ? valueWidget!
-                : Text(
-                    value!,
-                    maxLines: 1,
-                    softWrap: false,
-                    style: AppTypography.display(
-                      fontSize: 28,
-                      color: colors.textPrimary,
-                      height: 1.0,
-                    ),
-                  ),
-          ),
-          SizedBox(height: context.spacing.space4),
-          Text(
-            sub,
-            style: AppTypography.sans(
-              fontSize: 11,
-              color: colors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
