@@ -25,8 +25,6 @@ import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/scroll_under_header.dart';
-import '../../../shared/widgets/skeleton_loader.dart';
-import '../../../shared/widgets/skeleton_primitives.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/providers/shell_emptiness_gate.dart';
 import '../../auth/services/auth_recovery_service.dart';
@@ -46,9 +44,12 @@ import '../widgets/default_split_picker_sheet.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
+import '../widgets/profile/backup_account_card.dart';
 import '../widgets/profile/backup_status_chip.dart';
 import '../widgets/profile/ghost_icon.dart';
+import '../widgets/profile/identity_chip.dart';
 import '../widgets/profile/pending_recovery_banner.dart';
+import '../widgets/profile/stats_grid_skeleton.dart';
 import '../widgets/profile_display_section.dart';
 
 /// Profile tab — saffron travel-journal direction.
@@ -101,7 +102,7 @@ class ProfileScreen extends ConsumerWidget {
                 // stakes; durable users never see it.
                 if (!isDurable) ...[
                   const SizedBox(height: 14),
-                  const _BackupAccountCard(),
+                  const BackupAccountCard(),
                 ],
                 const SizedBox(height: 14),
                 const _StatsGrid()
@@ -346,7 +347,7 @@ class _IdentityCard extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _IdentityChip(
+                      IdentityChip(
                         leadingIcon: Iconsax.copy,
                         label: handle,
                         onTap: () async {
@@ -373,131 +374,6 @@ class _IdentityCard extends ConsumerWidget {
   }
 }
 
-/// Anonymous-only card that names the stakes of not being backed up and routes
-/// to the durable-credential (Google/email) flow (#487). Hidden once durable.
-class _BackupAccountCard extends StatelessWidget {
-  const _BackupAccountCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final l10n = context.l10n;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: GestureDetector(
-        onTap: () {
-          HapticService.selection();
-          showDurableCredentialSheet(context);
-        },
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          key: ProfileKeys.backupAccountCard,
-          padding: EdgeInsets.all(context.spacing.space16),
-          decoration: BoxDecoration(
-            color: colors.warning.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-            border: Border.all(
-              color: colors.warning.withValues(alpha: 0.35),
-              width: 0.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: colors.warning.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Icon(Iconsax.warning_2, size: 20, color: colors.warning),
-              ),
-              SizedBox(width: context.spacing.space12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.profileBackupCardTitle,
-                      style: AppTypography.sans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: context.spacing.space4),
-                    Text(
-                      l10n.profileBackupCardBody,
-                      style: AppTypography.sans(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: context.spacing.space8),
-              DirectionalIcon(
-                Iconsax.arrow_right_3,
-                size: 16,
-                color: colors.textSecondary,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _IdentityChip extends StatelessWidget {
-  const _IdentityChip({
-    required this.leadingIcon,
-    required this.label,
-    required this.onTap,
-  });
-  final IconData leadingIcon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacing.space12,
-          vertical: 7,
-        ),
-        decoration: BoxDecoration(
-          color: colors.cardSoft,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(color: colors.rule, width: 0.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(leadingIcon, size: 12, color: colors.textSecondary),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: AppTypography.sans(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: colors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ──────────────────────────── Stats grid
 
 class _StatsGrid extends ConsumerWidget {
@@ -512,7 +388,7 @@ class _StatsGrid extends ConsumerWidget {
     return ref
         .watch(profileStatsProvider)
         .when(
-          loading: () => const _StatsGridSkeleton(),
+          loading: () => const StatsGridSkeleton(),
           error: (_, _) => const _StatsErrorCard(),
           data: (stats) => Padding(
             key: ProfileKeys.statsSection,
@@ -549,49 +425,6 @@ class _StatsGrid extends ConsumerWidget {
             ),
           ),
         );
-  }
-}
-
-/// Layout-matched skeleton for the 3-tile stats grid (#488).
-class _StatsGridSkeleton extends StatelessWidget {
-  const _StatsGridSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return SkeletonLoader(
-      itemCount: 1,
-      itemBuilder: (context, _) => Padding(
-        key: ProfileKeys.statsSection,
-        padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-        child: const Row(
-          children: [
-            Expanded(
-              child: SkeletonBlock(
-                width: double.infinity,
-                height: 88,
-                borderRadius: 16,
-              ),
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: SkeletonBlock(
-                width: double.infinity,
-                height: 88,
-                borderRadius: 16,
-              ),
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: SkeletonBlock(
-                width: double.infinity,
-                height: 88,
-                borderRadius: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
