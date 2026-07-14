@@ -12,23 +12,16 @@ import '../../../core/utils/share_helper.dart';
 import '../../../core/config/app_links.dart';
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../../core/theme/error_widgets.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/firestore_error_utils.dart';
-import '../../../core/utils/localized_dates.dart';
-import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/no_access_view.dart';
-import '../../../shared/widgets/r_amount.dart';
-import '../../../shared/widgets/r_avatar.dart';
-import '../../../shared/widgets/r_icon_button.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../events/models/event_model.dart';
 import '../../ledger/providers/expense_provider.dart';
 import '../../events/providers/event_provider.dart';
-import '../../events/utils/event_display.dart';
 import '../keys/group_keys.dart';
 import '../models/group_model.dart';
 import '../providers/group_balance_provider.dart';
@@ -39,6 +32,9 @@ import '../widgets/group_detail/balance_card.dart';
 import '../widgets/group_detail/cover_header.dart';
 import '../widgets/group_detail/event_row.dart';
 import '../widgets/group_detail/members_card.dart';
+import '../widgets/group_detail/error_state.dart';
+import '../widgets/group_detail/loading_state.dart';
+import '../widgets/group_detail/not_found_state.dart';
 
 /// Group detail screen — saffron travel-journal direction.
 ///
@@ -94,10 +90,10 @@ class GroupDetailScreen extends ConsumerWidget {
         backgroundColor: context.colors.scaffoldBackground,
         body: groupAsync.when(
           data: (group) {
-            if (group == null) return _NotFoundState(groupId: groupId);
+            if (group == null) return NotFoundState(groupId: groupId);
             return _Content(group: group);
           },
-          loading: () => const _LoadingState(),
+          loading: () => const LoadingState(),
           error: (error, stackTrace) {
             // #358: Firestore denies the group read once a user is removed
             // from / loses access to the group. Show a terminal "no access"
@@ -107,7 +103,7 @@ class GroupDetailScreen extends ConsumerWidget {
               unawaited(Sentry.captureException(error, stackTrace: stackTrace));
               return const NoAccessView();
             }
-            return _ErrorState(
+            return ErrorState(
               onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
             );
           },
@@ -417,65 +413,3 @@ class _ContentState extends ConsumerState<_Content> {
   }
 }
 
-// ──────────────────────────── Skeleton / states
-
-class _LoadingState extends StatelessWidget {
-  const _LoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final statusBar = MediaQuery.of(context).padding.top;
-    return Column(
-      children: [
-        SizedBox(
-          height: 168 + statusBar,
-          child: Container(color: colors.cardSoft),
-        ),
-        Expanded(child: SkeletonLoader.groupList()),
-      ],
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.onRetry});
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    // #358: adopt the shared NetworkErrorWidget for the generic
-    // (non-permission) group-load error instead of a hand-rolled
-    // EmptyStateView error variant.
-    return SafeArea(
-      child: NetworkErrorWidget.loadingError(
-        customTitle: context.l10n.groupLoadFailedTitle,
-        customMessage: context.l10n.activityLoadFailedMessage,
-        onRetry: onRetry,
-      ),
-    );
-  }
-}
-
-class _NotFoundState extends StatelessWidget {
-  const _NotFoundState({required this.groupId});
-  final String groupId;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(context.spacing.space24),
-          child: EmptyStateView(
-            icon: Iconsax.box_remove,
-            title: context.l10n.groupNotFoundTitle,
-            message: context.l10n.groupNotFoundMessage,
-            actionLabel: context.l10n.groupBackHome,
-            onAction: () => GoRouter.of(context).go('/home'),
-          ),
-        ),
-      ),
-    );
-  }
-}
