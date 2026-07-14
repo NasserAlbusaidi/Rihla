@@ -27,7 +27,6 @@ import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/scroll_under_header.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/skeleton_primitives.dart';
-import '../../auth/providers/auth_email_link_bootstrap_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/providers/shell_emptiness_gate.dart';
 import '../../auth/services/auth_recovery_service.dart';
@@ -47,6 +46,9 @@ import '../widgets/default_split_picker_sheet.dart';
 import '../widgets/edit_name_bottom_sheet.dart';
 import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
+import '../widgets/profile/backup_status_chip.dart';
+import '../widgets/profile/ghost_icon.dart';
+import '../widgets/profile/pending_recovery_banner.dart';
 import '../widgets/profile_display_section.dart';
 
 /// Profile tab — saffron travel-journal direction.
@@ -85,7 +87,7 @@ class ProfileScreen extends ConsumerWidget {
             padding: EdgeInsets.only(bottom: context.spacing.space32),
             child: Column(
               children: [
-                const _PendingRecoveryBanner(),
+                const PendingRecoveryBanner(),
                 SizedBox(height: context.spacing.space4),
                 _IdentityCard(
                       name: settings.deviceName,
@@ -207,7 +209,7 @@ class _TopBar extends StatelessWidget {
             if (canPop)
               Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: _GhostIcon(
+                child: GhostIcon(
                   icon: Iconsax.arrow_left,
                   matchTextDirection: true,
                   semanticLabel: context.l10n.commonBack,
@@ -227,7 +229,7 @@ class _TopBar extends StatelessWidget {
             ),
             Align(
               alignment: AlignmentDirectional.centerEnd,
-              child: _GhostIcon(
+              child: GhostIcon(
                 icon: Iconsax.export_1,
                 semanticLabel: context.l10n.profileShareA11yLabel,
                 onTap: () {
@@ -237,118 +239,6 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GhostIcon extends StatelessWidget {
-  const _GhostIcon({
-    required this.icon,
-    required this.onTap,
-    this.matchTextDirection = false,
-    this.semanticLabel,
-  });
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool matchTextDirection;
-  final String? semanticLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    Widget result = InkResponse(
-      onTap: onTap,
-      radius: 24,
-      child: SizedBox(
-        width: 44,
-        height: 44,
-        child: matchTextDirection
-            ? DirectionalIcon(icon, size: 20, color: colors.textPrimary)
-            : Icon(icon, size: 20, color: colors.textPrimary),
-      ),
-    );
-    if (semanticLabel != null) {
-      result = Semantics(button: true, label: semanticLabel, child: result);
-    }
-    return result;
-  }
-}
-
-// ──────────────────────────── Pending recovery banner
-
-/// Renders only when `pendingEmailLinkProvider` holds a magic-link URL the
-/// bootstrap could not auto-complete (no pending email was primed — e.g. the
-/// link was opened on a fresh install or different device). Routes to
-/// `/recover` so the user can enter the email and finish the flow.
-class _PendingRecoveryBanner extends ConsumerWidget {
-  const _PendingRecoveryBanner();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pendingLink = ref.watch(pendingEmailLinkProvider);
-    if (pendingLink == null) return const SizedBox.shrink();
-
-    final colors = context.colors;
-    return Padding(
-      key: ProfileKeys.pendingRecoveryBanner,
-      padding: EdgeInsets.fromLTRB(
-        context.spacing.space20,
-        context.spacing.space12,
-        context.spacing.space20,
-        context.spacing.space4,
-      ),
-      child: Material(
-        color: colors.cardSoft,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () {
-            HapticService.selection();
-            context.push('/recover');
-          },
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: context.spacing.space12,
-            ),
-            child: Row(
-              children: [
-                Icon(Iconsax.sms_tracking, size: 18, color: colors.textPrimary),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.profileFinishRecovery,
-                        style: AppTypography.sans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        context.l10n.profileRecoverySubtitle,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: context.spacing.space8),
-                DirectionalIcon(
-                  Iconsax.arrow_right_3,
-                  size: 16,
-                  color: colors.textSecondary,
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -451,7 +341,7 @@ class _IdentityCard extends ConsumerWidget {
                   SizedBox(height: context.spacing.space8),
                   // #487: the hero tells the truth about backup state instead
                   // of an unconditional "Anonymous traveller".
-                  _BackupStatusChip(isDurable: isDurable),
+                  BackupStatusChip(isDurable: isDurable),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -480,53 +370,6 @@ class _IdentityCard extends ConsumerWidget {
   String _slug(String name) {
     final cleaned = name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '');
     return cleaned.replaceAll(RegExp(r'[^a-z0-9]'), '');
-  }
-}
-
-/// Hero pill that states whether the account is backed up (#487): sage when
-/// durable (Google/email linked), amber when still anonymous.
-class _BackupStatusChip extends StatelessWidget {
-  const _BackupStatusChip({required this.isDurable});
-  final bool isDurable;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final l10n = context.l10n;
-    final accent = isDurable ? colors.success : colors.warning;
-    return Container(
-      key: ProfileKeys.backupStatusChip,
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.space12,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-        border: Border.all(color: accent.withValues(alpha: 0.4), width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isDurable ? Iconsax.shield_tick : Iconsax.warning_2,
-            size: 13,
-            color: accent,
-          ),
-          SizedBox(width: context.spacing.space4),
-          Text(
-            isDurable
-                ? l10n.profileBackupStatusBackedUp
-                : l10n.profileBackupStatusNotBackedUp,
-            style: AppTypography.sans(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: accent,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
