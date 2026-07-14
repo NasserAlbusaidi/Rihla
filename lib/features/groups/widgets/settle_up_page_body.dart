@@ -25,6 +25,11 @@ import 'all_settled_state.dart';
 import 'currency_buckets_explainer.dart';
 import 'group_settlement_tile.dart';
 import 'settle_scope_note.dart';
+import 'settle_up_page/net_balances_section.dart';
+import 'settle_up_page/payment_history_section.dart';
+import 'settle_up_page/section_label.dart';
+import 'settle_up_page/settlement_intro.dart';
+import 'settle_up_page/stepped_settle_card.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
 // Re-exported so every SettleUpPageBody caller gets [SettleScope] (#717) without
@@ -405,7 +410,7 @@ class SettleUpPageBody extends StatelessWidget {
       if (bucket.balances.isNotEmpty) {
         sections.addAll([
           SizedBox(height: context.spacing.space24),
-          _NetBalancesSection(
+          NetBalancesSection(
             balances: bucket.balances,
             currency: bucket.currency,
           ),
@@ -419,7 +424,7 @@ class SettleUpPageBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SettlementIntro(
+          SettlementIntro(
             transferCount: totalTransfers,
             subjectName: subjectName,
             simplifyDebts: simplifyDebts,
@@ -435,7 +440,7 @@ class SettleUpPageBody extends StatelessWidget {
               simplifyDebts: simplifyDebts,
             ),
           for (final pair in steppedPairs)
-            _SteppedSettleCard(
+            SteppedSettleCard(
               key: ValueKey('settle-stepped-${pair.otherUid}'),
               otherName: pair.otherName,
               steps: pair.steps,
@@ -544,278 +549,6 @@ class SettleUpPageBody extends StatelessWidget {
   }
 }
 
-class _SettlementIntro extends StatelessWidget {
-  const _SettlementIntro({
-    required this.transferCount,
-    required this.subjectName,
-    required this.simplifyDebts,
-  });
-
-  final int transferCount;
-  final String subjectName;
-
-  /// #363: selects the mode-honest subtitle. Under OFF, "Optimized to reduce
-  /// the number of payments" would be factually FALSE over a deliberately
-  /// expanded fan-out — a FOUR-way branch across {mode × zero/nonzero}.
-  final bool simplifyDebts;
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle = transferCount == 0
-        ? (simplifyDebts
-              ? context.l10n.settleUpNoOptimizedPayments(subjectName)
-              : context.l10n.settleUpNoDirectPayments(subjectName))
-        : (simplifyDebts
-              ? context.l10n.settleUpOptimizedPayments(subjectName)
-              : context.l10n.settleUpDirectPayments(subjectName));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (transferCount > 0) ...[
-          Text(
-            context.l10n.settleUpTransfersHeadline(transferCount),
-            style: AppTypography.displayOf(
-              context,
-              fontSize: 28,
-              color: context.colors.textPrimary,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-        Text(
-          subtitle,
-          style: AppTypography.sans(
-            color: context.colors.textSecondary,
-            fontSize: 13,
-            height: 1.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// One-gesture "settle all with X" card (#382 PR-5 D2). Shown above the bucket
-/// sections for each counterparty owing across ≥2 currency buckets; tapping it
-/// drives the per-bucket stepped walk. The caption joins each step's
-/// code-first amount so the user sees exactly what the walk will record before
-/// they start.
-class _SteppedSettleCard extends StatelessWidget {
-  const _SteppedSettleCard({
-    super.key,
-    required this.otherName,
-    required this.steps,
-    required this.onTap,
-  });
-
-  final String otherName;
-  final List<SettleStepRequest> steps;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final amounts = steps
-        .map((s) => AppFormatters.formatCurrency(s.suggestedAmount, s.currency))
-        .join(' · ');
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 18),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-              border: Border.all(color: context.colors.primary),
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacing.space16,
-              vertical: context.spacing.space12,
-            ),
-            child: Row(
-              children: [
-                Icon(Iconsax.cards, size: 18, color: context.colors.primary),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.settleUpSettleAllWith(
-                          bidiIsolate(otherName),
-                        ),
-                        style: AppTypography.sans(
-                          color: context.colors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text:
-                                  '${context.l10n.settleUpSettleAllWithCount(steps.length)} · ',
-                              style: AppTypography.sans(
-                                color: context.colors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            TextSpan(
-                              text: amounts,
-                              style: AppTypography.mono(
-                                fontSize: 12,
-                                color: context.colors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: context.spacing.space8),
-                DirectionalIcon(
-                  Iconsax.arrow_right_3,
-                  size: 16,
-                  color: context.colors.primary,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NetBalancesSection extends StatelessWidget {
-  const _NetBalancesSection({required this.balances, required this.currency});
-
-  final List<UserBalance> balances;
-  final String currency;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionLabel(label: context.l10n.settleUpEachPersonNet),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-            border: Border.all(color: context.colors.rule),
-            boxShadow: context.shadows.raised,
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < balances.length; i++)
-                _NetBalanceRow(
-                  balance: balances[i],
-                  currency: currency,
-                  showDivider: i < balances.length - 1,
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _NetBalanceRow extends StatelessWidget {
-  const _NetBalanceRow({
-    required this.balance,
-    required this.currency,
-    required this.showDivider,
-  });
-
-  final UserBalance balance;
-  final String currency;
-  final bool showDivider;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = balance.displayName ?? context.l10n.settleUpUnknown;
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: showDivider
-              ? BorderSide(color: context.colors.rule)
-              : BorderSide.none,
-        ),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.space16,
-        vertical: context.spacing.space12,
-      ),
-      child: Row(
-        children: [
-          RAvatar(name: name, size: 28, colorKey: balance.participantId),
-          SizedBox(width: context.spacing.space12),
-          Expanded(
-            child: Text(
-              name,
-              style: AppTypography.sans(
-                color: context.colors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          RAmount(
-            value: balance.netBalance,
-            currency: currency,
-            size: 14,
-            sign: true,
-            weight: FontWeight
-                .w700, // Spline ships 400/500/700 — w800 would synthesize
-            tone: balance.netBalance > Decimal.zero
-                ? AmountTone.sageText
-                : balance.netBalance < Decimal.zero
-                ? AmountTone.rustText
-                : AmountTone.muted,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsetsDirectional.only(start: context.spacing.space4),
-      child: Text(
-        label,
-        style: AppTypography.sans(
-          color: context.colors.textPrimary,
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 /// Inline list of past recorded payments shown beneath net balances.
 ///
 /// Wireframe omits this — kept as a low-emphasis footer so the feature
@@ -879,7 +612,7 @@ class _PaymentHistorySection extends StatelessWidget {
     // per-doc rendering (its settlements are one-event-only; a regrouped "total"
     // would be a misleading partial).
     final children = <Widget>[
-      _SectionLabel(label: context.l10n.settleUpPaymentHistory),
+      SectionLabel(label: context.l10n.settleUpPaymentHistory),
       const SizedBox(height: 10),
     ];
 
