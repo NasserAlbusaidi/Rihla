@@ -7,6 +7,11 @@ import { normalizeRequiredDisplayName } from './shared/displayName';
 import { MAX_FAN_IN_EVENTS, applyEventFanIn, collectEventFanIn } from './shared/eventFanIn';
 import { nextActiveMemberIds } from './shared/activeMembers';
 import { isCurrentMember } from './shared/membership';
+import {
+  FanInEventCapture,
+  detectResplitEvents,
+  writeResplitActivity,
+} from './shared/resplitDisclosure';
 
 export interface AddShadowMemberInput {
   groupId: string;
@@ -60,6 +65,12 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
     const displayName = normalizeRequiredDisplayName(request.data?.displayName);
     const db = getFirestore();
     const groupRef = db.doc(`groups/${groupId}`);
+
+    // #1059: captured INSIDE the tx (last-run-wins on retry, the join
+    // callable's didJoin pattern) so the post-commit disclosure can see which
+    // events the fan-in actually grew and who the acting creator is.
+    let fanInCaptures: FanInEventCapture[] = [];
+    let creatorName = 'Someone';
 
     const memberId = await db.runTransaction(async (tx) => {
       const groupSnap = await tx.get(groupRef);
@@ -149,9 +160,54 @@ export const addShadowMember = onCall<AddShadowMemberInput, Promise<AddShadowMem
       // #245: mirror the join callable — a member absent from an event's
       // participantIds can never be split against there (the expense editor
       // rosters event.participantIds and no client path grows it).
-      applyEventFanIn(tx, collectEventFanIn(eventsSnap, newId, displayName), newId);
+      const fanIn = collectEventFanIn(eventsSnap, newId, displayName);
+      // #1059: only updates that GROW participantIds can re-split; a malformed
+      // event name maps to '' (forces the count copy, no deep-link metadata).
+      const eventNamesById = new Map<string, string>(
+        eventsSnap.docs.map((eventSnap) => {
+          const name = eventSnap.get('name');
+          return [eventSnap.id, typeof name === 'string' ? name.trim() : ''];
+        }),
+      );
+      fanInCaptures = fanIn
+        .filter((update) => update.addParticipantId)
+        .map((update) => ({
+          ref: update.ref,
+          eventId: update.ref.id,
+          eventName: eventNamesById.get(update.ref.id) ?? '',
+        }));
+      // #1059 actor: the creator's roster displayName, matched by the userId
+      // FIELD (member-doc keying is MIXED — recordSettlement idiom).
+      const creatorDoc = membersSnap.docs.find((doc) => doc.get('userId') === uid);
+      const rawCreatorName = creatorDoc?.get('displayName');
+      creatorName = 'Someone';
+      if (typeof rawCreatorName === 'string') {
+        try {
+          creatorName = normalizeRequiredDisplayName(rawCreatorName);
+        } catch {
+          creatorName = 'Someone';
+        }
+      }
+      applyEventFanIn(tx, fanIn, newId);
       return newId;
     });
+
+    // #1059 stage 2: post-commit re-split disclosure — membership is already
+    // committed, so nothing here may throw out of the callable; a lost row is
+    // the accepted degrade (never a fabricated one).
+    try {
+      const detection = await detectResplitEvents(fanInCaptures);
+      await writeResplitActivity(db, groupId, {
+        memberId,
+        memberName: displayName,
+        actorId: uid,
+        actorName: creatorName,
+        memberAction: 'added',
+        detection,
+      });
+    } catch (error) {
+      logger.warn('resplit disclosure failed', { groupId, memberId, error: String(error) });
+    }
 
     logger.info('addShadowMember created', { uid, groupId, memberId });
     return { memberId };
