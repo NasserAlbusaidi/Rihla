@@ -564,6 +564,21 @@ describe('addShadowMember callable — creator adds placeholder members by name 
     expect(rows[0].data().metadata.eventId).toBe('closed');
   });
 
+  test('16f. RESPLIT: creator member doc with an invalid displayName → actorName "Someone"', async () => {
+    await seedGroup('g');
+    // Admin/legacy docs bypass rules — a control char fails
+    // normalizeRequiredDisplayName, so the actor falls back to 'Someone'.
+    await seedMember('g', OWNER, { displayName: 'Bad\u0000Name' });
+    await seedEvent('g', 'e1', [OWNER], { [OWNER]: 'Owner' });
+    await seedExpense('groups/g/events/e1/expenses/x1');
+
+    await wrapped({ data: { groupId: 'g', displayName: 'Sara' }, auth: { uid: OWNER } } as any);
+
+    const rows = await activityRows('g');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].data().actorName).toBe('Someone');
+  });
+
   test('16e. RESPLIT: two affected events → count copy, no eventId/eventName', async () => {
     await seedGroup('g');
     await seedMember('g', OWNER);
