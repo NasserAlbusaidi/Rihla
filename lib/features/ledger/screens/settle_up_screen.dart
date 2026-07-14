@@ -16,7 +16,6 @@ import '../../../core/utils/settle_notify.dart';
 import '../../../core/utils/settlement_write_error.dart';
 import '../../../core/utils/share_helper.dart';
 import '../../../core/utils/whatsapp_share.dart';
-import '../../../shared/widgets/directional_icon.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -36,6 +35,7 @@ import '../providers/expense_provider.dart';
 import '../services/pre_settlement_review.dart';
 import '../services/settlement_service.dart';
 import '../widgets/pre_settlement_review_sheet.dart';
+import '../widgets/settle_up/settle_up_top_bar.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 
 /// Event-scoped Settle Up screen.
@@ -140,7 +140,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
+            SettleUpTopBar(groupId: widget.groupId, eventId: widget.eventId),
             if (banner) const OfflineBanner(),
             Expanded(child: child),
           ],
@@ -1055,49 +1055,4 @@ class _StepOutcome {
 
   final _StepOutcomeKind kind;
   final bool alreadyRecorded;
-}
-
-class _SettleUpTopBar extends StatelessWidget {
-  const _SettleUpTopBar({required this.groupId, required this.eventId});
-
-  final String groupId;
-  final String eventId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 20, 8),
-      child: SizedBox(
-        height: 48,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: IconButton(
-                tooltip: context.l10n.commonBack,
-                icon: const DirectionalIcon(Iconsax.arrow_left_2, size: 20),
-                color: context.colors.textPrimary,
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/group/$groupId/event/$eventId/ledger');
-                  }
-                },
-              ),
-            ),
-            Text(
-              context.l10n.settleUpTitle,
-              style: AppTypography.sans(
-                color: context.colors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
