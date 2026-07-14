@@ -26,12 +26,7 @@ import '../../../shared/widgets/scroll_under_header.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/providers/shell_emptiness_gate.dart';
 import '../../auth/services/auth_recovery_service.dart';
-import '../../auth/services/data_deletion_service.dart';
-import '../../auth/services/durable_account_marker.dart';
-import '../../auth/widgets/delete_account_dialog.dart';
-import '../../auth/widgets/delete_account_retry_dialog.dart';
 import '../../auth/widgets/durable_credential_sheet.dart';
-import '../../auth/widgets/durable_shell_delete_dialog.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -43,15 +38,18 @@ import '../widgets/language_picker_sheet.dart';
 import '../widgets/legal_links_sheet.dart';
 import '../widgets/profile/backup_account_card.dart';
 import '../widgets/profile/backup_status_chip.dart';
+import '../widgets/profile/danger_zone_card.dart';
 import '../widgets/profile/ghost_icon.dart';
 import '../widgets/profile/identity_chip.dart';
 import '../widgets/profile/notification_pref_row.dart';
 import '../widgets/profile/pending_recovery_banner.dart';
 import '../widgets/profile/pref_icon.dart';
+import '../widgets/profile/pref_icon_letter.dart';
 import '../widgets/profile/pref_row.dart';
 import '../widgets/profile/rows_card.dart';
 import '../widgets/profile/section_label.dart';
 import '../widgets/profile/stats_grid.dart';
+import '../widgets/profile/version_stamp.dart';
 import '../widgets/profile_display_section.dart';
 
 /// Profile tab — saffron travel-journal direction.
@@ -136,7 +134,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 18),
                 SectionLabel(label: l10n.profileSectionDanger),
                 SizedBox(height: context.spacing.space8),
-                const _DangerZoneCard().animate().fadeIn(
+                const DangerZoneCard().animate().fadeIn(
                   delay: 340.ms,
                   duration: 400.ms,
                 ),
@@ -148,7 +146,7 @@ class ProfileScreen extends ConsumerWidget {
                   duration: 400.ms,
                 ),
                 const SizedBox(height: 18),
-                const _VersionStamp(),
+                const VersionStamp(),
               ],
             ),
           ),
@@ -429,7 +427,7 @@ class _PreferencesCard extends ConsumerWidget {
           // currency at create time, expenses can carry their own supported
           // currency, and balances render per-currency buckets with no FX.
           PrefRow(
-            leading: _PrefIconLetter(letter: 'Aa', bg: colors.saffronTint),
+            leading: PrefIconLetter(letter: 'Aa', bg: colors.saffronTint),
             label: context.l10n.profilePreferencesLanguage,
             trailingText: _languageTrailing(settings.languageCode),
             onTap: () => LanguagePickerSheet.show(context),
@@ -581,7 +579,7 @@ class _AccountCard extends ConsumerWidget {
     final showRestore = isAnonymous;
 
     // #487 bullet 3: only the backup & recovery rows live here now; the
-    // irreversible Delete moved to its own _DangerZoneCard below. The trailing
+    // irreversible Delete moved to its own DangerZoneCard below. The trailing
     // hairline is stripped because the last visible row varies by account state.
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
@@ -704,129 +702,6 @@ class _AccountCard extends ConsumerWidget {
   }
 }
 
-// ──────────────────────────── Danger zone (delete) — #487 bullet 3
-
-/// Delete account, isolated in its own labelled "Danger" block so the single
-/// irreversible action never sits inline with the benign credential/recovery
-/// rows (#487 bullet 3 — restore/recovery grouped above, delete fenced here).
-class _DangerZoneCard extends ConsumerWidget {
-  const _DangerZoneCard();
-
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    // #469: an anonymous shell delete only removes this guest session, not any
-    // durable Google/email account (which lives under a different UID). Make
-    // the confirm dialog honest about that.
-    final isAnonymous =
-        ref.read(authUserChangesProvider).valueOrNull?.isAnonymous ?? false;
-    // #469 prevention: if a durable account was established on this device but
-    // the live session is an anon shell, deleting now would silently leave that
-    // account + its data intact under a different uid. Steer to sign-in first,
-    // with an explicit informed escape — never call deleteAccount on the shell
-    // unless the user picks "delete just this guest session".
-    if (isAnonymous &&
-        durableAccountEstablished(ref.read(sharedPreferencesProvider))) {
-      final choice = await DurableShellDeleteDialog.show(context);
-      if (choice == DurableShellDeleteChoice.deleteGuest && context.mounted) {
-        await _runDeletion(context, ref);
-      }
-      return;
-    }
-    final confirmed = await DeleteAccountDialog.show(
-      context,
-      isAnonymous: isAnonymous,
-    );
-    if (confirmed != true || !context.mounted) return;
-    await _runDeletion(context, ref);
-  }
-
-  /// Runs the deletion and reacts to the outcome. A [DeletionResult.partial]
-  /// (server scrubbed some data but threw before finishing; convergent on
-  /// retry) re-prompts with a durable retry dialog and recurses on confirm, so
-  /// the user always has a guaranteed path to finish a torn deletion (#77).
-  Future<void> _runDeletion(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final l10n = context.l10n;
-    final result = await ref.read(dataDeletionServiceProvider).deleteAccount();
-    if (!context.mounted) return;
-    switch (result) {
-      case DeletionResult.ok:
-        messenger.showSnackBar(SnackBar(content: Text(l10n.profileDeletionOk)));
-        context.go(AppRoutes.home);
-      case DeletionResult.noUser:
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.profileDeletionNoUser)),
-        );
-      case DeletionResult.error:
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.profileDeletionError)),
-        );
-      case DeletionResult.partial:
-        final retry = await DeleteAccountRetryDialog.show(context);
-        if (retry == true && context.mounted) {
-          await _runDeletion(context, ref);
-        }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-      child: RowsCard(
-        key: ProfileKeys.dangerZoneCard,
-        rows: [
-          PrefRow(
-            tileKey: ProfileKeys.deleteAccountTile,
-            leading: PrefIcon(icon: Iconsax.trash, bg: colors.cardSoft),
-            label: context.l10n.profileAccountDelete,
-            trailing: Text(
-              context.l10n.profileAccountDeletePermanent,
-              style: AppTypography.sans(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.error,
-              ),
-            ),
-            onTap: () => _deleteAccount(context, ref),
-            divider: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ──────────────────────────── Version stamp
-
-class _VersionStamp extends ConsumerWidget {
-  const _VersionStamp();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    final meta = ref.watch(appMetadataProvider).valueOrNull;
-    final version = meta?.version ?? '';
-    // Intentional brand lockup — stays English in every locale, including
-    // Arabic (#162 decision: brand lockup, not localized). Do NOT route this
-    // through l10n; pinned by profile_screen_test '#162'.
-    return Padding(
-      key: ProfileKeys.versionTile,
-      padding: const EdgeInsets.only(top: 10),
-      child: Text(
-        version.isEmpty
-            ? 'RIHLA · BUILT FOR JOURNEYS'
-            : 'RIHLA · v$version · BUILT FOR JOURNEYS',
-        style: AppTypography.mono(
-          fontSize: 9,
-          color: colors.textSecondary,
-          letterSpacing: 1.5,
-        ),
-      ),
-    );
-  }
-}
-
 // ──────────────────────────── Rows + supporting
 
 /// Returns [rows] with the last row's bottom divider removed, so an account
@@ -838,34 +713,6 @@ List<Widget> _stripLastDivider(List<PrefRow> rows) {
     ...rows.sublist(0, rows.length - 1),
     rows.last.copyWith(divider: false),
   ];
-}
-
-class _PrefIconLetter extends StatelessWidget {
-  const _PrefIconLetter({required this.letter, required this.bg});
-  final String letter;
-  final Color bg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        letter,
-        style: AppTypography.displayOf(
-          context,
-          fontSize: 15,
-          color: context.colors.textPrimary,
-          height: 1.0,
-        ),
-      ),
-    );
-  }
 }
 
 // ──────────────────────────── Preference row label helpers
