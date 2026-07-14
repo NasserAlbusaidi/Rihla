@@ -116,6 +116,18 @@ describe('writeRateMonitor', () => {
     expect(await counter('g1', 'settler')).toBeUndefined();
   });
 
+  // #1059: member_resplit rows are authored ONLY by the join/addShadowMember
+  // callables post-commit (never in validGroupActivityCreate's allow-list) —
+  // counting them would bill an un-forgeable server write against the budget.
+  test('#1059 T3 member_resplit activity rows are NOT counted', async () => {
+    await wrapGroupActivity(groupActivityCreate(
+      { actorId: 'joiner', type: 'member_resplit', description: 'joined 2 events — equal splits recalculated' },
+      { gid: 'g1', activityId: 'resplit_joiner_abc123def456' },
+    ));
+
+    expect(await counter('g1', 'joiner')).toBeUndefined();
+  });
+
   test('#808 a server fan-in expense_* group activity create is NOT counted (T1 already counted the expense)', async () => {
     await wrapGroupActivity(groupActivityCreate(
       { actorId: 'fan-uid', type: 'expense_added', description: 'added Dinner (10.500 OMR)' },

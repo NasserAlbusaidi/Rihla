@@ -3017,7 +3017,7 @@ describe('Publish readiness Firestore rules', () => {
 
   test('#808 a client cannot forge server-only or unknown group activity types', async () => {
     const member = testEnv.authenticatedContext('member').firestore();
-    for (const type of ['expense_added', 'expense_edited', 'expense_deleted', 'member_left', 'event_settlement', 'group_settlement', 'totally_made_up']) {
+    for (const type of ['expense_added', 'expense_edited', 'expense_deleted', 'member_left', 'event_settlement', 'group_settlement', 'member_resplit', 'totally_made_up']) {
       const id = `ga-forge-${type}`;
       await assertFails(
         member.doc(`groups/g1/activity/${id}`).set(validGroupActivity({ id, type })),
