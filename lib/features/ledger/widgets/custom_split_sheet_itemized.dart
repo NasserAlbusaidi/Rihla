@@ -206,7 +206,7 @@ class _ItemizedBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ItemizedSectionHeader(
+        ItemizedSectionHeader(
           label: l10n.itemizedItemsHeader,
           action: l10n.itemizedAddItem,
           actionKey: const Key('itemized_add_item'),
@@ -268,7 +268,7 @@ class _ItemizedBody extends StatelessWidget {
           ),
         ],
         SizedBox(height: spacing.space16),
-        _ItemizedSectionHeader(label: l10n.itemizedEachOwes),
+        ItemizedSectionHeader(label: l10n.itemizedEachOwes),
         SizedBox(height: spacing.space8),
         Container(
           decoration: BoxDecoration(
@@ -280,7 +280,7 @@ class _ItemizedBody extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < participants.length; i++)
-                _OwesRow(
+                OwesRow(
                   name: participants[i].name,
                   colorKey: participants[i].id,
                   role: participants[i].role,
@@ -292,61 +292,6 @@ class _ItemizedBody extends StatelessWidget {
           ),
         ),
         SizedBox(height: spacing.space12),
-      ],
-    );
-  }
-}
-
-class _ItemizedSectionHeader extends StatelessWidget {
-  const _ItemizedSectionHeader({
-    required this.label,
-    this.action,
-    this.actionKey,
-    this.onAction,
-  });
-
-  final String label;
-  final String? action;
-  final Key? actionKey;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: AppTypography.caption(
-              context,
-              fontSize: 10,
-              letterSpacing: 1.5,
-              fontWeight: FontWeight.w700,
-              color: colors.textSecondary,
-            ),
-          ),
-        ),
-        if (action != null)
-          GestureDetector(
-            key: actionKey,
-            behavior: HitTestBehavior.opaque,
-            onTap: onAction,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                vertical: context.spacing.space4,
-                horizontal: context.spacing.space4,
-              ),
-              child: Text(
-                action!,
-                style: AppTypography.sans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: colors.primaryDark,
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -558,7 +503,7 @@ class _AssigneeSummary extends StatelessWidget {
       },
       child: Row(
         children: [
-          if (selected.isNotEmpty) _MiniAvatarStack(participants: selected),
+          if (selected.isNotEmpty) MiniAvatarStack(participants: selected),
           if (selected.isNotEmpty) SizedBox(width: context.spacing.space8),
           Flexible(
             child: Text(
@@ -574,118 +519,6 @@ class _AssigneeSummary extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniAvatarStack extends StatelessWidget {
-  const _MiniAvatarStack({required this.participants});
-
-  final List<SplitParticipant> participants;
-
-  @override
-  Widget build(BuildContext context) {
-    const max = 4;
-    final shown = participants.take(max).toList();
-    return SizedBox(
-      height: 20,
-      width: 20.0 + (shown.length - 1) * 13,
-      child: Stack(
-        children: [
-          for (var i = 0; i < shown.length; i++)
-            PositionedDirectional(
-              start: i * 13.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: context.colors.cardSurface,
-                    width: 1.5,
-                  ),
-                ),
-                // #1168: colorKey = participant.id (== member userId).
-                child: RAvatar(
-                  name: shown[i].name,
-                  size: 18,
-                  colorKey: shown[i].id,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OwesRow extends StatelessWidget {
-  const _OwesRow({
-    required this.name,
-    this.colorKey,
-    required this.role,
-    required this.owed,
-    required this.currency,
-    required this.showDivider,
-  });
-
-  final String name;
-
-  /// Participant id (== member userId, #1168) — keys the avatar's palette
-  /// slot on stable identity instead of the display name.
-  final String? colorKey;
-
-  final String? role;
-  final Decimal owed;
-  final String currency;
-  final bool showDivider;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: context.spacing.space12),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: showDivider ? colors.rule : Colors.transparent,
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          RAvatar(name: name, size: 28, colorKey: colorKey),
-          SizedBox(width: context.spacing.space12),
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    name,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.sans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-                if (role != null) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    role!,
-                    style: AppTypography.sans(
-                      fontSize: 11,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          SizedBox(width: context.spacing.space12),
-          RAmount(value: owed, currency: currency, size: 13),
         ],
       ),
     );
@@ -900,7 +733,7 @@ class _AdjustmentsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ItemizedSectionHeader(
+        ItemizedSectionHeader(
           label: l10n.adjustmentsHeader,
           action: l10n.adjustmentAddAction,
           actionKey: const Key('itemized_add_adjustment'),
@@ -1190,7 +1023,7 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
                 ),
               ),
               SizedBox(height: spacing.space8),
-              _AllocationOption(
+              AllocationOption(
                 optionKey: const Key('adjustment_alloc_equal'),
                 label: l10n.adjustmentAllocEqual,
                 selected: draft.allocation == 'equal',
@@ -1199,7 +1032,7 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
                   setState(() => draft.allocation = 'equal');
                 },
               ),
-              _AllocationOption(
+              AllocationOption(
                 optionKey: const Key('adjustment_alloc_proportional'),
                 label: l10n.adjustmentAllocProportional,
                 selected: draft.allocation == 'proportional',
@@ -1227,7 +1060,7 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
               ),
               SizedBox(height: spacing.space8),
               // Proportional (default) — shared by what each person owes.
-              _AllocationOption(
+              AllocationOption(
                 optionKey: const Key('adjustment_alloc_proportional'),
                 label: l10n.adjustmentAllocProportional,
                 selected: draft.allocation != 'assigned',
@@ -1237,7 +1070,7 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
                 },
               ),
               // Assigned — borne only by a chosen subset (#605).
-              _AllocationOption(
+              AllocationOption(
                 optionKey: const Key('adjustment_alloc_assigned'),
                 label: l10n.adjustmentDiscountAssignedLabel,
                 selected: draft.allocation == 'assigned',
@@ -1266,7 +1099,7 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
                 ),
                 SizedBox(height: spacing.space4),
                 for (final p in widget.participants)
-                  _AdjustmentAssigneeTile(
+                  AdjustmentAssigneeTile(
                     participant: p,
                     selected: draft.participantIds.contains(p.id),
                     onTap: () {
@@ -1370,105 +1203,3 @@ class _AdjustmentTypeChip extends StatelessWidget {
   }
 }
 
-/// One member row in the assigned-discount picker (#605): checkbox + avatar +
-/// name, mirroring the item-assignee tile pattern. Toggles the draft subset.
-class _AdjustmentAssigneeTile extends StatelessWidget {
-  const _AdjustmentAssigneeTile({
-    required this.participant,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final SplitParticipant participant;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final spacing = context.spacing;
-    return InkWell(
-      key: Key('adjustment_assign_tile_${participant.id}'),
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: spacing.space24,
-          vertical: spacing.space8,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              selected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: selected ? colors.primary : colors.textSecondary,
-              size: 22,
-            ),
-            SizedBox(width: spacing.space12),
-            RAvatar(name: participant.name, size: 32, colorKey: participant.id),
-            SizedBox(width: spacing.space12),
-            Expanded(
-              child: Text(
-                participant.name,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.sans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AllocationOption extends StatelessWidget {
-  const _AllocationOption({
-    required this.optionKey,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Key optionKey;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final spacing = context.spacing;
-    return InkWell(
-      key: optionKey,
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: spacing.space24,
-          vertical: spacing.space12,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              selected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
-              color: selected ? colors.primary : colors.textSecondary,
-              size: 20,
-            ),
-            SizedBox(width: spacing.space12),
-            Text(
-              label,
-              style: AppTypography.sans(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
