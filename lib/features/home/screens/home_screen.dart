@@ -40,6 +40,9 @@ import '../widgets/bottom_nav_shell.dart';
 import '../widgets/group_balance_breakdown_sheet.dart';
 import '../widgets/group_glyph.dart';
 import '../widgets/guest_account_caption.dart';
+import '../widgets/home/greeting_strip.dart';
+import '../widgets/home/icon_circle.dart';
+import '../widgets/home/set_name_chip.dart';
 import '../widgets/journey_ticket_card.dart';
 
 /// Home dashboard — saffron travel-journal direction (v2.0).
@@ -125,7 +128,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          SliverToBoxAdapter(child: _GreetingStrip(name: _firstName())),
+          SliverToBoxAdapter(child: GreetingStrip(name: _firstName())),
           // #818 Wave 4.3: persistent guest-account explainer — the only
           // non-dismissible statement of the "lives on this phone" fact,
           // since the #285 backup nudge below can be dismissed forever.
@@ -624,7 +627,7 @@ class _TopBar extends ConsumerWidget {
                           constraints: BoxConstraints(
                             maxWidth: setNameChipMaxWidth,
                           ),
-                          child: _SetNameChip(
+                          child: SetNameChip(
                             onTap: () => _openEditNameSheet(context, ref),
                           ),
                         ),
@@ -633,7 +636,7 @@ class _TopBar extends ConsumerWidget {
                     const Spacer(),
                     // #900 friction #3 — PR-5b: global search entry point, left
                     // of the bell in the right cluster.
-                    _IconCircle(
+                    IconCircle(
                       key: HomeKeys.searchButton,
                       badgeKey: HomeKeys.searchButtonBadge,
                       icon: Iconsax.search_normal,
@@ -644,7 +647,7 @@ class _TopBar extends ConsumerWidget {
                       },
                     ),
                     SizedBox(width: context.spacing.space4),
-                    _IconCircle(
+                    IconCircle(
                       key: HomeKeys.activityBell,
                       badgeKey: HomeKeys.bellUnreadBadge,
                       icon: Iconsax.activity,
@@ -689,145 +692,6 @@ class _TopBar extends ConsumerWidget {
         onSave: (name) async {
           await ref.read(settingsProvider.notifier).setDeviceName(name);
         },
-      ),
-    );
-  }
-}
-
-/// Small saffron-tint pill beside the avatar prompting a first-run name
-/// (#818 Wave 4.1). Rendered only while [HomeScreen]'s deviceName is empty.
-class _SetNameChip extends StatelessWidget {
-  const _SetNameChip({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      key: HomeKeys.setNameChip,
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 4),
-        decoration: BoxDecoration(
-          color: colors.selectionFill,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(color: colors.saffronSoft),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Iconsax.edit_2, size: 13, color: colors.primary),
-            SizedBox(width: context.spacing.space4),
-            Flexible(
-              child: Text(
-                context.l10n.homeSetNameChip,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.sans(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: colors.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Ghost-variant icon button used in the home top bar. No background fill —
-/// just an icon in a 44×44 tap target (#1077 §4 floor; the wireframe's 40×40
-/// sat under it). The wireframe shows this as the notifications affordance on
-/// the right of the top bar.
-class _IconCircle extends StatelessWidget {
-  const _IconCircle({
-    super.key,
-    required this.icon,
-    required this.onTap,
-    required this.badgeKey,
-    this.showBadge = false,
-    this.semanticLabel,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  // #840 PR-4: drives the unread-dot Badge wrapping the icon below — the
-  // Badge itself is always present (mirroring bottom_nav_shell.dart's
-  // NavigationDestination icon) so `isLabelVisible` alone toggles the dot.
-  final bool showBadge;
-  final String? semanticLabel;
-
-  // PR-5b: the internal Badge's key is per-instance now (was hardcoded to
-  // HomeKeys.bellUnreadBadge) — a second _IconCircle (the search button)
-  // would otherwise collide on that key and break `find.byKey`/
-  // `tester.widget<Badge>` lookups for BOTH icons.
-  final Key badgeKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 22,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          // Center, not a bare tight box: with the dot visible Badge wraps
-          // its child in a Stack whose default alignment is topStart, so
-          // under tight 44×44 constraints the glyph pinned to the top-start
-          // corner — 10px off the badge-less glyph's centre-line. Centering
-          // sizes the Badge to the glyph and hugs the dot to its corner,
-          // matching bottom_nav_shell's NavigationDestination look.
-          child: Center(
-            child: Badge(
-              key: badgeKey,
-              isLabelVisible: showBadge,
-              smallSize: 8,
-              backgroundColor: colors.primary,
-              child: Icon(icon, size: 20, color: colors.textPrimary),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────── Greeting strip ────────────────
-
-class _GreetingStrip extends StatelessWidget {
-  const _GreetingStrip({required this.name});
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? context.l10n.homeGoodMorning
-        : hour < 17
-        ? context.l10n.homeGoodAfternoon
-        : context.l10n.homeGoodEvening;
-    return Padding(
-      key: HomeKeys.yourGroupsHeader,
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
-      child: Text(
-        context.l10n.homeGreeting(greeting, name).toUpperCase(),
-        style: AppTypography.caption(
-          context,
-          fontSize: 10,
-          color: colors.textSecondary,
-          letterSpacing: 2,
-        ),
       ),
     );
   }
