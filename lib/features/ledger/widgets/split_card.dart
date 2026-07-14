@@ -14,6 +14,9 @@ import '../../groups/services/member_name_resolver.dart';
 import '../models/expense_model.dart';
 import '../models/split_explanation.dart';
 import '../providers/expense_provider.dart';
+import 'split_card/field_label.dart';
+import 'split_card/mode_chip.dart';
+import 'split_card/payer_inline_row.dart';
 import 'split_scope_selector.dart';
 
 /// #485 / #627 perf seam — counts how often the card re-runs the
@@ -202,9 +205,9 @@ class _SplitCardState extends State<SplitCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Paid by — the single payer control ───────────────────────
-            _FieldLabel(l10n.editorPaidBy),
+            FieldLabel(l10n.editorPaidBy),
             const SizedBox(height: 8),
-            _PayerInlineRow(
+            PayerInlineRow(
               name: payerName,
               colorKey: payerId,
               onChange: widget.onChangePayer,
@@ -215,7 +218,7 @@ class _SplitCardState extends State<SplitCard> {
             // ── Who splits — plain-language scope ────────────────────────
             Row(
               children: [
-                Expanded(child: _FieldLabel(l10n.editorWhoSplits)),
+                Expanded(child: FieldLabel(l10n.editorWhoSplits)),
                 if (widget.scope == ExpenseScope.global)
                   Text(
                     l10n.editorEventDefault,
@@ -244,7 +247,7 @@ class _SplitCardState extends State<SplitCard> {
             const SizedBox(height: 18),
 
             // ── How — split mode ─────────────────────────────────────────
-            _FieldLabel(l10n.editorHow),
+            FieldLabel(l10n.editorHow),
             const SizedBox(height: 8),
             _ModeSegment(
               mode: widget.splitMode,
@@ -361,84 +364,6 @@ class _SplitCardState extends State<SplitCard> {
   }
 }
 
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: AppTypography.caption(
-        context,
-        fontSize: 10.5,
-        letterSpacing: 1.0,
-        fontWeight: FontWeight.w700,
-        color: context.colors.textSecondary,
-      ),
-    );
-  }
-}
-
-class _PayerInlineRow extends StatelessWidget {
-  const _PayerInlineRow({
-    required this.name,
-    this.colorKey,
-    required this.onChange,
-  });
-
-  final String name;
-
-  /// Payer participant id (== userId, #1168) — keys the avatar's palette
-  /// slot on stable identity instead of the display name.
-  final String? colorKey;
-
-  final VoidCallback onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onChange,
-      child: Row(
-        children: [
-          RAvatar(name: name, size: 30, colorKey: colorKey),
-          SizedBox(width: context.spacing.space12),
-          Expanded(
-            child: Text(
-              name,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.sans(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: colors.inputFill,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: colors.rule2),
-            ),
-            child: Text(
-              context.l10n.editorChange,
-              style: AppTypography.sans(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: colors.primaryDark,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ScopeSegment extends StatelessWidget {
   const _ScopeSegment({required this.scope, required this.onChanged});
 
@@ -505,7 +430,7 @@ class _ModeSegment extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final (m, icon, label) in modes)
-                _ModeChip(
+                ModeChip(
                   icon: icon,
                   label: label,
                   selected: !isItemized && m == mode,
@@ -513,7 +438,7 @@ class _ModeSegment extends StatelessWidget {
                 ),
               // Itemized produces an exact split under the hood; the parent
               // opens the itemized editor directly (no "pick Exact first").
-              _ModeChip(
+              ModeChip(
                 icon: Iconsax.receipt_item,
                 label: l10n.editorSplitItemized,
                 selected: isItemized,
@@ -524,81 +449,6 @@ class _ModeSegment extends StatelessWidget {
           const SizedBox(height: 10),
           _ModeHelp(mode: mode, isItemized: isItemized),
         ],
-      ),
-    );
-  }
-}
-
-/// One icon+label chip in the "How" control. Selected → saffron selection fill
-/// + primary border/icon; otherwise the neutral input surface.
-class _ModeChip extends StatelessWidget {
-  const _ModeChip({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      onTap: onTap,
-      excludeSemantics: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        // #1067 §4: the opaque wrapper supplies the 44dp hit floor; the
-        // widthFactor keeps this Wrap child intrinsic-width and its painted
-        // pill vertically compact.
-        child: SizedBox(
-          height: 44,
-          child: Center(
-            widthFactor: 1,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 14, 8),
-              decoration: BoxDecoration(
-                color: selected ? colors.selectionFill : colors.inputFill,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected ? colors.primary : colors.rule,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: selected
-                        ? colors.primaryDark
-                        : colors.textSecondary,
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    label,
-                    style: AppTypography.sans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: selected
-                          ? colors.textPrimary
-                          : colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
