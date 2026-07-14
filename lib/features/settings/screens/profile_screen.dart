@@ -45,7 +45,10 @@ import '../widgets/profile/backup_account_card.dart';
 import '../widgets/profile/backup_status_chip.dart';
 import '../widgets/profile/ghost_icon.dart';
 import '../widgets/profile/identity_chip.dart';
+import '../widgets/profile/notification_pref_row.dart';
 import '../widgets/profile/pending_recovery_banner.dart';
+import '../widgets/profile/pref_icon.dart';
+import '../widgets/profile/pref_row.dart';
 import '../widgets/profile/rows_card.dart';
 import '../widgets/profile/section_label.dart';
 import '../widgets/profile/stats_grid.dart';
@@ -395,8 +398,8 @@ class _PreferencesCard extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: RowsCard(
         rows: [
-          _NotificationPrefRow(
-            leading: _PrefIcon(
+          NotificationPrefRow(
+            leading: PrefIcon(
               icon: Iconsax.notification,
               bg: colors.paperDeep,
             ),
@@ -425,14 +428,14 @@ class _PreferencesCard extends ConsumerWidget {
           // #61/#382: no global profile currency. Groups choose their default
           // currency at create time, expenses can carry their own supported
           // currency, and balances render per-currency buckets with no FX.
-          _PrefRow(
+          PrefRow(
             leading: _PrefIconLetter(letter: 'Aa', bg: colors.saffronTint),
             label: context.l10n.profilePreferencesLanguage,
             trailingText: _languageTrailing(settings.languageCode),
             onTap: () => LanguagePickerSheet.show(context),
           ),
-          _PrefRow(
-            leading: _PrefIcon(
+          PrefRow(
+            leading: PrefIcon(
               icon: Iconsax.percentage_square,
               bg: colors.cardSoft,
             ),
@@ -462,7 +465,7 @@ class _AboutCard extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: RowsCard(
         rows: [
-          _PrefRow(
+          PrefRow(
             label: context.l10n.profileAboutHelpCenter,
             trailing: DirectionalIcon(
               Iconsax.arrow_right_3,
@@ -471,7 +474,7 @@ class _AboutCard extends ConsumerWidget {
             ),
             onTap: () => _openExternalUrl(context, AppLinks.helpUrl),
           ),
-          _PrefRow(
+          PrefRow(
             tileKey: ProfileKeys.feedbackTile,
             label: context.l10n.profileAboutSendFeedbackRow,
             trailing: DirectionalIcon(
@@ -481,7 +484,7 @@ class _AboutCard extends ConsumerWidget {
             ),
             onTap: () => _sendFeedback(context, ref),
           ),
-          _PrefRow(
+          PrefRow(
             tileKey: ProfileKeys.licensesTile,
             label: context.l10n.profileAboutTermsPrivacy,
             trailing: DirectionalIcon(
@@ -585,9 +588,9 @@ class _AccountCard extends ConsumerWidget {
       child: RowsCard(
         rows: _stripLastDivider([
           if (googleAccount != null)
-            _PrefRow(
+            PrefRow(
               tileKey: ProfileKeys.googleAccountTile,
-              leading: _PrefIcon(
+              leading: PrefIcon(
                 icon: Iconsax.shield_tick,
                 bg: colors.cardSoft,
               ),
@@ -604,9 +607,9 @@ class _AccountCard extends ConsumerWidget {
               divider: true,
             ),
           if (isAnonymous)
-            _PrefRow(
+            PrefRow(
               tileKey: ProfileKeys.googleLinkTile,
-              leading: _PrefIcon(
+              leading: PrefIcon(
                 icon: Iconsax.shield_tick,
                 bg: colors.cardSoft,
               ),
@@ -619,9 +622,9 @@ class _AccountCard extends ConsumerWidget {
               onTap: () => showDurableCredentialSheet(context),
               divider: true,
             ),
-          _PrefRow(
+          PrefRow(
             tileKey: ProfileKeys.linkedEmailTile,
-            leading: _PrefIcon(icon: Iconsax.sms, bg: colors.cardSoft),
+            leading: PrefIcon(icon: Iconsax.sms, bg: colors.cardSoft),
             label: context.l10n.profileAccountLinkedEmail,
             trailing: isLinked
                 ? Text(
@@ -654,9 +657,9 @@ class _AccountCard extends ConsumerWidget {
             divider: true,
           ),
           if (isDurable)
-            _PrefRow(
+            PrefRow(
               tileKey: ProfileKeys.signOutDeviceTile,
-              leading: _PrefIcon(icon: Iconsax.logout, bg: colors.cardSoft),
+              leading: PrefIcon(icon: Iconsax.logout, bg: colors.cardSoft),
               label: context.l10n.profileAccountSignOut,
               trailing: DirectionalIcon(
                 Iconsax.arrow_right_3,
@@ -667,9 +670,9 @@ class _AccountCard extends ConsumerWidget {
               divider: true,
             ),
           if (showRestore) ...[
-            _PrefRow(
+            PrefRow(
               tileKey: ProfileKeys.profileRestoreGoogleTile,
-              leading: _PrefIcon(icon: Iconsax.refresh, bg: colors.cardSoft),
+              leading: PrefIcon(icon: Iconsax.refresh, bg: colors.cardSoft),
               label: context.l10n.homeRestoreWithGoogle,
               trailing: DirectionalIcon(
                 Iconsax.arrow_right_3,
@@ -679,9 +682,9 @@ class _AccountCard extends ConsumerWidget {
               onTap: () => triggerGoogleRestore(context, ref),
               divider: true,
             ),
-            _PrefRow(
+            PrefRow(
               tileKey: ProfileKeys.profileRestoreEmailTile,
-              leading: _PrefIcon(
+              leading: PrefIcon(
                 icon: Iconsax.sms_tracking,
                 bg: colors.cardSoft,
               ),
@@ -773,9 +776,9 @@ class _DangerZoneCard extends ConsumerWidget {
       child: RowsCard(
         key: ProfileKeys.dangerZoneCard,
         rows: [
-          _PrefRow(
+          PrefRow(
             tileKey: ProfileKeys.deleteAccountTile,
-            leading: _PrefIcon(icon: Iconsax.trash, bg: colors.cardSoft),
+            leading: PrefIcon(icon: Iconsax.trash, bg: colors.cardSoft),
             label: context.l10n.profileAccountDelete,
             trailing: Text(
               context.l10n.profileAccountDeletePermanent,
@@ -829,231 +832,12 @@ class _VersionStamp extends ConsumerWidget {
 /// Returns [rows] with the last row's bottom divider removed, so an account
 /// card never ends on a stray hairline no matter which conditional row is last
 /// (#487 bullet 3 — the trailing row varies with account state).
-List<Widget> _stripLastDivider(List<_PrefRow> rows) {
+List<Widget> _stripLastDivider(List<PrefRow> rows) {
   if (rows.isEmpty) return rows;
   return [
     ...rows.sublist(0, rows.length - 1),
     rows.last.copyWith(divider: false),
   ];
-}
-
-class _NotificationPrefRow extends StatelessWidget {
-  const _NotificationPrefRow({
-    required this.leading,
-    required this.value,
-    required this.permissionDenied,
-    required this.errored,
-    required this.onChanged,
-    required this.onOpenSettings,
-    required this.onRetry,
-  });
-
-  final Widget leading;
-  final bool value;
-
-  /// OS permission is denied. The control stays interactive but routes to the
-  /// OS settings page instead of toggling the pref — the toggle can't re-request
-  /// permission itself on Android 13+ (#470).
-  final bool permissionDenied;
-
-  /// Registration failed (a transient FCM/Firestore token-write error): the
-  /// user is opted-in but receives nothing. The switch reads OFF and a tap
-  /// retries instead of toggling the pref (#482). Mutually exclusive with
-  /// [permissionDenied]; denial takes precedence if both somehow hold.
-  final bool errored;
-  final ValueChanged<bool> onChanged;
-  final VoidCallback onOpenSettings;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    // Denied → deep-link to OS settings; errored → retry; otherwise toggle the
-    // pref. In the first two the switch stays visually OFF (nothing is being
-    // delivered), so a tap is a recovery action, not a value flip.
-    final String subtitle;
-    final VoidCallback onTap;
-    if (permissionDenied) {
-      subtitle = context.l10n.profileNotificationsDisabledHint;
-      onTap = onOpenSettings;
-    } else if (errored) {
-      subtitle = context.l10n.profileNotificationsErrorHint;
-      onTap = onRetry;
-    } else {
-      subtitle = context.l10n.profileNotificationsSubtitle;
-      onTap = () => onChanged(!value);
-    }
-    return MergeSemantics(
-      child: Semantics(
-        button: true,
-        child: InkWell(
-          key: ProfileKeys.notificationToggleTile,
-          onTap: onTap,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Row(
-                  children: [
-                    leading,
-                    SizedBox(width: context.spacing.space12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            context.l10n.profilePreferencesNotifications,
-                            style: AppTypography.sans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle,
-                            style: AppTypography.sans(
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch.adaptive(
-                      key: ProfileKeys.notificationSwitch,
-                      value: value,
-                      onChanged: permissionDenied
-                          ? (_) => onOpenSettings()
-                          : errored
-                          ? (_) => onRetry()
-                          : onChanged,
-                      activeThumbColor: colors.primary,
-                      activeTrackColor: colors.primary,
-                      inactiveTrackColor: colors.cardSoft,
-                    ),
-                  ],
-                ),
-              ),
-              Container(height: 0.5, color: colors.rule),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrefRow extends StatelessWidget {
-  const _PrefRow({
-    required this.label,
-    this.leading,
-    this.trailingText,
-    this.trailing,
-    this.onTap,
-    this.divider = true,
-    this.tileKey,
-  });
-
-  final Widget? leading;
-  final String label;
-  final String? trailingText;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-  final bool divider;
-  final Key? tileKey;
-
-  _PrefRow copyWith({bool? divider}) => _PrefRow(
-    leading: leading,
-    label: label,
-    trailingText: trailingText,
-    trailing: trailing,
-    onTap: onTap,
-    divider: divider ?? this.divider,
-    tileKey: tileKey,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final trailingWidget =
-        trailing ??
-        (trailingText != null
-            // #1184: keep the Flexible so a very long value ellipsizes instead
-            // of overflowing, but Align the (short) value to the trailing edge —
-            // a bare loose Flexible sizes to the text and parks it at the row's
-            // centre. AlignmentDirectional mirrors for Arabic RTL.
-            ? Flexible(
-                child: Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Text(
-                    trailingText!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.sans(
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ),
-              )
-            : const SizedBox.shrink());
-
-    return InkWell(
-      key: tileKey,
-      onTap: onTap,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(
-              children: [
-                if (leading != null) ...[
-                  leading!,
-                  SizedBox(width: context.spacing.space12),
-                ],
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.sans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-                trailingWidget,
-              ],
-            ),
-          ),
-          if (divider) Container(height: 0.5, color: colors.rule),
-        ],
-      ),
-    );
-  }
-}
-
-class _PrefIcon extends StatelessWidget {
-  const _PrefIcon({required this.icon, required this.bg});
-  final IconData icon;
-  final Color bg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      alignment: Alignment.center,
-      child: Icon(icon, size: 16, color: context.colors.textPrimary),
-    );
-  }
 }
 
 class _PrefIconLetter extends StatelessWidget {
