@@ -853,4 +853,159 @@ describe('joinGroupByInviteCode — member-join notification (#53)', () => {
     const memberSnap = await getFirestore().doc('groups/g1/members/alice').get();
     expect(memberSnap.exists).toBe(true);
   });
+
+  // #1059 stage 2: joining fans the member into events — when that re-splits
+  // live equal expenses, the callable discloses with ONE server-authored
+  // member_resplit row (post-commit, best-effort). Distinct from the CLIENT's
+  // best-effort member_joined row — both appear on a fresh join, on purpose.
+  describe('resplit disclosure (#1059)', () => {
+    const activityRows = async () =>
+      (await getFirestore().collection('groups/g1/activity').get()).docs;
+
+    async function seedExpense(
+      eventId: string,
+      expenseId: string,
+      data: Record<string, unknown> = {},
+    ): Promise<void> {
+      await getFirestore().doc(`groups/g1/events/${eventId}/expenses/${expenseId}`).set({
+        id: expenseId,
+        eventId,
+        createdBy: 'owner',
+        payerParticipantId: 'owner',
+        amountFils: 12000,
+        currency: 'OMR',
+        description: 'expense',
+        scope: 'global',
+        customSplitParticipants: [],
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: '2026-01-06T00:00:00.000Z',
+        ...data,
+      });
+    }
+
+    test('fresh join over a re-splitting event → one member_resplit row (joined variant)', async () => {
+      await seedEvent('e1');
+      await seedExpense('e1', 'x1');
+
+      await wrapped({
+        data: { inviteCode: 'ABC123', displayName: 'Alice' },
+        auth: { uid: 'alice' },
+      } as any);
+
+      const rows = await activityRows();
+      expect(rows).toHaveLength(1);
+      const doc = rows[0].data();
+      expect(rows[0].id).toMatch(/^resplit_alice_[0-9a-f]{12}$/);
+      expect(doc.type).toBe('member_resplit');
+      expect(doc.actorId).toBe('alice');
+      expect(doc.actorName).toBe('Alice');
+      // PREDICATE — the client row chrome prepends actorName ("Alice joined…").
+      expect(doc.description).toBe('joined Event e1 — equal splits recalculated');
+      expect(doc.metadata).toEqual({
+        memberAction: 'joined',
+        memberName: 'Alice',
+        affectedEventCount: 1,
+        eventId: 'e1',
+        eventName: 'Event e1',
+      });
+      expect(typeof doc.timestamp).toBe('string');
+    });
+
+    test('idempotent rejoin with synced events → no row', async () => {
+      const db = getFirestore();
+      await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+      await db.doc('groups/g1/members/alice').set({
+        id: 'alice',
+        userId: 'alice',
+        displayName: 'Alice',
+        role: 'MEMBER',
+        joinedAt: new Date(),
+        isShadow: false,
+      });
+      await seedEvent('synced', {
+        participantIds: ['owner', 'alice'],
+        participantNames: { owner: 'Owner', alice: 'Alice' },
+      });
+      await seedExpense('synced', 'x1');
+
+      await wrapped({
+        data: { inviteCode: 'ABC123', displayName: 'Alice' },
+        auth: { uid: 'alice' },
+      } as any);
+
+      expect(await activityRows()).toHaveLength(0);
+    });
+
+    test('departure-window rejoin discloses ONLY the events that newly gained the member', async () => {
+      // Alice previously joined (still in e1.participantIds — leave never
+      // prunes, #1131) and left (out of memberIds). e2 was created during the
+      // departure window WITHOUT her. Both carry live equal expenses; only e2
+      // re-splits on her rejoin.
+      await seedEvent('e1', {
+        participantIds: ['owner', 'alice'],
+        participantNames: { owner: 'Owner', alice: 'Alice' },
+      });
+      await seedEvent('e2');
+      await seedExpense('e1', 'x1');
+      await seedExpense('e2', 'x1');
+
+      await wrapped({
+        data: { inviteCode: 'ABC123', displayName: 'Alice' },
+        auth: { uid: 'alice' },
+      } as any);
+
+      const rows = await activityRows();
+      expect(rows).toHaveLength(1);
+      const doc = rows[0].data();
+      expect(doc.metadata).toEqual({
+        memberAction: 'joined',
+        memberName: 'Alice',
+        affectedEventCount: 1,
+        eventId: 'e2',
+        eventName: 'Event e2',
+      });
+    });
+
+    test('stored-distribution-only group → no row', async () => {
+      await seedEvent('e1');
+      await seedExpense('e1', 'x1', {
+        splitMode: 'exact',
+        splitDistribution: { owner: 12000 },
+      });
+
+      await wrapped({
+        data: { inviteCode: 'ABC123', displayName: 'Alice' },
+        auth: { uid: 'alice' },
+      } as any);
+
+      expect(await activityRows()).toHaveLength(0);
+    });
+
+    test('already-member stale-event HEAL that re-splits also discloses (deliberate)', async () => {
+      // The heal grows the event's universe exactly like a fresh fan-in — the
+      // balance shift is real, so the disclosure is too.
+      const db = getFirestore();
+      await db.doc('groups/g1').update({ memberIds: ['owner', 'alice'] });
+      await db.doc('groups/g1/members/alice').set({
+        id: 'alice',
+        userId: 'alice',
+        displayName: 'Alice',
+        role: 'MEMBER',
+        joinedAt: new Date(),
+        isShadow: false,
+      });
+      await seedEvent('stale', { participantIds: ['owner'], participantNames: { owner: 'Owner' } });
+      await seedExpense('stale', 'x1');
+
+      await wrapped({
+        data: { inviteCode: 'ABC123', displayName: 'Alice' },
+        auth: { uid: 'alice' },
+      } as any);
+
+      const rows = await activityRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].data().metadata.eventId).toBe('stale');
+    });
+  });
 });

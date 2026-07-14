@@ -18,6 +18,11 @@ import {
   applyEventFanIn,
   collectEventFanIn,
 } from './shared/eventFanIn';
+import {
+  FanInEventCapture,
+  detectResplitEvents,
+  writeResplitActivity,
+} from './shared/resplitDisclosure';
 
 export interface JoinGroupByInviteCodeInput {
   inviteCode: string;
@@ -211,6 +216,9 @@ export const joinGroupByInviteCode = onCall<
     let didJoin = false;
     let existingMemberIds: string[] = [];
     let groupName = '';
+    // #1059 — same last-run-wins capture: which events the fan-in actually
+    // GREW (addParticipantId), for the post-commit re-split disclosure.
+    let fanInCaptures: FanInEventCapture[] = [];
 
     let groupId: string;
     try {
@@ -328,6 +336,25 @@ export const joinGroupByInviteCode = onCall<
         const eventFanoutUpdates: EventFanInUpdate[] =
           collectEventFanIn(eventsSnap, uid, displayName);
 
+        // #1059: only updates that GROW participantIds can re-split (a
+        // name-refresh-only update cannot). A malformed event name maps to ''
+        // (forces the count copy, no deep-link metadata). Includes the
+        // stale-event HEAL of an already-member rejoin on purpose — that heal
+        // grows the universe exactly like a fresh fan-in.
+        const eventNamesById = new Map<string, string>(
+          eventsSnap.docs.map((eventSnap) => {
+            const name = eventSnap.get('name');
+            return [eventSnap.id, typeof name === 'string' ? name.trim() : ''];
+          }),
+        );
+        fanInCaptures = eventFanoutUpdates
+          .filter((update) => update.addParticipantId)
+          .map((update) => ({
+            ref: update.ref,
+            eventId: update.ref.id,
+            eventName: eventNamesById.get(update.ref.id) ?? '',
+          }));
+
         if (!memberIds.includes(uid)) {
           // #1144 R5: maintained alongside memberIds (self-heals legacy
           // groups). Must run before the tx writes below (it may READ the
@@ -377,6 +404,24 @@ export const joinGroupByInviteCode = onCall<
 
     await db.doc(`joinAttempts/${uid}`).delete();
     logger.info('group-join succeeded', { uid, groupId });
+
+    // #1059 stage 2: post-commit re-split disclosure — the join is already
+    // committed, so nothing here may throw out of the callable; a lost row is
+    // the accepted degrade (never a fabricated one). Deliberately IN ADDITION
+    // to the client's best-effort member_joined row: different information.
+    try {
+      const detection = await detectResplitEvents(fanInCaptures);
+      await writeResplitActivity(db, groupId, {
+        memberId: uid,
+        memberName: displayName,
+        actorId: uid,
+        actorName: displayName,
+        memberAction: 'joined',
+        detection,
+      });
+    } catch (error) {
+      logger.warn('resplit disclosure failed', { groupId, uid, error: String(error) });
+    }
 
     // #53 — fire-and-forget member-join push, ONLY on an actual join (G1).
     // MUST NOT throw: the join is already committed; a notification failure
