@@ -8,7 +8,6 @@ import '../../../core/models/split_mode.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../shared/widgets/r_avatar.dart';
 import '../../events/models/event_model.dart';
 import '../../groups/services/member_name_resolver.dart';
 import '../models/expense_model.dart';
@@ -16,7 +15,10 @@ import '../models/split_explanation.dart';
 import '../providers/expense_provider.dart';
 import 'split_card/field_label.dart';
 import 'split_card/mode_chip.dart';
+import 'split_card/mode_help.dart';
 import 'split_card/payer_inline_row.dart';
+import 'split_card/segmented.dart';
+import 'split_card/split_person_row.dart';
 import 'split_scope_selector.dart';
 
 /// #485 / #627 perf seam — counts how often the card re-runs the
@@ -303,7 +305,7 @@ class _SplitCardState extends State<SplitCard> {
     // #242/#853: every mode reads the REAL per-person owed from the allocator
     // (equal included), so the row figures reconcile to the total.
     final share = _owed![id] ?? Decimal.zero;
-    return _SplitPersonRow(
+    return SplitPersonRow(
       name: name,
       colorKey: id,
       // #289: compact disambiguated label — first name, keeping the `(#…)`
@@ -375,7 +377,7 @@ class _ScopeSegment extends StatelessWidget {
     final l10n = context.l10n;
     // subGroup is legacy/dead — collapse it onto "Everyone".
     final selected = scope == ExpenseScope.subGroup ? ExpenseScope.global : scope;
-    return _Segmented<ExpenseScope>(
+    return Segmented<ExpenseScope>(
       value: selected,
       onChanged: onChanged,
       options: [
@@ -447,216 +449,7 @@ class _ModeSegment extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          _ModeHelp(mode: mode, isItemized: isItemized),
-        ],
-      ),
-    );
-  }
-}
-
-/// The one-line explainer under the chips for the currently selected mode —
-/// the "clear" half of "every option clear and visible".
-class _ModeHelp extends StatelessWidget {
-  const _ModeHelp({required this.mode, required this.isItemized});
-
-  final SplitMode mode;
-  final bool isItemized;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final String text;
-    if (isItemized) {
-      text = l10n.splitModeHelpItemized;
-    } else {
-      switch (mode) {
-        case SplitMode.equally:
-          text = l10n.splitModeHelpEqually;
-        case SplitMode.shares:
-          text = l10n.splitModeHelpShares;
-        case SplitMode.exact:
-          text = l10n.splitModeHelpExact;
-        case SplitMode.percent:
-          text = l10n.splitModeHelpPercent;
-      }
-    }
-    return Text(
-      text,
-      style: AppTypography.sans(
-        fontSize: 12,
-        color: context.colors.textSecondary,
-      ),
-    );
-  }
-}
-
-/// Generic inline segmented control matching the signed-off #485 mockup. Equal
-/// weight per segment; the active one lifts onto the card surface.
-class _Segmented<T> extends StatelessWidget {
-  const _Segmented({
-    required this.value,
-    required this.options,
-    required this.onChanged,
-    this.enabled = true,
-  });
-
-  final T value;
-  final List<(T, String)> options;
-  final ValueChanged<T> onChanged;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Opacity(
-      opacity: enabled ? 1 : 0.5,
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: colors.inputFill,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: colors.rule),
-        ),
-        child: Row(
-          children: [
-            for (final (optValue, label) in options)
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  selected: optValue == value,
-                  label: label,
-                  onTap: enabled ? () => onChanged(optValue) : null,
-                  excludeSemantics: true,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: enabled ? () => onChanged(optValue) : null,
-                    // #1077 §4: the opaque wrapper supplies the 44dp hit
-                    // floor (mirrors _ModeChip); Center keeps the painted
-                    // pill at its compact vertical-8 padding while the
-                    // infinite width still fills the equal-weight segment.
-                    child: SizedBox(
-                      height: 44,
-                      child: Center(
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: optValue == value
-                                ? colors.cardSurface
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: optValue == value
-                                ? context.shadows.raised
-                                : null,
-                          ),
-                          child: Text(
-                            label,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.sans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: optValue == value
-                                  ? colors.textPrimary
-                                  : colors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SplitPersonRow extends StatelessWidget {
-  const _SplitPersonRow({
-    required this.name,
-    this.colorKey,
-    required this.label,
-    required this.share,
-    required this.currency,
-    required this.isPayer,
-    required this.isSelf,
-  });
-
-  /// Full disambiguated name — used for initials.
-  final String name;
-
-  /// Participant id (== member userId, #1168) — keys the avatar's palette
-  /// slot on stable identity instead of the display name.
-  final String? colorKey;
-
-  /// Compact display label (first name + `(#…)` only on collision).
-  final String label;
-  final Decimal share;
-  final String currency;
-  final bool isPayer;
-  final bool isSelf;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: isSelf ? 2 : 0),
-      padding: EdgeInsetsDirectional.fromSTEB(isSelf ? 8 : 0, 9, isSelf ? 8 : 0, 9),
-      decoration: isSelf
-          ? BoxDecoration(
-              color: colors.selectionFill,
-              borderRadius: BorderRadius.circular(10),
-            )
-          : null,
-      child: Row(
-        children: [
-          RAvatar(name: name, size: 30, colorKey: colorKey),
-          SizedBox(width: context.spacing.space12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.sans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                if (isPayer) ...[
-                  const SizedBox(height: 1),
-                  Text(
-                    context.l10n.editorPaidRole,
-                    style: AppTypography.sans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.primaryDark,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          // Wrapped LTR so the amount can't bidi-reorder in Arabic (#151).
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Text(
-              AppFormatters.formatCurrency(share, currency),
-              maxLines: 1,
-              softWrap: false,
-              style: AppTypography.mono(
-                fontSize: 14,
-                color: colors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          ModeHelp(mode: mode, isItemized: isItemized),
         ],
       ),
     );
