@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -15,11 +14,9 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/scroll_under_header.dart';
 import '../../../shared/widgets/section_header.dart';
-import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/wordmark_logo.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../activity/utils/activity_nav.dart';
@@ -27,7 +24,6 @@ import '../../auth/widgets/google_restore_action.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
-import '../../ledger/providers/expense_provider.dart';
 import '../../settings/widgets/edit_name_bottom_sheet.dart';
 import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
@@ -38,12 +34,12 @@ import '../widgets/add_expense_fab.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
 import '../widgets/group_balance_breakdown_sheet.dart';
-import '../widgets/group_glyph.dart';
 import '../widgets/guest_account_caption.dart';
 import '../widgets/home/greeting_strip.dart';
+import '../widgets/home/group_row.dart';
 import '../widgets/home/icon_circle.dart';
+import '../widgets/home/journeys_strip.dart';
 import '../widgets/home/set_name_chip.dart';
-import '../widgets/journey_ticket_card.dart';
 
 /// Home dashboard — saffron travel-journal direction (v2.0).
 ///
@@ -173,7 +169,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           SliverToBoxAdapter(
-            child: _JourneysStrip(journeysAsync: journeysAsync),
+            child: JourneysStrip(journeysAsync: journeysAsync),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
@@ -192,7 +188,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final isLast = index == groups.length - 1;
-                return _GroupRow(
+                return GroupRow(
                       group: groups[index],
                       isLast: isLast,
                       isPlaceholder: isPlaceholder,
@@ -697,285 +693,3 @@ class _TopBar extends ConsumerWidget {
   }
 }
 
-// ──────────────── Journeys strip ────────────────
-
-class _JourneysStrip extends StatelessWidget {
-  const _JourneysStrip({required this.journeysAsync});
-  final AsyncValue<List<ActiveJourneyEntry>> journeysAsync;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return journeysAsync.when(
-      data: (entries) {
-        if (entries.isEmpty) {
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 18),
-              decoration: BoxDecoration(
-                color: colors.cardSoft,
-                borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-                border: Border.all(color: colors.rule, width: 0.5),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Iconsax.calendar_1,
-                    size: 18,
-                    color: colors.textSecondary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      context.l10n.homeNoUpcomingJourneys,
-                      style: AppTypography.sans(
-                        fontSize: 13,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: [
-              for (var i = 0; i < entries.length; i++) ...[
-                // #626: isolate each card's procedural cover + frosted
-                // date-pill blur raster — the strip is an eager Row in a
-                // SingleChildScrollView, which adds no per-child boundary.
-                RepaintBoundary(
-                  child: JourneyTicketCard(
-                    entry: entries[i],
-                    // Deliberately SINGLE push (#996): an event-intent tap —
-                    // Back returns here, not to the group overview. Don't
-                    // "fix" this into the group-row double-push.
-                    onTap: () => context.push(
-                      '/group/${entries[i].groupId}/event/${entries[i].eventId}',
-                    ),
-                  ),
-                ),
-                if (i < entries.length - 1)
-                  SizedBox(width: context.spacing.space12),
-              ],
-            ],
-          ),
-        );
-      },
-      loading: () => SizedBox(
-        height: 200,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: colors.cardSoft,
-              borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-            ),
-          ),
-        ),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-}
-
-// ──────────────── Group row ────────────────
-
-class _GroupRow extends ConsumerWidget {
-  const _GroupRow({
-    required this.group,
-    required this.onTap,
-    required this.isLast,
-    this.isPlaceholder = false,
-  });
-
-  final Group group;
-  final VoidCallback onTap;
-  final bool isLast;
-
-  /// A skeleton stub row (fake `sk1`/`sk2` gid). It must NOT watch the balance
-  /// facade — that family is keyed by gid, so watching it with a sentinel id
-  /// opens a real `groups/sk1/aggregates/balance` listen that fails
-  /// PERMISSION_DENIED and (non-autoDispose) leaks for the session (#1017).
-  final bool isPlaceholder;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    // #366: source-agnostic facade — the server aggregate when online, the
-    // #104 once-path otherwise. The facade slices by the current uid itself.
-    // #1017: placeholder rows render as loading without watching (see field).
-    final balanceAsync = isPlaceholder
-        ? const AsyncValue<HomeGroupBalance>.loading()
-        : ref.watch(homeGroupBalanceProvider(group.id));
-    final memberCount = group.memberIds.length;
-    // #997: a loading/errored facade has no reliable event count or money —
-    // rendering "0 events · settled" from the default would be a false
-    // negative. Only a resolved AsyncValue (data, even if partial) drives the
-    // subtitle event count and the trailing amount/caption below.
-    final isLoading = balanceAsync.isLoading && !balanceAsync.hasValue;
-    final isError = balanceAsync.hasError && !balanceAsync.hasValue;
-    final homeBalance = isLoading || isError ? null : balanceAsync.valueOrNull;
-    final subtitle = homeBalance == null
-        ? context.l10n.homeGroupSubtitlePending(memberCount)
-        : context.l10n.homeGroupSubtitle(memberCount, homeBalance.eventCount);
-
-    // Every non-zero bucket renders as its own line, GCC-first, each labeled
-    // with its own currency (honest — D11). Settled ⇔ every bucket zero or
-    // the map is empty (D10).
-    final lines = nonZeroNetsGccFirst(
-      homeBalance?.userNet ?? const <String, Decimal>{},
-    );
-    final allPositive =
-        lines.isNotEmpty && lines.every((l) => l.net > Decimal.zero);
-    final allNegative =
-        lines.isNotEmpty && lines.every((l) => l.net < Decimal.zero);
-    // L7: tri-state caption only when all non-zero lines share one sign;
-    // mixed signs → omitted (signed, toned amounts self-explain).
-    final String? balanceCaption = lines.isEmpty
-        ? context.l10n.homeSettled
-        : allPositive
-        ? context.l10n.homeTheyOweYou
-        : allNegative
-        ? context.l10n.homeYouOwe
-        : null;
-
-    final Widget trailing;
-    if (isLoading) {
-      trailing = KeyedSubtree(
-        key: HomeKeys.groupRowBalanceSkeleton,
-        child: SkeletonLoader.trailingBalance(),
-      );
-    } else if (isError) {
-      trailing = Row(
-        key: HomeKeys.groupRowBalanceError,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Iconsax.warning_2, size: 14, color: colors.warning),
-          SizedBox(width: context.spacing.space4),
-          Flexible(
-            child: Text(
-              context.l10n.homeBalanceUnavailable,
-              textAlign: TextAlign.end,
-              style: AppTypography.sans(fontSize: 11, color: colors.textSecondary),
-            ),
-          ),
-        ],
-      );
-    } else {
-      trailing = Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (lines.isEmpty)
-            RAmount(
-              value: Decimal.zero,
-              currency: group.currency,
-              size: 16,
-            )
-          else
-            for (var i = 0; i < lines.length; i++)
-              Padding(
-                padding: EdgeInsetsDirectional.only(top: i == 0 ? 0 : 2),
-                child: RAmount(
-                  value: lines[i].net,
-                  currency: lines[i].currency,
-                  size: lines.length == 1 ? 16 : 14,
-                  sign: true,
-                ),
-              ),
-          if (balanceCaption != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              balanceCaption,
-              style: AppTypography.sans(fontSize: 11, color: colors.textSecondary),
-            ),
-          ],
-          // #997/#244: the facade resolved but dropped some money (a
-          // per-event read failed) — the numbers above are a partial sum,
-          // not the full picture. Row is too narrow for the hero's full
-          // homeBalanceIncompleteNotice sentence, hence the short row key.
-          if (homeBalance?.partial ?? false) ...[
-            const SizedBox(height: 2),
-            Row(
-              key: HomeKeys.groupRowBalanceIncomplete,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Iconsax.warning_2, size: 11, color: colors.warning),
-                SizedBox(width: context.spacing.space4),
-                Text(
-                  context.l10n.homeGroupBalanceIncomplete,
-                  style: AppTypography.sans(
-                    fontSize: 10,
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      );
-    }
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                GroupGlyph(
-                  name: group.name,
-                  glyph: group.glyph,
-                  inkIndex: group.inkIndex,
-                ),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        group.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.sans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textPrimary,
-                          height: 1.25,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                trailing,
-              ],
-            ),
-            if (!isLast) ...[
-              const SizedBox(height: 14),
-              Container(height: 0.5, color: colors.rule),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
