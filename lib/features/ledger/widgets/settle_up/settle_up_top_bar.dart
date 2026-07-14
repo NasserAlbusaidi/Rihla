@@ -8,7 +8,11 @@ import '../../../../shared/widgets/directional_icon.dart';
 import '../../../../core/theme/tokens/typography_tokens.dart';
 
 class SettleUpTopBar extends StatelessWidget {
-  const SettleUpTopBar({required this.groupId, required this.eventId});
+  const SettleUpTopBar({
+    super.key,
+    required this.groupId,
+    required this.eventId,
+  });
 
   final String groupId;
   final String eventId;
