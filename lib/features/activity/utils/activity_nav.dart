@@ -48,6 +48,14 @@ String activityRowTarget({
       // Metadata carries no eventId even for #752 decomposed settle-ups —
       // group settle-up is the only honest target. No `?memberId=` in v1.
       return '/group/$groupId/settle-up';
+    case 'member_resplit':
+      // #1059: eventId is present iff exactly ONE event re-split (the write
+      // contract pairs it with the single-event copy) — land on that event's
+      // ledger, where the re-split money lives.
+      final resplitEventId = _navMetadataString(log, 'eventId');
+      return resplitEventId == null
+          ? '/group/$groupId'
+          : '/group/$groupId/event/$resplitEventId/ledger';
     case 'event_settlement':
       final eventId = _navMetadataString(log, 'eventId');
       return eventId == null

@@ -1542,6 +1542,34 @@
       "memberName": {}
     }
   },
+  "activityGroupResplitAdded": "added {memberName} to {eventName} — equal splits recalculated",
+  "@activityGroupResplitAdded": {
+    "description": "#1059 roster-change re-split disclosure, shadow-add variant, single affected event. PREDICATE — the row chrome prepends the actor name.",
+    "placeholders": {
+      "memberName": {},
+      "eventName": {}
+    }
+  },
+  "activityGroupResplitAddedMulti": "added {memberName} to {count, plural, =1{1 event} other{{count} events}} — equal splits recalculated",
+  "@activityGroupResplitAddedMulti": {
+    "placeholders": {
+      "memberName": {},
+      "count": {}
+    }
+  },
+  "activityGroupResplitJoined": "joined {eventName} — equal splits recalculated",
+  "@activityGroupResplitJoined": {
+    "description": "#1059 roster-change re-split disclosure, join variant (actor IS the member — no memberName, or the chrome would double the name).",
+    "placeholders": {
+      "eventName": {}
+    }
+  },
+  "activityGroupResplitJoinedMulti": "joined {count, plural, =1{1 event} other{{count} events}} — equal splits recalculated",
+  "@activityGroupResplitJoinedMulti": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "activityGroupExpenseAdded": "added an expense in {eventName}",
   "@activityGroupExpenseAdded": {
     "placeholders": {

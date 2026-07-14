@@ -1077,4 +1077,138 @@ void main() {
       expect(localizedEventActivityText(en, log), _fsi('custom$_rlo activity'));
     });
   });
+
+  group('member_resplit rows (#1059)', () {
+    final en = AppLocalizationsEn();
+    final ar = AppLocalizationsAr();
+
+    test('uses the memberJoined glyph (roster-change family)', () {
+      expect(
+        glyphForGroupActivityType('member_resplit'),
+        ActivityGlyph.memberJoined,
+      );
+    });
+
+    test('added variant, single event → localized predicate with both names '
+        'isolated', () {
+      final log = _groupLog(
+        type: 'member_resplit',
+        metadata: const {
+          'memberAction': 'added',
+          'memberName': 'Bob',
+          'affectedEventCount': 1,
+          'eventId': 'e1',
+          'eventName': 'Trip',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupResplitAdded(_fsi('Bob'), _fsi('Trip')),
+      );
+      expect(
+        localizedGroupActivityText(ar, log),
+        ar.activityGroupResplitAdded(_fsi('Bob'), _fsi('Trip')),
+      );
+    });
+
+    test('added variant, multi event → plural count copy', () {
+      final log = _groupLog(
+        type: 'member_resplit',
+        metadata: const {
+          'memberAction': 'added',
+          'memberName': 'Bob',
+          'affectedEventCount': 3,
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupResplitAddedMulti(_fsi('Bob'), 3),
+      );
+    });
+
+    test('joined variant, single event → NO member name (the row chrome '
+        'already shows the actor — a memberName here would double it)', () {
+      final log = _groupLog(
+        type: 'member_resplit',
+        metadata: const {
+          'memberAction': 'joined',
+          'memberName': 'Bob',
+          'affectedEventCount': 1,
+          'eventId': 'e1',
+          'eventName': 'Trip',
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupResplitJoined(_fsi('Trip')),
+      );
+    });
+
+    test('joined variant, multi event → plural count copy', () {
+      final log = _groupLog(
+        type: 'member_resplit',
+        metadata: const {
+          'memberAction': 'joined',
+          'memberName': 'Bob',
+          'affectedEventCount': 2,
+        },
+      );
+      expect(
+        localizedGroupActivityText(en, log),
+        en.activityGroupResplitJoinedMulti(2),
+      );
+    });
+
+    test('missing/forged metadata degrades to the isolated description, '
+        'never crashes', () {
+      // No metadata at all.
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(type: 'member_resplit', description: 'srv text'),
+        ),
+        _fsi('srv text'),
+      );
+      // Unknown memberAction.
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(
+            type: 'member_resplit',
+            description: 'srv text',
+            metadata: const {'memberAction': 'evil', 'memberName': 'Bob'},
+          ),
+        ),
+        _fsi('srv text'),
+      );
+      // added without a usable memberName.
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(
+            type: 'member_resplit',
+            description: 'srv text',
+            metadata: const {'memberAction': 'added', 'memberName': 7},
+          ),
+        ),
+        _fsi('srv text'),
+      );
+      // Forged non-int count with no eventName.
+      expect(
+        localizedGroupActivityText(
+          en,
+          _groupLog(
+            type: 'member_resplit',
+            description: 'srv text',
+            metadata: const {
+              'memberAction': 'joined',
+              'memberName': 'Bob',
+              'affectedEventCount': 'NaN',
+            },
+          ),
+        ),
+        _fsi('srv text'),
+      );
+    });
+  });
 }

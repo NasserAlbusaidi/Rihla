@@ -3165,6 +3165,30 @@ abstract class AppLocalizations {
   /// **'removed {memberName} from the group'**
   String activityGroupMemberRemoved(Object memberName);
 
+  /// #1059 roster-change re-split disclosure, shadow-add variant, single affected event. PREDICATE — the row chrome prepends the actor name.
+  ///
+  /// In en, this message translates to:
+  /// **'added {memberName} to {eventName} — equal splits recalculated'**
+  String activityGroupResplitAdded(Object memberName, Object eventName);
+
+  /// No description provided for @activityGroupResplitAddedMulti.
+  ///
+  /// In en, this message translates to:
+  /// **'added {memberName} to {count, plural, =1{1 event} other{{count} events}} — equal splits recalculated'**
+  String activityGroupResplitAddedMulti(Object memberName, num count);
+
+  /// #1059 roster-change re-split disclosure, join variant (actor IS the member — no memberName, or the chrome would double the name).
+  ///
+  /// In en, this message translates to:
+  /// **'joined {eventName} — equal splits recalculated'**
+  String activityGroupResplitJoined(Object eventName);
+
+  /// No description provided for @activityGroupResplitJoinedMulti.
+  ///
+  /// In en, this message translates to:
+  /// **'joined {count, plural, =1{1 event} other{{count} events}} — equal splits recalculated'**
+  String activityGroupResplitJoinedMulti(num count);
+
   /// No description provided for @activityGroupExpenseAdded.
   ///
   /// In en, this message translates to:

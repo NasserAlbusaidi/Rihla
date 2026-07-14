@@ -371,6 +371,48 @@ void main() {
       expect(_richContaining('joined the group'), findsOneWidget);
     });
 
+    testWidgets('member_resplit lands in the Members bucket (#1059)', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await _seed(db, 'g1', [
+        _activity('a1', 'Alice', 'created an event'),
+        _activity(
+          'resplit_bob_abc123def456',
+          'Bob',
+          'joined 2 events — equal splits recalculated',
+          type: 'member_resplit',
+          metadata: const {
+            'memberAction': 'joined',
+            'memberName': 'Bob',
+            'affectedEventCount': 2,
+          },
+        ),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          groups: [_group('g1', 'Trip A')],
+          service: GroupActivityService.withFirestore(db),
+          prefs: await prefs(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Members'));
+      await tester.pumpAndSettle();
+
+      expect(
+        _richContaining('equal splits recalculated'),
+        findsOneWidget,
+        reason: 'member_resplit must be in the Members bucket',
+      );
+      expect(
+        _richContaining('created an event'),
+        findsNothing,
+        reason: 'event rows must be filtered out under Members',
+      );
+    });
+
     testWidgets('settlement uses the wallet glyph in a top-aligned row', (
       tester,
     ) async {

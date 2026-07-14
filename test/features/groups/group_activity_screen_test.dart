@@ -809,6 +809,62 @@ void main() {
       expect(_richTextContaining('joined the group'), findsOneWidget);
     });
 
+    testWidgets('member_resplit lands in the Members bucket and renders '
+        'actor + predicate (#1059)', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      final prefs = await SharedPreferences.getInstance();
+
+      await _seedActivities(fakeDb, 'grp-resplit', [
+        _todayActivity(), // group_settlement — must vanish under Members
+        GroupActivityLog(
+          id: 'resplit_bob_abc123def456',
+          type: 'member_resplit',
+          actorId: 'uid-alice',
+          actorName: 'Alice',
+          description: 'added Bob to Weekend Hike — equal splits recalculated',
+          metadata: const {
+            'memberAction': 'added',
+            'memberName': 'Bob',
+            'affectedEventCount': 1,
+            'eventId': 'evt-1',
+            'eventName': 'Weekend Hike',
+          },
+          timestamp: _atMidday(0),
+        ),
+      ]);
+
+      await tester.pumpWidget(
+        _buildActivityScreen(groupId: 'grp-resplit', fakeDb: fakeDb, prefs: prefs),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Full paragraph = isolated actorName + localized PREDICATE (the
+      // r1-adversary P1 pin: no doubled/colliding names).
+      expect(
+        _richTextContaining(
+          '\u{2068}Alice\u{2069} added \u{2068}Bob\u{2069} to '
+          '\u{2068}Weekend Hike\u{2069} — equal splits recalculated',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(GroupKeys.activityFilterMembers));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(
+        _richTextContaining('equal splits recalculated'),
+        findsOneWidget,
+        reason: 'member_resplit must be in the Members bucket',
+      );
+      expect(
+        _richTextContaining('recorded a settlement'),
+        findsNothing,
+        reason: 'the settlement row must be filtered out under Members',
+      );
+    });
+
     testWidgets('empty filter state shows no-results message', (tester) async {
       final fakeDb = FakeFirebaseFirestore();
       final prefs = await SharedPreferences.getInstance();

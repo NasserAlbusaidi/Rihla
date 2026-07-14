@@ -58,4 +58,42 @@ void main() {
       );
     });
   });
+
+  group('activityRowTarget member_resplit (#1059)', () {
+    test('with eventId (single affected event) → that event ledger, where the '
+        're-split money lives', () {
+      expect(
+        activityRowTarget(
+          groupId: 'g1',
+          log: _log(
+            type: 'member_resplit',
+            metadata: const {'eventId': 'e1', 'eventName': 'Trip'},
+          ),
+        ),
+        '/group/g1/event/e1/ledger',
+      );
+    });
+
+    test('missing/empty/forged eventId (multi-event or malformed-name row) '
+        'degrades to group detail', () {
+      expect(
+        activityRowTarget(groupId: 'g1', log: _log(type: 'member_resplit')),
+        '/group/g1',
+      );
+      expect(
+        activityRowTarget(
+          groupId: 'g1',
+          log: _log(type: 'member_resplit', metadata: const {'eventId': ''}),
+        ),
+        '/group/g1',
+      );
+      expect(
+        activityRowTarget(
+          groupId: 'g1',
+          log: _log(type: 'member_resplit', metadata: const {'eventId': 42}),
+        ),
+        '/group/g1',
+      );
+    });
+  });
 }
