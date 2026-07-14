@@ -2,30 +2,24 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
-import '../../../core/utils/bidi.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
-import '../../../core/theme/tokens/spacing_tokens.dart';
-import '../../../core/utils/formatters.dart';
-import '../../../core/utils/share_helper.dart';
-import '../../../shared/widgets/directional_icon.dart';
-import '../../../shared/widgets/r_amount.dart';
-import '../../../shared/widgets/r_avatar.dart';
 import '../../ledger/models/expense_model.dart';
 import '../../ledger/models/settlement_model.dart';
 import '../../ledger/utils/correction_note.dart';
 import '../../ledger/utils/settlement_correction_affordance.dart';
-import '../keys/group_keys.dart';
 import '../services/member_name_resolver.dart';
 import '../widgets/group_settlement_summary.dart';
 import 'all_settled_state.dart';
 import 'currency_buckets_explainer.dart';
 import 'group_settlement_tile.dart';
 import 'settle_scope_note.dart';
-import '../../../core/theme/tokens/typography_tokens.dart';
+import 'settle_up_page/history_tile.dart';
+import 'settle_up_page/net_balances_section.dart';
+import 'settle_up_page/section_label.dart';
+import 'settle_up_page/settlement_intro.dart';
+import 'settle_up_page/stepped_settle_card.dart';
 
 // Re-exported so every SettleUpPageBody caller gets [SettleScope] (#717) without
 // a second import.
@@ -405,7 +399,7 @@ class SettleUpPageBody extends StatelessWidget {
       if (bucket.balances.isNotEmpty) {
         sections.addAll([
           SizedBox(height: context.spacing.space24),
-          _NetBalancesSection(
+          NetBalancesSection(
             balances: bucket.balances,
             currency: bucket.currency,
           ),
@@ -419,7 +413,7 @@ class SettleUpPageBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SettlementIntro(
+          SettlementIntro(
             transferCount: totalTransfers,
             subjectName: subjectName,
             simplifyDebts: simplifyDebts,
@@ -435,7 +429,7 @@ class SettleUpPageBody extends StatelessWidget {
               simplifyDebts: simplifyDebts,
             ),
           for (final pair in steppedPairs)
-            _SteppedSettleCard(
+            SteppedSettleCard(
               key: ValueKey('settle-stepped-${pair.otherUid}'),
               otherName: pair.otherName,
               steps: pair.steps,
@@ -544,278 +538,6 @@ class SettleUpPageBody extends StatelessWidget {
   }
 }
 
-class _SettlementIntro extends StatelessWidget {
-  const _SettlementIntro({
-    required this.transferCount,
-    required this.subjectName,
-    required this.simplifyDebts,
-  });
-
-  final int transferCount;
-  final String subjectName;
-
-  /// #363: selects the mode-honest subtitle. Under OFF, "Optimized to reduce
-  /// the number of payments" would be factually FALSE over a deliberately
-  /// expanded fan-out — a FOUR-way branch across {mode × zero/nonzero}.
-  final bool simplifyDebts;
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle = transferCount == 0
-        ? (simplifyDebts
-              ? context.l10n.settleUpNoOptimizedPayments(subjectName)
-              : context.l10n.settleUpNoDirectPayments(subjectName))
-        : (simplifyDebts
-              ? context.l10n.settleUpOptimizedPayments(subjectName)
-              : context.l10n.settleUpDirectPayments(subjectName));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (transferCount > 0) ...[
-          Text(
-            context.l10n.settleUpTransfersHeadline(transferCount),
-            style: AppTypography.displayOf(
-              context,
-              fontSize: 28,
-              color: context.colors.textPrimary,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-        Text(
-          subtitle,
-          style: AppTypography.sans(
-            color: context.colors.textSecondary,
-            fontSize: 13,
-            height: 1.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// One-gesture "settle all with X" card (#382 PR-5 D2). Shown above the bucket
-/// sections for each counterparty owing across ≥2 currency buckets; tapping it
-/// drives the per-bucket stepped walk. The caption joins each step's
-/// code-first amount so the user sees exactly what the walk will record before
-/// they start.
-class _SteppedSettleCard extends StatelessWidget {
-  const _SteppedSettleCard({
-    super.key,
-    required this.otherName,
-    required this.steps,
-    required this.onTap,
-  });
-
-  final String otherName;
-  final List<SettleStepRequest> steps;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final amounts = steps
-        .map((s) => AppFormatters.formatCurrency(s.suggestedAmount, s.currency))
-        .join(' · ');
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 18),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-              border: Border.all(color: context.colors.primary),
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacing.space16,
-              vertical: context.spacing.space12,
-            ),
-            child: Row(
-              children: [
-                Icon(Iconsax.cards, size: 18, color: context.colors.primary),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.settleUpSettleAllWith(
-                          bidiIsolate(otherName),
-                        ),
-                        style: AppTypography.sans(
-                          color: context.colors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text:
-                                  '${context.l10n.settleUpSettleAllWithCount(steps.length)} · ',
-                              style: AppTypography.sans(
-                                color: context.colors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            TextSpan(
-                              text: amounts,
-                              style: AppTypography.mono(
-                                fontSize: 12,
-                                color: context.colors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: context.spacing.space8),
-                DirectionalIcon(
-                  Iconsax.arrow_right_3,
-                  size: 16,
-                  color: context.colors.primary,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NetBalancesSection extends StatelessWidget {
-  const _NetBalancesSection({required this.balances, required this.currency});
-
-  final List<UserBalance> balances;
-  final String currency;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionLabel(label: context.l10n.settleUpEachPersonNet),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: context.colors.cardSurface,
-            borderRadius: BorderRadius.circular(context.spacing.radiusLarge),
-            border: Border.all(color: context.colors.rule),
-            boxShadow: context.shadows.raised,
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < balances.length; i++)
-                _NetBalanceRow(
-                  balance: balances[i],
-                  currency: currency,
-                  showDivider: i < balances.length - 1,
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _NetBalanceRow extends StatelessWidget {
-  const _NetBalanceRow({
-    required this.balance,
-    required this.currency,
-    required this.showDivider,
-  });
-
-  final UserBalance balance;
-  final String currency;
-  final bool showDivider;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = balance.displayName ?? context.l10n.settleUpUnknown;
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: showDivider
-              ? BorderSide(color: context.colors.rule)
-              : BorderSide.none,
-        ),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.space16,
-        vertical: context.spacing.space12,
-      ),
-      child: Row(
-        children: [
-          RAvatar(name: name, size: 28, colorKey: balance.participantId),
-          SizedBox(width: context.spacing.space12),
-          Expanded(
-            child: Text(
-              name,
-              style: AppTypography.sans(
-                color: context.colors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          RAmount(
-            value: balance.netBalance,
-            currency: currency,
-            size: 14,
-            sign: true,
-            weight: FontWeight
-                .w700, // Spline ships 400/500/700 — w800 would synthesize
-            tone: balance.netBalance > Decimal.zero
-                ? AmountTone.sageText
-                : balance.netBalance < Decimal.zero
-                ? AmountTone.rustText
-                : AmountTone.muted,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsetsDirectional.only(start: context.spacing.space4),
-      child: Text(
-        label,
-        style: AppTypography.sans(
-          color: context.colors.textPrimary,
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 /// Inline list of past recorded payments shown beneath net balances.
 ///
 /// Wireframe omits this — kept as a low-emphasis footer so the feature
@@ -879,7 +601,7 @@ class _PaymentHistorySection extends StatelessWidget {
     // per-doc rendering (its settlements are one-event-only; a regrouped "total"
     // would be a misleading partial).
     final children = <Widget>[
-      _SectionLabel(label: context.l10n.settleUpPaymentHistory),
+      SectionLabel(label: context.l10n.settleUpPaymentHistory),
       const SizedBox(height: 10),
     ];
 
@@ -887,7 +609,7 @@ class _PaymentHistorySection extends StatelessWidget {
       for (var i = 0; i < settlements.length; i++) {
         final settlement = settlements[i];
         children.add(
-          _HistoryTile(
+          HistoryTile(
             settlement: settlement,
             displayNames: displayNames,
             subjectName: subjectName,
@@ -909,7 +631,7 @@ class _PaymentHistorySection extends StatelessWidget {
         switch (row) {
           case SoloHistoryRow(:final settlement):
             children.add(
-              _HistoryTile(
+              HistoryTile(
                 settlement: settlement,
                 displayNames: displayNames,
                 subjectName: subjectName,
@@ -926,7 +648,7 @@ class _PaymentHistorySection extends StatelessWidget {
             );
           case LogicalHistoryRow():
             children.add(
-              _HistoryTile(
+              HistoryTile(
                 settlement: row.representative,
                 displayNames: displayNames,
                 subjectName: subjectName,
@@ -1050,346 +772,4 @@ List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
     );
   }
   return rows;
-}
-
-class _HistoryTile extends StatelessWidget {
-  const _HistoryTile({
-    required this.settlement,
-    required this.displayNames,
-    required this.subjectName,
-    required this.index,
-    this.onCorrect,
-    this.overrideAmount,
-    this.isCorrectedLogical = false,
-    this.onCorrectLogical,
-    this.soloCorrectionHidden = false,
-  });
-
-  final Settlement settlement;
-  final Map<String, String> displayNames;
-  final String subjectName;
-  final int index;
-
-  /// #283: when non-null AND both party ids are present, this tile shows a
-  /// "correct this payment" affordance that records an offsetting reverse
-  /// settlement after a confirmation dialog.
-  final void Function(Settlement settlement)? onCorrect;
-
-  /// #889: hides the SOLO Correct button (`onCorrect` branch only, never the
-  /// logical branch) when [settlement] is already a marked correction or a
-  /// bounded-legacy note-only correction target — computed by the caller from
-  /// its OWN screen's settlement list (`isSoloCorrectionHidden`).
-  final bool soloCorrectionHidden;
-
-  /// #753 logical-row overrides (set only when this tile renders a
-  /// [LogicalHistoryRow]). [overrideAmount] is the logical total A (shown +
-  /// confirmed instead of the representative doc's slice); [isCorrectedLogical]
-  /// forces the "Correction" treatment + hides the correct button (idempotency);
-  /// [onCorrectLogical] is the atomic logical-correction driver (used instead of
-  /// [onCorrect], which targets a single doc).
-  final Decimal? overrideAmount;
-  final bool isCorrectedLogical;
-  final VoidCallback? onCorrectLogical;
-
-  /// Confirms then hands the original [settlement] to [onCorrect]. The dialog
-  /// describes the REVERSE flow (the recipient pays the payer back) and reuses
-  /// the tile's already-resolved [payerName]/[recipientName] locals.
-  Future<void> _confirmAndCorrect(
-    BuildContext context,
-    String payerName,
-    String recipientName,
-  ) async {
-    final l10n = context.l10n;
-    // #1201: amount embedded in a composed l10n sentence — stays formatCurrency;
-    // RAmount governs standalone displayed amounts (DESIGN.md §8).
-    final amountStr = AppFormatters.formatCurrency(
-      overrideAmount ?? settlement.amount,
-      settlement.currency,
-    );
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.settleUpCorrectTitle),
-        content: Text(
-          // #1216b: isolate the names at the dialog arg — never the
-          // payerName/recipientName locals (they also feed the shared receipt).
-          l10n.settleUpCorrectBody(
-            amountStr,
-            bidiIsolate(recipientName),
-            bidiIsolate(payerName),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.settleUpCorrectConfirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    // #753: a logical row reverses the whole settle-up by id; a solo row hands
-    // back the single doc (#283).
-    if (onCorrectLogical != null) {
-      onCorrectLogical!();
-    } else {
-      onCorrect!(settlement);
-    }
-  }
-
-  /// Composes the plain-text receipt shared via [shareText] (#359). Built only
-  /// from persisted fields — payer/recipient, amount, date, group/event name,
-  /// and the note when present (payment method is never persisted, so it is
-  /// not claimed here). The amount is formatted code-first (#144) and stays LTR.
-  String _composeReceipt(
-    BuildContext context,
-    String payerName,
-    String recipientName,
-    String dateStr,
-  ) {
-    final l10n = context.l10n;
-    final lines = <String>[
-      l10n.settleUpReceiptLine(
-        payerName,
-        recipientName,
-        AppFormatters.formatCurrency(
-          overrideAmount ?? settlement.amount,
-          settlement.currency,
-        ),
-      ),
-      l10n.settleUpReceiptContext(dateStr, subjectName),
-    ];
-    final note = settlement.note?.trim();
-    if (note != null && note.isNotEmpty) {
-      lines.add(note);
-    }
-    lines.add(l10n.settleUpReceiptFooter);
-    return lines.join('\n');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const spacing = AppSpacingTokens.standard;
-    final payerId = settlement.payerParticipantId;
-    final recipientId = settlement.recipientParticipantId;
-    final payerName =
-        (payerId == null ? null : displayNames[payerId]) ??
-        settlement.payerName ??
-        context.l10n.settleUpUnknown;
-    final recipientName =
-        (recipientId == null ? null : displayNames[recipientId]) ??
-        settlement.recipientName ??
-        context.l10n.settleUpUnknown;
-    // `useNativeDigits = false` enforces Western digits (DEC-5/#145): the
-    // generated `ar` DateSymbols carry ZERODIGIT: '٠', which intl adopts by
-    // default per-locale, so without this the digits render Arabic-Indic
-    // (#1215).
-    final dateStr = (DateFormat.MMMd(
-      Localizations.localeOf(context).toLanguageTag(),
-    )..useNativeDigits = false).format(settlement.settledAt);
-    // #567: a reversing correction must read as a correction, not as another
-    // payment. Mark it with a reversal icon + label instead of the green tick.
-    // #753: a corrected LOGICAL row reads the same way (its representative is an
-    // original, so the note-based check alone would miss it).
-    final isCorrection =
-        isCorrectedLogical || isCorrectionNote(settlement.note);
-    final accent = isCorrection
-        ? context.colors.textSecondary
-        : context.colors.success;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: spacing.space8),
-      decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(spacing.radiusMedium),
-        border: Border.all(color: context.colors.rule),
-        boxShadow: context.shadows.raised,
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: spacing.space16,
-        vertical: spacing.space12,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isCorrection ? Iconsax.undo : Iconsax.tick_circle,
-                  size: 16,
-                  color: accent,
-                ),
-              ),
-              SizedBox(width: spacing.space12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isCorrection) ...[
-                      Text(
-                        context.l10n.settleUpCorrectionTag,
-                        style: AppTypography.sans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                          color: context.colors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                    ],
-                    RichText(
-                      overflow: TextOverflow.ellipsis,
-                      text: TextSpan(
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: context.colors.textPrimary,
-                        ),
-                        children: [
-                          TextSpan(
-                            // #1216b: isolate the span (not the local — it feeds
-                            // the shared receipt too).
-                            text: bidiIsolate(payerName),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          TextSpan(
-                            text: ' ${context.l10n.settleUpPaidConnector} ',
-                          ),
-                          TextSpan(
-                            text: bidiIsolate(recipientName),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      dateStr,
-                      style: AppTypography.sans(
-                        fontSize: 11,
-                        color: context.colors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              RAmount(
-                value: overrideAmount ?? settlement.amount,
-                currency: settlement.currency,
-                size: 14,
-                weight: FontWeight.w700,
-                tone: AmountTone.ink,
-              ),
-            ],
-          ),
-          SizedBox(height: spacing.space4),
-          // Actions live on their own trailing line: visible labels replace
-          // the old tooltip-only icons (invisible on touch — a high-stakes
-          // money correction shouldn't rely on icon-shape recognition), and
-          // the labelled buttons don't fight the fixed-width amount for row
-          // space on narrow screens (the old single-row layout overflowed
-          // at 320px with long names). Wrap, not Row: two labelled buttons
-          // exceed 320px, so they flow to a second line instead of clipping.
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: spacing.space4,
-            children: [
-              // #283: correct a recorded payment by recording an offsetting
-              // reverse settlement (append-only). Shown only when a correction
-              // driver is wired AND both party ids are present (the offset needs
-              // both to target). Keyed on the newest tile for a stable test hook.
-              // #752/#753: a SOLO row keeps one-tap single-doc correction but
-              // ONLY when untagged (groupSettleUpId == null) — a tagged doc must
-              // not be piecemeal-corrected. A LOGICAL row (onCorrectLogical set)
-              // reverses the whole settle-up atomically and hides once corrected
-              // (isCorrectedLogical → onCorrectLogical passed null upstream).
-              if (((onCorrect != null &&
-                          settlement.groupSettleUpId == null &&
-                          !soloCorrectionHidden) ||
-                      onCorrectLogical != null) &&
-                  payerId != null &&
-                  payerId.isNotEmpty &&
-                  recipientId != null &&
-                  recipientId.isNotEmpty) ...[
-                TextButton.icon(
-                  key: index == 0 ? GroupKeys.settleUpCorrectButton : null,
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.standard,
-                    minimumSize: const Size(0, 40),
-                    padding: EdgeInsets.symmetric(horizontal: spacing.space8),
-                    foregroundColor: context.colors.textSecondary,
-                  ),
-                  icon: Icon(
-                    Iconsax.undo,
-                    size: 14,
-                    color: context.colors.textSecondary,
-                  ),
-                  label: Text(
-                    context.l10n.settleUpCorrect,
-                    style: AppTypography.sans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      height: 1.22,
-                    ),
-                  ),
-                  onPressed: () =>
-                      _confirmAndCorrect(context, payerName, recipientName),
-                ),
-              ],
-              // #359: share a plain-text receipt of this recorded payment. The
-              // Builder gives shareText() the button's own render box as the
-              // popover origin (non-zero on iPad); never call Share.share raw.
-              Builder(
-                builder: (buttonContext) => TextButton.icon(
-                  // Key only the newest tile so a single, predictable target
-                  // anchors widget tests; every tile is still shareable.
-                  key: index == 0 ? GroupKeys.settleUpShareReceiptButton : null,
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.standard,
-                    minimumSize: const Size(0, 40),
-                    padding: EdgeInsets.symmetric(horizontal: spacing.space8),
-                    foregroundColor: context.colors.primary,
-                  ),
-                  icon: DirectionalIcon(
-                    Iconsax.send_2,
-                    size: 14,
-                    color: context.colors.primary,
-                  ),
-                  label: Text(
-                    context.l10n.settleUpShareReceipt,
-                    style: AppTypography.sans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      height: 1.22,
-                    ),
-                  ),
-                  onPressed: () => shareText(
-                    buttonContext,
-                    _composeReceipt(
-                      buttonContext,
-                      payerName,
-                      recipientName,
-                      dateStr,
-                    ),
-                    subject: context.l10n.settleUpReceiptShareSubject,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: Duration(milliseconds: index * 40)).slideY(begin: 0.08, curve: Curves.easeOutCubic);
-  }
 }
