@@ -22,8 +22,12 @@ no client-compat gating needed.
 (`activity_display.dart`, `activity_nav.dart`, filter chips); ARB l10n EN+AR; jest emulator
 tests + flutter_test.
 
-**Spec status:** Gate-category. Round 1 verdicts: rubric 1 P1 / 1 P2 / 2 P3, adversary
-1 P1 / 0 P2 / 1 P3 — ALL folded into this revision (r2). Changes from r1:
+**Spec status: GATE-CLEAN (r2, 2026-07-14).** Round 2 verdicts: rubric 0 P1 / 1 P2 / 2 P3,
+adversary 0 P1 / 0 P2 / 2 P3 — both P1-clean in the same round; the non-P1s are folded as
+implementation notes below (currency-free `SplitRouting`, `_navMetadataString` in the nav
+arm, "1 event" grammar in the description fallback, double-row non-goal named in the PR).
+Round 1 verdicts: rubric 1 P1 / 1 P2 / 2 P3, adversary 1 P1 / 0 P2 / 1 P3 — ALL folded into
+r2. Changes from r1:
 - **[r1-adversary P1]** Copy is now actor-prepended PREDICATES with a
   `metadata.memberAction: 'added' | 'joined'` discriminator (`ActivityRow` renders
   `actorName + ' ' + description` as one paragraph — `activity_row.dart:76-100`; every
@@ -137,6 +141,10 @@ Every claim below was re-verified against `main` (0323bc65) this session; file:l
 - **No departure-side disclosure** (split-key drops when a member's docs are removed) — out of
   #1059's scope (ADD-side); departures are fenced separately (#1144).
 - **No new l10n for old clients** — the English `description` fallback IS the old-client copy.
+- **The fresh-join DOUBLE row is intentional** (Gate r2 adversary P3): the client's
+  best-effort `member_joined` ("joined the group") AND the server's `member_resplit`
+  ("joined N events — equal splits recalculated") both appear for one join. They carry
+  different information — do NOT "dedupe" them.
 
 ## New data contract (exact)
 
@@ -193,6 +201,15 @@ export function expenseSplitsOverUniverse(e: DocumentData): boolean {
   run them BEFORE and AFTER the refactor). `personal` with a non-string payer keeps its
   current `recipients = []` behavior (`groupNetBalance.ts:427-428`) via
   `{kind:'fixed', recipients: []}`.
+
+  **`SplitRouting` MUST stay currency-free — kind/keys only, NEVER decoded distribution
+  values (Gate r2 rubric P2).** Detection's projection omits `currency` (safe: routing only
+  needs `distribution.size`, which is currency-invariant — `decodeSplitValue` changes values,
+  not key count, `groupNetBalance.ts:110-123`). If classification carried decoded values,
+  detection's dummy-currency decode would leak dummy-OMR-scaled amounts into non-OMR
+  allocations — a money P1. `foldEventNet`'s `stored` case therefore RE-derives
+  mode/distribution itself with the real per-doc `currency` (:411) for the allocator; the
+  `{kind:'stored'}` variant deliberately carries no payload.
 - Create: `functions/src/callables/shared/resplitDisclosure.ts`
 - Test: `functions/test/resplitDisclosure.emulator.test.ts` (new)
 
@@ -257,13 +274,16 @@ export async function writeResplitActivity(db: Firestore, groupId: string, args:
   const occHash = createHash('sha256').update(affectedEventIds.join(',')).digest('hex').slice(0, 12);
   const activityId = `resplit_${args.memberId}_${occHash}`;
   // PREDICATES — the row chrome prepends actorName (activity_row.dart:76-100).
+  // "1 event" grammar (Gate r2 rubric P3): the count variant can fire with
+  // count==1 when the sole event's name is malformed (legacy/Admin docs only).
+  const eventsPhrase = count === 1 ? '1 event' : `${count} events`;
   const description = args.memberAction === 'joined'
     ? (single != null
         ? `joined ${single.eventName} — equal splits recalculated`
-        : `joined ${count} events — equal splits recalculated`)
+        : `joined ${eventsPhrase} — equal splits recalculated`)
     : (single != null
         ? `added ${args.memberName} to ${single.eventName} — equal splits recalculated`
-        : `added ${args.memberName} to ${count} events — equal splits recalculated`);
+        : `added ${args.memberName} to ${eventsPhrase} — equal splits recalculated`);
   try {
     await db.collection('groups').doc(groupId).collection('activity').doc(activityId).create({
       id: activityId,
@@ -369,7 +389,9 @@ RED → GREEN → commit `feat(functions): #1059 member_resplit is server-author
   `|| type == 'member_resplit'`.
 - Modify `lib/features/activity/utils/activity_nav.dart` — arm: `eventId` present →
   `/group/$groupId/event/$eventId/ledger` (the re-split money lives in the ledger), else
-  group root. (Metadata contract guarantees `eventId` ⟺ Single text variant.)
+  group root. (Metadata contract guarantees `eventId` ⟺ Single text variant.) Read via the
+  file's own `_navMetadataString` (empty-guarded), NOT the display util's `_metadataString`
+  (Gate r2 adversary P3).
 - Tests: extend `test/unit/activity_display_test.dart` (all five text outcomes — joined
   single/multi, added single/multi, fallback — + glyph + forged non-string metadata
   degrade), `test/unit/activity_nav_test.dart`, the filter tests
