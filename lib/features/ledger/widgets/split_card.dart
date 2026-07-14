@@ -1,7 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/models/split_mode.dart';
@@ -14,10 +13,10 @@ import '../models/expense_model.dart';
 import '../models/split_explanation.dart';
 import '../providers/expense_provider.dart';
 import 'split_card/field_label.dart';
-import 'split_card/mode_chip.dart';
-import 'split_card/mode_help.dart';
+import 'split_card/mode_segment.dart';
 import 'split_card/payer_inline_row.dart';
-import 'split_card/segmented.dart';
+import 'split_card/reconcile_footer.dart';
+import 'split_card/scope_segment.dart';
 import 'split_card/split_person_row.dart';
 import 'split_scope_selector.dart';
 
@@ -235,7 +234,7 @@ class _SplitCardState extends State<SplitCard> {
               ],
             ),
             const SizedBox(height: 8),
-            _ScopeSegment(scope: widget.scope, onChanged: widget.onScopeChanged),
+            ScopeSegment(scope: widget.scope, onChanged: widget.onScopeChanged),
             if (widget.scope == ExpenseScope.custom) ...[
               const SizedBox(height: 14),
               CustomParticipantSelector(
@@ -251,7 +250,7 @@ class _SplitCardState extends State<SplitCard> {
             // ── How — split mode ─────────────────────────────────────────
             FieldLabel(l10n.editorHow),
             const SizedBox(height: 8),
-            _ModeSegment(
+            ModeSegment(
               mode: widget.splitMode,
               isItemized: _isItemized,
               enabled: canSplit,
@@ -265,7 +264,7 @@ class _SplitCardState extends State<SplitCard> {
               const SizedBox(height: 6),
               for (final id in ids) _personRow(context, id),
               const SizedBox(height: 12),
-              _ReconcileFooter(
+              ReconcileFooter(
                 descriptor: _descriptor(context),
                 addsUpTo: l10n.editorSplitAddsUpTo(
                   AppFormatters.formatCurrency(widget.amount, widget.currency),
@@ -366,136 +365,3 @@ class _SplitCardState extends State<SplitCard> {
   }
 }
 
-class _ScopeSegment extends StatelessWidget {
-  const _ScopeSegment({required this.scope, required this.onChanged});
-
-  final ExpenseScope scope;
-  final ValueChanged<ExpenseScope> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    // subGroup is legacy/dead — collapse it onto "Everyone".
-    final selected = scope == ExpenseScope.subGroup ? ExpenseScope.global : scope;
-    return Segmented<ExpenseScope>(
-      value: selected,
-      onChanged: onChanged,
-      options: [
-        (ExpenseScope.global, l10n.editorScopeGlobal),
-        (ExpenseScope.custom, l10n.editorScopeCustom),
-        (ExpenseScope.personal, l10n.editorScopePersonal),
-      ],
-    );
-  }
-}
-
-/// split-clarity — the "How" control. All five split options (the four
-/// arithmetic modes + Itemized) are peers, each an icon + label chip, wrapping
-/// so nothing truncates (fixes the old sheet-only 5-chip ellipsis/RTL trap). A
-/// one-line helper under the chips explains the selected option. Itemized is a
-/// first-class chip here, not a hidden 5th tab inside the custom-split sheet.
-class _ModeSegment extends StatelessWidget {
-  const _ModeSegment({
-    required this.mode,
-    required this.isItemized,
-    required this.enabled,
-    required this.onPick,
-    required this.onPickItemized,
-  });
-
-  final SplitMode mode;
-
-  /// True when the expense carries a `splitExplanation` (#203). Itemized
-  /// persists as `SplitMode.exact`, so selection keys off this flag FIRST —
-  /// otherwise a reopened itemized expense would highlight "Exact".
-  final bool isItemized;
-  final bool enabled;
-  final ValueChanged<SplitMode> onPick;
-  final VoidCallback onPickItemized;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final modes = <(SplitMode, IconData, String)>[
-      (SplitMode.equally, Iconsax.element_equal, l10n.splitModeEqually),
-      (SplitMode.shares, Iconsax.chart_2, l10n.splitModeShares),
-      (SplitMode.exact, Iconsax.hashtag, l10n.editorSplitModeExactShort),
-      (SplitMode.percent, Iconsax.percentage_square, l10n.splitModePercent),
-    ];
-    return Opacity(
-      opacity: enabled ? 1 : 0.5,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final (m, icon, label) in modes)
-                ModeChip(
-                  icon: icon,
-                  label: label,
-                  selected: !isItemized && m == mode,
-                  onTap: enabled ? () => onPick(m) : null,
-                ),
-              // Itemized produces an exact split under the hood; the parent
-              // opens the itemized editor directly (no "pick Exact first").
-              ModeChip(
-                icon: Iconsax.receipt_item,
-                label: l10n.editorSplitItemized,
-                selected: isItemized,
-                onTap: enabled ? onPickItemized : null,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ModeHelp(mode: mode, isItemized: isItemized),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReconcileFooter extends StatelessWidget {
-  const _ReconcileFooter({required this.descriptor, required this.addsUpTo});
-
-  final Widget descriptor;
-  final String addsUpTo;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: colors.success.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.success.withValues(alpha: 0.30)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          descriptor,
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Icon(Icons.check_rounded, size: 14, color: colors.successText),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  addsUpTo,
-                  style: AppTypography.sans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: colors.successText,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
