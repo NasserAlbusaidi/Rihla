@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -15,32 +14,27 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/activity_row.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/offline_banner.dart';
-import '../../../shared/widgets/r_amount.dart';
-import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/scroll_under_header.dart';
 import '../../../shared/widgets/section_header.dart';
-import '../../../shared/widgets/skeleton_loader.dart';
-import '../../../shared/widgets/wordmark_logo.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../activity/utils/activity_nav.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
 import '../../groups/providers/group_provider.dart';
-import '../../ledger/providers/expense_provider.dart';
-import '../../settings/widgets/edit_name_bottom_sheet.dart';
 import '../keys/home_keys.dart';
 import '../providers/active_journeys_provider.dart';
-import '../providers/activity_unread_provider.dart';
 import '../providers/dashboard_providers.dart';
 import '../widgets/account_backup_nudge.dart';
 import '../widgets/add_expense_fab.dart';
 import '../widgets/balance_hero_card.dart';
 import '../widgets/bottom_nav_shell.dart';
 import '../widgets/group_balance_breakdown_sheet.dart';
-import '../widgets/group_glyph.dart';
 import '../widgets/guest_account_caption.dart';
-import '../widgets/journey_ticket_card.dart';
+import '../widgets/home/greeting_strip.dart';
+import '../widgets/home/group_row.dart';
+import '../widgets/home/journeys_strip.dart';
+import '../widgets/home/top_bar.dart';
 
 /// Home dashboard — saffron travel-journal direction (v2.0).
 ///
@@ -86,10 +80,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(userGroupsProvider);
-    // #1011: shared scroll-edge hairline — fades in under the fixed _TopBar once
-    // the dashboard scrolls beneath it (was a bare Column[_TopBar, Expanded]).
+    // #1011: shared scroll-edge hairline — fades in under the fixed TopBar once
+    // the dashboard scrolls beneath it (was a bare Column[TopBar, Expanded]).
     return ScrollUnderHeader(
-      header: const _TopBar(),
+      header: const TopBar(),
       child: groupsAsync.when(
         data: (groups) => groups.isEmpty
             ? _buildEmpty(context)
@@ -125,7 +119,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          SliverToBoxAdapter(child: _GreetingStrip(name: _firstName())),
+          SliverToBoxAdapter(child: GreetingStrip(name: _firstName())),
           // #818 Wave 4.3: persistent guest-account explainer — the only
           // non-dismissible statement of the "lives on this phone" fact,
           // since the #285 backup nudge below can be dismissed forever.
@@ -170,7 +164,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           SliverToBoxAdapter(
-            child: _JourneysStrip(journeysAsync: journeysAsync),
+            child: JourneysStrip(journeysAsync: journeysAsync),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 22)),
           SliverToBoxAdapter(
@@ -189,7 +183,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final isLast = index == groups.length - 1;
-                return _GroupRow(
+                return GroupRow(
                       group: groups[index],
                       isLast: isLast,
                       isPlaceholder: isPlaceholder,
@@ -530,585 +524,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 context.push('/join-group');
               },
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────── Top bar ────────────────
-
-class _TopBar extends ConsumerWidget {
-  const _TopBar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final deviceName = ref.watch(settingsProvider.select((s) => s.deviceName));
-    // #1168: key the avatar's palette slot on the stable uid so this same
-    // person's color matches everywhere else they're rendered.
-    final currentUserId = ref.watch(currentUserIdProvider);
-    // #818 Wave 4.1: the "?" avatar is otherwise a dead end — nothing cues
-    // that tapping it lets you set a name. Self-hides the instant a name is
-    // saved; no dismissal flag, no SharedPreferences key.
-    final showSetNameChip = deviceName.trim().isEmpty;
-    const avatarSize = 36.0;
-    // #1077 §4: the tap target is 44dp while the painted avatar stays 36 —
-    // the chip budget below must subtract the occupied width, not the visual.
-    const avatarHitSize = 44.0;
-    void openProfile() {
-      HapticService.lightClick();
-      context.push('/profile');
-    }
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(20, 6, 16, 0),
-        // Stack so the wordmark sits on the bar's true geometric centre,
-        // independent of the asymmetric clusters (avatar left vs search+bell
-        // right). Row-with-Spacers centred it in the *leftover* space, so the
-        // wider right cluster drifted it ~20px toward the avatar side — left
-        // in LTR and mirrored to the right in RTL. Stack centring is
-        // direction-agnostic and fixes both.
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Keep the optional chip inside the leading side's half of the
-            // bar: after the avatar + gaps, budget against the centered
-            // wordmark's MEASURED half-width (a constant guard is wrong under
-            // test fonts, whose glyphs render far wider than production —
-            // #1064). Its existing ellipsis then yields before it can paint
-            // over the mark.
-            final wordmarkHalfWidth =
-                WordmarkLogo.measuredTextWidth(context) / 2;
-            final setNameChipMaxWidth =
-                (constraints.maxWidth / 2 -
-                        wordmarkHalfWidth -
-                        context.spacing.space8 -
-                        avatarHitSize -
-                        context.spacing.space8)
-                    .clamp(0.0, double.infinity);
-            return Stack(
-              alignment: Alignment.center,
-              children: [
-                Row(
-                  children: [
-                    Semantics(
-                      button: true,
-                      label: context.l10n.profileTitle,
-                      onTap: openProfile,
-                      excludeSemantics: true,
-                      child: GestureDetector(
-                        key: HomeKeys.profileAvatar,
-                        behavior: HitTestBehavior.opaque,
-                        onTap: openProfile,
-                        // #1077 §4: 44dp hit box; the avatar stays 36px and
-                        // keeps hugging the bar's start edge.
-                        child: SizedBox(
-                          width: avatarHitSize,
-                          height: avatarHitSize,
-                          child: Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: RAvatar(
-                              name: deviceName,
-                              size: avatarSize,
-                              colorKey: currentUserId,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (showSetNameChip) ...[
-                      SizedBox(width: context.spacing.space8),
-                      Flexible(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: setNameChipMaxWidth,
-                          ),
-                          child: _SetNameChip(
-                            onTap: () => _openEditNameSheet(context, ref),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const Spacer(),
-                    // #900 friction #3 — PR-5b: global search entry point, left
-                    // of the bell in the right cluster.
-                    _IconCircle(
-                      key: HomeKeys.searchButton,
-                      badgeKey: HomeKeys.searchButtonBadge,
-                      icon: Iconsax.search_normal,
-                      semanticLabel: context.l10n.searchTitle,
-                      onTap: () {
-                        HapticService.lightClick();
-                        context.push('/search');
-                      },
-                    ),
-                    SizedBox(width: context.spacing.space4),
-                    _IconCircle(
-                      key: HomeKeys.activityBell,
-                      badgeKey: HomeKeys.bellUnreadBadge,
-                      icon: Iconsax.activity,
-                      showBadge: ref.watch(activityUnreadProvider),
-                      semanticLabel: context.l10n.homeBottomNavActivity,
-                      onTap: () {
-                        HapticService.lightClick();
-                        // #818 Wave 5.2: select the History tab in place rather
-                        // than pushing /activity — the route stays for deep links.
-                        final scope = BottomNavTabScope.maybeOf(context);
-                        if (scope != null) {
-                          scope.selectTab(1);
-                        } else {
-                          context.push('/activity');
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const WordmarkLogo(size: 22),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  void _openEditNameSheet(BuildContext context, WidgetRef ref) {
-    HapticService.lightClick();
-    // Same idiom as ProfileScreen._openEditSheet — opens EditNameBottomSheet
-    // directly rather than routing through Profile.
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: context.colors.cardSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) => EditNameBottomSheet(
-        currentName: '',
-        onSave: (name) async {
-          await ref.read(settingsProvider.notifier).setDeviceName(name);
-        },
-      ),
-    );
-  }
-}
-
-/// Small saffron-tint pill beside the avatar prompting a first-run name
-/// (#818 Wave 4.1). Rendered only while [HomeScreen]'s deviceName is empty.
-class _SetNameChip extends StatelessWidget {
-  const _SetNameChip({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      key: HomeKeys.setNameChip,
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 4),
-        decoration: BoxDecoration(
-          color: colors.selectionFill,
-          borderRadius: BorderRadius.circular(context.spacing.radiusPill),
-          border: Border.all(color: colors.saffronSoft),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Iconsax.edit_2, size: 13, color: colors.primary),
-            SizedBox(width: context.spacing.space4),
-            Flexible(
-              child: Text(
-                context.l10n.homeSetNameChip,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.sans(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: colors.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Ghost-variant icon button used in the home top bar. No background fill —
-/// just an icon in a 44×44 tap target (#1077 §4 floor; the wireframe's 40×40
-/// sat under it). The wireframe shows this as the notifications affordance on
-/// the right of the top bar.
-class _IconCircle extends StatelessWidget {
-  const _IconCircle({
-    super.key,
-    required this.icon,
-    required this.onTap,
-    required this.badgeKey,
-    this.showBadge = false,
-    this.semanticLabel,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  // #840 PR-4: drives the unread-dot Badge wrapping the icon below — the
-  // Badge itself is always present (mirroring bottom_nav_shell.dart's
-  // NavigationDestination icon) so `isLabelVisible` alone toggles the dot.
-  final bool showBadge;
-  final String? semanticLabel;
-
-  // PR-5b: the internal Badge's key is per-instance now (was hardcoded to
-  // HomeKeys.bellUnreadBadge) — a second _IconCircle (the search button)
-  // would otherwise collide on that key and break `find.byKey`/
-  // `tester.widget<Badge>` lookups for BOTH icons.
-  final Key badgeKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 22,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          // Center, not a bare tight box: with the dot visible Badge wraps
-          // its child in a Stack whose default alignment is topStart, so
-          // under tight 44×44 constraints the glyph pinned to the top-start
-          // corner — 10px off the badge-less glyph's centre-line. Centering
-          // sizes the Badge to the glyph and hugs the dot to its corner,
-          // matching bottom_nav_shell's NavigationDestination look.
-          child: Center(
-            child: Badge(
-              key: badgeKey,
-              isLabelVisible: showBadge,
-              smallSize: 8,
-              backgroundColor: colors.primary,
-              child: Icon(icon, size: 20, color: colors.textPrimary),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────── Greeting strip ────────────────
-
-class _GreetingStrip extends StatelessWidget {
-  const _GreetingStrip({required this.name});
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? context.l10n.homeGoodMorning
-        : hour < 17
-        ? context.l10n.homeGoodAfternoon
-        : context.l10n.homeGoodEvening;
-    return Padding(
-      key: HomeKeys.yourGroupsHeader,
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 0),
-      child: Text(
-        context.l10n.homeGreeting(greeting, name).toUpperCase(),
-        style: AppTypography.caption(
-          context,
-          fontSize: 10,
-          color: colors.textSecondary,
-          letterSpacing: 2,
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────── Journeys strip ────────────────
-
-class _JourneysStrip extends StatelessWidget {
-  const _JourneysStrip({required this.journeysAsync});
-  final AsyncValue<List<ActiveJourneyEntry>> journeysAsync;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return journeysAsync.when(
-      data: (entries) {
-        if (entries.isEmpty) {
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 18),
-              decoration: BoxDecoration(
-                color: colors.cardSoft,
-                borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-                border: Border.all(color: colors.rule, width: 0.5),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Iconsax.calendar_1,
-                    size: 18,
-                    color: colors.textSecondary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      context.l10n.homeNoUpcomingJourneys,
-                      style: AppTypography.sans(
-                        fontSize: 13,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: [
-              for (var i = 0; i < entries.length; i++) ...[
-                // #626: isolate each card's procedural cover + frosted
-                // date-pill blur raster — the strip is an eager Row in a
-                // SingleChildScrollView, which adds no per-child boundary.
-                RepaintBoundary(
-                  child: JourneyTicketCard(
-                    entry: entries[i],
-                    // Deliberately SINGLE push (#996): an event-intent tap —
-                    // Back returns here, not to the group overview. Don't
-                    // "fix" this into the group-row double-push.
-                    onTap: () => context.push(
-                      '/group/${entries[i].groupId}/event/${entries[i].eventId}',
-                    ),
-                  ),
-                ),
-                if (i < entries.length - 1)
-                  SizedBox(width: context.spacing.space12),
-              ],
-            ],
-          ),
-        );
-      },
-      loading: () => SizedBox(
-        height: 200,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: colors.cardSoft,
-              borderRadius: BorderRadius.circular(context.spacing.radiusCard),
-            ),
-          ),
-        ),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-}
-
-// ──────────────── Group row ────────────────
-
-class _GroupRow extends ConsumerWidget {
-  const _GroupRow({
-    required this.group,
-    required this.onTap,
-    required this.isLast,
-    this.isPlaceholder = false,
-  });
-
-  final Group group;
-  final VoidCallback onTap;
-  final bool isLast;
-
-  /// A skeleton stub row (fake `sk1`/`sk2` gid). It must NOT watch the balance
-  /// facade — that family is keyed by gid, so watching it with a sentinel id
-  /// opens a real `groups/sk1/aggregates/balance` listen that fails
-  /// PERMISSION_DENIED and (non-autoDispose) leaks for the session (#1017).
-  final bool isPlaceholder;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    // #366: source-agnostic facade — the server aggregate when online, the
-    // #104 once-path otherwise. The facade slices by the current uid itself.
-    // #1017: placeholder rows render as loading without watching (see field).
-    final balanceAsync = isPlaceholder
-        ? const AsyncValue<HomeGroupBalance>.loading()
-        : ref.watch(homeGroupBalanceProvider(group.id));
-    final memberCount = group.memberIds.length;
-    // #997: a loading/errored facade has no reliable event count or money —
-    // rendering "0 events · settled" from the default would be a false
-    // negative. Only a resolved AsyncValue (data, even if partial) drives the
-    // subtitle event count and the trailing amount/caption below.
-    final isLoading = balanceAsync.isLoading && !balanceAsync.hasValue;
-    final isError = balanceAsync.hasError && !balanceAsync.hasValue;
-    final homeBalance = isLoading || isError ? null : balanceAsync.valueOrNull;
-    final subtitle = homeBalance == null
-        ? context.l10n.homeGroupSubtitlePending(memberCount)
-        : context.l10n.homeGroupSubtitle(memberCount, homeBalance.eventCount);
-
-    // Every non-zero bucket renders as its own line, GCC-first, each labeled
-    // with its own currency (honest — D11). Settled ⇔ every bucket zero or
-    // the map is empty (D10).
-    final lines = nonZeroNetsGccFirst(
-      homeBalance?.userNet ?? const <String, Decimal>{},
-    );
-    final allPositive =
-        lines.isNotEmpty && lines.every((l) => l.net > Decimal.zero);
-    final allNegative =
-        lines.isNotEmpty && lines.every((l) => l.net < Decimal.zero);
-    // L7: tri-state caption only when all non-zero lines share one sign;
-    // mixed signs → omitted (signed, toned amounts self-explain).
-    final String? balanceCaption = lines.isEmpty
-        ? context.l10n.homeSettled
-        : allPositive
-        ? context.l10n.homeTheyOweYou
-        : allNegative
-        ? context.l10n.homeYouOwe
-        : null;
-
-    final Widget trailing;
-    if (isLoading) {
-      trailing = KeyedSubtree(
-        key: HomeKeys.groupRowBalanceSkeleton,
-        child: SkeletonLoader.trailingBalance(),
-      );
-    } else if (isError) {
-      trailing = Row(
-        key: HomeKeys.groupRowBalanceError,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Iconsax.warning_2, size: 14, color: colors.warning),
-          SizedBox(width: context.spacing.space4),
-          Flexible(
-            child: Text(
-              context.l10n.homeBalanceUnavailable,
-              textAlign: TextAlign.end,
-              style: AppTypography.sans(fontSize: 11, color: colors.textSecondary),
-            ),
-          ),
-        ],
-      );
-    } else {
-      trailing = Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (lines.isEmpty)
-            RAmount(
-              value: Decimal.zero,
-              currency: group.currency,
-              size: 16,
-            )
-          else
-            for (var i = 0; i < lines.length; i++)
-              Padding(
-                padding: EdgeInsetsDirectional.only(top: i == 0 ? 0 : 2),
-                child: RAmount(
-                  value: lines[i].net,
-                  currency: lines[i].currency,
-                  size: lines.length == 1 ? 16 : 14,
-                  sign: true,
-                ),
-              ),
-          if (balanceCaption != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              balanceCaption,
-              style: AppTypography.sans(fontSize: 11, color: colors.textSecondary),
-            ),
-          ],
-          // #997/#244: the facade resolved but dropped some money (a
-          // per-event read failed) — the numbers above are a partial sum,
-          // not the full picture. Row is too narrow for the hero's full
-          // homeBalanceIncompleteNotice sentence, hence the short row key.
-          if (homeBalance?.partial ?? false) ...[
-            const SizedBox(height: 2),
-            Row(
-              key: HomeKeys.groupRowBalanceIncomplete,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Iconsax.warning_2, size: 11, color: colors.warning),
-                SizedBox(width: context.spacing.space4),
-                Text(
-                  context.l10n.homeGroupBalanceIncomplete,
-                  style: AppTypography.sans(
-                    fontSize: 10,
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      );
-    }
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                GroupGlyph(
-                  name: group.name,
-                  glyph: group.glyph,
-                  inkIndex: group.inkIndex,
-                ),
-                SizedBox(width: context.spacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        group.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.sans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textPrimary,
-                          height: 1.25,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: AppTypography.sans(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                trailing,
-              ],
-            ),
-            if (!isLast) ...[
-              const SizedBox(height: 14),
-              Container(height: 0.5, color: colors.rule),
-            ],
           ],
         ),
       ),
