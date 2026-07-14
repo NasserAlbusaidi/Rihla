@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -16,9 +15,11 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/error_widgets.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
+import '../../../core/utils/firestore_error_utils.dart';
 import '../../../core/utils/localized_dates.dart';
 import '../../../shared/widgets/cover_art.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/no_access_view.dart';
 import '../../../shared/widgets/r_amount.dart';
 import '../../../shared/widgets/r_avatar.dart';
 import '../../../shared/widgets/r_icon_button.dart';
@@ -98,9 +99,9 @@ class GroupDetailScreen extends ConsumerWidget {
             // from / loses access to the group. Show a terminal "no access"
             // state (retrying just re-denies) and keep the raw error out of
             // the UI — log it to Sentry for diagnostics instead.
-            if (_isPermissionDenied(error)) {
+            if (isPermissionDenied(error)) {
               unawaited(Sentry.captureException(error, stackTrace: stackTrace));
-              return const _NoAccessState();
+              return const NoAccessView();
             }
             return _ErrorState(
               onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
@@ -178,13 +179,13 @@ class _ContentState extends ConsumerState<_Content> {
     // only once the retry budget is spent.
     final deniedEvents = eventsAsync.hasError &&
         !eventsAsync.hasValue &&
-        _isPermissionDenied(eventsAsync.error!);
+        isPermissionDenied(eventsAsync.error!);
     final deniedBalances = balancesAsync.hasError &&
         !balancesAsync.hasValue &&
-        _isPermissionDenied(balancesAsync.error!);
+        isPermissionDenied(balancesAsync.error!);
     final deniedMembers = membersAsync.hasError &&
         !membersAsync.hasValue &&
-        _isPermissionDenied(membersAsync.error!);
+        isPermissionDenied(membersAsync.error!);
     final anyDenied = deniedEvents || deniedBalances || deniedMembers;
     final staging = anyDenied && _stagingRetries < _maxStagingRetries;
     if (staging) {
@@ -1104,11 +1105,6 @@ class _EventRow extends StatelessWidget {
 String _eventTypeLabel(BuildContext context, EventType t) =>
     t.localizedShortLabel(context.l10n);
 
-/// True when a stream error is a Firestore `permission-denied` — i.e. the
-/// user no longer has read access to the group (removed / un-shared).
-bool _isPermissionDenied(Object error) =>
-    error is FirebaseException && error.code == 'permission-denied';
-
 // ──────────────────────────── Members card
 
 class _MembersCard extends StatelessWidget {
@@ -1399,28 +1395,6 @@ class _ErrorState extends StatelessWidget {
         customTitle: context.l10n.groupLoadFailedTitle,
         customMessage: context.l10n.activityLoadFailedMessage,
         onRetry: onRetry,
-      ),
-    );
-  }
-}
-
-class _NoAccessState extends StatelessWidget {
-  const _NoAccessState();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(context.spacing.space24),
-          child: EmptyStateView(
-            icon: Iconsax.lock,
-            title: context.l10n.groupNoAccessTitle,
-            message: context.l10n.groupNoAccessMessage,
-            actionLabel: context.l10n.groupBackHome,
-            onAction: () => GoRouter.of(context).go('/home'),
-          ),
-        ),
       ),
     );
   }

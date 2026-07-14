@@ -1,15 +1,20 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/utils/firestore_error_utils.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/theme/tokens/color_tokens.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../../shared/widgets/empty_state_view.dart';
+import '../../../shared/widgets/no_access_view.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../events/embedded_panel_metrics.dart';
 import '../../events/models/event_model.dart';
@@ -75,9 +80,19 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
     return eventAsync.when(
       loading: () => const _LoadingState(),
-      error: (_, _) => _ErrorState(
-        onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
-      ),
+      error: (error, stackTrace) {
+        // #1237 / #358: a removed member's event listen is permission-denied
+        // forever — retry just re-denies. Terminal no-access state; raw error
+        // to Sentry, not the UI. (The hub shadows this panel; kept for
+        // consistency + any future direct route.)
+        if (isPermissionDenied(error)) {
+          unawaited(Sentry.captureException(error, stackTrace: stackTrace));
+          return const NoAccessView();
+        }
+        return _ErrorState(
+          onRetry: () => ref.invalidate(eventDetailProvider(eventRef)),
+        );
+      },
       data: (event) {
         if (event == null) return const _NotFoundState();
         if (groupAsync.isLoading && !groupAsync.hasValue) {
