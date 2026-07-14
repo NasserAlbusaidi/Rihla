@@ -773,4 +773,3 @@ List<HistoryRow> groupSettlementHistory(List<Settlement> settlements) {
   }
   return rows;
 }
-
