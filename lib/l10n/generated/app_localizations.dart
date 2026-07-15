@@ -488,6 +488,12 @@ abstract class AppLocalizations {
   /// **'Your trips live only on this phone. Link Google so you never lose them.'**
   String get profileBackupCardBody;
 
+  /// iOS body of the profile backup card (#1256): provider-neutral because the sheet it opens offers Apple + Google there. Android keeps profileBackupCardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trips live only on this phone. Link an account so you never lose them.'**
+  String get profileBackupCardBodyIos;
+
   /// Placeholder shown in place of the display name when the user has not yet set a name.
   ///
   /// In en, this message translates to:
@@ -590,6 +596,12 @@ abstract class AppLocalizations {
   /// **'This deletes only this guest session on this device. Any Google or email account you\'ve linked is separate and is NOT deleted unless you sign in to it first. There\'s no undo.'**
   String get deleteGuestSessionContent;
 
+  /// iOS sibling of deleteGuestSessionContent (#1256): names Apple among the linkable providers. Android keeps the existing key.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes only this guest session on this device. Any Google, Apple, or email account you\'ve linked is separate and is NOT deleted unless you sign in to it first. There\'s no undo.'**
+  String get deleteGuestSessionContentIos;
+
   /// Destructive confirm button on the DeleteAccountDialog for an anonymous guest session (#469).
   ///
   /// In en, this message translates to:
@@ -650,6 +662,12 @@ abstract class AppLocalizations {
   /// **'Your synced data stays in the cloud. To restore, sign back in with the same Google account.'**
   String get signOutContentGoogle;
 
+  /// Sign-out dialog body for an Apple-credentialed user with no linked email (#1256): a Hide-My-Email link can withhold the address, and recovery is via Sign in with Apple.
+  ///
+  /// In en, this message translates to:
+  /// **'Your synced data stays in the cloud. To restore, sign back in with the same Apple ID.'**
+  String get signOutContentApple;
+
   /// Label of the Account-card row showing the linked Google identity (#428).
   ///
   /// In en, this message translates to:
@@ -667,6 +685,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Link Google account'**
   String get profileAccountLinkGoogle;
+
+  /// Label of the Account-card row showing the linked Apple identity (#1256).
+  ///
+  /// In en, this message translates to:
+  /// **'Apple'**
+  String get profileAccountApple;
+
+  /// Trailing text on the Apple-account row when the provider entry carries no email — e.g. a Hide-My-Email link (#1256).
+  ///
+  /// In en, this message translates to:
+  /// **'Linked'**
+  String get profileAccountAppleLinked;
+
+  /// iOS label of the account-link row (#1256): provider-neutral because the sheet offers Apple + Google there. Android keeps profileAccountLinkGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link an account'**
+  String get profileAccountLinkAccount;
 
   /// First text run of the SignOutConfirmDialog content, ending just before the bold email address.
   ///
@@ -2505,6 +2541,12 @@ abstract class AppLocalizations {
   /// **'Sign in with Google to restore'**
   String get homeRestoreWithGoogle;
 
+  /// iOS-only restore CTA on the home empty state (#1256), rendered above the Google CTA per the 4.8 parity requirement.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore with Apple'**
+  String get homeRestoreWithApple;
+
   /// No description provided for @homeRestoreWithEmail.
   ///
   /// In en, this message translates to:
@@ -2535,6 +2577,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t sign in with Google. Please try again.'**
   String get restoreGoogleFailed;
 
+  /// Snack shown when an Apple restore fails for any reason other than a user cancel (#1256).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sign in with Apple. Please try again.'**
+  String get restoreAppleFailed;
+
   /// No description provided for @restoreBlockedHasData.
   ///
   /// In en, this message translates to:
@@ -2553,11 +2601,23 @@ abstract class AppLocalizations {
   /// **'Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can\'t erase them.'**
   String get homeBackupNudgeBody;
 
+  /// iOS body of the home backup nudge (#1256): provider-neutral because the sheet it opens offers Apple + Google there. Android keeps homeBackupNudgeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your groups and expenses live only on this phone. Link an account so a new phone, reinstall, or lost device can\'t erase them.'**
+  String get homeBackupNudgeBodyIos;
+
   /// No description provided for @homeBackupNudgeCta.
   ///
   /// In en, this message translates to:
   /// **'Link Google account'**
   String get homeBackupNudgeCta;
+
+  /// iOS CTA of the home backup nudge (#1256): provider-neutral. Android keeps homeBackupNudgeCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Link account'**
+  String get homeBackupNudgeCtaIos;
 
   /// No description provided for @homeBackupNudgeDismiss.
   ///
@@ -5223,6 +5283,18 @@ abstract class AppLocalizations {
   /// **'Your groups and expenses are tied to this account. Link Google so they can\'t be lost with this device.'**
   String get durableGateBody;
 
+  /// iOS body of the durable-credential sheet (#1256): provider-neutral because the iOS sheet offers Apple + Google. Android keeps durableGateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your groups and expenses are tied to this account. Link an account so they can\'t be lost with this device.'**
+  String get durableGateBodyIos;
+
+  /// Label of the official SignInWithAppleButton on the iOS durable-credential sheet (#1256). Rendered above the Google button per the 4.8 parity requirement.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get durableGateContinueApple;
+
   /// Primary action on the optional account-link sheet — opens the Google Credential Manager sheet and links the credential to the current anonymous user.
   ///
   /// In en, this message translates to:
@@ -5241,6 +5313,12 @@ abstract class AppLocalizations {
   /// **'That Google account already belongs to another Rihla account. Switching to it would leave this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first, then use a different Google account.'**
   String get durableGateConflict;
 
+  /// Apple sibling of durableGateConflict (#1256): dead-end copy for an AppleLinkConflictException. Dispatch is by exception subtype, never by platform.
+  ///
+  /// In en, this message translates to:
+  /// **'That Apple ID already belongs to another Rihla account. Switching to it would leave this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first, then use a different Apple ID.'**
+  String get durableGateConflictApple;
+
   /// Title of the optional account-link sheet's conflict state (#428): the chosen Google account already backs another Rihla account.
   ///
   /// In en, this message translates to:
@@ -5252,6 +5330,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This Google account already has Rihla data. Switch to it? This device will continue with that account.'**
   String get durableGateConflictSwitchBody;
+
+  /// Apple sibling of durableGateConflictSwitchBody (#1256): switch-offer body for an AppleLinkConflictException. Dispatch is by exception subtype, never by platform.
+  ///
+  /// In en, this message translates to:
+  /// **'This Apple ID already has Rihla data. Switch to it? This device will continue with that account.'**
+  String get durableGateConflictSwitchBodyApple;
 
   /// Primary action in the conflict state: discard the empty anonymous shell and sign into the existing Google-backed account (restarts the app).
   ///

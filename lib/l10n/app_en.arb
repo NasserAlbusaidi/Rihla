@@ -259,6 +259,10 @@
   "profileBackupStatusBackedUp": "Backed up",
   "profileBackupCardTitle": "Back up this account",
   "profileBackupCardBody": "Your trips live only on this phone. Link Google so you never lose them.",
+  "profileBackupCardBodyIos": "Your trips live only on this phone. Link an account so you never lose them.",
+  "@profileBackupCardBodyIos": {
+    "description": "iOS body of the profile backup card (#1256): provider-neutral because the sheet it opens offers Apple + Google there. Android keeps profileBackupCardBody."
+  },
   "profileSetYourName": "Set your name",
   "@profileSetYourName": {
     "description": "Placeholder shown in place of the display name when the user has not yet set a name."
@@ -330,6 +334,10 @@
   "@deleteGuestSessionContent": {
     "description": "Body copy of the DeleteAccountDialog for an anonymous session, clarifying a linked durable account is not affected (#469)."
   },
+  "deleteGuestSessionContentIos": "This deletes only this guest session on this device. Any Google, Apple, or email account you've linked is separate and is NOT deleted unless you sign in to it first. There's no undo.",
+  "@deleteGuestSessionContentIos": {
+    "description": "iOS sibling of deleteGuestSessionContent (#1256): names Apple among the linkable providers. Android keeps the existing key."
+  },
   "deleteGuestSessionConfirm": "Delete guest data",
   "@deleteGuestSessionConfirm": {
     "description": "Destructive confirm button on the DeleteAccountDialog for an anonymous guest session (#469)."
@@ -371,6 +379,10 @@
   "@signOutContentGoogle": {
     "description": "Sign-out dialog body for a Google-credentialed user with no linked email (#428): recovery is via Google sign-in, not an email link."
   },
+  "signOutContentApple": "Your synced data stays in the cloud. To restore, sign back in with the same Apple ID.",
+  "@signOutContentApple": {
+    "description": "Sign-out dialog body for an Apple-credentialed user with no linked email (#1256): a Hide-My-Email link can withhold the address, and recovery is via Sign in with Apple."
+  },
   "profileAccountGoogle": "Google account",
   "@profileAccountGoogle": {
     "description": "Label of the Account-card row showing the linked Google identity (#428)."
@@ -382,6 +394,18 @@
   "profileAccountLinkGoogle": "Link Google account",
   "@profileAccountLinkGoogle": {
     "description": "Account-card row for an anonymous user: opens the durable-credential sheet to link Google voluntarily (#428)."
+  },
+  "profileAccountApple": "Apple",
+  "@profileAccountApple": {
+    "description": "Label of the Account-card row showing the linked Apple identity (#1256)."
+  },
+  "profileAccountAppleLinked": "Linked",
+  "@profileAccountAppleLinked": {
+    "description": "Trailing text on the Apple-account row when the provider entry carries no email — e.g. a Hide-My-Email link (#1256)."
+  },
+  "profileAccountLinkAccount": "Link an account",
+  "@profileAccountLinkAccount": {
+    "description": "iOS label of the account-link row (#1256): provider-neutral because the sheet offers Apple + Google there. Android keeps profileAccountLinkGoogle."
   },
   "signOutContentPrefix": "Your synced data stays in the cloud. To restore, enter ",
   "@signOutContentPrefix": {
@@ -1296,6 +1320,10 @@
   "homeCreateGroup": "Create group",
   "homeJoinGroup": "Join group",
   "homeRestoreWithGoogle": "Sign in with Google to restore",
+  "homeRestoreWithApple": "Restore with Apple",
+  "@homeRestoreWithApple": {
+    "description": "iOS-only restore CTA on the home empty state (#1256), rendered above the Google CTA per the 4.8 parity requirement."
+  },
   "homeRestoreWithEmail": "Restore with email instead",
   "homeRestoreSectionCaption": "Been here before?",
   "homeSetNameChip": "Set name",
@@ -1304,10 +1332,22 @@
   },
   "homeGuestCaption": "Guest account — lives on this phone until you back it up in Profile.",
   "restoreGoogleFailed": "Couldn't sign in with Google. Please try again.",
+  "restoreAppleFailed": "Couldn't sign in with Apple. Please try again.",
+  "@restoreAppleFailed": {
+    "description": "Snack shown when an Apple restore fails for any reason other than a user cancel (#1256)."
+  },
   "restoreBlockedHasData": "Restoring switches to your saved account and leaves this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first.",
   "homeBackupNudgeTitle": "Back up your account",
   "homeBackupNudgeBody": "Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can't erase them.",
+  "homeBackupNudgeBodyIos": "Your groups and expenses live only on this phone. Link an account so a new phone, reinstall, or lost device can't erase them.",
+  "@homeBackupNudgeBodyIos": {
+    "description": "iOS body of the home backup nudge (#1256): provider-neutral because the sheet it opens offers Apple + Google there. Android keeps homeBackupNudgeBody."
+  },
   "homeBackupNudgeCta": "Link Google account",
+  "homeBackupNudgeCtaIos": "Link account",
+  "@homeBackupNudgeCtaIos": {
+    "description": "iOS CTA of the home backup nudge (#1256): provider-neutral. Android keeps homeBackupNudgeCta."
+  },
   "homeBackupNudgeDismiss": "Not now",
   "homeErrorTitle": "Something went wrong",
   "homeErrorMessage": "Check your connection and try again. Your groups are safely synced — we just need internet to fetch the latest.",
@@ -2373,6 +2413,14 @@
   "@durableGateBody": {
     "description": "Body of the optional durable-credential sheet (#441/#818)."
   },
+  "durableGateBodyIos": "Your groups and expenses are tied to this account. Link an account so they can't be lost with this device.",
+  "@durableGateBodyIos": {
+    "description": "iOS body of the durable-credential sheet (#1256): provider-neutral because the iOS sheet offers Apple + Google. Android keeps durableGateBody."
+  },
+  "durableGateContinueApple": "Continue with Apple",
+  "@durableGateContinueApple": {
+    "description": "Label of the official SignInWithAppleButton on the iOS durable-credential sheet (#1256). Rendered above the Google button per the 4.8 parity requirement."
+  },
   "durableGateContinueGoogle": "Continue with Google",
   "@durableGateContinueGoogle": {
     "description": "Primary action on the optional account-link sheet — opens the Google Credential Manager sheet and links the credential to the current anonymous user."
@@ -2385,6 +2433,10 @@
   "@durableGateConflict": {
     "description": "Dead-end conflict copy, shown only when the switch offer is unsafe (this device's current account already has groups, or the group check failed). The sheet must never resolve a conflict by signing out."
   },
+  "durableGateConflictApple": "That Apple ID already belongs to another Rihla account. Switching to it would leave this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first, then use a different Apple ID.",
+  "@durableGateConflictApple": {
+    "description": "Apple sibling of durableGateConflict (#1256): dead-end copy for an AppleLinkConflictException. Dispatch is by exception subtype, never by platform."
+  },
   "durableGateConflictTitle": "That account already has Rihla data",
   "@durableGateConflictTitle": {
     "description": "Title of the optional account-link sheet's conflict state (#428): the chosen Google account already backs another Rihla account."
@@ -2392,6 +2444,10 @@
   "durableGateConflictSwitchBody": "This Google account already has Rihla data. Switch to it? This device will continue with that account.",
   "@durableGateConflictSwitchBody": {
     "description": "Body of the conflict switch offer. Only shown when the current anonymous shell is provably empty (zero groups), so switching discards nothing."
+  },
+  "durableGateConflictSwitchBodyApple": "This Apple ID already has Rihla data. Switch to it? This device will continue with that account.",
+  "@durableGateConflictSwitchBodyApple": {
+    "description": "Apple sibling of durableGateConflictSwitchBody (#1256): switch-offer body for an AppleLinkConflictException. Dispatch is by exception subtype, never by platform."
   },
   "durableGateSwitch": "Switch account",
   "@durableGateSwitch": {
