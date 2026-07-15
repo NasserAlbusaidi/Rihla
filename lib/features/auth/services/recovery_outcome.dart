@@ -31,6 +31,7 @@ class RecoveryOutcome {
 
   static const String prefsKey = 'auth.recoveryOutcome';
   static const String opGoogle = 'google';
+  static const String opApple = 'apple';
   static const String opRecover = 'recover';
   static const String opSignOut = 'signout';
   static const int _version = 2;

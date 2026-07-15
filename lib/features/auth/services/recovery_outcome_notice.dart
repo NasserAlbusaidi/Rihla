@@ -89,6 +89,7 @@ Future<void> surfaceRecoveryOutcome({
 
   // A successful sign-out needs no toast — the fresh anonymous home says it.
   if (outcome.op != RecoveryOutcome.opGoogle &&
+      outcome.op != RecoveryOutcome.opApple &&
       outcome.op != RecoveryOutcome.opRecover) {
     return;
   }
