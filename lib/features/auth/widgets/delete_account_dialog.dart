@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 import '../../../core/extensions/build_context_l10n.dart';
@@ -33,8 +34,13 @@ class DeleteAccountDialog extends StatelessWidget {
     final l10n = context.l10n;
     final title =
         isAnonymous ? l10n.deleteGuestSessionTitle : l10n.deleteAccountTitle;
-    final content =
-        isAnonymous ? l10n.deleteGuestSessionContent : l10n.deleteAccountContent;
+    // #1256 D6.4: on iOS the linkable providers include Apple, so the guest
+    // copy names it; Android keeps the existing key byte-identical.
+    final content = isAnonymous
+        ? (defaultTargetPlatform == TargetPlatform.iOS
+              ? l10n.deleteGuestSessionContentIos
+              : l10n.deleteGuestSessionContent)
+        : l10n.deleteAccountContent;
     final confirmLabel =
         isAnonymous ? l10n.deleteGuestSessionConfirm : l10n.deleteAccountConfirm;
     return AlertDialog(

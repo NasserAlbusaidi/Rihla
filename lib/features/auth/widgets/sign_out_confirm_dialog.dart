@@ -10,15 +10,30 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 /// session. Copy emphasizes that data is preserved in the cloud and
 /// recoverable — via the linked email when one exists, otherwise via the
 /// same Google account (#428: a Google-credentialed user may have no
-/// linked email; the email-link instruction would be wrong advice).
+/// linked email; the email-link instruction would be wrong advice), or via
+/// the same Apple ID when the Apple provider is linked (#1256: a
+/// Hide-My-Email link can withhold the email, and telling that user to sign
+/// back in with a Google account they don't have is wrong advice too).
 class SignOutConfirmDialog extends StatelessWidget {
-  const SignOutConfirmDialog({super.key, this.email});
+  const SignOutConfirmDialog({
+    super.key,
+    this.email,
+    this.hasAppleProvider = false,
+  });
   final String? email;
+  final bool hasAppleProvider;
 
-  static Future<bool?> show(BuildContext context, {String? email}) {
+  static Future<bool?> show(
+    BuildContext context, {
+    String? email,
+    bool hasAppleProvider = false,
+  }) {
     return showDialog<bool>(
       context: context,
-      builder: (_) => SignOutConfirmDialog(email: email),
+      builder: (_) => SignOutConfirmDialog(
+        email: email,
+        hasAppleProvider: hasAppleProvider,
+      ),
     );
   }
 
@@ -47,7 +62,13 @@ class SignOutConfirmDialog extends StatelessWidget {
             height: 1.4,
           ),
           children: switch (email) {
-            null || '' => [TextSpan(text: l10n.signOutContentGoogle)],
+            null || '' => [
+              TextSpan(
+                text: hasAppleProvider
+                    ? l10n.signOutContentApple
+                    : l10n.signOutContentGoogle,
+              ),
+            ],
             final linked => [
               TextSpan(text: l10n.signOutContentPrefix),
               TextSpan(

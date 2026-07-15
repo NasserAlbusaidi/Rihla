@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -26,6 +27,7 @@ import '../../../shared/widgets/scroll_under_header.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/providers/shell_emptiness_gate.dart';
 import '../../auth/services/auth_recovery_service.dart';
+import '../../auth/widgets/apple_restore_action.dart';
 import '../../auth/widgets/durable_credential_sheet.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../auth/widgets/sign_out_confirm_dialog.dart';
@@ -512,7 +514,13 @@ class _AccountCard extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final signedOut = context.l10n.profileSnackSignedOut;
     final signOutFailed = context.l10n.profileSnackSignOutFailed;
-    final confirmed = await SignOutConfirmDialog.show(context, email: email);
+    final confirmed = await SignOutConfirmDialog.show(
+      context,
+      email: email,
+      // #1256 D6.3: an Apple-linked user with a relay-withheld email must not
+      // be told to sign back in with a Google account they don't have.
+      hasAppleProvider: ref.read(appleAccountProvider) != null,
+    );
     if (confirmed != true) return;
     final service = ref.read(authRecoveryServiceProvider);
     try {
@@ -566,9 +574,11 @@ class _AccountCard extends ConsumerWidget {
     final linkedEmail = ref.watch(linkedEmailProvider);
     final isLinked = linkedEmail != null;
     final googleAccount = ref.watch(googleAccountProvider);
+    final appleAccount = ref.watch(appleAccountProvider);
     final isDurable = ref.watch(isDurableUserProvider);
     final user = ref.watch(authUserChangesProvider).valueOrNull;
     final isAnonymous = user?.isAnonymous ?? false;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     // Restore rows stay VISIBLE for every anonymous user; the shell-emptiness
     // check moved from row visibility to TAP time (friction audit tranche 2 —
     // a hidden row with no explanation read as "restore doesn't exist"). A tap
@@ -585,6 +595,28 @@ class _AccountCard extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: context.spacing.space20),
       child: RowsCard(
         rows: _stripLastDivider([
+          // #1256: deliberately platform-UNGATED — a linked Apple identity
+          // renders even on a non-iOS device (unreachable for today's Android
+          // users; the one stated deviation from zero-Android-change).
+          if (appleAccount != null)
+            PrefRow(
+              tileKey: ProfileKeys.appleAccountTile,
+              leading: PrefIcon(
+                icon: Iconsax.shield_tick,
+                bg: colors.cardSoft,
+              ),
+              label: context.l10n.profileAccountApple,
+              trailing: Text(
+                appleAccount.email ?? context.l10n.profileAccountAppleLinked,
+                style: AppTypography.sans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              onTap: null,
+              divider: true,
+            ),
           if (googleAccount != null)
             PrefRow(
               tileKey: ProfileKeys.googleAccountTile,
@@ -611,7 +643,11 @@ class _AccountCard extends ConsumerWidget {
                 icon: Iconsax.shield_tick,
                 bg: colors.cardSoft,
               ),
-              label: context.l10n.profileAccountLinkGoogle,
+              // #1256: the sheet offers Apple + Google on iOS, so the label
+              // is provider-neutral there; Android stays byte-identical.
+              label: isIOS
+                  ? context.l10n.profileAccountLinkAccount
+                  : context.l10n.profileAccountLinkGoogle,
               trailing: DirectionalIcon(
                 Iconsax.arrow_right_3,
                 size: 16,
@@ -668,6 +704,22 @@ class _AccountCard extends ConsumerWidget {
               divider: true,
             ),
           if (showRestore) ...[
+            if (isIOS)
+              PrefRow(
+                tileKey: ProfileKeys.profileRestoreAppleTile,
+                leading: PrefIcon(icon: Iconsax.refresh, bg: colors.cardSoft),
+                // #1256: above the Google row per the 4.8 parity requirement.
+                // Same tap-time gating contract as the Google row below —
+                // triggerAppleRestore self-gates on a provably-empty shell.
+                label: context.l10n.homeRestoreWithApple,
+                trailing: DirectionalIcon(
+                  Iconsax.arrow_right_3,
+                  size: 16,
+                  color: colors.textSecondary,
+                ),
+                onTap: () => triggerAppleRestore(context, ref),
+                divider: true,
+              ),
             PrefRow(
               tileKey: ProfileKeys.profileRestoreGoogleTile,
               leading: PrefIcon(icon: Iconsax.refresh, bg: colors.cardSoft),

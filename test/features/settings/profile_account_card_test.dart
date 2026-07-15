@@ -13,6 +13,7 @@
 // Harness mirrors sign_out_tile_test.dart.
 
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,6 +56,19 @@ firebase_auth.User _googleUser({String? email}) {
   final u = _MockUser();
   when(() => u.uid).thenReturn('g-1');
   // Top-level email deliberately null — the case B.2 newly enables.
+  when(() => u.email).thenReturn(null);
+  when(() => u.isAnonymous).thenReturn(false);
+  when(() => u.providerData).thenReturn([info]);
+  return u;
+}
+
+firebase_auth.User _appleUser({String? email = 'a@privaterelay.appleid.com'}) {
+  final info = _MockUserInfo();
+  when(() => info.providerId).thenReturn('apple.com');
+  when(() => info.email).thenReturn(email);
+  final u = _MockUser();
+  when(() => u.uid).thenReturn('a-1');
+  // Top-level email deliberately null — a Hide-My-Email link can withhold it.
   when(() => u.email).thenReturn(null);
   when(() => u.isAnonymous).thenReturn(false);
   when(() => u.providerData).thenReturn([info]);
@@ -315,6 +329,109 @@ void main() {
       expect(find.byKey(ProfileKeys.signOutDeviceTile), findsOneWidget);
       expect(find.text('foo@example.com'), findsOneWidget);
       expect(find.byKey(ProfileKeys.profileRestoreGoogleTile), findsNothing);
+    });
+  });
+
+  group('iOS Apple rows (#1256)', () {
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    testWidgets(
+        'anon on iOS: Apple restore row renders ABOVE the Google restore '
+        'row; link row shows the neutral label', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _anonUser()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(ProfileKeys.profileRestoreAppleTile), findsOneWidget);
+      final appleDy = tester
+          .getTopLeft(find.byKey(ProfileKeys.profileRestoreAppleTile))
+          .dy;
+      final googleDy = tester
+          .getTopLeft(find.byKey(ProfileKeys.profileRestoreGoogleTile))
+          .dy;
+      expect(
+        appleDy,
+        lessThan(googleDy),
+        reason: '4.8 parity: Apple must render above Google',
+      );
+      expect(find.text(l10n.profileAccountLinkAccount), findsOneWidget);
+      expect(find.text(l10n.profileAccountLinkGoogle), findsNothing);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('Apple restore row triggers restoreWithApple, never Google', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      when(() => service.restoreWithApple())
+          .thenAnswer((_) async => throw StateError('never returns'));
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _anonUser()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(ProfileKeys.profileRestoreAppleTile),
+      );
+      await tester.tap(find.byKey(ProfileKeys.profileRestoreAppleTile));
+      await tester.pumpAndSettle();
+
+      verify(() => service.restoreWithApple()).called(1);
+      verifyNever(() => service.restoreWithGoogle());
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets(
+        'Apple-linked user shows the Apple row with its relay email — '
+        'platform-UNGATED (deliberate: a linked identity renders even on a '
+        'non-iOS device, the one stated deviation from zero-Android-change)',
+        (tester) async {
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _appleUser()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(ProfileKeys.appleAccountTile), findsOneWidget);
+      expect(find.text('a@privaterelay.appleid.com'), findsOneWidget);
+      expect(find.byKey(ProfileKeys.signOutDeviceTile), findsOneWidget);
+      expect(find.byKey(ProfileKeys.googleLinkTile), findsNothing);
+      expect(find.byKey(ProfileKeys.profileRestoreAppleTile), findsNothing);
+    });
+
+    testWidgets(
+        'Apple-linked without relay email: "Linked" trailing + the Apple '
+        'sign-out copy (never the Google advice — D6.3)', (tester) async {
+      when(() => service.signOutCurrentDevice()).thenAnswer((_) async {});
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _appleUser(email: null)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.profileAccountAppleLinked), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(ProfileKeys.signOutDeviceTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ProfileKeys.signOutDeviceTile));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.signOutContentApple), findsOneWidget);
+      expect(find.text(l10n.signOutContentGoogle), findsNothing);
+    });
+
+    testWidgets(
+        'default platform (android): no Apple restore row, Google link '
+        'label unchanged', (tester) async {
+      await tester.pumpWidget(
+        await _wrap(service: service, user: _anonUser()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(ProfileKeys.profileRestoreAppleTile), findsNothing);
+      expect(find.byKey(ProfileKeys.appleAccountTile), findsNothing);
+      expect(find.text(l10n.profileAccountLinkGoogle), findsOneWidget);
+      expect(find.text(l10n.profileAccountLinkAccount), findsNothing);
     });
   });
 
