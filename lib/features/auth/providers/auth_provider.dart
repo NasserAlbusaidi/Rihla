@@ -55,6 +55,23 @@ final googleAccountProvider = Provider<({String? email})?>((ref) {
   return null;
 });
 
+/// The Apple identity linked to the active Firebase user, or null when no
+/// `apple.com` provider entry exists (#1256). Hide-My-Email links can leave
+/// the email null or a private-relay address — render "linked" state from
+/// the record itself, never from the email alone (same contract as
+/// [googleAccountProvider]).
+final appleAccountProvider = Provider<({String? email})?>((ref) {
+  final user = ref.watch(authUserChangesProvider).valueOrNull;
+  if (user == null) return null;
+  for (final info in user.providerData) {
+    if (info.providerId == 'apple.com') {
+      final email = info.email;
+      return (email: (email == null || email.isEmpty) ? null : email);
+    }
+  }
+  return null;
+});
+
 /// True when the current user holds ANY durable credential (Google or email
 /// link) — i.e. is not anonymous. The Account card gates sign-out on this
 /// (#428 PR-B): signing out an anonymous user orphans their data, while a
