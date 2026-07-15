@@ -209,6 +209,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'رحلاتك محفوظة على هذا الهاتف فقط. اربط حساب Google حتى لا تفقدها.';
 
   @override
+  String get profileBackupCardBodyIos =>
+      'رحلاتك محفوظة على هذا الهاتف فقط. اربط حسابًا حتى لا تفقدها.';
+
+  @override
   String get profileSetYourName => 'عيّن اسمك';
 
   @override
@@ -263,6 +267,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'سيؤدي هذا إلى حذف جلسة الضيف على هذا الجهاز فقط. أي حساب Google أو بريد إلكتروني ربطته يبقى منفصلًا ولن يُحذف ما لم تسجّل الدخول إليه أولًا. لا يمكن التراجع.';
 
   @override
+  String get deleteGuestSessionContentIos =>
+      'سيؤدي هذا إلى حذف جلسة الضيف على هذا الجهاز فقط. أي حساب Google أو Apple أو بريد إلكتروني ربطته يبقى منفصلًا ولن يُحذف ما لم تسجّل الدخول إليه أولًا. لا يمكن التراجع.';
+
+  @override
   String get deleteGuestSessionConfirm => 'حذف بيانات الضيف';
 
   @override
@@ -296,6 +304,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'تبقى بياناتك المتزامنة في السحابة. للاستعادة، سجّل الدخول مجددًا بنفس حساب Google.';
 
   @override
+  String get signOutContentApple =>
+      'تبقى بياناتك المتزامنة في السحابة. للاستعادة، سجّل الدخول مجددًا بنفس Apple ID.';
+
+  @override
   String get profileAccountGoogle => 'حساب Google';
 
   @override
@@ -303,6 +315,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileAccountLinkGoogle => 'ربط حساب Google';
+
+  @override
+  String get profileAccountApple => 'Apple';
+
+  @override
+  String get profileAccountAppleLinked => 'مرتبط';
+
+  @override
+  String get profileAccountLinkAccount => 'ربط حساب';
 
   @override
   String get signOutContentPrefix =>
@@ -1521,6 +1542,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeRestoreWithGoogle => 'سجّل الدخول عبر Google للاستعادة';
 
   @override
+  String get homeRestoreWithApple => 'الاستعادة عبر Apple';
+
+  @override
   String get homeRestoreWithEmail => 'أو الاستعادة عبر البريد الإلكتروني';
 
   @override
@@ -1538,6 +1562,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تسجيل الدخول عبر Google. حاول مرة أخرى.';
 
   @override
+  String get restoreAppleFailed =>
+      'تعذّر تسجيل الدخول عبر Apple. حاول مرة أخرى.';
+
+  @override
   String get restoreBlockedHasData =>
       'الاستعادة ستبدّل إلى حسابك المحفوظ وستترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً.';
 
@@ -1549,7 +1577,14 @@ class AppLocalizationsAr extends AppLocalizations {
       'مجموعاتك ومصاريفك موجودة على هذا الهاتف فقط. اربط حساب Google حتى لا يمحوها هاتف جديد أو إعادة تثبيت أو جهاز مفقود.';
 
   @override
+  String get homeBackupNudgeBodyIos =>
+      'مجموعاتك ومصاريفك موجودة على هذا الهاتف فقط. اربط حسابًا حتى لا يمحوها هاتف جديد أو إعادة تثبيت أو جهاز مفقود.';
+
+  @override
   String get homeBackupNudgeCta => 'ربط حساب Google';
+
+  @override
+  String get homeBackupNudgeCtaIos => 'ربط حساب';
 
   @override
   String get homeBackupNudgeDismiss => 'ليس الآن';
@@ -3144,6 +3179,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'مجموعاتك ومصاريفك مرتبطة بهذا الحساب. اربط حساب Google حتى لا تفقدها مع هذا الجهاز.';
 
   @override
+  String get durableGateBodyIos =>
+      'مجموعاتك ومصاريفك مرتبطة بهذا الحساب. اربط حسابًا حتى لا تفقدها مع هذا الجهاز.';
+
+  @override
+  String get durableGateContinueApple => 'المتابعة عبر Apple';
+
+  @override
   String get durableGateContinueGoogle => 'المتابعة عبر Google';
 
   @override
@@ -3154,12 +3196,20 @@ class AppLocalizationsAr extends AppLocalizations {
       'حساب Google هذا يخص حساب Rihla آخر بالفعل. التبديل إليه سيترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً، ثم استخدم حساب Google مختلفًا.';
 
   @override
+  String get durableGateConflictApple =>
+      '‏Apple ID هذا يخص حساب Rihla آخر بالفعل. التبديل إليه سيترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً، ثم استخدم Apple ID مختلفًا.';
+
+  @override
   String get durableGateConflictTitle =>
       'هذا الحساب يحتوي على بيانات Rihla بالفعل';
 
   @override
   String get durableGateConflictSwitchBody =>
       'حساب Google هذا يحتوي على بيانات Rihla بالفعل. التبديل إليه؟ سيتابع هذا الجهاز بذلك الحساب.';
+
+  @override
+  String get durableGateConflictSwitchBodyApple =>
+      '‏Apple ID هذا يحتوي على بيانات Rihla بالفعل. التبديل إليه؟ سيتابع هذا الجهاز بذلك الحساب.';
 
   @override
   String get durableGateSwitch => 'تبديل الحساب';

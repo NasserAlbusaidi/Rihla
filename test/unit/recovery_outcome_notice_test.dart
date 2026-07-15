@@ -357,6 +357,43 @@ void main() {
     expect(prefs.getString(seedKey), 'durable-uid');
   });
 
+  test('#1256: verified apple restore shows the restored notice', () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: 'apple', // RecoveryOutcome.opApple wire value
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(
+      currentUid: () => 'durable-uid',
+      hasData: (uid) async {
+        probedUids.add(uid);
+        return true;
+      },
+    );
+
+    expect(snacks, [
+      (_messages.restoredOk, false, const Duration(seconds: 4)),
+    ]);
+    expect(captures, isEmpty);
+    expect(probedUids, ['durable-uid']);
+  });
+
+  test('#1256/#990: verified apple restore writes the seed breadcrumb',
+      () async {
+    await writeRecoveryOutcome(
+      prefs,
+      op: 'apple',
+      ok: true,
+      expectedUid: 'durable-uid',
+    );
+
+    await run(currentUid: () => 'durable-uid');
+
+    expect(prefs.getString(seedKey), 'durable-uid');
+  });
+
   test('#990: failure marker does NOT write the breadcrumb', () async {
     await writeRecoveryOutcome(
       prefs,

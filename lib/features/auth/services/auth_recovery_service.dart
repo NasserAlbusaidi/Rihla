@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/config/firebase_config.dart';
 import '../../../core/services/cache_isolation_controller.dart';
 import '../../../core/services/cache_uid_barrier.dart';
+import 'apple_sign_in_gateway.dart';
 import 'auth_email_link_config.dart';
 import 'durable_credential_exception.dart';
 import 'google_sign_in_gateway.dart';
@@ -16,6 +17,11 @@ import 'recovery_outcome.dart';
 /// (#441 PR1). Defaults to [GoogleSignInGateway.obtainCredential]; injected
 /// in tests because the plugin singleton needs live platform channels.
 typedef GoogleCredentialFactory = Future<AuthCredential> Function();
+
+/// Produces a credential + fresh authorization code from an interactive
+/// Apple sheet (#1256). Defaults to [AppleSignInGateway.obtainCredential];
+/// injected in tests because the package call needs live platform channels.
+typedef AppleCredentialFactory = Future<AppleCredentialBundle> Function();
 
 /// Removes the current device's FCM token doc (#441 PR3). Injected so the
 /// discard-shell restore swap can delete `fcm_tokens/{oldUid}` BEFORE the UID
@@ -68,6 +74,7 @@ class AuthRecoveryService {
     required CacheIsolationController cacheIsolationController,
     FirebaseFirestore? firestore,
     GoogleCredentialFactory? googleCredentialFactory,
+    AppleCredentialFactory? appleCredentialFactory,
     FcmTokenRemover? removeFcmToken,
   }) : _auth = auth,
        _prefs = prefs,
@@ -75,13 +82,16 @@ class AuthRecoveryService {
        _firestore = firestore,
        _removeFcmToken = removeFcmToken ?? _noopFcmTokenRemover,
        _googleCredentialFactory =
-           googleCredentialFactory ?? _defaultGoogleCredentialFactory;
+           googleCredentialFactory ?? _defaultGoogleCredentialFactory,
+       _appleCredentialFactory =
+           appleCredentialFactory ?? _defaultAppleCredentialFactory;
 
   final FirebaseAuth _auth;
   final SharedPreferences _prefs;
   final CacheIsolationController _cacheIsolationController;
   final FirebaseFirestore? _firestore;
   final GoogleCredentialFactory _googleCredentialFactory;
+  final AppleCredentialFactory _appleCredentialFactory;
   final FcmTokenRemover _removeFcmToken;
 
   static Future<void> _noopFcmTokenRemover() async {}
@@ -108,6 +118,12 @@ class AuthRecoveryService {
 
   static Future<AuthCredential> _defaultGoogleCredentialFactory() =>
       _defaultGoogleGateway.obtainCredential();
+
+  /// Shared gateway, mirroring [_defaultGoogleGateway].
+  static final AppleSignInGateway _defaultAppleGateway = AppleSignInGateway();
+
+  static Future<AppleCredentialBundle> _defaultAppleCredentialFactory() =>
+      _defaultAppleGateway.obtainCredential();
 
   static const _pendingEmailKey = 'auth.pendingLinkEmail';
   static const _inFlightOpKey = inFlightOpPrefsKey;
@@ -272,6 +288,30 @@ class AuthRecoveryService {
     }
   }
 
+  /// Apple sibling of [linkGoogleToCurrentUser] (#1256). Same-UID; conflicts
+  /// rethrow as [AppleLinkConflictException] carrying the failed credential.
+  Future<UserCredential> linkAppleToCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('No current user; ensureAnonymousSession first');
+    }
+    final bundle = await _appleCredentialFactory();
+    try {
+      final result = await user.linkWithCredential(bundle.credential);
+      FirebaseConfig.log('Recovery: linked Apple to uid ${result.user?.uid}');
+      return result;
+    } on FirebaseAuthException catch (e) {
+      // Code-only classifier — provider-agnostic despite the name.
+      if (isGoogleAccountAlreadyInUse(e)) {
+        throw AppleLinkConflictException(
+          credential: bundle.credential,
+          cause: e,
+        );
+      }
+      rethrow;
+    }
+  }
+
   /// Restore the durable Google-backed account on this device, then restart
   /// (#441 PR3). This is a cross-UID swap (the outgoing UID is replaced by the
   /// Google-owned UID), so it runs the full cache-isolation protocol —
@@ -341,6 +381,62 @@ class AuthRecoveryService {
       await writeRecoveryOutcome(
         _prefs,
         op: RecoveryOutcome.opGoogle,
+        ok: false,
+        code: recoveryOutcomeCodeOf(e),
+      );
+      rethrow;
+    } finally {
+      await _cacheIsolationController.restart();
+    }
+  }
+
+  /// Apple sibling of [restoreWithGoogle] (#1256) — identical protocol and
+  /// identical load-bearing ordering (see that method's doc comment). The
+  /// caller must prove the outgoing shell empty first. [credential] lets the
+  /// durable-credential sheet conflict path reuse the Apple credential from
+  /// its failed link without a second Apple sheet.
+  Future<UserCredential> restoreWithApple({
+    AuthCredential? credential,
+    Duration pendingWritesTimeout = const Duration(seconds: 5),
+  }) async {
+    final appleCredential =
+        credential ?? (await _appleCredentialFactory()).credential;
+
+    // Owner-only rules block deleting fcm_tokens/{oldUid} after the UID swaps,
+    // and engageIsolation invalidates the notification provider — so remove the
+    // token while still signed in as the outgoing anon UID. Best-effort by
+    // placement: this runs before isolation and outside the try/finally, so a
+    // throw aborts the restore with the shell intact rather than stranding it.
+    await _removeFcmTokenBestEffort(pendingWritesTimeout);
+
+    _cacheIsolationController.engageIsolation();
+    try {
+      try {
+        final firestore = _firestore ?? FirebaseFirestore.instance;
+        await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
+      } on TimeoutException {
+        FirebaseConfig.log(
+          'Restore: waitForPendingWrites timed out after '
+          '${pendingWritesTimeout.inSeconds}s — restoring anyway',
+        );
+      }
+      await markFirestorePersistenceDirty(_prefs);
+      final result = await _auth.signInWithCredential(appleCredential);
+      FirebaseConfig.log('Restore: restored uid ${result.user?.uid}');
+      // #439: the finally's restart kills the process before any caller can
+      // surface success or failure — persist the outcome first. #458: the
+      // boot notice verifies the swap survived the restart via expectedUid.
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opApple,
+        ok: true,
+        expectedUid: result.user?.uid,
+      );
+      return result;
+    } catch (e) {
+      await writeRecoveryOutcome(
+        _prefs,
+        op: RecoveryOutcome.opApple,
         ok: false,
         code: recoveryOutcomeCodeOf(e),
       );

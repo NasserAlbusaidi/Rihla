@@ -90,6 +90,62 @@ void main() {
     });
   });
 
+  group('appleAccountProvider (#1256)', () {
+    test('null user → null', () async {
+      final c = containerWith(null);
+      await settle(c);
+      expect(c.read(appleAccountProvider), isNull);
+    });
+
+    test('anonymous user with no providerData → null', () async {
+      final user = _MockUser();
+      when(() => user.isAnonymous).thenReturn(true);
+      when(() => user.providerData).thenReturn(const []);
+      final c = containerWith(user);
+      await settle(c);
+      expect(c.read(appleAccountProvider), isNull);
+    });
+
+    test('apple.com provider entry → its email surfaces', () async {
+      final user = _MockUser();
+      final infos = [
+        providerInfo('password'),
+        providerInfo('apple.com', email: 'n@privaterelay.appleid.com'),
+      ];
+      when(() => user.isAnonymous).thenReturn(false);
+      when(() => user.providerData).thenReturn(infos);
+      final c = containerWith(user);
+      await settle(c);
+      expect(
+        c.read(appleAccountProvider)?.email,
+        'n@privaterelay.appleid.com',
+      );
+    });
+
+    test('apple.com entry with null email still reports linked (relay '
+        'withheld)', () async {
+      final user = _MockUser();
+      final infos = [providerInfo('apple.com')];
+      when(() => user.isAnonymous).thenReturn(false);
+      when(() => user.providerData).thenReturn(infos);
+      final c = containerWith(user);
+      await settle(c);
+      final account = c.read(appleAccountProvider);
+      expect(account, isNotNull);
+      expect(account!.email, isNull);
+    });
+
+    test('google-only linked user → null (no apple entry)', () async {
+      final user = _MockUser();
+      final infos = [providerInfo('google.com', email: 'n@gmail.com')];
+      when(() => user.isAnonymous).thenReturn(false);
+      when(() => user.providerData).thenReturn(infos);
+      final c = containerWith(user);
+      await settle(c);
+      expect(c.read(appleAccountProvider), isNull);
+    });
+  });
+
   group('isDurableUserProvider', () {
     test('null user → false', () async {
       final c = containerWith(null);

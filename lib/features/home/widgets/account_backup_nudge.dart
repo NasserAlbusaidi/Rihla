@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
@@ -38,6 +39,10 @@ class AccountBackupNudge extends ConsumerWidget {
 
     final colors = context.colors;
     final spacing = context.spacing;
+    // #1256 Task 9b: the sheet this nudge opens offers Apple + Google on iOS,
+    // so the Google-worded copy switches to the provider-neutral *Ios keys;
+    // Android strings stay byte-identical.
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(
@@ -87,7 +92,9 @@ class AccountBackupNudge extends ConsumerWidget {
                       ),
                       SizedBox(height: spacing.space4),
                       Text(
-                        context.l10n.homeBackupNudgeBody,
+                        isIOS
+                            ? context.l10n.homeBackupNudgeBodyIos
+                            : context.l10n.homeBackupNudgeBody,
                         style: AppTypography.sans(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -114,7 +121,9 @@ class AccountBackupNudge extends ConsumerWidget {
                   showDurableCredentialSheet(context);
                 },
                 child: Text(
-                  context.l10n.homeBackupNudgeCta,
+                  isIOS
+                      ? context.l10n.homeBackupNudgeCtaIos
+                      : context.l10n.homeBackupNudgeCta,
                   textAlign: TextAlign.center,
                 ),
               ),

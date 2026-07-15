@@ -209,6 +209,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your trips live only on this phone. Link Google so you never lose them.';
 
   @override
+  String get profileBackupCardBodyIos =>
+      'Your trips live only on this phone. Link an account so you never lose them.';
+
+  @override
   String get profileSetYourName => 'Set your name';
 
   @override
@@ -263,6 +267,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This deletes only this guest session on this device. Any Google or email account you\'ve linked is separate and is NOT deleted unless you sign in to it first. There\'s no undo.';
 
   @override
+  String get deleteGuestSessionContentIos =>
+      'This deletes only this guest session on this device. Any Google, Apple, or email account you\'ve linked is separate and is NOT deleted unless you sign in to it first. There\'s no undo.';
+
+  @override
   String get deleteGuestSessionConfirm => 'Delete guest data';
 
   @override
@@ -296,6 +304,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your synced data stays in the cloud. To restore, sign back in with the same Google account.';
 
   @override
+  String get signOutContentApple =>
+      'Your synced data stays in the cloud. To restore, sign back in with the same Apple ID.';
+
+  @override
   String get profileAccountGoogle => 'Google account';
 
   @override
@@ -303,6 +315,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileAccountLinkGoogle => 'Link Google account';
+
+  @override
+  String get profileAccountApple => 'Apple';
+
+  @override
+  String get profileAccountAppleLinked => 'Linked';
+
+  @override
+  String get profileAccountLinkAccount => 'Link an account';
 
   @override
   String get signOutContentPrefix =>
@@ -1493,6 +1514,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeRestoreWithGoogle => 'Sign in with Google to restore';
 
   @override
+  String get homeRestoreWithApple => 'Restore with Apple';
+
+  @override
   String get homeRestoreWithEmail => 'Restore with email instead';
 
   @override
@@ -1510,6 +1534,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t sign in with Google. Please try again.';
 
   @override
+  String get restoreAppleFailed =>
+      'Couldn\'t sign in with Apple. Please try again.';
+
+  @override
   String get restoreBlockedHasData =>
       'Restoring switches to your saved account and leaves this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first.';
 
@@ -1521,7 +1549,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can\'t erase them.';
 
   @override
+  String get homeBackupNudgeBodyIos =>
+      'Your groups and expenses live only on this phone. Link an account so a new phone, reinstall, or lost device can\'t erase them.';
+
+  @override
   String get homeBackupNudgeCta => 'Link Google account';
+
+  @override
+  String get homeBackupNudgeCtaIos => 'Link account';
 
   @override
   String get homeBackupNudgeDismiss => 'Not now';
@@ -3093,6 +3128,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your groups and expenses are tied to this account. Link Google so they can\'t be lost with this device.';
 
   @override
+  String get durableGateBodyIos =>
+      'Your groups and expenses are tied to this account. Link an account so they can\'t be lost with this device.';
+
+  @override
+  String get durableGateContinueApple => 'Continue with Apple';
+
+  @override
   String get durableGateContinueGoogle => 'Continue with Google';
 
   @override
@@ -3103,11 +3145,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'That Google account already belongs to another Rihla account. Switching to it would leave this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first, then use a different Google account.';
 
   @override
+  String get durableGateConflictApple =>
+      'That Apple ID already belongs to another Rihla account. Switching to it would leave this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first, then use a different Apple ID.';
+
+  @override
   String get durableGateConflictTitle => 'That account already has Rihla data';
 
   @override
   String get durableGateConflictSwitchBody =>
       'This Google account already has Rihla data. Switch to it? This device will continue with that account.';
+
+  @override
+  String get durableGateConflictSwitchBodyApple =>
+      'This Apple ID already has Rihla data. Switch to it? This device will continue with that account.';
 
   @override
   String get durableGateSwitch => 'Switch account';

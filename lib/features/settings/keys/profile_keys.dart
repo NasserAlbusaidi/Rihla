@@ -45,6 +45,10 @@ abstract final class ProfileKeys {
   static const profileRestoreGoogleTile = Key('profile_restore_google_tile');
   static const profileRestoreEmailTile = Key('profile_restore_email_tile');
 
+  // #1256 — Sign in with Apple (iOS)
+  static const appleAccountTile = Key('profile_apple_account_tile');
+  static const profileRestoreAppleTile = Key('profile_restore_apple_tile');
+
   // #487 bullet 3 — delete isolated in its own danger-zone card, separate
   // from the backup & recovery block.
   static const dangerZoneCard = Key('profile_danger_zone_card');

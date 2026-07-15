@@ -1,14 +1,17 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/config/firebase_config.dart';
 import '../../../core/extensions/build_context_l10n.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../groups/providers/group_provider.dart';
@@ -50,9 +53,17 @@ class _DurableCredentialSheetState
   bool _linking = false;
   bool _restoring = false;
   String? _errorText;
-  GoogleLinkConflictException? _conflict;
-  GoogleLinkConflictException? _conflictShellGateOwner;
+  LinkConflictException? _conflict;
+  LinkConflictException? _conflictShellGateOwner;
   Future<bool>? _conflictShellGate;
+
+  /// Dead-end conflict copy, dispatched by exception SUBTYPE (never platform)
+  /// so Google conflicts keep today's copy on both platforms (#1256 D6.1).
+  String _conflictDeadEndText(LinkConflictException conflict) =>
+      switch (conflict) {
+        GoogleLinkConflictException() => context.l10n.durableGateConflict,
+        AppleLinkConflictException() => context.l10n.durableGateConflictApple,
+      };
 
   Future<void> _continueWithGoogle() async {
     setState(() {
@@ -120,10 +131,96 @@ class _DurableCredentialSheetState
     }
   }
 
-  /// Discard-shell switch (#428): restore the existing Google-backed account
-  /// with the credential that just failed to link. On success this never
-  /// returns — the isolation protocol restarts the app. Only reachable when
-  /// the shell is provably empty.
+  /// Apple sibling of [_continueWithGoogle] (#1256): links via the two-phase
+  /// Apple gateway, so a user-cancel throws before any auth mutation.
+  Future<void> _continueWithApple() async {
+    setState(() {
+      _linking = true;
+      _errorText = null;
+      _clearConflict();
+    });
+    try {
+      final result = await ref
+          .read(authRecoveryServiceProvider)
+          .linkAppleToCurrentUser();
+      // The cached ID token can still report the pre-link provider until the
+      // SDK refreshes it lazily. Refresh now so link completion is observable.
+      await result.user?.getIdToken(true);
+      if (mounted) Navigator.of(context).pop(true);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (!mounted) return;
+      if (e.code == AuthorizationErrorCode.canceled) {
+        // Canceled Apple sheet — silent reset, mirroring the Google arm.
+        setState(() => _linking = false);
+        return;
+      }
+      // The Apple sheet's offline failure is NOT a FirebaseAuthException, so
+      // the network-request-failed mapping below never fires for it — map by
+      // live connectivity instead (Gate R1 P3).
+      final offline =
+          ref.read(connectivityProvider) == ConnectivityStatus.offline;
+      setState(() {
+        _linking = false;
+        _errorText = offline
+            ? context.l10n.authErrorOffline
+            : context.l10n.durableGateError;
+      });
+    } on AppleLinkConflictException catch (e) {
+      // PII-safe trail (#439): conflict code only.
+      unawaited(
+        Sentry.addBreadcrumb(
+          Breadcrumb(
+            category: 'auth.gate',
+            message: 'link conflict code=${e.cause.code}',
+          ),
+        ),
+      );
+      // The switch decision is gated by outgoingShellProvablyEmpty (#648) and
+      // is NEVER resolved by signing the anon user out (#213).
+      if (!mounted) return;
+      setState(() {
+        _linking = false;
+        _conflict = e;
+        _conflictShellGateOwner = null;
+        _conflictShellGate = null;
+      });
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'provider-already-linked') {
+        try {
+          await FirebaseConfig.currentUser?.getIdToken(true);
+        } catch (_) {
+          // No-Firebase tests / offline: the rules backstop still governs.
+        }
+        if (mounted) Navigator.of(context).pop(true);
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _linking = false;
+        _errorText = switch (e.code) {
+          // Native-path defense: firebase_auth surfaces an Apple cancel as
+          // FirebaseAuthException('canceled'); unreachable via the package
+          // gateway but kept so a future wiring change stays silent-on-cancel.
+          'canceled' => null,
+          'network-request-failed' => context.l10n.authErrorOffline,
+          _ => context.l10n.durableGateError,
+        };
+      });
+    } catch (e, st) {
+      unawaited(Sentry.captureException(e, stackTrace: st));
+      if (!mounted) return;
+      setState(() {
+        _linking = false;
+        _errorText = context.l10n.durableGateError;
+      });
+    }
+  }
+
+  /// Discard-shell switch (#428): restore the existing provider-backed account
+  /// with the credential that just failed to link, dispatched exhaustively by
+  /// conflict subtype (#1256 — a mis-route is the #414/#647 wrong-account swap
+  /// class). On success this never returns — the isolation protocol restarts
+  /// the app. Only reachable when the shell is provably empty.
   Future<void> _switchAccount() async {
     final conflict = _conflict;
     if (conflict == null || _restoring) return;
@@ -131,16 +228,23 @@ class _DurableCredentialSheetState
     try {
       if (!await _outgoingShellEmpty()) {
         if (!mounted) return;
+        // Read the subtype BEFORE _clearConflict() nulls it (#1256 D6.1).
+        final deadEndText = _conflictDeadEndText(conflict);
         setState(() {
           _restoring = false;
-          _errorText = context.l10n.durableGateConflict;
+          _errorText = deadEndText;
           _clearConflict();
         });
         return;
       }
-      await ref
-          .read(authRecoveryServiceProvider)
-          .restoreWithGoogle(credential: conflict.credential);
+      await switch (conflict) {
+        GoogleLinkConflictException(:final credential) => ref
+            .read(authRecoveryServiceProvider)
+            .restoreWithGoogle(credential: credential),
+        AppleLinkConflictException(:final credential) => ref
+            .read(authRecoveryServiceProvider)
+            .restoreWithApple(credential: credential),
+      };
     } catch (e, st) {
       // Only pre-isolation failures reach here (a post-isolation failure
       // dies in the guaranteed restart). The anon shell is intact.
@@ -169,7 +273,7 @@ class _DurableCredentialSheetState
     );
   }
 
-  Future<bool> _conflictShellEmpty(GoogleLinkConflictException conflict) {
+  Future<bool> _conflictShellEmpty(LinkConflictException conflict) {
     if (!identical(_conflictShellGateOwner, conflict)) {
       _conflictShellGateOwner = conflict;
       _conflictShellGate = _outgoingShellEmpty();
@@ -179,7 +283,6 @@ class _DurableCredentialSheetState
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     final conflict = _conflict;
 
     if (conflict == null) {
@@ -194,9 +297,9 @@ class _DurableCredentialSheetState
         children:
             snapshot.connectionState == ConnectionState.done &&
                 snapshot.data == true
-            ? _switchOfferContent()
+            ? _switchOfferContent(conflict)
             : snapshot.connectionState == ConnectionState.done
-            ? _initialContent(errorText: l10n.durableGateConflict)
+            ? _initialContent(errorText: _conflictDeadEndText(conflict))
             : _conflictLoadingContent(),
       ),
     );
@@ -254,6 +357,7 @@ class _DurableCredentialSheetState
     final colors = context.colors;
     final spacing = context.spacing;
     final l10n = context.l10n;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return [
       Text(
         l10n.durableGateTitle,
@@ -265,7 +369,9 @@ class _DurableCredentialSheetState
       ),
       SizedBox(height: spacing.space8),
       Text(
-        l10n.durableGateBody,
+        // iOS offers Apple + Google, so the body is provider-neutral there;
+        // Android keeps today's Google copy byte-identical (#1256 D6.2).
+        isIOS ? l10n.durableGateBodyIos : l10n.durableGateBody,
         style: AppTypography.sans(
           fontSize: 14,
           height: 1.4,
@@ -285,27 +391,62 @@ class _DurableCredentialSheetState
         ),
       ],
       SizedBox(height: spacing.space24),
-      Row(
-        children: [
-          Expanded(
-            child: _secondaryButton(
-              label: l10n.durableGateNotNow,
-              onPressed: _linking
-                  ? null
-                  : () => Navigator.of(context).pop(false),
-            ),
+      if (isIOS) ...[
+        // 4.8 parity + SiwA HIG: the official Apple button renders FIRST, at
+        // the same height as the Google primary (#1256 D4). The package
+        // widget is the canonical HIG appearance — custom-drawn Apple
+        // buttons are a documented review-flag risk.
+        SignInWithAppleButton(
+          key: const Key('durableGate.continueApple'),
+          text: l10n.durableGateContinueApple,
+          height: 52,
+          style: Theme.of(context).brightness == Brightness.dark
+              ? SignInWithAppleButtonStyle.white
+              : SignInWithAppleButtonStyle.black,
+          onPressed: _linking ? null : _continueWithApple,
+        ),
+        SizedBox(height: spacing.space12),
+        // Outside the Row there is no Expanded to stretch these — their
+        // minimumSize handles height only (Gate R1 P3).
+        SizedBox(
+          width: double.infinity,
+          child: _primaryButton(
+            key: const Key('durableGate.continue'),
+            label: l10n.durableGateContinueGoogle,
+            busy: _linking,
+            onPressed: _linking ? null : _continueWithGoogle,
           ),
-          SizedBox(width: spacing.space12),
-          Expanded(
-            child: _primaryButton(
-              key: const Key('durableGate.continue'),
-              label: l10n.durableGateContinueGoogle,
-              busy: _linking,
-              onPressed: _linking ? null : _continueWithGoogle,
-            ),
+        ),
+        SizedBox(height: spacing.space8),
+        SizedBox(
+          width: double.infinity,
+          child: _secondaryButton(
+            label: l10n.durableGateNotNow,
+            onPressed: _linking ? null : () => Navigator.of(context).pop(false),
           ),
-        ],
-      ),
+        ),
+      ] else
+        Row(
+          children: [
+            Expanded(
+              child: _secondaryButton(
+                label: l10n.durableGateNotNow,
+                onPressed: _linking
+                    ? null
+                    : () => Navigator.of(context).pop(false),
+              ),
+            ),
+            SizedBox(width: spacing.space12),
+            Expanded(
+              child: _primaryButton(
+                key: const Key('durableGate.continue'),
+                label: l10n.durableGateContinueGoogle,
+                busy: _linking,
+                onPressed: _linking ? null : _continueWithGoogle,
+              ),
+            ),
+          ],
+        ),
     ];
   }
 
@@ -338,7 +479,7 @@ class _DurableCredentialSheetState
     ];
   }
 
-  List<Widget> _switchOfferContent() {
+  List<Widget> _switchOfferContent(LinkConflictException conflict) {
     final colors = context.colors;
     final spacing = context.spacing;
     final l10n = context.l10n;
@@ -353,7 +494,12 @@ class _DurableCredentialSheetState
       ),
       SizedBox(height: spacing.space8),
       Text(
-        l10n.durableGateConflictSwitchBody,
+        // Provider-accurate switch copy by SUBTYPE (#1256 D6.1).
+        switch (conflict) {
+          GoogleLinkConflictException() => l10n.durableGateConflictSwitchBody,
+          AppleLinkConflictException() =>
+            l10n.durableGateConflictSwitchBodyApple,
+        },
         style: AppTypography.sans(
           fontSize: 14,
           height: 1.4,

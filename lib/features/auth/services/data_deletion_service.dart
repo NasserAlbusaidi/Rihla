@@ -11,6 +11,8 @@ import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/post_deletion_auth_barrier.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cache_isolation_controller_provider.dart';
+import 'apple_sign_in_gateway.dart';
+import 'auth_recovery_service.dart';
 import 'durable_account_marker.dart';
 
 typedef DeleteAccountCallable = Future<void> Function();
@@ -39,17 +41,55 @@ class DataDeletionService {
     required SharedPreferences prefs,
     required CacheIsolationController cacheIsolationController,
     DeleteAccountCallable? deleteAccountCallable,
+    AppleCredentialFactory? appleCredentialFactory,
   }) : _auth = auth,
        _prefs = prefs,
        _cacheIsolationController = cacheIsolationController,
        _deleteAccountCallable =
            deleteAccountCallable ??
-           (() => FirebaseFunctionsService().deleteAccount());
+           (() => FirebaseFunctionsService().deleteAccount()),
+       _appleCredentialFactory =
+           appleCredentialFactory ?? _defaultAppleCredentialFactory;
 
   final FirebaseAuth _auth;
   final SharedPreferences _prefs;
   final CacheIsolationController _cacheIsolationController;
   final DeleteAccountCallable _deleteAccountCallable;
+  final AppleCredentialFactory _appleCredentialFactory;
+
+  /// Shared gateway, mirroring [AuthRecoveryService]'s default.
+  static final AppleSignInGateway _defaultAppleGateway = AppleSignInGateway();
+
+  static Future<AppleCredentialBundle> _defaultAppleCredentialFactory() =>
+      _defaultAppleGateway.obtainCredential();
+
+  /// 5.1.1(v): apps offering Sign in with Apple must revoke the user's Apple
+  /// token on account deletion (#1256). Apple authorization codes are
+  /// single-use and short-lived, so a FRESH interactive authorization is
+  /// required here — the link-time code is long expired. Best-effort by
+  /// design: a cancel/offline/Apple failure logs and proceeds; deletion is
+  /// never hostage to the Apple round-trip (the server cascade + deleteUser
+  /// still sever the link).
+  Future<void> _revokeAppleTokenBestEffort(User user) async {
+    final hasApple = user.providerData.any((p) => p.providerId == 'apple.com');
+    if (!hasApple) return;
+    try {
+      final bundle = await _appleCredentialFactory();
+      final code = bundle.authorizationCode;
+      if (code == null || code.isEmpty) {
+        FirebaseConfig.log('Deletion: Apple revoke skipped (no auth code)');
+        return;
+      }
+      await _auth.revokeTokenWithAuthorizationCode(code);
+      FirebaseConfig.log('Deletion: Apple token revoked');
+    } catch (error, stack) {
+      FirebaseConfig.log(
+        'Deletion: Apple revoke failed (non-fatal)',
+        error: error,
+        stackTrace: stack,
+      );
+    }
+  }
 
   Future<DeletionResult> deleteAccount() async {
     final user = _auth.currentUser;
@@ -57,6 +97,7 @@ class DataDeletionService {
       FirebaseConfig.log('Deletion: no current user');
       return DeletionResult.noUser;
     }
+    await _revokeAppleTokenBestEffort(user);
     try {
       await _deleteAccountCallable();
     } catch (error, stack) {

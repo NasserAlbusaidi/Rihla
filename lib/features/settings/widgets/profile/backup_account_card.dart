@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -64,7 +65,11 @@ class BackupAccountCard extends StatelessWidget {
                     ),
                     SizedBox(height: context.spacing.space4),
                     Text(
-                      l10n.profileBackupCardBody,
+                      // #1256 Task 9b: the sheet offers Apple + Google on
+                      // iOS — provider-neutral copy there; Android unchanged.
+                      defaultTargetPlatform == TargetPlatform.iOS
+                          ? l10n.profileBackupCardBodyIos
+                          : l10n.profileBackupCardBody,
                       style: AppTypography.sans(
                         fontSize: 12,
                         color: colors.textSecondary,

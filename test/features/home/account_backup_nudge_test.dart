@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -169,6 +170,39 @@ void main() {
       );
     },
   );
+
+  // #1256 Task 9b: on iOS the sheet this nudge opens offers Apple + Google,
+  // so the Google-worded copy must switch to the provider-neutral *Ios keys;
+  // Android strings stay byte-identical.
+  group('iOS copy (#1256)', () {
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    testWidgets('iOS renders the provider-neutral body and CTA', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      await _pump(tester, prefs: prefs);
+
+      final l10n = AppLocalizationsEn();
+      expect(find.text(l10n.homeBackupNudgeBodyIos), findsOneWidget);
+      expect(find.text(l10n.homeBackupNudgeCtaIos), findsOneWidget);
+      expect(find.text(l10n.homeBackupNudgeBody), findsNothing);
+      expect(find.text(l10n.homeBackupNudgeCta), findsNothing);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('default platform (android) keeps the existing strings', (
+      tester,
+    ) async {
+      await _pump(tester, prefs: prefs);
+
+      final l10n = AppLocalizationsEn();
+      expect(find.text(l10n.homeBackupNudgeBody), findsOneWidget);
+      expect(find.text(l10n.homeBackupNudgeCta), findsOneWidget);
+      expect(find.text(l10n.homeBackupNudgeBodyIos), findsNothing);
+      expect(find.text(l10n.homeBackupNudgeCtaIos), findsNothing);
+    });
+  });
 
   testWidgets('Not now dismisses the card and persists the flag', (
     tester,

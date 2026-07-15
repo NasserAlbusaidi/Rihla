@@ -5,6 +5,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
 import 'package:safar/core/services/post_deletion_auth_barrier.dart';
+import 'package:safar/features/auth/services/apple_sign_in_gateway.dart';
+import 'package:safar/features/auth/services/auth_recovery_service.dart';
 import 'package:safar/features/auth/services/data_deletion_service.dart';
 import 'package:safar/features/auth/services/durable_account_marker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,7 +17,11 @@ class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 class _MockUser extends Mock implements User {}
 
+class _MockUserInfo extends Mock implements UserInfo {}
+
 class _MockPrefs extends Mock implements SharedPreferences {}
+
+class _FakeAuthCredential extends Fake implements AuthCredential {}
 
 /// The server throws this exact shape on a partial/convergent deletion. The
 /// real plugin constructor is @protected; a subclass may invoke it.
@@ -44,17 +50,22 @@ void main() {
     auth = _MockFirebaseAuth();
     user = _MockUser();
     when(() => user.uid).thenReturn('uid-1');
+    // #1256: deleteAccount scans providerData for apple.com before the
+    // cascade; the default fixture is a provider-less (anon) user.
+    when(() => user.providerData).thenReturn(const []);
   });
 
   DataDeletionService build({
     required List<String> events,
     DeleteAccountCallable? deleteAccountCallable,
+    AppleCredentialFactory? appleCredentialFactory,
   }) {
     return DataDeletionService(
       auth: auth,
       prefs: prefs,
       cacheIsolationController: _RecordingController(events),
       deleteAccountCallable: deleteAccountCallable,
+      appleCredentialFactory: appleCredentialFactory,
     );
   }
 
@@ -226,6 +237,145 @@ void main() {
     );
 
     expect(await service.deleteAccount(), DeletionResult.error);
+  });
+
+  // #1256 — 5.1.1(v): deleting an account with a linked Apple provider must
+  // revoke the Apple token (fresh authorization → revokeTokenWithAuthorizationCode)
+  // BEFORE the server cascade, and deletion is NEVER hostage to that
+  // round-trip: any revoke failure logs and proceeds.
+  group('Apple token revocation (5.1.1(v))', () {
+    UserInfo appleInfo() {
+      final info = _MockUserInfo();
+      when(() => info.providerId).thenReturn('apple.com');
+      return info;
+    }
+
+    AppleCredentialBundle bundle(String? code) =>
+        (credential: _FakeAuthCredential(), authorizationCode: code);
+
+    test('apple provider → fresh authorization + revoke BEFORE the callable',
+        () async {
+      final events = <String>[];
+      when(() => auth.currentUser).thenReturn(user);
+      final info = appleInfo();
+      when(() => user.providerData).thenReturn([info]);
+      when(() => auth.revokeTokenWithAuthorizationCode('code-1'))
+          .thenAnswer((_) async => events.add('revoke'));
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = build(
+        events: events,
+        deleteAccountCallable: () async => events.add('callable'),
+        appleCredentialFactory: () async {
+          events.add('factory');
+          return bundle('code-1');
+        },
+      );
+
+      expect(await service.deleteAccount(), DeletionResult.ok);
+      expect(events, [
+        'factory',
+        'revoke',
+        'callable',
+        'engage',
+        'signOut',
+        'restart',
+      ]);
+    });
+
+    test('no apple provider → neither the factory nor revoke is called',
+        () async {
+      final events = <String>[];
+      var factoryCalled = false;
+      when(() => auth.currentUser).thenReturn(user);
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = build(
+        events: events,
+        deleteAccountCallable: () async => events.add('callable'),
+        appleCredentialFactory: () async {
+          factoryCalled = true;
+          return bundle('code-1');
+        },
+      );
+
+      expect(await service.deleteAccount(), DeletionResult.ok);
+      expect(factoryCalled, isFalse);
+      verifyNever(() => auth.revokeTokenWithAuthorizationCode(any()));
+    });
+
+    test('factory throw (user cancels the Apple sheet) → deletion proceeds '
+        'to the callable and returns ok', () async {
+      final events = <String>[];
+      when(() => auth.currentUser).thenReturn(user);
+      final info = appleInfo();
+      when(() => user.providerData).thenReturn([info]);
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = build(
+        events: events,
+        deleteAccountCallable: () async => events.add('callable'),
+        appleCredentialFactory: () async => throw StateError('canceled'),
+      );
+
+      expect(await service.deleteAccount(), DeletionResult.ok);
+      expect(events, ['callable', 'engage', 'signOut', 'restart']);
+      verifyNever(() => auth.revokeTokenWithAuthorizationCode(any()));
+    });
+
+    test('null authorizationCode → revoke skipped, deletion proceeds',
+        () async {
+      final events = <String>[];
+      when(() => auth.currentUser).thenReturn(user);
+      final info = appleInfo();
+      when(() => user.providerData).thenReturn([info]);
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = build(
+        events: events,
+        deleteAccountCallable: () async => events.add('callable'),
+        appleCredentialFactory: () async => bundle(null),
+      );
+
+      expect(await service.deleteAccount(), DeletionResult.ok);
+      expect(events, ['callable', 'engage', 'signOut', 'restart']);
+      verifyNever(() => auth.revokeTokenWithAuthorizationCode(any()));
+    });
+
+    test('default (un-injected) apple factory: the real gateway throws in a '
+        'test environment and revoke stays best-effort — deletion proceeds',
+        () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final events = <String>[];
+      final info = appleInfo();
+      when(() => auth.currentUser).thenReturn(user);
+      when(() => user.providerData).thenReturn([info]);
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = DataDeletionService(
+        auth: auth,
+        prefs: prefs,
+        cacheIsolationController: _RecordingController(events),
+        deleteAccountCallable: () async => events.add('callable'),
+      );
+
+      expect(await service.deleteAccount(), DeletionResult.ok);
+      expect(events, ['callable', 'engage', 'signOut', 'restart']);
+      verifyNever(() => auth.revokeTokenWithAuthorizationCode(any()));
+    });
+
+    test('revoke API failure is non-fatal — deletion proceeds', () async {
+      final events = <String>[];
+      when(() => auth.currentUser).thenReturn(user);
+      final info = appleInfo();
+      when(() => user.providerData).thenReturn([info]);
+      when(() => auth.revokeTokenWithAuthorizationCode('code-1'))
+          .thenThrow(FirebaseAuthException(code: 'invalid-credential'));
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = build(
+        events: events,
+        deleteAccountCallable: () async => events.add('callable'),
+        appleCredentialFactory: () async => bundle('code-1'),
+      );
+
+      expect(await service.deleteAccount(), DeletionResult.ok);
+      expect(events, ['callable', 'engage', 'signOut', 'restart']);
+    });
   });
 
   // #1100: a failed on-device write of the post-deletion marker must fail
