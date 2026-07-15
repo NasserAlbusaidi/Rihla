@@ -1,0 +1,221 @@
+<!--
+  Rihla feature-graphic generator (Falaj, 2026-07-15).
+
+  Variant D ("Bilingual lockup") is the SHIPPED graphic — Play Store
+  featureGraphic (en-US + ar) and the hosting og:image. Variants A/B/C are
+  kept as explored alternatives; regenerate instead of redrawing on the next
+  brand pass. Token values mirror docs/DESIGN.md §2/§3 (verify before reuse).
+
+  Export (macOS, Chrome):
+    CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    # Play featureGraphic, exactly 1024x500:
+    "$CHROME" --headless=new --disable-gpu --hide-scrollbars \
+      --force-device-scale-factor=2 --window-size=1024,500 \
+      --virtual-time-budget=8000 --screenshot=vD-2x.png \
+      "file://$PWD/generator.html?v=D"
+    sips -z 500 1024 vD-2x.png --out featureGraphic.png
+    # og:image, exactly 1200x630 (?og=1 re-targets the board to og aspect):
+    "$CHROME" ... --window-size=1200,630 --screenshot=vD-og-2x.png \
+      "file://$PWD/generator.html?v=D&og=1"
+    sips -z 630 1200 vD-og-2x.png --out feature-graphic.png
+
+  Fonts load from Google Fonts at render time (Bricolage Grotesque, Zain,
+  Spline Sans Mono, Reem Kufi) — the app bundles the same families as assets.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rihla feature graphic generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Zain:wght@400;700;800&family=Spline+Sans+Mono:wght@400;500;700&family=Reem+Kufi:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ===== Falaj tokens (DESIGN.md §2, verified 2026-07-15) ===== */
+  :root{
+    --ground:#F6F7F5; --ground-deep:#ECEEE8; --card:#FFFFFF; --card-soft:#F1F2ED;
+    --ink:#1B1F1E; --ink2:#333A38; --ink3:#5C6462; --ink4:#8B918D;
+    --rule:#E3E6E0; --rule2:#CDD2CA;
+    --brass:#8A5D0D; --brass-dark:#6F4A08; --brass-soft:#E3E4C9; --brass-tint:#F1F2DF;
+    --emerald:#1F7A5C; --emerald-text:#175A44; --pom:#B03A48;
+    /* dark theme */
+    --d-ground:#111514; --d-ground-deep:#0C0F0E; --d-card:#1E2422;
+    --d-ink:#ECEFEA; --d-ink2:#C9CFC9; --d-ink3:#9AA39E;
+    --d-rule:#2A322F; --d-rule2:#3A433F;
+    --d-brass:#D9A845; --d-emerald:#4FBE8F; --d-pom:#E0707B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#666;display:flex;flex-direction:column;gap:0}
+  .board{width:1024px;height:500px;overflow:hidden;position:relative;flex:none}
+  .brico{font-family:"Bricolage Grotesque",sans-serif}
+  .zain{font-family:"Zain",sans-serif}
+  .mono{font-family:"Spline Sans Mono",monospace;font-variant-numeric:tabular-nums}
+  .kufi{font-family:"Reem Kufi",sans-serif}
+
+  /* fork underscore device — hosting/_styles.css geometry */
+  .fork{display:block;overflow:visible}
+
+  /* =============================================================
+     A — Plaster ledger: light ground, wordmark + settle mini-card
+     ============================================================= */
+  .vA{background:var(--ground);display:flex;align-items:center;padding:0 72px;gap:56px}
+  .vA .left{flex:1}
+  .vA h1{font-size:118px;font-weight:800;color:var(--ink);letter-spacing:-2px;line-height:.94}
+  .vA .fork{width:270px;height:36px;color:var(--brass);margin:10px 0 26px 6px}
+  .vA .tag{font-size:37px;font-weight:700;color:var(--ink2);line-height:1.15}
+  .vA .sub{font-size:26px;font-weight:400;color:var(--ink3);margin-top:8px}
+  .card{background:var(--card);border:1.5px solid var(--rule);border-radius:22px;
+        box-shadow:0 10px 28px rgba(27,31,30,.08);padding:30px 34px;width:330px;flex:none}
+  .row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0}
+  .row .n{font-family:"Zain";font-size:25px;font-weight:700;color:var(--ink)}
+  .row .a{font-size:22px;font-weight:500}
+  .a.pos{color:var(--emerald-text)} .a.neg{color:var(--pom)}
+  .card .hr{height:1.5px;background:var(--rule);margin:2px 0}
+  .settle{display:flex;align-items:center;gap:12px;margin-top:16px;
+          background:var(--brass-tint);border:1.5px solid var(--brass-soft);
+          border-radius:14px;padding:12px 16px}
+  .settle .lbl{font-family:"Zain";font-size:20px;font-weight:700;color:var(--brass-dark)}
+  .settle svg{color:var(--brass-dark)}
+
+  /* =============================================================
+     B — Night navigation: dark hero, star-grid, lantern brass
+     ============================================================= */
+  .vB{background:var(--d-ground);display:flex;flex-direction:column;justify-content:center;
+      align-items:center;text-align:center;position:relative}
+  .vB .stars{position:absolute;inset:0;opacity:.5}
+  .vB h1{font-size:126px;font-weight:800;color:var(--d-ink);letter-spacing:-2px;position:relative}
+  .vB .fork{width:290px;height:38px;color:var(--d-brass);margin:8px auto 26px}
+  .vB .tag{font-size:36px;font-weight:700;color:var(--d-ink2);position:relative}
+  .vB .amounts{display:flex;gap:44px;margin-top:26px;position:relative}
+  .vB .amt{font-size:27px;font-weight:500}
+  .vB .amt.pos{color:var(--d-emerald)} .vB .amt.neg{color:var(--d-pom)}
+  .vB .caret{font-size:20px}
+
+  /* =============================================================
+     C — Channel: giant structural fork as hero, wordmark compact
+     ============================================================= */
+  .vC{background:var(--ground-deep);position:relative;display:flex;align-items:center;padding:0 78px}
+  .vC .bigfork{position:absolute;right:56px;top:50%;transform:translateY(-50%);
+               width:430px;height:150px;color:var(--brass)}
+  .vC .left{position:relative;max-width:520px}
+  .vC h1{font-size:104px;font-weight:800;color:var(--ink);letter-spacing:-2px}
+  .vC .tag{font-size:35px;font-weight:700;color:var(--ink2);margin-top:14px;line-height:1.2}
+  .vC .chips{display:flex;gap:14px;margin-top:26px}
+  .chip{background:var(--card);border:1.5px solid var(--rule2);border-radius:999px;
+        padding:9px 22px;font-family:"Zain";font-size:21px;font-weight:700;color:var(--ink3)}
+
+  /* =============================================================
+     D — Bilingual: dual-script wordmark, shared fork channel
+     ============================================================= */
+  .vD{background:var(--ground);display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .vD .pair{display:flex;align-items:baseline;gap:54px}
+  .vD h1{font-size:108px;font-weight:800;color:var(--ink);letter-spacing:-2px;line-height:1}
+  .vD .ar{font-family:"Reem Kufi";font-size:96px;font-weight:600;color:var(--ink);line-height:1;position:relative;top:12px}
+  .vD .fork{width:300px;height:40px;color:var(--brass);margin:30px auto 24px}
+  .vD .tags{display:flex;gap:40px;align-items:baseline}
+  .vD .tag{font-size:31px;font-weight:700;color:var(--ink2)}
+  .vD .tag.artag{font-size:33px}
+  .vD .dot{color:var(--brass);font-size:26px}
+</style>
+</head>
+<body>
+
+<!-- ============ A ============ -->
+<section class="board vA" id="A">
+  <div class="left">
+    <h1 class="brico">Rihla</h1>
+    <svg class="fork" viewBox="0 0 60 8" fill="none" aria-hidden="true">
+      <path d="M0 4H37.5M37.5 4L60 .32M37.5 4H60M37.5 4L60 7.68" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    <div class="tag zain">Split group expenses</div>
+    <div class="sub zain">Who owes who &middot; settle up &middot; offline</div>
+  </div>
+  <div class="card">
+    <div class="row"><span class="n">Sara</span><span class="a mono pos">+ 12.400</span></div>
+    <div class="hr"></div>
+    <div class="row"><span class="n">Ahmed</span><span class="a mono neg">&minus; 8.150</span></div>
+    <div class="hr"></div>
+    <div class="row"><span class="n">Maryam</span><span class="a mono neg">&minus; 4.250</span></div>
+    <div class="settle">
+      <svg width="44" height="14" viewBox="0 0 60 8" fill="none"><path d="M0 4H37.5M37.5 4L60 .32M37.5 4H60M37.5 4L60 7.68" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span class="lbl">Settle up &middot; OMR</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ B ============ -->
+<section class="board vB" id="B">
+  <svg class="stars" viewBox="0 0 1024 500" aria-hidden="true">
+    <g fill="#3A433F">
+      <circle cx="88" cy="72" r="2"/><circle cx="212" cy="150" r="1.5"/><circle cx="150" cy="330" r="2"/>
+      <circle cx="330" cy="60" r="1.5"/><circle cx="60" cy="430" r="1.5"/><circle cx="300" cy="430" r="2"/>
+      <circle cx="700" cy="55" r="1.5"/><circle cx="860" cy="120" r="2"/><circle cx="950" cy="60" r="1.5"/>
+      <circle cx="920" cy="300" r="2"/><circle cx="760" cy="430" r="1.5"/><circle cx="960" cy="440" r="2"/>
+      <circle cx="420" cy="100" r="1.2"/><circle cx="600" cy="440" r="1.2"/><circle cx="500" cy="55" r="1.4"/>
+    </g>
+    <g stroke="#3A433F" stroke-width="1.2" stroke-linecap="round">
+      <path d="M170 210 h14 M177 203 v14"/><path d="M880 380 h14 M887 373 v14"/>
+      <path d="M540 400 h12 M546 394 v12"/><path d="M940 180 h12 M946 174 v12"/>
+    </g>
+  </svg>
+  <h1 class="brico">Rihla</h1>
+  <svg class="fork" viewBox="0 0 60 8" fill="none" aria-hidden="true">
+    <path d="M0 4H37.5M37.5 4L60 .32M37.5 4H60M37.5 4L60 7.68" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+  <div class="tag zain">Split group expenses</div>
+  <div class="amounts mono">
+    <span class="amt pos"><span class="caret">&#9650;</span> 12.400</span>
+    <span class="amt neg"><span class="caret">&#9660;</span> 8.150</span>
+  </div>
+</section>
+
+<!-- ============ C ============ -->
+<section class="board vC" id="C">
+  <svg class="bigfork" viewBox="0 0 60 20" fill="none" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+    <path d="M0 10H36M36 10L58 2M36 10H58M36 10L58 18" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+  </svg>
+  <div class="left">
+    <h1 class="brico">Rihla</h1>
+    <div class="tag zain">One bill in.<br>Everyone&rsquo;s share out.</div>
+    <div class="chips zain">
+      <span class="chip">No signup</span>
+      <span class="chip">&#1593;&#1585;&#1576;&#1610; &middot; EN</span>
+      <span class="chip">Offline</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ D ============ -->
+<section class="board vD" id="D">
+  <div class="pair">
+    <h1 class="brico">Rihla</h1>
+    <span class="ar">&#1585;&#1581;&#1604;&#1577;</span>
+  </div>
+  <svg class="fork" viewBox="0 0 60 8" fill="none" aria-hidden="true">
+    <path d="M0 4H37.5M37.5 4L60 .32M37.5 4H60M37.5 4L60 7.68" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+  <div class="tags zain">
+    <span class="tag">Split group expenses</span>
+    <span class="dot">&#9670;</span>
+    <span class="tag artag">&#1602;&#1587;&#1617;&#1605; &#1575;&#1604;&#1601;&#1608;&#1575;&#1578;&#1610;&#1585; &#1605;&#1593; &#1575;&#1604;&#1588;&#1604;&#1617;&#1577;</span>
+  </div>
+</section>
+
+<script>
+  // ?v=A isolates one board for headless export; no param shows all.
+  // ?og=1 re-targets the isolated board to 1200x630 (og:image aspect):
+  // board box 1044x548 + zoom 1.15 ≈ 1200x630 rendered, content scales along.
+  const params = new URLSearchParams(location.search);
+  const v = params.get('v');
+  if (v) document.querySelectorAll('.board').forEach(b => {
+    if (b.id !== v) b.style.display = 'none';
+  });
+  if (v && params.get('og')) {
+    const b = document.getElementById(v);
+    b.style.width = '1044px';
+    b.style.height = '548px';
+    b.style.zoom = '1.15';
+  }
+</script>
+</body>
+</html>
