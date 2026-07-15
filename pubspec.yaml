@@ -82,6 +82,11 @@ dependencies:
   haptic_feedback: ^0.6.4+3
   firebase_app_check: ^0.4.3
   google_sign_in: ^7.2.0
+  # Sign in with Apple (#1256, App Store 4.8). Pinned to 7.x — every API the
+  # gateway uses was verified against the 7.0.1 source; 8.x is a separate,
+  # deliberate upgrade with its own API check.
+  sign_in_with_apple: ^7.0.1
+  crypto: ^3.0.7 # SiwA nonce hashing (promoted from transitive)
   flutter_svg: 2.3.0
 
 dev_dependencies:
