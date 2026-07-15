@@ -8,7 +8,7 @@
 
 **Architecture:** Mirror the Google provider pair exactly. A new `AppleSignInGateway` obtains a two-phase credential (interactive Apple sheet FIRST, Firebase swap later) via the `sign_in_with_apple` package; `AuthRecoveryService` gains `linkAppleToCurrentUser()` / `restoreWithApple()` following the byte-identical cross-UID protocol (`fcm-token removal → engageIsolation → flush → dirty-mark → signInWithCredential → outcome write → guaranteed restart`), reusing `outgoingShellProvablyEmpty` unchanged. The durable-credential sheet and every launcher surface offer Apple at ≥ Google prominence on iOS only; Android is byte-identical to today. Account deletion best-effort revokes the Apple token (fresh authorization code → `FirebaseAuth.revokeTokenWithAuthorizationCode`) before the server cascade.
 
-**Tech Stack:** Flutter, `firebase_auth` 6.3.0 (installed), `sign_in_with_apple` ^8.1.0 (new), `crypto` (promoted from transitive), Riverpod 2.x, mocktail.
+**Tech Stack:** Flutter, `firebase_auth` 6.3.0 (installed), `sign_in_with_apple` (new — add via `flutter pub add`, pin to the resolved version; 8.1.0 published, all APIs used verified against the 7.0.1 source on disk), `crypto` (promoted from transitive), Riverpod 2.x, mocktail.
 
 **Not touched:** `security/firestore.rules`, `functions/**`, `BalanceCalculator`/money, `app_router.dart` (no new routes — the sheet gains a button, not a screen), Firestore schema. Android surfaces and `google_sign_in` flows unchanged.
 
@@ -25,7 +25,7 @@ Every claim below was verified by direct Read/grep in this session — none is c
 | `FirebaseAuth.revokeTokenWithAuthorizationCode(String)` exists | `firebase_auth-6.3.0/lib/src/firebase_auth.dart:797` | yes |
 | Native iOS plugin captures `authorizationCode` on sign-in, link, AND reauth | `FLTFirebaseAuthPlugin.m:418-460` (all three completion branches) → `additional_user_info.dart:35` | **CONFIRMED** — the issue's open question is resolved; a fresh Apple authorization always yields a code |
 | Apple cancel surfaces as `FirebaseAuthException(code: 'canceled')` via native path; `SignInWithAppleAuthorizationException(AuthorizationErrorCode.canceled)` via the package | `FLTFirebaseAuthPlugin.m` (ASAuthorizationErrorCanceled → FlutterError 'canceled') + `exception.dart:16-36` conversion; package API | both handled below |
-| `sign_in_with_apple` latest stable | pub.dev fetched 2026-07-15 | **8.1.0**; `getAppleIDCredential(scopes:, nonce:)`, credential exposes `authorizationCode` |
+| `sign_in_with_apple` | pub.dev fetched 2026-07-15 (8.1.0 published); installed source verified at `~/.pub-cache/.../sign_in_with_apple-7.0.1` (Gate R1) | every API this spec uses exists in the 7.0.1 source on disk: `getAppleIDCredential(scopes:, nonce:)`, `identityToken`, NON-nullable `authorizationCode`, `SignInWithAppleButton` with **nullable `onPressed`**, `AuthorizationErrorCode.canceled`. Add via `flutter pub add sign_in_with_apple` and pin the caret to whatever resolves |
 | `crypto` already in the tree | `pubspec.lock:236` | transitive — promote to direct |
 | Google mirror shapes | `auth_recovery_service.dart` read in full (508 lines): `GoogleCredentialFactory` L18, `isGoogleAccountAlreadyInUse` L42 (code-only, provider-agnostic), `linkGoogleToCurrentUser` L257, `restoreWithGoogle` L302 | template confirmed |
 | Conflict exception carries credential (never read `FirebaseAuthException.credential` — nullable, flutterfire #9920) | `durable_credential_exception.dart` read in full | confirmed |
@@ -35,7 +35,7 @@ Every claim below was verified by direct Read/grep in this session — none is c
 | Deletion flow | `data_deletion_service.dart` read in full; sole call site `danger_zone_card.dart:62`; `deleteAccount.ts` has zero Apple references (grepped `functions/src`) | client-side revoke slots in before the callable; **no Functions change** |
 | Durable marker | `durable_account_marker_provider.dart:26` marks reactively off auth state | provider-agnostic — Apple link flips it for free |
 | Launcher surfaces (5) | `home_screen.dart:390-421` (`home_empty_recover_cta` ungated by isAnonymous), `profile_screen.dart` `_AccountCard`, `backup_account_card.dart`, `account_backup_nudge.dart:33-114`, `claim_requests_section.dart:96` | all funnel into the sheet or `triggerGoogleRestore` |
-| l10n keys naming Google | `app_en.arb`: `durableGateBody` 2372, `durableGateConflict` 2384, `durableGateConflictSwitchBody` 2392, `profileBackupCardBody` 261, `homeBackupNudgeBody/Cta` 1309-1310 | neutralize values (keys unchanged) |
+| l10n keys naming Google | `app_en.arb`: `durableGateBody` 2372, `durableGateConflict` 2384, `durableGateConflictSwitchBody` 2392, `profileBackupCardBody` 261, `homeBackupNudgeBody/Cta` 1309-1310; also `signOutContentGoogle` (no-email fallback, `sign_out_confirm_dialog.dart:49-50`) and `deleteGuestSessionContent` | **shared values, no platform variant — never edit them** (Gate R1 P1): Apple-conflict copy dispatches to NEW keys by exception subtype; iOS link-prompt copy selects NEW `*Ios` keys at the call sites; Android strings stay byte-identical |
 | iOS signing | `ExportOptions.plist` + `project.pbxproj`: automatic signing, team T2U886CPS5; `Runner.entitlements` currently aps-environment + associated-domains only | entitlement edit auto-regenerates profiles at archive once the capability is enabled on the App ID |
 | `googleAccountProvider` / `isDurableUserProvider` | `auth_provider.dart:46-65` | Apple sibling mirrors the providerData scan; `isDurableUserProvider` needs no change |
 | ProfileKeys | `profile_keys.dart:40-46` | add `appleAccountTile`, `profileRestoreAppleTile` |
@@ -64,10 +64,19 @@ Not `Platform.isIOS` — `defaultTargetPlatform` is overridable in widget tests 
 The sheet's iOS layout stacks: **official `SignInWithAppleButton`** (package widget — canonical HIG appearance; black in light theme, white in dark; custom-drawn Apple buttons are a documented review-flag risk) FIRST, then the existing Google primary button at the same height (52), then "Not now". List-row surfaces (home empty state, profile rows) add an Apple text row ABOVE the Google row with identical styling — Apple's HIG accepts plain-text affordances in settings-style lists. A reviewer pattern-matching "third-party login present, is Apple ≥ prominent?" must find yes on every surface.
 
 ### D5 — 5.1.1(v) revocation is client-side, best-effort, same build
-`deleteAccount()` (client), before the server callable: if `user.providerData` contains `apple.com`, obtain a FRESH Apple authorization (Apple codes are short-lived/single-use — the original link-time code is long dead) via the same gateway, then `_auth.revokeTokenWithAuthorizationCode(code)`. Any failure — user cancels the Apple sheet, offline, Apple error — logs and **proceeds with deletion**: deletion is a user right and is never hostage to an Apple round-trip; Firebase's `deleteUser` drops the provider link regardless, and the residual OAuth grant on Apple's side is removable by the user in Settings. No timeout on the interactive prompt (the user initiated deletion; a cancel is the abort signal). **No Cloud Functions change** — the heavier server-side REST `/auth/revoke` path (stored refresh token + signed JWT) is explicitly rejected as YAGNI; revisit only if Apple review demands non-interactive revocation.
+`deleteAccount()` (client), before the server callable: if `user.providerData` contains `apple.com`, obtain a FRESH Apple authorization (Apple codes are short-lived/single-use — the original link-time code is long dead, and persisting it would buy only a ~5-minute window) via the same gateway, then `_auth.revokeTokenWithAuthorizationCode(code)`. Any failure — user cancels the Apple sheet, offline, Apple error — logs and **proceeds with deletion**: deletion is a user right and is never hostage to an Apple round-trip; Firebase's `deleteUser` drops the provider link regardless, and the residual OAuth grant on Apple's side is removable by the user in Settings. No timeout on the interactive prompt (the user initiated deletion; a cancel is the abort signal). **No Cloud Functions change** — the heavier server-side REST `/auth/revoke` path (stored refresh token + signed JWT) is explicitly rejected as YAGNI; revisit only if Apple review demands non-interactive revocation.
 
-### D6 — Copy neutralization, values only
-Four strings that name Google but whose destination is now the multi-provider sheet (`durableGateBody`, `profileBackupCardBody`, `homeBackupNudgeBody`, `homeBackupNudgeCta`) and the two conflict strings that hardcode "Google account" (`durableGateConflict`, `durableGateConflictSwitchBody`) get provider-neutral VALUES in both ARB files. Keys unchanged — minimizes test churn and keeps `generated_l10n_surface_test` stable. New keys are added only for genuinely new affordances (list below).
+**Accepted risk (state verbatim in the implementation PR body):** best-effort + interactive revocation means a silently failed revoke still deletes the account. What App Review actually exercises is delete → re-sign-in with the same Apple ID → data must be gone — which this design satisfies regardless of revoke outcome (the server cascade is unconditional). The residual exposure is a lingering OAuth grant in the user's Apple ID settings, not data. If a resubmission is nonetheless rejected on 5.1.1(v), the fallback is the server-side stored-refresh-token revoke — a Gate-category Functions/schema change to be spec'd separately.
+
+### D6 — Copy stays accurate per provider and per platform; NO shared-value edits (rewritten after Gate R1 [P1])
+The naive fix — neutralizing shared string VALUES — silently changes Android copy while the sheet there remains Google-only, violating the "Android: zero change" boundary (Gate R1 adversary finding). Instead:
+
+1. **Conflict copy dispatches by exception subtype, not platform.** `GoogleLinkConflictException` → existing `durableGateConflict`/`durableGateConflictSwitchBody` (values untouched — still correctly say "Google" for Google conflicts on BOTH platforms). `AppleLinkConflictException` → new `durableGateConflictApple`/`durableGateConflictSwitchBodyApple` ("That Apple ID already belongs to another Rihla account…" / "This Apple ID already has Rihla data. Switch to it? …"). `durableGateConflictTitle` is already provider-neutral — reused.
+2. **Link-prompt copy selects an `*Ios` key at the call site** when `defaultTargetPlatform == TargetPlatform.iOS`: `durableGateBodyIos`, `profileBackupCardBodyIos`, `homeBackupNudgeBodyIos`, `homeBackupNudgeCtaIos` (neutral "Link an account…" phrasing, since the iOS sheet offers Apple + Google). Android call sites keep the existing keys — byte-identical strings.
+3. **Sign-out dialog (Gate R1 [P2]; path corrected — the reviewer cited a wrong dir):** `lib/features/auth/widgets/sign_out_confirm_dialog.dart:50` falls back to `signOutContentGoogle` whenever `email` is null/empty — an Apple-linked user with a relay-withheld email would be told to sign back in with a Google account they don't have. The dialog is a plain StatelessWidget taking only `email` (verified), so add `this.hasAppleProvider = false` and branch `null || '' => hasAppleProvider ? l10n.signOutContentApple : l10n.signOutContentGoogle`; the caller (`profile_screen.dart` `_signOut`) passes `hasAppleProvider: ref.read(appleAccountProvider) != null`. Android behavior unchanged (provider always null there).
+4. **Guest-session delete copy (Gate R1 [P3]; call site verified):** `lib/features/auth/widgets/delete_account_dialog.dart:37` picks `deleteGuestSessionContent` ("Google or email") — on iOS select new `deleteGuestSessionContentIos` ("Any Google, Apple, or email account you've linked…"); Android keeps the existing key.
+
+Net: zero existing ARB values change; every new string is a new key in BOTH locales. `generated_l10n_surface_test` and `check_arb_completeness_test` stay green by construction.
 
 ### D7 — `RecoveryOutcome.opApple = 'apple'`
 The marker's `op` is a free string with no read-side whitelist; the ONLY consumer branching on it is the success-toast gate (`recovery_outcome_notice.dart:91-92`), which must include `opApple` so a successful Apple restore shows the "restored" notice after the forced restart (and the #990 name-seed heal applies identically). No version bump (`v` stays 2 — shape unchanged).
@@ -88,11 +97,11 @@ typedef AppleCredentialFactory = Future<AppleCredentialBundle> Function();
 static const String opApple = 'apple';
 ```
 
+(`authorizationCode` is non-nullable in the package's `AuthorizationCredentialAppleID` — the bundle keeps it `String?` deliberately, a defensive widening across package majors; the null-guard in Task 12 defends OUR seam contract, which test fakes may exercise.)
+
 New widget keys: `durableGate.continueApple`, `home_empty_recover_apple_cta`, `ProfileKeys.appleAccountTile = Key('profile_apple_account_tile')`, `ProfileKeys.profileRestoreAppleTile = Key('profile_restore_apple_tile')`.
 
-New l10n keys (en + ar, both ARBs): `durableGateContinueApple` ("Continue with Apple"), `homeRestoreWithApple` ("Restore with Apple"), `restoreAppleFailed` ("Couldn't sign in with Apple. Please try again."), `profileAccountApple` ("Apple"), `profileAccountAppleLinked` ("Linked"), `profileAccountLinkAccount` ("Link an account").
-
-Neutralized values (keys unchanged): `durableGateBody` → "Your groups and expenses are tied to this account. Link an account so they can't be lost with this device."; `durableGateConflict` / `durableGateConflictSwitchBody` → drop the word "Google" ("That account already belongs to another Rihla account…" / "This account already has Rihla data. Switch to it? …"); `profileBackupCardBody` → "Your trips live only on this phone. Link an account so you never lose them."; `homeBackupNudgeBody` → "…Link an account so a new phone, reinstall, or lost device can't erase them."; `homeBackupNudgeCta` → "Link account".
+New l10n keys (en + ar, both ARBs — **no existing value is edited**, per D6): `durableGateContinueApple` ("Continue with Apple"), `homeRestoreWithApple` ("Restore with Apple"), `restoreAppleFailed` ("Couldn't sign in with Apple. Please try again."), `profileAccountApple` ("Apple"), `profileAccountAppleLinked` ("Linked"), `profileAccountLinkAccount` ("Link an account"), `durableGateConflictApple` ("That Apple ID already belongs to another Rihla account. Switching to it would leave this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first, then use a different Apple ID."), `durableGateConflictSwitchBodyApple` ("This Apple ID already has Rihla data. Switch to it? This device will continue with that account."), `durableGateBodyIos` ("Your groups and expenses are tied to this account. Link an account so they can't be lost with this device."), `profileBackupCardBodyIos` ("Your trips live only on this phone. Link an account so you never lose them."), `homeBackupNudgeBodyIos` ("Your groups and expenses live only on this phone. Link an account so a new phone, reinstall, or lost device can't erase them."), `homeBackupNudgeCtaIos` ("Link account"), `signOutContentApple` (sign-out body naming "the same Apple ID"), `deleteGuestSessionContentIos` ("Any Google, Apple, or email account you've linked is separate and won't be deleted."). Arabic values keep "Apple" in Latin script per Apple brand rules.
 
 ---
 
@@ -113,12 +122,8 @@ Neutralized values (keys unchanged): `durableGateBody` → "Your groups and expe
 
 **Files:** Modify: `pubspec.yaml`
 
-**Step 1:** Add under `dependencies:` (alphabetical siblings of `google_sign_in`):
-```yaml
-  crypto: ^3.0.6          # nonce hashing for Sign in with Apple (was transitive)
-  sign_in_with_apple: ^8.1.0
-```
-**Step 2:** Run `flutter pub get` — expect clean resolve (verify the resolved `crypto` version matches what the lockfile already pinned transitively; adjust the caret constraint to it if not).
+**Step 1:** Run `flutter pub add sign_in_with_apple crypto` (pub picks the newest resolvable versions — 8.1.0 is published per pub.dev 2026-07-15, but the constraint solver decides; every API this spec uses is already present in 7.0.1, so any resolved ≥7.0.1 works). Pin the carets to whatever resolved.
+**Step 2:** `flutter pub get` clean; confirm `pubspec.lock` shows both as `direct main`.
 **Step 3:** Commit: `chore(deps): add sign_in_with_apple + promote crypto for #1256`
 
 ### Task 1: Entitlement + guard test
@@ -366,7 +371,8 @@ Future<UserCredential> restoreWithApple({
 
 Changes:
 - `_conflict`/`_conflictShellGateOwner` widen to `LinkConflictException?`.
-- `_continueWithApple()`: mirrors `_continueWithGoogle` — `linkAppleToCurrentUser()`, token force-refresh, pop(true); `on SignInWithAppleAuthorizationException catch (e)` → if `e.code == AuthorizationErrorCode.canceled` silent reset, else `durableGateError`; `on AppleLinkConflictException` → conflict state (same breadcrumb, `category: 'auth.gate'`, code only); `FirebaseAuthException` arm identical to Google's (`provider-already-linked` → success; `'canceled'` → silent reset (native-path defense); `network-request-failed` → `authErrorOffline`).
+- `_continueWithApple()`: mirrors `_continueWithGoogle` — `linkAppleToCurrentUser()`, token force-refresh, pop(true); `on SignInWithAppleAuthorizationException catch (e)` → if `e.code == AuthorizationErrorCode.canceled` silent reset, else map by connectivity (`ref.read(connectivityProvider) == ConnectivityStatus.offline` — verified: `lib/core/providers/connectivity_provider.dart:30`, `StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>` → `authErrorOffline`, else `durableGateError` — Gate R1 P3: the Apple sheet's offline failure isn't a `FirebaseAuthException`, so the Google path's `network-request-failed` mapping never fires for it); `on AppleLinkConflictException` → conflict state (same breadcrumb, `category: 'auth.gate'`, code only); `FirebaseAuthException` arm identical to Google's (`provider-already-linked` → success; `'canceled'` → silent reset (native-path defense); `network-request-failed` → `authErrorOffline`).
+- Conflict COPY dispatches by subtype (D6): `_switchOfferContent` body = `switch (conflict) { GoogleLinkConflictException() => l10n.durableGateConflictSwitchBody, AppleLinkConflictException() => l10n.durableGateConflictSwitchBodyApple }`; the blocked dead-end arm likewise picks `durableGateConflict` vs `durableGateConflictApple`. Google-conflict rendering is byte-identical to today.
 - `_switchAccount()` dispatch:
 ```dart
 await switch (conflict) {
@@ -376,7 +382,7 @@ await switch (conflict) {
     ref.read(authRecoveryServiceProvider).restoreWithApple(credential: credential),
 };
 ```
-- `_initialContent` on iOS (`defaultTargetPlatform == TargetPlatform.iOS`): replace the action `Row` with a `Column`: `SignInWithAppleButton(key: Key('durableGate.continueApple'), text: l10n.durableGateContinueApple, height: 52, style: Theme.of(context).brightness == Brightness.dark ? SignInWithAppleButtonStyle.white : SignInWithAppleButtonStyle.black, onPressed: _linking ? () {} : _continueWithApple)` FIRST, spacing12, full-width Google `_primaryButton` (existing key `durableGate.continue`), spacing8, full-width `_secondaryButton` Not-now. Non-iOS: existing Row byte-identical. (If `SignInWithAppleButton.onPressed` is non-nullable — verify at implementation — guard re-entry inside `_continueWithApple` with `if (_linking || _restoring) return;`.)
+- `_initialContent` on iOS (`defaultTargetPlatform == TargetPlatform.iOS`): replace the action `Row` with a `Column`: `SignInWithAppleButton(key: Key('durableGate.continueApple'), text: l10n.durableGateContinueApple, height: 52, style: Theme.of(context).brightness == Brightness.dark ? SignInWithAppleButtonStyle.white : SignInWithAppleButtonStyle.black, onPressed: _linking ? null : _continueWithApple)` FIRST (`onPressed` is nullable `VoidCallback?` in the package — verified in the 7.0.1 source, Gate R1), spacing12, Google `_primaryButton` (existing key `durableGate.continue`), spacing8, `_secondaryButton` Not-now. The sheet body picks `durableGateBodyIos` here (D6). **Width note (Gate R1 P3):** `_primaryButton`/`_secondaryButton` fill width only via the old Row's `Expanded` — in the Column wrap each in `SizedBox(width: double.infinity, child: …)` (their `minimumSize: Size.fromHeight(52)` handles height only). Non-iOS: existing Row + `durableGateBody`, byte-identical.
 
 **Tests:** iOS override (`debugDefaultTargetPlatformOverride = TargetPlatform.iOS`, reset in-body before teardown): Apple button present ABOVE Google (compare `tester.getTopLeft` dy), triggers `linkAppleToCurrentUser`; cancel exception → sheet stays, no error text; Apple conflict → switch flows to `restoreWithApple(credential: same instance)`; **Android default: no Apple button, tree unchanged** (existing tests remain green untouched — that absence is itself the assertion). Commit: `feat(auth): Apple option in durable credential sheet, iOS-only (#1256)`
 
@@ -400,19 +406,21 @@ if (defaultTargetPlatform == TargetPlatform.iOS)
 ```
 Test: extend `test/features/home/home_restore_cta_test.dart` — iOS override shows the Apple CTA above Google; default platform hides it. Commit: `feat(home): Restore with Apple CTA on iOS empty state (#1256)`
 
-### Task 10: Profile account card (iOS rows)
+### Task 10: Profile account card (iOS rows) + sign-out / guest-delete copy
 
-**Files:** Modify: `lib/features/settings/screens/profile_screen.dart` `_AccountCard`, `lib/features/settings/keys/profile_keys.dart` (+2 keys).
+**Files:** Modify: `lib/features/settings/screens/profile_screen.dart` `_AccountCard` + `_signOut`, `lib/features/settings/keys/profile_keys.dart` (+2 keys), `lib/features/auth/widgets/sign_out_confirm_dialog.dart` (D6.3), `lib/features/auth/widgets/delete_account_dialog.dart:37` (D6.4).
 
 - `appleAccountTile` row when `ref.watch(appleAccountProvider) != null` (mirror the Google linked row: shield icon, label `profileAccountApple`, trailing `email ?? profileAccountAppleLinked`, `onTap: null`), iOS-ungated (a linked Apple account should render even if the device were ever non-iOS).
 - Link row label: `defaultTargetPlatform == TargetPlatform.iOS ? l10n.profileAccountLinkAccount : l10n.profileAccountLinkGoogle` (same `googleLinkTile` key, same sheet destination). Row remains visible only when `isAnonymous`.
 - Inside the existing `if (showRestore)` block, iOS-gated `profileRestoreAppleTile` row ABOVE the Google restore row → `triggerAppleRestore(context, ref)`.
+- `_signOut` passes `hasAppleProvider: ref.read(appleAccountProvider) != null` to `SignOutConfirmDialog.show`; the dialog branches per D6.3.
+- `delete_account_dialog.dart:37`: `isAnonymous ? (isIOS ? l10n.deleteGuestSessionContentIos : l10n.deleteGuestSessionContent) : l10n.deleteAccountContent` per D6.4.
 
-Test: extend `test/features/settings/profile_account_card_test.dart` (iOS: apple restore row above google row, link row shows neutral label; default platform: no apple rows, Google label unchanged). Commit: `feat(settings): Apple rows in account card, iOS-only (#1256)`
+Test: extend `test/features/settings/profile_account_card_test.dart` (iOS: apple restore row above google row, link row shows neutral label; default platform: no apple rows, Google label unchanged) + sign-out dialog test (hasAppleProvider + null email → Apple copy; default → Google copy unchanged). Commit: `feat(settings): Apple rows + Apple-aware sign-out/delete copy, iOS-only (#1256)`
 
-### Task 11: l10n keys + neutralized copy
+### Task 11: l10n keys (additive only)
 
-**Files:** Modify: `lib/l10n/app_en.arb`, `lib/l10n/app_ar.arb` — add the 6 new keys (with `@` description blocks matching neighbors) and apply the D6 value edits in BOTH locales (Arabic: "المتابعة عبر Apple", "الاستعادة عبر Apple", etc. — keep "Apple" latin per Apple's brand rules). Run `flutter gen-l10n` (or build) and `flutter test test/unit/generated_l10n_surface_test.dart` if present — new keys are referenced by Tasks 7-10 so no dead-key failure. Commit: `feat(l10n): Sign in with Apple strings, neutralized backup copy (#1256)`
+**Files:** Modify: `lib/l10n/app_en.arb`, `lib/l10n/app_ar.arb` — add the 14 new keys from Data contracts (with `@` description blocks matching neighbors) in BOTH locales (Arabic: "المتابعة عبر Apple", "الاستعادة عبر Apple", etc. — keep "Apple" latin per Apple's brand rules). **No existing value changes — D6 forbids shared-value edits (Gate R1 P1).** Run `flutter gen-l10n` and the l10n guard tests — new keys are referenced by Tasks 7-10 so no dead-key failure; EN/AR parity satisfied by construction. Commit: `feat(l10n): Sign in with Apple strings (#1256)`
 
 ### Task 12: Delete-time Apple token revocation (5.1.1(v))
 
@@ -456,14 +464,14 @@ Future<void> _revokeAppleTokenBestEffort(User user) async {
 1. `flutter analyze` → clean (watch `prefer_const_constructors`).
 2. `flutter test` → full suite green.
 3. `bash tool/check_theme_purity.sh` locally (new widget code in `lib/` — CI-only check, run it before pushing; the `SignInWithAppleButton` styling lives in package code, out of scope for the script, and our call sites use only theme lookups).
-4. Manual on-simulator smoke (link, conflict-switch, restore, delete-revoke) once the portal/console checklist is done — record in the PR body.
+4. Manual on-device smoke once the portal/console checklist is done — record in the PR body. Must include the exact sequence App Review runs for 5.1.1(v): **link Apple → create data → delete account → re-sign-in with the same Apple ID → verify zero data comes back** (plus: link, conflict-switch, restore, cancel-at-every-prompt leaves the shell intact).
 
 ---
 
 ## Acceptance criteria
 
 - iOS: Apple offered at ≥ Google prominence on every login-service surface (sheet, home empty state, profile card); link, conflict-switch, and restore flows work end-to-end; cancel anywhere leaves the anon shell intact with no restart.
-- Android: zero behavioral or visual change (existing tests pass unmodified).
+- Android: zero behavioral, visual, OR copy change — no shared ARB value is edited; every Android string renders byte-identical (existing tests pass unmodified, and this is now true by construction per D6, not merely untested).
 - Account deletion with a linked Apple provider revokes the token (fresh code) and always completes even when revocation fails.
 - Boot notice surfaces Apple restore outcomes (`opApple`).
 - `flutter analyze` clean, full suite green, theme-purity clean, coverage ≥ 80% maintained.
@@ -471,7 +479,9 @@ Future<void> _revokeAppleTokenBestEffort(User user) async {
 
 ## PR strategy
 
-One implementation PR: `feat(auth): Sign in with Apple link/restore + 5.1.1(v) revocation (iOS)` — commit body and PR body both carry `Refs #1256` (NOT `Closes` — the issue stays open until App Review approves the resubmission; squash-merge inherits the commit body, per the #447 lesson). Route through `/automerge` (Gate-category: auth swap surfaces — classifier fails toward gate anyway). Follow-up after store approval: close #1256 with the approval note.
+One implementation PR: `feat(auth): Sign in with Apple link/restore + 5.1.1(v) revocation (iOS)` — commit body and PR body both carry `Refs #1256` (NOT `Closes` — the issue stays open until App Review approves the resubmission; squash-merge inherits the commit body, per the #447 lesson). The PR body must state the D5 accepted risk verbatim (best-effort interactive revocation; delete→re-sign-in verified clean). Route through `/automerge` (Gate-category: auth swap surfaces — classifier fails toward gate anyway). Follow-up after store approval: close #1256 with the approval note.
+
+**Gate history:** R1 (2026-07-15): rubric 0 P1/1 P2/4 P3; adversary 1 P1/2 P2/3 P3 — union applied (D6 rewritten to zero shared-value edits; sign-out/guest-delete copy branches; version pin; offline mapping; width note; D5 accepted-risk statement).
 
 ## Rejected alternatives
 
