@@ -141,7 +141,7 @@ void main() {
 
     testWidgets('SignOutConfirmDialog: no email, no Apple → Google copy '
         'unchanged', (tester) async {
-      await openDialog(tester, (c) => SignOutConfirmDialog.show(c));
+      await openDialog(tester, SignOutConfirmDialog.show);
       expect(
         find.text(l10n.signOutContentGoogle, findRichText: true),
         findsOneWidget,
