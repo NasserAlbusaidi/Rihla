@@ -201,6 +201,33 @@ void main() {
     expect(find.byType(SnackBar), findsNothing);
   });
 
+  testWidgets('non-cancel Apple authorization failure surfaces '
+      'restoreAppleFailed', (tester) async {
+    when(() => groupService.watchUserGroups(any()))
+        .thenAnswer((_) => Stream.value(const []));
+    when(() => recovery.restoreWithApple()).thenThrow(
+      const SignInWithAppleAuthorizationException(
+        code: AuthorizationErrorCode.failed,
+        message: 'authorization failed',
+      ),
+    );
+
+    await tester.pumpWidget(
+      buildApp(
+        userStream: Stream.value(MockUser(isAnonymous: true, uid: 'anon-1')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(_kRestoreButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(AppLocalizationsEn().restoreAppleFailed),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('non-cancel failure surfaces restoreAppleFailed', (
     tester,
   ) async {

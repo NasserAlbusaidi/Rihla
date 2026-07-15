@@ -338,6 +338,27 @@ void main() {
       verifyNever(() => auth.revokeTokenWithAuthorizationCode(any()));
     });
 
+    test('default (un-injected) apple factory: the real gateway throws in a '
+        'test environment and revoke stays best-effort — deletion proceeds',
+        () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final events = <String>[];
+      final info = appleInfo();
+      when(() => auth.currentUser).thenReturn(user);
+      when(() => user.providerData).thenReturn([info]);
+      when(() => auth.signOut()).thenAnswer((_) async => events.add('signOut'));
+      final service = DataDeletionService(
+        auth: auth,
+        prefs: prefs,
+        cacheIsolationController: _RecordingController(events),
+        deleteAccountCallable: () async => events.add('callable'),
+      );
+
+      expect(await service.deleteAccount(), DeletionResult.ok);
+      expect(events, ['callable', 'engage', 'signOut', 'restart']);
+      verifyNever(() => auth.revokeTokenWithAuthorizationCode(any()));
+    });
+
     test('revoke API failure is non-fatal — deletion proceeds', () async {
       final events = <String>[];
       when(() => auth.currentUser).thenReturn(user);

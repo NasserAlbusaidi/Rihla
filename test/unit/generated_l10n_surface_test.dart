@@ -232,7 +232,65 @@ void main() {
       expect(ar.settleUpNoDirectPayments('Nasser'), contains('Nasser'));
     });
   });
+
+  group('generated #1256 Sign in with Apple localization surface', () {
+    test('English SiwA strings are reachable', () {
+      final l10n = AppLocalizationsEn();
+      for (final call in _siwaCalls) {
+        expect(call(l10n), isNotEmpty);
+      }
+      expect(l10n.durableGateContinueApple, contains('Apple'));
+      expect(l10n.durableGateConflictApple, contains('Apple ID'));
+    });
+
+    test('Arabic SiwA strings are reachable, translated, and keep "Apple" '
+        'in Latin script per Apple brand rules', () {
+      final en = AppLocalizationsEn();
+      final ar = AppLocalizationsAr();
+      for (final call in _siwaCalls) {
+        expect(call(ar), isNotEmpty);
+        // Every SiwA string names the brand in Latin script, AR included.
+        expect(call(ar), contains('Apple'));
+      }
+      // Translated where the copy is more than the brand label.
+      expect(
+        ar.durableGateContinueApple,
+        isNot(equals(en.durableGateContinueApple)),
+      );
+      expect(
+        ar.durableGateConflictApple,
+        isNot(equals(en.durableGateConflictApple)),
+      );
+      // The provider-neutral *Ios keys carry no brand name — reachable + translated.
+      for (final call in _siwaNeutralIosCalls) {
+        expect(call(ar), isNotEmpty);
+        expect(call(ar), isNot(equals(call(en))));
+      }
+      expect(ar.profileAccountAppleLinked, isNotEmpty);
+      expect(ar.profileAccountLinkAccount, isNotEmpty);
+    });
+  });
 }
+
+/// #1256 keys that name Apple explicitly (Latin-script brand in both locales).
+final _siwaCalls = <_L10nString>[
+  (l10n) => l10n.durableGateContinueApple,
+  (l10n) => l10n.durableGateConflictApple,
+  (l10n) => l10n.durableGateConflictSwitchBodyApple,
+  (l10n) => l10n.homeRestoreWithApple,
+  (l10n) => l10n.restoreAppleFailed,
+  (l10n) => l10n.profileAccountApple,
+  (l10n) => l10n.signOutContentApple,
+  (l10n) => l10n.deleteGuestSessionContentIos,
+];
+
+/// #1256 provider-neutral iOS copy (no brand name in the value).
+final _siwaNeutralIosCalls = <_L10nString>[
+  (l10n) => l10n.durableGateBodyIos,
+  (l10n) => l10n.profileBackupCardBodyIos,
+  (l10n) => l10n.homeBackupNudgeBodyIos,
+  (l10n) => l10n.homeBackupNudgeCtaIos,
+];
 
 final _simplifyDebtsCalls = <_L10nString>[
   (l10n) => l10n.settleUpDirectPayments('Nasser'),

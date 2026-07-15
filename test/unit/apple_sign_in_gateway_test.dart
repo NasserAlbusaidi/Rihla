@@ -94,6 +94,17 @@ void main() {
     );
   });
 
+  test('default (un-injected) path reaches the real package call and throws '
+      'in a test environment — no silent success without a platform', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final gateway = AppleSignInGateway();
+
+    // No platform channel is live in unit tests: the ONLY acceptable outcome
+    // is a throw. A completed credential here would mean the default seam
+    // no longer calls the real plugin.
+    await expectLater(gateway.obtainCredential(), throwsA(anything));
+  });
+
   test('two calls produce different nonces', () async {
     final captured = <String?>[];
     final gateway = AppleSignInGateway(

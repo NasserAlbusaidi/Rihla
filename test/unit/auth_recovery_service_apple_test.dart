@@ -41,6 +41,8 @@ AppleCredentialBundle _bundle(AuthCredential credential) =>
     (credential: credential, authorizationCode: 'auth-code');
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
     registerFallbackValue(_FakeAuthCredential());
   });
@@ -353,6 +355,36 @@ void main() {
       expect(events, isEmpty);
       verifyNever(() => auth.signInWithCredential(any()));
       verifyNever(() => auth.signOut());
+    });
+
+    test('default (un-injected) apple factory reaches the real gateway and '
+        'aborts PRE-isolation in a test environment — shell untouched',
+        () async {
+      final events = <String>[];
+      final service = AuthRecoveryService(
+        auth: auth,
+        prefs: prefs,
+        firestore: firestore,
+        cacheIsolationController: _RecordingController(events),
+      );
+
+      // No platform channel is live: the default factory must throw, and the
+      // throw must land BEFORE isolation (credential-first ordering).
+      await expectLater(service.restoreWithApple(), throwsA(anything));
+      expect(events, isEmpty);
+      verifyNever(() => auth.signInWithCredential(any()));
+      verifyNever(() => auth.signOut());
+    });
+  });
+
+  group('AppleLinkConflictException (#1256)', () {
+    test('toString names Apple + the auth code, never the credential', () {
+      final e = AppleLinkConflictException(
+        credential: _FakeAuthCredential(),
+        cause: FirebaseAuthException(code: 'credential-already-in-use'),
+      );
+      expect('$e', contains('Apple'));
+      expect('$e', contains('credential-already-in-use'));
     });
   });
 }
