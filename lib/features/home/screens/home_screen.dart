@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -18,6 +19,7 @@ import '../../../shared/widgets/scroll_under_header.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../activity/utils/activity_display.dart';
 import '../../activity/utils/activity_nav.dart';
+import '../../auth/widgets/apple_restore_action.dart';
 import '../../auth/widgets/google_restore_action.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_balance_provider.dart';
@@ -387,6 +389,23 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 ),
               ),
               SizedBox(height: context.spacing.space8),
+              if (defaultTargetPlatform == TargetPlatform.iOS)
+                TextButton(
+                  key: const Key('home_empty_recover_apple_cta'),
+                  // #1256: same discard-shell contract as the Google CTA
+                  // below — the swap self-gates via outgoingShellProvablyEmpty;
+                  // visibility is not the safety boundary (#648). Rendered
+                  // ABOVE Google per the 4.8 parity requirement.
+                  onPressed: () => triggerAppleRestore(context, ref),
+                  child: Text(
+                    context.l10n.homeRestoreWithApple,
+                    style: AppTypography.sans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                ),
               TextButton(
                 key: const Key('home_empty_recover_cta'),
                 // #441 PR3 / #648: cross-UID Google restore (discard-shell

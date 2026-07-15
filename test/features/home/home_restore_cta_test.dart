@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -199,5 +200,55 @@ void main() {
     );
 
     await tester.pumpAndSettle();
+  });
+
+  // -----------------------------------------------------------------------
+  // #1256 iOS Apple restore CTA. Same discard-shell contract as the Google
+  // CTA — visibility is not the safety boundary (#648); the swap self-gates.
+  // -----------------------------------------------------------------------
+
+  group('iOS Apple restore CTA (#1256)', () {
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+    const appleCta = Key('home_empty_recover_apple_cta');
+
+    testWidgets('iOS: Apple CTA renders above the Google CTA and triggers '
+        'the Apple restore swap', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      when(
+        () => recovery.restoreWithApple(),
+      ).thenAnswer((_) async => _MockUserCredential());
+
+      await tester.pumpWidget(_buildApp(prefs: prefs, recovery: recovery));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(appleCta), findsOneWidget);
+      final appleDy = tester.getTopLeft(find.byKey(appleCta)).dy;
+      final googleDy = tester
+          .getTopLeft(find.byKey(const Key('home_empty_recover_cta')))
+          .dy;
+      expect(
+        appleDy,
+        lessThan(googleDy),
+        reason: '4.8 parity: Apple must render above Google',
+      );
+
+      await tester.tap(find.byKey(appleCta));
+      await tester.pump();
+
+      verify(() => recovery.restoreWithApple()).called(1);
+      verifyNever(() => recovery.restoreWithGoogle());
+      expect(find.text('RecoverScreenStub'), findsNothing);
+
+      await tester.pumpAndSettle();
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('default platform (android): NO Apple CTA', (tester) async {
+      await tester.pumpWidget(_buildApp(prefs: prefs, recovery: recovery));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(appleCta), findsNothing);
+      expect(find.byKey(const Key('home_empty_recover_cta')), findsOneWidget);
+    });
   });
 }
