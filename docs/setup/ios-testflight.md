@@ -20,6 +20,11 @@ export options (`ios/ExportOptions.plist`), and the `fastlane ios beta` lane. Th
 
 2. **Add the Apple ID to Xcode.** Xcode → Settings → Accounts → add the personal Apple ID (team
    `T2U886CPS5`). This lets automatic signing mint the certs + provisioning profiles.
+   **This is not one-time in practice:** enabling a NEW capability on the App ID (e.g. Sign in with
+   Apple, #1256) invalidates the cached provisioning profile, and the CLI archive can only re-mint it
+   when this account is signed in — otherwise `fastlane ios beta` fails with the cryptic
+   `Error (Xcode): No Accounts` + `profile doesn't include the … capability/entitlement` pair
+   (Xcode updates silently drop accounts; re-add and rerun).
 
 3. **Register the App ID** `com.nalbusaidi.rihla` with **Push Notifications** + **Associated Domains**
    capabilities. Automatic signing creates it on first archive; the checked-in entitlements already
