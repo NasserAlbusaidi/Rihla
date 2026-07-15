@@ -5,11 +5,13 @@
 // Conflicts must NEVER be resolved by signing the anon user out (#213).
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:safar/core/extensions/build_context_l10n.dart';
 import 'package:safar/core/theme/app_theme.dart';
 import 'package:safar/features/auth/providers/auth_provider.dart';
@@ -198,5 +200,105 @@ void main() {
 
     expect(result, isNull);
     expect(find.text(l10n.durableGateError), findsOneWidget);
+  });
+
+  // -----------------------------------------------------------------------
+  // #1256 iOS Apple parity. Android (the test default platform) must render
+  // byte-identical trees to today — the tests above ARE that assertion; the
+  // explicit absence check below pins it once more.
+  // -----------------------------------------------------------------------
+
+  group('iOS Apple parity (#1256)', () {
+    // Safety net for mid-body failures; the happy path resets in-body per
+    // the repo convention.
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+    const appleKey = Key('durableGate.continueApple');
+    const googleKey = Key('durableGate.continue');
+
+    testWidgets('iOS: Apple button renders ABOVE Google with the neutral '
+        'body copy', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final l10n = await open(tester);
+
+      expect(find.byKey(appleKey), findsOneWidget);
+      expect(find.text(l10n.durableGateBodyIos), findsOneWidget);
+      expect(find.text(l10n.durableGateBody), findsNothing);
+      final appleDy = tester.getTopLeft(find.byKey(appleKey)).dy;
+      final googleDy = tester.getTopLeft(find.byKey(googleKey)).dy;
+      expect(
+        appleDy,
+        lessThan(googleDy),
+        reason: 'SiwA HIG + 4.8 parity: Apple must render above Google',
+      );
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('iOS: Apple button links Apple, refreshes the token, pops '
+        'true', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      when(
+        () => recovery.linkAppleToCurrentUser(),
+      ).thenAnswer((_) async => credential);
+
+      await open(tester);
+      await tester.tap(find.byKey(appleKey));
+      await tester.pumpAndSettle();
+
+      verify(() => recovery.linkAppleToCurrentUser()).called(1);
+      verify(() => linkedUser.getIdToken(true)).called(1);
+      verifyNever(() => recovery.linkGoogleToCurrentUser());
+      expect(result, isTrue);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('iOS: canceled Apple sheet stays open, no error text', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      when(() => recovery.linkAppleToCurrentUser()).thenThrow(
+        const SignInWithAppleAuthorizationException(
+          code: AuthorizationErrorCode.canceled,
+          message: 'user canceled',
+        ),
+      );
+
+      final l10n = await open(tester);
+      await tester.tap(find.byKey(appleKey));
+      await tester.pumpAndSettle();
+
+      expect(result, isNull);
+      expect(find.text(l10n.durableGateTitle), findsOneWidget);
+      expect(find.byKey(const Key('durableGate.error')), findsNothing);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('iOS: non-cancel Apple failure shows the generic error', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      when(() => recovery.linkAppleToCurrentUser()).thenThrow(
+        const SignInWithAppleAuthorizationException(
+          code: AuthorizationErrorCode.failed,
+          message: 'authorization failed',
+        ),
+      );
+
+      final l10n = await open(tester);
+      await tester.tap(find.byKey(appleKey));
+      await tester.pumpAndSettle();
+
+      expect(result, isNull);
+      expect(find.text(l10n.durableGateError), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('default platform (android): NO Apple button, Google body', (
+      tester,
+    ) async {
+      final l10n = await open(tester);
+      expect(find.byKey(appleKey), findsNothing);
+      expect(find.text(l10n.durableGateBody), findsOneWidget);
+      expect(find.text(l10n.durableGateBodyIos), findsNothing);
+    });
   });
 }

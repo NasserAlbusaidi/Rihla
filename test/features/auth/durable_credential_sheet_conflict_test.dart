@@ -9,6 +9,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -395,5 +396,105 @@ void main() {
     expect(result, isNull);
     expect(find.text(l10n.durableGateError), findsOneWidget);
     verifyNever(() => recovery.signOutCurrentDevice());
+  });
+
+  // -----------------------------------------------------------------------
+  // #1256 Apple-conflict dispatch. An AppleLinkConflictException must route
+  // the switch to restoreWithApple with the SAME failed credential and render
+  // the Apple copy — a mis-route into restoreWithGoogle is the #414/#647
+  // wrong-account swap class the sealed hierarchy exists to prevent.
+  // -----------------------------------------------------------------------
+
+  group('Apple conflict (#1256, iOS)', () {
+    // Safety net for mid-body failures; the happy path resets in-body per
+    // the repo convention.
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    AppleLinkConflictException appleConflict(AuthCredential credential) =>
+        AppleLinkConflictException(
+          credential: credential,
+          cause: FirebaseAuthException(code: 'credential-already-in-use'),
+        );
+
+    Future<AppLocalizations> openAndAppleConflict(
+      WidgetTester tester, {
+      required Stream<List<Group>> groups,
+      AuthCredential? credential,
+    }) async {
+      when(
+        () => recovery.linkAppleToCurrentUser(),
+      ).thenThrow(appleConflict(credential ?? _FakeAuthCredential()));
+      await tester.pumpWidget(harness(groups: groups));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      final l10n = tester.element(find.text('open')).l10n;
+      await tester.tap(find.byKey(const Key('durableGate.continueApple')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      return l10n;
+    }
+
+    testWidgets('Apple conflict + zero groups -> switch offer with the Apple '
+        'copy', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final l10n = await openAndAppleConflict(
+        tester,
+        groups: Stream.value(const []),
+      );
+
+      expect(find.byKey(const Key('durableGate.switch')), findsOneWidget);
+      expect(
+        find.text(l10n.durableGateConflictSwitchBodyApple),
+        findsOneWidget,
+      );
+      expect(find.text(l10n.durableGateConflictSwitchBody), findsNothing);
+      verifyNever(() => recovery.signOutCurrentDevice());
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('Apple switch reuses the SAME failed credential via '
+        'restoreWithApple, never restoreWithGoogle', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final credential = _FakeAuthCredential();
+      when(
+        () => recovery.restoreWithApple(credential: any(named: 'credential')),
+      ).thenAnswer((_) async => _MockUserCredential());
+
+      await openAndAppleConflict(
+        tester,
+        groups: Stream.value(const []),
+        credential: credential,
+      );
+      await tester.tap(find.byKey(const Key('durableGate.switch')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      verify(() => recovery.restoreWithApple(credential: credential))
+          .called(1);
+      verifyNever(
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+      );
+      verifyNever(() => recovery.signOutCurrentDevice());
+      expect(result, isNull);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('Apple conflict + populated shell -> Apple dead-end copy', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final l10n = await openAndAppleConflict(
+        tester,
+        groups: Stream.value([_group()]),
+      );
+
+      expect(find.byKey(const Key('durableGate.switch')), findsNothing);
+      expect(find.text(l10n.durableGateConflictApple), findsOneWidget);
+      expect(find.text(l10n.durableGateConflict), findsNothing);
+      verifyNever(
+        () => recovery.restoreWithApple(credential: any(named: 'credential')),
+      );
+      debugDefaultTargetPlatformOverride = null;
+    });
   });
 }
