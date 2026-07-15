@@ -188,8 +188,17 @@ void main() {
     final join = File('hosting/join.html').readAsStringSync();
     final robots = File('hosting/robots.txt').readAsStringSync();
 
+    // Out-of-index is enforced by the meta tag, NOT robots.txt: a robots
+    // Disallow would also block the social crawlers (facebookexternalhit,
+    // Twitterbot) that must fetch /join/<code> to render the og: invite
+    // card — and Google can only honor a noindex it is allowed to crawl.
     expect(join, contains('name="robots" content="noindex"'));
-    expect(robots, contains('Disallow: /join'));
+    expect(robots, isNot(contains('Disallow: /join')));
+
+    // The invite preview card the crawlers come for.
+    expect(join, contains('property="og:title"'));
+    expect(join, contains('property="og:image"'));
+    expect(join, contains('name="twitter:card"'));
   });
 
   test('public site exposes sitemap and robots files for crawlers', () {
