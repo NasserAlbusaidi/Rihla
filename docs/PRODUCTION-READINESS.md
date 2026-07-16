@@ -158,16 +158,16 @@ starts a new run.
     `deleteGroup`.
   - Required action: deploy Firestore rules/indexes, Functions, and Hosting,
     then rerun the gate before setting `RIHLA_BACKEND_RELEASE_READY=yes`.
-  - **Backend deploy (2026-07-12, `8faf0d56`) — DEPLOYED to prod, prod-state PASS.**
+  - **Backend deploy (2026-07-16, `27b42bf1`) — DEPLOYED to prod, prod-state PASS.**
     The "Latest gate result (2026-06-01…)" above is stale. As of the latest
-    2026-07-12 deploy ceremony the `backend-deployed` tag is `8faf0d56`; prod
+    2026-07-16 deploy ceremony the `backend-deployed` tag is `27b42bf1`; prod
     matches `main` for all deployable backend surface (`tool/pending_deploy.sh`
     exits clean — nothing pending).
-    Latest delta: **#1018 (#1170)** — new `groupCreatedLogger` trigger fans a
-    `group_created` genesis row into the group activity feed on group-doc
-    create (Admin-SDK-only type, zero rules change, **32 functions** now);
-    the same delta carries #1157 (#1165), functions test-harness only. See the
-    DEPLOY-LEDGER `8faf0d56` row.
+    Latest delta: the #1216 name-validation tightening (#1242 rules +
+    Functions mirrors, #1243 FSI/PDI notification strings), the #1245
+    `member_resplit` disclosure engine, and the #1265 websocket-driver
+    audit bump. No function created/deleted (**32 functions**). See the
+    DEPLOY-LEDGER `27b42bf1` row.
     Prior deltas since `cedc9d4b` (see their DEPLOY-LEDGER rows): `e40ea09a`
     (#1138 succession + #1144 R1/R5), `2ed47633` (#1141 push membership
     fence), `a373c26e` (#1129 transactional settlement callable).
