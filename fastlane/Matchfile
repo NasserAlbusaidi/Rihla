@@ -1,0 +1,19 @@
+# fastlane match — encrypted signing storage for CI (see ios ci_beta lane).
+#
+# Storage is the private repo rihla-ios-certs. CI authenticates over SSH with
+# the MATCH_GIT_SSH_KEY deploy key; local (maintenance) runs can override to
+# HTTPS, which rides the gh credential helper:
+#
+#   MATCH_PASSWORD="$(cat secrets/match_password.txt)" bundle exec fastlane match appstore \
+#     --git_url "https://github.com/NasserAlbusaidi/rihla-ios-certs.git" \
+#     --readonly false --api_key_path <asc-key.json>
+#
+# Decryption always needs MATCH_PASSWORD (secrets/match_password.txt locally,
+# repo secret in CI). readonly defaults true so no run mints certs by surprise.
+
+git_url(ENV["MATCH_GIT_URL"] || "git@github.com:NasserAlbusaidi/rihla-ios-certs.git")
+storage_mode("git")
+type("appstore")
+app_identifier(["com.nalbusaidi.rihla"])
+team_id("T2U886CPS5")
+readonly(true)

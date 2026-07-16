@@ -1,0 +1,122 @@
+name: iOS Release
+
+# Mac-independent iOS TestFlight upload: signing comes from fastlane match
+# (private rihla-ios-certs repo, SSH deploy key), ASC auth from the API key —
+# no Xcode account, no local Mac. Mirrors release_android.yml's tag + gate
+# discipline. Deliberately skips the full test/emulator suite: the same SHA
+# already passed the required `readiness` check to reach main, and the Android
+# release workflow re-runs the suite on tag — macOS minutes are ~10x Linux, so
+# this job only builds, signs, and uploads.
+#
+# App Store review submission stays a separate explicit step:
+#   bundle exec fastlane ios release version:X.Y.Z build_number:N
+
+on:
+    workflow_dispatch:
+    push:
+        tags:
+            - 'v*'
+
+jobs:
+  build_and_upload:
+    runs-on: macos-15
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Release ref validation
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "::error::iOS release uploads must run from a v* tag. Use tool/release.sh, or rerun workflow_dispatch with --ref vX.Y.Z."
+            exit 1
+          fi
+          case "$GITHUB_REF" in
+            refs/tags/v*) ;;
+            *)
+              echo "::error::iOS release uploads must run from refs/tags/v*, got ${GITHUB_REF}."
+              exit 1
+              ;;
+          esac
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Release commit ${GITHUB_SHA} is not contained in origin/main."
+            exit 1
+          fi
+
+      - name: Release readiness confirmations
+        env:
+          RIHLA_BACKEND_RELEASE_READY: ${{ vars.RIHLA_BACKEND_RELEASE_READY }}
+          RIHLA_APP_CHECK_READY: ${{ vars.RIHLA_APP_CHECK_READY }}
+          RIHLA_REAL_DEVICE_QA_READY: ${{ vars.RIHLA_REAL_DEVICE_QA_READY }}
+          RIHLA_RELEASE_APPROVED_SHA: ${{ vars.RIHLA_RELEASE_APPROVED_SHA }}
+        run: |
+          if [ "$RIHLA_BACKEND_RELEASE_READY" != "yes" ]; then
+            echo "::error::Set repository variable RIHLA_BACKEND_RELEASE_READY=yes only after Firebase backend and Hosting production checks pass."
+            exit 1
+          fi
+          if [ "$RIHLA_APP_CHECK_READY" != "yes" ]; then
+            echo "::error::Set repository variable RIHLA_APP_CHECK_READY=yes only after Android and iOS App Check are enrolled in Firebase Console."
+            exit 1
+          fi
+          if [ "$RIHLA_REAL_DEVICE_QA_READY" != "yes" ]; then
+            echo "::error::Set repository variable RIHLA_REAL_DEVICE_QA_READY=yes only after the physical-device QA matrix passes."
+            exit 1
+          fi
+          if [ -z "$RIHLA_RELEASE_APPROVED_SHA" ]; then
+            echo "::error::Set repository variable RIHLA_RELEASE_APPROVED_SHA to ${GITHUB_SHA} only after all release gates pass for this exact commit."
+            exit 1
+          fi
+          if [ "$RIHLA_RELEASE_APPROVED_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::RIHLA_RELEASE_APPROVED_SHA=${RIHLA_RELEASE_APPROVED_SHA} does not match this release commit ${GITHUB_SHA}."
+            exit 1
+          fi
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.41.5'
+
+      - name: 💎 Setup Ruby (Gemfile bundle)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: 🔑 SSH auth for the match certs repo
+        env:
+          MATCH_GIT_SSH_KEY: ${{ secrets.MATCH_GIT_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$MATCH_GIT_SSH_KEY" > ~/.ssh/match_deploy_key
+          chmod 600 ~/.ssh/match_deploy_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          {
+            echo "Host github.com"
+            echo "  IdentityFile ~/.ssh/match_deploy_key"
+            echo "  IdentitiesOnly yes"
+          } >> ~/.ssh/config
+
+      - name: ⚙️ Materialize config + credentials
+        env:
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          printf '%s\n' "$CONFIG_JSON" > config.json
+          printf '%s' "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          mkdir -p secrets
+          printf '%s\n' "$ASC_API_KEY_P8" > secrets/AuthKey_8YRJMN59F7.p8
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: 🚀 Build + upload to TestFlight (fastlane ios ci_beta)
+        env:
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: bundle exec fastlane ios ci_beta
