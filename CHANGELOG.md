@@ -4,11 +4,58 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] — 2026-07-16
+
+Rihla 1.9.2 brings Android to parity with the iOS 1.9.1 (37) build and ships
+the accumulated navigation, Arabic-text, and settle-up fixes to both stores.
+
+### Added
+
+- The group activity feed now discloses when a roster change re-splits
+  expenses, as a server-authored entry showing who was added or removed and
+  which expenses were affected (#1059, #1245).
+
+### Changed
+
+- The public website now offers both stores — App Store buttons and smart
+  banners across the landing, SEO, and invite pages — alongside the Falaj
+  bilingual feature graphic, social preview cards on invite links, and
+  on-page SEO fixes (#1260, #1261, #1262, #1264).
+
+### Fixed
+
+- Opening an event you no longer have access to — from a deep link, a stale
+  notification, or a sibling surface — now shows a proper no-access state
+  instead of a broken screen (#1237, #1239, #1244).
+- A deep link or notification tap no longer silently discards an in-progress
+  expense draft (#1240).
+- User names render correctly inside Arabic and mixed-direction money
+  sentences, and display names reject invisible directional characters that
+  could be used to spoof names or amounts (#1216, #1242, #1243).
+- The date picker keeps Western digits under the Arabic locale (#1241).
+- Settle-up breakdown labels no longer collide, and emoji names no longer
+  split mid-character (#1204, #1217, #1238).
+- Saving an expense edit with no actual changes no longer touches
+  connectivity state (#1236).
+
+### Internal
+
+- Eight oversized screen files split into sibling widget files, bringing
+  every source file back under the 800-line cap (#965).
+- Bumped `websocket-driver` to 0.7.5, clearing a critical npm audit finding
+  that blocked CI (#1265).
+
 ## [1.9.1] — 2026-07-13
 
 Rihla 1.9.1 adds clearer settle-up choices and more flexible itemized
 discounts, while tightening navigation, money calculations, Arabic dates, and
 membership integrity.
+
+> **iOS build 1.9.1 (37)** — rebuilt 2026-07-15 for App Review with Sign in
+> with Apple as a parallel link/restore provider (Hide My Email supported) and
+> delete-time Apple token revocation per guideline 5.1.1(v) (#1256, #1258).
+> This build also carries the fixes listed under 1.9.2; Android reaches parity
+> in 1.9.2.
 
 ### Added
 
