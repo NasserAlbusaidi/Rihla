@@ -4,13 +4,44 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.9.3] — 2026-07-17
+
+Rihla 1.9.3 ships the post-audit hardening sweep: crash fixes around
+navigation, safer account restore, clearer offline signals in settle-up,
+and the new store-review ask.
 
 ### Added
 
 - Rihla now asks for a store review right after a settle-up completes — at
   most once every two weeks, only when the platform review flow is available,
   and never on QA builds (#1263).
+- Groups now cap at 50 members on invite-code joins — matching the existing
+  add-by-name bound — with a clear “group is full” message in English and
+  Arabic, and without counting a full group against the join rate limit
+  (#1282).
+
+### Fixed
+
+- Completing a join no longer crashes if you navigate away mid-join, and
+  approving or declining a claim no longer crashes after navigation
+  (#1275, #1276).
+- Sharing a settle-up to WhatsApp no longer silently consumes the
+  store-review prompt’s two-week cooldown (#1277).
+- The group settle-up screen now shows the offline banner immediately on
+  entry — before the payment form — since recording a settlement needs a
+  connection (#1255).
+- Restoring an account while recent changes are still syncing now aborts
+  safely with a “still syncing — try again” message instead of risking those
+  queued changes in the account swap (#1281).
+
+### Internal
+
+- Mac-independent iOS release path: match-based CI signing and a
+  release_ios.yml workflow that builds and uploads to TestFlight on version
+  tags (#1268, #1269).
+- Accessibility guideline assertions (tap targets, labels, text contrast)
+  now cover the five core screens in English and Arabic (#1283); two real
+  violations found were filed as #1287/#1288.
 
 ## [1.9.2] — 2026-07-16
 
