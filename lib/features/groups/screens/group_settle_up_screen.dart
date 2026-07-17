@@ -20,6 +20,7 @@ import '../../../core/utils/share_helper.dart';
 import '../../../core/utils/whatsapp_share.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/module_header.dart';
+import '../../../shared/widgets/offline_banner.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../keys/group_keys.dart';
 import '../../events/models/event_model.dart';
@@ -184,6 +185,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         child: Column(
           children: [
             SettlementTopBar(groupId: widget.groupId),
+            // #1255: mirrors the event-scope sibling (settle_up_screen.dart)
+            // and EventCommandCenter — settlement recording is online-only
+            // (#1129, no offline queue for the recordSettlement callable), so
+            // the indicator must be visible on entry, before the payment form
+            // is ever opened, not only after a write is rejected.
+            const OfflineBanner(),
             Expanded(
               child: balancesAsync.when(
                 data: (balancesData) {
