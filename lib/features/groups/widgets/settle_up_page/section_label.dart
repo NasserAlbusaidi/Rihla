@@ -4,7 +4,7 @@ import '../../../../core/theme/tokens/domain_aliases.dart';
 import '../../../../core/theme/tokens/typography_tokens.dart';
 
 class SectionLabel extends StatelessWidget {
-  const SectionLabel({required this.label});
+  const SectionLabel({super.key, required this.label});
 
   final String label;
 

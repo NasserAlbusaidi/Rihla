@@ -14,6 +14,7 @@ import 'member_row.dart';
 
 class MembersCard extends StatelessWidget {
   const MembersCard({
+    super.key,
     required this.group,
     required this.balancesAsync,
     required this.currentUid,

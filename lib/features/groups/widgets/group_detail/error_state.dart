@@ -4,7 +4,7 @@ import '../../../../core/extensions/build_context_l10n.dart';
 import '../../../../core/theme/error_widgets.dart';
 
 class ErrorState extends StatelessWidget {
-  const ErrorState({required this.onRetry});
+  const ErrorState({super.key, required this.onRetry});
   final VoidCallback onRetry;
 
   @override

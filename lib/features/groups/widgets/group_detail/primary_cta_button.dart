@@ -5,6 +5,7 @@ import '../../../../core/theme/tokens/typography_tokens.dart';
 
 class PrimaryCtaButton extends StatelessWidget {
   const PrimaryCtaButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.onTap,

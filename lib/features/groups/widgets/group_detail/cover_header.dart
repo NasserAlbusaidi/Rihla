@@ -15,7 +15,7 @@ import '../../models/group_model.dart';
 import 'overflow_menu.dart';
 
 class CoverHeader extends StatelessWidget {
-  const CoverHeader({required this.group});
+  const CoverHeader({super.key, required this.group});
   final Group group;
 
   @override

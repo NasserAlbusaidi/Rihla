@@ -6,6 +6,7 @@ import '../../../../core/theme/tokens/typography_tokens.dart';
 
 class SettlementIntro extends StatelessWidget {
   const SettlementIntro({
+    super.key,
     required this.transferCount,
     required this.subjectName,
     required this.simplifyDebts,

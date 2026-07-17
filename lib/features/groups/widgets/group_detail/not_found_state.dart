@@ -7,7 +7,7 @@ import '../../../../core/theme/tokens/domain_aliases.dart';
 import '../../../../shared/widgets/empty_state_view.dart';
 
 class NotFoundState extends StatelessWidget {
-  const NotFoundState({required this.groupId});
+  const NotFoundState({super.key, required this.groupId});
   final String groupId;
 
   @override
