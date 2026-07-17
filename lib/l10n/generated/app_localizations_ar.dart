@@ -1570,6 +1570,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'الاستعادة ستبدّل إلى حسابك المحفوظ وستترك مجموعات هذا الهاتف الحالية — فهي مرتبطة بهوية مؤقتة لا يمكن نقلها. عالِجها أولاً.';
 
   @override
+  String get restorePendingWritesNotSynced =>
+      'ما زالت تغييراتك الأخيرة قيد المزامنة. حاول مرة أخرى بعد قليل.';
+
+  @override
   String get homeBackupNudgeTitle => 'احفظ نسخة من حسابك';
 
   @override

@@ -17,6 +17,7 @@ import '../../../core/theme/tokens/typography_tokens.dart';
 import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shell_emptiness_gate.dart';
+import '../services/auth_recovery_service.dart';
 import '../services/durable_credential_exception.dart';
 
 /// Optional credential sheet shown from account-link prompts.
@@ -245,6 +246,18 @@ class _DurableCredentialSheetState
             .read(authRecoveryServiceProvider)
             .restoreWithApple(credential: credential),
       };
+    } on PendingWritesNotFlushedException {
+      // #1281: an expected, retryable user-state (still syncing) — never a
+      // Sentry exception. Clear the conflict so the still-syncing copy
+      // actually renders: the build only shows _errorText when _conflict is
+      // null (Decision 6); a retry re-raises the conflict and re-offers the
+      // switch.
+      if (!mounted) return;
+      setState(() {
+        _restoring = false;
+        _clearConflict();
+        _errorText = context.l10n.restorePendingWritesNotSynced;
+      });
     } catch (e, st) {
       // Only pre-isolation failures reach here (a post-isolation failure
       // dies in the guaranteed restart). The anon shell is intact.

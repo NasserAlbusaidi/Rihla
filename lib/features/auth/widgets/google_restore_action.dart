@@ -6,6 +6,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shell_emptiness_gate.dart';
+import '../services/auth_recovery_service.dart';
 
 /// Triggers the #441 PR3 Google restore (cross-UID discard-shell swap) from a
 /// restore entry point (the home empty-state CTA).
@@ -42,6 +43,9 @@ Future<void> triggerGoogleRestore(BuildContext context, WidgetRef ref) async {
     if (e.code == GoogleSignInExceptionCode.canceled) return;
     if (!context.mounted) return;
     _snack(context, context.l10n.restoreGoogleFailed);
+  } on PendingWritesNotFlushedException {
+    if (!context.mounted) return;
+    _snack(context, context.l10n.restorePendingWritesNotSynced);
   } catch (_) {
     if (!context.mounted) return;
     _snack(context, context.l10n.restoreGoogleFailed);

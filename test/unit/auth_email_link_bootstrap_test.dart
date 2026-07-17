@@ -625,6 +625,98 @@ void main() {
     );
   });
 
+  group('#1281 pending-writes preflight abort (op=recover)', () {
+    test(
+      'PendingWritesNotFlushedException aborts the swap WITHOUT clearing '
+      'op-state (Decision 5) — a later re-tap/next-boot link can auto-retry',
+      () async {
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opRecover);
+        when(() => service.restoreWithEmailLink(any())).thenThrow(
+          PendingWritesNotFlushedException(const Duration(seconds: 5)),
+        );
+
+        await attach();
+        uriStream.add(_validAuthLink());
+        await settle();
+
+        verify(() => service.restoreWithEmailLink(any())).called(1);
+        // Decision 5 (Gate R1 reversal): unlike the durable shell-populated
+        // block above, a pending-writes abort is transient — clearing the
+        // handshake would break both retry routes (same-session re-tap is
+        // seenKeys-deduped; a cold-restart re-tap hits pendingEmail == null).
+        verifyNever(() => service.clearInFlightOp());
+        verifyNever(() => service.clearPendingEmail());
+      },
+    );
+
+    // Widget-level: a bare ProviderContainer can't distinguish this abort's
+    // SPECIFIC still-syncing copy from the generic-catch fallback (#1281's
+    // discriminator vs the pre-fix behavior — both leave op-state alone, so
+    // only the snack text tells them apart). Mirrors the #841 PR-3 AR l10n
+    // harness below.
+    testWidgets(
+      'surfaces the specific still-syncing snack, not the generic error copy',
+      (tester) async {
+        when(() => service.readPendingEmail()).thenReturn('foo@example.com');
+        when(
+          () => service.readInFlightOp(),
+        ).thenReturn(AuthRecoveryService.opRecover);
+        when(() => service.restoreWithEmailLink(any())).thenThrow(
+          PendingWritesNotFlushedException(const Duration(seconds: 5)),
+        );
+
+        container = ProviderContainer(
+          overrides: [
+            appLinksProvider.overrideWithValue(appLinks),
+            authRecoveryServiceProvider.overrideWithValue(service),
+            firebaseUserProvider.overrideWith(
+              (ref) => Stream<User?>.value(_anonUser),
+            ),
+            groupServiceProvider.overrideWithValue(groupService),
+            shellEmptinessGateTimeoutProvider.overrideWithValue(
+              const Duration(seconds: 5),
+            ),
+            shellEmptinessServerProbeProvider.overrideWithValue(
+              _serverEmptyProbe,
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              scaffoldMessengerKey: appMessengerKey,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Consumer(
+                builder: (context, ref, _) {
+                  ref.watch(authEmailLinkBootstrapProvider);
+                  return const Scaffold(body: SizedBox());
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        uriStream.add(_validAuthLink());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final en = await AppLocalizations.delegate.load(const Locale('en'));
+        expect(
+          find.text(en.restorePendingWritesNotSynced),
+          findsOneWidget,
+        );
+        expect(find.text(en.authEmailLinkGenericError), findsNothing);
+      },
+    );
+  });
+
   // ---------------------------------------------------------------------
   // #841 PR-3: widget-level l10n test. Every other test in this file drives
   // the bare ProviderContainer (no widget tree), so

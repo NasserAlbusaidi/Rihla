@@ -6,6 +6,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../groups/providers/group_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shell_emptiness_gate.dart';
+import '../services/auth_recovery_service.dart';
 
 /// Triggers the #1256 Apple restore (cross-UID discard-shell swap) from a
 /// restore entry point — the Apple sibling of [triggerGoogleRestore].
@@ -42,6 +43,9 @@ Future<void> triggerAppleRestore(BuildContext context, WidgetRef ref) async {
     if (e.code == AuthorizationErrorCode.canceled) return;
     if (!context.mounted) return;
     _snack(context, context.l10n.restoreAppleFailed);
+  } on PendingWritesNotFlushedException {
+    if (!context.mounted) return;
+    _snack(context, context.l10n.restorePendingWritesNotSynced);
   } catch (_) {
     if (!context.mounted) return;
     _snack(context, context.l10n.restoreAppleFailed);
