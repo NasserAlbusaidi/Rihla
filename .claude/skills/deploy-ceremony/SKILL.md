@@ -16,12 +16,15 @@ Scope: this is the **backend** deploy (Cloud Functions + `firestore.rules` +
 (`tool/release.sh`) and it does **not** satisfy the release-readiness gate — see
 the warning in step 5.
 
-## No-clients note
+## Live-users note (supersedes the old "no-clients deploy freely" note)
 
-Per [[no-clients-deploy-freely]]: there are no real users on a shipped client yet,
-so server-authoritative changes deploy **freely** — no client-compat gating, no
-deploy-first-vs-client-first ordering. Ignore any `⚠️ old clients PERMISSION_DENIED`
-warnings in older memory while this holds. Revisit once real users exist.
+Real users are LIVE (since 2026-07-13, ~14 avg active devices) — the no-clients
+era is over. Client-compat gating applies: a rules/Functions tightening that can
+deny a shipped client's writes ships client-first or same-release (the
+`⚠️ old clients PERMISSION_DENIED` notes #290/#318/#294 govern again), and
+backend deploys ride RELEASES, not individual merges — run this ceremony at
+release time, not after every merge. See CLAUDE.md → Workflow for the governing
+rule; if [[no-clients-deploy-freely]] still exists in memory, it is stale.
 
 ## Step 1 — show what's pending
 
